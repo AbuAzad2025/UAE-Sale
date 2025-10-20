@@ -54,9 +54,10 @@
 
 **Developer:** Eng. Ahmad Ghannam  
 **Company:** Azad Smart Systems  
+**Website:** https://azad.pythonanywhere.com/  
 **Location:** Palestine - Ramallah  
-**WhatsApp:** +972-56-215-0193  
-**Email:** info@azadsystems.com
+**Mobile:** +970-598-953-362  
+**Email:** rafideen.ahmadghannam@gmail.com
 
 ---
 

@@ -2,12 +2,15 @@
 ║         UAE-Sale Live Production System          ║
 ╚══════════════════════════════════════════════════╝
 
-🌐 Live URL:
+🌐 Live System:
    https://uaesale-azad.pythonanywhere.com/
 
+🏢 Company Website:
+   https://azad.pythonanywhere.com/
+
 📱 Contact:
-   WhatsApp: +972-56-215-0193
-   Email: info@azadsystems.com
+   Mobile: +970-598-953-362
+   Email: rafideen.ahmadghannam@gmail.com
 
 📦 Repository:
    https://github.com/AbuAzad2025/UAE-Sale

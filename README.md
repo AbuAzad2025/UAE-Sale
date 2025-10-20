@@ -7,6 +7,7 @@
 ![Flask](https://img.shields.io/badge/flask-3.0-red.svg)
 ![AI](https://img.shields.io/badge/AI-Neural%20Networks-purple.svg)
 ![Status](https://img.shields.io/badge/status-Live-success.svg)
+![License](https://img.shields.io/badge/license-Proprietary-red.svg)
 
 **Enterprise-grade warehouse management with real AI intelligence**
 
@@ -17,8 +18,10 @@
 ### 🚀 Quick Links
 
 **Live System:** [uaesale-azad.pythonanywhere.com](https://uaesale-azad.pythonanywhere.com/)  
+**Company Website:** [azad.pythonanywhere.com](https://azad.pythonanywhere.com/)  
 **Repository:** [github.com/AbuAzad2025/UAE-Sale](https://github.com/AbuAzad2025/UAE-Sale)  
-**Developer:** Eng. Ahmad Ghannam | Azad Systems
+**Email:** rafideen.ahmadghannam@gmail.com  
+**Phone:** +970-598-953-362
 
 </div>
 
@@ -263,39 +266,58 @@ garage_simple/
 
 ---
 
-## 🤝 **المساهمة**
+---
 
-هذا مشروع خاص (Proprietary). الاستخدام والتعديل بإذن فقط.
+## ⚠️ **LEGAL NOTICE - إشعار قانوني**
+
+### 🔒 **Proprietary Software - برمجية محمية**
+
+**This software is PROPRIETARY and CONFIDENTIAL.**  
+**هذه البرمجية محمية بحقوق الملكية وسرية.**
+
+#### ❌ **STRICTLY PROHIBITED - ممنوع تماماً:**
+- Unauthorized copying or distribution | النسخ أو التوزيع بدون إذن
+- Commercial use without license | الاستخدام التجاري بدون ترخيص
+- Reverse engineering | الهندسة العكسية
+- Code modification | تعديل الكود
+- Reselling or sublicensing | إعادة البيع أو الترخيص
+
+#### ⚖️ **Legal Consequences - العواقب القانونية:**
+Violations will result in:
+- Immediate legal action | إجراءات قانونية فورية
+- Criminal prosecution | محاكمة جنائية
+- Claims for damages | مطالبات بالتعويضات
+
+#### ✅ **Authorized Use Only - للاستخدام المصرح فقط:**
+Contact us for licensing: rafideen.ahmadghannam@gmail.com
 
 ---
 
-## 📞 **الدعم**
+## 📞 **Contact - الاتصال**
 
-**شركة أزاد للأنظمة الذكية**  
-- 📧 Email: info@azadsystems.com
-- 📱 واتساب: +970-56-215-0193
-- 📱 هاتف: 0598953362 | 0562150193
-- 🌐 الموقع: https://azadsystems.com
-- 📍 الموقع: فلسطين - رام الله 🇵🇸
+**Azad Smart Systems - شركة أزاد للأنظمة الذكية**
 
----
+- 🌐 **Website:** https://azad.pythonanywhere.com/
+- 📧 **Email:** rafideen.ahmadghannam@gmail.com
+- 📱 **Mobile:** +970-598-953-362
+- 📍 **Location:** Palestine - Ramallah | فلسطين - رام الله 🇵🇸
 
-## 📝 **الترخيص**
-
-Copyright © 2025 شركة أزاد للأنظمة الذكية. جميع الحقوق محفوظة.
+**Developer:** Eng. Ahmad Ghannam  
+**Company:** Azad Smart Systems
 
 ---
 
-## 👨‍💻 **المطور**
+## 📝 **License - الترخيص**
 
-**م. أحمد غنام | Eng. Ahmad Ghannam**  
-**شركة أزاد للأنظمة الذكية - Azad Smart Systems**
+**Copyright © 2025 Azad Smart Systems. ALL RIGHTS RESERVED.**  
+**جميع الحقوق محفوظة © 2025 شركة أزاد للأنظمة الذكية**
 
-- 👨‍💻 المطور الرئيسي
-- 📧 ahmad@azadsystems.com
-- 📱 +970-56-215-0193
-- 📍 فلسطين - رام الله
-- 🤖 مبتكر نظام أزاد الذكي
+This software is protected by copyright law and international treaties.  
+Unauthorized reproduction or distribution may result in severe civil and  
+criminal penalties, and will be prosecuted to the maximum extent possible  
+under the law.
+
+See [LICENSE](LICENSE) file for full terms and conditions.
 
 ---
 

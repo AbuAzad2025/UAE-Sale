@@ -2,17 +2,17 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
-![Python](https://img.shields.io/badge/python-3.13-brightgreen.svg)
-![Flask](https://img.shields.io/badge/flask-3.0-orange.svg)
-![Status](https://img.shields.io/badge/status-Production-success.svg)
-![License](https://img.shields.io/badge/license-Proprietary-red.svg)
-![Maintained](https://img.shields.io/badge/maintained-yes-brightgreen.svg)
-![Platform](https://img.shields.io/badge/platform-web-blue.svg)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/AbuAzad2025/UAE-Sale/releases)
+[![Python](https://img.shields.io/badge/python-3.13-brightgreen.svg)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/flask-3.0-orange.svg)](https://flask.palletsprojects.com/)
+[![Status](https://img.shields.io/badge/status-Production-success.svg)](https://uaesale-azad.pythonanywhere.com/)
+[![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)
+[![Code Size](https://img.shields.io/github/languages/code-size/AbuAzad2025/UAE-Sale)](https://github.com/AbuAzad2025/UAE-Sale)
+[![Last Commit](https://img.shields.io/github/last-commit/AbuAzad2025/UAE-Sale)](https://github.com/AbuAzad2025/UAE-Sale/commits/main)
 
 **Professional warehouse and sales management system for enterprises**
 
-🌐 **[Live Demo](https://uaesale-azad.pythonanywhere.com/)** • [Documentation](AZAD_SYSTEM_COMPLETE_GUIDE.md) • [Changelog](CHANGELOG.md) • [Security](SECURITY.md)
+🌐 **[Live Demo](https://uaesale-azad.pythonanywhere.com/)** • [Docs](AZAD_SYSTEM_COMPLETE_GUIDE.md) • [API](API.md) • [Architecture](ARCHITECTURE.md) • [Changelog](CHANGELOG.md) • [Security](SECURITY.md)
 
 ---
 
@@ -35,10 +35,11 @@
 - [Overview](#-overview---نظرة-عامة)
 - [Tech Stack](#-tech-stack)
 - [Features](#-المميزات)
-- [AI System](#-الذكاء-الاصطناعي)
 - [Installation](#-التثبيت)
+- [Docker Deployment](#-docker-deployment)
+- [API Documentation](#-api-documentation)
+- [System Architecture](#-system-architecture)
 - [Documentation](#-التوثيق)
-- [Project Structure](#-بنية-المشروع)
 - [Legal Notice](#-legal-notice---إشعار-قانوني)
 - [Support](#-support-our-work---ادعم-عملنا)
 - [License](#-license---الترخيص)
@@ -163,6 +164,80 @@ python app.py
 
 الموقع: `http://localhost:8080`  
 **المستخدم الافتراضي:** admin / admin123
+
+---
+
+## 🐳 Docker Deployment
+
+### Quick Start with Docker
+
+```bash
+# Build and run
+docker-compose up -d
+
+# Access
+http://localhost:8080
+```
+
+### Manual Docker Build
+
+```bash
+# Build image
+docker build -t uae-sale:latest .
+
+# Run container
+docker run -d -p 8080:8080 --name uae-sale uae-sale:latest
+```
+
+### Production Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed production deployment guide.
+
+---
+
+## 📡 API Documentation
+
+REST API endpoints available for integration.
+
+**Full API Reference:** [API.md](API.md)
+
+### Quick Example
+
+```python
+import requests
+
+# Login
+session = requests.Session()
+session.post('http://localhost:8080/login', data={
+    'username': 'admin',
+    'password': 'admin123'
+})
+
+# Get sales
+response = session.get('http://localhost:8080/api/sales/list')
+print(response.json())
+```
+
+---
+
+## 🏗 System Architecture
+
+**Detailed Architecture:** [ARCHITECTURE.md](ARCHITECTURE.md)
+
+### High-Level Overview
+
+```
+Web Interface → Flask App → Services → Models → Database
+                    ↓
+              AI Engines → External APIs
+```
+
+### Key Components
+- **Backend:** Flask 3.0 + SQLAlchemy
+- **Frontend:** AdminLTE 3 + Bootstrap 4
+- **AI/ML:** Custom engines + External providers
+- **Database:** SQLite/PostgreSQL + Redis
+- **Deployment:** Docker + WSGI
 
 ---
 

@@ -1,71 +1,28 @@
 ╔════════════════════════════════════════════════╗
-║      🚀 Push سريع لـ GitHub - 3 أوامر         ║
+║         Quick Deploy - UAE-Sale System         ║
 ╚════════════════════════════════════════════════╝
 
-📋 المعلومات:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Repository: https://github.com/AbuAzad2025/UAE-Sale
-• Branch: main
-• ✅ تم الرفع بنجاح!
+Repository: https://github.com/AbuAzad2025/UAE-Sale
+Branch: main
 
-
-⚡ الطريقة 1: سكربت تلقائي (الأسرع!)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-فقط اكتب:
+
+Method 1 - Automated:
     .\push.ps1
 
-✅ كل شي تلقائي!
-
-
-📝 الطريقة 2: أوامر يدوية (3 أسطر)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-افتح PowerShell واكتب:
-
+Method 2 - Manual:
     git add -A
     git commit -m "update"
     git push origin HEAD
 
-
-🔧 الإعداد الأولي (مرة واحدة فقط):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. أنشئ Repository:
-   https://github.com/new
-   Name: UAE-SALE
-   Private ✓
 
-2. احصل على Token:
-   https://github.com/settings/tokens
-   Scopes: repo ✓
+Protected files (.gitignore):
+    .env
+    instance/*.db
+    .venv/
+    __pycache__/
 
-3. أول مرة فقط:
-   git remote add origin https://github.com/AbuAzad2025/UAE-SALE.git
-   git branch -M main
-   git push -u origin main
-
-   سيطلب:
-   Username: AbuAzad2025
-   Password: [Token]
-
-
-✨ بعد كذا:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-فقط:
-    .\push.ps1
 
-أو:
-    git add -A
-    git commit -m "update"
-    git push origin HEAD
-
-
-💡 نصائح:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• .\push.ps1 → أسرع طريقة!
-• غيّر "update" لوصف أوضح (اختياري)
-• git push origin HEAD → يرفع الفرع الحالي تلقائياً
-
-
-╔════════════════════════════════════════════════╗
-║  م. أحمد غنام | شركة أزاد 🇵🇸                ║
-╚════════════════════════════════════════════════╝
-
+Developed by: Eng. Ahmad Ghannam | Azad Systems

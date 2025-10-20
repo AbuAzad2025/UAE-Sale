@@ -1,17 +1,16 @@
-# 🚀 Garage Manager - نظام إدارة المستودعات الذكي
-## شركة أزاد للأنظمة الذكية - Azad Smart Systems
+# UAE-Sale | Intelligent Garage Management System
 
 <div align="center">
 
 ![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.13-green.svg)
 ![Flask](https://img.shields.io/badge/flask-3.0-red.svg)
-![AI](https://img.shields.io/badge/AI-Real%20Intelligence-purple.svg)
-![License](https://img.shields.io/badge/license-Azad-orange.svg)
+![AI](https://img.shields.io/badge/AI-Neural%20Networks-purple.svg)
+![License](https://img.shields.io/badge/license-Private-orange.svg)
 
-**نظام متكامل مع ذكاء اصطناعي حقيقي - ليس pattern matching!**
+**Enterprise-grade warehouse management with real AI intelligence**
 
-[المميزات](#-المميزات) • [التثبيت](#-التثبيت) • [الذكاء الاصطناعي](#-الذكاء-الاصطناعي) • [الدليل الشامل](AZAD_SYSTEM_COMPLETE_GUIDE.md)
+[Features](#-features) • [Installation](#-installation) • [AI System](#-ai-system) • [Documentation](AZAD_SYSTEM_COMPLETE_GUIDE.md)
 
 </div>
 

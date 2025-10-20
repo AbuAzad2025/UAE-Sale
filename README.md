@@ -27,18 +27,18 @@
 
 ---
 
-## 📋 **نظرة عامة**
+## 📋 **Overview - نظرة عامة**
 
-نظام احترافي متكامل يجمع:
-- 📦 **إدارة المخزون** - تتبع دقيق مع تنبيهات
-- 💰 **المبيعات** - فواتير احترافية (4 قوالب)
-- 🧾 **سندات القبض** - 4 قوالب احترافية
-- 👥 **العملاء والموردين** - بحث ذكي فوري
-- 💳 **الدفعات** - 6 طرق دفع مختلفة
-- 🏦 **نظام شيكات** - محاسبة احترافية
-- 💱 **العملات** - تحويل تلقائي
-- 📊 **التقارير** - تحليلات متقدمة
-- 🤖 **مساعد ذكي** - 18 محرك ذكي متكامل
+**Complete enterprise system combining:**
+- 📦 Inventory Management - Precise tracking with alerts
+- 💰 Sales Management - Professional invoices (4 templates)
+- 🧾 Receipt System - 4 professional templates
+- 👥 Customer & Supplier Management - Smart instant search
+- 💳 Payment Processing - 6 payment methods
+- 🏦 Check Management - Professional accounting
+- 💱 Multi-Currency - Automatic conversion
+- 📊 Advanced Reports - Analytics & insights
+- 🤖 AI Assistant - 18 integrated intelligent engines
 
 ---
 

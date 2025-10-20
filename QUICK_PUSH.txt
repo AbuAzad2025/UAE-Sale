@@ -4,8 +4,9 @@
 
 📋 المعلومات:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Repository: https://github.com/AbuAzad2025/UAE-SALE
+• Repository: https://github.com/AbuAzad2025/UAE-Sale
 • Branch: main
+• ✅ تم الرفع بنجاح!
 
 
 ⚡ الطريقة 1: سكربت تلقائي (الأسرع!)

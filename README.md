@@ -1,44 +1,94 @@
-# UAE-Sale | Intelligent Garage Management System
+# UAE-Sale | Enterprise Warehouse Management System
 
 <div align="center">
 
 ![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
-![Python](https://img.shields.io/badge/python-3.13-green.svg)
-![Flask](https://img.shields.io/badge/flask-3.0-red.svg)
-![AI](https://img.shields.io/badge/AI-Neural%20Networks-purple.svg)
-![Status](https://img.shields.io/badge/status-Live-success.svg)
+![Python](https://img.shields.io/badge/python-3.13-brightgreen.svg)
+![Flask](https://img.shields.io/badge/flask-3.0-orange.svg)
+![Status](https://img.shields.io/badge/status-Production-success.svg)
 ![License](https://img.shields.io/badge/license-Proprietary-red.svg)
+![Maintained](https://img.shields.io/badge/maintained-yes-brightgreen.svg)
+![Platform](https://img.shields.io/badge/platform-web-blue.svg)
 
-**Professional warehouse and sales management system**
+**Professional warehouse and sales management system for enterprises**
 
-🌐 **[Live Demo](https://uaesale-azad.pythonanywhere.com/)** • [Features](#-features) • [Documentation](AZAD_SYSTEM_COMPLETE_GUIDE.md)
+🌐 **[Live Demo](https://uaesale-azad.pythonanywhere.com/)** • [Documentation](AZAD_SYSTEM_COMPLETE_GUIDE.md) • [Changelog](CHANGELOG.md) • [Security](SECURITY.md)
 
 ---
 
 ### 🚀 Quick Links
 
-**Live System:** [uaesale-azad.pythonanywhere.com](https://uaesale-azad.pythonanywhere.com/)  
-**Company Website:** [azad.pythonanywhere.com](https://azad.pythonanywhere.com/)  
-**Repository:** [github.com/AbuAzad2025/UAE-Sale](https://github.com/AbuAzad2025/UAE-Sale)  
-**Email:** rafideen.ahmadghannam@gmail.com  
-**Phone:** +970-598-953-362
+| Resource | Link |
+|----------|------|
+| 🌐 **Live System** | [uaesale-azad.pythonanywhere.com](https://uaesale-azad.pythonanywhere.com/) |
+| 🏢 **Company** | [azad.pythonanywhere.com](https://azad.pythonanywhere.com/) |
+| 📂 **Repository** | [github.com/AbuAzad2025/UAE-Sale](https://github.com/AbuAzad2025/UAE-Sale) |
+| 📧 **Email** | rafideen.ahmadghannam@gmail.com |
+| 📱 **Phone** | +970-598-953-362 |
 
 </div>
 
 ---
 
-## 📋 **Overview - نظرة عامة**
+## 📋 Table of Contents
 
-**Complete enterprise system combining:**
-- 📦 Inventory Management - Precise tracking with alerts
-- 💰 Sales Management - Professional invoices (4 templates)
-- 🧾 Receipt System - 4 professional templates
-- 👥 Customer & Supplier Management - Smart instant search
-- 💳 Payment Processing - 6 payment methods
-- 🏦 Check Management - Professional accounting
-- 💱 Multi-Currency - Automatic conversion
-- 📊 Advanced Reports - Analytics & insights
-- 🤖 AI Assistant - 18 integrated intelligent engines
+- [Overview](#-overview---نظرة-عامة)
+- [Tech Stack](#-tech-stack)
+- [Features](#-المميزات)
+- [AI System](#-الذكاء-الاصطناعي)
+- [Installation](#-التثبيت)
+- [Documentation](#-التوثيق)
+- [Project Structure](#-بنية-المشروع)
+- [Legal Notice](#-legal-notice---إشعار-قانوني)
+- [Support](#-support-our-work---ادعم-عملنا)
+- [License](#-license---الترخيص)
+
+---
+
+## 📋 Overview - نظرة عامة
+
+**UAE-Sale** is a comprehensive enterprise resource planning (ERP) system specifically designed for warehouse and sales management. Built with modern technologies and intelligent automation, it provides businesses with the tools needed to efficiently manage inventory, sales, customers, and financial operations.
+
+### Core Capabilities
+
+- 📦 **Inventory Management** - Real-time tracking with automated alerts
+- 💰 **Sales Management** - Professional invoicing with multiple templates
+- 🧾 **Receipt System** - Comprehensive payment documentation
+- 👥 **Customer & Supplier CRM** - Complete relationship management
+- 💳 **Payment Processing** - Multiple payment method support
+- 🏦 **Check Management** - Full check lifecycle tracking
+- 💱 **Multi-Currency** - Automatic exchange rate conversion
+- 📊 **Advanced Analytics** - Business intelligence and reporting
+- 🤖 **AI Assistant** - Intelligent automation and insights
+
+---
+
+## 🛠 Tech Stack
+
+### Backend
+- **Framework:** Flask 3.0 (Python 3.13)
+- **Database:** SQLite / PostgreSQL
+- **ORM:** SQLAlchemy 2.0
+- **Cache:** Redis
+- **Task Queue:** Celery
+
+### Frontend
+- **UI Framework:** AdminLTE 3
+- **CSS:** Bootstrap 4
+- **JavaScript:** jQuery, Chart.js
+- **Components:** Select2, DataTables, SweetAlert2
+
+### AI & ML
+- **Neural Networks:** scikit-learn (10 models)
+- **NLP:** Custom semantic matching
+- **Data Analysis:** pandas, numpy
+- **Providers:** Groq, Google Gemini, OpenAI
+
+### Security
+- **Authentication:** Flask-Login
+- **Authorization:** Role-based access control (RBAC)
+- **Encryption:** bcrypt password hashing
+- **Protection:** CSRF, SQL injection prevention, XSS protection
 
 ---
 

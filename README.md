@@ -6,11 +6,19 @@
 ![Python](https://img.shields.io/badge/python-3.13-green.svg)
 ![Flask](https://img.shields.io/badge/flask-3.0-red.svg)
 ![AI](https://img.shields.io/badge/AI-Neural%20Networks-purple.svg)
-![License](https://img.shields.io/badge/license-Private-orange.svg)
+![Status](https://img.shields.io/badge/status-Live-success.svg)
 
 **Enterprise-grade warehouse management with real AI intelligence**
 
-[Features](#-features) • [Installation](#-installation) • [AI System](#-ai-system) • [Documentation](AZAD_SYSTEM_COMPLETE_GUIDE.md)
+🌐 **[Live Demo](https://uaesale-azad.pythonanywhere.com/)** • [Features](#-features) • [Documentation](AZAD_SYSTEM_COMPLETE_GUIDE.md)
+
+---
+
+### 🚀 Quick Links
+
+**Live System:** [uaesale-azad.pythonanywhere.com](https://uaesale-azad.pythonanywhere.com/)  
+**Repository:** [github.com/AbuAzad2025/UAE-Sale](https://github.com/AbuAzad2025/UAE-Sale)  
+**Developer:** Eng. Ahmad Ghannam | Azad Systems
 
 </div>
 

@@ -1,0 +1,21 @@
+╔══════════════════════════════════════════════════╗
+║         UAE-Sale Live Production System          ║
+╚══════════════════════════════════════════════════╝
+
+🌐 Live URL:
+   https://uaesale-azad.pythonanywhere.com/
+
+📱 Contact:
+   WhatsApp: +972-56-215-0193
+   Email: info@azadsystems.com
+
+📦 Repository:
+   https://github.com/AbuAzad2025/UAE-Sale
+
+🚀 Quick Deploy:
+   .\push.ps1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Developed by: Eng. Ahmad Ghannam | Azad Systems 🇵🇸
+

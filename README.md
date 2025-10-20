@@ -9,7 +9,7 @@
 ![Status](https://img.shields.io/badge/status-Live-success.svg)
 ![License](https://img.shields.io/badge/license-Proprietary-red.svg)
 
-**Enterprise-grade warehouse management with real AI intelligence**
+**Professional warehouse and sales management system**
 
 🌐 **[Live Demo](https://uaesale-azad.pythonanywhere.com/)** • [Features](#-features) • [Documentation](AZAD_SYSTEM_COMPLETE_GUIDE.md)
 

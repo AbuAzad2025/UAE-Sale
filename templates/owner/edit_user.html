@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+
+{% block title %}شركة أزاد للأنظمة الذكية - تعديل مستخدم {{ user.username }} وإدارة الصلاحيات{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div class="container-fluid">
+    <div class="row mb-2">
+      <div class="col-sm-6">
+        <h1 class="m-0">✏️ تعديل مستخدم: {{ user.username }}</h1>
+      </div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-left">
+          <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">لوحة المالك</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('owner.users_list') }}">{{ t('Users') }}</a></li>
+          <li class="breadcrumb-item active">{{ t('Edit') }}</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <div class="container-fluid">
+    <form method="POST" id="editUserForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      
+      <div class="row">
+        <!-- المعلومات الأساسية -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header bg-gradient-primary">
+              <h3 class="card-title text-white">📋 المعلومات الأساسية</h3>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>اسم المستخدم *</label>
+                <input type="text" name="username" class="form-control" value="{{ user.username }}" required 
+                       pattern="[a-zA-Z0-9_]{3,20}">
+              </div>
+              
+              <div class="form-group">
+                <label>{{ t('Full Name') }}</label>
+                <input type="text" name="full_name" class="form-control" value="{{ user.full_name or '' }}">
+              </div>
+              
+              <div class="form-group">
+                <label>{{ t('Email') }}</label>
+                <input type="email" name="email" class="form-control" value="{{ user.email or '' }}">
+              </div>
+              
+              <hr>
+              
+              <div class="alert alert-warning" style="color: #000;">
+                <i class="fas fa-key"></i> <strong>تغيير كلمة المرور</strong>
+                <p class="mb-0">اترك الحقول فارغة إذا لم ترد تغيير كلمة المرور</p>
+              </div>
+              
+              <div class="form-group">
+                <label>كلمة المرور الجديدة</label>
+                <input type="password" name="new_password" class="form-control" minlength="8" 
+                       placeholder="••••••••" id="new_password">
+              </div>
+              
+              <div class="form-group">
+                <label>تأكيد كلمة المرور الجديدة</label>
+                <input type="password" name="confirm_new_password" class="form-control" minlength="8" 
+                       placeholder="••••••••" id="confirm_new_password">
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- الصلاحيات -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header bg-gradient-success">
+              <h3 class="card-title text-white">🔐 الدور والصلاحيات</h3>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>الدور الوظيفي *</label>
+                <select name="role_id" class="form-control" required id="role_select">
+                  {% for role in roles %}
+                  <option value="{{ role.id }}" {{ 'selected' if user.role_id == role.id }}>
+                    {{ role.name }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <div class="custom-control custom-switch custom-control-lg">
+                  <input type="checkbox" class="custom-control-input" id="is_owner" name="is_owner" 
+                         {{ 'checked' if user.is_owner }}>
+                  <label class="custom-control-label" for="is_owner">
+                    <i class="fas fa-crown text-warning"></i> <strong>مالك النظام</strong>
+                    <br><small class="text-danger">⚠️ صلاحيات كاملة غير محدودة!</small>
+                  </label>
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <div class="custom-control custom-switch custom-control-lg">
+                  <input type="checkbox" class="custom-control-input" id="is_active" name="is_active" 
+                         {{ 'checked' if user.is_active }}>
+                  <label class="custom-control-label" for="is_active">
+                    <i class="fas fa-check-circle text-success"></i> حساب نشط
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- معلومات إضافية -->
+          <div class="card">
+            <div class="card-header bg-gradient-info">
+              <h3 class="card-title text-white">📊 المعلومات</h3>
+            </div>
+            <div class="card-body">
+              <p><i class="fas fa-calendar-plus"></i> <strong>تاريخ الإنشاء:</strong> {{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at }}</p>
+              <p><i class="fas fa-sign-in-alt"></i> <strong>آخر دخول:</strong> {{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'لم يسجل دخول' }}</p>
+              <p><i class="fas fa-user-clock"></i> <strong>المستخدم منذ:</strong> {{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'غير محدد' }}</p>
+              {% if user.updated_at %}
+              <p><i class="fas fa-edit"></i> <strong>آخر تحديث:</strong> {{ user.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- أزرار -->
+      <div class="row">
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-save mr-2"></i>حفظ التعديلات
+          </button>
+          <a href="{{ url_for('owner.user_profile', user_id=user.id) }}" class="btn btn-info btn-lg">
+            <i class="fas fa-eye mr-2"></i>الملف الشخصي
+          </a>
+          <a href="{{ url_for('owner.users_list') }}" class="btn btn-secondary btn-lg">
+            <i class="fas fa-times mr-2"></i>إلغاء
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+$(document).ready(function() {
+  // التحقق من تطابق كلمة المرور
+  $('#editUserForm').submit(function(e) {
+    const newPass = $('#new_password').val();
+    const confirmPass = $('#confirm_new_password').val();
+    
+    // إذا تم إدخال كلمة مرور جديدة
+    if (newPass && newPass !== confirmPass) {
+      e.preventDefault();
+      alert('كلمة المرور الجديدة غير متطابقة!');
+      $('#confirm_new_password').focus();
+      return false;
+    }
+    
+    return true;
+  });
+  
+  // تحذير عند تفعيل Owner
+  $('#is_owner').change(function() {
+    if ($(this).is(':checked')) {
+      if (!confirm('⚠️ تحذير!\n\nالمالك لديه صلاحيات كاملة غير محدودة!\n\nهل أنت متأكد؟')) {
+        $(this).prop('checked', false);
+      }
+    }
+  });
+});
+</script>
+{% endblock %}
+

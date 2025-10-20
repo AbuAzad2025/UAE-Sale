@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block title %}شركة أزاد للأنظمة الذكية - تفاصيل المنتج {{ product.name }}{% endblock %}
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+  <div>
+    <h1 class="mb-0"><i class="fas fa-box mr-2"></i>تفاصيل المنتج: {{ product.name }}</h1>
+  </div>
+  <div>
+    <a href="{{ url_for('products.index') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-right mr-2"></i>العودة للقائمة
+    </a>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-home mr-2"></i>الرئيسية
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-4">
+    <div class="card card-primary card-outline">
+      <div class="card-body box-profile">
+        <h3 class="profile-username text-center">{{ product.name }}</h3>
+        {% if product.name_ar %}
+        <p class="text-muted text-center">{{ product.name_ar }}</p>
+        {% endif %}
+        
+        <ul class="list-group list-group-unbordered mb-3">
+          <li class="list-group-item">
+            <b>رقم القطعة</b>
+            <span class="float-left">{{ product.part_number or '-' }}</span>
+          </li>
+          <li class="list-group-item">
+            <b>{{ t('Barcode') }}</b>
+            <span class="float-left">{{ product.barcode or '-' }}</span>
+          </li>
+          <li class="list-group-item">
+            <b>{{ t('Inventory') }}</b>
+            <span class="float-left {% if product.current_stock < product.min_stock_alert %}text-danger{% else %}text-success{% endif %}">
+              {{ product.current_stock }} {{ product.unit }}
+            </span>
+          </li>
+          <li class="list-group-item">
+            <b>{{ t('Price') }}</b>
+            <span class="float-left text-success">{{ "{:,.2f}".format(product.regular_price) }} AED</span>
+          </li>
+        </ul>
+        
+        <a href="{{ url_for('products.edit', id=product.id) }}" class="btn btn-warning btn-block">
+          <i class="fas fa-edit"></i> تعديل
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">معلومات المنتج</h3>
+      </div>
+      <div class="card-body">
+        <dl class="row">
+          <dt class="col-sm-4">الاسم التجاري:</dt>
+          <dd class="col-sm-8">{{ product.commercial_name or '-' }}</dd>
+          
+          <dt class="col-sm-4">بلد المنشأ:</dt>
+          <dd class="col-sm-8">{{ product.country_of_origin or '-' }}</dd>
+          
+          <dt class="col-sm-4">الفئة:</dt>
+          <dd class="col-sm-8">{{ product.category.name if product.category else '-' }}</dd>
+          
+          <dt class="col-sm-4">سعر التكلفة:</dt>
+          <dd class="col-sm-8">{{ "{:,.2f}".format(product.cost_price) }} AED</dd>
+          
+          <dt class="col-sm-4">سعر التاجر:</dt>
+          <dd class="col-sm-8">{{ "{:,.2f}".format(product.merchant_price) }} AED</dd>
+          
+          <dt class="col-sm-4">سعر الشريك:</dt>
+          <dd class="col-sm-8">{{ "{:,.2f}".format(product.partner_price) }} AED</dd>
+          
+          <dt class="col-sm-4">الكفالة:</dt>
+          <dd class="col-sm-8">{{ product.warranty_period or 0 }} {{ product.warranty_unit or 'شهر' }}</dd>
+          
+          <dt class="col-sm-4">قابل للإرجاع:</dt>
+          <dd class="col-sm-8">
+            {% if product.is_returnable %}
+            <span class="badge badge-success">نعم ({{ product.return_period_days }} يوم)</span>
+            {% else %}
+            <span class="badge badge-danger">{{ t('No') }}</span>
+            {% endif %}
+          </dd>
+        </dl>
+
+        {% if product.description %}
+        <hr>
+        <h5>الوصف:</h5>
+        <p>{{ product.description }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">آخر الحركات</h3>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>النوع</th>
+              <th>{{ t('Quantity') }}</th>
+              <th>{{ t('Date') }}</th>
+              <th>المرجع</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for movement in product.stock_movements[:10] %}
+            <tr>
+              <td>
+                {% if movement.movement_type == 'in' %}
+                <span class="badge badge-success">إدخال</span>
+                {% else %}
+                <span class="badge badge-danger">إخراج</span>
+                {% endif %}
+              </td>
+              <td>{{ movement.quantity }}</td>
+              <td>{{ movement.created_at.strftime('%Y-%m-%d') }}</td>
+              <td>{{ movement.reference or '-' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

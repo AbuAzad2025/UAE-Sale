@@ -1,0 +1,150 @@
+import os
+import uuid
+from datetime import datetime, timezone
+from decimal import Decimal
+from werkzeug.utils import secure_filename
+from flask import current_app, request
+from extensions import db
+
+
+def generate_number(prefix, model, field_name='sale_number', date_format='%Y'):
+    year = datetime.now().strftime(date_format)
+    
+    latest = db.session.query(model).filter(
+        getattr(model, field_name).like(f'{prefix}-{year}-%')
+    ).order_by(
+        getattr(model, field_name).desc()
+    ).first()
+    
+    if latest:
+        last_number = getattr(latest, field_name).split('-')[-1]
+        next_number = int(last_number) + 1
+    else:
+        next_number = 1
+    
+    return f'{prefix}-{year}-{next_number:04d}'
+
+
+def get_next_number(prefix, model_class, number_field='number'):
+    year = datetime.now().year
+    pattern = f'{prefix}-{year}-%'
+    
+    last_record = db.session.query(model_class).filter(
+        getattr(model_class, number_field).like(pattern)
+    ).order_by(
+        getattr(model_class, number_field).desc()
+    ).first()
+    
+    if last_record:
+        last_num = int(getattr(last_record, number_field).split('-')[-1])
+        return f'{prefix}-{year}-{last_num + 1:04d}'
+    
+    return f'{prefix}-{year}-0001'
+
+
+def calculate_discount(amount, discount_percent):
+    """Calculate discount amount from percentage"""
+    amount = Decimal(str(amount))
+    discount_percent = Decimal(str(discount_percent))
+    return (amount * discount_percent / Decimal('100')).quantize(Decimal('0.01'))
+
+
+def calculate_vat(amount, vat_rate):
+    """Calculate VAT/Tax amount from rate"""
+    amount = Decimal(str(amount))
+    vat_rate = Decimal(str(vat_rate))
+    return (amount * vat_rate / Decimal('100')).quantize(Decimal('0.01'))
+
+
+def format_currency_display(amount, currency='AED', lang='ar'):
+    if not amount:
+        return '0.00'
+    
+    try:
+        if isinstance(amount, (int, float)):
+            amount = Decimal(str(amount))
+        
+        formatted = f'{amount:,.2f}'
+        
+        if lang == 'ar':
+            symbols = {
+                'AED': 'د.إ',
+                'USD': '$',
+                'EUR': '€',
+                'GBP': '£',
+                'SAR': 'ر.س',
+            }
+            return f'{formatted} {symbols.get(currency, currency)}'
+        
+        return f'{currency} {formatted}'
+    
+    except Exception:
+        return str(amount)
+
+
+def create_audit_log(action, table_name=None, record_id=None, changes=None):
+    from models import AuditLog
+    from flask_login import current_user
+    
+    try:
+        log = AuditLog(
+            user_id=current_user.id if current_user.is_authenticated else None,
+            action=action,
+            table_name=table_name,
+            record_id=record_id,
+            changes=changes,
+            ip_address=request.remote_addr if request else None,
+            user_agent=request.headers.get('User-Agent') if request else None,
+        )
+        db.session.add(log)
+        db.session.commit()
+    except Exception as e:
+        current_app.logger.error(f'Failed to create audit log: {e}')
+
+
+def allowed_file(filename, allowed_extensions=None):
+    if not filename:
+        return False
+    
+    if allowed_extensions is None:
+        allowed_extensions = current_app.config.get('ALLOWED_UPLOAD_EXTENSIONS', {}).get('all', set())
+    
+    return '.' in filename and \
+           '.' + filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+
+def save_uploaded_file(file, upload_folder='uploads', allowed_extensions=None):
+    if file and allowed_file(file.filename, allowed_extensions):
+        filename = secure_filename(file.filename)
+        
+        name, ext = os.path.splitext(filename)
+        unique_filename = f'{name}_{uuid.uuid4().hex[:8]}{ext}'
+        
+        full_upload_folder = os.path.join(current_app.static_folder, upload_folder)
+        os.makedirs(full_upload_folder, exist_ok=True)
+        
+        filepath = os.path.join(full_upload_folder, unique_filename)
+        file.save(filepath)
+        
+        return os.path.join(upload_folder, unique_filename).replace('\\', '/')
+    
+    return None
+
+
+def convert_currency(amount, from_currency, to_currency='AED'):
+    from services.currency_service import CurrencyService
+    
+    if from_currency == to_currency:
+        return amount
+    
+    rate = CurrencyService.get_exchange_rate(from_currency, to_currency)
+    return amount * Decimal(str(rate))
+
+
+def generate_sku():
+    return f'SKU-{uuid.uuid4().hex[:8].upper()}'
+
+
+def generate_barcode():
+    return f'{datetime.now().strftime("%Y%m%d")}{uuid.uuid4().hex[:6].upper()}'
+

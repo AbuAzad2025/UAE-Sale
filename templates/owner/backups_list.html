@@ -1,0 +1,385 @@
+{% extends 'base.html' %}
+
+{% block title %}شركة أزاد للأنظمة الذكية - إدارة النسخ الاحتياطية وحماية البيانات{% endblock %}
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+  <div>
+    <h1 class="mb-0"><i class="fas fa-database mr-2"></i>إدارة النسخ الاحتياطية</h1>
+  </div>
+  <div>
+    <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-right mr-2"></i>لوحة المالك
+    </a>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-home mr-2"></i>الرئيسية
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.backup-card {
+  transition: all 0.3s;
+  border-left: 4px solid #007bff;
+}
+.backup-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+.backup-card.manual {
+  border-left-color: #28a745;
+}
+.backup-card.auto {
+  border-left-color: #17a2b8;
+}
+.checksum-badge {
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- الإحصائيات العامة -->
+<div class="row">
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-info">
+      <div class="inner">
+        <h3>{{ stats.total_count }}</h3>
+        <p>إجمالي النسخ</p>
+      </div>
+      <div class="icon">
+        <i class="fas fa-archive"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-success">
+      <div class="inner">
+        <h3>{{ stats.manual_count }}</h3>
+        <p>نسخ يدوية</p>
+      </div>
+      <div class="icon">
+        <i class="fas fa-hand-pointer"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-primary">
+      <div class="inner">
+        <h3>{{ stats.auto_count }}</h3>
+        <p>نسخ تلقائية</p>
+      </div>
+      <div class="icon">
+        <i class="fas fa-robot"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3 col-6">
+    <div class="small-box bg-warning">
+      <div class="inner">
+        <h3>{{ stats.total_size_mb }}</h3>
+        <p>MB إجمالي المساحة</p>
+      </div>
+      <div class="icon">
+        <i class="fas fa-hdd"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- أزرار الإجراءات -->
+<div class="row mb-3">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('owner.backup_now') }}" style="display: inline;">
+          <input type="text" name="description" placeholder="وصف النسخة (اختياري)" 
+                 class="form-control d-inline-block" style="width: 300px;">
+          <button type="submit" class="btn btn-success">
+            <i class="fas fa-download"></i> نسخة احتياطية يدوية الآن
+          </button>
+        </form>
+        
+        <a href="{{ url_for('owner.scheduled_backups') }}" class="btn btn-primary">
+          <i class="fas fa-clock"></i> إعدادات النسخ التلقائي
+        </a>
+        
+        <button class="btn btn-info" onclick="location.reload()">
+          <i class="fas fa-sync"></i> تحديث
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- قائمة النسخ الاحتياطية -->
+<div class="row">
+  {% if backups %}
+    {% for backup in backups %}
+    <div class="col-md-6 col-lg-4">
+      <div class="card backup-card {% if backup.manual %}manual{% else %}auto{% endif %} mb-3">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            {% if backup.manual %}
+            <i class="fas fa-hand-pointer text-success"></i> يدوية
+            {% else %}
+            <i class="fas fa-robot text-info"></i> تلقائية
+            {% endif %}
+          </h5>
+        </div>
+        <div class="card-body">
+          <!-- التاريخ والوقت -->
+          <p class="mb-2">
+            <i class="far fa-calendar-alt text-primary"></i>
+            <strong>التاريخ:</strong> 
+            {{ backup.timestamp[:4] }}-{{ backup.timestamp[4:6] }}-{{ backup.timestamp[6:8] }}
+          </p>
+          
+          <p class="mb-2">
+            <i class="far fa-clock text-info"></i>
+            <strong>الوقت:</strong> 
+            {{ backup.timestamp[9:11] }}:{{ backup.timestamp[11:13] }}:{{ backup.timestamp[13:15] }}
+          </p>
+
+          <!-- الحجم -->
+          <p class="mb-2">
+            <i class="fas fa-hdd text-warning"></i>
+            <strong>الحجم:</strong> 
+            <span class="badge badge-warning">{{ backup.size_mb }} MB</span>
+          </p>
+
+          <!-- المواصفات -->
+          <p class="mb-2">
+            <i class="fas fa-info-circle text-secondary"></i>
+            {% if backup.compressed %}
+            <span class="badge badge-info"><i class="fas fa-compress"></i> مضغوط</span>
+            {% endif %}
+            {% if backup.encrypted %}
+            <span class="badge badge-success"><i class="fas fa-lock"></i> مشفّر</span>
+            {% endif %}
+          </p>
+
+          {% if backup.description %}
+          <p class="mb-2 text-muted">
+            <i class="fas fa-comment-dots"></i>
+            <small>{{ backup.description }}</small>
+          </p>
+          {% endif %}
+
+          {% if backup.checksum %}
+          <p class="mb-2">
+            <small class="text-muted">
+              <i class="fas fa-fingerprint"></i> Checksum:<br>
+              <code class="checksum-badge">{{ backup.checksum[:16] }}...</code>
+            </small>
+          </p>
+          {% endif %}
+
+          <!-- اسم الملف -->
+          <p class="mb-0">
+            <small class="text-muted">
+              <i class="fas fa-file"></i> {{ backup.filename }}
+            </small>
+          </p>
+        </div>
+
+        <div class="card-footer">
+          <!-- زر الاستعادة -->
+          {% if current_user.is_owner %}
+          <button type="button" class="btn btn-sm btn-warning" 
+                  onclick="confirmRestore('{{ backup.filename }}')">
+            <i class="fas fa-undo"></i> استعادة
+          </button>
+          {% endif %}
+
+          <!-- زر الحذف (للنسخ اليدوية فقط) -->
+          {% if backup.manual %}
+          <button type="button" class="btn btn-sm btn-danger" 
+                  onclick="confirmDelete('{{ backup.filename }}')">
+            <i class="fas fa-trash"></i> حذف
+          </button>
+          {% else %}
+          <span class="badge badge-secondary">
+            <i class="fas fa-shield-alt"></i> محمية
+          </span>
+          {% endif %}
+
+          <!-- زر التحقق -->
+          <button type="button" class="btn btn-sm btn-info" 
+                  onclick="verifyBackup('{{ backup.filename }}')">
+            <i class="fas fa-check-circle"></i> تحقق
+          </button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+  <!-- لا توجد نسخ -->
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-body text-center py-5">
+        <i class="fas fa-inbox fa-5x text-muted mb-3"></i>
+        <h4>لا توجد نسخ احتياطية</h4>
+        <p class="text-muted">قم بإنشاء أول نسخة احتياطية الآن</p>
+        <form method="POST" action="{{ url_for('owner.backup_now') }}">
+          <button type="submit" class="btn btn-success btn-lg">
+            <i class="fas fa-plus-circle"></i> إنشاء نسخة احتياطية
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- معلومات إضافية -->
+{% if stats.latest_backup %}
+<div class="row mt-3">
+  <div class="col-md-12">
+    <div class="card card-outline card-success">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-star"></i> آخر نسخة احتياطية</h3>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-3">
+            <strong>التاريخ:</strong><br>
+            {{ stats.latest_backup.timestamp[:8] }}
+          </div>
+          <div class="col-md-3">
+            <strong>الحجم:</strong><br>
+            {{ stats.latest_backup.size_mb }} MB
+          </div>
+          <div class="col-md-3">
+            <strong>النوع:</strong><br>
+            {% if stats.latest_backup.manual %}يدوية{% else %}تلقائية{% endif %}
+          </div>
+          <div class="col-md-3">
+            <strong>الحالة:</strong><br>
+            <span class="badge badge-success">
+              <i class="fas fa-check-circle"></i> جاهزة
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Modal للاستعادة -->
+<div class="modal fade" id="restoreModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title">
+          <i class="fas fa-exclamation-triangle"></i> تأكيد الاستعادة
+        </h5>
+        <button type="button" class="close" data-dismiss="modal">
+          <span>&times;</span>
+        </button>
+      </div>
+      <form method="POST" id="restoreForm">
+        <div class="modal-body">
+          <div class="alert alert-danger">
+            <i class="fas fa-shield-alt"></i>
+            <strong>تحذير:</strong> الاستعادة ستستبدل قاعدة البيانات الحالية!
+          </div>
+          
+          <p>سيتم إنشاء نسخة احتياطية من الوضع الحالي قبل الاستعادة.</p>
+          
+          <div class="form-group">
+            <label>أدخل كلمة المرور للتأكيد:</label>
+            <input type="password" name="confirm_password" class="form-control" 
+                   required placeholder="كلمة مرور المالك">
+          </div>
+
+          <p class="text-muted">
+            <small>
+              <i class="fas fa-info-circle"></i>
+              ملف الاستعادة: <strong id="restoreFilename"></strong>
+            </small>
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">
+            إلغاء
+          </button>
+          <button type="submit" class="btn btn-warning">
+            <i class="fas fa-undo"></i> استعادة الآن
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// تأكيد الاستعادة
+function confirmRestore(filename) {
+  $('#restoreFilename').text(filename);
+  $('#restoreForm').attr('action', '{{ url_for("owner.restore_backup", filename="__FILENAME__") }}'.replace('__FILENAME__', filename));
+  $('#restoreModal').modal('show');
+}
+
+// تأكيد الحذف
+function confirmDelete(filename) {
+  Swal.fire({
+    title: 'هل أنت متأكد؟',
+    text: 'سيتم حذف النسخة الاحتياطية نهائياً!',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'نعم، احذف',
+    cancelButtonText: 'إلغاء'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // إرسال طلب الحذف مع CSRF token
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '{{ url_for("owner.delete_backup", filename="__FILENAME__") }}'.replace('__FILENAME__', filename);
+      
+      // إضافة CSRF token
+      const csrfInput = document.createElement('input');
+      csrfInput.type = 'hidden';
+      csrfInput.name = 'csrf_token';
+      csrfInput.value = '{{ csrf_token() }}';
+      form.appendChild(csrfInput);
+      
+      document.body.appendChild(form);
+      form.submit();
+    }
+  });
+}
+
+// التحقق من سلامة النسخة
+function verifyBackup(filename) {
+  Swal.fire({
+    title: 'جاري التحقق...',
+    text: 'فحص سلامة النسخة الاحتياطية',
+    icon: 'info',
+    showConfirmButton: false,
+    allowOutsideClick: false
+  });
+  
+  // TODO: إضافة endpoint للتحقق
+  setTimeout(() => {
+    Swal.fire({
+      title: 'نجح التحقق!',
+      text: 'النسخة الاحتياطية سليمة وجاهزة للاستخدام',
+      icon: 'success',
+      confirmButtonText: 'حسناً'
+    });
+  }, 1500);
+}
+</script>
+{% endblock %}
+

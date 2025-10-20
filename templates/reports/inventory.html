@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% block title %}شركة أزاد للأنظمة الذكية - تقرير المخزون{% endblock %}
+{% block page_title %}تقرير المخزون{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header bg-gradient-info">
+    <h3 class="card-title text-white">
+      <i class="fas fa-boxes mr-2"></i>
+      تقرير المخزون - Inventory Report
+    </h3>
+    <div class="card-tools">
+      <button type="button" class="btn btn-light btn-sm" onclick="window.print()">
+        <i class="fas fa-print"></i> طباعة
+      </button>
+    </div>
+  </div>
+  <div class="card-body">
+    
+    <!-- Statistics -->
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="info-box bg-gradient-primary">
+          <span class="info-box-icon"><i class="fas fa-cubes"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">إجمالي المنتجات</span>
+            <span class="info-box-number">{{ summary.total_products|default(0) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="info-box bg-gradient-success">
+          <span class="info-box-icon"><i class="fas fa-check-circle"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">متوفر في المخزون</span>
+            <span class="info-box-number">{{ summary.in_stock|default(0) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="info-box bg-gradient-warning">
+          <span class="info-box-icon"><i class="fas fa-exclamation-triangle"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">مخزون منخفض</span>
+            <span class="info-box-number">{{ summary.low_stock|default(0) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="info-box bg-gradient-danger">
+          <span class="info-box-icon"><i class="fas fa-times-circle"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">نفذ من المخزون</span>
+            <span class="info-box-number">{{ summary.out_of_stock|default(0) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inventory Table -->
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped" id="inventoryTable">
+        <thead class="thead-dark">
+          <tr>
+            <th>#</th>
+            <th>المنتج</th>
+            <th>{{ t('Barcode') }}</th>
+            <th>{{ t('Available Quantity') }}</th>
+            <th>الوحدة</th>
+            <th>الحد الأدنى</th>
+            <th>{{ t('Status') }}</th>
+            <th>القيمة</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if products %}
+            {% for product in products %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>
+                <a href="{{ url_for('products.view', id=product.id) }}">
+                  {{ product.name_ar or product.name }}
+                </a>
+              </td>
+              <td><code>{{ product.barcode or '-' }}</code></td>
+              <td class="text-center">
+                <strong>{{ product.current_stock|default(0) }}</strong>
+              </td>
+              <td>{{ product.unit_ar or product.unit or 'قطعة' }}</td>
+              <td class="text-center">{{ product.min_stock_level|default(0) }}</td>
+              <td class="text-center">
+                {% if product.current_stock <= 0 %}
+                  <span class="badge badge-danger">نفذ</span>
+                {% elif product.current_stock <= product.min_stock_alert %}
+                  <span class="badge badge-warning">منخفض</span>
+                {% else %}
+                  <span class="badge badge-success">متوفر</span>
+                {% endif %}
+              </td>
+              <td class="text-left">
+                {% if can_see_costs() %}
+                  {{ "{:,.2f}".format((product.current_stock|default(0)) * (product.cost_price|default(0))) }} AED
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" class="text-center text-muted">
+                <i class="fas fa-inbox fa-3x mb-3"></i>
+                <p>لا توجد منتجات</p>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+        {% if can_see_costs() and summary.total_value %}
+        <tfoot>
+          <tr class="table-info">
+            <td colspan="7" class="text-left"><strong>إجمالي قيمة المخزون:</strong></td>
+            <td class="text-left"><strong>{{ "{:,.2f}".format(summary.total_value|default(0)) }} AED</strong></td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+  @page {
+    size: A4 {{ 'landscape' if request.args.get('orientation') == 'landscape' else 'portrait' }};
+    margin: 15mm;
+  }
+  /* إخفاء عناصر UI */
+  .main-sidebar, .main-header, .main-footer, 
+  .content-header, .no-print, button, .btn,
+  .breadcrumb, .navbar, .sidebar {
+    display: none !important;
+  }
+  /* تحسين المحتوى للطباعة */
+  .content-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .card {
+    border: 1px solid #dee2e6 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+  body {
+    background: white !important;
+  }
+  /* تحسين الجداول */
+  table {
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tfoot {
+    display: table-footer-group;
+  }
+}
+</style>
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+  $('#inventoryTable').DataTable({
+    "language": {
+      "url": "{{ url_for('static', filename='datatables/Arabic.json') }}"
+    },
+    "order": [[3, 'asc']],
+    "pageLength": 50,
+    "dom": 'Bfrtip',
+    "buttons": [
+      'copy', 'csv', 'excel', 'pdf', 'print'
+    ]
+  });
+});
+</script>
+{% endblock %}
+

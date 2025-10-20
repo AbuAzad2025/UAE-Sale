@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% block title %}شركة أزاد للأنظمة الذكية - تقرير الذمم المدينة والمستحقات{% endblock %}
+{% block page_title %}تقرير الذمم المدينة - Aging Report{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="alert alert-info">
+      <h4><i class="fas fa-info-circle"></i> إجمالي الذمم: {{ "{:,.2f}".format(summary.total_receivables) }} AED</h4>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-2">
+    <div class="info-box bg-success">
+      <span class="info-box-icon"><i class="fas fa-check"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">حالي (0-30)</span>
+        <span class="info-box-number">{{ "{:,.0f}".format(summary.current) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-2">
+    <div class="info-box bg-info">
+      <span class="info-box-icon"><i class="fas fa-clock"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">31-60 يوم</span>
+        <span class="info-box-number">{{ "{:,.0f}".format(summary.days_30) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-2">
+    <div class="info-box bg-warning">
+      <span class="info-box-icon"><i class="fas fa-exclamation"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">61-90 يوم</span>
+        <span class="info-box-number">{{ "{:,.0f}".format(summary.days_60) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="info-box bg-orange">
+      <span class="info-box-icon"><i class="fas fa-exclamation-triangle"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">91-120 يوم</span>
+        <span class="info-box-number">{{ "{:,.0f}".format(summary.days_90) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="info-box bg-danger">
+      <span class="info-box-icon"><i class="fas fa-times-circle"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">+120 يوم</span>
+        <span class="info-box-number">{{ "{:,.0f}".format(summary.over_90) }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">تفاصيل الذمم</h3>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>الفاتورة</th>
+          <th>الزبون</th>
+          <th>{{ t('Date') }}</th>
+          <th>العمر (يوم)</th>
+          <th>{{ t('Amount') }}</th>
+          <th>{{ t('Status') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for category, data in aging_data.items() %}
+          {% for sale in data.sales %}
+          <tr>
+            <td><a href="{{ url_for('sales.view', id=sale.id) }}">{{ sale.sale_number }}</a></td>
+            <td>{{ sale.customer.name if sale.customer else '-' }}</td>
+            <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ sale.days_old }}</td>
+            <td>{{ "{:,.2f}".format(sale.calculated_balance) }} AED</td>
+            <td>
+              {% if category == 'current' %}<span class="badge badge-success">حالي</span>
+              {% elif category == 'days_30' %}<span class="badge badge-info">30-60</span>
+              {% elif category == 'days_60' %}<span class="badge badge-warning">60-90</span>
+              {% elif category == 'days_90' %}<span class="badge badge-orange">90-120</span>
+              {% else %}<span class="badge badge-danger">متأخر</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+  @page {
+    size: A4 {{ 'landscape' if request.args.get('orientation') == 'landscape' else 'portrait' }};
+    margin: 15mm;
+  }
+  /* إخفاء عناصر UI */
+  .main-sidebar, .main-header, .main-footer, 
+  .content-header, .no-print, button, .btn,
+  .breadcrumb, .navbar, .sidebar {
+    display: none !important;
+  }
+  /* تحسين المحتوى للطباعة */
+  .content-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .card {
+    border: 1px solid #dee2e6 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+  body {
+    background: white !important;
+  }
+  /* تحسين الجداول */
+  table {
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tfoot {
+    display: table-footer-group;
+  }
+}
+</style>
+{% endblock %}
+
+

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}شركة أزاد للأنظمة الذكية - إنشاء مستودع جديد{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div class="container-fluid">
+    <div class="row mb-2">
+      <div class="col-sm-6">
+        <h1 class="m-0"><i class="fas fa-warehouse"></i> إنشاء مستودع جديد</h1>
+      </div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-left">
+          <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">{{ t('Dashboard') }}</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('warehouse.list_warehouses') }}">المستودعات</a></li>
+          <li class="breadcrumb-item active">إنشاء جديد</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="content">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+        <div class="card">
+          <div class="card-header bg-success">
+            <h3 class="card-title text-white"><i class="fas fa-plus-circle"></i> معلومات المستودع</h3>
+          </div>
+          <form method="POST" action="{{ url_for('warehouse.create_warehouse') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>
+                      <i class="fas fa-warehouse text-primary"></i> الاسم بالإنجليزية 
+                      <span class="text-danger">*</span>
+                      <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم المستودع بالإنجليزية (إجباري)"></i>
+                    </label>
+                    <input type="text" class="form-control" id="name" name="name" placeholder="Main Warehouse" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>
+                      <i class="fas fa-font text-info"></i> الاسم بالعربية
+                      <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم المستودع بالعربية (اختياري)"></i>
+                    </label>
+                    <input type="text" class="form-control" id="name_ar" name="name_ar" placeholder="المستودع الرئيسي">
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>
+                      <i class="fas fa-barcode text-secondary"></i> رمز المستودع
+                      <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="رمز مختصر للمستودع (اختياري)"></i>
+                    </label>
+                    <input type="text" class="form-control" id="code" name="code" placeholder="WH001">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>
+                      <i class="fas fa-map-marker-alt text-danger"></i> الموقع
+                      <span class="text-danger">*</span>
+                      <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="موقع المستودع الجغرافي (إجباري)"></i>
+                    </label>
+                    <input type="text" class="form-control" id="location" name="location" placeholder="دبي - الإمارات" required>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <div class="custom-control custom-checkbox">
+                  <input type="checkbox" class="custom-control-input" id="is_main" name="is_main">
+                  <label class="custom-control-label" for="is_main">
+                    <i class="fas fa-star text-warning"></i> مستودع رئيسي
+                    <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="هل هذا المستودع الرئيسي؟ (اختياري)"></i>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-footer">
+              <button type="submit" class="btn btn-success btn-lg">
+                <i class="fas fa-save mr-2"></i> إنشاء المستودع
+              </button>
+              <a href="{{ url_for('warehouse.list_warehouses') }}" class="btn btn-secondary btn-lg">
+                <i class="fas fa-times mr-2"></i> إلغاء
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% block extra_js %}
+<script>
+$(function () {
+  $('[data-toggle="tooltip"]').tooltip({
+    placement: 'top',
+    trigger: 'hover'
+  });
+});
+</script>
+{% endblock %}
+{% endblock %}

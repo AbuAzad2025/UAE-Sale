@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+{% block title %}شركة أزاد للأنظمة الذكية - إنشاء فاتورة بيع جديدة{% endblock %}
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+  <div>
+    <h1 class="mb-0"><i class="fas fa-file-invoice mr-2"></i>فاتورة بيع جديدة</h1>
+  </div>
+  <div>
+    <a href="{{ url_for('sales.index') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-right mr-2"></i>العودة للمبيعات
+    </a>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-home mr-2"></i>الرئيسية
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.product-line { 
+  background: #f8f9fa; 
+  padding: 15px; 
+  margin-bottom: 10px; 
+  border-radius: 8px;
+  border-right: 4px solid #667eea;
+  transition: all 0.3s;
+}
+.product-line:hover {
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.total-box { 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+  color: white; 
+  padding: 25px; 
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+.total-box h2, .total-box h3 { text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="POST" action="{{ url_for('sales.create') }}" id="saleForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="line_count" id="line_count" value="0">
+  
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header bg-gradient-primary">
+          <h3 class="card-title text-white"><i class="fas fa-file-invoice mr-2"></i>معلومات الفاتورة</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="font-weight-bold">
+                  <i class="fas fa-user text-primary mr-1"></i>الزبون 
+                  <span class="text-danger">*</span>
+                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر العميل - الفلتر الذكي: ابحث بالاسم أو الهاتف (إجباري)"></i>
+                </label>
+                <select name="customer_id" id="customer_id" class="form-control customer-select" required>
+                  <option value="">ابحث عن زبون...</option>
+                </select>
+                <small class="form-text text-muted">💡 الفلتر الذكي: ابحث بالاسم أو رقم الهاتف</small>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label class="font-weight-bold">
+                  <i class="fas fa-money-bill-wave text-success mr-1"></i>عملة الدفع
+                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="العملة التي سيدفع بها العميل - الفاتورة بالدرهم دائماً (اختياري)"></i>
+                </label>
+                <select name="currency" id="currency" class="form-control">
+                  <option value="AED" selected>درهم إماراتي (AED)</option>
+                  <option value="USD">دولار أمريكي (USD)</option>
+                  <option value="EUR">يورو (EUR)</option>
+                  <option value="GBP">جنيه استرليني (GBP)</option>
+                  <option value="SAR">ريال سعودي (SAR)</option>
+                  <option value="KWD">دينار كويتي (KWD)</option>
+                  <option value="QAR">ريال قطري (QAR)</option>
+                  <option value="OMR">ريال عماني (OMR)</option>
+                  <option value="BHD">دينار بحريني (BHD)</option>
+                </select>
+                <small class="form-text text-info">
+                  <i class="fas fa-lightbulb"></i> الأسعار بالدرهم - العملة فقط لتحويل المدفوع
+                </small>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label class="font-weight-bold">
+                  <i class="fas fa-exchange-alt text-info mr-1"></i>سعر الصرف
+                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر صرف العملة مقابل الدرهم - يُحدث تلقائياً (اختياري)"></i>
+                </label>
+                <input type="number" name="exchange_rate" id="exchange_rate" class="form-control" 
+                       value="1.000000" step="0.000001" min="0.000001" 
+                       placeholder="1.000000">
+                <small class="form-text text-muted">
+                  <i class="fas fa-robot"></i> يُحدّث تلقائياً عند اختيار العملة
+                </small>
+              </div>
+            </div>
+          </div>
+
+          <hr>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5><i class="fas fa-list mr-2"></i>الأصناف (<span id="line_count_display">0</span>)</h5>
+            <button type="button" class="btn btn-success" onclick="addLine()">
+              <i class="fas fa-plus mr-2"></i>إضافة صنف
+            </button>
+          </div>
+          <div id="linesContainer"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header bg-gradient-info">
+          <h3 class="card-title text-white"><i class="fas fa-calculator mr-2"></i>الإجماليات</h3>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="font-weight-bold">
+              <i class="fas fa-percent text-danger mr-1"></i>الخصم الإجمالي
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="خصم إضافي على إجمالي الفاتورة بالدرهم (اختياري - افتراضي: 0)"></i>
+            </label>
+            <div class="input-group">
+              <input type="number" name="discount_amount" class="form-control" value="0" step="0.01" min="0" 
+                     onchange="calculateTotals()" onkeyup="calculateTotals()"
+                     placeholder="0.00">
+              <div class="input-group-append">
+                <span class="input-group-text">AED</span>
+              </div>
+            </div>
+            <small class="form-text text-muted">خصم بالدرهم على المجموع الفرعي</small>
+          </div>
+
+          <div class="form-group">
+            <label class="font-weight-bold">
+              <i class="fas fa-shipping-fast text-primary mr-1"></i>تكلفة الشحن
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تكلفة الشحن والتوصيل بالدرهم (اختياري - افتراضي: 0)"></i>
+            </label>
+            <div class="input-group">
+              <input type="number" name="shipping_cost" class="form-control" value="0" step="0.01" min="0" 
+                     onchange="calculateTotals()" onkeyup="calculateTotals()"
+                     placeholder="0.00">
+              <div class="input-group-append">
+                <span class="input-group-text">AED</span>
+              </div>
+            </div>
+            <small class="form-text text-muted">تُضاف للمجموع قبل الضريبة</small>
+          </div>
+
+          <div class="form-group">
+            <label class="font-weight-bold">
+              <i class="fas fa-receipt text-warning mr-1"></i>نسبة الضريبة
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="نسبة ضريبة القيمة المضافة VAT% (اختياري - افتراضي: 5%)"></i>
+            </label>
+            <div class="input-group">
+              <input type="number" name="tax_rate" class="form-control" value="5" step="0.01" min="0" max="100" 
+                     onchange="calculateTotals()" onkeyup="calculateTotals()"
+                     placeholder="5.00">
+              <div class="input-group-append">
+                <span class="input-group-text">%</span>
+              </div>
+            </div>
+            <small class="form-text text-muted">ضريبة القيمة المضافة (VAT) - عادة 5% أو 16%</small>
+          </div>
+          
+          <div class="total-box text-center">
+            <div class="alert alert-info mb-3" style="background: rgba(255,255,255,0.2); border: none;">
+              <i class="fas fa-info-circle"></i>
+              <strong>ملاحظة:</strong> جميع الأسعار بالدرهم الإماراتي (AED)
+            </div>
+            <h6 class="mb-2">{{ t('Subtotal') }}</h6>
+            <h3 id="subtotal" class="mb-3">0.00</h3>
+            <hr style="border-color: rgba(255,255,255,0.3); margin: 15px 0;">
+            <h5 class="mb-2">{{ t('Final Total') }}</h5>
+            <h2 id="total" class="mb-0" style="font-size: 36px; font-weight: 700;">0.00</h2>
+            <small style="opacity: 0.9; font-size: 1.1rem;">
+              <i class="fas fa-coins"></i> درهم إماراتي (AED)
+            </small>
+          </div>
+
+          <div class="form-group mt-3">
+            <label class="font-weight-bold">طريقة الدفع</label>
+            <select name="payment_method" id="payment_method" class="form-control">
+              <option value="">آجل (بدون دفع)</option>
+              <option value="cash">💵 نقدي</option>
+              <option value="card">💳 بطاقة</option>
+              <option value="bank_transfer">🏦 تحويل بنكي</option>
+              <option value="cheque">📝 شيك</option>
+              <option value="e_wallet">💰 محفظة إلكترونية</option>
+            </select>
+          </div>
+
+          <!-- Dynamic payment fields will be inserted here -->
+          <div id="payment_fields_container"></div>
+
+          <div class="form-group" id="payment_amount_group" style="display:none;">
+            <label class="font-weight-bold">
+              <i class="fas fa-hand-holding-usd mr-1"></i>المبلغ المدفوع
+              <i class="fas fa-info-circle text-info" title="أدخل المبلغ بالعملة المختارة - سيتم تحويله للدرهم تلقائياً"></i>
+            </label>
+            <div class="input-group">
+              <input type="number" name="payment_amount" id="payment_amount" class="form-control" 
+                     value="0" step="0.01" min="0"
+                     title="المبلغ المدفوع بعملة الدفع المختارة">
+              <div class="input-group-append">
+                <span class="input-group-text" id="payment_currency_display">AED</span>
+              </div>
+            </div>
+            <small class="form-text text-success">
+              <i class="fas fa-calculator"></i> سيتم تحويل المبلغ للدرهم تلقائياً حسب سعر الصرف
+            </small>
+            <small class="text-muted d-block mt-1">اترك صفر للدفع الآجل</small>
+          </div>
+
+          <div class="form-group">
+            <label class="font-weight-bold">{{ t('Notes') }}</label>
+            <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات إضافية..."></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <i class="fas fa-save mr-2"></i>حفظ الفاتورة
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/sales-enhanced.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ai-sales.js') }}"></script>
+<script>
+$(document).ready(function() {
+  // تهيئة حقول الدفع الديناميكية
+  if (window.PaymentFieldsManager) {
+    PaymentFieldsManager.initSelector('#payment_method', '#payment_fields_container', 'payment');
+  }
+  
+  // Initialize customer select - الفلتر الذكي سيعمل تلقائياً
+  // لكن نحتفظ بالكود القديم كـ fallback
+  if (!$('#customer_id').hasClass('select2-hidden-accessible')) {
+    $('#customer_id').select2({
+      ajax: {
+        url: "{{ url_for('api.api_search') }}",
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          return { q: params.term, type: 'customers' };
+        },
+        processResults: function(data) {
+          return {
+            results: (data.results || []).map(c => ({
+              id: c.id,
+              text: `${c.name} - ${c.phone}`,
+              balance: c.balance
+            }))
+          };
+        },
+        cache: true
+      },
+      language: 'ar',
+      dir: 'rtl',
+      placeholder: 'ابحث عن زبون...',
+      minimumInputLength: 2,
+      width: '100%'
+    });
+  }
+});
+
+function validateForm() {
+  const lineCount = parseInt($('#line_count').val()) || 0;
+  
+  if (lineCount === 0) {
+    alert('⚠️ يجب إضافة منتج واحد على الأقل للفاتورة!\n\nاضغط "➕ إضافة صف" واختر منتجاً.');
+    return false;
+  }
+  
+  // Check if at least one line has a product
+  let hasProduct = false;
+  for (let i = 0; i < lineCount; i++) {
+    const productId = $(`select[name="lines[${i}][product_id]"]`).val();
+    if (productId) {
+      hasProduct = true;
+      break;
+    }
+  }
+  
+  if (!hasProduct) {
+    alert('⚠️ يجب اختيار منتج واحد على الأقل!\n\nاختر منتجاً من القائمة المنسدلة.');
+    return false;
+  }
+  
+  console.log('✅ Form validation passed - submitting...'); 
+  return true;
+}
+</script>
+<div id="customer_analysis"></div>
+{% endblock %}

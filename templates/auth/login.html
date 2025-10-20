@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>شركة أزاد للأنظمة الذكية - تسجيل الدخول</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/azad_favicon.png') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/icheck-bootstrap/icheck-bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/css/adminlte.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+  <style>
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-box {
+      width: 450px;
+    }
+    .card {
+      border-radius: 15px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    .card-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 30px;
+      text-align: center;
+    }
+    .login-logo img {
+      height: 70px;
+      margin-bottom: 15px;
+    }
+    .login-box-msg {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      margin: 20px 0;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    .card-footer {
+      background: #f8f9fa;
+    }
+    .palestine-flag {
+      display: inline-block;
+      width: 20px;
+      height: 13px;
+      background: linear-gradient(180deg, #000 0%, #000 33.33%, #fff 33.33%, #fff 66.66%, #007A3D 66.66%, #007A3D 100%);
+      position: relative;
+      margin: 0 3px;
+      vertical-align: middle;
+    }
+    .palestine-flag::before {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 6.5px 0 6.5px 10px;
+      border-color: transparent transparent transparent #CE1126;
+    }
+  </style>
+</head>
+<body class="hold-transition login-page">
+
+<!-- Language Switcher (Floating) -->
+<div style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+    <div class="dropdown">
+        <button class="btn btn-outline-light dropdown-toggle" type="button" id="langDropdown" data-toggle="dropdown" style="background: rgba(102,126,234,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 20px;">
+            <i class="fas fa-globe mr-2"></i>{{ session.get('language', 'ar')|upper }}
+        </button>
+        <div class="dropdown-menu dropdown-menu-right">
+            <a class="dropdown-item {% if session.get('language', 'ar') == 'ar' %}active{% endif %}" href="{{ url_for('language.set_language', lang='ar') }}">
+                <i class="fas fa-check mr-2 {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>
+                العربية
+            </a>
+            <a class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}" href="{{ url_for('language.set_language', lang='en') }}">
+                <i class="fas fa-check mr-2 {% if session.get('language') != 'en' %}invisible{% endif %}"></i>
+                English
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="login-box">
+  <div class="card card-outline">
+    <div class="card-header">
+      <div class="login-logo">
+        <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad" style="background: white; padding: 10px; border-radius: 10px;">
+      </div>
+      <h3 class="text-white mb-0"><b>{{ config.COMPANY_NAME_AR }}</b></h3>
+      <p class="text-white-50 mt-2">{{ config.COMPANY_ADDRESS }}</p>
+    </div>
+    <div class="card-body">
+      <p class="login-box-msg">{{ t('Sign in to start your session') }} <span class="palestine-flag"></span></p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible">
+              <button type="button" class="close" data-dismiss="alert">&times;</button>
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('auth.login') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+        <div class="input-group mb-3">
+          <input type="text" name="username" class="form-control" placeholder="{{ t('Username') }}" required autofocus>
+          <div class="input-group-append">
+            <div class="input-group-text">
+              <span class="fas fa-user"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="input-group mb-3">
+          <input type="password" name="password" id="password" class="form-control" placeholder="{{ t('Password') }}" required>
+          <div class="input-group-append">
+            <div class="input-group-text">
+              <span class="fas fa-lock"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-7">
+            <div class="icheck-primary">
+              <input type="checkbox" name="remember_me" id="remember">
+              <label for="remember">{{ t('Remember Me') }}</label>
+            </div>
+          </div>
+          <div class="col-5">
+            <button type="submit" class="btn btn-primary btn-block">
+              <i class="fas fa-sign-in-alt {{ 'mr-2' if is_rtl else 'ml-2' }}"></i>{{ t('Sign In') }}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+    
+    <div class="card-footer text-center bg-light">
+      <p class="mb-1"><small class="text-muted">{{ config.DEVELOPER_CREDIT }}</small></p>
+      <p class="mb-0">
+        <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank" class="text-success">
+          <i class="fab fa-whatsapp"></i> واتساب: {{ config.COMPANY_PHONE }}
+        </a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='adminlte/plugins/jquery/jquery.min.js') }}"></script>
+<script src="{{ url_for('static', filename='adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='adminlte/js/adminlte.min.js') }}"></script>
+</body>
+</html>

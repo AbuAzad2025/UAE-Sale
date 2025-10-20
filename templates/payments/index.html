@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}شركة أزاد للأنظمة الذكية - سندات القبض والدفع{% endblock %}
+{% block page_title %}سندات القبض{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col-12">
+    <a href="{{ url_for('payments.create') }}" class="btn btn-success">
+      <i class="fas fa-plus mr-2"></i>سند قبض جديد
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <table id="receiptsTable" class="table table-bordered table-striped">
+      <thead>
+        <tr>
+          <th>رقم السند</th>
+          <th>الزبون</th>
+          <th>{{ t('Date') }}</th>
+          <th>{{ t('Amount') }}</th>
+          <th>الطريقة</th>
+          <th>الإجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for receipt in receipts %}
+        <tr>
+          <td><strong>{{ receipt.receipt_number }}</strong></td>
+          <td>{{ receipt.customer.name if receipt.customer else '-' }}</td>
+          <td>{{ receipt.receipt_date.strftime('%Y-%m-%d') }}</td>
+          <td>{{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }}</td>
+          <td><span class="badge badge-success">{{ receipt.payment_method }}</span></td>
+          <td>
+            <a href="{{ url_for('payments.view', id=receipt.id) }}" class="btn btn-sm btn-info">
+              <i class="fas fa-eye"></i>
+            </a>
+            <button onclick="printReceipt({{ receipt.id }})" class="btn btn-sm btn-secondary">
+              <i class="fas fa-print"></i>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  $('#receiptsTable').DataTable({
+    language: { url: "{{ url_for('static', filename='datatables/Arabic.json') }}" },
+    order: [[2, 'desc']],
+    pageLength: 25
+  });
+});
+
+function printReceipt(id) {
+  window.open(`/payments/${id}/print`, '_blank');
+}
+</script>
+{% endblock %}
+

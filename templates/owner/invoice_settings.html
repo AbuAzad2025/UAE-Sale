@@ -1,0 +1,578 @@
+{% extends "base.html" %}
+
+{% block title %}شركة أزاد للأنظمة الذكية - إعدادات الفواتير والترويسات المتقدمة{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div class="container-fluid">
+    <div class="row mb-2">
+      <div class="col-sm-6">
+        <h1 class="m-0">
+          <i class="fas fa-file-invoice text-warning"></i> 
+          إعدادات الفواتير والترويسات
+        </h1>
+      </div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-left">
+          <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">{{ t('Dashboard') }}</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">Owner</a></li>
+          <li class="breadcrumb-item active">إعدادات الفواتير</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="content">
+  <div class="container-fluid">
+    <form method="POST" action="{{ url_for('owner.invoice_settings') }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      
+      <div class="row">
+        <!-- Left Column -->
+        <div class="col-lg-8">
+          
+          <!-- Company Info -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title"><i class="fas fa-building"></i> معلومات الشركة</h3>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>اسم الشركة (عربي) <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="company_name_ar" 
+                           value="{{ settings.company_name_ar }}" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Company Name (English) <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="company_name_en" 
+                           value="{{ settings.company_name_en }}" required>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>العنوان (عربي)</label>
+                    <textarea class="form-control" name="address_ar" rows="2">{{ settings.address_ar }}</textarea>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Address (English)</label>
+                    <textarea class="form-control" name="address_en" rows="2">{{ settings.address_en }}</textarea>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="row">
+                <div class="col-md-3">
+                  <div class="form-group">
+                    <label><i class="fas fa-phone"></i> هاتف 1</label>
+                    <input type="text" class="form-control" name="phone_1" value="{{ settings.phone_1 }}">
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-group">
+                    <label><i class="fas fa-phone"></i> هاتف 2</label>
+                    <input type="text" class="form-control" name="phone_2" value="{{ settings.phone_2 }}">
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-group">
+                    <label><i class="fas fa-envelope"></i> البريد</label>
+                    <input type="email" class="form-control" name="email" value="{{ settings.email }}">
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-group">
+                    <label><i class="fas fa-globe"></i> الموقع</label>
+                    <input type="text" class="form-control" name="website" 
+                           value="{{ settings.website }}" 
+                           placeholder="www.example.com">
+                    <small class="text-muted">مثال: www.company.com أو https://company.com</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Business Info -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title"><i class="fas fa-certificate"></i> المعلومات التجارية</h3>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>الرقم الضريبي</label>
+                    <input type="text" class="form-control" name="tax_number" 
+                           value="{{ settings.tax_number }}" placeholder="TRN-123456">
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>السجل التجاري</label>
+                    <input type="text" class="form-control" name="commercial_register" 
+                           value="{{ settings.commercial_register }}">
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>رقم الرخصة</label>
+                    <input type="text" class="form-control" name="license_number" 
+                           value="{{ settings.license_number }}">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bank Info -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title"><i class="fas fa-university"></i> المعلومات البنكية</h3>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>اسم البنك</label>
+                    <input type="text" class="form-control" name="bank_name" value="{{ settings.bank_name }}">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>رقم الحساب</label>
+                    <input type="text" class="form-control" name="bank_account_number" 
+                           value="{{ settings.bank_account_number }}">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>IBAN</label>
+                    <input type="text" class="form-control" name="iban" value="{{ settings.iban }}"
+                           placeholder="AE07XXXXXXXXXXXXXXXXXX">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>SWIFT Code</label>
+                    <input type="text" class="form-control" name="swift_code" value="{{ settings.swift_code }}">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Terms & Notes -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title"><i class="fas fa-file-contract"></i> الشروط والملاحظات</h3>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>شروط الدفع (عربي)</label>
+                <textarea class="form-control" name="payment_terms_ar" rows="2">{{ settings.payment_terms_ar }}</textarea>
+              </div>
+              <div class="form-group">
+                <label>Payment Terms (English)</label>
+                <textarea class="form-control" name="payment_terms_en" rows="2">{{ settings.payment_terms_en }}</textarea>
+              </div>
+              
+              <hr>
+              
+              <div class="form-group">
+                <label>ملاحظة افتراضية للفواتير (عربي)</label>
+                <textarea class="form-control" name="default_invoice_note_ar" rows="2">{{ settings.default_invoice_note_ar }}</textarea>
+              </div>
+              <div class="form-group">
+                <label>ملاحظة افتراضية لسندات القبض (عربي)</label>
+                <textarea class="form-control" name="default_receipt_note_ar" rows="2">{{ settings.default_receipt_note_ar }}</textarea>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column -->
+        <div class="col-lg-4">
+          
+          <!-- Design Settings -->
+          <div class="card card-primary">
+            <div class="card-header">
+              <h3 class="card-title"><i class="fas fa-palette"></i> التصميم</h3>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>القالب النشط</label>
+                <select class="form-control" name="active_template">
+                  <option value="modern" {% if settings.active_template == 'modern' %}selected{% endif %}>عصري (Modern)</option>
+                  <option value="classic" {% if settings.active_template == 'classic' %}selected{% endif %}>كلاسيكي (Classic)</option>
+                  <option value="minimal" {% if settings.active_template == 'minimal' %}selected{% endif %}>بسيط (Minimal)</option>
+                  <option value="gulf" {% if settings.active_template == 'gulf' %}selected{% endif %}>خليجي (Gulf)</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>لون الترويسة</label>
+                <input type="color" class="form-control" name="header_color" 
+                       value="{{ settings.header_color or '#667eea' }}">
+              </div>
+              
+              <div class="form-group">
+                <label>اللون الثانوي</label>
+                <input type="color" class="form-control" name="accent_color" 
+                       value="{{ settings.accent_color or '#764ba2' }}">
+              </div>
+              
+              <hr>
+              
+              <div class="custom-control custom-checkbox mb-2">
+                <input type="checkbox" class="custom-control-input" id="show_logo" name="show_logo" 
+                       {% if settings.show_logo %}checked{% endif %}>
+                <label class="custom-control-label" for="show_logo">إظهار الشعار</label>
+              </div>
+              
+              <div class="custom-control custom-checkbox mb-2">
+                <input type="checkbox" class="custom-control-input" id="enable_qr_code" name="enable_qr_code" 
+                       {% if settings.enable_qr_code %}checked{% endif %}>
+                <label class="custom-control-label" for="enable_qr_code">إظهار QR Code</label>
+              </div>
+              
+              <div class="custom-control custom-checkbox mb-2">
+                <input type="checkbox" class="custom-control-input" id="show_barcode" name="show_barcode" 
+                       {% if settings.show_barcode %}checked{% endif %}>
+                <label class="custom-control-label" for="show_barcode">إظهار Barcode</label>
+              </div>
+              
+              <div class="custom-control custom-checkbox mb-2">
+                <input type="checkbox" class="custom-control-input" id="enable_watermark" name="enable_watermark" 
+                       {% if settings.enable_watermark %}checked{% endif %}>
+                <label class="custom-control-label" for="enable_watermark">علامة مائية</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Print Settings -->
+          <div class="card card-info">
+            <div class="card-header">
+              <h3 class="card-title"><i class="fas fa-print"></i> إعدادات الطباعة</h3>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>حجم الورق</label>
+                <select class="form-control" name="paper_size">
+                  <option value="A4" {% if settings.paper_size == 'A4' %}selected{% endif %}>A4</option>
+                  <option value="A5" {% if settings.paper_size == 'A5' %}selected{% endif %}>A5</option>
+                  <option value="Letter" {% if settings.paper_size == 'Letter' %}selected{% endif %}>Letter</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>الاتجاه</label>
+                <select class="form-control" name="orientation">
+                  <option value="portrait" {% if settings.orientation == 'portrait' %}selected{% endif %}>عمودي</option>
+                  <option value="landscape" {% if settings.orientation == 'landscape' %}selected{% endif %}>أفقي</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>اللغة الافتراضية</label>
+                <select class="form-control" name="default_language">
+                  <option value="ar" {% if settings.default_language == 'ar' %}selected{% endif %}>عربي</option>
+                  <option value="en" {% if settings.default_language == 'en' %}selected{% endif %}>English</option>
+                  <option value="both" {% if settings.default_language == 'both' %}selected{% endif %}>ثنائي اللغة</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Preview Templates -->
+          <div class="card card-success">
+            <div class="card-header">
+              <h3 class="card-title"><i class="fas fa-eye"></i> معاينة قوالب الفواتير</h3>
+            </div>
+            <div class="card-body">
+              <p class="text-muted mb-3">
+                <i class="fas fa-info-circle"></i> اضغط "معاينة فاتورة" أو "معاينة سند" للعرض، أو "تطبيق" لاختيار القالب
+              </p>
+              <div class="row">
+                <div class="col-12 mb-3">
+                  <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded">
+                    <div>
+                      <i class="fas fa-file-invoice text-primary"></i> <strong>عصري (Modern)</strong>
+                      <br><small class="text-muted">قالب عصري ملون</small>
+                    </div>
+                    <div>
+                      <a href="{{ url_for('owner.preview_invoice', template='modern') }}" 
+                         target="_blank" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-file-invoice"></i> فاتورة
+                      </a>
+                      <a href="{{ url_for('owner.preview_receipt', template='modern') }}" 
+                         target="_blank" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-receipt"></i> سند
+                      </a>
+                      <button type="button" class="btn btn-sm btn-primary" onclick="applyTemplate('modern')">
+                        <i class="fas fa-check"></i> تطبيق
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-12 mb-3">
+                  <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded">
+                    <div>
+                      <i class="fas fa-file-alt text-secondary"></i> <strong>كلاسيكي (Classic)</strong>
+                      <br><small class="text-muted">قالب تقليدي بسيط</small>
+                    </div>
+                    <div>
+                      <a href="{{ url_for('owner.preview_invoice', template='classic') }}" 
+                         target="_blank" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-file-invoice"></i> فاتورة
+                      </a>
+                      <a href="{{ url_for('owner.preview_receipt', template='classic') }}" 
+                         target="_blank" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-receipt"></i> سند
+                      </a>
+                      <button type="button" class="btn btn-sm btn-secondary" onclick="applyTemplate('classic')">
+                        <i class="fas fa-check"></i> تطبيق
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-12 mb-3">
+                  <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded">
+                    <div>
+                      <i class="fas fa-file text-info"></i> <strong>بسيط (Minimal)</strong>
+                      <br><small class="text-muted">قالب بسيط وأنيق</small>
+                    </div>
+                    <div>
+                      <a href="{{ url_for('owner.preview_invoice', template='minimal') }}" 
+                         target="_blank" class="btn btn-sm btn-outline-info">
+                        <i class="fas fa-file-invoice"></i> فاتورة
+                      </a>
+                      <a href="{{ url_for('owner.preview_receipt', template='minimal') }}" 
+                         target="_blank" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-receipt"></i> سند
+                      </a>
+                      <button type="button" class="btn btn-sm btn-info" onclick="applyTemplate('minimal')">
+                        <i class="fas fa-check"></i> تطبيق
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-12 mb-3">
+                  <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded">
+                    <div>
+                      <i class="fas fa-file-invoice-dollar text-warning"></i> <strong>خليجي (Gulf)</strong>
+                      <br><small class="text-muted">قالب بطابع خليجي</small>
+                    </div>
+                    <div>
+                      <a href="{{ url_for('owner.preview_invoice', template='gulf') }}" 
+                         target="_blank" class="btn btn-sm btn-outline-warning">
+                        <i class="fas fa-file-invoice"></i> فاتورة
+                      </a>
+                      <a href="{{ url_for('owner.preview_receipt', template='gulf') }}" 
+                         target="_blank" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-receipt"></i> سند
+                      </a>
+                      <button type="button" class="btn btn-sm btn-warning" onclick="applyTemplate('gulf')">
+                        <i class="fas fa-check"></i> تطبيق
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column - Preview -->
+        <div class="col-lg-4">
+          <div class="card card-widget sticky-top" style="top: 70px;">
+            <div class="card-header bg-gradient-primary">
+              <h3 class="card-title"><i class="fas fa-desktop"></i> معاينة حية</h3>
+            </div>
+            <div class="card-body text-center" id="live-preview">
+              <div class="invoice-preview p-3" style="background: white; border: 2px solid #ddd; border-radius: 8px; min-height: 400px;">
+                <div class="header" style="border-bottom: 3px solid var(--header-color, #667eea); padding-bottom: 15px; margin-bottom: 15px;">
+                  {% if settings.show_logo %}
+                  <img src="{{ url_for('static', filename='img/azad_logo.png') }}" 
+                       alt="Logo" style="height: 50px; margin-bottom: 10px;">
+                  {% endif %}
+                  <h4 style="color: var(--header-color, #667eea); margin: 0;">
+                    {{ settings.company_name_ar }}
+                  </h4>
+                  <p style="font-size: 12px; color: #666; margin: 5px 0;">
+                    {{ settings.address_ar or 'العنوان' }}
+                  </p>
+                  <p style="font-size: 11px; color: #999;">
+                    <i class="fas fa-phone"></i> {{ settings.phone_1 or '---' }}
+                  </p>
+                </div>
+                
+                <div class="invoice-info" style="text-align: right; font-size: 11px; color: #333;">
+                  <p><strong>رقم الفاتورة:</strong> INV-2025-0001</p>
+                  <p><strong>التاريخ:</strong> 2025-10-17</p>
+                  <p><strong>العميل:</strong> عميل تجريبي</p>
+                </div>
+                
+                <table class="table table-sm table-bordered mt-3" style="font-size: 11px;">
+                  <thead style="background: var(--accent-color, #764ba2); color: white;">
+                    <tr>
+                      <th>المنتج</th>
+                      <th>{{ t('Quantity') }}</th>
+                      <th>{{ t('Amount') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>منتج تجريبي</td>
+                      <td>2</td>
+                      <td>200 AED</td>
+                    </tr>
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <th colspan="2">{{ t('Total') }}</th>
+                      <th>200 AED</th>
+                    </tr>
+                  </tfoot>
+                </table>
+                
+                {% if settings.enable_qr_code %}
+                <div class="qr-code mt-3">
+                  <i class="fas fa-qrcode fa-3x text-muted"></i>
+                  <p style="font-size: 10px; color: #999;">QR Code</p>
+                </div>
+                {% endif %}
+                
+                <div class="footer mt-3" style="border-top: 1px solid #ddd; padding-top: 10px; font-size: 10px; color: #666;">
+                  {{ settings.footer_text_ar or 'شكراً لتعاملكم معنا' }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-footer">
+              <button type="submit" class="btn btn-primary btn-lg">
+                <i class="fas fa-save"></i> حفظ الإعدادات
+              </button>
+              <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> إلغاء
+              </a>
+              <button type="button" class="btn btn-info float-left" onclick="resetToDefaults()">
+                <i class="fas fa-undo"></i> استعادة الافتراضي
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </form>
+  </div>
+</section>
+
+<style>
+  :root {
+    --header-color: {{ settings.header_color or '#667eea' }};
+    --accent-color: {{ settings.accent_color or '#764ba2' }};
+  }
+  
+  .invoice-preview {
+    transition: all 0.3s ease;
+  }
+  
+  .sticky-top {
+    position: sticky !important;
+  }
+</style>
+
+<script>
+// Live preview update
+$(document).ready(function() {
+  // Update colors in real-time
+  $('input[name="header_color"], input[name="accent_color"]').on('change', function() {
+    const headerColor = $('input[name="header_color"]').val();
+    const accentColor = $('input[name="accent_color"]').val();
+    
+    document.documentElement.style.setProperty('--header-color', headerColor);
+    document.documentElement.style.setProperty('--accent-color', accentColor);
+  });
+  
+  // Update company name
+  $('input[name="company_name_ar"]').on('keyup', function() {
+    $('#live-preview h4').text($(this).val() || 'اسم الشركة');
+  });
+  
+  // Toggle logo
+  $('input[name="show_logo"]').on('change', function() {
+    $('#live-preview img').toggle($(this).is(':checked'));
+  });
+  
+  // Toggle QR
+  $('input[name="enable_qr_code"]').on('change', function() {
+    $('#live-preview .qr-code').toggle($(this).is(':checked'));
+  });
+});
+
+function applyTemplate(templateName) {
+  // تحديث القالب النشط
+  $('select[name="active_template"]').val(templateName);
+  
+  // إظهار رسالة تأكيد
+  const templateNames = {
+    'modern': 'عصري',
+    'classic': 'كلاسيكي',
+    'minimal': 'بسيط',
+    'gulf': 'خليجي'
+  };
+  
+  if (window.notify) {
+    notify.success(`تم اختيار القالب ${templateNames[templateName]}. اضغط "حفظ الإعدادات" لتطبيق التغيير.`);
+  } else {
+    alert(`تم اختيار القالب ${templateNames[templateName]}. اضغط "حفظ الإعدادات" لتطبيق التغيير.`);
+  }
+  
+  // تمييز القالب المحدد
+  $('select[name="active_template"]').css('background-color', '#d4edda').css('color', '#155724');
+  setTimeout(function() {
+    $('select[name="active_template"]').css('background-color', '').css('color', '');
+  }, 2000);
+}
+
+function resetToDefaults() {
+  if (confirm('هل أنت متأكد من استعادة الإعدادات الافتراضية؟')) {
+    $('input[name="company_name_ar"]').val('شركة أزاد');
+    $('input[name="company_name_en"]').val('Azad Company');
+    $('input[name="header_color"]').val('#667eea');
+    $('input[name="accent_color"]').val('#764ba2');
+    $('select[name="active_template"]').val('modern');
+    if (window.notify) {
+      notify.success('تم استعادة الإعدادات الافتراضية');
+    }
+  }
+}
+</script>
+
+{% endblock %}
+

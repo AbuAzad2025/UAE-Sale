@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+{% block title %}شركة أزاد للأنظمة الذكية - تعديل المنتج {{ product.name }}{% endblock %}
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+  <div>
+    <h1 class="mb-0"><i class="fas fa-edit mr-2"></i>تعديل المنتج: {{ product.name }}</h1>
+  </div>
+  <div>
+    <a href="{{ url_for('products.view', id=product.id) }}" class="btn btn-info">
+      <i class="fas fa-eye mr-2"></i>عرض
+    </a>
+    <a href="{{ url_for('products.index') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-right mr-2"></i>العودة للقائمة
+    </a>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-home mr-2"></i>الرئيسية
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <form method="POST" action="{{ url_for('products.edit', id=product.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-box text-primary"></i> الاسم 
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم المنتج (إجباري)"></i>
+            </label>
+            <input type="text" name="name" class="form-control" value="{{ product.name }}" required>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-font text-info"></i> الاسم بالعربي
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الاسم بالعربية (اختياري)"></i>
+            </label>
+            <input type="text" name="name_ar" class="form-control" value="{{ product.name_ar or '' }}">
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-hashtag text-primary"></i> رقم القطعة
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="رقم القطعة الفريد (إجباري)"></i>
+            </label>
+            <input type="text" name="part_number" class="form-control" value="{{ product.part_number or '' }}" required>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-barcode text-secondary"></i> {{ t('Barcode') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الباركود (اختياري)"></i>
+            </label>
+            <input type="text" name="barcode" class="form-control" value="{{ product.barcode or '' }}">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-folder text-warning"></i> الفئة
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تصنيف المنتج (إجباري)"></i>
+            </label>
+            <div class="input-group">
+              <select name="category_id" id="product_category" class="form-control select2" required style="flex: 1;">
+                <option value="">اختر فئة...</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}" {% if product.category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="input-group-append">
+                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#addCategoryModal" title="إضافة فئة جديدة">
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-globe text-info"></i> بلد المنشأ
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="بلد الصنع (اختياري)"></i>
+            </label>
+            <input type="text" name="country_of_origin" class="form-control" value="{{ product.country_of_origin or '' }}">
+          </div>
+        </div>
+      </div>
+
+      <hr>
+      <h5 class="text-success"><i class="fas fa-money-bill-wave"></i> الأسعار</h5>
+      <div class="row">
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-dollar-sign text-danger"></i> سعر التكلفة
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر الشراء (إجباري)"></i>
+            </label>
+            <input type="number" name="cost_price" class="form-control" value="{{ product.cost_price }}" step="0.01" required>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-tag text-success"></i> سعر عادي
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر التجزئة (إجباري)"></i>
+            </label>
+            <input type="number" name="regular_price" class="form-control" value="{{ product.regular_price }}" step="0.01" required>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-store text-primary"></i> سعر تاجر
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر للتجار (اختياري)"></i>
+            </label>
+            <input type="number" name="merchant_price" class="form-control" value="{{ product.merchant_price }}" step="0.01">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-handshake text-info"></i> سعر شريك
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر للشركاء (اختياري)"></i>
+            </label>
+            <input type="number" name="partner_price" class="form-control" value="{{ product.partner_price }}" step="0.01">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>
+          <i class="fas fa-align-left text-secondary"></i> {{ t('Description') }}
+          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="وصف تفصيلي (اختياري)"></i>
+        </label>
+        <textarea name="description" class="form-control" rows="3">{{ product.description or '' }}</textarea>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <button type="submit" class="btn btn-warning btn-lg">
+        <i class="fas fa-save mr-2"></i>حفظ التعديلات
+      </button>
+      <a href="{{ url_for('products.view', id=product.id) }}" class="btn btn-secondary btn-lg">
+        <i class="fas fa-times mr-2"></i>{{ t('Cancel') }}
+      </a>
+    </div>
+  </form>
+</div>
+
+<!-- Modal: إضافة فئة منتجات -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">
+          <i class="fas fa-folder-plus mr-2"></i>إضافة فئة منتجات جديدة
+        </h5>
+        <button type="button" class="close text-white" data-dismiss="modal">
+          <span>&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="addCategoryForm">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-font text-primary"></i> اسم الفئة
+              <span class="text-danger">*</span>
+            </label>
+            <input type="text" id="category_name" class="form-control" placeholder="مثال: زيوت، فلاتر، إطارات..." required>
+          </div>
+          <div class="form-group">
+            <label>
+              <i class="fas fa-align-right text-info"></i> الوصف
+            </label>
+            <textarea id="category_description" class="form-control" rows="3" placeholder="وصف الفئة (اختياري)"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+          <i class="fas fa-times mr-2"></i>إلغاء
+        </button>
+        <button type="button" class="btn btn-success" id="saveCategoryBtn">
+          <i class="fas fa-save mr-2"></i>حفظ الفئة
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function () {
+  // تفعيل Tooltips
+  $('[data-toggle="tooltip"]').tooltip({
+    placement: 'top',
+    trigger: 'hover'
+  });
+  
+  // تفعيل Select2
+  $('.select2').select2({
+    placeholder: 'اختر فئة...',
+    dir: 'rtl',
+    language: 'ar'
+  });
+  
+  // حفظ الفئة الجديدة
+  $('#saveCategoryBtn').click(function() {
+    const name = $('#category_name').val().trim();
+    const description = $('#category_description').val().trim();
+    
+    if (!name) {
+      alert('الرجاء إدخال اسم الفئة');
+      return;
+    }
+    
+    // الحصول على CSRF token
+  const csrfToken = $('input[name="csrf_token"]').val();
+  
+  $.ajax({
+    url: "{{ url_for('products.create_category') }}",
+    method: 'POST',
+      contentType: 'application/json',
+      headers: {
+        'X-CSRFToken': csrfToken
+      },
+      data: JSON.stringify({
+        name: name,
+        description: description
+      }),
+      success: function(response) {
+        if (response.success) {
+          // إضافة الفئة الجديدة للقائمة
+          const newOption = new Option(response.category.name, response.category.id, true, true);
+          $('#product_category').append(newOption).trigger('change');
+          
+          // إغلاق النافذة وتنظيف الحقول
+          $('#addCategoryModal').modal('hide');
+          $('#category_name').val('');
+          $('#category_description').val('');
+          
+          // رسالة نجاح
+          if (typeof UI !== 'undefined') {
+            UI.success('تم إضافة الفئة بنجاح!');
+          } else {
+            alert('تم إضافة الفئة بنجاح!');
+          }
+        } else {
+          alert('خطأ: ' + (response.error || 'فشل إضافة الفئة'));
+        }
+      },
+      error: function(xhr) {
+        const error = xhr.responseJSON?.error || 'حدث خطأ أثناء الحفظ';
+        alert('خطأ: ' + error);
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

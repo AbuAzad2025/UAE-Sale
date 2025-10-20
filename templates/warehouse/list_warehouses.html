@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}شركة أزاد للأنظمة الذكية - قائمة المستودعات وإدارتها{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div class="container-fluid">
+    <div class="row mb-2">
+      <div class="col-sm-6">
+        <h1 class="m-0"><i class="fas fa-warehouse"></i> المستودعات</h1>
+      </div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-left">
+          <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">{{ t('Dashboard') }}</a></li>
+          <li class="breadcrumb-item active">المستودعات</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="content">
+  <div class="container-fluid">
+    <div class="row mb-3">
+      <div class="col-12">
+        <a href="{{ url_for('warehouse.create_warehouse') }}" class="btn btn-primary">
+          <i class="fas fa-plus"></i> إضافة مستودع جديد
+        </a>
+      </div>
+    </div>
+
+    <div class="row">
+      {% for warehouse in warehouses %}
+      <div class="col-md-4 mb-3">
+        <div class="card {% if warehouse.is_main %}border-primary{% endif %}">
+          <div class="card-header">
+            <h3 class="card-title">
+              {% if warehouse.is_main %}
+              <i class="fas fa-star text-warning"></i>
+              {% else %}
+              <i class="fas fa-warehouse"></i>
+              {% endif %}
+              {{ warehouse.name_ar or warehouse.name }}
+            </h3>
+          </div>
+          <div class="card-body">
+            <p><strong>الرمز:</strong> {{ warehouse.code or '-' }}</p>
+            <p><strong>الموقع:</strong> {{ warehouse.location or '-' }}</p>
+            <p><strong>المدير:</strong> {{ warehouse.manager.username if warehouse.manager else '-' }}</p>
+            {% if warehouse.is_main %}
+            <span class="badge badge-primary">مستودع رئيسي</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if not warehouses %}
+    <div class="alert alert-info text-center">
+      <i class="fas fa-info-circle"></i>
+      لا توجد مستودعات مسجلة. يمكنك إضافة مستودع جديد الآن.
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+

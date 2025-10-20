@@ -1,0 +1,245 @@
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask_login import login_required, current_user
+from extensions import db
+from models import Sale, Customer, Product, InvoiceSettings
+from services.sale_service import SaleService
+from services.currency_service import CurrencyService
+from utils.decorators import permission_required
+from utils.helpers import create_audit_log
+
+sales_bp = Blueprint('sales', __name__, url_prefix='/sales')
+
+
+@sales_bp.route('/')
+@login_required
+@permission_required('manage_sales')
+def index():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    search = request.args.get('search', '', type=str)
+    status = request.args.get('status', '', type=str)
+    payment_status = request.args.get('payment_status', '', type=str)
+    
+    query = Sale.query
+    
+    if search:
+        search_filter = f'%{search}%'
+        query = query.join(Customer).filter(
+            db.or_(
+                Sale.sale_number.ilike(search_filter),
+                Customer.name.ilike(search_filter)
+            )
+        )
+    
+    if status:
+        query = query.filter_by(status=status)
+    else:
+        query = query.filter_by(status='confirmed')
+    
+    if payment_status:
+        query = query.filter_by(payment_status=payment_status)
+    
+    if current_user.is_seller():
+        query = query.filter_by(seller_id=current_user.id)
+    
+    pagination = query.order_by(Sale.sale_date.desc()).paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+    
+    return render_template('sales/index.html',
+                         sales=pagination.items,
+                         pagination=pagination)
+
+
+@sales_bp.route('/create', methods=['GET', 'POST'])
+@login_required
+@permission_required('manage_sales')
+def create():
+    if request.method == 'POST':
+        try:
+            customer_id = request.form.get('customer_id', type=int)
+            customer = Customer.query.get_or_404(customer_id)
+            
+            lines_data = []
+            line_count = int(request.form.get('line_count', 0))
+            
+            for i in range(line_count):
+                try:
+                    product_id_str = request.form.get(f'lines[{i}][product_id]')
+                    product_id = int(product_id_str) if product_id_str else None
+                    
+                    quantity_str = request.form.get(f'lines[{i}][quantity]')
+                    quantity = float(quantity_str) if quantity_str else None
+                    
+                    discount_str = request.form.get(f'lines[{i}][discount_percent]')
+                    discount_percent = float(discount_str) if discount_str else 0
+                    
+                    price_str = request.form.get(f'lines[{i}][unit_price]')
+                    override_price = float(price_str) if price_str else None
+                    
+                    if product_id and quantity and quantity > 0:
+                        product = Product.query.get(product_id)
+                        if product:
+                            lines_data.append({
+                                'product': product,
+                                'quantity': quantity,
+                                'discount_percent': discount_percent,
+                                'unit_price': override_price
+                            })
+                except (ValueError, TypeError) as e:
+                    # Skip invalid lines
+                    continue
+            
+            if not lines_data:
+                flash('يجب إضافة منتج واحد على الأقل', 'danger')
+                return redirect(url_for('sales.create'))
+            
+            currency = request.form.get('currency', 'AED')
+            user_exchange_rate = request.form.get('exchange_rate', type=float)
+            
+            # Track manual exchange rate changes for audit
+            exchange_rate_manual = request.form.get('exchange_rate_manual') == 'true'
+            exchange_rate_server = request.form.get('exchange_rate_server', type=float)
+            exchange_rate_diff = request.form.get('exchange_rate_difference', type=float)
+            
+            discount_amount = request.form.get('discount_amount', type=float, default=0)
+            shipping_cost = request.form.get('shipping_cost', type=float, default=0)
+            tax_rate = request.form.get('tax_rate', type=float, default=0)
+            notes = request.form.get('notes')
+            
+            # Add exchange rate audit to notes if manually changed
+            if exchange_rate_manual and exchange_rate_server and user_exchange_rate:
+                if user_exchange_rate < exchange_rate_server:
+                    audit_note = f"\n[تنبيه] سعر صرف يدوي: {user_exchange_rate:.6f} (سعر السيرفر: {exchange_rate_server:.6f}, فرق: {exchange_rate_diff:.2f}%)"
+                    notes = (notes or '') + audit_note
+            
+            payment_amount = request.form.get('payment_amount', type=float, default=0)
+            payment_method = request.form.get('payment_method', 'cash')
+            
+            payment_data = None
+            if payment_amount > 0:
+                payment_data = {
+                    'amount': payment_amount,
+                    'payment_method': payment_method,
+                    'currency': currency,  # Payment currency
+                    'exchange_rate': user_exchange_rate,  # Payment exchange rate
+                    'reference_number': request.form.get('reference_number'),
+                    'cheque_number': request.form.get('cheque_number'),
+                    'cheque_date': request.form.get('cheque_date'),
+                    'bank_name': request.form.get('bank_name'),
+                }
+            
+            sale = SaleService.create_sale(
+                customer=customer,
+                seller=current_user,
+                lines_data=lines_data,
+                currency='AED',  # Invoice always in AED
+                user_exchange_rate=1.0,  # Always 1 for AED
+                discount_amount=discount_amount,
+                shipping_cost=shipping_cost,
+                tax_rate=tax_rate,
+                notes=notes,
+                payment_data=payment_data
+            )
+            
+            create_audit_log('create', 'sales', sale.id)
+            
+            flash('تم إنشاء الفاتورة بنجاح', 'success')
+            return redirect(url_for('sales.view', id=sale.id))
+        
+        except ValueError as e:
+            flash(str(e), 'danger')
+        except Exception as e:
+            flash(f'حدث خطأ: {str(e)}', 'danger')
+    
+    # No need to load customers or exchange rates - loaded via AJAX for speed
+    return render_template('sales/create.html')
+
+
+@sales_bp.route('/<int:id>')
+@login_required
+@permission_required('manage_sales')
+def view(id):
+    sale = Sale.query.get_or_404(id)
+    
+    if current_user.is_seller() and sale.seller_id != current_user.id:
+        flash('ليس لديك صلاحية لعرض هذه الفاتورة', 'danger')
+        return redirect(url_for('sales.index'))
+    
+    return render_template('sales/view.html', sale=sale)
+
+
+@sales_bp.route('/<int:id>/print')
+@login_required
+@permission_required('manage_sales')
+def print_invoice(id):
+    sale = Sale.query.get_or_404(id)
+    
+    if current_user.is_seller() and sale.seller_id != current_user.id:
+        flash('ليس لديك صلاحية لطباعة هذه الفاتورة', 'danger')
+        return redirect(url_for('sales.index'))
+    
+    # Get invoice settings
+    settings = InvoiceSettings.get_active()
+    
+    # استخدام القالب النشط من الإعدادات
+    template = settings.active_template if settings and settings.active_template else 'modern'
+    template_path = f'invoices/{template}.html'
+    
+    # التحقق من وجود القالب، وإلا استخدام القالب الافتراضي
+    try:
+        return render_template(template_path, sale=sale, settings=settings)
+    except:
+        # إذا لم يوجد القالب، استخدام modern كافتراضي
+        return render_template('invoices/modern.html', sale=sale, settings=settings)
+
+
+@sales_bp.route('/<int:id>/cancel', methods=['POST'])
+@login_required
+@permission_required('manage_sales')
+def cancel(id):
+    if current_user.is_seller():
+        flash('ليس لديك صلاحية لإلغاء الفواتير', 'danger')
+        return redirect(url_for('sales.index'))
+    
+    sale = Sale.query.get_or_404(id)
+    
+    try:
+        SaleService.cancel_sale(sale)
+        
+        create_audit_log('cancel', 'sales', sale.id)
+        
+        flash('تم إلغاء الفاتورة بنجاح', 'success')
+    
+    except Exception as e:
+        flash(f'حدث خطأ: {str(e)}', 'danger')
+    
+    return redirect(url_for('sales.view', id=id))
+
+
+@sales_bp.route('/api/get-price')
+@login_required
+def api_get_price():
+    product_id = request.args.get('product_id', type=int)
+    customer_id = request.args.get('customer_id', type=int)
+    
+    if not product_id or not customer_id:
+        return jsonify({'error': 'Missing parameters'}), 400
+    
+    product = Product.query.get(product_id)
+    customer = Customer.query.get(customer_id)
+    
+    if not product or not customer:
+        return jsonify({'error': 'Not found'}), 404
+    
+    price = product.get_price_for_customer(customer.customer_type)
+    
+    return jsonify({
+        'price': float(price),
+        'cost_price': float(product.cost_price) if current_user.can_see_costs() else None,
+        'current_stock': float(product.current_stock),
+        'unit': product.unit
+    })
+

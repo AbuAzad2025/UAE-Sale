@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+
+{% block title %}شركة أزاد للأنظمة الذكية - إضافة مستخدم جديد وإدارة الصلاحيات{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div class="container-fluid">
+    <div class="row mb-2">
+      <div class="col-sm-6">
+        <h1 class="m-0">➕ إضافة مستخدم جديد</h1>
+      </div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-left">
+          <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">لوحة المالك</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('owner.users_list') }}">{{ t('Users') }}</a></li>
+          <li class="breadcrumb-item active">إضافة مستخدم</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <div class="container-fluid">
+    <form method="POST" id="userForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      
+      <div class="row">
+        <!-- المعلومات الأساسية -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header bg-gradient-primary">
+              <h3 class="card-title text-white">📋 المعلومات الأساسية</h3>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>اسم المستخدم * <small class="text-muted">(للدخول)</small></label>
+                <input type="text" name="username" class="form-control" required 
+                       pattern="[a-zA-Z0-9_]{3,20}" 
+                       placeholder="مثال: ahmad_manager">
+                <small class="text-muted">حروف إنجليزية وأرقام و_ فقط (3-20 حرف)</small>
+              </div>
+              
+              <div class="form-group">
+                <label>{{ t('Full Name') }}</label>
+                <input type="text" name="full_name" class="form-control" placeholder="أحمد محمود">
+              </div>
+              
+              <div class="form-group">
+                <label>{{ t('Email') }}</label>
+                <input type="email" name="email" class="form-control" placeholder="ahmad@example.com">
+              </div>
+              
+              <div class="form-group">
+                <label>كلمة المرور * <small class="text-muted">(8 أحرف على الأقل)</small></label>
+                <input type="password" name="password" class="form-control" required minlength="8" 
+                       placeholder="••••••••" id="password">
+              </div>
+              
+              <div class="form-group">
+                <label>تأكيد كلمة المرور *</label>
+                <input type="password" name="confirm_password" class="form-control" required minlength="8" 
+                       placeholder="••••••••" id="confirm_password">
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- الصلاحيات والدور -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header bg-gradient-success">
+              <h3 class="card-title text-white">🔐 الدور والصلاحيات</h3>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>الدور الوظيفي *</label>
+                <select name="role_id" class="form-control" required id="role_select">
+                  <option value="">اختر الدور...</option>
+                  {% for role in roles %}
+                  <option value="{{ role.id }}">{{ role.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              
+              <div class="alert alert-info" id="role-description">
+                <i class="fas fa-info-circle"></i>
+                <strong>اختر الدور لعرض الصلاحيات</strong>
+              </div>
+              
+              <div class="form-group">
+                <div class="custom-control custom-switch">
+                  <input type="checkbox" class="custom-control-input" id="is_owner" name="is_owner">
+                  <label class="custom-control-label" for="is_owner">
+                    <i class="fas fa-crown text-warning"></i> <strong>مالك النظام</strong>
+                    <br><small class="text-danger">⚠️ صلاحيات كاملة - استخدم بحذر!</small>
+                  </label>
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <div class="custom-control custom-switch">
+                  <input type="checkbox" class="custom-control-input" id="is_active" name="is_active" checked>
+                  <label class="custom-control-label" for="is_active">
+                    <i class="fas fa-check-circle text-success"></i> تفعيل الحساب
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- نصائح -->
+          <div class="card">
+            <div class="card-header bg-gradient-warning">
+              <h3 class="card-title" style="color: #000;">💡 نصائح</h3>
+            </div>
+            <div class="card-body">
+              <ul class="mb-0" style="color: #000;">
+                <li><strong>Owner</strong>: كل الصلاحيات بدون قيود</li>
+                <li><strong>Super Admin</strong>: إدارة + تقارير كاملة</li>
+                <li><strong>Manager</strong>: مبيعات + مشتريات + زبائن</li>
+                <li><strong>Seller</strong>: مبيعات فقط</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- أزرار الحفظ -->
+      <div class="row">
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-save mr-2"></i>حفظ المستخدم
+          </button>
+          <a href="{{ url_for('owner.users_list') }}" class="btn btn-secondary btn-lg">
+            <i class="fas fa-times mr-2"></i>إلغاء
+          </a>
+        </div>
+      </div>
+    </form>
+    
+  </div>
+</div>
+
+<script>
+$(document).ready(function() {
+  // وصف الأدوار
+  const roleDescriptions = {
+    '1': {
+      title: 'Super Admin - مدير عام',
+      permissions: [
+        '✅ إدارة المستخدمين',
+        '✅ إدارة الصلاحيات',
+        '✅ عرض كل التقارير',
+        '✅ تعديل الإعدادات (محدود)',
+        '❌ الوصول للمالك فقط'
+      ],
+      color: 'danger'
+    },
+    '2': {
+      title: 'Manager - مدير',
+      permissions: [
+        '✅ إدارة المبيعات والمشتريات',
+        '✅ إدارة الزبائن والمنتجات',
+        '✅ عرض التقارير',
+        '✅ إدارة المخزون',
+        '❌ لا يمكنه حذف المستخدمين'
+      ],
+      color: 'info'
+    },
+    '3': {
+      title: 'Seller - بائع',
+      permissions: [
+        '✅ إنشاء فواتير بيع فقط',
+        '✅ عرض فواتيره فقط',
+        '✅ بحث عن منتجات وزبائن',
+        '❌ لا يمكنه الحذف أو الإلغاء',
+        '❌ لا يمكنه عرض التقارير'
+      ],
+      color: 'secondary'
+    }
+  };
+  
+  $('#role_select').change(function() {
+    const roleId = $(this).val();
+    const descDiv = $('#role-description');
+    
+    if (roleId && roleDescriptions[roleId]) {
+      const role = roleDescriptions[roleId];
+      let html = `<i class="fas fa-shield-alt"></i> <strong>${role.title}</strong><hr>`;
+      html += '<ul class="mb-0">';
+      role.permissions.forEach(perm => {
+        html += `<li>${perm}</li>`;
+      });
+      html += '</ul>';
+      descDiv.html(html).removeClass().addClass('alert alert-' + role.color);
+    } else {
+      descDiv.html('<i class="fas fa-info-circle"></i> <strong>اختر الدور لعرض الصلاحيات</strong>')
+             .removeClass().addClass('alert alert-info');
+    }
+  });
+  
+  // التحقق من تطابق كلمة المرور
+  $('#userForm').submit(function(e) {
+    const password = $('#password').val();
+    const confirm = $('#confirm_password').val();
+    
+    if (password !== confirm) {
+      e.preventDefault();
+      alert('كلمة المرور غير متطابقة!');
+      $('#confirm_password').focus();
+      return false;
+    }
+    
+    return true;
+  });
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>شركة أزاد للأنظمة الذكية - 500 خطأ في الخادم</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/css/adminlte.min.css') }}">
+</head>
+<body class="hold-transition" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); font-family: 'Tajawal', sans-serif;">
+<div class="error-page" style="margin-top: 10%;">
+  <div class="error-content" style="margin-left: auto; margin-right: auto; text-align: center; background: white; padding: 50px; border-radius: 20px; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+    <h1 class="text-danger" style="font-size: 120px; margin-bottom: 20px;"><i class="fas fa-server"></i></h1>
+    <h3 style="font-size: 48px; font-weight: 700; color: #f5576c;">500</h3>
+    <p class="lead">خطأ في الخادم</p>
+    <p class="text-muted">عذراً، حدث خطأ غير متوقع. يرجى المحاولة لاحقاً</p>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-danger btn-lg mt-3">
+      <i class="fas fa-home mr-2"></i>العودة للرئيسية
+    </a>
+  </div>
+</div>
+</body>
+</html>
+

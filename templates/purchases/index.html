@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}شركة أزاد للأنظمة الذكية - إدارة المشتريات والفواتير{% endblock %}
+{% block page_title %}المشتريات{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col-12">
+    <a href="{{ url_for('purchases.create') }}" class="btn btn-primary">
+      <i class="fas fa-plus mr-2"></i>فاتورة شراء جديدة
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <table id="purchasesTable" class="table table-bordered table-striped">
+      <thead>
+        <tr>
+          <th>{{ t('Invoice Number') }}</th>
+          <th>المورد</th>
+          <th>{{ t('Date') }}</th>
+          <th>{{ t('Amount') }}</th>
+          <th>العملة</th>
+          <th>الإجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for purchase in purchases %}
+        <tr>
+          <td><strong>{{ purchase.purchase_number }}</strong></td>
+          <td>{{ purchase.supplier_name }}</td>
+          <td>{{ purchase.purchase_date.strftime('%Y-%m-%d') }}</td>
+          <td>{{ "{:,.2f}".format(purchase.total_amount) }}</td>
+          <td>{{ purchase.currency }}</td>
+          <td>
+            <a href="{{ url_for('purchases.view', id=purchase.id) }}" class="btn btn-sm btn-info">
+              <i class="fas fa-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  $('#purchasesTable').DataTable({
+    language: { url: "{{ url_for('static', filename='datatables/Arabic.json') }}" },
+    order: [[2, 'desc']],
+    pageLength: 25
+  });
+});
+</script>
+{% endblock %}
+

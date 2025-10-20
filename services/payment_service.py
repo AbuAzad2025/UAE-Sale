@@ -1,0 +1,212 @@
+from decimal import Decimal
+from flask import current_app
+from flask_login import current_user
+from extensions import db
+from models import Receipt, Sale
+from services.currency_service import CurrencyService
+from services.gl_service import GLService
+from utils.helpers import generate_number
+
+
+class PaymentService:
+    
+    @staticmethod
+    def create_receipt(payment_data):
+        """
+        Create receipt from payment data dict
+        
+        Args:
+            payment_data (dict): {
+                'customer_id': int,
+                'amount': Decimal,
+                'currency': str,
+                'payment_method': str,
+                'notes': str (optional),
+                ...
+            }
+        """
+        from models import Customer
+        
+        customer_id = payment_data.get('customer_id')
+        amount = payment_data.get('amount')
+        currency = payment_data.get('currency', 'AED')
+        payment_method = payment_data.get('payment_method', 'cash')
+        notes = payment_data.get('notes')
+        user_exchange_rate = payment_data.get('user_exchange_rate')
+        reference_number = payment_data.get('reference_number')
+        cheque_number = payment_data.get('cheque_number')
+        cheque_date = payment_data.get('cheque_date')
+        bank_name = payment_data.get('bank_name')
+        allocate_to_sales = payment_data.get('allocate_to_sales')
+        
+        # Convert cheque_date to date object if it's a string
+        if cheque_date and isinstance(cheque_date, str):
+            from datetime import datetime
+            try:
+                cheque_date = datetime.strptime(cheque_date, '%Y-%m-%d').date()
+            except ValueError:
+                raise ValueError('تاريخ الشيك غير صالح')
+        
+        customer = db.session.get(Customer, customer_id)
+        try:
+            receipt_number = generate_number('RCV', Receipt, 'receipt_number')
+            
+            exchange_rate = CurrencyService.get_exchange_rate(
+                currency,
+                'AED',
+                user_rate=user_exchange_rate
+            )
+            
+            receipt = Receipt(
+                receipt_number=receipt_number,
+                customer_id=customer.id,
+                amount=Decimal(str(amount)),
+                currency=currency,
+                exchange_rate=exchange_rate,
+                amount_aed=Decimal(str(amount)) * exchange_rate,
+                payment_method=payment_method,
+                reference_number=reference_number,
+                cheque_number=cheque_number,
+                cheque_date=cheque_date,
+                bank_name=bank_name,
+                notes=notes,
+                user_id=current_user.id if current_user and current_user.is_authenticated else 1
+            )
+            
+            db.session.add(receipt)
+            db.session.flush()
+            
+            # إنشاء سجل الشيك إذا كانت طريقة الدفع شيك
+            if payment_method == 'cheque' and cheque_number:
+                from models import Cheque
+                cheque = Cheque(
+                    cheque_number=cheque_number,
+                    cheque_bank_number=cheque_number,  # نفس رقم الشيك
+                    cheque_type='incoming',
+                    customer_id=customer.id,
+                    amount=Decimal(str(amount)),
+                    currency=currency,
+                    exchange_rate=exchange_rate,
+                    amount_aed=Decimal(str(amount)) * exchange_rate,
+                    issue_date=receipt.receipt_date.date(),  # تاريخ الإصدار = تاريخ السند
+                    due_date=cheque_date,  # تاريخ الاستحقاق
+                    bank_name=bank_name,
+                    status='pending',
+                    notes=notes
+                )
+                db.session.add(cheque)
+                db.session.flush()
+                
+                # ربط الشيك بالسند
+                receipt.cheque_id = cheque.id
+            
+            if allocate_to_sales:
+                remaining_amount = Decimal(str(amount))
+                
+                for sale_id, allocated in allocate_to_sales.items():
+                    if remaining_amount <= 0:
+                        break
+                    
+                    sale = Sale.query.get(sale_id)
+                    
+                    if not sale or sale.customer_id != customer.id:
+                        continue
+                    
+                    allocated_amount = min(Decimal(str(allocated)), remaining_amount, sale.balance_due)
+                    
+                    sale.paid_amount += allocated_amount
+                    sale.paid_amount_aed += allocated_amount * exchange_rate
+                    sale.balance_due -= allocated_amount
+                    
+                    if sale.paid_amount >= sale.total_amount:
+                        sale.payment_status = 'paid'
+                    elif sale.paid_amount > 0:
+                        sale.payment_status = 'partial'
+                    
+                    remaining_amount -= allocated_amount
+            
+            try:
+                GLService.ensure_core_accounts()
+                payment_account = '1000' if receipt.payment_method == 'cash' else '1010'
+                lines = [
+                    {'account': payment_account, 'debit': receipt.amount_aed, 'description': f'قبض من {customer.name}'},
+                    {'account': '1100', 'credit': receipt.amount_aed, 'description': f'سند قبض {receipt.receipt_number}'}
+                ]
+                GLService.post_entry(lines, description=f'Receipt {receipt.receipt_number}', reference_type='Receipt', reference_id=receipt.id, currency=receipt.currency, exchange_rate=receipt.exchange_rate)
+            except Exception as e:
+                current_app.logger.warning(f'GL posting failed: {e}')
+            
+            db.session.commit()
+            
+            current_app.logger.info(f'Receipt created: {receipt.receipt_number}')
+            
+            return receipt
+        
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Receipt creation failed: {e}')
+            raise
+    
+    @staticmethod
+    def get_customer_balance(customer):
+        total_sales = db.session.query(
+            db.func.sum(Sale.balance_due)
+        ).filter(
+            Sale.customer_id == customer.id,
+            Sale.status == 'confirmed'
+        ).scalar() or Decimal('0')
+        
+        return total_sales
+    
+    @staticmethod
+    def get_customer_balance_aed(customer):
+        total_sales_aed = db.session.query(
+            db.func.sum(Sale.amount_aed - Sale.paid_amount_aed)
+        ).filter(
+            Sale.customer_id == customer.id,
+            Sale.status == 'confirmed'
+        ).scalar() or Decimal('0')
+        
+        return total_sales_aed
+    
+    @staticmethod
+    def get_unpaid_sales(customer):
+        return Sale.query.filter(
+            Sale.customer_id == customer.id,
+            Sale.status == 'confirmed',
+            Sale.balance_due > 0
+        ).order_by(Sale.sale_date.asc()).all()
+    
+    @staticmethod
+    def allocate_receipt_to_oldest_sales(receipt, customer):
+        try:
+            remaining_amount = receipt.amount
+            
+            unpaid_sales = PaymentService.get_unpaid_sales(customer)
+            
+            for sale in unpaid_sales:
+                if remaining_amount <= 0:
+                    break
+                
+                allocated = min(remaining_amount, sale.balance_due)
+                
+                sale.paid_amount += allocated
+                sale.paid_amount_aed += allocated * receipt.exchange_rate
+                sale.balance_due -= allocated
+                
+                if sale.paid_amount >= sale.total_amount:
+                    sale.payment_status = 'paid'
+                elif sale.paid_amount > 0:
+                    sale.payment_status = 'partial'
+                
+                remaining_amount -= allocated
+            
+            db.session.commit()
+            
+            current_app.logger.info(f'Receipt {receipt.receipt_number} allocated to sales')
+        
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Receipt allocation failed: {e}')
+            raise
+

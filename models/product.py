@@ -1,0 +1,139 @@
+from datetime import datetime, timezone
+from extensions import db
+
+
+class ProductCategory(db.Model):
+    __tablename__ = 'product_categories'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True, index=True)
+    name_ar = db.Column(db.String(100))
+    description = db.Column(db.Text)
+    parent_id = db.Column(db.Integer, db.ForeignKey('product_categories.id'))
+    sort_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    parent = db.relationship('ProductCategory', remote_side=[id], backref='subcategories')
+    products = db.relationship('Product', back_populates='category', lazy='dynamic')
+    
+    def __repr__(self):
+        return f'<Category {self.name}>'
+    
+    def get_display_name(self, lang='ar'):
+        if lang == 'ar' and self.name_ar:
+            return self.name_ar
+        return self.name
+
+
+class Product(db.Model):
+    __tablename__ = 'products'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False, index=True)
+    name_ar = db.Column(db.String(200))
+    commercial_name = db.Column(db.String(200))
+    
+    sku = db.Column(db.String(50), unique=True, index=True)
+    part_number = db.Column(db.String(100), index=True)
+    barcode = db.Column(db.String(100), unique=True, index=True)
+    
+    country_of_origin = db.Column(db.String(100))
+    
+    category_id = db.Column(db.Integer, db.ForeignKey('product_categories.id'))
+    category = db.relationship('ProductCategory', back_populates='products')
+    
+    cost_price = db.Column(db.Numeric(15, 3), default=0)
+    regular_price = db.Column(db.Numeric(15, 3), nullable=False)
+    merchant_price = db.Column(db.Numeric(15, 3))
+    partner_price = db.Column(db.Numeric(15, 3))
+    
+    current_stock = db.Column(db.Numeric(15, 3), default=0, nullable=False)
+    min_stock_alert = db.Column(db.Numeric(15, 3), default=0)
+    
+    # Alias for consistency (stock_quantity = current_stock)
+    @property
+    def stock_quantity(self):
+        """Alias for current_stock for consistency"""
+        return self.current_stock
+    
+    @stock_quantity.setter
+    def stock_quantity(self, value):
+        """Setter for stock_quantity"""
+        self.current_stock = value
+    
+    # Another alias for quantity_in_stock
+    @property
+    def quantity_in_stock(self):
+        """Alias for current_stock"""
+        return self.current_stock
+    
+    @quantity_in_stock.setter
+    def quantity_in_stock(self, value):
+        """Setter for quantity_in_stock"""
+        self.current_stock = value
+    
+    unit = db.Column(db.String(20), default='piece')
+    location = db.Column(db.String(50))
+    
+    warranty_period = db.Column(db.Integer, default=0)
+    warranty_unit = db.Column(db.String(20), default='months')
+    
+    is_returnable = db.Column(db.Boolean, default=True)
+    return_period_days = db.Column(db.Integer, default=7)
+    
+    image_url = db.Column(db.String(255))
+    description = db.Column(db.Text)
+    notes = db.Column(db.Text)
+    
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    sale_lines = db.relationship('SaleLine', back_populates='product', lazy='dynamic')
+    purchase_lines = db.relationship('PurchaseLine', back_populates='product', lazy='dynamic')
+    stock_movements = db.relationship('StockMovement', back_populates='product', lazy='dynamic')
+    
+    def __repr__(self):
+        return f'<Product {self.name}>'
+    
+    def get_price_for_customer(self, customer_type='regular'):
+        if customer_type == 'partner' and self.partner_price:
+            return self.partner_price
+        elif customer_type == 'merchant' and self.merchant_price:
+            return self.merchant_price
+        return self.regular_price
+    
+    def is_low_stock(self):
+        return self.current_stock <= self.min_stock_alert
+    
+    def is_out_of_stock(self):
+        return self.current_stock <= 0
+    
+    def get_display_name(self, lang='ar'):
+        if lang == 'ar' and self.name_ar:
+            return self.name_ar
+        return self.name
+    
+    def to_dict(self, include_cost=False):
+        data = {
+            'id': self.id,
+            'name': self.name,
+            'name_ar': self.name_ar,
+            'sku': self.sku,
+            'barcode': self.barcode,
+            'category': self.category.name if self.category else None,
+            'regular_price': float(self.regular_price),
+            'merchant_price': float(self.merchant_price) if self.merchant_price else None,
+            'partner_price': float(self.partner_price) if self.partner_price else None,
+            'current_stock': float(self.current_stock),
+            'unit': self.unit,
+            'is_active': self.is_active,
+            'is_low_stock': self.is_low_stock(),
+        }
+        
+        if include_cost:
+            data['cost_price'] = float(self.cost_price)
+        
+        return data
+

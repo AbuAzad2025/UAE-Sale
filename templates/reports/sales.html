@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% block title %}شركة أزاد للأنظمة الذكية - تقرير المبيعات{% endblock %}
+{% block page_title %}تقرير المبيعات{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header bg-gradient-success">
+    <h3 class="card-title text-white">ملخص المبيعات</h3>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-3">
+        <div class="info-box bg-gradient-primary">
+          <span class="info-box-icon"><i class="fas fa-file-invoice"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">عدد الفواتير</span>
+            <span class="info-box-number">{{ summary.sales_count|default(0) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="info-box bg-gradient-success">
+          <span class="info-box-icon"><i class="fas fa-dollar-sign"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">إجمالي المبيعات</span>
+            <span class="info-box-number">{{ "{:,.0f}".format(summary.total_sales_aed|default(0)) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="info-box bg-gradient-warning">
+          <span class="info-box-icon"><i class="fas fa-coins"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">{{ t('Paid') }}</span>
+            <span class="info-box-number">{{ "{:,.0f}".format(summary.total_paid_aed|default(0)) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="info-box bg-gradient-danger">
+          <span class="info-box-icon"><i class="fas fa-exclamation-circle"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">المستحق</span>
+            <span class="info-box-number">{{ "{:,.0f}".format(summary.total_pending_aed|default(0)) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">تفاصيل المبيعات</h3>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>الفاتورة</th>
+          <th>الزبون</th>
+          <th>{{ t('Date') }}</th>
+          <th>{{ t('Amount') }}</th>
+          <th>{{ t('Status') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sale in sales %}
+        <tr>
+          <td><a href="{{ url_for('sales.view', id=sale.id) }}">{{ sale.sale_number }}</a></td>
+          <td>{{ sale.customer.name if sale.customer else '-' }}</td>
+          <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
+          <td>{{ "{:,.2f}".format(sale.amount_aed) }} AED</td>
+          <td>
+            {% if sale.payment_status == 'paid' %}<span class="badge badge-success">مدفوعة</span>
+            {% elif sale.payment_status == 'partial' %}<span class="badge badge-warning">جزئي</span>
+            {% else %}<span class="badge badge-danger">آجل</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+  @page {
+    size: A4 {{ 'landscape' if request.args.get('orientation') == 'landscape' else 'portrait' }};
+    margin: 15mm;
+  }
+  /* إخفاء عناصر UI */
+  .main-sidebar, .main-header, .main-footer, 
+  .content-header, .no-print, button, .btn,
+  .breadcrumb, .navbar, .sidebar {
+    display: none !important;
+  }
+  /* تحسين المحتوى للطباعة */
+  .content-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .card {
+    border: 1px solid #dee2e6 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+  body {
+    background: white !important;
+  }
+  /* تحسين الجداول */
+  table {
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tfoot {
+    display: table-footer-group;
+  }
+}
+</style>
+{% endblock %}
+
+

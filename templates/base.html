@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}{{ config.COMPANY_NAME_AR }}{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="{% block meta_description %}شركة أزاد للأنظمة الذكية - نظام متكامل لإدارة المستودعات والمبيعات والمشتريات مع ذكاء اصطناعي متقدم{% endblock %}">
+  <meta name="keywords" content="{% block meta_keywords %}نظام إدارة المستودعات، برنامج محاسبة، فواتير إلكترونية، إدارة المبيعات، إدارة المخزون، ذكاء اصطناعي، الإمارات، دبي، أبوظبي{% endblock %}">
+  <meta name="author" content="شركة أزاد للأنظمة الذكية">
+  <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
+  <meta name="language" content="{{ current_language }}">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+  <meta property="og:url" content="{{ request.url }}">
+  <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}{{ self.meta_description() }}{% endblock %}">
+  <meta property="og:image" content="{{ url_for('static', filename='img/azad_logo.png', _external=True) }}">
+  <meta property="og:locale" content="{{ 'ar_AE' if current_language == 'ar' else 'en_US' }}">
+  <meta property="og:site_name" content="شركة أزاد للأنظمة الذكية">
+  
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="{{ request.url }}">
+  <meta name="twitter:title" content="{{ self.title() }}">
+  <meta name="twitter:description" content="{{ self.meta_description() }}">
+  <meta name="twitter:image" content="{{ url_for('static', filename='img/azad_logo.png', _external=True) }}">
+  
+  <!-- Canonical URL -->
+  <link rel="canonical" href="{{ request.url }}">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="{{ url_for('static', filename='img/azad_favicon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/azad_logo.png') }}">
+  
+  <!-- Preload Critical Resources -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  
+  <!-- Critical CSS - تحميل فوري -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/css/adminlte.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  
+  <!-- Non-Critical CSS - تحميل متأخر -->
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="{{ url_for('static', filename='adminlte/plugins/select2/css/select2.min.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="{{ url_for('static', filename='adminlte/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="{{ url_for('static', filename='adminlte/plugins/datatables-buttons/css/buttons.bootstrap4.min.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="{{ url_for('static', filename='css/azad-style.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="{{ url_for('static', filename='css/modern-arabic-style.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="{{ url_for('static', filename='css/flash-messages.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="{{ url_for('static', filename='css/select2-enhanced.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/select2/css/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/datatables-buttons/css/buttons.bootstrap4.min.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/azad-style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern-arabic-style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/flash-messages.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/select2-enhanced.css') }}">
+  </noscript>
+  {% block extra_css %}{% endblock %}
+  
+  <!-- Schema.org JSON-LD للتحسين في محركات البحث -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "شركة أزاد للأنظمة الذكية",
+    "alternateName": "Azad Smart Systems",
+    "url": "{{ request.url_root }}",
+    "logo": "{{ url_for('static', filename='img/azad_logo.png', _external=True) }}",
+    "description": "نظام متكامل لإدارة المستودعات والمبيعات والمشتريات مع ذكاء اصطناعي متقدم",
+    "address": {
+      "@type": "PostalAddress",
+      "addressCountry": "AE",
+      "addressRegion": "Dubai"
+    },
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "customer service",
+      "availableLanguage": ["Arabic", "English"]
+    },
+    "sameAs": []
+  }
+  </script>
+  
+  <style>
+    /* تحسينات سريعة للأداء */
+    * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    img { will-change: transform; }
+    .content-wrapper { min-height: calc(100vh - 120px); }
+    
+    /* Custom Scrollbar للسايدبار */
+    .sidebar::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .sidebar::-webkit-scrollbar-track {
+      background: #1a1a2e;
+      border-radius: 10px;
+    }
+    
+    .sidebar::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 10px;
+      transition: all 0.3s;
+    }
+    
+    .sidebar::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    }
+    
+    /* Smooth scroll */
+    .sidebar {
+      scroll-behavior: smooth;
+    }
+  </style>
+</head>
+
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+  <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+    <ul class="navbar-nav">
+      <li class="nav-item">
+        <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+      </li>
+      <li class="nav-item d-none d-sm-inline-block">
+        <a href="{{ url_for('main.dashboard') }}" class="nav-link"><i class="fas fa-home mr-2"></i>{{ t('Dashboard') }}</a>
+      </li>
+    </ul>
+
+    <ul class="navbar-nav ml-auto">
+      <li class="nav-item d-none d-md-inline-block">
+        <span class="nav-link">
+          <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Garage" style="height: 32px; vertical-align: middle;">
+        </span>
+      </li>
+      
+      <!-- AI Assistant -->
+      <li class="nav-item">
+        <a href="{{ url_for('ai.assistant_page') }}" class="nav-link" title="المساعد الذكي">
+          <i class="fas fa-robot mr-1" style="color: #667eea; font-size: 1.1em;"></i>
+          <span class="d-none d-md-inline">المساعد</span>
+        </a>
+      </li>
+      
+      <!-- Language Switcher -->
+      <li class="nav-item dropdown">
+        <a class="nav-link" data-toggle="dropdown" href="#" title="تغيير اللغة">
+          <i class="fas fa-globe mr-1"></i>
+          <span class="d-none d-md-inline">{{ session.get('language', 'ar')|upper }}</span>
+        </a>
+        <div class="dropdown-menu dropdown-menu-sm dropdown-menu-left">
+          <a href="{{ url_for('language.set_language', lang='ar') }}" class="dropdown-item {% if session.get('language', 'ar') == 'ar' %}active{% endif %}">
+            <i class="fas fa-check mr-2 {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>
+            العربية
+          </a>
+          <a href="{{ url_for('language.set_language', lang='en') }}" class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}">
+            <i class="fas fa-check mr-2 {% if session.get('language') != 'en' %}invisible{% endif %}"></i>
+            English
+          </a>
+        </div>
+      </li>
+      
+      <li class="nav-item dropdown">
+        <a class="nav-link" data-toggle="dropdown" href="#">
+          <i class="far fa-user mr-1"></i>
+          <strong>{{ current_user.username }}</strong>
+          {% if current_user.is_owner %}
+          <span class="badge badge-danger">OWNER</span>
+          {% endif %}
+        </a>
+        <div class="dropdown-menu dropdown-menu-lg dropdown-menu-left">
+          <span class="dropdown-item dropdown-header">{{ current_user.username }}</span>
+          <div class="dropdown-divider"></div>
+          <a href="{{ url_for('auth.logout') }}" class="dropdown-item">
+            <i class="fas fa-sign-out-alt mr-2"></i>تسجيل خروج
+          </a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <aside class="main-sidebar sidebar-dark-primary elevation-4">
+    <a href="{{ url_for('main.dashboard') }}" class="brand-link text-center" style="padding: 15px;">
+      <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad" style="height: 60px;">
+    </a>
+
+    <div class="sidebar" style="overflow-y: auto; max-height: calc(100vh - 100px); scrollbar-width: thin; scrollbar-color: #667eea #1a1a2e;">
+      <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+        <div class="image">
+          <i class="fas fa-user-circle fa-2x text-white"></i>
+        </div>
+        <div class="info">
+          <a href="#" class="d-block text-white">{{ current_user.username }}</a>
+          <small class="text-white-50">{{ current_user.role.name_ar if current_user.role else 'مستخدم' }}</small>
+        </div>
+      </div>
+
+      <nav class="mt-2">
+        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+          <li class="nav-item">
+            <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
+              <i class="nav-icon fas fa-tachometer-alt"></i>
+              <p>{{ t('Dashboard') }}</p>
+            </a>
+          </li>
+          
+          {% if current_user.has_permission('manage_sales') %}
+          <li class="nav-item has-treeview {% if request.endpoint and 'sales' in request.endpoint %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and 'sales' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-file-invoice"></i>
+              <p>
+                المبيعات
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('sales.create') }}" class="nav-link">
+                  <i class="fas fa-plus-circle nav-icon text-success"></i>
+                  <p>فاتورة جديدة</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('sales.index') }}" class="nav-link">
+                  <i class="fas fa-list nav-icon"></i>
+                  <p>قائمة الفواتير</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% endif %}
+          
+          {% if current_user.has_permission('manage_customers') %}
+          <li class="nav-item has-treeview {% if request.endpoint and 'customers' in request.endpoint %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and 'customers' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-users"></i>
+              <p>
+                الزبائن
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('customers.create') }}" class="nav-link">
+                  <i class="fas fa-user-plus nav-icon text-success"></i>
+                  <p>زبون جديد</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('customers.index') }}" class="nav-link">
+                  <i class="fas fa-list nav-icon"></i>
+                  <p>قائمة الزبائن</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% endif %}
+          
+          {% if current_user.has_permission('manage_products') %}
+          <li class="nav-item has-treeview {% if request.endpoint and 'products' in request.endpoint %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and 'products' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-box"></i>
+              <p>
+                المنتجات
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('products.create') }}" class="nav-link">
+                  <i class="fas fa-plus-circle nav-icon text-success"></i>
+                  <p>{{ t('New Product') }}</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('products.index') }}" class="nav-link">
+                  <i class="fas fa-list nav-icon"></i>
+                  <p>قائمة المنتجات</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% endif %}
+          
+          {% if current_user.has_permission('manage_purchases') %}
+          <li class="nav-item has-treeview {% if request.endpoint and 'purchases' in request.endpoint %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and 'purchases' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-shopping-cart"></i>
+              <p>
+                المشتريات
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('purchases.create') }}" class="nav-link">
+                  <i class="fas fa-plus-circle nav-icon text-success"></i>
+                  <p>مشترى جديد</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('purchases.index') }}" class="nav-link">
+                  <i class="fas fa-list nav-icon"></i>
+                  <p>قائمة المشتريات</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% endif %}
+          
+          {% if current_user.has_permission('manage_purchases') %}
+          <li class="nav-item has-treeview {% if request.endpoint and 'suppliers' in request.endpoint %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and 'suppliers' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-truck"></i>
+              <p>
+                الموردين
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('suppliers.create') }}" class="nav-link">
+                  <i class="fas fa-plus-circle nav-icon text-success"></i>
+                  <p>مورد جديد</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('suppliers.index') }}" class="nav-link">
+                  <i class="fas fa-list nav-icon"></i>
+                  <p>قائمة الموردين</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% endif %}
+          
+          {% if current_user.has_permission('manage_payments') %}
+          <li class="nav-item has-treeview {% if request.endpoint and 'payments' in request.endpoint %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and 'payments' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-money-bill-wave"></i>
+              <p>
+                المدفوعات
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('payments.create_receipt') }}" class="nav-link">
+                  <i class="fas fa-plus-circle nav-icon text-success"></i>
+                  <p>سند قبض جديد</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('payments.receipts') }}" class="nav-link">
+                  <i class="fas fa-list nav-icon"></i>
+                  <p>قائمة السندات</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('cheques.index') }}" class="nav-link">
+                  <i class="fas fa-money-check nav-icon text-info"></i>
+                  <p>الشيكات</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('cheques.alerts') }}" class="nav-link">
+                  <i class="fas fa-bell nav-icon text-warning"></i>
+                  <p>تنبيهات الشيكات</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% endif %}
+          
+          {% if current_user.has_permission('manage_payments') %}
+          <li class="nav-item {% if request.endpoint and 'cheques' in request.endpoint %}menu-open{% endif %}">
+            <a href="{{ url_for('cheques.index') }}" class="nav-link {% if request.endpoint and 'cheques' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-money-check text-success"></i>
+              <p>إدارة الشيكات</p>
+            </a>
+          </li>
+          {% endif %}
+          
+          {% if current_user.has_permission('manage_expenses') %}
+          <li class="nav-item has-treeview {% if request.endpoint and 'expenses' in request.endpoint %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and 'expenses' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-receipt"></i>
+              <p>
+                المصروفات
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('expenses.create') }}" class="nav-link">
+                  <i class="fas fa-plus-circle nav-icon text-success"></i>
+                  <p>مصروف جديد</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('expenses.index') }}" class="nav-link">
+                  <i class="fas fa-list nav-icon"></i>
+                  <p>قائمة المصروفات</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% endif %}
+          
+          {% if current_user.has_permission('view_ledger') %}
+          <li class="nav-item has-treeview {% if request.endpoint and 'ledger' in request.endpoint %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and 'ledger' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-book"></i>
+              <p>
+                دفتر الأستاذ
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('ledger.index') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>الحسابات</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('ledger.trial_balance') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>ميزان المراجعة</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('ledger.income_statement') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>قائمة الدخل</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('ledger.balance_sheet') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>الميزانية</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% endif %}
+          
+          {% if current_user.has_permission('view_reports') %}
+          <li class="nav-item has-treeview {% if request.endpoint and 'reports' in request.endpoint %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and 'reports' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-chart-bar"></i>
+              <p>
+                التقارير
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('reports.sales') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>تقرير المبيعات</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('reports.receivables') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>الذمم المدينة</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% endif %}
+
+          {% if current_user.has_permission('manage_warehouse') %}
+          <li class="nav-item has-treeview {% if request.endpoint and 'warehouse' in request.endpoint %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and 'warehouse' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-warehouse"></i>
+              <p>
+                المستودعات والمخزون
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('warehouse.index') }}" class="nav-link">
+                  <i class="fas fa-boxes nav-icon text-info"></i>
+                  <p>إدارة المخزون</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('warehouse.list_warehouses') }}" class="nav-link">
+                  <i class="fas fa-building nav-icon text-primary"></i>
+                  <p>المستودعات</p>
+                </a>
+              </li>
+              {% if current_user.is_admin() %}
+              <li class="nav-item">
+                <a href="{{ url_for('warehouse.create_warehouse') }}" class="nav-link">
+                  <i class="fas fa-plus-circle nav-icon text-success"></i>
+                  <p>إضافة مستودع</p>
+                </a>
+              </li>
+              {% endif %}
+              <li class="nav-item">
+                <a href="{{ url_for('warehouse.movements') }}" class="nav-link">
+                  <i class="fas fa-exchange-alt nav-icon text-secondary"></i>
+                  <p>حركات المخزون</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('warehouse.low_stock') }}" class="nav-link">
+                  <i class="fas fa-exclamation-triangle nav-icon text-warning"></i>
+                  <p>مخزون منخفض</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('warehouse.out_of_stock') }}" class="nav-link">
+                  <i class="fas fa-ban nav-icon text-danger"></i>
+                  <p>نفذ من المخزون</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% endif %}
+          
+          {% if current_user.is_owner %}
+          <li class="nav-header">OWNER MODE</li>
+          <li class="nav-item">
+            <a href="{{ url_for('owner.dashboard') }}" class="nav-link">
+              <i class="nav-icon fas fa-crown text-warning"></i>
+              <p>لوحة المالك</p>
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+  </aside>
+
+  <div class="content-wrapper">
+    <div class="content-header">
+      <div class="container-fluid">
+        <h1 class="m-0">{% block page_title %}{% endblock %}</h1>
+      </div>
+    </div>
+
+    <section class="content">
+      <div class="container-fluid">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div id="flash-messages-container" style="position: sticky; top: 60px; z-index: 1040; margin-bottom: 20px;">
+              {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show flash-message" 
+                     style="font-size: 18px; font-weight: 600; padding: 20px 25px; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); animation: slideDown 0.4s ease-out; border-left: 5px solid {{ 'var(--success-color)' if category == 'success' else ('var(--danger-color)' if category in ['error', 'danger'] else ('var(--warning-color)' if category == 'warning' else 'var(--info-color)')) }};">
+                  <div class="d-flex align-items-center">
+                    <div class="mr-3" style="font-size: 28px;">
+                      {% if category == 'success' %}
+                        <i class="fas fa-check-circle text-success"></i>
+                      {% elif category == 'danger' or category == 'error' %}
+                        <i class="fas fa-exclamation-circle text-danger"></i>
+                      {% elif category == 'warning' %}
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                      {% else %}
+                        <i class="fas fa-info-circle text-info"></i>
+                      {% endif %}
+                    </div>
+                    <div class="flex-grow-1" style="line-height: 1.6;">{{ message }}</div>
+                    <button type="button" class="close ml-3" data-dismiss="alert" style="font-size: 28px; opacity: 0.8;">&times;</button>
+                  </div>
+                  <div class="progress mt-2" style="height: 5px; background-color: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden;">
+                    <div class="progress-bar flash-timer" role="progressbar" style="width: 100%; transition: width 20s linear; background: linear-gradient(90deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%);"></div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </div>
+    </section>
+  </div>
+
+  <footer class="main-footer text-center" style="padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+    <div class="mb-3">
+      <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="شركة أزاد" style="height: 70px; filter: brightness(0) invert(1);">
+    </div>
+    <div>
+      <p class="mb-2"><strong style="font-size: 1.1em;">🚀 شركة أزاد للأنظمة الذكية - Azad Smart Systems</strong></p>
+      <p class="mb-2">
+        <i class="fab fa-whatsapp"></i> {{ config.COMPANY_PHONE }} | 
+        <i class="fas fa-envelope"></i> {{ config.COMPANY_EMAIL }} |
+        <i class="fas fa-globe"></i> azadsystems.com
+      </p>
+      <p class="mb-2 text-white-50">
+        <i class="fas fa-map-marker-alt"></i> {{ config.COMPANY_ADDRESS }}
+      </p>
+      <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
+      <p class="mb-0" style="opacity: 0.9;">
+        <small>
+          <i class="fas fa-code"></i> {{ config.DEVELOPER_CREDIT }} | 
+          <i class="fas fa-robot"></i> مدعوم بالذكاء الاصطناعي | 
+          v{{ config.APP_VERSION }}
+        </small>
+      </p>
+    </div>
+  </footer>
+</div>
+
+<!-- Critical Scripts - تحميل فوري -->
+<script src="{{ url_for('static', filename='adminlte/plugins/jquery/jquery.min.js') }}"></script>
+<script src="{{ url_for('static', filename='adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='adminlte/js/adminlte.min.js') }}"></script>
+
+<!-- Non-Critical Scripts - تحميل متأخر مع defer -->
+<script defer src="{{ url_for('static', filename='adminlte/plugins/select2/js/select2.full.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='adminlte/plugins/datatables/jquery.dataTables.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='adminlte/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='adminlte/plugins/datatables-buttons/js/dataTables.buttons.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='adminlte/plugins/datatables-buttons/js/buttons.bootstrap4.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='adminlte/plugins/datatables-buttons/js/buttons.html5.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='adminlte/plugins/datatables-buttons/js/buttons.print.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='adminlte/plugins/datatables-buttons/js/buttons.colVis.min.js') }}"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script defer src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/azad-app.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/customer-select.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/payment-fields.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/delete-manager.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/keyboard-shortcuts.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/dark-mode.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/performance.js') }}"></script>
+{% block extra_js %}{% endblock %}
+
+<script>
+// CSRF: attach token to all jQuery AJAX requests
+$(function() {
+  try {
+    const csrfToken = $('meta[name="csrf-token"]').attr('content');
+    if (csrfToken) {
+      $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+          if (!/^GET|HEAD|OPTIONS|TRACE$/i.test(settings.type)) {
+            xhr.setRequestHeader('X-CSRFToken', csrfToken);
+          }
+        }
+      });
+    }
+  } catch (e) {
+    console.warn('CSRF setup warning:', e);
+  }
+});
+
+// Global Performance Enhancements
+(function() {
+  'use strict';
+  
+  // Prefetch hover links for instant navigation
+  document.querySelectorAll('a[href^="/"]').forEach(link => {
+    link.addEventListener('mouseenter', function() {
+      const url = this.getAttribute('href');
+      if (url && !this.dataset.prefetched) {
+        const prefetch = document.createElement('link');
+        prefetch.rel = 'prefetch';
+        prefetch.href = url;
+        document.head.appendChild(prefetch);
+        this.dataset.prefetched = 'true';
+      }
+    }, { once: true, passive: true });
+  });
+  
+  // Auto-hide flash messages with progress bar
+  document.querySelectorAll('.flash-message').forEach((alert, index) => {
+    if (!alert.classList.contains('alert-permanent')) {
+      const progressBar = alert.querySelector('.flash-timer');
+      
+      // Start timer animation
+      setTimeout(() => {
+        if (progressBar) {
+          progressBar.style.width = '0%';
+        }
+      }, 100);
+      
+      // Auto-hide after 20 seconds
+      setTimeout(() => {
+        alert.style.transition = 'all 0.5s ease-out';
+        alert.style.transform = 'translateX(100%)';
+        alert.style.opacity = '0';
+        setTimeout(() => alert.remove(), 500);
+      }, 20000);
+    }
+  });
+  
+})();
+</script>
+</body>
+</html>

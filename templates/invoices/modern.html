@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
+<head>
+  <meta charset="UTF-8">
+  <title>شركة أزاد للأنظمة الذكية - فاتورة مبيعات #{{ sale.invoice_number }}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Tajawal', 'Arial', sans-serif;
+      background: #95a5a6;
+      padding: 20px;
+      margin: 0;
+      font-size: 11px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+    @page {
+      size: {{ settings.paper_size or 'A4' }} {{ settings.orientation or 'portrait' }};
+      margin: 10mm;
+    }
+    .invoice {
+      {% if settings.paper_size == 'A5' %}
+        width: 148mm;
+        height: {{ '210mm' if settings.orientation == 'portrait' else '148mm' }};
+      {% elif settings.paper_size == 'Letter' %}
+        width: 216mm;
+        height: {{ '279mm' if settings.orientation == 'portrait' else '216mm' }};
+      {% else %}
+        width: {{ '210mm' if settings.orientation == 'portrait' else '297mm' }};
+        height: {{ '297mm' if settings.orientation == 'portrait' else '210mm' }};
+      {% endif %}
+      margin: 0 auto;
+      background: white;
+      border-radius: 0;
+      overflow: auto;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      position: relative;
+    }
+    .header {
+      background: linear-gradient(135deg, {{ settings.header_color }} 0%, {{ settings.accent_color }} 100%);
+      color: white;
+      padding: 15px 20px;
+      text-align: center;
+    }
+    .logo { height: 50px; background: white; padding: 8px; border-radius: 8px; margin-bottom: 8px; }
+    .company-name { font-size: 18px; font-weight: 700; margin-bottom: 3px; }
+    .company-info { font-size: 10px; opacity: 0.95; }
+    .invoice-title {
+      background: #f8f9fa;
+      padding: 12px 15px;
+      text-align: center;
+      border-bottom: 2px solid {{ settings.accent_color }};
+    }
+    .invoice-title h2 { color: {{ settings.header_color }}; font-size: 16px; margin: 0; }
+    .invoice-number { color: {{ settings.accent_color }}; font-size: 13px; margin-top: 5px; }
+    .content { padding: 15px 20px; }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .info-box {
+      background: #f8f9fa;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border-right: 3px solid {{ settings.accent_color }};
+    }
+    .info-box h3 { color: {{ settings.header_color }}; margin-bottom: 8px; font-size: 12px; }
+    .info-box p { margin: 4px 0; color: #555; font-size: 10px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 10px;
+    }
+    thead {
+      background: linear-gradient(135deg, {{ settings.header_color }} 0%, {{ settings.accent_color }} 100%);
+      color: white;
+    }
+    th, td {
+      padding: 6px 8px;
+      text-align: right;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    th { font-size: 11px; }
+    tbody tr:hover { background: #f8f9fa; }
+    .total-section {
+      margin-top: 12px;
+      text-align: left;
+      background: #f8f9fa;
+      padding: 12px 15px;
+      border-radius: 6px;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      font-size: 11px;
+    }
+    .total-row.final {
+      border-top: 2px solid {{ settings.header_color }};
+      padding-top: 8px;
+      margin-top: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: {{ settings.header_color }};
+    }
+    .footer {
+      background: #f8f9fa;
+      padding: 12px 15px;
+      text-align: center;
+      border-top: 2px solid {{ settings.accent_color }};
+      color: #666;
+      font-size: 9px;
+    }
+    .qr-code { margin: 10px 0; }
+    @media print {
+      body { padding: 0; margin: 0; background: white; }
+      .no-print { display: none !important; }
+      .invoice { box-shadow: none; border: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="invoice">
+    <div class="header">
+      {% if settings.show_logo %}
+      <img src="/static/img/azad_logo.png" alt="Logo" class="logo">
+      {% endif %}
+      <div class="company-name">{{ settings.company_name_ar }}</div>
+      <div class="company-info">
+        <div>{{ settings.address_ar }}</div>
+        <div>📞 {{ settings.phone_1 }} | 📧 {{ settings.email }}</div>
+        {% if settings.tax_number %}<div>الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
+      </div>
+    </div>
+
+    <div class="invoice-title">
+      <h2>🧾 فاتورة بيع</h2>
+      <div class="invoice-number">{{ sale.invoice_number }}</div>
+    </div>
+
+    <div class="content">
+      <div class="info-grid">
+        <div class="info-box">
+          <h3>🏢 بيانات الزبون</h3>
+          <p><strong>الاسم:</strong> {{ sale.customer.name }}</p>
+          <p><strong>الهاتف:</strong> {{ sale.customer.phone }}</p>
+          <p><strong>العنوان:</strong> {{ sale.customer.address }}</p>
+        </div>
+        <div class="info-box">
+          <h3>📅 بيانات الفاتورة</h3>
+          <p><strong>التاريخ:</strong> 2025-10-17</p>
+          <p><strong>الحالة:</strong> <span style="color: #28a745">✓ مكتملة</span></p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>المنتج</th>
+            <th>{{ t('Quantity') }}</th>
+            <th>{{ t('Price') }}</th>
+            <th>{{ t('Total') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in sale.lines %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ line.product_name }}</td>
+            <td>{{ line.quantity }}</td>
+            <td>{{ line.unit_price }} AED</td>
+            <td>{{ line.total }} AED</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="total-section">
+        <div class="total-row">
+          <span>الإجمالي الفرعي:</span>
+          <strong>{{ sale.subtotal }} AED</strong>
+        </div>
+        {% if sale.tax %}
+        <div class="total-row">
+          <span>الضريبة (5%):</span>
+          <strong>{{ sale.tax }} AED</strong>
+        </div>
+        {% endif %}
+        <div class="total-row final">
+          <span>الإجمالي النهائي:</span>
+          <strong>{{ sale.total }} AED</strong>
+        </div>
+      </div>
+
+      <!-- قسم الدفعات -->
+      {% if sale.payments %}
+      <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
+        <h4 style="color: {{ settings.header_color }}; font-size: 12px; margin-bottom: 8px; font-weight: 700;">💰 الدفعات</h4>
+        <table style="font-size: 9px;">
+          <thead>
+            <tr>
+              <th style="padding: 5px; font-size: 10px;">رقم الدفعة</th>
+              <th style="padding: 5px; font-size: 10px;">التاريخ</th>
+              <th style="padding: 5px; font-size: 10px;">المبلغ</th>
+              <th style="padding: 5px; font-size: 10px;">الطريقة</th>
+              <th style="padding: 5px; font-size: 10px;">التفاصيل</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for payment in sale.payments %}
+            <tr>
+              <td style="padding: 4px;">{{ payment.payment_number }}</td>
+              <td style="padding: 4px;">{{ payment.payment_date.strftime('%Y-%m-%d') }}</td>
+              <td style="padding: 4px; font-weight: bold; color: #28a745;">{{ "{:,.2f}".format(payment.amount_aed) }} AED</td>
+              <td style="padding: 4px;">
+                {% if payment.payment_method == 'cash' %}نقدي
+                {% elif payment.payment_method == 'card' %}بطاقة
+                {% elif payment.payment_method == 'bank_transfer' %}تحويل
+                {% elif payment.payment_method == 'cheque' %}شيك
+                {% else %}محفظة{% endif %}
+              </td>
+              <td style="padding: 4px; font-size: 8px;">
+                {% if payment.payment_method == 'cheque' and payment.cheque_number %}
+                  <div style="background: #fff3cd; padding: 3px 5px; border-radius: 3px; border-right: 2px solid #ffc107;">
+                    📝 {{ payment.cheque_number }}<br>
+                    📅 {{ payment.cheque_date.strftime('%Y-%m-%d') if payment.cheque_date else '-' }}<br>
+                    🏦 {{ payment.bank_name or '-' }}
+                  </div>
+                {% elif payment.reference_number %}
+                  {{ payment.reference_number }}
+                {% else %}-{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      {% if settings.enable_qr_code %}
+      <div class="qr-code text-center">
+        <i class="fas fa-qrcode" style="font-size: 50px; color: #ddd;"></i>
+        <p style="font-size: 9px; color: #999;">مسح للدفع الإلكتروني</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="footer">
+      <p>{{ settings.payment_terms_ar }}</p>
+      <p style="margin-top: 10px; font-size: 14px;">شكراً لتعاملكم معنا 🌟</p>
+    </div>
+  </div>
+</body>
+</html>
+

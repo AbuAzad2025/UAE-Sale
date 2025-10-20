@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}شركة أزاد للأنظمة الذكية - التكاملات والربط مع الأنظمة الخارجية{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">التكاملات</h1>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">WhatsApp</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5>تكامل WhatsApp</h5>
+                                    <p class="text-muted">إرسال الإشعارات والرسائل عبر WhatsApp</p>
+                                </div>
+                                <div>
+                                    {% if integrations.whatsapp.enabled %}
+                                        <span class="badge badge-success">مفعل</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">غير مفعل</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <p><strong>الحالة:</strong> {{ integrations.whatsapp.status }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">{{ t('Email') }}</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5>تكامل البريد الإلكتروني</h5>
+                                    <p class="text-muted">إرسال الإشعارات والرسائل عبر البريد الإلكتروني</p>
+                                </div>
+                                <div>
+                                    {% if integrations.email.enabled %}
+                                        <span class="badge badge-success">مفعل</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">غير مفعل</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <p><strong>الحالة:</strong> {{ integrations.email.status }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Redis Cache</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5>تكامل Redis</h5>
+                                    <p class="text-muted">تحسين الأداء باستخدام Redis Cache</p>
+                                </div>
+                                <div>
+                                    {% if integrations.redis.enabled %}
+                                        <span class="badge badge-success">مفعل</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">غير مفعل</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <p><strong>الحالة:</strong> {{ integrations.redis.status }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">API سعر الصرف</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5>تكامل API سعر الصرف</h5>
+                                    <p class="text-muted">جلب أسعار الصرف الحالية من API</p>
+                                </div>
+                                <div>
+                                    {% if integrations.currency_api.enabled %}
+                                        <span class="badge badge-success">مفعل</span>
+                                    {% else %}
+                                        <span class="badge badge-warning">API احتياطي</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <p><strong>الحالة:</strong> {{ integrations.currency_api.status }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

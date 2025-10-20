@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}{{ t('شركة أزاد للأنظمة الذكية - إدارة المصروفات') }}{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2><i class="fas fa-receipt me-2"></i>{{ t('Expenses') }}</h2>
+            <a href="{{ url_for('expenses.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>إضافة مصروف
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>رقم المصروف</th>
+                        <th>الفئة</th>
+                        <th>{{ t('Description') }}</th>
+                        <th>{{ t('Amount') }}</th>
+                        <th>{{ t('Date') }}</th>
+                        <th>طريقة الدفع</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expense in expenses %}
+                    <tr>
+                        <td><strong>{{ expense.expense_number }}</strong></td>
+                        <td>{{ expense.category.name_ar if expense.category else '-' }}</td>
+                        <td>{{ expense.description }}</td>
+                        <td>{{ "{:,.2f}".format(expense.amount) }} {{ expense.currency }}</td>
+                        <td>{{ expense.expense_date.strftime('%Y-%m-%d') }}</td>
+                        <td><span class="badge bg-info">{{ expense.payment_method }}</span></td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('expenses.view', id=expense.id) }}" 
+                                   class="btn btn-info" title="عرض">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <button type="button" class="btn btn-danger" 
+                                        onclick="deleteItem('expenses', {{ expense.id }}, '{{ expense.expense_number }}')" 
+                                        title="حذف">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

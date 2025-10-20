@@ -1,0 +1,353 @@
+{% extends 'base.html' %}
+{% block title %}شركة أزاد للأنظمة الذكية - إضافة منتج جديد{% endblock %}
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+  <div>
+    <h1 class="mb-0"><i class="fas fa-plus-circle mr-2"></i>إضافة منتج جديد</h1>
+  </div>
+  <div>
+    <a href="{{ url_for('products.index') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-right mr-2"></i>العودة للمنتجات
+    </a>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-home mr-2"></i>الرئيسية
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <form method="POST" action="{{ url_for('products.create') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="card-body">
+      <!-- المعلومات الأساسية -->
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-box text-primary"></i> الاسم 
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم المنتج بالإنجليزية (إجباري)"></i>
+            </label>
+            <input type="text" name="name" class="form-control" placeholder="Product Name" required>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-font text-info"></i> الاسم بالعربية
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم المنتج بالعربية (اختياري)"></i>
+            </label>
+            <input type="text" name="name_ar" class="form-control" placeholder="اسم المنتج">
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-hashtag text-primary"></i> رقم القطعة (SKU)
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="رقم القطعة الفريد - يتم توليده تلقائياً إن لم يُدخل"></i>
+            </label>
+            <input type="text" name="sku" class="form-control" placeholder="يتم توليده تلقائياً">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-barcode text-secondary"></i> {{ t('Barcode') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الباركود للمسح - يتم توليده تلقائياً إن لم يُدخل"></i>
+            </label>
+            <input type="text" name="barcode" class="form-control" placeholder="يتم توليده تلقائياً">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-folder text-warning"></i> الفئة
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تصنيف المنتج (إجباري)"></i>
+            </label>
+            <div class="input-group">
+              <select name="category_id" id="product_category" class="form-control select2" required style="flex: 1;">
+                <option value="">اختر فئة...</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}">{{ category.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="input-group-append">
+                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#addCategoryModal" title="إضافة فئة جديدة">
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- الأسعار -->
+      <hr>
+      <h5 class="text-success"><i class="fas fa-money-bill-wave"></i> الأسعار</h5>
+      <div class="row">
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-dollar-sign text-danger"></i> سعر التكلفة
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر الشراء من المورد (إجباري)"></i>
+            </label>
+            <input type="number" name="cost_price" class="form-control" step="0.01" min="0" value="0" placeholder="0.00" required>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-tag text-success"></i> سعر عادي
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر التجزئة للعملاء العاديين (إجباري)"></i>
+            </label>
+            <input type="number" name="regular_price" class="form-control" step="0.01" min="0" placeholder="0.00" required>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-store text-primary"></i> سعر تاجر
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر للتجار - افتراضي 10% خصم عن السعر العادي"></i>
+            </label>
+            <input type="number" name="merchant_price" class="form-control" step="0.01" min="0" placeholder="خصم 10%">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-handshake text-info"></i> سعر شريك
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر للشركاء - افتراضي 15% خصم عن السعر العادي"></i>
+            </label>
+            <input type="number" name="partner_price" class="form-control" step="0.01" min="0" placeholder="خصم 15%">
+          </div>
+        </div>
+      </div>
+
+      <!-- المخزون -->
+      <hr>
+      <h5 class="text-warning"><i class="fas fa-warehouse"></i> المخزون</h5>
+      <div class="row">
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-boxes text-success"></i> الكمية الحالية
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المخزون الحالي (افتراضي: 0)"></i>
+            </label>
+            <input type="number" name="current_stock" class="form-control" step="0.001" min="0" value="0" placeholder="0">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-exclamation-triangle text-warning"></i> حد التنبيه
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عند الوصول لهذا الحد يظهر تنبيه (افتراضي: 10)"></i>
+            </label>
+            <input type="number" name="min_stock_alert" class="form-control" step="0.001" min="0" value="10" placeholder="10">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-balance-scale text-primary"></i> الوحدة
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="وحدة القياس للمنتج (إجباري)"></i>
+            </label>
+            <select name="unit" class="form-control" required>
+              <option value="piece">قطعة</option>
+              <option value="kg">كيلو</option>
+              <option value="liter">لتر</option>
+              <option value="meter">متر</option>
+              <option value="box">صندوق</option>
+              <option value="set">طقم</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- معلومات إضافية -->
+      <hr>
+      <h5 class="text-info"><i class="fas fa-info-circle"></i> معلومات إضافية</h5>
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-map-marker-alt text-danger"></i> الموقع
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="موقع المنتج في المستودع (اختياري)"></i>
+            </label>
+            <input type="text" name="location" class="form-control" placeholder="رقم الرف، المخزن...">
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-image text-success"></i> صورة المنتج
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="صورة توضيحية للمنتج (اختياري)"></i>
+            </label>
+            <input type="file" name="image" class="form-control-file" accept="image/*">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>
+          <i class="fas fa-align-left text-secondary"></i> {{ t('Description') }}
+          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="وصف تفصيلي للمنتج (اختياري)"></i>
+        </label>
+        <textarea name="description" class="form-control" rows="3" placeholder="وصف المنتج وميزاته..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>
+          <i class="fas fa-sticky-note text-warning"></i> {{ t('Notes') }}
+          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="ملاحظات داخلية عن المنتج (اختياري)"></i>
+        </label>
+        <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات إضافية..."></textarea>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <button type="submit" class="btn btn-success btn-lg">
+        <i class="fas fa-save mr-2"></i>حفظ المنتج
+      </button>
+      <a href="{{ url_for('products.index') }}" class="btn btn-secondary btn-lg">
+        <i class="fas fa-times mr-2"></i>إلغاء
+      </a>
+    </div>
+  </form>
+</div>
+
+<!-- Modal: إضافة فئة منتجات -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">
+          <i class="fas fa-folder-plus mr-2"></i>إضافة فئة منتجات جديدة
+        </h5>
+        <button type="button" class="close text-white" data-dismiss="modal">
+          <span>&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="addCategoryForm">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-font text-primary"></i> اسم الفئة
+              <span class="text-danger">*</span>
+            </label>
+            <input type="text" id="category_name" class="form-control" placeholder="مثال: زيوت، فلاتر، إطارات..." required>
+          </div>
+          <div class="form-group">
+            <label>
+              <i class="fas fa-align-right text-info"></i> الوصف
+            </label>
+            <textarea id="category_description" class="form-control" rows="3" placeholder="وصف الفئة (اختياري)"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+          <i class="fas fa-times mr-2"></i>إلغاء
+        </button>
+        <button type="button" class="btn btn-success" id="saveCategoryBtn">
+          <i class="fas fa-save mr-2"></i>حفظ الفئة
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  // تفعيل Select2
+  $('.select2').select2({
+    placeholder: 'اختر فئة...',
+    dir: 'rtl',
+    language: 'ar'
+  });
+  
+  // تفعيل Tooltips
+  $('[data-toggle="tooltip"]').tooltip({
+    placement: 'top',
+    trigger: 'hover'
+  });
+  
+  // حساب أسعار التاجر والشريك تلقائياً
+  $('input[name="regular_price"]').on('input', function() {
+    const regularPrice = parseFloat($(this).val()) || 0;
+    const merchantInput = $('input[name="merchant_price"]');
+    const partnerInput = $('input[name="partner_price"]');
+    
+    if (!merchantInput.val()) {
+      merchantInput.attr('placeholder', (regularPrice * 0.9).toFixed(2) + ' (خصم 10%)');
+    }
+    if (!partnerInput.val()) {
+      partnerInput.attr('placeholder', (regularPrice * 0.85).toFixed(2) + ' (خصم 15%)');
+    }
+  });
+  
+  // حفظ الفئة الجديدة
+  $('#saveCategoryBtn').click(function() {
+    const name = $('#category_name').val().trim();
+    const description = $('#category_description').val().trim();
+    
+    if (!name) {
+      alert('الرجاء إدخال اسم الفئة');
+      return;
+    }
+    
+    // الحصول على CSRF token
+  const csrfToken = $('input[name="csrf_token"]').val();
+  
+  $.ajax({
+    url: "{{ url_for('products.create_category') }}",
+    method: 'POST',
+      contentType: 'application/json',
+      headers: {
+        'X-CSRFToken': csrfToken
+      },
+      data: JSON.stringify({
+        name: name,
+        description: description
+      }),
+      success: function(response) {
+        if (response.success) {
+          // إضافة الفئة الجديدة للقائمة
+          const newOption = new Option(response.category.name, response.category.id, true, true);
+          $('#product_category').append(newOption).trigger('change');
+          
+          // إغلاق النافذة وتنظيف الحقول
+          $('#addCategoryModal').modal('hide');
+          $('#category_name').val('');
+          $('#category_description').val('');
+          
+          // رسالة نجاح
+          if (typeof UI !== 'undefined') {
+            UI.success('تم إضافة الفئة بنجاح!');
+          } else {
+            alert('تم إضافة الفئة بنجاح!');
+          }
+        } else {
+          alert('خطأ: ' + (response.error || 'فشل إضافة الفئة'));
+        }
+      },
+      error: function(xhr) {
+        const error = xhr.responseJSON?.error || 'حدث خطأ أثناء الحفظ';
+        alert('خطأ: ' + error);
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

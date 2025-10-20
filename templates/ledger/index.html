@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}شركة أزاد للأنظمة الذكية - دفتر الأستاذ العام{% endblock %}
+{% block page_title %}دفتر الأستاذ - General Ledger{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col-12">
+    <a href="{{ url_for('ledger.trial_balance') }}" class="btn btn-primary">
+      <i class="fas fa-balance-scale mr-2"></i>ميزان المراجعة
+    </a>
+    <a href="{{ url_for('ledger.income_statement') }}" class="btn btn-success">
+      <i class="fas fa-chart-line mr-2"></i>قائمة الدخل
+    </a>
+    <a href="{{ url_for('ledger.balance_sheet') }}" class="btn btn-info">
+      <i class="fas fa-file-invoice mr-2"></i>الميزانية
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-gradient-primary">
+    <h3 class="card-title text-white">الحسابات</h3>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <h5><i class="fas fa-coins text-success"></i> الأصول (Assets)</h5>
+        <ul class="list-group mb-3">
+          {% for account in accounts if account.type == 'asset' %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('ledger.account_ledger', id=account.id) }}">
+              {{ account.code }} - {{ account.name }}
+            </a>
+            <span class="badge badge-success badge-pill">{{ account.type }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+
+        <h5><i class="fas fa-file-invoice-dollar text-danger"></i> الخصوم (Liabilities)</h5>
+        <ul class="list-group mb-3">
+          {% for account in accounts if account.type == 'liability' %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('ledger.account_ledger', id=account.id) }}">
+              {{ account.code }} - {{ account.name }}
+            </a>
+            <span class="badge badge-danger badge-pill">{{ account.type }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="col-md-6">
+        <h5><i class="fas fa-chart-line text-primary"></i> الإيرادات (Revenue)</h5>
+        <ul class="list-group mb-3">
+          {% for account in accounts if account.type == 'revenue' %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('ledger.account_ledger', id=account.id) }}">
+              {{ account.code }} - {{ account.name }}
+            </a>
+            <span class="badge badge-primary badge-pill">{{ account.type }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+
+        <h5><i class="fas fa-receipt text-warning"></i> المصروفات (Expenses)</h5>
+        <ul class="list-group mb-3">
+          {% for account in accounts if account.type == 'expense' %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('ledger.account_ledger', id=account.id) }}">
+              {{ account.code }} - {{ account.name }}
+            </a>
+            <span class="badge badge-warning badge-pill">{{ account.type }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

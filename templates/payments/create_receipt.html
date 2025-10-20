@@ -1,0 +1,345 @@
+{% extends 'base.html' %}
+{% block title %}شركة أزاد للأنظمة الذكية - إنشاء سند قبض جديد{% endblock %}
+{% block page_title %}سند قبض جديد{% endblock %}
+
+{% block content %}
+<div class="card">
+  <form method="POST" action="{{ url_for('payments.create_receipt') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    
+    <div class="card-body">
+      <div class="row">
+        <!-- العميل -->
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-user text-primary"></i> الزبون 
+              <span class="text-danger">*</span>
+            </label>
+            <select name="customer_id" id="customer_id" class="form-control customer-select" required>
+              <option value="">ابحث عن زبون...</option>
+              {% if preselected_customer %}
+              <option value="{{ preselected_customer.id }}" selected>
+                {{ preselected_customer.name }}{% if preselected_customer.phone %} - {{ preselected_customer.phone }}{% endif %}
+              </option>
+              {% endif %}
+            </select>
+          </div>
+        </div>
+
+        <!-- المبلغ -->
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-money-bill-wave text-success"></i> المبلغ 
+              <span class="text-danger">*</span>
+            </label>
+            <input type="number" name="amount" id="amount" class="form-control" step="0.01" min="0.01" 
+                   value="{{ suggested_amount if suggested_amount else '' }}" 
+                   data-suggested-amount="{{ suggested_amount if suggested_amount else '' }}"
+                   placeholder="0.00" required>
+            {% if suggested_amount %}
+            <small class="form-text text-info">
+              <i class="fas fa-info-circle"></i> المبلغ المقترح حسب ديون الزبون
+            </small>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- العملة -->
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-dollar-sign text-warning"></i> العملة
+            </label>
+            <select name="currency" id="currency" class="form-control">
+              <option value="AED" selected>AED - درهم إماراتي</option>
+              <option value="USD">USD - دولار أمريكي</option>
+              <option value="EUR">EUR - يورو</option>
+              <option value="SAR">SAR - ريال سعودي</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <!-- طريقة الدفع -->
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-credit-card text-info"></i> طريقة الدفع
+            </label>
+            <select name="payment_method" id="payment_method" class="form-control" required>
+              <option value="cash">نقداً</option>
+              <option value="bank_transfer">تحويل بنكي</option>
+              <option value="cheque">شيك</option>
+              <option value="card">بطاقة ائتمان</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- رقم المرجع -->
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-hashtag text-secondary"></i> رقم المرجع
+            </label>
+            <input type="text" name="reference_number" id="reference_number" class="form-control" 
+                   value="" placeholder="رقم المرجع">
+          </div>
+        </div>
+      </div>
+
+      <!-- حقول الشيك (تظهر عند اختيار شيك) -->
+      <div id="cheque_fields" class="row" style="display: none;">
+        <div class="col-md-4">
+          <div class="form-group">
+            <label><i class="fas fa-hashtag"></i> رقم الشيك <span class="text-danger">*</span></label>
+            <input type="text" name="cheque_number" class="form-control" placeholder="رقم الشيك">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-group">
+            <label><i class="fas fa-calendar"></i> تاريخ استحقاق الشيك <span class="text-danger">*</span></label>
+            <input type="date" name="cheque_date" class="form-control">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-group">
+            <label><i class="fas fa-university"></i> اسم البنك <span class="text-danger">*</span></label>
+            <input type="text" name="bank_name" class="form-control" placeholder="اسم البنك">
+          </div>
+        </div>
+      </div>
+
+      <!-- حقول البطاقة (فيزا/ماستركارد) -->
+      <div id="card_fields" class="row" style="display: none;">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label><i class="fas fa-credit-card"></i> آخر 4 أرقام من البطاقة</label>
+            <input type="text" name="card_last4" class="form-control" placeholder="1234" maxlength="4">
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label><i class="fas fa-hashtag"></i> رقم التفويض</label>
+            <input type="text" name="reference_number_card" class="form-control" placeholder="رقم التفويض">
+          </div>
+        </div>
+      </div>
+
+      <!-- حقول التحويل البنكي -->
+      <div id="bank_transfer_fields" class="row" style="display: none;">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label><i class="fas fa-university"></i> اسم البنك</label>
+            <input type="text" name="bank_name_transfer" class="form-control" placeholder="اسم البنك">
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label><i class="fas fa-hashtag"></i> رقم الحوالة</label>
+            <input type="text" name="reference_number_transfer" class="form-control" placeholder="رقم الحوالة">
+          </div>
+        </div>
+      </div>
+
+      <!-- حقول المحفظة الإلكترونية -->
+      <div id="ewallet_fields" class="row" style="display: none;">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label><i class="fas fa-wallet"></i> اسم المحفظة</label>
+            <select name="ewallet_name" class="form-control">
+              <option value="">اختر المحفظة</option>
+              <option value="paypal">PayPal</option>
+              <option value="apple_pay">Apple Pay</option>
+              <option value="google_pay">Google Pay</option>
+              <option value="samsung_pay">Samsung Pay</option>
+              <option value="other">أخرى</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label><i class="fas fa-hashtag"></i> رقم العملية</label>
+            <input type="text" name="reference_number_ewallet" class="form-control" placeholder="رقم العملية">
+          </div>
+        </div>
+      </div>
+
+      <!-- الملاحظات -->
+      <div class="row">
+        <div class="col-12">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-sticky-note text-muted"></i> ملاحظات
+            </label>
+            <textarea name="notes" class="form-control" rows="3" 
+                      placeholder="أي ملاحظات إضافية..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- معلومات العميل (تظهر عند اختيار عميل) -->
+      <div id="customerInfo" class="row" style="display: none;">
+        <div class="col-12">
+          <div class="alert alert-info">
+            <h6><i class="fas fa-info-circle"></i> معلومات العميل</h6>
+            <div class="row">
+              <div class="col-md-6">
+                <strong>الرصيد الحالي:</strong> 
+                <span id="customerBalance" class="badge badge-secondary">0.00 AED</span>
+              </div>
+              <div class="col-md-6">
+                <div id="unpaidSales"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <div class="row">
+        <div class="col-6">
+          <a href="{{ url_for('payments.receipts') }}" class="btn btn-secondary">
+            <i class="fas fa-times"></i> إلغاء
+          </a>
+        </div>
+        <div class="col-6 text-right">
+          <button type="submit" class="btn btn-success">
+            <i class="fas fa-save"></i> حفظ سند القبض
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+  // تفعيل Tooltips
+  $('[data-toggle="tooltip"]').tooltip({
+    placement: 'top',
+    trigger: 'hover'
+  });
+  
+  // تهيئة حقول الدفع الديناميكية
+  if (window.PaymentFieldsManager) {
+    PaymentFieldsManager.initSelector('#payment_method', '#paymentFieldsContainer', 'payment');
+  }
+  
+  // ملء المبلغ المقترح من السيرفر
+  var suggestedAmount = $('#amount').data('suggested-amount');
+  if (suggestedAmount) {
+    $('#amount').val(suggestedAmount);
+  }
+  
+  // إدارة الحقول الديناميكية حسب طريقة الدفع
+  $('#payment_method').on('change', function() {
+    var method = $(this).val();
+    
+    // إخفاء جميع الحقول الديناميكية أولاً
+    $('#cheque_fields, #card_fields, #bank_transfer_fields, #ewallet_fields').slideUp();
+    
+    // إظهار الحقول المناسبة
+    switch(method) {
+      case 'cheque':
+        $('#cheque_fields').slideDown();
+        break;
+      case 'card':
+        $('#card_fields').slideDown();
+        break;
+      case 'bank_transfer':
+        $('#bank_transfer_fields').slideDown();
+        break;
+      case 'e_wallet':
+        $('#ewallet_fields').slideDown();
+        break;
+      default:
+        // نقد - لا حقول إضافية
+        break;
+    }
+  });
+  
+  // تفعيل الحقول عند التحميل إذا كانت طريقة الدفع محددة
+  if ($('#payment_method').val()) {
+    $('#payment_method').trigger('change');
+  }
+  
+  // تحميل بيانات العميل عند الاختيار
+  $('#customer_id').on('select2:select change', function() {
+    var customerId = $(this).val();
+    if (customerId) {
+      loadCustomerBalance();
+    } else {
+      $('#customerInfo').hide();
+    }
+  });
+  
+  // تحميل بيانات العميل المحدد مسبقاً
+  var hasPreselectedCustomer = $('#customer_id option:selected').val() !== '';
+  if (hasPreselectedCustomer) {
+    setTimeout(function() {
+      loadCustomerBalance();
+    }, 1000);
+  }
+  
+  // توليد رقم المرجع تلقائياً
+  var now = new Date();
+  var refNumber = 'REF-' + now.getFullYear() + 
+                  String(now.getMonth() + 1).padStart(2, '0') + 
+                  String(now.getDate()).padStart(2, '0') + '-' +
+                  String(now.getHours()).padStart(2, '0') + 
+                  String(now.getMinutes()).padStart(2, '0') + 
+                  String(now.getSeconds()).padStart(2, '0');
+  $('#reference_number').val(refNumber);
+});
+
+// دالة تحميل بيانات العميل
+function loadCustomerBalance() {
+  var customerId = $('#customer_id').val();
+  if (!customerId) {
+    $('#customerInfo').hide();
+    return;
+  }
+  
+  console.log('🔍 جاري تحميل بيانات العميل:', customerId);
+  $.get('/customers/' + customerId + '/balance', function(data) {
+    console.log('📊 بيانات العميل المستلمة:', data);
+    // عرض الرصيد مع اللون المناسب
+    var balanceClass = data.balance < 0 ? 'text-danger' : 'text-success';
+    $('#customerBalance').text(data.balance.toFixed(2) + ' AED')
+      .removeClass('text-danger text-success').addClass(balanceClass);
+    $('#customerInfo').slideDown();
+    
+    // ملء المبلغ تلقائياً من الفواتير غير المدفوعة
+    if (data.unpaid_sales && data.unpaid_sales.length > 0) {
+      var totalUnpaid = data.unpaid_sales.reduce(function(sum, sale) {
+        return sum + parseFloat(sale.balance_due || 0);
+      }, 0);
+      var currentAmount = parseFloat($('#amount').val()) || 0;
+      
+      if (currentAmount == 0 || !$('#amount').val()) {
+        $('#amount').val(totalUnpaid.toFixed(2));
+      }
+      
+      // عرض الفواتير غير المدفوعة
+      var html = '<strong>فواتير غير مدفوعة:</strong><ul class="mb-0">';
+      data.unpaid_sales.forEach(function(sale) {
+        var saleUrl = "{{ url_for('sales.view', id=0) }}".replace('0', sale.id);
+        html += '<li><a href="' + saleUrl + '" target="_blank">' + sale.sale_number + '</a>: ' + parseFloat(sale.balance_due).toFixed(2) + ' AED</li>';
+      });
+      html += '</ul>';
+      $('#unpaidSales').html(html);
+    } else {
+      $('#unpaidSales').html('<small class="text-success"><i class="fas fa-check"></i> لا توجد فواتير معلقة</small>');
+    }
+  }).fail(function() {
+    console.error('فشل تحميل بيانات الزبون');
+  });
+}
+</script>
+{% endblock %}

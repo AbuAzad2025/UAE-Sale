@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+
+{% block title %}شركة أزاد للأنظمة الذكية - معلومات الشركة وإعدادات الهوية{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div class="container-fluid">
+    <div class="row mb-2">
+      <div class="col-sm-6">
+        <h1 class="m-0">🏢 معلومات الشركة/الكراج</h1>
+      </div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-left">
+          <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">لوحة المالك</a></li>
+          <li class="breadcrumb-item active">{{ t('Company Info') }}</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <div class="container-fluid">
+    <form method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      
+      <!-- معلومات أساسية -->
+      <div class="card">
+        <div class="card-header bg-gradient-primary">
+          <h3 class="card-title text-white">📋 المعلومات الأساسية</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>الاسم بالعربي *</label>
+                <input type="text" name="name_ar" class="form-control" value="{{ tenant.name_ar or '' }}" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>الاسم بالإنجليزي</label>
+                <input type="text" name="name_en" class="form-control" value="{{ tenant.name_en or '' }}">
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>الكود (Slug)</label>
+                <input type="text" name="slug" class="form-control" value="{{ tenant.slug or '' }}" pattern="[a-z0-9-]+">
+                <small class="text-muted">حروف صغيرة وأرقام وشرطة فقط</small>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>نوع النشاط</label>
+                <select name="business_type" class="form-control">
+                  <option value="garage" {{ 'selected' if tenant.business_type == 'garage' }}>كراج</option>
+                  <option value="workshop" {{ 'selected' if tenant.business_type == 'workshop' }}>ورشة</option>
+                  <option value="parts_shop" {{ 'selected' if tenant.business_type == 'parts_shop' }}>محل قطع</option>
+                  <option value="equipment" {{ 'selected' if tenant.business_type == 'equipment' }}>معدات ثقيلة</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>الصناعة</label>
+                <select name="industry" class="form-control">
+                  <option value="automotive" {{ 'selected' if tenant.industry == 'automotive' }}>سيارات</option>
+                  <option value="heavy_equipment" {{ 'selected' if tenant.industry == 'heavy_equipment' }}>معدات ثقيلة</option>
+                  <option value="mixed" {{ 'selected' if tenant.industry == 'mixed' }}>مختلط</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- معلومات الاتصال -->
+      <div class="card">
+        <div class="card-header bg-gradient-success">
+          <h3 class="card-title text-white">📞 معلومات الاتصال</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>العنوان بالعربي</label>
+                <textarea name="address_ar" class="form-control" rows="2">{{ tenant.address_ar or '' }}</textarea>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>العنوان بالإنجليزي</label>
+                <textarea name="address_en" class="form-control" rows="2">{{ tenant.address_en or '' }}</textarea>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>{{ t('City') }}</label>
+                <input type="text" name="city" class="form-control" value="{{ tenant.city or '' }}">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>{{ t('Country') }}</label>
+                <select name="country" class="form-control">
+                  <option value="UAE" {{ 'selected' if tenant.country == 'UAE' }}>الإمارات</option>
+                  <option value="Saudi" {{ 'selected' if tenant.country == 'Saudi' }}>السعودية</option>
+                  <option value="Palestine" {{ 'selected' if tenant.country == 'Palestine' }}>فلسطين</option>
+                  <option value="Jordan" {{ 'selected' if tenant.country == 'Jordan' }}>الأردن</option>
+                  <option value="Other" {{ 'selected' if tenant.country == 'Other' }}>{{ t('Other') }}</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>الموقع الجغرافي</label>
+                <input type="text" name="location_coords" class="form-control" value="{{ tenant.location_coords or '' }}" placeholder="25.2048,55.2708">
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>هاتف 1</label>
+                <input type="tel" name="phone_1" class="form-control" value="{{ tenant.phone_1 or '' }}">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>هاتف 2</label>
+                <input type="tel" name="phone_2" class="form-control" value="{{ tenant.phone_2 or '' }}">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>موبايل</label>
+                <input type="tel" name="mobile" class="form-control" value="{{ tenant.mobile or '' }}">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>{{ t('Email') }}</label>
+                <input type="email" name="email" class="form-control" value="{{ tenant.email or '' }}">
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>الموقع الإلكتروني</label>
+            <input type="url" name="website" class="form-control" value="{{ tenant.website or '' }}" placeholder="https://example.com">
+          </div>
+        </div>
+      </div>
+
+      <!-- معلومات قانونية -->
+      <div class="card">
+        <div class="card-header bg-gradient-warning">
+          <h3 class="card-title text-white">⚖️ المعلومات القانونية</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>الرقم الضريبي (TRN)</label>
+                <input type="text" name="tax_number" class="form-control" value="{{ tenant.tax_number or '' }}">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>السجل التجاري</label>
+                <input type="text" name="commercial_register" class="form-control" value="{{ tenant.commercial_register or '' }}">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>رقم الترخيص</label>
+                <input type="text" name="license_number" class="form-control" value="{{ tenant.license_number or '' }}">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- العلامة التجارية -->
+      <div class="card">
+        <div class="card-header bg-gradient-info">
+          <h3 class="card-title text-white">🎨 العلامة التجارية</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>اللون الأساسي</label>
+                <input type="color" name="brand_color_primary" class="form-control" value="{{ tenant.brand_color_primary or '#007A3D' }}">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>اللون الثانوي</label>
+                <input type="color" name="brand_color_secondary" class="form-control" value="{{ tenant.brand_color_secondary or '#D4AF37' }}">
+              </div>
+            </div>
+          </div>
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <strong>ملاحظة:</strong> لتغيير الشعار، استخدم إعدادات ترويسات الفواتير.
+          </div>
+        </div>
+      </div>
+
+      <!-- أزرار -->
+      <div class="row">
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-save mr-2"></i>حفظ المعلومات
+          </button>
+          <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary btn-lg">
+            <i class="fas fa-times mr-2"></i>إلغاء
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

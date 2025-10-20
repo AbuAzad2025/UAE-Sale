@@ -321,6 +321,29 @@ See [LICENSE](LICENSE) file for full terms and conditions.
 
 ---
 
+## 💝 **Support Our Work - ادعم عملنا**
+
+**Like this project? Help us continue developing! 🚀**  
+**أعجبك المشروع؟ ساعدنا على الاستمرار! 🚀**
+
+### Ways to Support:
+
+1. **⭐ Star this repository** - Show your appreciation
+2. **🛍️ Become a client** - Purchase a license
+3. **💼 Hire us** - Custom development services
+4. **📢 Spread the word** - Share with others
+
+**Contact for licensing & support:**  
+📧 rafideen.ahmadghannam@gmail.com  
+📱 +970-598-953-362  
+🌐 https://azad.pythonanywhere.com/
+
+**Your support helps Palestinian developers! 🇵🇸**
+
+👉 **[Learn more about supporting us](SUPPORT.md)**
+
+---
+
 ## 🎉 **الخلاصة**
 
 **نظام احترافي متكامل:**

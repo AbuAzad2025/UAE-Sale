@@ -1,0 +1,22 @@
+تشغيل النظام:
+===========
+
+1. افتح PowerShell
+2. الصق:
+   cd "D:\karaj\garage_manager_project\الامارات\garage_simple"
+   python app.py
+
+3. افتح المتصفح:
+   http://localhost:8080
+
+4. تسجيل الدخول:
+   owner / owner@2025!secure
+
+تحديث GitHub:
+============
+
+.\push.ps1
+
+---
+م. أحمد غنام | Azad Systems
+

@@ -384,7 +384,7 @@ class AzadResponses:
                 s = health['summary']
                 return f"""📦 **صحة المخزون:**
 
-📊 **الإحصائيات:**
+**الإحصائيات:**
 • إجمالي المنتجات: {s['total']}
 • حالة جيدة: {s['good']} ✅
 • منخفض: {s['low']} ⚠️
@@ -1031,12 +1031,12 @@ class AzadResponses:
 • تفاصيل العملاء
 • تفاصيل المنتجات
 
-💡 **مثال:** "صدر مبيعات الشهر الحالي إلى Excel"
+**مثال:** "صدر مبيعات الشهر الحالي إلى Excel"
 
-أو استخدم واجهة التصدير في النظام! 😊"""
+أو استخدم واجهة التصدير في النظام!"""
         
         elif 'عملاء' in msg_lower or 'customers' in msg_lower:
-            return """👥 **تصدير العملاء إلى Excel**
+            return """**تصدير العملاء إلى Excel**
 
 أزاد يمكنه تصدير:
 • بيانات جميع العملاء
@@ -1044,10 +1044,10 @@ class AzadResponses:
 • إحصائيات المبيعات لكل عميل
 • معلومات الاتصال
 
-💡 **مثال:** "صدر بيانات العملاء إلى Excel" """
+**مثال:** "صدر بيانات العملاء إلى Excel" """
         
         elif 'منتجات' in msg_lower or 'products' in msg_lower:
-            return """📦 **تصدير المنتجات إلى Excel**
+            return """**تصدير المنتجات إلى Excel**
 
 أزاد يمكنه تصدير:
 • بيانات جميع المنتجات
@@ -1055,9 +1055,9 @@ class AzadResponses:
 • الأسعار والفئات
 • إحصائيات المبيعات
 
-💡 **مثال:** "صدر بيانات المنتجات إلى Excel" """
+**مثال:** "صدر بيانات المنتجات إلى Excel" """
         
-        return "❓ ما البيانات التي تريد تصديرها؟ المبيعات، العملاء، أم المنتجات؟"
+        return "ما البيانات التي تريد تصديرها؟ المبيعات، العملاء، أم المنتجات؟"
     
     @staticmethod
     def _handle_report_generation(message):
@@ -1065,7 +1065,7 @@ class AzadResponses:
         msg_lower = message.lower()
         
         if 'مبيعات' in msg_lower or 'sales' in msg_lower:
-            return """📊 **تقرير المبيعات**
+            return """**تقرير المبيعات**
 
 أزاد يمكنه توليد:
 • تقرير مبيعات يومي
@@ -1073,10 +1073,10 @@ class AzadResponses:
 • تقرير مبيعات شهري
 • تقرير مبيعات فترة محددة
 
-💡 **مثال:** "ولد تقرير مبيعات الشهر الحالي" """
+**مثال:** "ولد تقرير مبيعات الشهر الحالي" """
         
         elif 'كشف' in msg_lower or 'statement' in msg_lower:
-            return """📋 **كشف حساب العميل**
+            return """**كشف حساب العميل**
 
 أزاد يمكنه توليد:
 • كشف حساب عميل محدد
@@ -1084,9 +1084,9 @@ class AzadResponses:
 • الرصيد الحالي
 • تاريخ المعاملات
 
-💡 **مثال:** "ولد كشف حساب العميل أحمد" """
+**مثال:** "ولد كشف حساب العميل أحمد" """
         
-        return "❓ ما نوع التقرير الذي تريد؟ تقرير مبيعات أم كشف حساب؟"
+        return "ما نوع التقرير الذي تريد؟ تقرير مبيعات أم كشف حساب؟"
     
     @staticmethod
     def _handle_tax_laws_query(message):
@@ -1096,11 +1096,11 @@ class AzadResponses:
         if 'فلسطين' in msg_lower or 'palestine' in msg_lower:
             return f"""🇵🇸 **القوانين الضريبية الفلسطينية**
 
-📊 **الضرائب الأساسية:**
+**الضرائب الأساسية:**
 • ضريبة القيمة المضافة: {advanced_laws.PALESTINIAN_TAX_LAWS['vat_rate']}%
 • ضريبة الشركات: {advanced_laws.PALESTINIAN_TAX_LAWS['income_tax_rates']['corporate']['standard']}%
 
-💰 **ضريبة الدخل للأفراد:**
+**ضريبة الدخل للأفراد:**
 {chr(10).join([f"• {range_text}: {rate}%" for range_text, rate in advanced_laws.PALESTINIAN_TAX_LAWS['income_tax_rates']['individual'].items()])}
 
 🏛️ **الرسوم الجمركية:**
@@ -1108,19 +1108,19 @@ class AzadResponses:
 • صناعية: {advanced_laws.PALESTINIAN_TAX_LAWS['customs_duties']['industrial']}%
 • فاخرة: {advanced_laws.PALESTINIAN_TAX_LAWS['customs_duties']['luxury']}%
 
-📋 **الأنظمة الخاصة:**
+**الأنظمة الخاصة:**
 {chr(10).join([f"• {regulation}" for regulation in advanced_laws.PALESTINIAN_TAX_LAWS['special_regulations']])}
 
-💡 **أزاد يعرف كل التفاصيل الضريبية!** 😊"""
+**أزاد يعرف كل التفاصيل الضريبية!**"""
         
         elif 'اسرائيل' in msg_lower or 'israel' in msg_lower:
             return f"""🇮🇱 **القوانين الضريبية الإسرائيلية**
 
-📊 **الضرائب الأساسية:**
+**الضرائب الأساسية:**
 • ضريبة القيمة المضافة: {advanced_laws.ISRAELI_TAX_LAWS['vat_rate']}%
 • ضريبة الشركات: {advanced_laws.ISRAELI_TAX_LAWS['income_tax_rates']['corporate']['standard']}%
 
-💰 **ضريبة الدخل للأفراد:**
+**ضريبة الدخل للأفراد:**
 {chr(10).join([f"• {range_text}: {rate}%" for range_text, rate in advanced_laws.ISRAELI_TAX_LAWS['income_tax_rates']['individual'].items()])}
 
 🏛️ **الرسوم الجمركية:**
@@ -1128,34 +1128,34 @@ class AzadResponses:
 • صناعية: {advanced_laws.ISRAELI_TAX_LAWS['customs_duties']['industrial']}%
 • فاخرة: {advanced_laws.ISRAELI_TAX_LAWS['customs_duties']['luxury']}%
 
-📋 **الأنظمة الخاصة:**
+**الأنظمة الخاصة:**
 {chr(10).join([f"• {regulation}" for regulation in advanced_laws.ISRAELI_TAX_LAWS['special_regulations']])}
 
-💡 **أزاد خبير في القوانين الإسرائيلية!** 🌟"""
+**أزاد خبير في القوانين الإسرائيلية!**"""
         
         elif 'خليج' in msg_lower or 'gulf' in msg_lower or 'امارات' in msg_lower or 'uae' in msg_lower:
             return f"""🇦🇪 **القوانين الضريبية الخليجية**
 
-📊 **الإمارات:**
+**الإمارات:**
 • ضريبة القيمة المضافة: {advanced_laws.GULF_TAX_LAWS['uae']['vat_rate']}%
 • ضريبة الشركات: {advanced_laws.GULF_TAX_LAWS['uae']['corporate_tax_rate']}%
 
-📊 **السعودية:**
+**السعودية:**
 • ضريبة القيمة المضافة: {advanced_laws.GULF_TAX_LAWS['saudi']['vat_rate']}%
 • ضريبة الشركات: {advanced_laws.GULF_TAX_LAWS['saudi']['corporate_tax_rate']}%
 • الزكاة: {advanced_laws.GULF_TAX_LAWS['saudi']['zakat_rate']}%
 
-📊 **الكويت:**
+**الكويت:**
 • ضريبة القيمة المضافة: {advanced_laws.GULF_TAX_LAWS['kuwait']['vat_rate']}% (لم تطبق بعد)
 • ضريبة الشركات: {advanced_laws.GULF_TAX_LAWS['kuwait']['corporate_tax_rate']}%
 
-📊 **قطر:**
+**قطر:**
 • ضريبة القيمة المضافة: {advanced_laws.GULF_TAX_LAWS['qatar']['vat_rate']}% (لم تطبق بعد)
 • ضريبة الشركات: {advanced_laws.GULF_TAX_LAWS['qatar']['corporate_tax_rate']}%
 
-💡 **أزاد خبير في قوانين دول الخليج!** 🚀"""
+**أزاد خبير في قوانين دول الخليج!**"""
         
-        return "❓ أي دولة تريد معرفة قوانينها الضريبية؟ فلسطين، إسرائيل، أم دول الخليج؟"
+        return "أي دولة تريد معرفة قوانينها الضريبية؟ فلسطين، إسرائيل، أم دول الخليج؟"
     
     @staticmethod
     def _show_knowledge_sources(message):
@@ -1167,7 +1167,7 @@ class AzadResponses:
             summary = knowledge_manager.get_all_sources_summary()
             response = f"""🌐 **مصادر المعرفة المتاحة لأزاد:**
 
-📊 **الإحصائيات:**
+**الإحصائيات:**
 • إجمالي الفئات: {summary['total_categories']}
 • إجمالي المصادر: {summary['total_sources']}
 
@@ -1180,7 +1180,7 @@ class AzadResponses:
                     response += f"  • [{source['name']}]({source['url']})\n"
                 response += "\n"
             
-            response += "💡 **للحصول على مصادر محددة، اسأل عن موضوع معين!**"
+            response += "**للحصول على مصادر محددة، اسأل عن موضوع معين!**"
             return response
         
         # مصادر حسب الموضوع
@@ -1199,8 +1199,8 @@ class AzadResponses:
                     response = f"🔗 **مصادر {keyword}:**\n\n"
                     for source in sources[:5]:
                         response += f"**{source['name']}**\n"
-                        response += f"🌐 {source['url']}\n"
-                        response += f"📋 النوع: {source['type']}\n\n"
+                        response += f"{source['url']}\n"
+                        response += f"النوع: {source['type']}\n\n"
                     return response
         
         # عرض دليل المصادر
@@ -1219,11 +1219,11 @@ class AzadResponses:
         
         for i, source in enumerate(recommendations, 1):
             response += f"{i}. **{source['name']}**\n"
-            response += f"   🌐 {source['url']}\n"
-            response += f"   📂 الفئة: {source['category']}\n"
-            response += f"   📋 النوع: {source['type']}\n\n"
+            response += f"   {source['url']}\n"
+            response += f"   الفئة: {source['category']}\n"
+            response += f"   النوع: {source['type']}\n\n"
         
-        response += "💡 **نصيحة:** افتح هذه المواقع للحصول على أحدث المعلومات!"
+        response += "**نصيحة:** افتح هذه المواقع للحصول على أحدث المعلومات!"
         return response
     
     @staticmethod
@@ -1232,46 +1232,46 @@ class AzadResponses:
         msg_lower = message.lower()
         
         if 'إجراءات' in msg_lower or 'procedures' in msg_lower:
-            return f"""📦 **إجراءات الشحن والتخليص**
+            return f"""**إجراءات الشحن والتخليص**
 
-📋 **الوثائق المطلوبة:**
+**الوثائق المطلوبة:**
 {chr(10).join([f"• {doc}" for doc in advanced_laws.SHIPPING_LAWS['documentation_required']])}
 
-🏛️ **الإجراءات الجمركية:**
+**الإجراءات الجمركية:**
 {chr(10).join([f"• {procedure}" for procedure in advanced_laws.SHIPPING_LAWS['customs_procedures'].values()])}
 
-🚫 **البضائع المحظورة:**
+**البضائع المحظورة:**
 {chr(10).join([f"• {item}" for item in advanced_laws.SHIPPING_LAWS['restricted_items']])}
 
-✅ **الإعفاءات الجمركية:**
+**الإعفاءات الجمركية:**
 {chr(10).join([f"• {allowance}" for allowance in advanced_laws.SHIPPING_LAWS['duty_free_allowances'].values()])}
 
-💡 **أزاد خبير في الشحن والتخليص!** 😊"""
+**أزاد خبير في الشحن والتخليص!**"""
         
         elif 'نوع' in msg_lower or 'type' in msg_lower:
-            return """🚚 **أنواع الشحن**
+            return """**أنواع الشحن**
 
-🌊 **الشحن البحري:**
+**الشحن البحري:**
 • أبطأ وأرخص طريقة
 • مناسبة للبضائع الكبيرة
 • يحتاج 15-30 يوم
 • رسوم أقل
 
-✈️ **الشحن الجوي:**
+**الشحن الجوي:**
 • أسرع طريقة
 • مناسبة للبضائع القيمة
 • يحتاج 3-7 أيام
 • رسوم أعلى
 
-🚛 **الشحن البري:**
+**الشحن البري:**
 • متوسط السرعة والسعر
 • مناسبة للمنطقة
 • يحتاج 5-15 يوم
 • رسوم متوسطة
 
-💡 **أزاد يساعدك في اختيار أفضل طريقة!** 🌟"""
+**أزاد يساعدك في اختيار أفضل طريقة!**"""
         
-        return "❓ ما تريد معرفته عن الشحن؟ الإجراءات أم الأنواع؟"
+        return "ما تريد معرفته عن الشحن؟ الإجراءات أم الأنواع؟"
     
     @staticmethod
     def _handle_quality_standards_query(message):
@@ -1284,7 +1284,7 @@ class AzadResponses:
 🏛️ **هيئات التقييس:**
 {chr(10).join([f"• {country}: {org}" for country, org in advanced_laws.QUALITY_LAWS['standards_organizations'].items()])}
 
-📋 **الشهادات المطلوبة:**
+**الشهادات المطلوبة:**
 {chr(10).join([f"• {cert}" for cert in advanced_laws.QUALITY_LAWS['certification_required']])}
 
 🏅 **علامات الجودة:**
@@ -1295,7 +1295,7 @@ class AzadResponses:
         elif 'طعام' in msg_lower or 'food' in msg_lower:
             return """🍎 **معايير جودة الأغذية**
 
-📋 **الشهادات المطلوبة:**
+**الشهادات المطلوبة:**
 • شهادة حلال
 • تاريخ انتهاء الصلاحية
 • شهادة صحية
@@ -1312,7 +1312,7 @@ class AzadResponses:
         elif 'إلكترونيات' in msg_lower or 'electronics' in msg_lower:
             return """📱 **معايير جودة الإلكترونيات**
 
-📋 **الشهادات المطلوبة:**
+**الشهادات المطلوبة:**
 • شهادة CE (أوروبا)
 • شهادة FCC (أمريكا)
 • شهادة السلامة

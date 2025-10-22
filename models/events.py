@@ -53,7 +53,10 @@ def register_all_listeners():
     # مستمعات التدريب العصبي التلقائي
     register_neural_training_listeners()
     
-    logger.info("[OK] All event listeners registered successfully - Full coverage + AI + Neural Networks enabled")
+    # مستمعات القيود المحاسبية التلقائية
+    register_automatic_gl_listeners()
+    
+    logger.info("[OK] All event listeners registered successfully - Full coverage + AI + Neural Networks + Auto GL enabled")
 
 
 # ============================================================================
@@ -107,9 +110,22 @@ def register_sale_listeners():
             )
             
             logger.info(f"✅ Auto-updated customer {target.customer_id} balance to {new_balance} AED after sale {target.sale_number}")
+            
+            try:
+                from services.monitoring_service import MonitoringService
+                MonitoringService.log_performance_metric('customer_balance_update', float(new_balance), 
+                                                        {'customer_id': target.customer_id})
+            except:
+                pass
                 
         except Exception as e:
             logger.error(f"❌ Failed to auto-update customer balance: {e}")
+            try:
+                from services.monitoring_service import MonitoringService
+                MonitoringService.log_performance_metric('customer_balance_error', 1, 
+                                                        {'error': str(e)})
+            except:
+                pass
     
     @event.listens_for(Sale, 'after_delete')
     def auto_update_customer_on_sale_delete(mapper, connection, target):
@@ -189,7 +205,7 @@ def register_purchase_listeners():
     @event.listens_for(Purchase, 'after_update')
     def auto_update_supplier_on_purchase_change(mapper, connection, target):
         """تحديث تلقائي لبيانات المورد عند تغيير فاتورة الشراء"""
-        if not target.is_active or target.status == 'cancelled':
+        if target.status == 'cancelled':
             return
         
         try:
@@ -197,8 +213,7 @@ def register_purchase_listeners():
             purchases_result = connection.execute(
                 Purchase.__table__.select().where(
                     Purchase.supplier_id == target.supplier_id,
-                    Purchase.status == 'confirmed',
-                    Purchase.is_active == True
+                    Purchase.status == 'confirmed'
                 )
             )
             
@@ -207,7 +222,15 @@ def register_purchase_listeners():
             
             for purchase_row in purchases_result:
                 total_purchases += (purchase_row.amount_aed or Decimal('0'))
-                total_paid_from_purchases += (purchase_row.paid_amount_aed or Decimal('0'))
+                # حساب المدفوع من جدول المدفوعات لهذا المورد
+                from models import Payment
+                from sqlalchemy import func
+                paid_for_supplier = connection.execute(
+                    func.sum(Payment.amount_aed).select().where(
+                        Payment.supplier_id == target.supplier_id
+                    )
+                ).scalar() or Decimal('0')
+                total_paid_from_purchases += paid_for_supplier
             
             # حساب إجمالي المدفوعات المباشرة
             payments_result = connection.execute(
@@ -249,18 +272,21 @@ def register_payment_listeners():
     """تسجيل مستمعات سندات الصرف"""
     from models import Payment, Supplier, Purchase
     
-    @event.listens_for(Payment, 'after_insert')
+    @event.listens_for(Payment, 'after_commit')
     def auto_update_supplier_on_payment(mapper, connection, target):
         """تحديث تلقائي لرصيد المورد عند إنشاء سند صرف"""
         try:
+            # التحقق من وجود supplier_id في Payment model
+            if not hasattr(target, 'supplier_id') or target.supplier_id is None:
+                return
+            
             logger.info(f"💰 Payment created - amount: {target.amount_aed} AED to supplier {target.supplier_id}")
             
             # حساب إجمالي المشتريات المؤكدة
             purchases_result = connection.execute(
                 Purchase.__table__.select().where(
                     Purchase.supplier_id == target.supplier_id,
-                    Purchase.status == 'confirmed',
-                    Purchase.is_active == True
+                    Purchase.status == 'confirmed'
                 )
             )
             
@@ -269,7 +295,15 @@ def register_payment_listeners():
             
             for purchase_row in purchases_result:
                 total_purchases += (purchase_row.amount_aed or Decimal('0'))
-                total_paid_from_purchases += (purchase_row.paid_amount_aed or Decimal('0'))
+                # حساب المدفوع من جدول المدفوعات لهذا المورد
+                from models import Payment
+                from sqlalchemy import func
+                paid_for_supplier = connection.execute(
+                    func.sum(Payment.amount_aed).select().where(
+                        Payment.supplier_id == target.supplier_id
+                    )
+                ).scalar() or Decimal('0')
+                total_paid_from_purchases += paid_for_supplier
             
             # حساب إجمالي المدفوعات المباشرة
             payments_result = connection.execute(
@@ -808,13 +842,16 @@ def register_ai_learning_listeners():
                 logger.info(f"🤖 AI Insight: Customer {target.id} qualifies for VIP upgrade!")
             
             # التعلم من السلوك
-            learning_system = AzadLearningSystem()
-            learning_system.learn_from_interaction(
-                question=f"Customer behavior analysis - {target.id}",
-                response=json.dumps({'insights': customer_insights, 'alerts': alerts}),
-                user_feedback=5,
-                context={'type': 'customer_behavior', 'customer_id': target.id}
-            )
+            try:
+                learning_system = AzadLearningSystem()
+                learning_system.learn_from_interaction(
+                    question=f"Customer behavior analysis - {target.id}",
+                    response=json.dumps({'insights': customer_insights, 'alerts': alerts}),
+                    user_feedback=5,
+                    context={'type': 'customer_behavior', 'customer_id': target.id}
+                )
+            except:
+                pass
         
         except Exception as e:
             logger.error(f"❌ AI customer analysis failed: {e}")
@@ -835,8 +872,8 @@ def register_ai_learning_listeners():
                 'current_stock': float(target.current_stock or 0),
                 'min_stock': float(target.min_stock_alert or 0),
                 'cost_price': float(target.cost_price or 0),
-                'sell_price': float(target.sell_price or 0),
-                'margin': float((target.sell_price - target.cost_price) if target.sell_price and target.cost_price else 0)
+                'sell_price': float(target.regular_price or 0),
+                'margin': float((target.regular_price - target.cost_price) if target.regular_price and target.cost_price else 0)
             }
             
             # التعلم من أداء المنتج
@@ -1125,17 +1162,20 @@ def register_ai_accounting_listeners():
                 'lines_count': len(list(target.lines)) if target.lines else 0
             }
             
-            # التعلم المحاسبي
-            learning_system = AzadLearningSystem()
-            learning_system.learn_from_interaction(
-                question=f"Accounting entry analysis - {target.entry_number}",
-                response=json.dumps(entry_data),
-                user_feedback=5 if entry_data['is_balanced'] else 1,
-                context={'type': 'accounting_learning', 'subtype': 'journal_entry'}
-            )
-            
-            logger.info(f"🤖 AI Accounting: Learned entry {target.entry_number} - "
-                       f"{'Balanced' if entry_data['is_balanced'] else 'Unbalanced'}")
+            # التعلم المحاسبي (بدون فلاش إضافي)
+            try:
+                learning_system = AzadLearningSystem()
+                learning_system.learn_from_interaction(
+                    question=f"Accounting entry analysis - {target.entry_number}",
+                    response=json.dumps(entry_data),
+                    user_feedback=5 if entry_data['is_balanced'] else 1,
+                    context={'type': 'accounting_learning', 'subtype': 'journal_entry'}
+                )
+                
+                logger.info(f"🤖 AI Accounting: Learned entry {target.entry_number} - "
+                           f"{'Balanced' if entry_data['is_balanced'] else 'Unbalanced'}")
+            except:
+                pass
         
         except Exception as e:
             logger.error(f"❌ AI accounting learning failed: {e}")
@@ -1287,7 +1327,12 @@ def register_ai_predictive_listeners():
             ).first()
             
             if last_sale:
-                days_since_purchase = (datetime.now(timezone.utc) - last_sale.sale_date).days
+                # التأكد من أن sale_date timezone-aware
+                sale_date = last_sale.sale_date
+                if sale_date.tzinfo is None:
+                    from datetime import timezone as tz
+                    sale_date = sale_date.replace(tzinfo=tz.utc)
+                days_since_purchase = (datetime.now(timezone.utc) - sale_date).days
                 
                 # توقع خطر الخسارة
                 if days_since_purchase > 90:
@@ -1318,25 +1363,13 @@ def register_ai_predictive_listeners():
 # ============================================================================
 
 def register_neural_training_listeners():
-    """
-    مستمعات التدريب التلقائي للشبكات العصبية
-    
-    الهدف: إعادة تدريب النماذج تلقائياً عند توفر بيانات كافية
-    """
     from models import Sale, Customer, Product
     
     @event.listens_for(Sale, 'after_insert')
     def neural_auto_retrain_on_milestones(mapper, connection, target):
-        """
-        إعادة تدريب تلقائية عند الوصول لمعالم محددة
-        
-        المعالم:
-        - كل 100 فاتورة → إعادة تدريب نموذج السعر
-        - كل 200 فاتورة → إعادة تدريب نموذج المبيعات
-        - كل 50 فاتورة → إعادة تدريب كاشف الاحتيال
-        """
         try:
-            # حساب إجمالي الفواتير
+            from ai_knowledge.auto_retraining import AutoRetrainingScheduler
+            
             total_sales = connection.execute(
                 Sale.__table__.select().where(
                     Sale.status == 'confirmed'
@@ -1345,19 +1378,17 @@ def register_neural_training_listeners():
             
             sales_count = len(total_sales)
             
-            # إعادة التدريب على معالم محددة
             if sales_count % 100 == 0:
-                logger.info(f"🧠 Neural Milestone: {sales_count} sales reached - Auto-retraining price optimizer...")
-                
-                # إشارة لإعادة التدريب (سيتم في background task)
-                # يمكن استخدام Celery للتنفيذ في background
-                logger.info(f"🧠 Price optimizer retraining scheduled")
-            
-            if sales_count % 200 == 0:
-                logger.info(f"🧠 Neural Milestone: {sales_count} sales - Retraining sales forecaster...")
-            
-            if sales_count % 50 == 0:
-                logger.info(f"🧠 Neural Milestone: {sales_count} sales - Retraining fraud detector...")
+                logger.info(f"🧠 Neural Milestone: {sales_count} sales - Checking auto-retraining...")
+                try:
+                    import threading
+                    thread = threading.Thread(
+                        target=AutoRetrainingScheduler.check_and_train_if_needed
+                    )
+                    thread.daemon = True
+                    thread.start()
+                except:
+                    pass
         
         except Exception as e:
             logger.error(f"❌ Neural auto-retrain failed: {e}")
@@ -1530,4 +1561,298 @@ def create_app():
     
     return app
 """
+
+
+# ============================================================================
+# Automatic GL (General Ledger) Listeners - القيود المحاسبية التلقائية
+# ============================================================================
+
+def register_automatic_gl_listeners():
+    """
+    تسجيل مستمعات القيود المحاسبية التلقائية
+    يتم إنشاء قيود محاسبية تلقائياً لكل عملية
+    """
+    from models import Sale, Purchase, Receipt, Payment, Expense
+    
+    @event.listens_for(Sale, 'after_insert')
+    def auto_create_sale_journal_entry(mapper, connection, target):
+        """
+        قيد محاسبي تلقائي عند إنشاء فاتورة مبيعات
+        
+        حالة 1 - فاتورة نقدية (مدفوعة بالكامل):
+        من ح/ الصندوق
+        إلى ح/ المبيعات
+        
+        حالة 2 - فاتورة آجلة:
+        من ح/ الذمم المدينة (العملاء)
+        إلى ح/ المبيعات
+        """
+        if target.status != 'confirmed':
+            return
+        
+        try:
+            from services.gl_service import GLService
+            
+            amount = Decimal(str(target.amount_aed or 0))
+            paid = Decimal(str(target.paid_amount_aed or 0))
+            balance = amount - paid
+            
+            lines = []
+            
+            # 1. إيرادات المبيعات (دائن)
+            lines.append({
+                'account': '4000',  # المبيعات
+                'debit': 0,
+                'credit': amount,
+                'description': f'مبيعات - فاتورة {target.sale_number}'
+            })
+            
+            # 2. الجانب المدين (حسب طريقة الدفع)
+            if paid > 0:
+                # الجزء المدفوع → الصندوق
+                lines.append({
+                    'account': '1000',  # الصندوق
+                    'debit': paid,
+                    'credit': 0,
+                    'description': f'تحصيل نقدي - فاتورة {target.sale_number}'
+                })
+            
+            if balance > 0:
+                # الجزء الآجل → الذمم المدينة
+                lines.append({
+                    'account': '1100',  # الذمم المدينة
+                    'debit': balance,
+                    'credit': 0,
+                    'description': f'ذمم مدينة - فاتورة {target.sale_number}'
+                })
+            
+            # إنشاء القيد
+            GLService.post_entry(
+                lines=lines,
+                description=f'قيد فاتورة مبيعات {target.sale_number}',
+                reference_type='sale',
+                reference_id=target.id,
+                currency=target.currency,
+                exchange_rate=target.exchange_rate
+            )
+            
+            logger.info(f"Auto GL Entry created for Sale {target.sale_number}")
+        
+        except Exception as e:
+            logger.error(f"Failed to create auto GL entry for sale: {e}")
+    
+    @event.listens_for(Receipt, 'after_insert')
+    def auto_create_receipt_journal_entry(mapper, connection, target):
+        """
+        قيد محاسبي تلقائي عند إنشاء سند قبض
+        
+        من ح/ الصندوق (أو البنك)
+        إلى ح/ الذمم المدينة (العملاء)
+        """
+        try:
+            from services.gl_service import GLService
+            
+            amount = Decimal(str(target.amount_aed or 0))
+            
+            # تحديد الحساب المدين (حسب طريقة الدفع)
+            if target.payment_method == 'bank':
+                debit_account = '1010'  # البنك
+            else:
+                debit_account = '1000'  # الصندوق
+            
+            lines = [
+                {
+                    'account': debit_account,
+                    'debit': amount,
+                    'credit': 0,
+                    'description': f'تحصيل - سند قبض {target.receipt_number}'
+                },
+                {
+                    'account': '1100',  # الذمم المدينة
+                    'debit': 0,
+                    'credit': amount,
+                    'description': f'تسديد ذمم - سند قبض {target.receipt_number}'
+                }
+            ]
+            
+            GLService.post_entry(
+                lines=lines,
+                description=f'قيد سند قبض {target.receipt_number}',
+                reference_type='receipt',
+                reference_id=target.id,
+                currency=target.currency,
+                exchange_rate=target.exchange_rate
+            )
+            
+            logger.info(f"Auto GL Entry created for Receipt {target.receipt_number}")
+        
+        except Exception as e:
+            logger.error(f"Failed to create auto GL entry for receipt: {e}")
+    
+    @event.listens_for(Purchase, 'after_insert')
+    def auto_create_purchase_journal_entry(mapper, connection, target):
+        """
+        قيد محاسبي تلقائي عند إنشاء فاتورة مشتريات
+        
+        حالة 1 - مشتريات نقدية:
+        من ح/ المشتريات (أو المخزون)
+        إلى ح/ الصندوق
+        
+        حالة 2 - مشتريات آجلة:
+        من ح/ المشتريات (أو المخزون)
+        إلى ح/ الذمم الدائنة (الموردين)
+        """
+        if target.status != 'confirmed':
+            return
+        
+        try:
+            from services.gl_service import GLService
+            
+            amount = Decimal(str(target.amount_aed or 0))
+            # المشتريات لا تحتوي على paid_amount_aed - نفترض أنها آجلة
+            paid = Decimal('0')
+            balance = amount
+            
+            lines = []
+            
+            # 1. المشتريات (مدين)
+            lines.append({
+                'account': '1200',  # المخزون
+                'debit': amount,
+                'credit': 0,
+                'description': f'مشتريات - فاتورة {target.purchase_number}'
+            })
+            
+            # 2. الجانب الدائن (حسب طريقة الدفع)
+            if paid > 0:
+                # الجزء المدفوع → الصندوق
+                lines.append({
+                    'account': '1000',  # الصندوق
+                    'debit': 0,
+                    'credit': paid,
+                    'description': f'دفع نقدي - فاتورة {target.purchase_number}'
+                })
+            
+            if balance > 0:
+                # الجزء الآجل → الذمم الدائنة
+                lines.append({
+                    'account': '2000',  # الذمم الدائنة
+                    'debit': 0,
+                    'credit': balance,
+                    'description': f'ذمم دائنة - فاتورة {target.purchase_number}'
+                })
+            
+            # إنشاء القيد
+            GLService.post_entry(
+                lines=lines,
+                description=f'قيد فاتورة مشتريات {target.purchase_number}',
+                reference_type='purchase',
+                reference_id=target.id,
+                currency=target.currency,
+                exchange_rate=target.exchange_rate
+            )
+            
+            logger.info(f"Auto GL Entry created for Purchase {target.purchase_number}")
+        
+        except Exception as e:
+            logger.error(f"Failed to create auto GL entry for purchase: {e}")
+    
+    @event.listens_for(Payment, 'after_insert')
+    def auto_create_payment_journal_entry(mapper, connection, target):
+        """
+        قيد محاسبي تلقائي عند إنشاء سند صرف
+        
+        من ح/ الذمم الدائنة (الموردين)
+        إلى ح/ الصندوق (أو البنك)
+        """
+        try:
+            from services.gl_service import GLService
+            
+            amount = Decimal(str(target.amount_aed or 0))
+            
+            # تحديد الحساب الدائن (حسب طريقة الدفع)
+            if target.payment_method == 'bank':
+                credit_account = '1010'  # البنك
+            else:
+                credit_account = '1000'  # الصندوق
+            
+            lines = [
+                {
+                    'account': '2000',  # الذمم الدائنة
+                    'debit': amount,
+                    'credit': 0,
+                    'description': f'تسديد للمورد - سند صرف'
+                },
+                {
+                    'account': credit_account,
+                    'debit': 0,
+                    'credit': amount,
+                    'description': f'دفع - سند صرف'
+                }
+            ]
+            
+            GLService.post_entry(
+                lines=lines,
+                description=f'قيد سند صرف للمورد',
+                reference_type='payment',
+                reference_id=target.id,
+                currency=target.currency if hasattr(target, 'currency') else 'AED',
+                exchange_rate=target.exchange_rate if hasattr(target, 'exchange_rate') else 1
+            )
+            
+            logger.info(f"Auto GL Entry created for Payment")
+        
+        except Exception as e:
+            logger.error(f"Failed to create auto GL entry for payment: {e}")
+    
+    @event.listens_for(Expense, 'after_insert')
+    def auto_create_expense_journal_entry(mapper, connection, target):
+        """
+        قيد محاسبي تلقائي عند إنشاء مصروف
+        
+        من ح/ المصروفات
+        إلى ح/ الصندوق (أو البنك)
+        """
+        try:
+            from services.gl_service import GLService
+            
+            amount = Decimal(str(target.amount_aed or 0))
+            
+            # تحديد الحساب الدائن (حسب طريقة الدفع)
+            if target.payment_method == 'bank':
+                credit_account = '1010'  # البنك
+            else:
+                credit_account = '1000'  # الصندوق
+            
+            # تحديد حساب المصروف (حسب الفئة)
+            expense_account = '6000'  # المصروفات العمومية (افتراضي)
+            
+            lines = [
+                {
+                    'account': expense_account,
+                    'debit': amount,
+                    'credit': 0,
+                    'description': target.description or 'مصروف'
+                },
+                {
+                    'account': credit_account,
+                    'debit': 0,
+                    'credit': amount,
+                    'description': target.description or 'دفع مصروف'
+                }
+            ]
+            
+            GLService.post_entry(
+                lines=lines,
+                description=f'قيد مصروف: {target.description}',
+                reference_type='expense',
+                reference_id=target.id,
+                currency=target.currency if hasattr(target, 'currency') else 'AED',
+                exchange_rate=target.exchange_rate if hasattr(target, 'exchange_rate') else 1
+            )
+            
+            logger.info(f"Auto GL Entry created for Expense")
+        
+        except Exception as e:
+            logger.error(f"Failed to create auto GL entry for expense: {e}")
 

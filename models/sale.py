@@ -6,6 +6,12 @@ from extensions import db
 class Sale(db.Model):
     __tablename__ = 'sales'
     
+    __table_args__ = (
+        db.Index('idx_sale_customer_date', 'customer_id', 'sale_date'),
+        db.Index('idx_sale_status_date', 'status', 'sale_date'),
+        db.Index('idx_sale_payment_status', 'payment_status', 'customer_id'),
+    )
+    
     id = db.Column(db.Integer, primary_key=True)
     sale_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     

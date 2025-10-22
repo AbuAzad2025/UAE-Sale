@@ -29,7 +29,7 @@
           {% for account in accounts if account.type == 'asset' %}
           <li class="list-group-item d-flex justify-content-between align-items-center">
             <a href="{{ url_for('ledger.account_ledger', id=account.id) }}">
-              {{ account.code }} - {{ account.name }}
+              {{ account.code }} - {{ account.name_ar if account.name_ar else account.name }}
             </a>
             <span class="badge badge-success badge-pill">{{ account.type }}</span>
           </li>
@@ -41,7 +41,7 @@
           {% for account in accounts if account.type == 'liability' %}
           <li class="list-group-item d-flex justify-content-between align-items-center">
             <a href="{{ url_for('ledger.account_ledger', id=account.id) }}">
-              {{ account.code }} - {{ account.name }}
+              {{ account.code }} - {{ account.name_ar if account.name_ar else account.name }}
             </a>
             <span class="badge badge-danger badge-pill">{{ account.type }}</span>
           </li>
@@ -55,7 +55,7 @@
           {% for account in accounts if account.type == 'revenue' %}
           <li class="list-group-item d-flex justify-content-between align-items-center">
             <a href="{{ url_for('ledger.account_ledger', id=account.id) }}">
-              {{ account.code }} - {{ account.name }}
+              {{ account.code }} - {{ account.name_ar if account.name_ar else account.name }}
             </a>
             <span class="badge badge-primary badge-pill">{{ account.type }}</span>
           </li>
@@ -67,7 +67,7 @@
           {% for account in accounts if account.type == 'expense' %}
           <li class="list-group-item d-flex justify-content-between align-items-center">
             <a href="{{ url_for('ledger.account_ledger', id=account.id) }}">
-              {{ account.code }} - {{ account.name }}
+              {{ account.code }} - {{ account.name_ar if account.name_ar else account.name }}
             </a>
             <span class="badge badge-warning badge-pill">{{ account.type }}</span>
           </li>

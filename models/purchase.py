@@ -44,6 +44,18 @@ class Purchase(db.Model):
     def __repr__(self):
         return f'<Purchase {self.purchase_number}>'
     
+    def get_paid_amount(self):
+        """حساب المبلغ المدفوع من جدول المدفوعات"""
+        from models import Payment
+        from sqlalchemy import func
+        from decimal import Decimal
+        
+        paid = db.session.query(func.sum(Payment.amount_aed)).filter(
+            Payment.supplier_id == self.supplier_id
+        ).scalar()
+        
+        return Decimal(str(paid)) if paid else Decimal('0')
+    
     def calculate_totals(self):
         """
         Calculate all financial totals with proper decimal precision

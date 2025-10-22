@@ -50,6 +50,10 @@ def index():
 def create():
     if request.method == 'POST':
         try:
+            current_app.logger.info("POST request received for purchase creation")
+            current_app.logger.info(f"Form data keys: {list(request.form.keys())}")
+            current_app.logger.info(f"Line count from form: {request.form.get('line_count')}")
+            
             purchase_number = generate_number('P', Purchase, 'purchase_number')
             
             # الحصول على معلومات المورد
@@ -92,19 +96,34 @@ def create():
                 discount_amount=request.form.get('discount_amount', type=float, default=0),
                 tax_rate=request.form.get('tax_rate', type=float, default=0),
                 notes=request.form.get('notes'),
-                user_id=current_user.id
+                user_id=current_user.id,
+                # تعيين قيم افتراضية لتجنب NOT NULL constraint
+                subtotal=0,
+                tax_amount=0,
+                total_amount=0,
+                amount_aed=0
             )
             
             db.session.add(purchase)
             db.session.flush()
             
             line_count = int(request.form.get('line_count', 0))
+            current_app.logger.info(f"Processing {line_count} lines")
             
+            # طباعة جميع البيانات المرسلة
+            for key, value in request.form.items():
+                if key.startswith('lines['):
+                    current_app.logger.info(f"Line data: {key} = {value}")
+            
+            current_app.logger.info("Starting to process lines...")
+            lines_added = 0
             for i in range(line_count):
                 product_id = request.form.get(f'lines[{i}][product_id]', type=int)
                 quantity = request.form.get(f'lines[{i}][quantity]', type=float)
                 unit_cost = request.form.get(f'lines[{i}][unit_cost]', type=float)
                 discount_percent = request.form.get(f'lines[{i}][discount_percent]', type=float, default=0)
+                
+                current_app.logger.info(f"Processing line {i}: product_id={product_id}, qty={quantity}, cost={unit_cost}")
                 
                 if product_id and quantity and quantity > 0 and unit_cost:
                     product = Product.query.get(product_id)
@@ -120,8 +139,47 @@ def create():
                         
                         line.calculate_line_total()
                         db.session.add(line)
+                        lines_added += 1
+                        current_app.logger.info(f"Line added: {product.name} x {quantity} @ {unit_cost}")
             
-            purchase.calculate_totals()
+            current_app.logger.info(f"Lines added: {lines_added}")
+            
+            if lines_added == 0:
+                current_app.logger.warning("No lines added - rolling back")
+                db.session.rollback()
+                flash('❌ يجب إضافة منتج واحد على الأقل', 'danger')
+                return redirect(url_for('purchases.create'))
+            
+            # حساب الإجماليات يدوياً من البيانات المحفوظة
+            subtotal = 0
+            current_app.logger.info(f"Starting calculation for {line_count} lines")
+            
+            for i in range(line_count):
+                product_id = request.form.get(f'lines[{i}][product_id]', type=int)
+                quantity = request.form.get(f'lines[{i}][quantity]', type=float)
+                unit_cost = request.form.get(f'lines[{i}][unit_cost]', type=float)
+                discount_percent = request.form.get(f'lines[{i}][discount_percent]', type=float, default=0)
+                
+                current_app.logger.info(f"Line {i}: product_id={product_id}, qty={quantity}, cost={unit_cost}, discount={discount_percent}")
+                
+                if product_id and quantity and quantity > 0 and unit_cost:
+                    line_subtotal = quantity * unit_cost
+                    line_discount = line_subtotal * (discount_percent / 100)
+                    line_total = line_subtotal - line_discount
+                    subtotal += line_total
+                    current_app.logger.info(f"Line {i} calculated: {line_subtotal} - {line_discount} = {line_total}")
+                else:
+                    current_app.logger.warning(f"Line {i} skipped: invalid data")
+            
+            current_app.logger.info(f"Final subtotal: {subtotal}")
+            
+            purchase.subtotal = subtotal
+            purchase.tax_amount = subtotal * (purchase.tax_rate / 100)
+            purchase.total_amount = subtotal + purchase.tax_amount
+            from decimal import Decimal
+            purchase.amount_aed = Decimal(str(purchase.total_amount)) * purchase.exchange_rate
+            
+            current_app.logger.info(f"Final totals: subtotal={purchase.subtotal}, tax={purchase.tax_amount}, total={purchase.total_amount}, aed={purchase.amount_aed}")
             
             db.session.flush()
             
@@ -152,7 +210,10 @@ def create():
                 except Exception as e:
                     current_app.logger.warning(f'Supplier stats update failed: {e}')
             
+            current_app.logger.info("About to commit to database...")
+            current_app.logger.info(f"Final values: subtotal={purchase.subtotal}, tax_amount={purchase.tax_amount}, total_amount={purchase.total_amount}, amount_aed={purchase.amount_aed}")
             db.session.commit()
+            current_app.logger.info("Database commit successful!")
             
             create_audit_log('create', 'purchases', purchase.id)
             
@@ -160,6 +221,10 @@ def create():
             return redirect(url_for('purchases.view', id=purchase.id))
         
         except Exception as e:
+            current_app.logger.error(f"Error in purchase creation: {str(e)}")
+            current_app.logger.error(f"Error type: {type(e)}")
+            import traceback
+            current_app.logger.error(f"Traceback: {traceback.format_exc()}")
             db.session.rollback()
             flash(f'حدث خطأ: {str(e)}', 'danger')
     

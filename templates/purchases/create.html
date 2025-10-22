@@ -177,8 +177,14 @@
       <a href="{{ url_for('purchases.index') }}" class="btn btn-secondary btn-lg">
         <i class="fas fa-times mr-2"></i> إلغاء
       </a>
-      <button type="button" class="btn btn-info btn-lg float-left" onclick="calculateTotals()">
+      <button type="button" class="btn btn-info btn-lg float-left" onclick="calculateTotals(); console.log('🔄 Manual recalculation triggered');">
         <i class="fas fa-calculator mr-2"></i> إعادة الحساب
+      </button>
+      <button type="button" class="btn btn-warning btn-lg float-left ml-2" onclick="debugTotals()">
+        <i class="fas fa-bug mr-2"></i> Debug
+      </button>
+      <button type="button" class="btn btn-success btn-lg float-left ml-2" onclick="forceCalculate()">
+        <i class="fas fa-bolt mr-2"></i> حساب فوري
       </button>
     </div>
   </form>
@@ -235,7 +241,7 @@ function addLine() {
         <div class="col-md-1">
           <label class="small"><i class="fas fa-equals"></i> المجموع</label>
           <input type="text" class="form-control line-total bg-light" 
-                 id="line_total_${lineIndex}" value="0.00" readonly>
+                 id="line_total_${lineIndex}" data-line="${lineIndex}" value="0.00" readonly>
         </div>
         
         <!-- حذف -->
@@ -321,12 +327,15 @@ function addLine() {
     });
   }
   
-  // حساب الإجمالي عند التغيير
-  $(`.line-quantity[data-line="${lineIndex}"], .line-cost[data-line="${lineIndex}"], .line-discount[data-line="${lineIndex}"]`)
-    .on('input change', function() {
-      calculateLineTotal(lineIndex);
-      calculateTotals();
-    });
+  // حساب الإجمالي عند التغيير - استخدام setTimeout للتأكد من التحميل
+  setTimeout(function() {
+    $(`.line-quantity[data-line="${lineIndex}"], .line-cost[data-line="${lineIndex}"], .line-discount[data-line="${lineIndex}"]`)
+      .on('input change keyup', function() {
+        console.log('🔄 Input changed, recalculating...');
+        calculateLineTotal(lineIndex);
+        calculateTotals();
+      });
+  }, 100);
   
   // تعبئة السعر عند اختيار المنتج
   $productSelect.on('select2:select', function(e) {
@@ -371,9 +380,23 @@ function calculateLineTotal(index) {
 function calculateTotals() {
   let subtotal = 0;
   
-  $('.line-total').each(function() {
-    const val = parseFloat($(this).val()) || 0;
-    subtotal += val;
+  // حساب مجموع جميع الأسطر الموجودة
+  $('.product-line').each(function() {
+    const lineId = $(this).attr('id');
+    const lineNumber = lineId.split('_')[1];
+    
+    const qty = parseFloat($(`.line-quantity[data-line="${lineNumber}"]`).val()) || 0;
+    const cost = parseFloat($(`.line-cost[data-line="${lineNumber}"]`).val()) || 0;
+    const discount = parseFloat($(`.line-discount[data-line="${lineNumber}"]`).val()) || 0;
+    
+    console.log(`Line ${lineNumber}: qty=${qty}, cost=${cost}, discount=${discount}`);
+    
+    const lineSubtotal = qty * cost;
+    const lineDiscountAmount = lineSubtotal * (discount / 100);
+    const lineTotal = lineSubtotal - lineDiscountAmount;
+    
+    $(`#line_total_${lineNumber}`).val(lineTotal.toFixed(2));
+    subtotal += lineTotal;
   });
   
   const taxRate = parseFloat($('#tax_rate').val()) || 0;
@@ -383,6 +406,85 @@ function calculateTotals() {
   $('#summary_subtotal').text(subtotal.toFixed(2) + ' AED');
   $('#summary_tax').text(taxAmount.toFixed(2) + ' AED');
   $('#summary_total').text(total.toFixed(2) + ' AED');
+  
+  console.log('✅ Totals calculated:', {subtotal, taxAmount, total});
+}
+
+// =====================================
+// Debug function
+// =====================================
+function debugTotals() {
+  console.log('🔍 Debug Totals:');
+  console.log('lineIndex:', lineIndex);
+  console.log('Product lines found:', $('.product-line').length);
+  
+  $('.product-line').each(function(index) {
+    const lineId = $(this).attr('id');
+    const lineNumber = lineId.split('_')[1];
+    
+    const qty = $(`.line-quantity[data-line="${lineNumber}"]`).val();
+    const cost = $(`.line-cost[data-line="${lineNumber}"]`).val();
+    const discount = $(`.line-discount[data-line="${lineNumber}"]`).val();
+    
+    console.log(`Line ${lineNumber}:`, {
+      id: lineId,
+      qty: qty,
+      cost: cost,
+      discount: discount,
+      qty_parsed: parseFloat(qty) || 0,
+      cost_parsed: parseFloat(cost) || 0,
+      discount_parsed: parseFloat(discount) || 0
+    });
+  });
+  
+  calculateTotals();
+}
+
+// =====================================
+// Force Calculate - حساب فوري قوي
+// =====================================
+function forceCalculate() {
+  console.log('⚡ Force Calculate triggered!');
+  
+  let subtotal = 0;
+  let lineCount = 0;
+  
+  // إجبار حساب كل سطر
+  $('.product-line').each(function() {
+    const lineId = $(this).attr('id');
+    const lineNumber = lineId.split('_')[1];
+    
+    const qty = parseFloat($(`.line-quantity[data-line="${lineNumber}"]`).val()) || 0;
+    const cost = parseFloat($(`.line-cost[data-line="${lineNumber}"]`).val()) || 0;
+    const discount = parseFloat($(`.line-discount[data-line="${lineNumber}"]`).val()) || 0;
+    
+    console.log(`⚡ Force Line ${lineNumber}: qty=${qty}, cost=${cost}, discount=${discount}`);
+    
+    const lineSubtotal = qty * cost;
+    const lineDiscountAmount = lineSubtotal * (discount / 100);
+    const lineTotal = lineSubtotal - lineDiscountAmount;
+    
+    $(`#line_total_${lineNumber}`).val(lineTotal.toFixed(2));
+    subtotal += lineTotal;
+    lineCount++;
+  });
+  
+  const taxRate = parseFloat($('#tax_rate').val()) || 0;
+  const taxAmount = subtotal * (taxRate / 100);
+  const total = subtotal + taxAmount;
+  
+  $('#summary_subtotal').text(subtotal.toFixed(2) + ' AED');
+  $('#summary_tax').text(taxAmount.toFixed(2) + ' AED');
+  $('#summary_total').text(total.toFixed(2) + ' AED');
+  
+  console.log(`⚡ Force Calculate result: subtotal=${subtotal}, tax=${taxAmount}, total=${total}, lines=${lineCount}`);
+  
+  // إظهار رسالة للمستخدم
+  if (subtotal > 0) {
+    alert(`✅ تم الحساب بنجاح!\nالمجموع الفرعي: ${subtotal.toFixed(2)} AED\nالإجمالي: ${total.toFixed(2)} AED`);
+  } else {
+    alert('⚠️ لم يتم العثور على بيانات للحساب!');
+  }
 }
 
 // =====================================
@@ -428,18 +530,38 @@ $('#supplier_id').on('change', function() {
 });
 
 // =====================================
+// Event Delegation - للتعامل مع العناصر المضافة ديناميكياً
+// =====================================
+$(document).on('input change keyup', '.line-quantity, .line-cost, .line-discount', function() {
+  console.log('🔄 Field changed, recalculating...');
+  const lineNumber = $(this).data('line');
+  if (lineNumber !== undefined) {
+    calculateLineTotal(lineNumber);
+    calculateTotals();
+  }
+});
+
+// =====================================
 // التهيئة عند تحميل الصفحة
 // =====================================
 $(document).ready(function() {
+  console.log('🚀 Page loaded, initializing...');
+  
   // إضافة أول سطر
   addLine();
   
   // حساب عند تغيير الضريبة
-  $('#tax_rate').on('input change', calculateTotals);
+  $('#tax_rate').on('input change', function() {
+    console.log('🔄 Tax rate changed');
+    calculateTotals();
+  });
   
   // التحقق قبل الإرسال
   $('#purchaseForm').on('submit', function(e) {
+    console.log('🚀 Form submission started!');
+    
     const lineCount = $('.product-line').length;
+    console.log('📊 Line count:', lineCount);
     
     if (lineCount === 0) {
       e.preventDefault();
@@ -453,6 +575,33 @@ $(document).ready(function() {
       toastr.error('❌ يجب اختيار المورد');
       return false;
     }
+    
+    // طباعة جميع البيانات قبل الإرسال
+    console.log('📋 Form data being sent:');
+    console.log('Supplier ID:', $('#supplier_id').val());
+    console.log('Currency:', $('#currency').val());
+    console.log('Exchange Rate:', $('#exchange_rate').val());
+    console.log('Tax Rate:', $('#tax_rate').val());
+    
+    // طباعة بيانات كل سطر
+    $('.product-line').each(function(index) {
+      const lineId = $(this).attr('id');
+      const lineNumber = lineId.split('_')[1];
+      
+      const productId = $(`.line-product[data-line="${lineNumber}"]`).val();
+      const quantity = $(`.line-quantity[data-line="${lineNumber}"]`).val();
+      const cost = $(`.line-cost[data-line="${lineNumber}"]`).val();
+      const discount = $(`.line-discount[data-line="${lineNumber}"]`).val();
+      
+      console.log(`Line ${lineNumber}:`, {
+        product_id: productId,
+        quantity: quantity,
+        unit_cost: cost,
+        discount_percent: discount
+      });
+    });
+    
+    console.log('✅ Form validation passed, submitting...');
   });
 });
 </script>

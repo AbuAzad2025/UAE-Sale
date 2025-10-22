@@ -8,8 +8,8 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     @page {
-      size: {{ settings.paper_size or 'A4' }} {{ settings.orientation or 'portrait' }};
-      margin: {{ settings.page_margin or '10mm' }};
+      size: A4 portrait;
+      margin: 10mm;
     }
     body { font-family: 'Tajawal', sans-serif; padding: 20px; }
     .receipt-container {
@@ -64,19 +64,47 @@
     </div>
 
     <div class="receipt-title">
-      <h2>سند قبض 💵</h2>
-      <p style="color: #28a745; margin: 5px 0; font-weight: 700;">رقم: {{ receipt.receipt_number }}</p>
+      <h2>
+        {% if is_payment %}
+          سند صرف 💸
+        {% else %}
+          سند قبض 💵
+        {% endif %}
+      </h2>
+      <p style="color: #28a745; margin: 5px 0; font-weight: 700;">رقم: 
+        {% if is_payment %}
+          {{ receipt.payment_number }}
+        {% else %}
+          {{ receipt.receipt_number }}
+        {% endif %}
+      </p>
     </div>
 
     <div class="receipt-body">
       <div class="info-row">
         <span><strong>التاريخ:</strong></span>
-        <span>{{ receipt.receipt_date.strftime('%Y-%m-%d %H:%M') }}</span>
+        <span>
+          {% if is_payment %}
+            {{ receipt.payment_date.strftime('%Y-%m-%d %H:%M') }}
+          {% else %}
+            {{ receipt.receipt_date.strftime('%Y-%m-%d %H:%M') }}
+          {% endif %}
+        </span>
       </div>
 
       <div class="info-row">
         <span><strong>اسم الزبون:</strong></span>
-        <span>{{ receipt.customer.name if receipt.customer else '-' }}</span>
+        <span>
+          {% if is_payment %}
+            {% if receipt.customer %}
+              {{ receipt.customer.name }}
+            {% else %}
+              {{ receipt.supplier_name or '-' }}
+            {% endif %}
+          {% else %}
+            {{ receipt.customer.name if receipt.customer else '-' }}
+          {% endif %}
+        </span>
       </div>
 
       <div class="info-row">

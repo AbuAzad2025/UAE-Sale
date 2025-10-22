@@ -6,6 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#667eea">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
   <!-- SEO Meta Tags -->
   <meta name="description" content="{% block meta_description %}شركة أزاد للأنظمة الذكية - نظام متكامل لإدارة المستودعات والمبيعات والمشتريات مع ذكاء اصطناعي متقدم{% endblock %}">
   <meta name="keywords" content="{% block meta_keywords %}نظام إدارة المستودعات، برنامج محاسبة، فواتير إلكترونية، إدارة المبيعات، إدارة المخزون، ذكاء اصطناعي، الإمارات، دبي، أبوظبي{% endblock %}">
@@ -42,8 +48,11 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   
   <!-- Critical CSS - تحميل فوري -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/css/adminlte.min.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/css/adminlte.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dark-mode.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/enhancements.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
   
   <!-- Non-Critical CSS - تحميل متأخر -->
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -543,6 +552,12 @@
             <a href="{{ url_for('owner.dashboard') }}" class="nav-link">
               <i class="nav-icon fas fa-crown text-warning"></i>
               <p>لوحة المالك</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('ai.config') }}" class="nav-link">
+              <i class="nav-icon fas fa-key text-info"></i>
+              <p>مفاتيح AI (Groq)</p>
             </a>
           </li>
           {% endif %}

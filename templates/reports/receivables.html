@@ -76,6 +76,7 @@
           <th>{{ t('Date') }}</th>
           <th>العمر (يوم)</th>
           <th>{{ t('Amount') }}</th>
+          <th><i class="fas fa-exchange-alt mr-1"></i>سعر الصرف</th>
           <th>{{ t('Status') }}</th>
         </tr>
       </thead>
@@ -88,6 +89,15 @@
             <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
             <td>{{ sale.days_old }}</td>
             <td>{{ "{:,.2f}".format(sale.calculated_balance) }} AED</td>
+            <td>
+              {% if sale.exchange_rate and sale.exchange_rate != 1 %}
+                <span class="badge badge-info" title="سعر الصرف وقت المعاملة">
+                  <i class="fas fa-exchange-alt mr-1"></i>{{ "{:.4f}".format(sale.exchange_rate) }}
+                </span>
+              {% else %}
+                <span class="text-muted">1.0000</span>
+              {% endif %}
+            </td>
             <td>
               {% if category == 'current' %}<span class="badge badge-success">حالي</span>
               {% elif category == 'days_30' %}<span class="badge badge-info">30-60</span>

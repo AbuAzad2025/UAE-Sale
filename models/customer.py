@@ -5,6 +5,11 @@ from extensions import db
 class Customer(db.Model):
     __tablename__ = 'customers'
     
+    __table_args__ = (
+        db.Index('idx_customer_active_type', 'is_active', 'customer_type'),
+        db.Index('idx_customer_balance', 'balance'),
+    )
+    
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False, index=True)
     name_ar = db.Column(db.String(200))

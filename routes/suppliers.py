@@ -68,6 +68,8 @@ def create():
     """إضافة مورد جديد"""
     if request.method == 'POST':
         try:
+            initial_balance = request.form.get('initial_balance', type=float, default=0)
+            
             supplier = Supplier(
                 name=request.form.get('name'),
                 name_en=request.form.get('name_en'),
@@ -86,6 +88,8 @@ def create():
                 credit_limit=request.form.get('credit_limit', type=float, default=0),
                 payment_terms_days=request.form.get('payment_terms_days', type=int, default=30),
                 preferred_currency=request.form.get('preferred_currency', 'AED'),
+                total_purchases_aed=initial_balance,
+                total_paid_aed=0,
                 notes=request.form.get('notes'),
                 tags=request.form.get('tags'),
                 is_verified=request.form.get('is_verified') == 'on',

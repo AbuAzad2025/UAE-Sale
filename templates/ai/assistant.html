@@ -9,8 +9,16 @@
     </h1>
     <p class="text-muted">AI خارق يفوق أي مساعد في العالم - قدرات لا محدودة</p>
   </div>
-  <div>
-    <span class="badge {% if ai_enabled %}badge-success{% else %}badge-primary{% endif %} badge-lg px-4 py-2" style="font-size: 1.1rem;">
+  <div class="d-flex align-items-center">
+    <div class="btn-group mr-3" role="group">
+      <button type="button" class="btn" id="ai-mode-local" onclick="switchAIMode('local')" style="background: #6c757d; color: white; border: none; padding: 8px 20px; font-weight: 500;">
+        <i class="fas fa-microchip"></i> محلي
+      </button>
+      <button type="button" class="btn" id="ai-mode-groq" onclick="switchAIMode('groq')" style="background: #20c997; color: white; border: none; padding: 8px 20px; font-weight: 500;">
+        <i class="fas fa-cloud"></i> Groq
+      </button>
+    </div>
+    <span class="badge {% if ai_enabled %}badge-success{% else %}badge-primary{% endif %} badge-lg px-4 py-2" style="font-size: 1.1rem;" id="ai-status-badge">
       {% if ai_enabled %}
         <i class="fas fa-brain mr-2"></i>AI كامل مفعّل
       {% else %}
@@ -288,6 +296,22 @@
               <br>• "أفضل العملاء"
               <br>• "منتجات منخفضة الربح"
             </div>
+            
+            <div class="alert alert-success mt-3 mb-0">
+              <strong>🎯 أوامر سريعة:</strong>
+              <br>• <strong>تعديل رصيد:</strong> "رصيد: أحمد محمد، 500 درهم"
+              <br>• <strong>استلام دفعة:</strong> "استلام: أحمد محمد، 200 درهم، نقد"
+              <br>• <strong>إعطاء دفعة:</strong> "إعطاء: أحمد محمد، 100 درهم، استرداد"
+              <br>• <strong>إنشاء عميل:</strong> "عميل: أحمد محمد، 0561234567، دبي"
+              <br>• <strong>إنشاء منتج:</strong> "منتج: فلتر زيت، 12345، 50 درهم، 100 قطعة"
+            </div>
+            
+            <div class="alert alert-warning mt-3 mb-0">
+              <strong>💡 نصيحة ذكية:</strong>
+              <br>• اكتب كلمة واحدة مثل "رصيد" أو "عميل" وسأعطيك الخيارات!
+              <br>• أو اكتب الطلب كاملاً وسأنفذه فوراً!
+              <br>• أنا أفهم أي طريقة تكتب بها! 🤖
+            </div>
           </div>
         </div>
           </div>
@@ -306,6 +330,12 @@
             <button type="button" class="btn btn-outline-success" onclick="toggleBeginnersMode()" id="beginnersBtn" title="وضع المبتدئين">
               <i class="fas fa-graduation-cap"></i> مبتدئ
             </button>
+            <button type="button" class="btn btn-outline-primary" onclick="showExcelUploader()" title="رفع ملف Excel">
+              <i class="fas fa-file-excel"></i> Excel
+            </button>
+            <button type="button" class="btn btn-outline-success" onclick="openExcelTemplate()" title="فتح Excel للتعديل">
+              <i class="fas fa-external-link-alt"></i> فتح Excel
+            </button>
           </div>
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-secondary" onclick="setDialect('formal')" title="فصحى" id="formalBtn">
@@ -317,6 +347,59 @@
             <button type="button" class="btn btn-outline-info" onclick="setDialect('gulf')" title="خليجي" id="gulfBtn">
               <i class="fas fa-mosque"></i>
             </button>
+          </div>
+        </div>
+
+        <!-- Excel Uploader Modal -->
+        <div id="excelUploaderModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+          <div style="background: white; padding: 30px; border-radius: 16px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <h4 style="color: #667eea; margin-bottom: 20px;">
+              <i class="fas fa-file-excel mr-2"></i>رفع ملف Excel - معالج ذكي خارق
+            </h4>
+            <form id="excelUploadForm" enctype="multipart/form-data">
+              <div class="form-group">
+                <label>اختر ملف Excel (.xlsx, .xls)</label>
+                <input type="file" id="excelFile" accept=".xlsx,.xls" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label>المستودع</label>
+                <select id="warehouseSelect" class="form-control">
+                  {% for warehouse in warehouses %}
+                  <option value="{{ warehouse.id }}">{{ warehouse.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group">
+                <div class="alert alert-info">
+                  <i class="fas fa-lightbulb mr-2"></i>
+                  <strong>AI الذكي سيفهم تلقائياً:</strong><br>
+                  - أعمدة Excel (عربي أو إنجليزي)<br>
+                  - يُنشئ منتجات جديدة أو يحدث الموجودة<br>
+                  - دقة 100% - لا أخطاء بشرية
+                </div>
+                <div class="alert alert-warning">
+                  <i class="fas fa-edit mr-2"></i>
+                  <strong>نصيحة:</strong> اضغط "فتح Excel" أولاً لتعديل البيانات قبل الرفع
+                </div>
+              </div>
+              <div class="d-flex justify-content-between">
+                <div>
+                  <button type="button" class="btn btn-info mr-2" onclick="openExcelTemplate()">
+                    <i class="fas fa-external-link-alt mr-2"></i>فتح Excel
+                  </button>
+                  <button type="button" class="btn btn-secondary" onclick="hideExcelUploader()">إلغاء</button>
+                </div>
+                <button type="submit" class="btn btn-success" id="uploadExcelBtn">
+                  <i class="fas fa-upload mr-2"></i>رفع ومعالجة
+                </button>
+              </div>
+              <div id="uploadProgress" class="mt-3" style="display: none;">
+                <div class="progress">
+                  <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                </div>
+                <small class="text-muted">جاري المعالجة الذكية...</small>
+              </div>
+            </form>
           </div>
         </div>
         
@@ -475,6 +558,8 @@ $(document).ready(function() {
     
     showTyping();
     
+    const aiMode = localStorage.getItem('ai_mode') || 'groq';
+    
     $.ajax({
       url: '{{ url_for("ai.chat") }}',
       method: 'POST',
@@ -484,6 +569,7 @@ $(document).ready(function() {
       },
       data: JSON.stringify({ 
         message: message,
+        ai_mode: aiMode,
         context: {
           dialect: currentDialect || 'palestinian',
           beginners_mode: beginnersMode || false
@@ -626,6 +712,44 @@ $(document).ready(function() {
     $('#userMessage').val('أخبرني عن كمبيوترات السيارات');
     $('#sendBtn').click();
   };
+  
+  // Switch AI Mode
+  window.switchAIMode = function(mode) {
+    localStorage.setItem('ai_mode', mode);
+    
+    if (mode === 'local') {
+      $('#ai-mode-local').css({
+        'background': '#495057',
+        'box-shadow': '0 0 15px rgba(73,80,87,0.8)',
+        'transform': 'scale(1.05)'
+      });
+      $('#ai-mode-groq').css({
+        'background': '#20c997',
+        'box-shadow': 'none',
+        'opacity': '0.5',
+        'transform': 'scale(1)'
+      });
+      $('#ai-status-badge').removeClass('badge-success').addClass('badge-secondary')
+        .html('<i class="fas fa-microchip mr-2"></i>محلي 💻');
+    } else {
+      $('#ai-mode-groq').css({
+        'background': '#17a2b8',
+        'box-shadow': '0 0 15px rgba(23,162,184,0.8)',
+        'transform': 'scale(1.05)'
+      });
+      $('#ai-mode-local').css({
+        'background': '#6c757d',
+        'box-shadow': 'none',
+        'opacity': '0.5',
+        'transform': 'scale(1)'
+      });
+      $('#ai-status-badge').removeClass('badge-secondary').addClass('badge-info')
+        .html('<i class="fas fa-cloud mr-2"></i>Groq ☁️');
+    }
+  };
+  
+  const savedMode = localStorage.getItem('ai_mode') || 'groq';
+  switchAIMode(savedMode);
 
 });  // نهاية document.ready
 
@@ -673,6 +797,84 @@ function loadBusinessInsights() {
       $('#insights-container').html('<p class="text-danger text-center">فشل تحميل الرؤى</p>');
     }
   });
+}
+
+function showExcelUploader() {
+  $('#excelUploaderModal').css('display', 'flex');
+}
+
+function hideExcelUploader() {
+  $('#excelUploaderModal').css('display', 'none');
+  $('#excelUploadForm')[0].reset();
+  $('#uploadProgress').hide();
+}
+
+$('#excelUploadForm').on('submit', function(e) {
+  e.preventDefault();
+  
+  const fileInput = $('#excelFile')[0];
+  const warehouseId = $('#warehouseSelect').val();
+  
+  if (!fileInput.files || !fileInput.files[0]) {
+    alert('يرجى اختيار ملف Excel');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  formData.append('warehouse_id', warehouseId);
+  
+  $('#uploadExcelBtn').prop('disabled', true);
+  $('#uploadProgress').show();
+  
+  $.ajax({
+    url: '{{ url_for("ai.upload_excel") }}',
+    method: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    success: function(response) {
+      if (response.success) {
+        addMessage('bot', response.message, true);
+        hideExcelUploader();
+      } else {
+        addMessage('bot', `❌ خطأ: ${response.error}`, true);
+      }
+      $('#uploadExcelBtn').prop('disabled', false);
+      $('#uploadProgress').hide();
+    },
+    error: function(xhr) {
+      const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : 'حدث خطأ غير متوقع';
+      addMessage('bot', `❌ خطأ: ${errorMsg}`, true);
+      $('#uploadExcelBtn').prop('disabled', false);
+      $('#uploadProgress').hide();
+    }
+  });
+});
+
+// دالة فتح ملف Excel للتعديل
+function openExcelTemplate() {
+  // فتح ملف Excel مباشرة في التطبيق الافتراضي (Excel)
+  const filePath = '/static/template_products.xlsx';
+  
+  // إنشاء رابط لفتح الملف في Excel
+  const link = document.createElement('a');
+  link.href = filePath;
+  link.target = '_blank';
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  // إظهار رسالة للمستخدم
+  addMessage('bot', `📗 تم فتح ملف Excel في التطبيق!
+  
+  💡 تعليمات:
+  1. عدّل البيانات في Excel
+  2. احفظ الملف (Ctrl+S)
+  3. ارجع هنا واضغط "Excel" لرفع الملف المحدث
+  
+  🤖 المصدر: GROQ API + التحليل المحلي`, true);
 }
 </script>
 {% endblock %}

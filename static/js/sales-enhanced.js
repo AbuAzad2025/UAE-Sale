@@ -11,33 +11,52 @@ const productsCache = {};
  */
 function addLine() {
     const html = `
-        <div class="product-line mb-2 p-3" id="line_${lineIndex}" style="background: #f8f9fa; border-radius: 8px; border-right: 4px solid #667eea;">
+        <div class="product-line mb-3 p-3" id="line_${lineIndex}" style="background: #f8f9fa; border-radius: 8px; border-right: 4px solid #667eea;">
             <div class="row">
                 <div class="col-md-5">
+                    <label class="font-weight-bold mb-1">
+                        <i class="fas fa-box text-primary"></i> المنتج
+                        <span class="text-danger">*</span>
+                    </label>
                     <select name="lines[${lineIndex}][product_id]" class="form-control product-select" required 
                             data-index="${lineIndex}" onchange="loadProductPrice(${lineIndex})">
                         <option value="">ابحث عن منتج...</option>
                     </select>
+                    <small class="text-muted">ابحث بالاسم أو رقم القطعة</small>
                 </div>
                 <div class="col-md-2">
+                    <label class="font-weight-bold mb-1">
+                        <i class="fas fa-sort-numeric-up text-info"></i> الكمية
+                        <span class="text-danger">*</span>
+                    </label>
                     <input type="number" name="lines[${lineIndex}][quantity]" class="form-control quantity-input" 
                            placeholder="الكمية" value="1" step="0.01" min="0.01" required 
                            onchange="calculateTotals()" onkeyup="calculateTotals()">
+                    <small class="text-muted">عدد الوحدات</small>
                 </div>
                 <div class="col-md-2">
+                    <label class="font-weight-bold mb-1">
+                        <i class="fas fa-money-bill text-success"></i> السعر
+                        <span class="text-danger">*</span>
+                    </label>
                     <input type="number" name="lines[${lineIndex}][unit_price]" class="form-control price-input" 
-                           placeholder="السعر (AED)" step="0.01" min="0" required 
+                           placeholder="السعر" step="0.01" min="0" required 
                            id="price_${lineIndex}" onchange="calculateTotals()" onkeyup="calculateTotals()"
-                           title="سعر الوحدة بالدرهم الإماراتي">
-                    <small class="text-muted" style="font-size: 0.7rem;">درهم</small>
+                           title="سعر الوحدة بالدرهم">
+                    <small class="text-muted">درهم/وحدة</small>
                 </div>
                 <div class="col-md-2">
+                    <label class="font-weight-bold mb-1">
+                        <i class="fas fa-percent text-warning"></i> خصم
+                    </label>
                     <input type="number" name="lines[${lineIndex}][discount_percent]" class="form-control discount-input" 
                            placeholder="خصم%" value="0" step="0.01" min="0" max="100" 
                            onchange="calculateTotals()" onkeyup="calculateTotals()">
+                    <small class="text-muted">نسبة الخصم %</small>
                 </div>
                 <div class="col-md-1">
-                    <button type="button" class="btn btn-danger btn-sm" onclick="removeLine(${lineIndex})" title="حذف">
+                    <label class="font-weight-bold mb-1">&nbsp;</label>
+                    <button type="button" class="btn btn-danger btn-sm btn-block" onclick="removeLine(${lineIndex})" title="حذف الصنف">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>

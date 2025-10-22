@@ -94,6 +94,7 @@
           <th>رقم الشيك</th>
           <th>إلى</th>
           <th>المبلغ</th>
+          <th><i class="fas fa-exchange-alt mr-1"></i>سعر الصرف</th>
           <th>تاريخ الاستحقاق</th>
           <th>البنك</th>
           <th>الحالة</th>
@@ -110,6 +111,32 @@
           </td>
           <td>{{ cheque.payee_name }}</td>
           <td class="text-danger"><strong>{{ "{:,.2f}".format(cheque.amount_aed) }} AED</strong></td>
+          <td>
+            {% if cheque.status == 'cleared' and cheque.clearance_exchange_rate and cheque.currency != 'AED' %}
+              <!-- عرض سعري الصرف للشيكات المصروفة -->
+              <div>
+                <small class="text-muted">إنشاء:</small>
+                <span class="badge badge-info">{{ "{:.4f}".format(cheque.exchange_rate) }}</span>
+              </div>
+              <div>
+                <small class="text-muted">صرف:</small>
+                <span class="badge badge-success">{{ "{:.4f}".format(cheque.clearance_exchange_rate) }}</span>
+              </div>
+              {% if cheque.currency_gain_loss and abs(cheque.currency_gain_loss) > 0.01 %}
+              <div>
+                <small class="{% if cheque.currency_gain_loss > 0 %}text-success{% else %}text-danger{% endif %}">
+                  {% if cheque.currency_gain_loss > 0 %}+{% endif %}{{ "{:.0f}".format(cheque.currency_gain_loss) }}
+                </small>
+              </div>
+              {% endif %}
+            {% elif cheque.exchange_rate and cheque.exchange_rate != 1 %}
+              <span class="badge badge-info" title="سعر الصرف وقت المعاملة">
+                <i class="fas fa-exchange-alt mr-1"></i>{{ "{:.4f}".format(cheque.exchange_rate) }}
+              </span>
+            {% else %}
+              <span class="text-muted">1.0000</span>
+            {% endif %}
+          </td>
           <td>{{ cheque.due_date.strftime('%Y-%m-%d') }}</td>
           <td>{{ cheque.bank_name }}</td>
           <td>

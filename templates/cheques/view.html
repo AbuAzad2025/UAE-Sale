@@ -80,13 +80,37 @@
                 <td><strong>{{ "{:,.2f}".format(cheque.amount) }}</strong> {{ cheque.currency }}</td>
               </tr>
               <tr>
-                <th>سعر الصرف:</th>
-                <td>{{ cheque.exchange_rate }}</td>
+                <th>سعر الصرف (الإنشاء):</th>
+                <td>
+                  <span class="badge badge-info">{{ "{:.4f}".format(cheque.exchange_rate) }}</span>
+                </td>
               </tr>
               <tr>
-                <th>المبلغ بالدرهم:</th>
+                <th>المبلغ المتوقع (AED):</th>
                 <td><strong>{{ "{:,.2f}".format(cheque.amount_aed) }}</strong> AED</td>
               </tr>
+              {% if cheque.status == 'cleared' and cheque.clearance_exchange_rate %}
+              <tr class="table-success">
+                <th>سعر الصرف (الصرف):</th>
+                <td>
+                  <span class="badge badge-success">{{ "{:.4f}".format(cheque.clearance_exchange_rate) }}</span>
+                </td>
+              </tr>
+              <tr class="table-success">
+                <th>المبلغ الفعلي (AED):</th>
+                <td><strong>{{ "{:,.2f}".format(cheque.actual_amount_aed) }}</strong> AED</td>
+              </tr>
+              {% if cheque.currency_gain_loss and cheque.currency_gain_loss != 0 %}
+              <tr class="{% if cheque.currency_gain_loss > 0 %}table-success{% else %}table-danger{% endif %}">
+                <th>ربح/خسارة العملة:</th>
+                <td>
+                  <strong class="{% if cheque.currency_gain_loss > 0 %}text-success{% else %}text-danger{% endif %}">
+                    {% if cheque.currency_gain_loss > 0 %}+{% endif %}{{ "{:,.2f}".format(cheque.currency_gain_loss) }} AED
+                  </strong>
+                </td>
+              </tr>
+              {% endif %}
+              {% endif %}
             </table>
           </div>
         </div>
@@ -307,12 +331,46 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-body">
           <p>تأكيد صرف الشيك رقم: <strong>{{ cheque.cheque_bank_number }}</strong></p>
+          <p>المبلغ: <strong>{{ "{:,.2f}".format(cheque.amount) }} {{ cheque.currency }}</strong></p>
           
           <div class="form-group">
-            <label>تاريخ الصرف:</label>
+            <label>تاريخ الصرف: <span class="text-danger">*</span></label>
             <input type="date" name="clearance_date" class="form-control" 
                    value="{{ today }}" required>
           </div>
+          
+          {% if cheque.currency != 'AED' %}
+          <div class="alert alert-info">
+            <i class="fas fa-exchange-alt mr-2"></i>
+            <strong>سعر الصرف عند الإنشاء:</strong> {{ "{:.4f}".format(cheque.exchange_rate) }}
+          </div>
+          
+          <div class="form-group">
+            <label>سعر الصرف الحالي (وقت الصرف): <span class="text-danger">*</span></label>
+            <input type="number" name="clearance_exchange_rate" id="clearance_exchange_rate" 
+                   class="form-control" step="0.000001" 
+                   value="{{ suggested_rate|default(cheque.exchange_rate, true) }}" required>
+            <small class="form-text text-muted">
+              سيتم جلب السعر الحالي تلقائياً من API - يمكنك التعديل
+            </small>
+          </div>
+          
+          <div class="form-group">
+            <label>المبلغ المتوقع بالدرهم:</label>
+            <input type="text" class="form-control" 
+                   value="{{ "{:,.2f}".format(cheque.amount_aed) }} AED" readonly>
+          </div>
+          
+          <div class="form-group">
+            <label>المبلغ الفعلي بالدرهم (بالسعر الجديد):</label>
+            <input type="text" id="actual_amount_preview" class="form-control font-weight-bold" 
+                   value="..." readonly>
+          </div>
+          
+          <div id="gain_loss_preview" style="display:none;" class="alert">
+            <strong>فرق العملة:</strong> <span id="gain_loss_amount"></span>
+          </div>
+          {% endif %}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">إلغاء</button>
@@ -436,6 +494,14 @@ function depositCheque() {
 
 function clearCheque() {
   $('#clearModal').modal('show');
+  
+  {% if cheque.currency != 'AED' %}
+  // جلب سعر الصرف الحالي عند فتح النافذة
+  fetchCurrentExchangeRate();
+  
+  // حساب المبلغ الفعلي عند تغيير السعر
+  $('#clearance_exchange_rate').on('input', calculateActualAmount);
+  {% endif %}
 }
 
 function bounceCheque() {
@@ -445,6 +511,54 @@ function bounceCheque() {
 function cancelCheque() {
   $('#cancelModal').modal('show');
 }
+
+{% if cheque.currency != 'AED' %}
+function fetchCurrentExchangeRate() {
+  // جلب سعر الصرف الحالي من API
+  $.ajax({
+    url: '/api/currency-rate/{{ cheque.currency }}/AED',
+    method: 'GET',
+    success: function(data) {
+      if (data.rate) {
+        $('#clearance_exchange_rate').val(data.rate.toFixed(6));
+        calculateActualAmount();
+      }
+    },
+    error: function() {
+      console.log('فشل جلب سعر الصرف، سيتم استخدام السعر الأصلي');
+    }
+  });
+}
+
+function calculateActualAmount() {
+  const amount = {{ cheque.amount }};
+  const originalRate = {{ cheque.exchange_rate }};
+  const newRate = parseFloat($('#clearance_exchange_rate').val()) || originalRate;
+  
+  const originalAmount = amount * originalRate;
+  const actualAmount = amount * newRate;
+  const difference = actualAmount - originalAmount;
+  
+  // عرض المبلغ الفعلي
+  $('#actual_amount_preview').val(actualAmount.toFixed(2) + ' AED');
+  
+  // عرض الفرق
+  if (Math.abs(difference) > 0.01) {
+    const $gainLoss = $('#gain_loss_preview');
+    const $amount = $('#gain_loss_amount');
+    
+    if (difference > 0) {
+      $gainLoss.removeClass('alert-danger').addClass('alert-success').show();
+      $amount.html('<span class="text-success">+' + difference.toFixed(2) + ' AED (ربح)</span>');
+    } else {
+      $gainLoss.removeClass('alert-success').addClass('alert-danger').show();
+      $amount.html('<span class="text-danger">' + difference.toFixed(2) + ' AED (خسارة)</span>');
+    }
+  } else {
+    $('#gain_loss_preview').hide();
+  }
+}
+{% endif %}
 </script>
 {% endblock %}
 

@@ -1,15 +1,80 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - إنشاء سند قبض جديد{% endblock %}
-{% block page_title %}سند قبض جديد{% endblock %}
+{% block title %}شركة أزاد للأنظمة الذكية - {% if is_payment %}إنشاء سند صرف جديد{% else %}إنشاء سند قبض جديد{% endif %}{% endblock %}
+{% block page_title %}{% if is_payment %}سند صرف جديد{% else %}سند قبض جديد{% endif %}{% endblock %}
 
 {% block content %}
+{% if sale %}
+<!-- معلومات فاتورة المبيعات -->
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card card-info">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-file-invoice"></i> معلومات الفاتورة</h3>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-3">
+            <strong>رقم الفاتورة:</strong><br>
+            <span class="text-primary">{{ sale.sale_number }}</span>
+          </div>
+          <div class="col-md-3">
+            <strong>العميل:</strong><br>
+            <span>{{ sale.customer_name }}</span>
+          </div>
+          <div class="col-md-3">
+            <strong>المبلغ الإجمالي:</strong><br>
+            <span class="text-success">{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency }}</span>
+          </div>
+          <div class="col-md-3">
+            <strong>المتبقي:</strong><br>
+            <span class="text-danger">{{ "{:,.2f}".format(sale.balance_due) }} {{ sale.currency }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% elif purchase %}
+<!-- معلومات فاتورة المشتريات -->
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card card-danger">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-file-invoice"></i> معلومات فاتورة الشراء</h3>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-3">
+            <strong>رقم الفاتورة:</strong><br>
+            <span class="text-primary">{{ purchase.purchase_number }}</span>
+          </div>
+          <div class="col-md-3">
+            <strong>المورد:</strong><br>
+            <span>{{ purchase.supplier_name }}</span>
+          </div>
+          <div class="col-md-3">
+            <strong>المبلغ الإجمالي:</strong><br>
+            <span class="text-success">{{ "{:,.2f}".format(purchase.total_amount) }} {{ purchase.currency }}</span>
+          </div>
+          <div class="col-md-3">
+            <strong>المتبقي:</strong><br>
+            <span class="text-danger">{{ "{:,.2f}".format(purchase.total_amount - (purchase.paid_amount_aed or 0)) }} AED</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <div class="card">
-  <form method="POST" action="{{ url_for('payments.create_receipt') }}">
+  <form method="POST" action="{% if sale %}{{ url_for('payments.create_from_sale', sale_id=sale.id) }}{% elif purchase %}{{ url_for('payments.create_payment', purchase_id=purchase.id) }}{% else %}{{ url_for('payments.create_receipt') }}{% endif %}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     
     <div class="card-body">
       <div class="row">
-        <!-- العميل -->
+        {% if not is_payment %}
+        <!-- العميل (سند قبض فقط) -->
         <div class="col-md-6">
           <div class="form-group">
             <label>
@@ -26,6 +91,17 @@
             </select>
           </div>
         </div>
+        {% else %}
+        <!-- المورد (سند صرف فقط) -->
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-truck text-danger"></i> المورد 
+            </label>
+            <input type="text" class="form-control" value="{{ supplier.name if supplier else purchase.supplier_name }}" readonly>
+          </div>
+        </div>
+        {% endif %}
 
         <!-- المبلغ -->
         <div class="col-md-3">
@@ -53,11 +129,40 @@
               <i class="fas fa-dollar-sign text-warning"></i> العملة
             </label>
             <select name="currency" id="currency" class="form-control">
-              <option value="AED" selected>AED - درهم إماراتي</option>
+              {% if purchase %}
+                <option value="{{ purchase.currency }}" selected>{{ purchase.currency }}</option>
+              {% elif sale %}
+                <option value="{{ sale.currency }}" selected>{{ sale.currency }}</option>
+              {% else %}
+                <option value="AED" selected>AED - درهم إماراتي</option>
+              {% endif %}
               <option value="USD">USD - دولار أمريكي</option>
               <option value="EUR">EUR - يورو</option>
+              <option value="GBP">GBP - جنيه إسترليني</option>
               <option value="SAR">SAR - ريال سعودي</option>
+              <option value="KWD">KWD - دينار كويتي</option>
+              <option value="QAR">QAR - ريال قطري</option>
+              <option value="OMR">OMR - ريال عماني</option>
+              <option value="BHD">BHD - دينار بحريني</option>
             </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <!-- سعر الصرف -->
+        <div class="col-md-12">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-exchange-alt text-primary"></i> سعر الصرف مقابل الدرهم
+            </label>
+            <input type="number" name="exchange_rate" id="exchange_rate" 
+                   class="form-control" step="0.000001" min="0.000001"
+                   value="{% if purchase %}{{ purchase.exchange_rate }}{% elif sale %}{{ sale.exchange_rate }}{% else %}1{% endif %}" 
+                   readonly style="background-color: #f8f9fa;">
+            <small class="form-text text-muted">
+              <i class="fas fa-info-circle"></i> سعر الصرف من الفاتورة (ثابت)
+            </small>
           </div>
         </div>
       </div>

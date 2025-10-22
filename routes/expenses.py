@@ -21,6 +21,13 @@ def index():
     
     query = Expense.query.filter_by(status='confirmed')
     
+    # إخفاء المصروفات المؤرشفة
+    from models import ArchivedRecord
+    archived_expenses = db.session.query(ArchivedRecord.record_id).filter(
+        ArchivedRecord.table_name == 'expenses'
+    ).subquery()
+    query = query.filter(~Expense.id.in_(archived_expenses))
+    
     if category_id:
         query = query.filter_by(category_id=category_id)
     
@@ -257,4 +264,78 @@ def create_category():
         
         flash(f'حدث خطأ: {str(e)}', 'danger')
         return redirect(url_for('expenses.categories'))
+
+
+@expenses_bp.route('/archived')
+@login_required
+@admin_required
+def archived():
+    """عرض المصروفات المؤرشفة"""
+    from models import ArchivedRecord
+    from datetime import datetime
+    
+    archived_expenses_query = db.session.query(ArchivedRecord).filter(
+        ArchivedRecord.table_name == 'expenses'
+    )
+    
+    archived_items = []
+    
+    for archived in archived_expenses_query.all():
+        data = archived.data
+        archived_items.append({
+            'id': archived.record_id,
+            'expense_number': data.get('expense_number'),
+            'expense_date': datetime.fromisoformat(data.get('expense_date').replace('Z', '+00:00')) if isinstance(data.get('expense_date'), str) else data.get('expense_date'),
+            'category_name': data.get('category_name'),
+            'description': data.get('description'),
+            'amount': float(data.get('amount', 0)),
+            'currency': data.get('currency'),
+            'payment_method': data.get('payment_method'),
+            'archived_at': archived.archived_at
+        })
+    
+    archived_items.sort(key=lambda x: x['archived_at'], reverse=True)
+    
+    return render_template('expenses/archived.html', expenses=archived_items)
+
+
+@expenses_bp.route('/<int:id>/archive', methods=['POST'])
+@login_required
+@admin_required
+def archive(id):
+    """أرشفة مصروف"""
+    from services.archive_service import ArchiveService
+    
+    expense = Expense.query.get_or_404(id)
+    
+    try:
+        archive_service = ArchiveService()
+        archive_service.archive_record('expenses', expense, reason='تم أرشفة المصروف')
+        create_audit_log('archive', 'expenses', expense.id)
+    except Exception as e:
+        db.session.rollback()
+    
+    return redirect(url_for('expenses.index'))
+
+
+@expenses_bp.route('/<int:id>/restore', methods=['POST'])
+@login_required
+@admin_required
+def restore(id):
+    """استعادة مصروف من الأرشيف"""
+    from models import ArchivedRecord
+    
+    archived = ArchivedRecord.query.filter_by(
+        table_name='expenses',
+        record_id=id
+    ).first_or_404()
+    
+    try:
+        db.session.delete(archived)
+        db.session.commit()
+        create_audit_log('restore', 'expenses', id)
+    except Exception as e:
+        db.session.rollback()
+    
+    return redirect(url_for('expenses.archived'))
 

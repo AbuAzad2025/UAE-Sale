@@ -27,7 +27,7 @@ def admin_required(f):
             flash('الرجاء تسجيل الدخول أولاً', 'warning')
             return redirect(url_for('auth.login'))
         
-        if not (current_user.is_super_admin() or current_user.is_manager()):
+        if not (current_user.is_owner or current_user.is_super_admin() or current_user.is_manager()):
             flash('هذه الصفحة للمديرين فقط', 'danger')
             abort(403)
         
@@ -53,7 +53,7 @@ def super_admin_required(f):
             flash('الرجاء تسجيل الدخول أولاً', 'warning')
             return redirect(url_for('auth.login'))
         
-        if not current_user.is_super_admin():
+        if not (current_user.is_owner or current_user.is_super_admin()):
             flash('هذه الصفحة للسوبر أدمن فقط', 'danger')
             abort(403)
         

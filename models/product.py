@@ -29,6 +29,11 @@ class ProductCategory(db.Model):
 class Product(db.Model):
     __tablename__ = 'products'
     
+    __table_args__ = (
+        db.Index('idx_product_active_stock', 'is_active', 'current_stock'),
+        db.Index('idx_product_category_active', 'category_id', 'is_active'),
+    )
+    
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False, index=True)
     name_ar = db.Column(db.String(200))
@@ -105,6 +110,8 @@ class Product(db.Model):
         return self.regular_price
     
     def is_low_stock(self):
+        if self.min_stock_alert is None:
+            return False
         return self.current_stock <= self.min_stock_alert
     
     def is_out_of_stock(self):

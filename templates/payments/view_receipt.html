@@ -23,15 +23,35 @@
       <div class="card-body">
         <dl class="row">
           <dt class="col-sm-5">رقم السند:</dt>
-          <dd class="col-sm-7"><strong>{{ receipt.receipt_number }}</strong></dd>
+          <dd class="col-sm-7"><strong>
+            {% if is_payment %}
+              {{ receipt.payment_number }}
+            {% else %}
+              {{ receipt.receipt_number }}
+            {% endif %}
+          </strong></dd>
           
           <dt class="col-sm-5">الزبون:</dt>
           <dd class="col-sm-7">
-            <a href="{{ url_for('customers.view', id=receipt.customer.id) }}">{{ receipt.customer.name }}</a>
+            {% if is_payment %}
+              {% if receipt.customer %}
+                <a href="{{ url_for('customers.view', id=receipt.customer.id) }}">{{ receipt.customer.name }}</a>
+              {% else %}
+                {{ receipt.supplier_name or '-' }}
+              {% endif %}
+            {% else %}
+              <a href="{{ url_for('customers.view', id=receipt.customer.id) }}">{{ receipt.customer.name }}</a>
+            {% endif %}
           </dd>
           
           <dt class="col-sm-5">التاريخ:</dt>
-          <dd class="col-sm-7">{{ receipt.receipt_date.strftime('%Y-%m-%d %H:%M') }}</dd>
+                <dd class="col-sm-7">
+                  {% if is_payment %}
+                    {{ receipt.payment_date.strftime('%Y-%m-%d %H:%M') }}
+                  {% else %}
+                    {{ receipt.receipt_date.strftime('%Y-%m-%d %H:%M') }}
+                  {% endif %}
+                </dd>
           
           <dt class="col-sm-5">المبلغ:</dt>
           <dd class="col-sm-7"><h4 class="text-success">{{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }}</h4></dd>

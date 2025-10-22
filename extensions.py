@@ -215,11 +215,13 @@ def _sqlite_pragmas_on_connect(dbapi_connection, connection_record):
 # Initialize Extensions
 # ======================
 def init_extensions(app):
-    """Initialize all Flask extensions"""
     
-    # Database
     db.init_app(app)
     migrate.init_app(app, db)
+    
+    if app.config.get('SQLALCHEMY_ECHO'):
+        from utils.performance_tracker import log_slow_queries
+        log_slow_queries(app)
     
     # Login
     login_manager.init_app(app)

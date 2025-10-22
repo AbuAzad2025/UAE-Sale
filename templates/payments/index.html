@@ -20,6 +20,7 @@
           <th>الزبون</th>
           <th>{{ t('Date') }}</th>
           <th>{{ t('Amount') }}</th>
+          <th><i class="fas fa-exchange-alt mr-1"></i>سعر الصرف</th>
           <th>الطريقة</th>
           <th>الإجراءات</th>
         </tr>
@@ -31,6 +32,15 @@
           <td>{{ receipt.customer.name if receipt.customer else '-' }}</td>
           <td>{{ receipt.receipt_date.strftime('%Y-%m-%d') }}</td>
           <td>{{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }}</td>
+          <td>
+            {% if receipt.exchange_rate and receipt.exchange_rate != 1 %}
+              <span class="badge badge-info" title="سعر الصرف وقت المعاملة">
+                <i class="fas fa-exchange-alt mr-1"></i>{{ "{:.4f}".format(receipt.exchange_rate) }}
+              </span>
+            {% else %}
+              <span class="text-muted">1.0000</span>
+            {% endif %}
+          </td>
           <td><span class="badge badge-success">{{ receipt.payment_method }}</span></td>
           <td>
             <a href="{{ url_for('payments.view', id=receipt.id) }}" class="btn btn-sm btn-info">

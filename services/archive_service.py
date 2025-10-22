@@ -24,9 +24,6 @@ class ArchiveService:
             )
             
             db.session.add(archived)
-            
-            record.is_active = False
-            
             db.session.commit()
             
             current_app.logger.info(f'Archived: {table_name} #{record.id}')

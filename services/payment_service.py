@@ -57,8 +57,21 @@ class PaymentService:
                 user_rate=user_exchange_rate
             )
             
+            # تحديد نوع المصدر والاتجاه
+            source_type = 'manual'  # افتراضي
+            source_id = None
+            direction = 'incoming'  # سندات القبض دائماً وارد
+            
+            if allocate_to_sales:
+                # إذا كان مرتبط بفاتورة بيع
+                source_type = 'sale'
+                source_id = list(allocate_to_sales.keys())[0]  # أول فاتورة
+            
             receipt = Receipt(
                 receipt_number=receipt_number,
+                source_type=source_type,
+                source_id=source_id,
+                direction=direction,
                 customer_id=customer.id,
                 amount=Decimal(str(amount)),
                 currency=currency,

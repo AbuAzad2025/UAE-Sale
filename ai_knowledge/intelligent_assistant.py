@@ -150,7 +150,13 @@ class IntelligentAssistant:
             entities = self._extract_entities(message)
             
             # بناء السياق الكامل
-            full_context = self.context_engine.build_context(message, user_id, context)
+            # بناء السياق الكامل
+            full_context = {
+                'message': message,
+                'user_id': user_id,
+                'timestamp': datetime.now(),
+                'additional_context': context or {}
+            }
             
             # دمج النتائج
             final_intent = semantic_result.get('intent') or neural_understanding.get('intent')

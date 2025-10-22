@@ -443,6 +443,48 @@ class AzadLearningSystem:
                 pass
         
         return enhanced_response
+    
+    def learn_from_groq_feedback(self, learning_data):
+        """تعلم من ردود Groq - Groq يدرب المحلي"""
+        try:
+            question = learning_data['question']
+            local_answer = learning_data['local_answer']
+            groq_answer = learning_data['improved_answer']
+            
+            comparison = {
+                'question': question,
+                'local_response': local_answer,
+                'groq_response': groq_answer,
+                'timestamp': learning_data['timestamp'],
+                'improvements': self._analyze_improvements(local_answer, groq_answer)
+            }
+            
+            if not hasattr(self, 'groq_training_log'):
+                self.groq_training_log = []
+            
+            self.groq_training_log.append(comparison)
+            
+            if len(self.groq_training_log) > 100:
+                self.groq_training_log = self.groq_training_log[-100:]
+            
+            self.learn_from_interaction(question, groq_answer, user_feedback='groq_improved')
+            
+        except Exception as e:
+            print(f"Groq training error: {e}")
+    
+    def _analyze_improvements(self, local, groq):
+        """تحليل التحسينات التي قدمها Groq"""
+        try:
+            local_str = str(local) if local else ""
+            groq_str = str(groq) if groq else ""
+            improvements = {
+                'length_diff': len(groq_str) - len(local_str),
+                'quality_improved': len(groq_str) > len(local_str),
+                'timestamp': datetime.now().isoformat()
+            }
+            return improvements
+        except:
+            return {'timestamp': datetime.now().isoformat()}
 
 
 # إنشاء مثيل عالمي لنظام التعلم

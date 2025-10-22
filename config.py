@@ -45,7 +45,7 @@ class Config:
     # ===== Flask Core =====
     FLASK_APP = os.environ.get("FLASK_APP", "app:create_app")
     APP_ENV = os.environ.get("APP_ENV", os.environ.get("FLASK_ENV", "development"))
-    DEBUG = _bool(os.environ.get("DEBUG"), False)
+    DEBUG = _bool(os.environ.get("DEBUG"), True)
     
     # Secret Key - persistent in development, required in production
     SECRET_KEY = os.environ.get("SECRET_KEY")
@@ -139,10 +139,10 @@ class Config:
     CORS_SUPPORTS_CREDENTIALS = True
     
     # Rate Limiting
-    RATELIMIT_DEFAULT = "100 per day;20 per hour"
+    RATELIMIT_DEFAULT = "10000 per day;1000 per hour"
     RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
-    RATELIMIT_LOGIN = "100 per hour;30 per minute"
-    RATELIMIT_API = "60 per hour;1 per second"
+    RATELIMIT_LOGIN = "1000 per hour;100 per minute"
+    RATELIMIT_API = "600 per hour;10 per second"
     
     # ===== Redis & Caching =====
     REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")

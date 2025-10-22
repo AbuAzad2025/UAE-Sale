@@ -309,14 +309,26 @@ def clear_cheque(id):
         clearance_date_str = request.form.get('clearance_date')
         clearance_date = datetime.strptime(clearance_date_str, '%Y-%m-%d').date() if clearance_date_str else None
         
+        # سعر الصرف وقت الصرف (اختياري)
+        clearance_exchange_rate = request.form.get('clearance_exchange_rate', type=float)
+        
         # تأكيد الصرف - هنا تحدث المحاسبة!
-        cheque.clear_cheque(clearance_date)
+        cheque.clear_cheque(clearance_date, clearance_exchange_rate)
         db.session.commit()
         
-        create_audit_log('cheque_clear', 'cheques', id,
-                        f'تأكيد صرف شيك رقم {cheque.cheque_bank_number} من البنك - تم تحديث الحسابات')
+        # رسالة مفصلة عند وجود فرق عملة
+        if cheque.currency_gain_loss and abs(cheque.currency_gain_loss) > Decimal('0.01'):
+            if cheque.currency_gain_loss > 0:
+                gain_loss_msg = f' - تم تحقيق ربح من فرق العملة: +{cheque.currency_gain_loss:.2f} AED'
+            else:
+                gain_loss_msg = f' - خسارة من فرق العملة: {cheque.currency_gain_loss:.2f} AED'
+        else:
+            gain_loss_msg = ''
         
-        flash(f'✅ تم تأكيد صرف الشيك {cheque.cheque_bank_number} - تم تحديث الحسابات المالية', 'success')
+        create_audit_log('cheque_clear', 'cheques', id,
+                        f'تأكيد صرف شيك رقم {cheque.cheque_bank_number} من البنك - تم تحديث الحسابات{gain_loss_msg}')
+        
+        flash(f'✅ تم تأكيد صرف الشيك {cheque.cheque_bank_number} - تم تحديث الحسابات المالية{gain_loss_msg}', 'success')
     
     except ValueError as e:
         flash(f'❌ خطأ: {str(e)}', 'error')

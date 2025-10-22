@@ -227,7 +227,10 @@
       <div class="row">
         <div class="col-md-3">
           <div class="form-group">
-            <label>الرقم الضريبي (TRN)</label>
+            <label>
+              <i class="fas fa-file-invoice text-info"></i> الرقم الضريبي (TRN)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الرقم الضريبي للمورد (15 رقم)"></i>
+            </label>
             <input type="text" name="tax_number" class="form-control"
                    placeholder="123456789012345">
           </div>
@@ -235,7 +238,9 @@
         
         <div class="col-md-3">
           <div class="form-group">
-            <label>السجل التجاري</label>
+            <label>
+              <i class="fas fa-certificate text-warning"></i> السجل التجاري
+            </label>
             <input type="text" name="commercial_registration" class="form-control"
                    placeholder="رقم السجل التجاري">
           </div>
@@ -243,17 +248,46 @@
         
         <div class="col-md-3">
           <div class="form-group">
-            <label>الحد الائتماني (AED)</label>
-            <input type="number" name="credit_limit" class="form-control"
-                   value="0" step="0.01" min="0">
+            <label>
+              <i class="fas fa-wallet text-success"></i> الرصيد الابتدائي (AED)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المبلغ المستحق للمورد عند بداية التسجيل"></i>
+            </label>
+            <input type="number" name="initial_balance" class="form-control"
+                   value="0" step="0.01" min="0" placeholder="0.00">
+            <small class="form-text text-muted">
+              <i class="fas fa-info-circle"></i> المبلغ المستحق للمورد من قبل (إن وجد)
+            </small>
           </div>
         </div>
         
         <div class="col-md-3">
           <div class="form-group">
-            <label>شروط الدفع (أيام)</label>
+            <label>
+              <i class="fas fa-coins text-info"></i> الحد الائتماني (AED)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الحد الأقصى للديون المسموح به"></i>
+            </label>
+            <input type="number" name="credit_limit" class="form-control"
+                   value="0" step="0.01" min="0" placeholder="0.00">
+          </div>
+        </div>
+      </div>
+      
+      <div class="row">
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-calendar-alt text-primary"></i> شروط الدفع (أيام)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عدد الأيام المسموح للدفع (30 يوم افتراضي)"></i>
+            </label>
             <input type="number" name="payment_terms_days" class="form-control"
-                   value="30" min="0">
+                   value="30" min="0" placeholder="30">
+          </div>
+        </div>
+        
+        <div class="col-md-9">
+          <div class="alert alert-info mb-0">
+            <i class="fas fa-lightbulb"></i> 
+            <strong>ملاحظة:</strong> الرصيد الابتدائي يُستخدم لتسجيل المبالغ المستحقة للمورد من قبل تفعيل النظام
           </div>
         </div>
       </div>

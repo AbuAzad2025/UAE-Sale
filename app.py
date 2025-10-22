@@ -15,6 +15,12 @@ from utils.monitoring import setup_advanced_logging
 from utils.asset_compression import register_compression_cli
 from config_redis import init_redis
 
+try:
+    from flask_compress import Compress
+    COMPRESS_AVAILABLE = True
+except ImportError:
+    COMPRESS_AVAILABLE = False
+
 
 def create_app(config_class=Config):
     app = Flask(__name__, 
@@ -32,7 +38,11 @@ def create_app(config_class=Config):
     init_extensions(app)
     setup_advanced_logging(app)
     
-    # Initialize Redis if configured
+    if COMPRESS_AVAILABLE:
+        compress = Compress()
+        compress.init_app(app)
+        app.logger.info("[OK] Flask-Compress enabled")
+    
     if app.config.get('CACHE_TYPE') == 'redis':
         init_redis(app)
     
@@ -184,6 +194,13 @@ def create_app(config_class=Config):
     register_cli(app)
     register_compression_cli(app)
     
+    try:
+        from cli_commands import register_cli_commands
+        register_cli_commands(app)
+        app.logger.info("[OK] Enhanced CLI commands registered")
+    except Exception as e:
+        app.logger.warning(f'Enhanced CLI commands not registered: {e}')
+    
     app.logger.info('[OK] Application initialized successfully')
     
     return app
@@ -300,6 +317,42 @@ def register_blueprints(app):
         app.register_blueprint(api_docs_bp)
     except Exception as e:
         app.logger.warning(f'api_docs_bp not registered: {e}')
+    
+    try:
+        from routes.monitoring import monitoring_bp
+        app.register_blueprint(monitoring_bp)
+    except Exception as e:
+        app.logger.warning(f'monitoring_bp not registered: {e}')
+    
+    try:
+        from routes.graphql import graphql_bp
+        app.register_blueprint(graphql_bp)
+    except Exception as e:
+        app.logger.warning(f'graphql_bp not registered: {e}')
+    
+    try:
+        from routes.gamification import gamification_bp
+        app.register_blueprint(gamification_bp)
+    except Exception as e:
+        app.logger.warning(f'gamification_bp not registered: {e}')
+    
+    try:
+        from routes.whatsapp import whatsapp_bp
+        app.register_blueprint(whatsapp_bp)
+    except Exception as e:
+        app.logger.warning(f'whatsapp_bp not registered: {e}')
+    
+    try:
+        from routes.api_enhanced import api_enhanced_bp
+        app.register_blueprint(api_enhanced_bp)
+    except Exception as e:
+        app.logger.warning(f'api_enhanced_bp not registered: {e}')
+    
+    try:
+        from routes.api_analytics import api_analytics_bp
+        app.register_blueprint(api_analytics_bp)
+    except Exception as e:
+        app.logger.warning(f'api_analytics_bp not registered: {e}')
 
 
 def register_cli(app):
@@ -518,16 +571,31 @@ if __name__ == '__main__':
                     
             except Exception as e:
                 print(f"Backup scheduler error: {e}")
-                time.sleep(3600)  # إعادة المحاولة بعد ساعة
+                time.sleep(3600)
     
-    # بدء thread الجدولة
-    backup_thread = threading.Thread(target=schedule_daily_backup, daemon=True)
-    backup_thread.start()
-    print("Automatic backup scheduler started")
+    try:
+        backup_thread = threading.Thread(target=schedule_daily_backup, daemon=True)
+        backup_thread.start()
+        print("Automatic backup scheduler started")
+    except:
+        pass
+    
+    port = int(os.environ.get('PORT', 8080))
+    host = os.environ.get('HOST', '0.0.0.0')
+    debug_mode = app.config.get('DEBUG', True)
+    
+    print("=" * 70)
+    print(f"🚀 Starting UAE-Sale System")
+    print("=" * 70)
+    print(f"🌐 Host: {host}")
+    print(f"📍 Port: {port}")
+    print(f"🐛 Debug: {debug_mode}")
+    print(f"📂 Database: {app.config['SQLALCHEMY_DATABASE_URI']}")
+    print("=" * 70)
     
     app.run(
-        host='0.0.0.0',
-        port=8080,
-        debug=app.config.get('DEBUG', False)
+        host=host,
+        port=port,
+        debug=debug_mode,
+        use_reloader=False
     )
-

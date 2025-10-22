@@ -119,7 +119,6 @@ class AzadNeuralEngine:
             activation='relu',
             solver='adam',
             max_iter=2000,
-            class_weight='balanced',  # للتعامل مع البيانات غير المتوازنة
             random_state=42
         )
         

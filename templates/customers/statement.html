@@ -89,6 +89,7 @@
           <th>المرجع</th>
           <th class="text-danger">مدين</th>
           <th class="text-success">دائن</th>
+          <th><i class="fas fa-exchange-alt mr-1"></i>سعر الصرف</th>
           <th>{{ t('Balance') }}</th>
         </tr>
       </thead>
@@ -102,6 +103,13 @@
             <td><a href="{{ url_for('sales.view', id=sale.id) }}">{{ sale.sale_number }}</a></td>
             <td class="text-danger">{{ "{:,.2f}".format(sale.amount_aed) }}</td>
             <td>-</td>
+            <td>
+              {% if sale.exchange_rate and sale.exchange_rate != 1 %}
+                <span class="badge badge-info">{{ "{:.4f}".format(sale.exchange_rate) }}</span>
+              {% else %}
+                <span class="text-muted">1.0000</span>
+              {% endif %}
+            </td>
             <td>{{ "{:,.2f}".format(running_balance) }}</td>
           </tr>
           
@@ -113,6 +121,13 @@
               <td>{{ payment.reference_number or '-' }}</td>
               <td>-</td>
               <td class="text-success">{{ "{:,.2f}".format(payment.amount_aed) }}</td>
+              <td>
+                {% if payment.exchange_rate and payment.exchange_rate != 1 %}
+                  <span class="badge badge-info">{{ "{:.4f}".format(payment.exchange_rate) }}</span>
+                {% else %}
+                  <span class="text-muted">1.0000</span>
+                {% endif %}
+              </td>
               <td>{{ "{:,.2f}".format(running_balance) }}</td>
             </tr>
           {% endfor %}
@@ -122,6 +137,7 @@
           <td colspan="3" class="text-center">الرصيد النهائي</td>
           <td class="text-danger">--</td>
           <td class="text-success">--</td>
+          <td>--</td>
           <td class="text-danger"><strong>{{ "{:,.2f}".format(final_balance|default(0)) }} AED</strong></td>
         </tr>
       </tbody>

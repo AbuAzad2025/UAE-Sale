@@ -31,8 +31,11 @@ class Cheque(db.Model):
     # المبلغ والعملة
     amount = db.Column(db.Numeric(15, 2), nullable=False)
     currency = db.Column(db.String(10), default='AED')
-    exchange_rate = db.Column(db.Numeric(15, 6), default=Decimal('1.0'))
-    amount_aed = db.Column(db.Numeric(15, 2))  # المبلغ بالدرهم
+    exchange_rate = db.Column(db.Numeric(15, 6), default=Decimal('1.0'))  # سعر الصرف عند الإنشاء
+    clearance_exchange_rate = db.Column(db.Numeric(15, 6))  # سعر الصرف عند الصرف الفعلي
+    amount_aed = db.Column(db.Numeric(15, 2))  # المبلغ بالدرهم عند الإنشاء
+    actual_amount_aed = db.Column(db.Numeric(15, 2))  # المبلغ الفعلي بالدرهم عند الصرف
+    currency_gain_loss = db.Column(db.Numeric(15, 2), default=Decimal('0'))  # ربح/خسارة فرق العملة
     
     # التواريخ
     issue_date = db.Column(db.Date, nullable=False)  # تاريخ الإصدار
@@ -123,13 +126,36 @@ class Cheque(db.Model):
         self.status = 'deposited'
         self.deposit_date = deposit_date or datetime.now().date()
     
-    def clear_cheque(self, clearance_date=None):
+    def clear_cheque(self, clearance_date=None, clearance_exchange_rate=None):
         """تأكيد صرف الشيك من البنك - المحاسبة الحقيقية تبدأ هنا"""
         if self.status not in ['deposited', 'pending']:
             raise ValueError(f'لا يمكن تأكيد صرف شيك بحالة: {self.status_ar}')
         
         self.status = 'cleared'
         self.clearance_date = clearance_date or datetime.now().date()
+        
+        # حفظ سعر الصرف وقت الصرف إذا العملة مختلفة عن الدرهم
+        if self.currency != 'AED' and clearance_exchange_rate:
+            from services.currency_service import CurrencyService
+            self.clearance_exchange_rate = Decimal(str(clearance_exchange_rate))
+        elif self.currency != 'AED':
+            # جلب السعر الحالي تلقائياً
+            from services.currency_service import CurrencyService
+            try:
+                current_rate = CurrencyService.get_exchange_rate(self.currency, 'AED')
+                self.clearance_exchange_rate = current_rate
+            except:
+                # إذا فشل جلب السعر، استخدم السعر الأصلي
+                self.clearance_exchange_rate = self.exchange_rate
+        else:
+            # إذا العملة AED، السعر 1
+            self.clearance_exchange_rate = Decimal('1.0')
+        
+        # حساب المبلغ الفعلي بالدرهم
+        self.actual_amount_aed = self.amount * self.clearance_exchange_rate
+        
+        # حساب ربح/خسارة فرق العملة
+        self.currency_gain_loss = self.actual_amount_aed - self.amount_aed
         
         # تحديث الدفعة المرتبطة
         from models.payment import Payment, Receipt
@@ -229,7 +255,11 @@ class Cheque(db.Model):
             'bank_name': self.bank_name,
             'amount': float(self.amount),
             'currency': self.currency,
+            'exchange_rate': float(self.exchange_rate) if self.exchange_rate else 1.0,
+            'clearance_exchange_rate': float(self.clearance_exchange_rate) if self.clearance_exchange_rate else None,
             'amount_aed': float(self.amount_aed) if self.amount_aed else 0,
+            'actual_amount_aed': float(self.actual_amount_aed) if self.actual_amount_aed else None,
+            'currency_gain_loss': float(self.currency_gain_loss) if self.currency_gain_loss else 0,
             'issue_date': self.issue_date.isoformat() if self.issue_date else None,
             'due_date': self.due_date.isoformat() if self.due_date else None,
             'clearance_date': self.clearance_date.isoformat() if self.clearance_date else None,

@@ -10,8 +10,15 @@ class Payment(db.Model):
     
     payment_type = db.Column(db.String(20), nullable=False, index=True)
     
+    # اتجاه المدفوعات
+    direction = db.Column(db.String(10), default='outgoing', index=True)  # incoming, outgoing
+    
     sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'), index=True)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), index=True)
+    
+    # معلومات المورد (لسندات الصرف)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), index=True)
+    supplier_name = db.Column(db.String(200))
     
     amount = db.Column(db.Numeric(15, 3), nullable=False)
     currency = db.Column(db.String(3), default='AED', nullable=False)
@@ -46,6 +53,7 @@ class Payment(db.Model):
     
     sale = db.relationship('Sale', back_populates='payments')
     customer = db.relationship('Customer')
+    supplier = db.relationship('Supplier', foreign_keys=[supplier_id])
     user = db.relationship('User', foreign_keys=[user_id])
     cheque = db.relationship('Cheque', backref='payment_record', foreign_keys=[cheque_id])
     
@@ -95,6 +103,15 @@ class Payment(db.Model):
         else:
             return 'معلقة ⏳' if not self.rejection_reason else 'مرفوضة ❌'
     
+    @property
+    def direction_ar(self):
+        """اتجاه المدفوعة بالعربي"""
+        directions = {
+            'incoming': 'وارد',
+            'outgoing': 'صادر'
+        }
+        return directions.get(self.direction, 'غير محدد')
+    
     def to_dict(self):
         return {
             'id': self.id,
@@ -115,6 +132,13 @@ class Receipt(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     receipt_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    
+    # تصنيف مصدر السند
+    source_type = db.Column(db.String(20), default='sale', index=True)  # sale, manual, refund, etc.
+    source_id = db.Column(db.Integer, index=True)  # ID of the source (sale_id, etc.)
+    
+    # اتجاه المدفوعات
+    direction = db.Column(db.String(10), default='incoming', index=True)  # incoming, outgoing
     
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False, index=True)
     
@@ -187,6 +211,41 @@ class Receipt(db.Model):
             return 'مؤكد ✅'
         else:
             return 'معلق ⏳' if not self.rejection_reason else 'مرفوض ❌'
+    
+    @property
+    def source_type_ar(self):
+        """نوع المصدر بالعربي"""
+        source_types = {
+            'sale': 'مبيعات',
+            'manual': 'يدوي',
+            'refund': 'استرداد',
+            'adjustment': 'تسوية',
+            'other': 'أخرى'
+        }
+        return source_types.get(self.source_type, 'غير محدد')
+    
+    @property
+    def direction_ar(self):
+        """اتجاه المدفوعة بالعربي"""
+        directions = {
+            'incoming': 'وارد',
+            'outgoing': 'صادر'
+        }
+        return directions.get(self.direction, 'غير محدد')
+    
+    def get_source_info(self):
+        """معلومات المصدر"""
+        if self.source_type == 'sale' and self.source_id:
+            from models import Sale
+            sale = Sale.query.get(self.source_id)
+            if sale:
+                return {
+                    'type': 'فاتورة بيع',
+                    'number': sale.sale_number,
+                    'date': sale.sale_date.strftime('%Y-%m-%d'),
+                    'amount': float(sale.total_amount)
+                }
+        return None
     
     def to_dict(self):
         return {

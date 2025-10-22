@@ -22,6 +22,13 @@ def index():
     
     query = Sale.query
     
+    # إخفاء المبيعات المؤرشفة
+    from models import ArchivedRecord
+    archived_sales = db.session.query(ArchivedRecord.record_id).filter(
+        ArchivedRecord.table_name == 'sales'
+    ).subquery()
+    query = query.filter(~Sale.id.in_(archived_sales))
+    
     if search:
         search_filter = f'%{search}%'
         query = query.join(Customer).filter(
@@ -243,3 +250,75 @@ def api_get_price():
         'unit': product.unit
     })
 
+
+@sales_bp.route('/archived')
+@login_required
+@permission_required('manage_sales')
+def archived():
+    """عرض المبيعات المؤرشفة"""
+    from models import ArchivedRecord
+    from datetime import datetime
+    
+    archived_sales_query = db.session.query(ArchivedRecord).filter(
+        ArchivedRecord.table_name == 'sales'
+    )
+    
+    archived_items = []
+    
+    for archived in archived_sales_query.all():
+        data = archived.data
+        archived_items.append({
+            'id': archived.record_id,
+            'sale_number': data.get('sale_number'),
+            'sale_date': datetime.fromisoformat(data.get('sale_date').replace('Z', '+00:00')) if isinstance(data.get('sale_date'), str) else data.get('sale_date'),
+            'customer_name': data.get('customer_name'),
+            'total_amount': float(data.get('total_amount', 0)),
+            'currency': data.get('currency'),
+            'payment_status': data.get('payment_status'),
+            'archived_at': archived.archived_at
+        })
+    
+    archived_items.sort(key=lambda x: x['archived_at'], reverse=True)
+    
+    return render_template('sales/archived.html', sales=archived_items)
+
+
+@sales_bp.route('/<int:id>/archive', methods=['POST'])
+@login_required
+@permission_required('manage_sales')
+def archive(id):
+    """أرشفة فاتورة"""
+    from services.archive_service import ArchiveService
+    
+    sale = Sale.query.get_or_404(id)
+    
+    try:
+        archive_service = ArchiveService()
+        archive_service.archive_record('sales', sale, reason='تم أرشفة فاتورة المبيعات')
+        create_audit_log('archive', 'sales', sale.id)
+    except Exception as e:
+        db.session.rollback()
+    
+    return redirect(url_for('sales.index'))
+
+
+@sales_bp.route('/<int:id>/restore', methods=['POST'])
+@login_required
+@permission_required('manage_sales')
+def restore(id):
+    """استعادة فاتورة من الأرشيف"""
+    from models import ArchivedRecord
+    
+    archived = ArchivedRecord.query.filter_by(
+        table_name='sales',
+        record_id=id
+    ).first_or_404()
+    
+    try:
+        db.session.delete(archived)
+        db.session.commit()
+        create_audit_log('restore', 'sales', id)
+    except Exception as e:
+        db.session.rollback()
+    
+    return redirect(url_for('sales.archived'))

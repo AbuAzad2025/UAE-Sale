@@ -429,22 +429,36 @@ class AIService:
     
     @staticmethod
     def analyze_customer_behavior(customer_id):
-        """تحليل سلوك العميل وتقييم المخاطر"""
-        from models import Customer, Sale, Payment
+        from functools import lru_cache
         
-        customer = Customer.query.get(customer_id)
-        if not customer:
-            return None
+        @lru_cache(maxsize=100)
+        def _cached_analysis(cust_id):
+            from models import Customer, Sale, Payment
+            
+            customer = Customer.query.get(cust_id)
+            if not customer:
+                return None
+            
+            return _perform_analysis(customer)
+        
+        return _cached_analysis(customer_id)
+    
+    @staticmethod
+    def _perform_analysis(customer):
+        from models import Sale, Payment
         
         last_90_days = datetime.now() - timedelta(days=90)
         
-        sales = Sale.query.filter(
-            Sale.customer_id == customer_id,
+        sales = Sale.query.options(
+            db.joinedload(Sale.customer),
+            db.joinedload(Sale.lines)
+        ).filter(
+            Sale.customer_id == customer.id,
             Sale.created_at >= last_90_days
         ).all()
         
         payments = Payment.query.filter(
-            Payment.customer_id == customer_id,
+            Payment.customer_id == customer.id,
             Payment.created_at >= last_90_days
         ).all()
         
@@ -745,9 +759,14 @@ class AIService:
         # جمع كل المعرفة ذات الصلة
         knowledge_context = AIService._gather_relevant_knowledge(message, local_result)
         
+        # فحص إذا المستخدم فرض الوضع المحلي
+        force_local = context.get('force_local', False) if context else False
+        
         # ========== المرحلة 2: التعاون مع Groq ==========
         api_key = AIService.get_api_key()
-        if api_key and len(message) > 30:  # للأسئلة المتوسطة فما فوق
+        use_groq = api_key and not force_local and len(message) > 10
+        
+        if use_groq:
             try:
                 import requests
                 import json
@@ -765,32 +784,32 @@ class AIService:
                     url = "https://api.openai.com/v1/chat/completions"
                     model = "gpt-4"
                 
-                # بناء رسالة النظام مع كل المعرفة
-                system_msg = f"""أنت أزاد، المساعد الذكي الخبير من شركة أزاد للأنظمة الذكية.
-المطور: م. أحمد غنام | الموقع: فلسطين - رام الله
+                # Groq مع صلاحيات كاملة
+                expert_prompt = f"""أنت أزاد - مساعد ذكي تفاعلي لنظام إدارة كراجات.
 
-🧠 **دورك:** تعاون مع النظام المحلي لتقديم أفضل رد ممكن.
+السؤال:
+{message}
 
-📊 **البيانات الحقيقية المتاحة:**
-{knowledge_context.get('real_data', 'لا توجد')}
+📊 بيانات النظام الحالية:
+{knowledge_context}
 
-💡 **التحليل المحلي:**
-{knowledge_context.get('local_analysis', 'لا يوجد')}
+🎯 قدراتك:
+1. قراءة البيانات (Users, Customers, Products, Sales, etc)
+2. إنشاء سجلات جديدة (عملاء، منتجات، فواتير)
+3. تحديث البيانات الموجودة
+4. تحليل وتقارير
+5. استشارات تقنية (معدات ثقيلة)
 
-📚 **المعرفة ذات الصلة:**
-{knowledge_context.get('relevant_knowledge', 'لا توجد')}
+📝 إذا طلب إنشاء/تعديل:
+- اطلب المعلومات المطلوبة بوضوح
+- ردّ بصيغة JSON واضحة:
+  {{
+    "action": "create_customer/create_product/etc",
+    "data_needed": ["الاسم", "الهاتف", "..."],
+    "message": "رسالة للمستخدم"
+  }}
 
-🎯 **الرد المحلي الأولي:**
-{local_response}
-
-⚡ **مهمتك:**
-1. راجع البيانات الحقيقية والتحليل المحلي
-2. استخدم المعرفة المتاحة
-3. حسّن الرد أو أضف رؤى جديدة
-4. كن عملياً ومباشراً
-5. استخدم الأرقام الحقيقية من البيانات
-
-🌟 **الأسلوب:** ودود، احترافي، بلهجة فلسطينية خفيفة."""
+⚠️ مهم: إذا سأل عن بيانات - استخدم الأرقام الموجودة."""
                 
                 response = requests.post(
                     url,
@@ -798,76 +817,190 @@ class AIService:
                     json={
                         "model": model,
                         "messages": [
-                            {"role": "system", "content": system_msg},
-                            {"role": "user", "content": message}
+                            {"role": "user", "content": expert_prompt}
                         ],
                         "temperature": 0.7,
-                        "max_tokens": 1500
+                        "max_tokens": 2000
                     },
-                    timeout=30
+                    timeout=20
                 )
                 
                 if response.status_code == 200:
                     result = response.json()
                     groq_response = result['choices'][0]['message']['content']
                     
-                    # Groq نجح - استخدم رده المحسّن
-                    return groq_response
+                    # فحص إذا Groq يطلب تنفيذ action
+                    action_result = AIService._execute_ai_action(groq_response, user_id)
+                    if action_result:
+                        groq_response = action_result
+                    
+                    # Groq يدرب المحلي
+                    try:
+                        AIService._train_local_from_groq(message, str(local_response), str(groq_response), user_id)
+                    except Exception as e:
+                        print(f"Training skipped: {e}")
+                    
+                    provider = AIService.get_provider()
+                    return f"{groq_response}\n\n<sub>🤖 المصدر: {provider.upper()} API + التحليل المحلي</sub>"
             
             except Exception as e:
                 print(f"Groq collaboration failed: {str(e)}")
-                # Groq فشل - استخدم المحلي
         
-        # إذا ما في مفتاح أو Groq فشل - استخدم المحلي
-        return local_response
+        return f"{local_response}\n\n<sub>💻 المصدر: النظام المحلي الذكي</sub>"
+    
+    @staticmethod
+    def _execute_ai_action(groq_response, user_id):
+        """تنفيذ الأوامر التي يطلبها Groq (إنشاء/تعديل/حذف)"""
+        try:
+            import json
+            import re
+            
+            # البحث عن JSON في الرد
+            json_match = re.search(r'\{[\s\S]*"action"[\s\S]*\}', groq_response)
+            if not json_match:
+                return None
+            
+            action_data = json.loads(json_match.group(0))
+            action_type = action_data.get('action', '')
+            
+            # إنشاء عميل
+            if action_type == 'create_customer':
+                data_needed = action_data.get('data_needed', [])
+                return f"""✅ تمام! لإنشاء عميل جديد، أعطني المعلومات التالية:
+
+{chr(10).join([f'{i+1}. {field}' for i, field in enumerate(data_needed)])}
+
+أدخل البيانات بهذا الشكل:
+عميل جديد: الاسم، الهاتف، العنوان، ..."""
+            
+            # إنشاء منتج
+            elif action_type == 'create_product':
+                return """✅ لإنشاء منتج جديد، أعطني:
+1. اسم المنتج
+2. رقم القطعة
+3. السعر
+4. الكمية
+
+مثال: منتج: فلتر زيت كاتربلر، 1R0716، 50 درهم، 100 قطعة"""
+            
+            # إنشاء فاتورة
+            elif action_type == 'create_sale':
+                return """✅ لإنشاء فاتورة، أعطني:
+1. اسم العميل
+2. المنتجات والكميات
+3. طريقة الدفع
+
+مثال: فاتورة لعميل أحمد: فلتر زيت x2، كاش"""
+            
+            return None
+            
+        except Exception as e:
+            print(f"Action execution error: {e}")
+            return None
+    
+    @staticmethod
+    def _train_local_from_groq(question, local_answer, groq_answer, user_id):
+        """Groq يدرب ويحدث النظام المحلي"""
+        try:
+            from ai_knowledge.learning_system import learning_system
+            
+            learning_data = {
+                'question': question,
+                'local_answer': local_answer,
+                'improved_answer': groq_answer,
+                'timestamp': datetime.now().isoformat(),
+                'user_id': user_id
+            }
+            
+            learning_system.learn_from_groq_feedback(learning_data)
+            
+        except Exception as e:
+            print(f"Training from Groq failed: {e}")
     
     @staticmethod
     def _gather_relevant_knowledge(message, local_result):
-        """جمع كل المعرفة ذات الصلة من دوائر المعرفة المحلية"""
+        """جمع بيانات شاملة من جميع جداول النظام"""
         try:
-            from models import Sale, Customer, Product
+            from models import Sale, Customer, Product, User, Payment, Expense, Purchase, Supplier, Cheque, Role
             from extensions import db
             from datetime import datetime, timedelta
+            from flask import current_app
+            from sqlalchemy import func
             
-            knowledge = {
-                'real_data': '',
-                'local_analysis': '',
-                'relevant_knowledge': ''
-            }
+            data_parts = []
             
-            # البيانات الحقيقية
-            if local_result.get('intent') in ['sales_analysis', 'customer_balance', 'inventory_check']:
-                # إحصائيات النظام
-                stats = {
-                    'total_sales_30d': Sale.query.filter(
-                        Sale.sale_date >= datetime.now() - timedelta(days=30),
-                        Sale.status == 'confirmed'
-                    ).count(),
-                    'total_customers': Customer.query.filter_by(is_active=True).count(),
-                    'total_products': Product.query.filter_by(is_active=True).count()
-                }
-                
-                knowledge['real_data'] = f"المبيعات (30 يوم): {stats['total_sales_30d']} | العملاء: {stats['total_customers']} | المنتجات: {stats['total_products']}"
+            # 📊 إحصائيات شاملة للنظام (دائماً)
+            users_count = User.query.count()
+            customers_count = Customer.query.filter_by(is_active=True).count()
+            suppliers_count = Supplier.query.filter_by(is_active=True).count()
+            products_count = Product.query.filter_by(is_active=True).count()
             
-            # التحليل المحلي
-            if local_result.get('method') == 'intelligent_ai':
-                knowledge['local_analysis'] = "تم التحليل باستخدام Neural Engine + Data Analyzer"
+            sales_30d = Sale.query.filter(
+                Sale.sale_date >= datetime.now() - timedelta(days=30)
+            ).count()
             
-            # المعرفة ذات الصلة
-            intent = local_result.get('intent', '')
-            if 'tax' in intent or 'ضريبة' in message.lower():
-                knowledge['relevant_knowledge'] = "ضريبة الإمارات: VAT 5%, ضريبة الشركات 9% (للأرباح > 375K درهم)"
-            elif 'parts' in intent or any(kw in message.lower() for kw in ['قطعة', 'محرك', 'فرامل']):
-                knowledge['relevant_knowledge'] = "خبير بقطع الغيار: محركات، قير، تعليق، فرامل، كهرباء، تكييف"
+            purchases_30d = Purchase.query.filter(
+                Purchase.purchase_date >= datetime.now() - timedelta(days=30)
+            ).count()
             
-            return knowledge
+            expenses_30d = Expense.query.filter(
+                Expense.expense_date >= datetime.now() - timedelta(days=30)
+            ).count()
+            
+            payments_30d = Payment.query.filter(
+                Payment.payment_date >= datetime.now() - timedelta(days=30)
+            ).count()
+            
+            cheques_count = Cheque.query.count()
+            
+            total_sales_amount = db.session.query(func.sum(Sale.net_total)).filter(
+                Sale.sale_date >= datetime.now() - timedelta(days=30)
+            ).scalar() or 0
+            
+            total_expenses_amount = db.session.query(func.sum(Expense.amount_aed)).filter(
+                Expense.expense_date >= datetime.now() - timedelta(days=30)
+            ).scalar() or 0
+            
+            data_parts.append(f"""📊 **بيانات النظام الكاملة:**
+
+👥 الأطراف:
+- المستخدمين: {users_count}
+- العملاء: {customers_count}
+- الموردين: {suppliers_count}
+
+📦 المخزون:
+- المنتجات: {products_count}
+
+💰 المعاملات (آخر 30 يوم):
+- المبيعات: {sales_30d} فاتورة (إجمالي: {total_sales_amount:.2f} درهم)
+- المشتريات: {purchases_30d}
+- المصروفات: {expenses_30d} (إجمالي: {total_expenses_amount:.2f} درهم)
+- الدفعات: {payments_30d}
+- الشيكات: {cheques_count}
+
+💵 الأرباح (30 يوم):
+- الربح الصافي: {(total_sales_amount - total_expenses_amount):.2f} درهم""")
+            
+            # بيانات الشركة
+            config = current_app.config
+            data_parts.append(f"""📞 **بيانات الشركة:**
+- الاسم: {config.get('COMPANY_NAME_AR')}
+- الهاتف: {config.get('COMPANY_PHONE')}
+- WhatsApp: {config.get('COMPANY_WHATSAPP')}
+- العنوان: {config.get('COMPANY_ADDRESS_AR')}""")
+            
+            # معلومات المستخدم الحالي
+            current_user = local_result.get('context', {}).get('current_user')
+            if current_user:
+                data_parts.append(f"""👤 **المستخدم الحالي:**
+- الاسم: {current_user.username}
+- الدور: {current_user.role.name_ar if current_user.role else 'غير محدد'}
+- Owner: {'نعم' if current_user.is_owner else 'لا'}""")
+            
+            return '\n\n'.join(data_parts)
         
         except Exception as e:
-            return {
-                'real_data': 'غير متاح',
-                'local_analysis': 'غير متاح',
-                'relevant_knowledge': 'غير متاح'
-            }
+            return f"خطأ في جمع البيانات: {str(e)}"
     
     @staticmethod
     def generate_business_insights():

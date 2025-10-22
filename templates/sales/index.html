@@ -10,6 +10,9 @@
     <a href="{{ url_for('sales.create') }}" class="btn btn-primary btn-lg pulse">
       <i class="fas fa-plus-circle mr-2"></i>فاتورة جديدة
     </a>
+    <a href="{{ url_for('sales.archived') }}" class="btn btn-warning btn-lg">
+      <i class="fas fa-archive mr-2"></i>الأرشيف
+    </a>
   </div>
 </div>
 {% endblock %}
@@ -72,6 +75,7 @@
             <th><i class="fas fa-money-bill-wave mr-2"></i>{{ t('Amount') }}</th>
             <th><i class="fas fa-check-circle mr-2"></i>{{ t('Paid') }}</th>
             <th><i class="fas fa-exclamation-circle mr-2"></i>الباقي</th>
+            <th><i class="fas fa-exchange-alt mr-2"></i>سعر الصرف</th>
             <th><i class="fas fa-wallet mr-2"></i>{{ t('Status') }}</th>
             <th class="text-center"><i class="fas fa-cog mr-2"></i>{{ t('Actions') }}</th>
           </tr>
@@ -118,6 +122,15 @@
               {% endif %}
             </td>
             <td>
+              {% if sale.exchange_rate and sale.exchange_rate != 1 %}
+                <span class="badge badge-info" title="سعر الصرف وقت المعاملة">
+                  <i class="fas fa-exchange-alt mr-1"></i>{{ "{:.4f}".format(sale.exchange_rate) }}
+                </span>
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td>
               {% if sale.payment_status == 'paid' %}
                 <span class="badge badge-success px-3">
                   <i class="fas fa-check mr-1"></i>مدفوع
@@ -142,6 +155,16 @@
                    class="btn btn-secondary" target="_blank" title="{{ t('Print') }}">
                   <i class="fas fa-print"></i>
                 </a>
+                {% if sale.balance_due > 0 %}
+                <a href="{{ url_for('payments.create_from_sale', sale_id=sale.id) }}" 
+                   class="btn btn-success" title="سند دفع">
+                  <i class="fas fa-credit-card"></i>
+                </a>
+                {% endif %}
+                <button type="button" class="btn btn-warning archive-sale-btn" 
+                        data-id="{{ sale.id }}" title="أرشفة">
+                  <i class="fas fa-archive"></i>
+                </button>
               </div>
             </td>
           </tr>
@@ -230,6 +253,29 @@ $(document).ready(function() {
     table.column(6).search('آجل').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
+  });
+  
+  // أرشفة فاتورة
+  $(document).on('click', '.archive-sale-btn', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    var id = $(this).data('id');
+    var csrfToken = $('meta[name="csrf-token"]').attr('content');
+    
+    $.ajax({
+      url: '/sales/' + id + '/archive',
+      type: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken
+      },
+      success: function(response) {
+        location.reload();
+      },
+      error: function(xhr) {
+        location.reload();
+      }
+    });
   });
 });
 </script>

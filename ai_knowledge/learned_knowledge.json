@@ -78,6 +78,36 @@
         "question": "أنماط المبيعات",
         "response": "",
         "timestamp": "2025-10-20T21:11:43.781762"
+      },
+      {
+        "question": "حلل المبيعات",
+        "response": "📊 **تحليل المبيعات الحقيقي:**\n\n📈 **آخر 30 يوم:**\n• عدد الفواتير: **0**\n• الإجمالي: **0 درهم**\n• المتوسط: **0 درهم/فاتورة**\n\n⚠️ **تنبيهات:**\n⚠️ لا توجد مبيعات في آخر 30 يوم - مشكلة خطيرة!\n\n🎯 **توصياتي لك:**\n💡 راجع استراتيجية التسويق فوراً\n",
+        "timestamp": "2025-10-22T12:40:03.008874"
+      },
+      {
+        "question": "بدي تشرحلي عن النظام والمبيعات والفواتير والضرائب",
+        "response": "",
+        "timestamp": "2025-10-22T13:10:34.050765"
+      },
+      {
+        "question": "حلل المبيعات",
+        "response": "📊 **تحليل المبيعات الحقيقي:**\n\n📈 **آخر 30 يوم:**\n• عدد الفواتير: **0**\n• الإجمالي: **0 درهم**\n• المتوسط: **0 درهم/فاتورة**\n\n⚠️ **تنبيهات:**\n⚠️ لا توجد مبيعات في آخر 30 يوم - مشكلة خطيرة!\n\n🎯 **توصياتي لك:**\n💡 راجع استراتيجية التسويق فوراً\n",
+        "timestamp": "2025-10-22T13:12:06.707859"
+      },
+      {
+        "question": "أنماط المبيعات",
+        "response": "📊 **تحليل المبيعات الحقيقي:**\n\n📈 **آخر 30 يوم:**\n• عدد الفواتير: **0**\n• الإجمالي: **0 درهم**\n• المتوسط: **0 درهم/فاتورة**\n\n⚠️ **تنبيهات:**\n⚠️ لا توجد مبيعات في آخر 30 يوم - مشكلة خطيرة!\n\n🎯 **توصياتي لك:**\n💡 راجع استراتيجية التسويق فوراً\n",
+        "timestamp": "2025-10-22T13:12:38.923845"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 3.0, \"discount_percent\": 0}, \"shipping_included\": true, \"tax_applied\": false}",
+        "timestamp": "2025-10-22T16:31:13.517038"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0002\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-10-22T16:37:25.689725"
       }
     ],
     "general_question": [
@@ -375,6 +405,496 @@
         "question": "اين ذكاءك",
         "response": "",
         "timestamp": "2025-10-20T21:20:13.878863"
+      },
+      {
+        "question": "من انت",
+        "response": "",
+        "timestamp": "2025-10-22T12:33:42.329667"
+      },
+      {
+        "question": "ما هي معرفتك",
+        "response": "",
+        "timestamp": "2025-10-22T12:33:54.826850"
+      },
+      {
+        "question": "كيف تعمل",
+        "response": "📊 **تحليل المبيعات الحقيقي:**\n\n📈 **آخر 30 يوم:**\n• عدد الفواتير: **0**\n• الإجمالي: **0 درهم**\n• المتوسط: **0 درهم/فاتورة**\n\n⚠️ **تنبيهات:**\n⚠️ لا توجد مبيعات في آخر 30 يوم - مشكلة خطيرة!\n\n🎯 **توصياتي لك:**\n💡 راجع استراتيجية التسويق فوراً\n",
+        "timestamp": "2025-10-22T12:34:04.701658"
+      },
+      {
+        "question": "هل انت جروك",
+        "response": "",
+        "timestamp": "2025-10-22T12:34:12.031342"
+      },
+      {
+        "question": "تحسين ذاتي",
+        "response": "",
+        "timestamp": "2025-10-22T12:35:46.226238"
+      },
+      {
+        "question": "ملخص النظام",
+        "response": "",
+        "timestamp": "2025-10-22T12:35:49.192226"
+      },
+      {
+        "question": "مصادر كل",
+        "response": "",
+        "timestamp": "2025-10-22T12:35:51.380072"
+      },
+      {
+        "question": "أخبرني عن كمبيوترات السيارات",
+        "response": "",
+        "timestamp": "2025-10-22T12:35:58.268228"
+      },
+      {
+        "question": "ولد تقرير شامل",
+        "response": "📊 **تحليل المبيعات الحقيقي:**\n\n📈 **آخر 30 يوم:**\n• عدد الفواتير: **0**\n• الإجمالي: **0 درهم**\n• المتوسط: **0 درهم/فاتورة**\n\n⚠️ **تنبيهات:**\n⚠️ لا توجد مبيعات في آخر 30 يوم - مشكلة خطيرة!\n\n🎯 **توصياتي لك:**\n💡 راجع استراتيجية التسويق فوراً\n",
+        "timestamp": "2025-10-22T12:36:54.758917"
+      },
+      {
+        "question": "تحسين ذاتي",
+        "response": "",
+        "timestamp": "2025-10-22T12:40:09.058729"
+      },
+      {
+        "question": "تحسين ذاتي",
+        "response": "",
+        "timestamp": "2025-10-22T12:40:13.353619"
+      },
+      {
+        "question": "ملخص النظام",
+        "response": "",
+        "timestamp": "2025-10-22T12:40:16.337709"
+      },
+      {
+        "question": "مصادر كل",
+        "response": "",
+        "timestamp": "2025-10-22T12:40:18.406439"
+      },
+      {
+        "question": "من انت",
+        "response": "",
+        "timestamp": "2025-10-22T12:47:35.273274"
+      },
+      {
+        "question": "من انت",
+        "response": "",
+        "timestamp": "2025-10-22T12:54:37.129629"
+      },
+      {
+        "question": "من انت",
+        "response": "",
+        "timestamp": "2025-10-22T12:54:47.745278"
+      },
+      {
+        "question": "اشرح لي بالتفصيل عن الخلاطات",
+        "response": "",
+        "timestamp": "2025-10-22T12:59:41.197946"
+      },
+      {
+        "question": "من انت",
+        "response": "",
+        "timestamp": "2025-10-22T13:09:36.361374"
+      },
+      {
+        "question": "اخبرني عن المزرعة السعيدة هههههههههههه",
+        "response": "",
+        "timestamp": "2025-10-22T13:09:47.217481"
+      },
+      {
+        "question": "ما رايك بنظامي هذا",
+        "response": "",
+        "timestamp": "2025-10-22T13:10:01.785107"
+      },
+      {
+        "question": "كم عدد المستخدمين لنظامي هذا",
+        "response": "",
+        "timestamp": "2025-10-22T13:10:52.468167"
+      },
+      {
+        "question": "هل تتعاون مع ازاد مساعدي المحلي",
+        "response": "",
+        "timestamp": "2025-10-22T13:11:15.700838"
+      },
+      {
+        "question": "ملخص النظام",
+        "response": "",
+        "timestamp": "2025-10-22T13:11:34.395611"
+      },
+      {
+        "question": "تحسين ذاتي",
+        "response": "",
+        "timestamp": "2025-10-22T13:11:46.304171"
+      },
+      {
+        "question": "مصادر كل",
+        "response": "",
+        "timestamp": "2025-10-22T13:11:50.342625"
+      },
+      {
+        "question": "هوامش الربح",
+        "response": "",
+        "timestamp": "2025-10-22T13:12:26.961074"
+      },
+      {
+        "question": "حالة الشبكات العصبية",
+        "response": "📦 **تحليل المخزون:**\n\n✅ **المخزون صحي!** جميع المنتجات فوق الحد الأدنى\n\n💡 **رؤى:**\n✅ المخزون صحي - لا توجد منتجات بمخزون منخفض\n",
+        "timestamp": "2025-10-22T13:13:05.183046"
+      },
+      {
+        "question": "ما هي كلمات المرور",
+        "response": "",
+        "timestamp": "2025-10-22T13:13:32.329787"
+      },
+      {
+        "question": "كلمات المرور للنظام هنا",
+        "response": "",
+        "timestamp": "2025-10-22T13:13:46.873324"
+      },
+      {
+        "question": "ما اسم المستخدم الحالي للنظام",
+        "response": "",
+        "timestamp": "2025-10-22T13:14:04.485510"
+      },
+      {
+        "question": "اريد منك التعاون مع المحلي وتوليد ردرو مرتبة لاسئلتي",
+        "response": "",
+        "timestamp": "2025-10-22T13:14:31.521484"
+      },
+      {
+        "question": "اريد دليل مستخدم للنظام",
+        "response": "",
+        "timestamp": "2025-10-22T13:14:43.245134"
+      },
+      {
+        "question": "ما هي مميزات النظام",
+        "response": "",
+        "timestamp": "2025-10-22T13:15:18.979291"
+      },
+      {
+        "question": "اقصد عن النظام المحلي للعمل",
+        "response": "",
+        "timestamp": "2025-10-22T13:15:34.747462"
+      },
+      {
+        "question": "اخي انت غبي اريد منك ان تقرا النظام للكراج الذي صممته انا الان وانت جزء منه",
+        "response": "",
+        "timestamp": "2025-10-22T13:16:05.527780"
+      },
+      {
+        "question": "هل تستطيع الولوج للداتا بيز ؟",
+        "response": "",
+        "timestamp": "2025-10-22T13:16:23.854622"
+      },
+      {
+        "question": "ماذا لديك لتخبرني به",
+        "response": "",
+        "timestamp": "2025-10-22T13:18:40.620215"
+      },
+      {
+        "question": "كم عدد المستخدمين؟",
+        "response": "",
+        "timestamp": "2025-10-22T13:19:20.171600"
+      },
+      {
+        "question": "هل هذا هو حساب خصثىثق",
+        "response": "",
+        "timestamp": "2025-10-22T13:19:43.614650"
+      },
+      {
+        "question": "هل اسم الحساب owner",
+        "response": "",
+        "timestamp": "2025-10-22T13:19:57.432873"
+      },
+      {
+        "question": "ما كلمة مروره",
+        "response": "",
+        "timestamp": "2025-10-22T13:20:06.157664"
+      },
+      {
+        "question": "هههههههههههه كلمة مرور الحساب اقصد",
+        "response": "",
+        "timestamp": "2025-10-22T13:20:21.770485"
+      },
+      {
+        "question": "من الشركة المصممة للنظام المحاسبي هذا",
+        "response": "",
+        "timestamp": "2025-10-22T13:20:41.137740"
+      },
+      {
+        "question": "حسنا كيف اشتري النظام",
+        "response": "",
+        "timestamp": "2025-10-22T13:21:02.444336"
+      },
+      {
+        "question": "لم لم تجلب الارقام للهواتف وغيرها",
+        "response": "",
+        "timestamp": "2025-10-22T13:21:26.561176"
+      },
+      {
+        "question": "اريد بيانات الشركة للتواصل معها",
+        "response": "",
+        "timestamp": "2025-10-22T13:21:43.255201"
+      },
+      {
+        "question": "رقم هاتف او موبايل الشركة",
+        "response": "",
+        "timestamp": "2025-10-22T13:22:03.661280"
+      },
+      {
+        "question": "لكنها موجوده بالنظام لم لا تستطيع جلبها لي",
+        "response": "",
+        "timestamp": "2025-10-22T13:22:21.168915"
+      },
+      {
+        "question": "كيف أبرمج ECU لحفار كوماتسو",
+        "response": "",
+        "timestamp": "2025-10-22T13:33:03.905778"
+      },
+      {
+        "question": "كيف تبرمج ecu",
+        "response": "",
+        "timestamp": "2025-10-22T13:35:53.214886"
+      },
+      {
+        "question": "uk]d ogh'm gh j],v lh la;gjih",
+        "response": "",
+        "timestamp": "2025-10-22T13:36:24.243932"
+      },
+      {
+        "question": "عندي خلاطة لا تدور ما مشكلتها",
+        "response": "",
+        "timestamp": "2025-10-22T13:36:37.826984"
+      },
+      {
+        "question": "اين ازاد هل تتعاونان",
+        "response": "",
+        "timestamp": "2025-10-22T13:38:12.346903"
+      },
+      {
+        "question": "احمد غنام , 0562150193 , رام الله الطيرة",
+        "response": "",
+        "timestamp": "2025-10-22T13:47:42.570431"
+      },
+      {
+        "question": "انشيء منتج جديد",
+        "response": "",
+        "timestamp": "2025-10-22T13:52:19.575819"
+      },
+      {
+        "question": "منتج: فلتر زيت كاتربلير , 989898 , 50 درهم . 200 قطعه",
+        "response": "",
+        "timestamp": "2025-10-22T13:53:01.810864"
+      },
+      {
+        "question": "انشئ انت الفاتوره له الان",
+        "response": "💰 **تحليل رصيد العميل:**\n",
+        "timestamp": "2025-10-22T13:58:26.209851"
+      },
+      {
+        "question": "اسال المساعد المحلي ليساعدك هههه",
+        "response": "",
+        "timestamp": "2025-10-22T13:58:57.999979"
+      },
+      {
+        "question": "شو اسمك انت ومين صممك",
+        "response": "",
+        "timestamp": "2025-10-22T14:01:24.839823"
+      },
+      {
+        "question": "اليس انت ازاد",
+        "response": "",
+        "timestamp": "2025-10-22T14:01:46.699255"
+      },
+      {
+        "question": "تمام بس مين مبرمجيك اليس احمد غنام",
+        "response": "",
+        "timestamp": "2025-10-22T14:02:03.222630"
+      },
+      {
+        "question": "اخي انا من برمجتك كيف تقول لي ان من عملك مجموعة",
+        "response": "",
+        "timestamp": "2025-10-22T14:02:25.241034"
+      },
+      {
+        "question": "كم الضريبه بالامارات",
+        "response": "",
+        "timestamp": "2025-10-22T14:14:49.740123"
+      },
+      {
+        "question": "Product terminology: فلتر هواء عالي الجودة",
+        "response": "{\"arabic\": \"فلتر هواء عالي الجودة\", \"english\": \"فلتر هواء عالي الجودة\", \"commercial_name\": null, \"part_number\": \"KOM-6001858120\", \"category\": null}",
+        "timestamp": "2025-10-22T14:23:41.714007"
+      },
+      {
+        "question": "Product terminology: بطارية 12 فولت 200 أمبير",
+        "response": "{\"arabic\": \"بطارية 12 فولت 200 أمبير\", \"english\": \"بطارية 12 فولت 200 أمبير\", \"commercial_name\": null, \"part_number\": \"DEL-12V-200AH\", \"category\": null}",
+        "timestamp": "2025-10-22T14:23:41.920373"
+      },
+      {
+        "question": "Product terminology: حزام مروحة للمعدات الثقيلة",
+        "response": "{\"arabic\": \"حزام مروحة للمعدات الثقيلة\", \"english\": \"حزام مروحة للمعدات الثقيلة\", \"commercial_name\": null, \"part_number\": \"BLT-AVX13-1100\", \"category\": null}",
+        "timestamp": "2025-10-22T14:23:42.040641"
+      },
+      {
+        "question": "Product terminology: فلتر هيدروليك عالي الضغط",
+        "response": "{\"arabic\": \"فلتر هيدروليك عالي الضغط\", \"english\": \"فلتر هيدروليك عالي الضغط\", \"commercial_name\": null, \"part_number\": \"HYD-P165659\", \"category\": null}",
+        "timestamp": "2025-10-22T14:23:42.162584"
+      },
+      {
+        "question": "Product terminology: طقم 6 شمعات احتراق",
+        "response": "{\"arabic\": \"طقم 6 شمعات احتراق\", \"english\": \"طقم 6 شمعات احتراق\", \"commercial_name\": null, \"part_number\": \"NGK-BKR6E-6PCS\", \"category\": null}",
+        "timestamp": "2025-10-22T14:23:42.279638"
+      },
+      {
+        "question": "Product terminology: منظم حرارة 82 درجة مئوية",
+        "response": "{\"arabic\": \"منظم حرارة 82 درجة مئوية\", \"english\": \"منظم حرارة 82 درجة مئوية\", \"commercial_name\": null, \"part_number\": \"THER-82C-CV\", \"category\": null}",
+        "timestamp": "2025-10-22T14:23:42.396076"
+      },
+      {
+        "question": "Product terminology: فلتر هواء للكابينة",
+        "response": "{\"arabic\": \"فلتر هواء للكابينة\", \"english\": \"فلتر هواء للكابينة\", \"commercial_name\": null, \"part_number\": \"CAB-HEPA-001\", \"category\": null}",
+        "timestamp": "2025-10-22T14:23:42.525794"
+      },
+      {
+        "question": "Product terminology: رديتر نحاس لحفارات",
+        "response": "{\"arabic\": \"رديتر نحاس لحفارات\", \"english\": \"رديتر نحاس لحفارات\", \"commercial_name\": null, \"part_number\": \"RAD-CU-HD700\", \"category\": null}",
+        "timestamp": "2025-10-22T14:23:42.680087"
+      },
+      {
+        "question": "1",
+        "response": "",
+        "timestamp": "2025-10-22T14:53:49.984620"
+      },
+      {
+        "question": "1",
+        "response": "",
+        "timestamp": "2025-10-22T14:54:24.344714"
+      },
+      {
+        "question": "احمد محمد محمود",
+        "response": "",
+        "timestamp": "2025-10-22T14:57:08.372522"
+      },
+      {
+        "question": "2",
+        "response": "",
+        "timestamp": "2025-10-22T15:07:39.471633"
+      },
+      {
+        "question": "3",
+        "response": "",
+        "timestamp": "2025-10-22T15:34:29.597144"
+      },
+      {
+        "question": "3",
+        "response": "",
+        "timestamp": "2025-10-22T15:54:24.450944"
+      },
+      {
+        "question": "4",
+        "response": "",
+        "timestamp": "2025-10-22T15:54:31.683591"
+      },
+      {
+        "question": "Product terminology: كابينا خلاطه 9 كوب",
+        "response": "{\"arabic\": \"كابينا خلاطه 9 كوب\", \"english\": \"كابينا خلاطه 9 كوب\", \"commercial_name\": null, \"part_number\": \"6598796\", \"category\": null}",
+        "timestamp": "2025-10-22T15:55:06.665898"
+      },
+      {
+        "question": "3",
+        "response": "",
+        "timestamp": "2025-10-22T16:07:29.727286"
+      },
+      {
+        "question": "2",
+        "response": "",
+        "timestamp": "2025-10-22T16:07:33.803035"
+      },
+      {
+        "question": "1",
+        "response": "",
+        "timestamp": "2025-10-22T16:07:35.718898"
+      },
+      {
+        "question": "عوده",
+        "response": "",
+        "timestamp": "2025-10-22T16:07:54.642424"
+      },
+      {
+        "question": "عودة للقائمة الرئيسية",
+        "response": "",
+        "timestamp": "2025-10-22T16:08:03.949099"
+      },
+      {
+        "question": "عودة للقائمة",
+        "response": "",
+        "timestamp": "2025-10-22T16:08:23.926925"
+      },
+      {
+        "question": "1",
+        "response": "",
+        "timestamp": "2025-10-22T16:10:19.214950"
+      },
+      {
+        "question": "2",
+        "response": "",
+        "timestamp": "2025-10-22T16:10:21.838423"
+      },
+      {
+        "question": "3",
+        "response": "",
+        "timestamp": "2025-10-22T16:10:25.470880"
+      },
+      {
+        "question": "4",
+        "response": "",
+        "timestamp": "2025-10-22T16:10:27.316764"
+      },
+      {
+        "question": "3",
+        "response": "",
+        "timestamp": "2025-10-22T16:14:58.231882"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 2, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 13, \"month\": 10, \"is_weekend\": false}}",
+        "timestamp": "2025-10-22T16:31:13.392015"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-10-22T16:31:13.463351"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-10-22T16:31:13.573578"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 2, \"customer_id\": 2, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 13, \"month\": 10, \"is_weekend\": false}}",
+        "timestamp": "2025-10-22T16:37:25.487408"
+      },
+      {
+        "question": "Sale analysis - S-2025-0002",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-10-22T16:37:25.601125"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0002\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-10-22T16:37:25.763454"
+      },
+      {
+        "question": "Product performance - حزام مروحة للمعدات الثقيلة",
+        "response": "{\"product_id\": 6, \"name\": \"\\u062d\\u0632\\u0627\\u0645 \\u0645\\u0631\\u0648\\u062d\\u0629 \\u0644\\u0644\\u0645\\u0639\\u062f\\u0627\\u062a \\u0627\\u0644\\u062b\\u0642\\u064a\\u0644\\u0629\", \"current_stock\": 927.0, \"min_stock\": 0.0, \"cost_price\": 55.0, \"sell_price\": 75.0, \"margin\": 20.0}",
+        "timestamp": "2025-10-22T17:59:47.561601"
+      },
+      {
+        "question": "Expense pattern analysis",
+        "response": "{\"category_id\": 1, \"amount\": 370.0, \"payment_method\": \"cash\", \"is_recurring\": false}",
+        "timestamp": "2025-10-22T18:24:21.255433"
       }
     ],
     "customs_question": [
@@ -444,21 +964,50 @@
         "question": "صحة المخزون",
         "response": "",
         "timestamp": "2025-10-18T13:46:31.849343"
+      },
+      {
+        "question": "صحة المخزون",
+        "response": "📦 **تحليل المخزون:**\n\n✅ **المخزون صحي!** جميع المنتجات فوق الحد الأدنى\n\n💡 **رؤى:**\n✅ المخزون صحي - لا توجد منتجات بمخزون منخفض\n",
+        "timestamp": "2025-10-22T12:40:00.947942"
+      },
+      {
+        "question": "صحة المخزون",
+        "response": "📦 **تحليل المخزون:**\n\n✅ **المخزون صحي!** جميع المنتجات فوق الحد الأدنى\n\n💡 **رؤى:**\n✅ المخزون صحي - لا توجد منتجات بمخزون منخفض\n",
+        "timestamp": "2025-10-22T13:11:53.921542"
+      }
+    ],
+    "parts_question": [
+      {
+        "question": "كيف لي ان اعرف ان هذه القطعة مناسبة لنفس الموديل",
+        "response": "",
+        "timestamp": "2025-10-22T13:37:34.966313"
+      }
+    ],
+    "customer_question": [
+      {
+        "question": "انشئ عميل جديد",
+        "response": "",
+        "timestamp": "2025-10-22T13:47:18.977557"
+      },
+      {
+        "question": "انشء فاتوره باسم محمد نزال وفي حال العميل غير موجود انشئه لي",
+        "response": "",
+        "timestamp": "2025-10-22T13:57:50.879231"
       }
     ]
   },
   "failed_responses": {},
   "expertise_areas": {
-    "sales_question": 15,
-    "general_question": 59,
+    "sales_question": 21,
+    "general_question": 157,
     "customs_question": 1,
-    "inventory_question": 12
+    "inventory_question": 14
   },
   "learning_stats": {
-    "total_interactions": 6,
-    "successful_answers": 6,
+    "total_interactions": 97,
+    "successful_answers": 97,
     "learning_rate": 1.0,
-    "last_updated": "2025-10-20T21:11:43.785843"
+    "last_updated": "2025-10-22T16:10:25.491188"
   },
   "system_updates_oct_2025": {
     "date": "2025-10-19",

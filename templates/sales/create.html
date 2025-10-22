@@ -186,7 +186,10 @@
           </div>
 
           <div class="form-group mt-3">
-            <label class="font-weight-bold">طريقة الدفع</label>
+            <label class="font-weight-bold">
+              <i class="fas fa-credit-card text-info"></i> طريقة الدفع
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر طريقة الدفع أو اتركها فارغة للدفع الآجل"></i>
+            </label>
             <select name="payment_method" id="payment_method" class="form-control">
               <option value="">آجل (بدون دفع)</option>
               <option value="cash">💵 نقدي</option>
@@ -195,6 +198,9 @@
               <option value="cheque">📝 شيك</option>
               <option value="e_wallet">💰 محفظة إلكترونية</option>
             </select>
+            <small class="form-text text-muted">
+              <i class="fas fa-info-circle"></i> اترك فارغاً للدفع الآجل (على الحساب)
+            </small>
           </div>
 
           <!-- Dynamic payment fields will be inserted here -->
@@ -220,8 +226,14 @@
           </div>
 
           <div class="form-group">
-            <label class="font-weight-bold">{{ t('Notes') }}</label>
-            <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات إضافية..."></textarea>
+            <label class="font-weight-bold">
+              <i class="fas fa-sticky-note text-warning"></i> {{ t('Notes') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="أي ملاحظات أو تعليمات إضافية عن هذه الفاتورة"></i>
+            </label>
+            <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات إضافية عن الفاتورة..."></textarea>
+            <small class="form-text text-muted">
+              <i class="fas fa-lightbulb"></i> يمكنك كتابة أي ملاحظات أو تعليمات خاصة
+            </small>
           </div>
 
           <button type="submit" class="btn btn-primary btn-block btn-lg">

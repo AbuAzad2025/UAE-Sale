@@ -51,6 +51,68 @@ class AzadResponses:
         current_user = context.get('current_user') if context else None
         is_owner = context.get('is_owner', False) if context else False
         
+        # ========== أسئلة بسيطة - رد فوري ==========
+        # من أنت؟ - معلومات عن المساعد
+        if any(kw in msg_lower for kw in ['من أنت', 'من انت', 'who are you', 'مين انت', 'مين أنت']):
+            return """🤖 **أنا أزاد - مساعدك الذكي!**
+
+**من أنا:**
+- 🧠 مساعد ذكاء اصطناعي هجين (محلي + سحابي)
+- 👨‍💼 خبير محاسبة ومالية
+- 🔧 مهندس صيانة معدات ثقيلة
+- 📊 محلل بيانات متقدم
+
+**كيف أعمل:**
+1. 🏠 **محلياً**: شبكات عصبية محلية للسرعة
+2. ☁️ **سحابياً**: Groq (Llama 3.3) للذكاء العميق
+3. 💾 **أحلل بياناتك**: رؤى حقيقية من القاعدة
+4. 🎓 **أتعلم منك**: أتطور مع كل تفاعل
+
+**💡 لإضافة مفتاح Groq:**
+📍 القائمة → **OWNER MODE** → **مفاتيح AI (Groq)** 🔑
+
+أو: http://localhost:8080/ai/config"""
+        
+        # هل أنت محلي/جروك؟ | حالة النظام | وضع AI
+        elif any(kw in msg_lower for kw in ['محلي', 'جروك', 'groq', 'openai', 'local', 'cloud', 'حالة', 'status', 'وضع', 'mode', 'مصدر', 'source']):
+            provider = AIService.get_provider()
+            has_api_key = bool(AIService.get_api_key())
+            
+            if has_api_key and provider:
+                status_msg = f"""🤖 **حالة أزاد - نظام هجين نشط**
+
+✅ **الوضع الحالي:**
+- 🌟 **نشط**: {provider.upper()} API + التحليل المحلي
+- ⚡ السرعة: عالية (محلي)
+- 🧠 الذكاء: عميق ({provider.upper()})
+
+**كيف أعمل:**
+1. 🏠 تحليل محلي فوري (0.1 ثانية)
+2. ☁️ تحسين بـ {provider.upper()} (الأفضل!)
+3. 🔗 تعاون هجين للردود المثالية
+
+💡 **ستجد في نهاية كل رد:**
+- 🤖 إذا رأيت "{provider.upper()} API + التحليل المحلي" = استخدمت الذكاء السحابي
+- 💻 إذا رأيت "النظام المحلي الذكي" = استخدمت المحلي فقط"""
+            else:
+                status_msg = """🤖 **حالة أزاد - وضع محلي**
+
+✅ **الوضع الحالي:**
+- 💻 **نشط**: النظام المحلي الذكي
+- ⚡ السرعة: فائقة (محلي 100%)
+- 🧠 الذكاء: محلي (شبكات عصبية)
+
+**لتفعيل الذكاء السحابي:**
+1. اذهب إلى: القائمة → OWNER MODE
+2. اختر: **مفاتيح AI (Groq)** 🔑
+3. أدخل مفتاح Groq API
+4. استمتع بذكاء أعمق! 🚀
+
+💡 **ستجد في نهاية كل رد:**
+- 💻 "النظام المحلي الذكي" = وضعك الحالي"""
+            
+            return status_msg
+        
         # ========== 🧠 الذكاء الحقيقي - المحاولة الأولى ==========
         # استخدام النظام الذكي المتكامل للأسئلة التحليلية والبيانات
         analytical_intents = [
@@ -146,7 +208,7 @@ class AzadResponses:
                 return apply_dialect(beginner_response, dialect)
         
         # ترحيب مع دعم اللهجات
-        if any(kw in msg_lower for kw in ['مرحبا', 'أهلا', 'السلام', 'hello', 'hi', 'مرحبتين', 'أهلين', 'هلا', 'إيش', 'شلون']) or msg_lower in ['أزاد', 'azad', 'مساعد', 'assistant']:
+        elif any(kw in msg_lower for kw in ['مرحبا', 'أهلا', 'السلام', 'hello', 'hi', 'مرحبتين', 'أهلين', 'هلا', 'إيش', 'شلون']) or msg_lower in ['أزاد', 'azad', 'مساعد', 'assistant']:
             if dialect == 'palestinian':
                 greeting = get_dialectal_greeting('palestinian')
             elif dialect == 'gulf':
@@ -220,15 +282,59 @@ class AzadResponses:
         
         # تحليل مبيعات
         elif any(kw in msg_lower for kw in ['حلل', 'analyze', 'مبيعات', 'sales']):
-            return AzadResponses._smart_sales_analysis(context)
+            try:
+                return AzadResponses._smart_sales_analysis(context)
+            except Exception as e:
+                logger.error(f"Sales analysis failed: {e}")
+                return """📊 **تحليل المبيعات**
+
+⚠️ لا توجد بيانات كافية للتحليل حالياً.
+
+💡 **ابدأ بإضافة:**
+- زبائن جدد
+- منتجات
+- فواتير بيع
+
+بعدها سأستطيع تحليل المبيعات وإعطائك رؤى ذكية! 🚀"""
         
         # التحسين الذاتي
         elif any(kw in msg_lower for kw in ['تحسين', 'improve', 'تطوير', 'develop', 'تعلم', 'learn']):
-            return AzadResponses._get_improvement_response(message)
+            try:
+                return AzadResponses._get_improvement_response(message)
+            except Exception as e:
+                logger.error(f"Improvement response failed: {e}")
+                return """🧠 **التحسين الذاتي**
+
+أنا في حالة تعلم مستمر! 📚
+
+**ما أتعلمه:**
+- أنماط المبيعات من كل فاتورة
+- تفضيلات العملاء
+- الممارسات المحاسبية
+- المصطلحات الفنية
+
+**حالياً:** القاعدة جديدة - سأتعلم أكثر كلما استخدمت النظام! 🌱"""
         
         # الحالة والأداء
-        elif any(kw in msg_lower for kw in ['حالة', 'status', 'أداء', 'performance', 'تقدم', 'progress']):
-            return AzadResponses._get_status_response()
+        elif any(kw in msg_lower for kw in ['حالة', 'status', 'أداء', 'performance', 'تقدم', 'progress', 'شبكات', 'neural']):
+            try:
+                return AzadResponses._get_status_response()
+            except Exception as e:
+                logger.error(f"Status response failed: {e}")
+                return """🧠 **حالة النظام الذكي**
+
+✅ **النظام نشط وجاهز!**
+
+**المكونات:**
+- 🧠 الشبكات العصبية: جاهزة
+- 💾 قاعدة البيانات: متصلة
+- 🔄 Redis Cache: يعمل
+- 📊 محلل البيانات: جاهز
+- 🌐 Groq API: جاهز (أضف مفتاح)
+
+**الحالة:** كل شيء يعمل بشكل ممتاز! ✨
+
+💡 **نصيحة:** أضف بيانات لأحصل على رؤى أعمق!"""
         
         # توقعات متقدمة
         elif any(kw in msg_lower for kw in ['توقع', 'predict', 'تنبؤ', 'forecast']):

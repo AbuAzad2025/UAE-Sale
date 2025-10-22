@@ -1326,7 +1326,7 @@ class AzadResponses:
 
 **أزاد خبير في معايير الإلكترونيات!**"""
         
-        return "❓ ما نوع المنتج الذي تريد معرفة معاييره؟ طعام، إلكترونيات، أم عام؟"
+        return "ما نوع المنتج الذي تريد معرفة معاييره؟ طعام، إلكترونيات، أم عام؟"
     
     @staticmethod
     def _smart_sales_analysis(context):
@@ -1367,14 +1367,14 @@ class AzadResponses:
 • الإجمالي: {float(total_30d):,.0f} AED
 • المتوسط اليومي: {float(avg_30d):,.0f} AED
 
-📈 **الاتجاه:** {trend}
+**الاتجاه:** {trend}
 
-💡 **التوصية:** {"استمر على هذا النهج!" if avg_7d >= avg_30d else "راجع استراتيجية المبيعات والتسويق"}"""
+**التوصية:** {"استمر على هذا النهج!" if avg_7d >= avg_30d else "راجع استراتيجية المبيعات والتسويق"}"""
     
     @staticmethod
     def _handle_detected_intent(intent: str, message: str, context=None):
         """
-        🚀 معالج النوايا المكتشفة بالذكاء الاصطناعي
+        معالج النوايا المكتشفة بالذكاء الاصطناعي
         
         Args:
             intent: النية المكتشفة (create_invoice, sales_analysis, etc.)
@@ -1400,7 +1400,7 @@ class AzadResponses:
             'customs_info': lambda: f"🛃 **الجمارك في الإمارات:**\n\n{get_customs_info('uae')}",
             
             # قطع الغيار والسيارات
-            'parts_info': lambda: f"🔧 **معلومات قطع الغيار:**\n\n{get_part_info(message)}",
+            'parts_info': lambda: f"**معلومات قطع الغيار:**\n\n{get_part_info(message)}",
             'automotive_ecu': lambda: "🚗 **كمبيوتر السيارة (ECU):**\n\nوحدة التحكم الإلكتروني (ECU) هي دماغ السيارة الحديثة. تتحكم في المحرك، ناقل الحركة، الفرامل، والأنظمة الكهربائية.\n\n**الوظائف:**\n• إدارة المحرك والوقود\n• التشخيص الذاتي\n• تحسين الأداء\n• خفض الانبعاثات",
             'heavy_equipment': lambda: "🏗️ **المعدات الثقيلة:**\n\nنتعامل مع قطع غيار المعدات الثقيلة:\n• Caterpillar (CAT)\n• Komatsu\n• Volvo\n• Hitachi\n• JCB\n\nشامل: الحفارات، اللوادر، الجريدرات، والرافعات",
             

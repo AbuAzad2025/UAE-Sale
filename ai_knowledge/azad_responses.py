@@ -964,7 +964,7 @@ class AzadResponses:
 
 📊 **عدد النتائج: {result['total_found']}**
 
-{chr(10).join([f"**{i+1}. {res['title']}** ({res['type']})\n   الفئة: {res['category']}\n   {res['snippet']}\n" for i, res in enumerate(result['results'][:5])])}
+{chr(10).join([f"**{i+1}. {res['title']}** ({res['type']})\\n   الفئة: {res['category']}\\n   {res['snippet']}\\n" for i, res in enumerate(result['results'][:5])])}
 
 💡 **للمزيد من التفاصيل، يمكنك طلب معلومات أكثر عن أي نتيجة.**"""
         

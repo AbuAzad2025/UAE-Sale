@@ -1023,7 +1023,7 @@ class AzadResponses:
         msg_lower = message.lower()
         
         if 'مبيعات' in msg_lower or 'sales' in msg_lower:
-            return """📊 **تصدير المبيعات إلى Excel**
+            return """**تصدير المبيعات إلى Excel**
 
 أزاد يمكنه تصدير:
 • جميع المبيعات

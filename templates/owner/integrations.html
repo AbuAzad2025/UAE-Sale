@@ -260,9 +260,19 @@
                                 
                                 <div class="form-group">
                                     <label>
+                                        <i class="fas fa-toggle-on text-success mr-1"></i>تفعيل Redis
+                                    </label>
+                                    <div class="custom-control custom-switch custom-switch-on-success">
+                                        <input type="checkbox" class="custom-control-input" id="redis_enabled" name="enabled" {% if integrations.redis.enabled %}checked{% endif %}>
+                                        <label class="custom-control-label" for="redis_enabled">تفعيل Redis Cache</label>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
                                         <i class="fas fa-server text-primary mr-1"></i>Redis Host
                                     </label>
-                                    <input type="text" class="form-control" name="redis_host" placeholder="localhost" value="localhost">
+                                    <input type="text" class="form-control" name="redis_host" placeholder="localhost" value="{{ integrations.redis.config.redis_host or 'localhost' }}">
                                     <small class="form-text text-muted">
                                         🖥️ <strong>محلي:</strong> localhost أو 127.0.0.1<br>
                                         <strong>سحابي:</strong> redis-12345.c1.us-east-1.redislabs.com
@@ -273,7 +283,7 @@
                                     <label>
                                         <i class="fas fa-network-wired text-info mr-1"></i>Redis Port
                                     </label>
-                                    <input type="number" class="form-control" name="redis_port" placeholder="6379" value="6379">
+                                    <input type="number" class="form-control" name="redis_port" placeholder="6379" value="{{ integrations.redis.config.redis_port or '6379' }}">
                                     <small class="form-text text-muted">
                                         🔌 <strong>الافتراضي:</strong> 6379
                                     </small>
@@ -283,7 +293,7 @@
                                     <label>
                                         <i class="fas fa-key text-warning mr-1"></i>Redis Password (اختياري)
                                     </label>
-                                    <input type="password" class="form-control" name="redis_password" placeholder="••••••••••">
+                                    <input type="password" class="form-control" name="redis_password" placeholder="••••••••••" value="{{ integrations.redis.config.redis_password or '' }}">
                                     <small class="form-text text-muted">
                                         🔐 اتركه فارغاً إذا لم يكن Redis محمياً بكلمة مرور
                                     </small>
@@ -319,7 +329,7 @@
                             
                             <hr>
                             
-                            <form method="POST" action="{{ url_for('owner.update_integration', service='currency') }}">
+                            <form method="POST" action="{{ url_for('owner.update_integration', service='currency_api') }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 
                                 <div class="form-group">
@@ -356,7 +366,7 @@
                                     <label>
                                         <i class="fas fa-key text-warning mr-1"></i>API Key
                                     </label>
-                                    <input type="text" class="form-control" name="api_key" placeholder="YOUR_API_KEY_HERE">
+                                    <input type="text" class="form-control" name="api_key" placeholder="YOUR_API_KEY_HERE" value="{{ integrations.currency_api.config.api_key or '' }}">
                                     <small class="form-text text-muted">
                                         🔑 <strong>احصل على API Key مجاناً:</strong><br>
                                         • <a href="https://www.exchangerate-api.com" target="_blank">ExchangeRate-API</a> (1500 request/شهر مجاناً)<br>

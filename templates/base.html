@@ -195,6 +195,14 @@
         </a>
       </li>
       
+      <!-- Sidebar Direction Toggle -->
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="toggleSidebarDirection(); return false;" title="تبديل موقع القائمة الجانبية">
+          <i class="fas fa-exchange-alt" style="transform: rotate(90deg);"></i>
+          <span class="d-none d-md-inline">تبديل القائمة</span>
+        </a>
+      </li>
+      
       <!-- Language Switcher -->
       <li class="nav-item dropdown">
         <a class="nav-link" data-toggle="dropdown" href="#" title="تغيير اللغة">
@@ -810,6 +818,86 @@ $(function() {
   // تحديث سعر الصرف كل 30 ثانية
   setInterval(updateExchangeRate, 30000);
   
+})();
+
+// تبديل اتجاه الـ Sidebar بين اليمين والشمال
+function toggleSidebarDirection() {
+  const body = document.body;
+  const currentLayout = localStorage.getItem('sidebarLayout') || 'sidebar-mini';
+  
+  if (body.classList.contains('layout-navbar-fixed')) {
+    // إذا كان الـ sidebar على اليسار، نقله لليمين
+    if (!body.classList.contains('text-sm')) {
+      body.classList.add('text-sm');
+      body.style.direction = 'rtl';
+      localStorage.setItem('sidebarLayout', 'rtl');
+      
+      // تحديث الـ sidebar و navbar
+      const sidebar = document.querySelector('.main-sidebar');
+      const navbar = document.querySelector('.main-header');
+      const content = document.querySelector('.content-wrapper');
+      
+      if (sidebar) {
+        sidebar.style.right = '0';
+        sidebar.style.left = 'auto';
+      }
+      if (content) {
+        content.style.marginRight = '250px';
+        content.style.marginLeft = '0';
+      }
+    } else {
+      // إرجاع الـ sidebar لليسار
+      body.classList.remove('text-sm');
+      body.style.direction = 'ltr';
+      localStorage.setItem('sidebarLayout', 'ltr');
+      
+      const sidebar = document.querySelector('.main-sidebar');
+      const content = document.querySelector('.content-wrapper');
+      
+      if (sidebar) {
+        sidebar.style.right = 'auto';
+        sidebar.style.left = '0';
+      }
+      if (content) {
+        content.style.marginRight = '0';
+        content.style.marginLeft = '250px';
+      }
+    }
+  }
+  
+  // إظهار رسالة التأكيد
+  const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 2000
+  });
+  
+  Toast.fire({
+    icon: 'success',
+    title: 'تم تبديل موقع القائمة الجانبية'
+  });
+}
+
+// تطبيق الإعدادات المحفوظة عند تحميل الصفحة
+(function() {
+  const savedLayout = localStorage.getItem('sidebarLayout');
+  if (savedLayout === 'rtl') {
+    document.body.classList.add('text-sm');
+    document.body.style.direction = 'rtl';
+    
+    const sidebar = document.querySelector('.main-sidebar');
+    const content = document.querySelector('.content-wrapper');
+    
+    if (sidebar) {
+      sidebar.style.right = '0';
+      sidebar.style.left = 'auto';
+    }
+    if (content) {
+      content.style.marginRight = '250px';
+      content.style.marginLeft = '0';
+    }
+  }
 })();
 </script>
 </body>

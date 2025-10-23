@@ -365,6 +365,105 @@ class BackupService:
             return None
     
     @classmethod
+    def restore_custom_tables(cls, backup_filename: str, tables: List[str]) -> bool:
+        """
+        استعادة جداول محددة فقط من نسخة احتياطية
+        
+        Args:
+            backup_filename: اسم ملف النسخة الاحتياطية
+            tables: قائمة أسماء الجداول المراد استعادتها
+        
+        Returns:
+            نجح أم فشل
+        """
+        try:
+            import sqlite3
+            import tempfile
+            
+            backup_path = os.path.join(cls.BACKUP_DIR, backup_filename)
+            
+            if not os.path.exists(backup_path):
+                logger.error(f"Backup file not found: {backup_filename}")
+                return False
+            
+            # مسار قاعدة البيانات الحالية
+            db_path = 'instance/app.db'
+            
+            # إنشاء نسخة احتياطية من الوضع الحالي
+            current_backup = cls.create_backup(
+                manual=True, 
+                description=f"Pre-custom-restore backup before restoring tables: {', '.join(tables)}"
+            )
+            
+            if not current_backup:
+                logger.warning("⚠️ Could not create pre-restore backup")
+            
+            # إنشاء ملف مؤقت لفك ضغط النسخة الاحتياطية
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as temp_file:
+                temp_db_path = temp_file.name
+                
+                # فك الضغط إذا لزم الأمر
+                if backup_path.endswith('.gz'):
+                    with gzip.open(backup_path, 'rb') as f_in:
+                        temp_file.write(f_in.read())
+                else:
+                    with open(backup_path, 'rb') as f_in:
+                        temp_file.write(f_in.read())
+            
+            # الاتصال بقاعدة البيانات الحالية والمؤقتة
+            conn_current = sqlite3.connect(db_path)
+            conn_backup = sqlite3.connect(temp_db_path)
+            
+            cursor_current = conn_current.cursor()
+            cursor_backup = conn_backup.cursor()
+            
+            # استعادة كل جدول محدد
+            for table_name in tables:
+                try:
+                    # حذف البيانات الحالية من الجدول
+                    cursor_current.execute(f"DELETE FROM {table_name}")
+                    
+                    # نسخ البيانات من النسخة الاحتياطية
+                    cursor_backup.execute(f"SELECT * FROM {table_name}")
+                    rows = cursor_backup.fetchall()
+                    
+                    if rows:
+                        # الحصول على أسماء الأعمدة
+                        cursor_backup.execute(f"PRAGMA table_info({table_name})")
+                        columns = [col[1] for col in cursor_backup.fetchall()]
+                        
+                        # إدراج البيانات
+                        placeholders = ','.join(['?' for _ in columns])
+                        insert_query = f"INSERT INTO {table_name} ({','.join(columns)}) VALUES ({placeholders})"
+                        
+                        cursor_current.executemany(insert_query, rows)
+                    
+                    logger.info(f"Table restored: {table_name} ({len(rows)} rows)")
+                
+                except Exception as e:
+                    logger.error(f"Failed to restore table {table_name}: {e}")
+                    conn_current.rollback()
+                    conn_backup.close()
+                    conn_current.close()
+                    os.unlink(temp_db_path)
+                    return False
+            
+            # حفظ التغييرات
+            conn_current.commit()
+            conn_backup.close()
+            conn_current.close()
+            
+            # حذف الملف المؤقت
+            os.unlink(temp_db_path)
+            
+            logger.info(f"Custom restore completed: {', '.join(tables)}")
+            return True
+        
+        except Exception as e:
+            logger.error(f"Custom restore failed: {e}")
+            return False
+    
+    @classmethod
     def export_backup_with_attachments(cls, include_uploads: bool = True) -> Optional[str]:
         """
         تصدير نسخة احتياطية شاملة (قاعدة البيانات + الملفات المرفقة)

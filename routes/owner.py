@@ -684,13 +684,15 @@ def backup_now():
 def list_backups():
     """قائمة النسخ الاحتياطية"""
     from services.backup_service import BackupService
+    from datetime import datetime
     
     backups = BackupService.list_backups()
     stats = BackupService.get_backup_stats()
     
     return render_template('owner/backups_list.html', 
                          backups=backups,
-                         stats=stats)
+                         stats=stats,
+                         now=datetime.now())
 
 
 @owner_bp.route('/backups/restore/<filename>', methods=['POST'])
@@ -742,6 +744,55 @@ def restore_backup(filename):
         return redirect(url_for('owner.list_backups'))
     else:
         flash('❌ فشلت الاستعادة!', 'danger')
+        return redirect(url_for('owner.list_backups'))
+
+
+@owner_bp.route('/backups/custom-restore/<filename>', methods=['POST'])
+@login_required
+@owner_required
+def custom_restore_backup(filename):
+    """استعادة مخصصة - جداول محددة فقط"""
+    from services.backup_service import BackupService
+    
+    # التحقق من الصلاحيات
+    if not current_user.is_owner:
+        flash('❌ غير مصرح - الاستعادة للمالك فقط!', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    # كلمة المرور
+    password = request.form.get('confirm_password')
+    if not password:
+        flash('❌ يرجى إدخال كلمة المرور للتأكيد', 'warning')
+        return redirect(url_for('owner.list_backups'))
+    
+    # التحقق من كلمة المرور
+    from werkzeug.security import check_password_hash
+    if not check_password_hash(current_user.password_hash, password):
+        flash('❌ كلمة المرور غير صحيحة!', 'danger')
+        return redirect(url_for('owner.list_backups'))
+    
+    # الحصول على الجداول المحددة
+    selected_tables = request.form.getlist('tables[]')
+    
+    if not selected_tables:
+        flash('❌ يرجى اختيار جدول واحد على الأقل!', 'warning')
+        return redirect(url_for('owner.list_backups'))
+    
+    # التحقق من سلامة النسخة
+    if not BackupService.verify_backup(filename):
+        flash('❌ النسخة الاحتياطية تالفة أو غير صالحة!', 'danger')
+        return redirect(url_for('owner.list_backups'))
+    
+    # الاستعادة المخصصة
+    success = BackupService.restore_custom_tables(filename, selected_tables)
+    
+    if success:
+        tables_list = ', '.join(selected_tables)
+        flash(f'✅ تمت استعادة الجداول بنجاح: {tables_list}', 'success')
+        db.session.commit()
+        return redirect(url_for('owner.list_backups'))
+    else:
+        flash('❌ فشلت الاستعادة المخصصة!', 'danger')
         return redirect(url_for('owner.list_backups'))
 
 

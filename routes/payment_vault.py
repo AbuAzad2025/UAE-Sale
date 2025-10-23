@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import login_required, current_user
 from extensions import db, limiter
-from models import PaymentVault, PaymentTransaction, PaymentLog
+from models import PaymentVault, PaymentTransaction, PaymentLog, Donation
 from utils.helpers import create_audit_log
 import secrets
 import string
@@ -125,6 +125,41 @@ def dashboard():
     
     flash('✅ تم فتح الخزينة السرية بنجاح!', 'success')
     return redirect(url_for('payment_vault.settings'))
+
+
+@payment_vault_bp.route('/purchases')
+@login_required
+def purchases():
+    """عرض مشتريات النظام"""
+    if not current_user.is_owner:
+        flash('❌ غير مصرح - الخزينة السرية للمالك فقط!', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    # التحقق من فتح الخزينة
+    vault = PaymentVault.query.first()
+    if not vault or vault.is_locked:
+        flash('❌ يجب فتح الخزينة أولاً', 'warning')
+        return redirect(url_for('payment_vault.unlock_vault'))
+    
+    # جلب المشتريات
+    purchases = Donation.query.filter_by(payment_method='crypto').order_by(Donation.created_at.desc()).all()
+    
+    # إحصائيات
+    total_purchases = len(purchases)
+    completed_purchases = sum(1 for p in purchases if p.status == 'completed')
+    pending_purchases = sum(1 for p in purchases if p.status == 'pending')
+    total_amount = sum(float(p.amount_usd or 0) for p in purchases)
+    
+    # جلب التبرعات
+    donations = Donation.query.order_by(Donation.created_at.desc()).limit(5).all()
+    
+    return render_template('payment_vault/purchases.html',
+                         purchases=purchases,
+                         donations=donations,
+                         total_purchases=total_purchases,
+                         completed_purchases=completed_purchases,
+                         pending_purchases=pending_purchases,
+                         total_amount=total_amount)
 
 
 @payment_vault_bp.route('/settings', methods=['GET', 'POST'])

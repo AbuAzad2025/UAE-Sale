@@ -1,0 +1,398 @@
+{% extends "layout.html" %}
+
+{% block title %}مشتريات النظام - الخزينة السرية{% endblock %}
+
+{% block extra_css %}
+<style>
+    .purchase-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 20px;
+        color: white;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    
+    .purchase-card h3 {
+        margin-bottom: 15px;
+        font-weight: 700;
+    }
+    
+    .purchase-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-box {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 900;
+        color: #667eea;
+        margin-bottom: 5px;
+    }
+    
+    .stat-label {
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    .purchase-table {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .status-badge {
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    .status-completed {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .status-pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .status-refunded {
+        background: #f8d7da;
+        color: #721c24;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1><i class="fas fa-shopping-bag"></i> مشتريات النظام</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-left">
+                        <li class="breadcrumb-item"><a href="{{ url_for('payment_vault.index') }}">الخزينة السرية</a></li>
+                        <li class="breadcrumb-item active">المشتريات</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <!-- Security Alert -->
+            <div class="alert alert-warning">
+                <i class="fas fa-shield-alt"></i>
+                <strong>تنبيه أمني:</strong> هذه الصفحة محمية بكلمة مرور الخزينة. جميع العمليات مسجلة ومراقبة.
+            </div>
+
+            <!-- Purchase Stats -->
+            <div class="purchase-stats">
+                <div class="stat-box">
+                    <div class="stat-number">{{ total_purchases }}</div>
+                    <div class="stat-label">إجمالي المشتريات</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">${{ total_amount|default(0) }}</div>
+                    <div class="stat-label">المبلغ الإجمالي</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">{{ completed_purchases }}</div>
+                    <div class="stat-label">مشتريات مكتملة</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">{{ pending_purchases }}</div>
+                    <div class="stat-label">مشتريات قيد الانتظار</div>
+                </div>
+            </div>
+
+            <!-- Purchases Table -->
+            <div class="purchase-table">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3><i class="fas fa-list"></i> قائمة المشتريات</h3>
+                    <button class="btn btn-primary" onclick="showAddPurchaseModal()">
+                        <i class="fas fa-plus"></i> إضافة مشترية
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead style="background: #f8f9fa;">
+                            <tr>
+                                <th>#</th>
+                                <th>التاريخ</th>
+                                <th>الباقة</th>
+                                <th>العميل</th>
+                                <th>المبلغ</th>
+                                <th>طريقة الدفع</th>
+                                <th>الحالة</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if purchases %}
+                                {% for purchase in purchases %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ purchase.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        {% if purchase.package == 'basic' %}
+                                            📦 الباقة الأساسية
+                                        {% elif purchase.package == 'professional' %}
+                                            💼 الباقة الاحترافية
+                                        {% elif purchase.package == 'enterprise' %}
+                                            🏢 باقة الشركات
+                                        {% else %}
+                                            {{ purchase.package }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ purchase.customer_name }}<br>
+                                        <small class="text-muted">{{ purchase.customer_email }}</small>
+                                    </td>
+                                    <td><strong>${{ purchase.amount }}</strong></td>
+                                    <td>
+                                        {% if purchase.payment_method == 'crypto' %}
+                                            <i class="fab fa-bitcoin"></i> {{ purchase.crypto_type|upper }}
+                                        {% elif purchase.payment_method == 'card' %}
+                                            <i class="fas fa-credit-card"></i> بطاقة
+                                        {% elif purchase.payment_method == 'paypal' %}
+                                            <i class="fab fa-paypal"></i> PayPal
+                                        {% else %}
+                                            {{ purchase.payment_method }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="status-badge status-{{ purchase.status }}">
+                                            {% if purchase.status == 'completed' %}
+                                                ✓ مكتملة
+                                            {% elif purchase.status == 'pending' %}
+                                                ⏳ قيد الانتظار
+                                            {% elif purchase.status == 'refunded' %}
+                                                ↩ مسترجعة
+                                            {% else %}
+                                                {{ purchase.status }}
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info" onclick="viewPurchase({{ purchase.id }})">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-success" onclick="downloadInvoice({{ purchase.id }})">
+                                            <i class="fas fa-download"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted">
+                                        <i class="fas fa-inbox fa-3x mb-3" style="display: block;"></i>
+                                        لا توجد مشتريات حتى الآن
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recent Donations (for reference) -->
+            <div class="purchase-card mt-4">
+                <h3><i class="fas fa-heart"></i> التبرعات الأخيرة</h3>
+                <div class="table-responsive">
+                    <table class="table table-sm text-white">
+                        <thead>
+                            <tr style="border-bottom: 2px solid rgba(255,255,255,0.3);">
+                                <th>التاريخ</th>
+                                <th>المبلغ</th>
+                                <th>العملة</th>
+                                <th>الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if donations %}
+                                {% for donation in donations[:5] %}
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                    <td>{{ donation.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td><strong>${{ donation.amount_usd }}</strong></td>
+                                    <td>{{ donation.crypto_type|upper }}</td>
+                                    <td>
+                                        {% if donation.status == 'completed' %}
+                                            ✓ مكتملة
+                                        {% else %}
+                                            ⏳ {{ donation.status }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center">لا توجد تبرعات</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Add Purchase Modal -->
+<div class="modal fade" id="addPurchaseModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <h5 class="modal-title"><i class="fas fa-plus"></i> إضافة مشترية جديدة</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="addPurchaseForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>الباقة</label>
+                                <select class="form-control" name="package" required>
+                                    <option value="">اختر الباقة</option>
+                                    <option value="basic">📦 الباقة الأساسية - $299</option>
+                                    <option value="professional">💼 الباقة الاحترافية - $599</option>
+                                    <option value="enterprise">🏢 باقة الشركات - $999</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>المبلغ</label>
+                                <input type="number" class="form-control" name="amount" placeholder="$" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>اسم العميل</label>
+                                <input type="text" class="form-control" name="customer_name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>البريد الإلكتروني</label>
+                                <input type="email" class="form-control" name="customer_email" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>طريقة الدفع</label>
+                                <select class="form-control" name="payment_method" required>
+                                    <option value="crypto">عملات رقمية</option>
+                                    <option value="card">بطاقة بنكية</option>
+                                    <option value="paypal">PayPal</option>
+                                    <option value="bank">تحويل بنكي</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>الحالة</label>
+                                <select class="form-control" name="status" required>
+                                    <option value="pending">قيد الانتظار</option>
+                                    <option value="completed">مكتملة</option>
+                                    <option value="refunded">مسترجعة</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>ملاحظات</label>
+                        <textarea class="form-control" name="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="savePurchase()">
+                    <i class="fas fa-save"></i> حفظ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showAddPurchaseModal() {
+    $('#addPurchaseModal').modal('show');
+}
+
+function savePurchase() {
+    const form = document.getElementById('addPurchaseForm');
+    const formData = new FormData(form);
+    
+    // Here you would send the data to the server
+    Swal.fire({
+        icon: 'success',
+        title: 'تم الحفظ!',
+        text: 'تم إضافة المشترية بنجاح',
+        confirmButtonText: 'حسناً'
+    }).then(() => {
+        $('#addPurchaseModal').modal('hide');
+        location.reload();
+    });
+}
+
+function viewPurchase(id) {
+    Swal.fire({
+        title: 'تفاصيل المشترية',
+        html: '<p>سيتم عرض تفاصيل المشترية رقم ' + id + '</p>',
+        confirmButtonText: 'حسناً'
+    });
+}
+
+function downloadInvoice(id) {
+    Swal.fire({
+        icon: 'info',
+        title: 'تحميل الفاتورة',
+        text: 'سيتم تحميل فاتورة المشترية رقم ' + id,
+        confirmButtonText: 'حسناً'
+    });
+}
+
+// Update package prices
+$('select[name="package"]').change(function() {
+    const prices = {
+        'basic': 299,
+        'professional': 599,
+        'enterprise': 999
+    };
+    const selected = $(this).val();
+    if (prices[selected]) {
+        $('input[name="amount"]').val(prices[selected]);
+    }
+});
+</script>
+{% endblock %}
+

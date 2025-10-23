@@ -789,6 +789,32 @@
         let selectedPackage = '';
         let currentTab = 'purchase';
         
+        // Check URL parameters on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+            
+            if (tabParam === 'donation') {
+                // Switch to donation tab
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById('donation-tab').classList.add('active');
+                
+                // Update hero icon
+                const heroIcon = document.querySelector('.hero-section .mb-4 i');
+                heroIcon.className = 'fas fa-heart';
+                heroIcon.style.color = '#e74c3c';
+                
+                currentTab = 'donation';
+            }
+        });
+        
         // Switch between tabs
         function switchTab(tab) {
             currentTab = tab;

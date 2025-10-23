@@ -38,7 +38,9 @@
           </li>
           <li class="list-group-item">
             <b>{{ t('Balance') }}</b>
-            <span class="float-left text-danger">{{ "{:,.2f}".format(customer.get_balance_aed()) }} AED</span>
+            <span class="float-left {% if customer.get_balance_aed() < 0 %}text-danger{% elif customer.get_balance_aed() > 0 %}text-success{% else %}text-muted{% endif %}">
+              {{ "{:,.2f}".format(customer.get_balance_aed()) }} AED
+            </span>
           </li>
           <li class="list-group-item">
             <b>إجمالي المشتريات</b>

@@ -953,7 +953,7 @@ class AIService:
             
             cheques_count = Cheque.query.count()
             
-            total_sales_amount = db.session.query(func.sum(Sale.net_total)).filter(
+            total_sales_amount = db.session.query(func.sum(Sale.total_amount)).filter(
                 Sale.sale_date >= datetime.now() - timedelta(days=30)
             ).scalar() or 0
             

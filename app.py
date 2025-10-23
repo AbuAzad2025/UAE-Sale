@@ -194,10 +194,13 @@ def create_app(config_class=Config):
     register_cli(app)
     register_compression_cli(app)
     
+    # Register CLI commands
     try:
         from cli_commands import register_cli_commands
         register_cli_commands(app)
         app.logger.info("[OK] Enhanced CLI commands registered")
+    except ImportError:
+        app.logger.info('CLI commands not available - skipping')
     except Exception as e:
         app.logger.warning(f'Enhanced CLI commands not registered: {e}')
     

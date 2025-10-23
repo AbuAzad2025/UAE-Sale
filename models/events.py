@@ -1757,7 +1757,7 @@ def register_automatic_gl_listeners():
         except Exception as e:
             logger.error(f"Failed to create auto GL entry for purchase: {e}")
     
-    @event.listens_for(Payment, 'after_insert')
+    @event.listens_for(Payment, 'after_commit')
     def auto_create_payment_journal_entry(mapper, connection, target):
         """
         قيد محاسبي تلقائي عند إنشاء سند صرف

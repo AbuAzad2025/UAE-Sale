@@ -49,9 +49,9 @@ def unlock_vault():
             # إنشاء خزينة جديدة
             vault = PaymentVault()
             vault.set_vault_password(password)  # كلمة المرور الأولى
-            vault.nowpayments_api_key = "REDACTED-API-KEY"
-            vault.nowpayments_ipn_secret = "REDACTED-IPN-SECRET"
-            vault.bitcoin_address = "REDACTED-BITCOIN-ADDR"
+            vault.nowpayments_api_key = ""
+            vault.nowpayments_ipn_secret = ""
+            vault.bitcoin_address = ""
             vault.is_locked = False
             db.session.add(vault)
             db.session.commit()

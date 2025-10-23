@@ -121,6 +121,7 @@
                 </p>
                 
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-group">
                         <label for="vault_password" class="form-label">
                             <i class="fas fa-key mr-2"></i>كلمة مرور الخزينة

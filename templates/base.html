@@ -822,85 +822,72 @@ $(function() {
 
 // تبديل اتجاه الـ Sidebar بين اليمين والشمال
 function toggleSidebarDirection() {
-  const body = document.body;
-  const wrapper = document.querySelector('.wrapper');
-  const savedLayout = localStorage.getItem('sidebarLayout') || 'ltr';
+  const sidebar = document.querySelector('.main-sidebar');
+  const content = document.querySelector('.content-wrapper');
+  const savedLayout = localStorage.getItem('sidebarLayout') || 'left';
   
-  if (savedLayout === 'ltr') {
-    // نقل الـ sidebar لليمين
-    body.classList.add('layout-fixed');
-    body.style.direction = 'rtl';
-    wrapper.style.direction = 'rtl';
+  if (savedLayout === 'left') {
+    // نقل الـ sidebar من اليسار لليمين
+    if (sidebar) {
+      sidebar.style.left = 'auto';
+      sidebar.style.right = '0';
+      sidebar.style.transition = 'all 0.3s ease';
+    }
+    if (content) {
+      content.style.marginLeft = '0';
+      content.style.marginRight = '250px';
+      content.style.transition = 'all 0.3s ease';
+    }
+    localStorage.setItem('sidebarLayout', 'right');
     
-    document.querySelectorAll('.main-sidebar, .content-wrapper, .main-header').forEach(el => {
-      el.style.transform = 'scaleX(-1)';
-    });
-    
-    document.querySelectorAll('.main-sidebar *, .main-header *').forEach(el => {
-      el.style.transform = 'scaleX(-1)';
-    });
-    
-    localStorage.setItem('sidebarLayout', 'rtl');
-    
-    // رسالة نجاح
     Swal.fire({
       toast: true,
       position: 'top-end',
       icon: 'success',
       title: 'تم نقل القائمة لليمين',
       showConfirmButton: false,
-      timer: 2000
+      timer: 1500
     });
   } else {
-    // إرجاع الـ sidebar لليسار
-    body.style.direction = 'ltr';
-    wrapper.style.direction = 'ltr';
+    // إرجاع الـ sidebar من اليمين لليسار
+    if (sidebar) {
+      sidebar.style.left = '0';
+      sidebar.style.right = 'auto';
+      sidebar.style.transition = 'all 0.3s ease';
+    }
+    if (content) {
+      content.style.marginLeft = '250px';
+      content.style.marginRight = '0';
+      content.style.transition = 'all 0.3s ease';
+    }
+    localStorage.setItem('sidebarLayout', 'left');
     
-    document.querySelectorAll('.main-sidebar, .content-wrapper, .main-header').forEach(el => {
-      el.style.transform = 'scaleX(1)';
-    });
-    
-    document.querySelectorAll('.main-sidebar *, .main-header *').forEach(el => {
-      el.style.transform = 'scaleX(1)';
-    });
-    
-    localStorage.setItem('sidebarLayout', 'ltr');
-    
-    // رسالة نجاح
     Swal.fire({
       toast: true,
       position: 'top-end',
       icon: 'success',
       title: 'تم نقل القائمة لليسار',
       showConfirmButton: false,
-      timer: 2000
+      timer: 1500
     });
   }
-  
-  // إعادة تحميل الصفحة لتطبيق التغييرات بشكل صحيح
-  setTimeout(() => {
-    location.reload();
-  }, 500);
 }
 
 // تطبيق الإعدادات المحفوظة عند تحميل الصفحة
 (function() {
   const savedLayout = localStorage.getItem('sidebarLayout');
-  const body = document.body;
-  const wrapper = document.querySelector('.wrapper');
+  const sidebar = document.querySelector('.main-sidebar');
+  const content = document.querySelector('.content-wrapper');
   
-  if (savedLayout === 'rtl') {
-    body.classList.add('layout-fixed');
-    body.style.direction = 'rtl';
-    if (wrapper) wrapper.style.direction = 'rtl';
-    
-    document.querySelectorAll('.main-sidebar, .content-wrapper, .main-header').forEach(el => {
-      el.style.transform = 'scaleX(-1)';
-    });
-    
-    document.querySelectorAll('.main-sidebar *, .main-header *').forEach(el => {
-      el.style.transform = 'scaleX(-1)';
-    });
+  if (savedLayout === 'right') {
+    if (sidebar) {
+      sidebar.style.left = 'auto';
+      sidebar.style.right = '0';
+    }
+    if (content) {
+      content.style.marginLeft = '0';
+      content.style.marginRight = '250px';
+    }
   }
 })();
 </script>

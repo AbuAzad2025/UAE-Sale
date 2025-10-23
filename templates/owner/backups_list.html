@@ -289,6 +289,14 @@
           </span>
           {% endif %}
 
+          <!-- زر التحميل -->
+          <a href="{{ url_for('owner.download_backup', filename=backup.filename) }}" 
+             class="btn btn-sm btn-success"
+             title="تحميل النسخة الاحتياطية"
+             download>
+            <i class="fas fa-download mr-1"></i> تحميل
+          </a>
+
           <!-- زر التحقق -->
           <button type="button" class="btn btn-sm btn-info" 
                   onclick="verifyBackup('{{ backup.filename }}')"

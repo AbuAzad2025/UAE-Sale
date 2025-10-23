@@ -832,6 +832,40 @@ def delete_backup(filename):
     return redirect(url_for('owner.list_backups'))
 
 
+@owner_bp.route('/backups/download/<filename>')
+@login_required
+@owner_required
+def download_backup(filename):
+    """تحميل نسخة احتياطية"""
+    from services.backup_service import BackupService
+    from flask import send_file
+    import os
+    
+    # التحقق من الصلاحيات
+    if not current_user.is_owner:
+        flash('❌ غير مصرح - التحميل للمالك فقط!', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    # التحقق من أن النسخة موجودة
+    backup_path = os.path.join(BackupService.BACKUP_DIR, filename)
+    
+    if not os.path.exists(backup_path):
+        flash('❌ النسخة الاحتياطية غير موجودة!', 'danger')
+        return redirect(url_for('owner.list_backups'))
+    
+    try:
+        # إرسال الملف للتحميل
+        return send_file(
+            backup_path,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/gzip'
+        )
+    except Exception as e:
+        flash(f'❌ فشل التحميل: {str(e)}', 'danger')
+        return redirect(url_for('owner.list_backups'))
+
+
 @owner_bp.route('/clear-cache', methods=['POST'])
 @login_required
 @owner_required

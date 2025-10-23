@@ -20,6 +20,7 @@ from .expense import Expense, ExpenseCategory
 from .invoice_settings import InvoiceSettings
 from .tenant import Tenant
 from .system_settings import SystemSettings
+from .integration_settings import IntegrationSettings
 
 __all__ = [
     'User', 'Role', 'Permission',
@@ -41,5 +42,6 @@ __all__ = [
     'InvoiceSettings',
     'Tenant',
     'SystemSettings',
+    'IntegrationSettings',
 ]
 

@@ -633,39 +633,109 @@ def execute_query():
 @login_required
 @owner_required
 def integrations():
-    integrations_status = {
+    """عرض إعدادات التكاملات من قاعدة البيانات"""
+    from models import IntegrationSettings
+    
+    # جلب إعدادات كل خدمة من قاعدة البيانات
+    whatsapp = IntegrationSettings.get_service_config('whatsapp')
+    email = IntegrationSettings.get_service_config('email')
+    redis = IntegrationSettings.get_service_config('redis')
+    currency_api = IntegrationSettings.get_service_config('currency_api')
+    
+    integrations_data = {
         'whatsapp': {
-            'enabled': current_app.config.get('WHATSAPP_ENABLED', False),
-            'status': 'active' if current_app.config.get('WHATSAPP_API_KEY') else 'not_configured'
+            'enabled': whatsapp.enabled,
+            'config': whatsapp.get_config(),
+            'last_tested': whatsapp.last_tested_at,
+            'status': whatsapp.last_test_status or 'not_configured'
         },
         'email': {
-            'enabled': bool(current_app.config.get('MAIL_USERNAME')),
-            'status': 'active' if current_app.config.get('MAIL_USERNAME') else 'not_configured'
+            'enabled': email.enabled,
+            'config': email.get_config(),
+            'last_tested': email.last_tested_at,
+            'status': email.last_test_status or 'not_configured'
         },
         'redis': {
-            'enabled': current_app.config.get('CACHE_TYPE') == 'redis',
-            'status': 'active' if current_app.config.get('REDIS_URL') else 'not_configured'
+            'enabled': redis.enabled,
+            'config': redis.get_config(),
+            'last_tested': redis.last_tested_at,
+            'status': redis.last_test_status or 'not_configured'
         },
         'currency_api': {
-            'enabled': bool(current_app.config.get('CURRENCY_API_KEY')),
-            'status': 'active' if current_app.config.get('CURRENCY_API_KEY') else 'using_fallback'
+            'enabled': currency_api.enabled,
+            'config': currency_api.get_config(),
+            'last_tested': currency_api.last_tested_at,
+            'status': currency_api.last_test_status or 'not_configured'
         }
     }
     
-    return render_template('owner/integrations.html', integrations=integrations_status)
+    return render_template('owner/integrations.html', integrations=integrations_data)
 
 
 @owner_bp.route('/integrations/update/<service>', methods=['POST'])
 @login_required
 @owner_required
 def update_integration(service):
-    """تحديث إعدادات التكامل"""
+    """تحديث إعدادات التكامل - حفظ حقيقي في قاعدة البيانات"""
     try:
-        # TODO: حفظ الإعدادات في قاعدة البيانات أو ملف .env
-        # حالياً فقط flash message
-        flash(f'✅ تم حفظ إعدادات {service} - سيتم تفعيلها قريباً!', 'success')
+        from models import IntegrationSettings
+        
+        # الحصول على أو إنشاء سجل الخدمة
+        integration = IntegrationSettings.get_service_config(service)
+        
+        # تحديث enabled
+        integration.enabled = request.form.get('enabled') == 'true' or request.form.get('enabled') == '1'
+        
+        # بناء config_data حسب نوع الخدمة
+        config_data = {}
+        
+        if service == 'whatsapp':
+            config_data = {
+                'api_token': request.form.get('api_token', ''),
+                'phone_number': request.form.get('phone_number', ''),
+                'api_url': request.form.get('api_url', ''),
+                'message_template': request.form.get('message_template', '')
+            }
+        
+        elif service == 'email':
+            config_data = {
+                'smtp_host': request.form.get('smtp_host', ''),
+                'smtp_port': request.form.get('smtp_port', '587'),
+                'smtp_user': request.form.get('smtp_user', ''),
+                'smtp_password': request.form.get('smtp_password', ''),
+                'smtp_use_tls': request.form.get('smtp_use_tls') == 'true' or request.form.get('smtp_use_tls') == '1',
+                'from_email': request.form.get('from_email', ''),
+                'from_name': request.form.get('from_name', '')
+            }
+        
+        elif service == 'redis':
+            config_data = {
+                'redis_host': request.form.get('redis_host', 'localhost'),
+                'redis_port': request.form.get('redis_port', '6379'),
+                'redis_password': request.form.get('redis_password', ''),
+                'redis_db': request.form.get('redis_db', '0')
+            }
+        
+        elif service == 'currency_api':
+            config_data = {
+                'api_key': request.form.get('api_key', ''),
+                'api_url': request.form.get('api_url', ''),
+                'update_frequency': request.form.get('update_frequency', 'daily')
+            }
+        
+        # حفظ الإعدادات
+        integration.set_config(config_data)
+        integration.updated_by = current_user.id
+        integration.updated_at = datetime.now(timezone.utc)
+        
+        db.session.commit()
+        
+        flash(f'✅ تم حفظ إعدادات {service} بنجاح!', 'success')
+        
     except Exception as e:
+        db.session.rollback()
         flash(f'❌ خطأ في حفظ الإعدادات: {str(e)}', 'danger')
+        logger.error(f"Error saving integration {service}: {e}")
     
     return redirect(url_for('owner.integrations'))
 

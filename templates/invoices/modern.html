@@ -130,10 +130,10 @@
       {% if settings and settings.show_logo %}
       <img src="/static/img/azad_logo.png" alt="Logo" class="logo">
       {% endif %}
-      <div class="company-name">{{ settings.company_name_ar if settings else 'شركة أزاد' }}</div>
+      <div class="company-name">{{ settings.company_name_ar if settings and settings.company_name_ar else (config.COMPANY_NAME_AR if config else 'شركة أزاد') }}</div>
       <div class="company-info">
-        <div>{{ settings.address_ar if settings else 'أبو ظبي - الإمارات العربية المتحدة' }}</div>
-        <div>📞 {{ settings.phone_1 if settings else 'None' }} | 📧 {{ settings.email if settings else 'None' }}</div>
+        <div>{{ settings.address_ar if settings and settings.address_ar else (config.COMPANY_ADDRESS if config else 'أبو ظبي - الإمارات العربية المتحدة') }}</div>
+        <div>📞 {{ settings.phone_1 if settings and settings.phone_1 else '+970592800646' }} | 📧 {{ settings.email if settings and settings.email else 'rafideen.ahmadghannam@gmail.com' }}</div>
         {% if settings and settings.tax_number %}<div>الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
       </div>
     </div>

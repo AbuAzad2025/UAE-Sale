@@ -800,20 +800,34 @@ def custom_restore_backup(filename):
 @login_required
 @owner_required
 def delete_backup(filename):
-    """حذف نسخة احتياطية"""
+    """حذف نسخة احتياطية - يدوية فقط"""
     from services.backup_service import BackupService
+    
+    # التحقق من الصلاحيات
+    if not current_user.is_owner:
+        flash('❌ غير مصرح - الحذف للمالك فقط!', 'danger')
+        return redirect(url_for('owner.list_backups'))
     
     # منع حذف النسخ التلقائية (أمان)
     if BackupService.BACKUP_PREFIX in filename:
-        flash('❌ لا يمكن حذف النسخ التلقائية!', 'warning')
+        flash('❌ لا يمكن حذف النسخ التلقائية! النسخ التلقائية محمية ويتم حذفها تلقائياً عند تجاوز الحد الأقصى.', 'warning')
         return redirect(url_for('owner.list_backups'))
     
+    # التحقق من أن النسخة موجودة
+    backups = BackupService.list_backups()
+    backup_exists = any(b['filename'] == filename for b in backups)
+    
+    if not backup_exists:
+        flash('❌ النسخة الاحتياطية غير موجودة!', 'danger')
+        return redirect(url_for('owner.list_backups'))
+    
+    # حذف النسخة
     success = BackupService.delete_backup(filename)
     
     if success:
-        flash('✅ تم حذف النسخة الاحتياطية', 'success')
+        flash(f'✅ تم حذف النسخة الاحتياطية: {filename}', 'success')
     else:
-        flash('❌ فشل الحذف', 'danger')
+        flash('❌ فشل حذف النسخة الاحتياطية!', 'danger')
     
     return redirect(url_for('owner.list_backups'))
 

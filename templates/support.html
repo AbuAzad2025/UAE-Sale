@@ -917,9 +917,9 @@
         function generateCryptoPayment() {
             // Get amount
             const customAmount = document.getElementById('customAmount').value;
-            const amount = customAmount || selectedAmount;
+            const paymentAmount = customAmount || selectedAmount;
             
-            if (!amount || amount < 1) {
+            if (!paymentAmount || paymentAmount < 1) {
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
@@ -941,7 +941,7 @@
             
             // تحديد نوع المعاملة والبيانات
             const transactionData = {
-                amount: amount,
+                amount: paymentAmount,
                 crypto_currency: cryptoType,
                 type: currentTab,  // 'purchase' or 'donation'
             };
@@ -1078,9 +1078,9 @@
         
         // Handle PayPal payment
         function handlePayPalPayment() {
-            const amount = document.getElementById('customAmount').value || 15;
+            const paymentAmount = document.getElementById('customAmount').value || 15;
             
-            if (!amount || amount < 1) {
+            if (!paymentAmount || paymentAmount < 1) {
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
@@ -1116,12 +1116,12 @@
             e.preventDefault();
             
             // Get form data
-            const amount = document.querySelector('#card-form input[type="number"]').value;
+            const paymentAmount = document.querySelector('#card-form input[type="number"]').value;
             const cardNumber = document.querySelector('#card-form input[placeholder*="1234"]').value;
             const expiry = document.querySelector('#card-form input[placeholder*="MM/YY"]').value;
             const cvv = document.querySelector('#card-form input[placeholder*="123"]').value;
             
-            if (!amount || amount < 1) {
+            if (!paymentAmount || paymentAmount < 1) {
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
@@ -1134,9 +1134,9 @@
             // Show processing message
                 // معالجة الدفع بالبطاقات
                 const formData = new FormData(cardForm);
-                const amount = formData.get('amount');
+                const paymentAmount = formData.get('amount');
                 
-                if (!amount || amount < 1) {
+                if (!paymentAmount || paymentAmount < 1) {
                     Swal.fire({
                         icon: 'error',
                         title: 'خطأ',

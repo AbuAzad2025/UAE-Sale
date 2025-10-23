@@ -9,9 +9,9 @@
     body {
       font-family: 'Noto Kufi Arabic', 'Arial', sans-serif;
       background: linear-gradient(135deg, #8b7355 0%, #c9a961 100%);
-      padding: 20px;
+      padding: 10px;
       margin: 0;
-      font-size: 11px;
+      font-size: 9px;
       color: #1a1a1a;
       display: flex;
       justify-content: center;
@@ -20,120 +20,120 @@
     }
     @page {
       size: {{ settings.paper_size or 'A4' }} {{ settings.orientation or 'portrait' }};
-      margin: 10mm;
+      margin: 5mm;
     }
     .invoice {
       {% if settings.paper_size == 'A5' %}
-        width: 148mm;
-        height: {{ '210mm' if settings.orientation == 'portrait' else '148mm' }};
+        max-width: 138mm;
+        max-height: {{ '200mm' if settings.orientation == 'portrait' else '138mm' }};
       {% elif settings.paper_size == 'Letter' %}
-        width: 216mm;
-        height: {{ '279mm' if settings.orientation == 'portrait' else '216mm' }};
+        max-width: 206mm;
+        max-height: {{ '269mm' if settings.orientation == 'portrait' else '206mm' }};
       {% else %}
-        width: {{ '210mm' if settings.orientation == 'portrait' else '297mm' }};
-        height: {{ '297mm' if settings.orientation == 'portrait' else '210mm' }};
+        max-width: {{ '200mm' if settings.orientation == 'portrait' else '287mm' }};
+        max-height: {{ '287mm' if settings.orientation == 'portrait' else '200mm' }};
       {% endif %}
       margin: 0 auto;
       background: white;
-      border: 4px solid {{ settings.header_color or '#c9a961' }};
-      border-radius: 10px;
-      overflow: auto;
-      box-shadow: 0 0 40px rgba(0,0,0,0.6);
+      border: 1px solid {{ settings.header_color or '#c9a961' }};
+      border-radius: 5px;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
     }
     .header {
       background: linear-gradient(135deg, {{ settings.header_color or '#c9a961' }} 0%, {{ settings.accent_color or '#8b7355' }} 100%);
       color: white;
-      padding: 20px;
+      padding: 10px;
       text-align: center;
       position: relative;
     }
     .header::before {
       content: '☪';
       position: absolute;
-      top: 10px;
-      right: 20px;
-      font-size: 40px;
+      top: 5px;
+      right: 15px;
+      font-size: 30px;
       opacity: 0.2;
     }
-    .logo { height: 55px; background: white; padding: 8px; border-radius: 8px; margin-bottom: 10px; }
+    .logo { height: 40px; background: white; padding: 5px; border-radius: 5px; margin-bottom: 5px; }
     .company-name { 
-      font-size: 22px; 
+      font-size: 16px; 
       font-weight: 700; 
-      margin-bottom: 5px;
+      margin-bottom: 3px;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
     }
-    .company-info { font-size: 10px; opacity: 0.95; line-height: 1.6; }
+    .company-info { font-size: 8px; opacity: 0.95; line-height: 1.4; }
     .title-section {
       background: #f8f9fa;
-      padding: 15px;
+      padding: 8px;
       text-align: center;
-      border-bottom: 3px solid {{ settings.accent_color or '#8b7355' }};
+      border-bottom: 1px solid {{ settings.accent_color or '#8b7355' }};
     }
     .invoice-title {
-      font-size: 18px;
+      font-size: 9px;
       font-weight: 700;
       color: {{ settings.header_color or '#c9a961' }};
-      margin-bottom: 5px;
+      margin-bottom: 3px;
     }
     .invoice-number {
-      font-size: 14px;
+      font-size: 9px;
       color: #666;
     }
     .content {
-      padding: 20px;
+      padding: 10px;
     }
     .info-boxes {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 15px;
-      margin-bottom: 20px;
+      gap: 8px;
+      margin-bottom: 10px;
     }
     .info-box {
       background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
-      border: 2px solid {{ settings.accent_color or '#8b7355' }};
-      border-radius: 8px;
-      padding: 12px;
+      border: 1px solid {{ settings.accent_color or '#8b7355' }};
+      border-radius: 5px;
+      padding: 6px;
     }
     .info-box h3 {
       color: {{ settings.header_color or '#c9a961' }};
-      font-size: 13px;
-      margin-bottom: 8px;
-      border-bottom: 2px solid {{ settings.accent_color or '#8b7355' }};
-      padding-bottom: 5px;
+      font-size: 8px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid {{ settings.accent_color or '#8b7355' }};
+      padding-bottom: 3px;
     }
     .info-box p {
-      margin: 5px 0;
-      font-size: 10px;
+      margin: 2px 0;
+      font-size: 8px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 15px 0;
-      border: 2px solid {{ settings.accent_color or '#8b7355' }};
-      font-size: 10px;
+      margin: 8px 0;
+      border: 1px solid {{ settings.accent_color or '#8b7355' }};
+      font-size: 8px;
     }
     thead {
       background: linear-gradient(135deg, {{ settings.header_color or '#c9a961' }} 0%, {{ settings.accent_color or '#8b7355' }} 100%);
       color: white;
     }
     th {
-      padding: 10px 8px;
+      padding: 5px 4px;
       text-align: center;
-      font-size: 11px;
+      font-size: 9px;
       font-weight: 700;
     }
     td {
-      padding: 8px;
+      padding: 4px;
       text-align: center;
       border-bottom: 1px solid #dee2e6;
     }
     tbody tr:nth-child(even) { background: #f8f9fa; }
     .totals {
-      margin-top: 20px;
+      margin-top: 10px;
       background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
-      border: 2px solid {{ settings.accent_color or '#8b7355' }};
+      border: 1px solid {{ settings.accent_color or '#8b7355' }};
       border-radius: 8px;
-      padding: 15px;
+      padding: 8px;
       width: 400px;
       margin-right: 0;
       margin-left: auto;
@@ -142,7 +142,7 @@
       display: flex;
       justify-content: space-between;
       padding: 5px 0;
-      font-size: 11px;
+      font-size: 9px;
       border-bottom: 1px dashed #dee2e6;
     }
     .total-row.final {
@@ -150,14 +150,14 @@
       color: white;
       padding: 10px;
       margin-top: 10px;
-      font-size: 15px;
+      font-size: 9px;
       font-weight: 700;
       border-radius: 5px;
       border: none;
     }
     .payments-table {
-      margin-top: 20px;
-      border: 2px solid {{ settings.accent_color or '#8b7355' }};
+      margin-top: 10px;
+      border: 1px solid {{ settings.accent_color or '#8b7355' }};
       border-radius: 8px;
       overflow: hidden;
     }
@@ -166,7 +166,7 @@
       color: white;
       padding: 10px;
       text-align: center;
-      font-size: 13px;
+      font-size: 8px;
       font-weight: 700;
     }
     .payment-row {
@@ -177,7 +177,7 @@
     .payment-row:nth-child(even) { background: #f8f9fa; }
     .cheque-details {
       background: #fff3cd;
-      border: 2px solid #ffc107;
+      border: 1px solid #ffc107;
       border-radius: 5px;
       padding: 8px;
       margin-top: 8px;
@@ -186,9 +186,9 @@
     .footer {
       background: linear-gradient(135deg, {{ settings.header_color or '#c9a961' }} 0%, {{ settings.accent_color or '#8b7355' }} 100%);
       color: white;
-      padding: 15px;
+      padding: 8px;
       text-align: center;
-      margin-top: 20px;
+      margin-top: 10px;
       border-radius: 0 0 8px 8px;
       font-size: 9px;
     }
@@ -207,7 +207,7 @@
       border-top: 2px solid #333;
       margin-top: 40px;
       padding-top: 8px;
-      font-size: 10px;
+      font-size: 8px;
     }
     @media print {
       body { padding: 0; }
@@ -216,8 +216,8 @@
   </style>
 </head>
 <body>
-  <div class="no-print" style="text-align: center; margin-bottom: 15px;">
-    <button onclick="window.print()" style="background: linear-gradient(135deg, {{ settings.header_color or '#c9a961' }} 0%, {{ settings.accent_color or '#8b7355' }} 100%); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; cursor: pointer;">
+  <div class="no-print" style="text-align: center; margin-bottom: 8px;">
+    <button onclick="window.print()" style="background: linear-gradient(135deg, {{ settings.header_color or '#c9a961' }} 0%, {{ settings.accent_color or '#8b7355' }} 100%); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 9px; cursor: pointer;">
       🖨️ طباعة الفاتورة
     </button>
   </div>
@@ -317,14 +317,14 @@
         <div class="payments-header">💰 الدفعات المسددة</div>
         <div style="padding: 10px;">
           {% for payment in sale.payments %}
-          <div class="payment-row" style="font-size: 10px;">
+          <div class="payment-row" style="font-size: 8px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
               <div>
                 <strong style="color: {{ settings.header_color or '#c9a961' }};">{{ payment.payment_number }}</strong>
                 <span style="margin: 0 8px;">|</span>
                 {{ payment.payment_date.strftime('%Y-%m-%d') }}
               </div>
-              <div style="font-weight: bold; color: #28a745; font-size: 12px;">
+              <div style="font-weight: bold; color: #28a745; font-size: 9px;">
                 {{ "{:,.2f}".format(payment.amount_aed) }} AED
               </div>
             </div>
@@ -341,15 +341,15 @@
               <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center;">
                 <div>
                   <div style="color: {{ settings.header_color or '#c9a961' }}; font-weight: bold;">📝 رقم الشيك</div>
-                  <div style="font-size: 10px; font-weight: bold;">{{ payment.cheque_number }}</div>
+                  <div style="font-size: 8px; font-weight: bold;">{{ payment.cheque_number }}</div>
                 </div>
                 <div>
                   <div style="color: {{ settings.header_color or '#c9a961' }}; font-weight: bold;">📅 تاريخ الاستحقاق</div>
-                  <div style="font-size: 10px; font-weight: bold;">{{ payment.cheque_date.strftime('%Y-%m-%d') if payment.cheque_date else '-' }}</div>
+                  <div style="font-size: 8px; font-weight: bold;">{{ payment.cheque_date.strftime('%Y-%m-%d') if payment.cheque_date else '-' }}</div>
                 </div>
                 <div>
                   <div style="color: {{ settings.header_color or '#c9a961' }}; font-weight: bold;">🏦 البنك</div>
-                  <div style="font-size: 10px; font-weight: bold;">{{ payment.bank_name or '-' }}</div>
+                  <div style="font-size: 8px; font-weight: bold;">{{ payment.bank_name or '-' }}</div>
                 </div>
               </div>
             </div>
@@ -361,31 +361,31 @@
       {% endif %}
 
       {% if sale.notes %}
-      <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 5px; padding: 10px; margin-top: 15px;">
+      <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; padding: 10px; margin-top: 8px;">
         <strong style="color: {{ settings.header_color or '#c9a961' }};">📝 ملاحظات:</strong>
-        <p style="margin-top: 5px; font-size: 10px;">{{ sale.notes }}</p>
+        <p style="margin-top: 5px; font-size: 8px;">{{ sale.notes }}</p>
       </div>
       {% endif %}
 
       <div class="signature-section">
         <div class="signature-box">
-          <div style="font-size: 11px; color: #666;">ختم وتوقيع البائع</div>
+          <div style="font-size: 9px; color: #666;">ختم وتوقيع البائع</div>
           <div class="signature-line"></div>
         </div>
         <div class="signature-box">
-          <div style="font-size: 11px; color: #666;">توقيع العميل</div>
+          <div style="font-size: 9px; color: #666;">توقيع العميل</div>
           <div class="signature-line"></div>
         </div>
       </div>
     </div>
 
     <div class="footer">
-      <div style="font-size: 11px; margin-bottom: 5px;">{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else 'نرجو الالتزام بمواعيد الدفع المحددة' }}</div>
+      <div style="font-size: 9px; margin-bottom: 5px;">{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else 'نرجو الالتزام بمواعيد الدفع المحددة' }}</div>
       
       <!-- Bank Info -->
       {% if settings and ((settings.bank_name and settings.bank_name != 'None') or (settings.iban and settings.iban != 'None') or (settings.swift_code and settings.swift_code != 'None')) %}
-      <div style="margin: 12px 0; padding: 12px; background: rgba(255,255,255,0.15); border-radius: 8px; border: 2px solid rgba(255,255,255,0.3);">
-        <p style="font-weight: 700; font-size: 11px; margin-bottom: 6px; text-align: center;">🏦 معلومات التحويل البنكي</p>
+      <div style="margin: 12px 0; padding: 6px; background: rgba(255,255,255,0.15); border-radius: 8px; border: 1px solid rgba(255,255,255,0.3);">
+        <p style="font-weight: 700; font-size: 9px; margin-bottom: 6px; text-align: center;">🏦 معلومات التحويل البنكي</p>
         <div style="font-size: 9px; line-height: 1.6; text-align: center;">
           {% if settings.bank_name and settings.bank_name != 'None' %}<span><strong>البنك:</strong> {{ settings.bank_name }}</span>{% endif %}
           {% if (settings.bank_name and settings.bank_name != 'None') and (settings.iban and settings.iban != 'None') %}<br>{% endif %}
@@ -412,13 +412,13 @@
       {% endif %}
       
       <div>☪ شكراً لتعاملكم الكريم معنا ☪</div>
-      {% if settings and settings.website %}
-      <div style="margin-top: 5px; font-size: 10px;">🌐 {{ settings.website }}</div>
+      {% if settings and settings.website and settings.website != 'None' %}
+      <div style="margin-top: 5px; font-size: 8px;">🌐 {{ settings.website }}</div>
       {% endif %}
       
       <!-- Social Media -->
       {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}
-      <div style="margin-top: 10px; font-size: 10px;">
+      <div style="margin-top: 10px; font-size: 8px;">
         {% if settings.facebook_url %}<a href="{{ settings.facebook_url }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;">📘 Facebook</a>{% endif %}
         {% if settings.instagram_url %}<a href="{{ settings.instagram_url }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;">📷 Instagram</a>{% endif %}
         {% if settings.whatsapp_number %}<a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;">💬 WhatsApp</a>{% endif %}

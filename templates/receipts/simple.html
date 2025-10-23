@@ -7,43 +7,43 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Arial', sans-serif;
-      padding: 15px;
-      font-size: 12px;
+      padding: 8px;
+      font-size: 9px;
       background: white;
     }
     @page {
       size: A4 portrait;
-      margin: 10mm;
+      margin: 5mm;
     }
     .receipt {
-      max-width: 210mm;
+      max-max-width: 200mm;
       margin: 0 auto;
       background: white;
-      border: 2px solid #000;
-      padding: 20px;
+      border: 1px solid #000;
+      padding: 10px;
     }
     .header {
       text-align: center;
-      border-bottom: 2px solid #000;
+      border-bottom: 1px solid #000;
       padding-bottom: 12px;
-      margin-bottom: 15px;
+      margin-bottom: 8px;
     }
     .logo { 
-      height: 60px; 
+      height: 40px; 
       margin-bottom: 8px;
     }
     .company-name { 
-      font-size: 18px; 
+      font-size: 9px; 
       font-weight: bold; 
       margin: 5px 0;
     }
     .company-info { 
-      font-size: 10px; 
+      font-size: 8px; 
       color: #555;
     }
     .title {
       text-align: center;
-      font-size: 22px;
+      font-size: 16px;
       font-weight: bold;
       margin: 15px 0;
       background: #f0f0f0;
@@ -52,13 +52,13 @@
     }
     .amount-box {
       background: #f9f9f9;
-      border: 2px solid #000;
-      padding: 20px;
+      border: 1px solid #000;
+      padding: 10px;
       text-align: center;
       margin: 20px 0;
     }
     .amount-label {
-      font-size: 12px;
+      font-size: 9px;
       margin-bottom: 5px;
     }
     .amount-value {
@@ -83,7 +83,7 @@
       padding-top: 15px;
       border-top: 1px solid #000;
       text-align: center;
-      font-size: 10px;
+      font-size: 8px;
       color: #555;
     }
     .bank-info {
@@ -169,7 +169,7 @@
     <div class="amount-box">
       <div class="amount-label">المبلغ المستلم</div>
       <div class="amount-value">{{ "{:,.2f}".format(receipt.amount_aed) }} AED</div>
-      <div style="font-size: 11px; margin-top: 5px;">
+      <div style="font-size: 9px; margin-top: 5px;">
         {{ receipt.amount_in_words or '' }}
       </div>
     </div>
@@ -177,8 +177,8 @@
     <!-- Allocations -->
     {% if receipt.allocations %}
     <div style="margin: 15px 0;">
-      <strong style="font-size: 12px;">تخصيص المبلغ على الفواتير:</strong>
-      <table style="margin-top: 8px; font-size: 10px;">
+      <strong style="font-size: 9px;">تخصيص المبلغ على الفواتير:</strong>
+      <table style="margin-top: 8px; font-size: 8px;">
         <thead>
           <tr>
             <th>رقم الفاتورة</th>
@@ -212,24 +212,24 @@
       {% if settings and (settings.bank_name or settings.iban or settings.swift_code) %}
       <div class="bank-info">
         <strong>للتحويل البنكي:</strong><br>
-        {% if settings.bank_name %}{{ settings.bank_name }}{% if settings.iban %} • {% endif %}{% endif %}
-        {% if settings.iban %}IBAN: {{ settings.iban }}{% endif %}
-        {% if settings.swift_code %}<br>SWIFT: {{ settings.swift_code }}{% endif %}
+        {% if settings.bank_name and settings.bank_name != 'None' %}{{ settings.bank_name }}{% if settings.iban and settings.iban != 'None' %} • {% endif %}{% endif %}
+        {% if settings.iban and settings.iban != 'None' %}IBAN: {{ settings.iban }}{% endif %}
+        {% if settings.swift_code and settings.swift_code != 'None' %}<br>SWIFT: {{ settings.swift_code }}{% endif %}
       </div>
       {% endif %}
       
       <!-- Business Registration -->
       {% if settings and (settings.commercial_register or settings.license_number) %}
       <div style="font-size: 8px; margin: 5px 0;">
-        {% if settings.commercial_register %}س.ت: {{ settings.commercial_register }}{% endif %}
+        {% if settings.commercial_register and settings.commercial_register != 'None' %}س.ت: {{ settings.commercial_register }}{% endif %}
         {% if settings.commercial_register and settings.license_number %} | {% endif %}
-        {% if settings.license_number %}رخصة: {{ settings.license_number }}{% endif %}
+        {% if settings.license_number and settings.license_number != 'None' %}رخصة: {{ settings.license_number }}{% endif %}
       </div>
       {% endif %}
       
       <!-- Default Receipt Note -->
-      {% if settings and settings.default_receipt_note_ar %}
-      <div style="margin: 10px 0; font-size: 10px; font-style: italic;">
+      {% if settings and settings.default_receipt_note_ar and settings.default_receipt_note_ar != 'None' %}
+      <div style="margin: 10px 0; font-size: 8px; font-style: italic;">
         {{ settings.default_receipt_note_ar }}
       </div>
       {% endif %}

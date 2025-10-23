@@ -7,36 +7,36 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Arial', sans-serif;
-      padding: 15px;
-      font-size: 12px;
+      padding: 8px;
+      font-size: 9px;
       background: white;
     }
     @page {
       size: A4 portrait;
-      margin: 10mm;
+      margin: 5mm;
     }
     .invoice {
-      max-width: 210mm;
+      max-max-width: 200mm;
       margin: 0 auto;
       background: white;
     }
     .header {
       text-align: center;
-      border-bottom: 2px solid #000;
+      border-bottom: 1px solid #000;
       padding-bottom: 10px;
-      margin-bottom: 15px;
+      margin-bottom: 8px;
     }
     .logo { 
-      height: 60px; 
+      height: 40px; 
       margin-bottom: 8px;
     }
     .company-name { 
-      font-size: 18px; 
+      font-size: 9px; 
       font-weight: bold; 
       margin: 5px 0;
     }
     .company-info { 
-      font-size: 10px; 
+      font-size: 8px; 
       color: #555; 
       line-height: 1.4;
     }
@@ -51,7 +51,7 @@
       display: flex;
       justify-content: space-between;
       margin: 8px 0;
-      font-size: 11px;
+      font-size: 9px;
     }
     table {
       width: 100%;
@@ -68,7 +68,7 @@
       font-weight: bold;
     }
     .totals {
-      margin-top: 15px;
+      margin-top: 8px;
       text-align: left;
       margin-left: auto;
       width: 250px;
@@ -92,7 +92,7 @@
       padding-top: 15px;
       border-top: 1px solid #000;
       text-align: center;
-      font-size: 10px;
+      font-size: 8px;
       color: #555;
     }
     .bank-info {
@@ -115,7 +115,7 @@
       border-top: 1px solid #000;
       margin-top: 40px;
       padding-top: 5px;
-      font-size: 10px;
+      font-size: 8px;
     }
     @media print {
       .no-print { display: none !important; }
@@ -204,8 +204,8 @@
       {% if settings and (settings.bank_name or settings.iban) %}
       <div class="bank-info">
         <strong>معلومات التحويل:</strong><br>
-        {% if settings.bank_name %}البنك: {{ settings.bank_name }} • {% endif %}
-        {% if settings.iban %}IBAN: {{ settings.iban }}{% endif %}
+        {% if settings.bank_name and settings.bank_name != 'None' %}البنك: {{ settings.bank_name }} • {% endif %}
+        {% if settings.iban and settings.iban != 'None' %}IBAN: {{ settings.iban }}{% endif %}
       </div>
       {% endif %}
       
@@ -214,13 +214,13 @@
       <div style="font-size: 9px; margin: 5px 0;">
         {% if settings.tax_number %}ض.ر: {{ settings.tax_number }}{% endif %}
         {% if settings.tax_number and settings.commercial_register %} • {% endif %}
-        {% if settings.commercial_register %}س.ت: {{ settings.commercial_register }}{% endif %}
+        {% if settings.commercial_register and settings.commercial_register != 'None' %}س.ت: {{ settings.commercial_register }}{% endif %}
       </div>
       {% endif %}
       
       <!-- Default Note -->
-      {% if settings and settings.default_invoice_note_ar %}
-      <div style="margin: 10px 0; padding: 5px; border: 1px dashed #999; font-size: 10px;">
+      {% if settings and settings.default_invoice_note_ar and settings.default_invoice_note_ar != 'None' %}
+      <div style="margin: 10px 0; padding: 5px; border: 1px dashed #999; font-size: 8px;">
         {{ settings.default_invoice_note_ar }}
       </div>
       {% endif %}

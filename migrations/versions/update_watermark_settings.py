@@ -17,15 +17,30 @@ depends_on = None
 
 
 def upgrade():
-    # تحديث إعدادات العلامة المائية للسجل الموجود
-    op.execute("""
-        UPDATE invoice_settings 
-        SET 
-            enable_watermark = 1,
-            watermark_text = 'نسخة أصلية',
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = 1
-    """)
+    # التأكد من وجود سجل في invoice_settings
+    # إذا لم يوجد، إنشاؤه
+    connection = op.get_bind()
+    result = connection.execute(sa.text("SELECT COUNT(*) FROM invoice_settings"))
+    count = result.scalar()
+    
+    if count == 0:
+        # إنشاء سجل جديد
+        op.execute("""
+            INSERT INTO invoice_settings (
+                enable_watermark, watermark_text, created_at, updated_at
+            ) VALUES (
+                1, 'نسخة أصلية', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            )
+        """)
+    else:
+        # تحديث السجل الموجود
+        op.execute("""
+            UPDATE invoice_settings 
+            SET 
+                enable_watermark = 1,
+                watermark_text = 'نسخة أصلية',
+                updated_at = CURRENT_TIMESTAMP
+        """)
 
 
 def downgrade():

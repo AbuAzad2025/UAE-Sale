@@ -7,11 +7,6 @@
     <h1 class="text-gradient mb-0">{{ t('Dashboard') }}</h1>
     <p class="text-muted">مرحباً بك، {{ current_user.full_name or current_user.username }}</p>
   </div>
-  <div>
-    <span class="badge badge-primary badge-lg">
-      <i class="far fa-calendar"></i> {{ now.strftime('%Y-%m-%d') }}
-    </span>
-  </div>
 </div>
 {% endblock %}
 

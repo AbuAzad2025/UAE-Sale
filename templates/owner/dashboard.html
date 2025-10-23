@@ -1,6 +1,27 @@
 {% extends 'base.html' %}
 {% block title %}شركة أزاد للأنظمة الذكية - لوحة المالك الرئيسية{% endblock %}
-{% block page_title %}👑 لوحة المالك - God Mode{% endblock %}
+{% block page_title %}
+<div>
+  <h1 class="mb-2">👑 لوحة المالك - God Mode</h1>
+  <div class="alert alert-danger d-inline-flex align-items-center" style="padding: 10px 20px; border-radius: 8px; border: 2px solid #ff6b6b; background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);">
+    <i class="fas fa-exclamation-triangle mr-2" style="font-size: 1.3rem; color: #ffc107; animation: pulse 2s infinite;"></i>
+    <span style="color: #ffffff; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
+      <i class="fas fa-shield-alt mr-1"></i> منطقة المالك - صلاحيات كاملة
+      <span style="margin: 0 10px;">|</span>
+      <i class="fas fa-lock mr-1"></i> جميع العمليات مسجلة
+      <span style="margin: 0 10px;">|</span>
+      <i class="fas fa-skull-crossbones mr-1"></i> الوصول الكامل مفعّل
+    </span>
+  </div>
+</div>
+
+<style>
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
+}
+</style>
+{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -18,54 +39,6 @@
 {% endblock %}
 
 {% block content %}
-<!-- يافطة تحذير ثابتة دائمة - بديل عن التحذير الأخضر -->
-<div class="alert alert-danger border-0 shadow-lg mb-4 alert-permanent" style="position: relative; top: 0; left: 0; right: 0; z-index: 1000; background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%) !important; border: 3px solid #ff6b6b !important; border-radius: 15px; display: block !important; opacity: 1 !important; visibility: visible !important; margin-bottom: 25px !important;">
-  <div class="d-flex align-items-center justify-content-between">
-    <div class="d-flex align-items-center">
-      <i class="fas fa-exclamation-triangle mr-3 text-warning" style="font-size: 2.5rem; animation: pulse 2s infinite;"></i>
-      <div>
-        <h4 class="mb-1" style="color: #ffffff; font-weight: 900; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
-          <i class="fas fa-shield-alt mr-2"></i>⚠️ منطقة المالك - صلاحيات كاملة
-        </h4>
-        <p class="mb-0" style="color: #ffffff; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
-          <i class="fas fa-lock mr-1"></i>جميع العمليات مسجلة ومحفوظة | 
-          <i class="fas fa-user-shield mr-1"></i>الوصول الكامل مفعّل
-        </p>
-      </div>
-    </div>
-    <div class="text-right">
-      <i class="fas fa-exclamation-circle text-warning mr-2" style="font-size: 2rem;"></i>
-      <i class="fas fa-skull-crossbones text-white" style="font-size: 2rem;"></i>
-    </div>
-  </div>
-</div>
-
-<style>
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.1); }
-}
-
-/* ضمان بقاء يافطة التحذير ظاهرة دائماً */
-.alert-permanent {
-  display: block !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-}
-
-/* منع إخفاء اليافطة بأي طريقة */
-.alert-permanent.alert-danger {
-  display: block !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-}
-
-/* إخفاء زر الإغلاق */
-.alert-permanent .close {
-  display: none !important;
-}
-</style>
 
 <!-- إحصائيات سريعة -->
 <div class="row">

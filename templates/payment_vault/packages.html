@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block title %}إدارة الباقات - Manage Packages{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="mb-0"><i class="fas fa-box-open text-success"></i> إدارة الباقات</h1>
+        <p class="text-muted mb-0">إضافة وتعديل باقات النظام</p>
+    </div>
+    <div>
+        <button class="btn btn-primary" data-toggle="modal" data-target="#addPackageModal">
+            <i class="fas fa-plus"></i> إضافة باقة
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .package-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .package-item {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        position: relative;
+        transition: all 0.3s;
+    }
+    
+    .package-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    
+    .package-item.featured {
+        border: 3px solid #667eea;
+    }
+    
+    .package-header {
+        text-align: center;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+        margin-bottom: 20px;
+    }
+    
+    .package-name {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 10px;
+    }
+    
+    .package-price {
+        font-size: 3rem;
+        font-weight: 900;
+        color: #333;
+    }
+    
+    .package-price small {
+        font-size: 1rem;
+        color: #999;
+    }
+    
+    .package-features {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 20px;
+    }
+    
+    .package-features li {
+        padding: 10px 0;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        align-items: center;
+    }
+    
+    .package-features li:last-child {
+        border-bottom: none;
+    }
+    
+    .package-features i {
+        color: #28a745;
+        margin-left: 10px;
+    }
+    
+    .package-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="container-fluid">
+        
+        <!-- الباقات -->
+        <div class="package-grid">
+            <!-- الباقة الأساسية -->
+            <div class="package-item">
+                <div class="package-header">
+                    <div class="package-name">📦 الباقة الأساسية</div>
+                    <div class="package-price">$299</div>
+                </div>
+                
+                <ul class="package-features">
+                    <li><i class="fas fa-check"></i> نظام إدارة مستودعات كامل</li>
+                    <li><i class="fas fa-check"></i> إدارة المبيعات والمشتريات</li>
+                    <li><i class="fas fa-check"></i> إدارة العملاء والموردين</li>
+                    <li><i class="fas fa-check"></i> فواتير احترافية</li>
+                    <li><i class="fas fa-check"></i> تقارير أساسية</li>
+                    <li><i class="fas fa-check"></i> دعم فني 3 أشهر</li>
+                </ul>
+                
+                <div class="package-actions">
+                    <button class="btn btn-sm btn-primary" onclick="editPackage('basic')">
+                        <i class="fas fa-edit"></i> تعديل
+                    </button>
+                    <button class="btn btn-sm btn-info" onclick="viewStats('basic')">
+                        <i class="fas fa-chart-bar"></i> إحصائيات
+                    </button>
+                </div>
+            </div>
+            
+            <!-- الباقة الاحترافية -->
+            <div class="package-item featured">
+                <div style="position: absolute; top: -15px; right: 50%; transform: translateX(50%); background: #667eea; color: white; padding: 5px 20px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">
+                    ⭐ الأكثر شعبية
+                </div>
+                <div class="package-header">
+                    <div class="package-name">💼 الباقة الاحترافية</div>
+                    <div class="package-price">$599</div>
+                </div>
+                
+                <ul class="package-features">
+                    <li><i class="fas fa-check"></i> كل ميزات الباقة الأساسية</li>
+                    <li><i class="fas fa-check"></i> ذكاء اصطناعي متقدم</li>
+                    <li><i class="fas fa-check"></i> تقارير وتحليلات متقدمة</li>
+                    <li><i class="fas fa-check"></i> تكامل مع WhatsApp</li>
+                    <li><i class="fas fa-check"></i> نظام نقاط البيع</li>
+                    <li><i class="fas fa-check"></i> دعم فني 6 أشهر</li>
+                </ul>
+                
+                <div class="package-actions">
+                    <button class="btn btn-sm btn-primary" onclick="editPackage('professional')">
+                        <i class="fas fa-edit"></i> تعديل
+                    </button>
+                    <button class="btn btn-sm btn-info" onclick="viewStats('professional')">
+                        <i class="fas fa-chart-bar"></i> إحصائيات
+                    </button>
+                </div>
+            </div>
+            
+            <!-- باقة الشركات -->
+            <div class="package-item">
+                <div class="package-header">
+                    <div class="package-name">🏢 باقة الشركات</div>
+                    <div class="package-price">$999</div>
+                </div>
+                
+                <ul class="package-features">
+                    <li><i class="fas fa-check"></i> كل ميزات الباقة الاحترافية</li>
+                    <li><i class="fas fa-check"></i> فروع غير محدودة</li>
+                    <li><i class="fas fa-check"></i> تخصيص كامل للنظام</li>
+                    <li><i class="fas fa-check"></i> تدريب شامل لفريقك</li>
+                    <li><i class="fas fa-check"></i> أولوية في الدعم</li>
+                    <li><i class="fas fa-check"></i> دعم فني مدى الحياة</li>
+                </ul>
+                
+                <div class="package-actions">
+                    <button class="btn btn-sm btn-primary" onclick="editPackage('enterprise')">
+                        <i class="fas fa-edit"></i> تعديل
+                    </button>
+                    <button class="btn btn-sm btn-info" onclick="viewStats('enterprise')">
+                        <i class="fas fa-chart-bar"></i> إحصائيات
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- إحصائيات الباقات -->
+        <div class="card">
+            <div class="card-header bg-gradient-info">
+                <h5 class="mb-0 text-white">
+                    <i class="fas fa-chart-pie"></i> إحصائيات المبيعات حسب الباقة
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="packageChart" height="80"></canvas>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<!-- Add Package Modal -->
+<div class="modal fade" id="addPackageModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5><i class="fas fa-plus"></i> إضافة باقة جديدة</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="addPackageForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>اسم الباقة</label>
+                                <input type="text" class="form-control" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>السعر ($)</label>
+                                <input type="number" class="form-control" name="price" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>الميزات (واحدة في كل سطر)</label>
+                        <textarea class="form-control" name="features" rows="6" required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input" id="featured" name="featured">
+                            <label class="custom-control-label" for="featured">
+                                باقة مميزة (الأكثر شعبية)
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="savePackage()">
+                    <i class="fas fa-save"></i> حفظ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Package Sales Chart
+    const ctx = document.getElementById('packageChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['الباقة الأساسية', 'الباقة الاحترافية', 'باقة الشركات'],
+            datasets: [{
+                label: 'عدد المبيعات',
+                data: {{ package_stats|tojson }},
+                backgroundColor: [
+                    'rgba(102, 126, 234, 0.8)',
+                    'rgba(245, 87, 108, 0.8)',
+                    'rgba(40, 167, 69, 0.8)'
+                ],
+                borderColor: [
+                    '#667eea',
+                    '#f5576c',
+                    '#28a745'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+
+function editPackage(packageId) {
+    Swal.fire({
+        title: 'تعديل الباقة',
+        html: '<p>سيتم فتح نموذج تعديل الباقة</p>',
+        icon: 'info'
+    });
+}
+
+function viewStats(packageId) {
+    Swal.fire({
+        title: 'إحصائيات الباقة',
+        html: `<p>إحصائيات تفصيلية لباقة ${packageId}</p>`,
+        icon: 'info'
+    });
+}
+
+function savePackage() {
+    const form = document.getElementById('addPackageForm');
+    const formData = new FormData(form);
+    
+    Swal.fire({
+        icon: 'success',
+        title: 'تم!',
+        text: 'تم حفظ الباقة بنجاح',
+        confirmButtonText: 'حسناً'
+    }).then(() => {
+        $('#addPackageModal').modal('hide');
+        location.reload();
+    });
+}
+</script>
+{% endblock %}
+

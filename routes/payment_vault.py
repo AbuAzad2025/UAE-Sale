@@ -114,17 +114,44 @@ def dashboard():
     
     # التحقق من وجود الخزينة
     vault = PaymentVault.query.first()
-    if not vault:
-        flash('❌ الخزينة غير موجودة، يرجى إنشاؤها أولاً', 'warning')
-        return redirect(url_for('payment_vault.unlock'))
+    if not vault or vault.is_locked:
+        flash('❌ يجب فتح الخزينة أولاً', 'warning')
+        return redirect(url_for('payment_vault.unlock_vault'))
     
-    # التحقق من إمكانية الوصول
-    if not vault.is_vault_accessible():
-        flash('❌ الخزينة مقفلة، يرجى إدخال كلمة المرور', 'warning')
-        return redirect(url_for('payment_vault.unlock'))
+    # جلب الإحصائيات
+    purchases = Donation.query.filter_by(transaction_type='purchase').all()
+    donations = Donation.query.filter_by(transaction_type='donation').all()
     
-    flash('✅ تم فتح الخزينة السرية بنجاح!', 'success')
-    return redirect(url_for('payment_vault.settings'))
+    stats = {
+        'total_purchases': len(purchases),
+        'total_donations': len(donations),
+        'total_revenue': sum(float(p.amount_usd or 0) for p in purchases + donations),
+        'pending_count': sum(1 for p in purchases + donations if p.status == 'pending')
+    }
+    
+    # آخر العمليات
+    recent_purchases = Donation.query.filter_by(transaction_type='purchase').order_by(Donation.created_at.desc()).limit(5).all()
+    recent_donations = Donation.query.filter_by(transaction_type='donation').order_by(Donation.created_at.desc()).limit(5).all()
+    
+    # بيانات الرسم البياني (شهرياً)
+    from datetime import datetime, timedelta
+    monthly_labels = []
+    monthly_purchases = []
+    monthly_donations = []
+    
+    for i in range(6):
+        month = datetime.now() - timedelta(days=30*i)
+        monthly_labels.insert(0, month.strftime('%b %Y'))
+        monthly_purchases.insert(0, 0)  # TODO: حساب فعلي
+        monthly_donations.insert(0, 0)
+    
+    return render_template('payment_vault/dashboard.html',
+                         stats=stats,
+                         recent_purchases=recent_purchases,
+                         recent_donations=recent_donations,
+                         monthly_labels=monthly_labels,
+                         monthly_purchases=monthly_purchases,
+                         monthly_donations=monthly_donations)
 
 
 @payment_vault_bp.route('/purchases')
@@ -212,6 +239,133 @@ def settings():
     return render_template('payment_vault/settings.html', vault=vault)
 
 
+
+
+@payment_vault_bp.route('/donations')
+@login_required
+def donations():
+    """عرض التبرعات"""
+    if not current_user.is_owner:
+        flash('❌ غير مصرح - الخزينة السرية للمالك فقط!', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    vault = PaymentVault.query.first()
+    if not vault or vault.is_locked:
+        flash('❌ يجب فتح الخزينة أولاً', 'warning')
+        return redirect(url_for('payment_vault.unlock_vault'))
+    
+    # الفلاتر
+    status_filter = request.args.get('status', '')
+    crypto_filter = request.args.get('crypto', '')
+    search_query = request.args.get('search', '')
+    
+    # Query
+    query = Donation.query.filter_by(transaction_type='donation')
+    
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+    if crypto_filter:
+        query = query.filter_by(crypto_type=crypto_filter)
+    if search_query:
+        query = query.filter(
+            db.or_(
+                Donation.donor_name.ilike(f'%{search_query}%'),
+                Donation.donor_email.ilike(f'%{search_query}%')
+            )
+        )
+    
+    donations = query.order_by(Donation.created_at.desc()).all()
+    
+    # إحصائيات
+    total_donations = len(donations)
+    completed_count = sum(1 for d in donations if d.status == 'completed')
+    pending_count = sum(1 for d in donations if d.status == 'pending')
+    total_amount = sum(float(d.amount_usd or 0) for d in donations)
+    
+    return render_template('payment_vault/donations.html',
+                         donations=donations,
+                         total_donations=total_donations,
+                         completed_count=completed_count,
+                         pending_count=pending_count,
+                         total_amount=total_amount)
+
+
+@payment_vault_bp.route('/packages')
+@login_required
+def packages():
+    """إدارة الباقات"""
+    if not current_user.is_owner:
+        flash('❌ غير مصرح - الخزينة السرية للمالك فقط!', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    vault = PaymentVault.query.first()
+    if not vault or vault.is_locked:
+        flash('❌ يجب فتح الخزينة أولاً', 'warning')
+        return redirect(url_for('payment_vault.unlock_vault'))
+    
+    # إحصائيات الباقات
+    basic_count = Donation.query.filter_by(transaction_type='purchase', package='basic').count()
+    pro_count = Donation.query.filter_by(transaction_type='purchase', package='professional').count()
+    ent_count = Donation.query.filter_by(transaction_type='purchase', package='enterprise').count()
+    
+    package_stats = [basic_count, pro_count, ent_count]
+    
+    return render_template('payment_vault/packages.html',
+                         package_stats=package_stats)
+
+
+@payment_vault_bp.route('/reports')
+@login_required
+def reports():
+    """التقارير المالية"""
+    if not current_user.is_owner:
+        flash('❌ غير مصرح - الخزينة السرية للمالك فقط!', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    vault = PaymentVault.query.first()
+    if not vault or vault.is_locked:
+        flash('❌ يجب فتح الخزينة أولاً', 'warning')
+        return redirect(url_for('payment_vault.unlock_vault'))
+    
+    # جلب البيانات
+    all_transactions = Donation.query.order_by(Donation.created_at.desc()).all()
+    purchases = [t for t in all_transactions if t.transaction_type == 'purchase']
+    donations = [t for t in all_transactions if t.transaction_type == 'donation']
+    
+    # الملخص
+    summary = {
+        'total_revenue': sum(float(t.amount_usd or 0) for t in all_transactions),
+        'total_purchases_amount': sum(float(p.amount_usd or 0) for p in purchases),
+        'total_donations_amount': sum(float(d.amount_usd or 0) for d in donations),
+        'total_transactions': len(all_transactions)
+    }
+    
+    # بيانات الرسوم البيانية
+    from datetime import datetime, timedelta
+    monthly_labels = []
+    monthly_purchases_data = []
+    monthly_donations_data = []
+    
+    for i in range(6):
+        month = datetime.now() - timedelta(days=30*i)
+        monthly_labels.insert(0, month.strftime('%b'))
+        monthly_purchases_data.insert(0, 0)
+        monthly_donations_data.insert(0, 0)
+    
+    # إحصائيات الباقات
+    package_stats = [
+        Donation.query.filter_by(transaction_type='purchase', package='basic').count(),
+        Donation.query.filter_by(transaction_type='purchase', package='professional').count(),
+        Donation.query.filter_by(transaction_type='purchase', package='enterprise').count()
+    ]
+    
+    return render_template('payment_vault/reports.html',
+                         transactions=all_transactions,
+                         summary=summary,
+                         monthly_labels=monthly_labels,
+                         monthly_purchases_data=monthly_purchases_data,
+                         monthly_donations_data=monthly_donations_data,
+                         package_stats=package_stats)
 
 
 @payment_vault_bp.route('/lock')

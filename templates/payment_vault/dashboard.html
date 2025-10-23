@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}لوحة تحكم الخزينة السرية - Vault Dashboard{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center">
+        <i class="fas fa-vault text-danger mr-3" style="font-size: 2rem;"></i>
+        <div>
+            <h1 class="mb-0">🔐 لوحة تحكم الخزينة السرية</h1>
+            <p class="text-muted mb-0">إدارة المشتريات والتبرعات والباقات</p>
+        </div>
+    </div>
+    <div>
+        <button onclick="lockVault()" class="btn btn-danger">
+            <i class="fas fa-lock"></i> قفل الخزينة
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        border-radius: 15px;
+        padding: 25px;
+        color: white;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 900;
+        margin-bottom: 10px;
+    }
+    
+    .stat-label {
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+    
+    .quick-action {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        transition: all 0.3s;
+        cursor: pointer;
+        border: 2px solid #e0e0e0;
+    }
+    
+    .quick-action:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        border-color: #667eea;
+    }
+    
+    .quick-action i {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+    }
+    
+    .chart-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="container-fluid">
+        
+        <!-- إحصائيات رئيسية -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="stat-number">{{ stats.total_purchases }}</div>
+                    <div class="stat-label">
+                        <i class="fas fa-shopping-bag"></i> إجمالي المشتريات
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <div class="stat-number">{{ stats.total_donations }}</div>
+                    <div class="stat-label">
+                        <i class="fas fa-heart"></i> إجمالي التبرعات
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <div class="stat-number">${{ stats.total_revenue }}</div>
+                    <div class="stat-label">
+                        <i class="fas fa-dollar-sign"></i> إجمالي الإيرادات
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                    <div class="stat-number">{{ stats.pending_count }}</div>
+                    <div class="stat-label">
+                        <i class="fas fa-clock"></i> قيد الانتظار
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- إجراءات سريعة -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h4 class="mb-3"><i class="fas fa-bolt text-warning"></i> إجراءات سريعة</h4>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="quick-action" onclick="window.location.href='{{ url_for('payment_vault.purchases') }}'">
+                    <i class="fas fa-shopping-cart text-primary"></i>
+                    <h5>إدارة المشتريات</h5>
+                    <p class="text-muted mb-0">عرض وإدارة جميع المشتريات</p>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="quick-action" onclick="window.location.href='{{ url_for('payment_vault.donations') }}'">
+                    <i class="fas fa-hand-holding-heart text-danger"></i>
+                    <h5>إدارة التبرعات</h5>
+                    <p class="text-muted mb-0">عرض وإدارة جميع التبرعات</p>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="quick-action" onclick="window.location.href='{{ url_for('payment_vault.packages') }}'">
+                    <i class="fas fa-box-open text-success"></i>
+                    <h5>إدارة الباقات</h5>
+                    <p class="text-muted mb-0">إضافة وتعديل الباقات</p>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="quick-action" onclick="window.location.href='{{ url_for('payment_vault.reports') }}'">
+                    <i class="fas fa-chart-line text-info"></i>
+                    <h5>التقارير المالية</h5>
+                    <p class="text-muted mb-0">تقارير تفصيلية وإحصائيات</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- آخر العمليات -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="chart-card">
+                    <h5 class="mb-3">
+                        <i class="fas fa-history text-primary"></i> آخر المشتريات
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>العميل</th>
+                                    <th>الباقة</th>
+                                    <th>المبلغ</th>
+                                    <th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if recent_purchases %}
+                                    {% for purchase in recent_purchases %}
+                                    <tr>
+                                        <td>{{ purchase.created_at.strftime('%Y-%m-%d') }}</td>
+                                        <td>{{ purchase.customer_name or 'غير محدد' }}</td>
+                                        <td>
+                                            {% if purchase.package == 'basic' %}📦 أساسية
+                                            {% elif purchase.package == 'professional' %}💼 احترافية
+                                            {% elif purchase.package == 'enterprise' %}🏢 شركات
+                                            {% else %}{{ purchase.package }}
+                                            {% endif %}
+                                        </td>
+                                        <td><strong>${{ purchase.amount_usd }}</strong></td>
+                                        <td>
+                                            {% if purchase.status == 'completed' %}
+                                                <span class="badge badge-success">✓ مكتملة</span>
+                                            {% elif purchase.status == 'pending' %}
+                                                <span class="badge badge-warning">⏳ قيد الانتظار</span>
+                                            {% else %}
+                                                <span class="badge badge-secondary">{{ purchase.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">لا توجد مشتريات</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="chart-card">
+                    <h5 class="mb-3">
+                        <i class="fas fa-heart text-danger"></i> آخر التبرعات
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>المتبرع</th>
+                                    <th>المبلغ</th>
+                                    <th>العملة</th>
+                                    <th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if recent_donations %}
+                                    {% for donation in recent_donations %}
+                                    <tr>
+                                        <td>{{ donation.created_at.strftime('%Y-%m-%d') }}</td>
+                                        <td>{{ donation.donor_name or 'مجهول' }}</td>
+                                        <td><strong>${{ donation.amount_usd }}</strong></td>
+                                        <td>{{ donation.crypto_type|upper }}</td>
+                                        <td>
+                                            {% if donation.status == 'completed' %}
+                                                <span class="badge badge-success">✓</span>
+                                            {% else %}
+                                                <span class="badge badge-warning">⏳</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">لا توجد تبرعات</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- رسم بياني للإيرادات -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="chart-card">
+                    <h5 class="mb-3">
+                        <i class="fas fa-chart-area text-success"></i> الإيرادات الشهرية
+                    </h5>
+                    <canvas id="revenueChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Revenue Chart
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ monthly_labels|tojson }},
+            datasets: [{
+                label: 'المشتريات',
+                data: {{ monthly_purchases|tojson }},
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                tension: 0.4
+            }, {
+                label: 'التبرعات',
+                data: {{ monthly_donations|tojson }},
+                borderColor: '#f5576c',
+                backgroundColor: 'rgba(245, 87, 108, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    function lockVault() {
+        Swal.fire({
+            title: 'قفل الخزينة؟',
+            text: 'هل أنت متأكد من قفل الخزينة السرية؟',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'نعم، قفل',
+            cancelButtonText: 'إلغاء',
+            confirmButtonColor: '#d33'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = '{{ url_for("payment_vault.lock_vault") }}';
+            }
+        });
+    }
+</script>
+{% endblock %}
+

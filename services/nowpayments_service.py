@@ -41,10 +41,10 @@ class NOWPaymentsService:
         """
         try:
             # التحقق من الحد الأدنى
-            if amount < 10:
+            if amount < 1:
                 return {
                     'success': False,
-                    'error': 'الحد الأدنى للتبرع هو $10'
+                    'error': 'الحد الأدنى للتبرع هو $1'
                 }
             
             # إعداد البيانات
@@ -52,10 +52,8 @@ class NOWPaymentsService:
                 'price_amount': float(amount),
                 'price_currency': currency.lower(),
                 'pay_currency': crypto_currency.lower(),
-                'order_id': order_id or f"donation_{int(time.time())}",
                 'order_description': description or f"تبرع لمشروع Azad Systems - ${amount}",
-                'ipn_callback_url': f"{current_app.config.get('BASE_URL')}/auth/payment/callback",
-                'case': 'success'
+                'ipn_callback_url': f"{current_app.config.get('BASE_URL')}/auth/payment/callback"
             }
             
             # إضافة إيميل العميل إذا كان متوفراً
@@ -80,16 +78,15 @@ class NOWPaymentsService:
                 
                 # حفظ الدفعة في قاعدة البيانات
                 donation = Donation(
-                    order_id=payment_data.get('order_id'),
-                    amount=Decimal(str(amount)),
-                    currency=currency,
-                    crypto_currency=crypto_currency,
-                    payment_id=payment_data.get('payment_id'),
-                    payment_status='pending',
-                    payment_address=payment_data.get('pay_address'),
-                    payment_amount=payment_data.get('pay_amount'),
-                    payment_url=payment_data.get('payment_url'),
-                    created_at=datetime.utcnow()
+                    amount_usd=Decimal(str(amount)),
+                    payment_method='crypto',
+                    crypto_type=crypto_currency,
+                    wallet_address=payment_data.get('pay_address'),
+                    transaction_hash=payment_data.get('payment_id'),
+                    status='pending',
+                    gateway_name='nowpayments',
+                    gateway_transaction_id=payment_data.get('payment_id'),
+                    gateway_status='pending'
                 )
                 
                 db.session.add(donation)

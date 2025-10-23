@@ -123,26 +123,8 @@ def dashboard():
         flash('❌ الخزينة مقفلة، يرجى إدخال كلمة المرور', 'warning')
         return redirect(url_for('payment_vault.unlock'))
     
-    # إحصائيات الخزينة
-    total_transactions = PaymentTransaction.query.filter_by(vault_id=vault.id).count()
-    pending_transactions = PaymentTransaction.query.filter_by(vault_id=vault.id, payment_status='pending').count()
-    completed_transactions = PaymentTransaction.query.filter_by(vault_id=vault.id, payment_status='completed').count()
-    
-    # آخر المعاملات
-    recent_transactions = PaymentTransaction.query.filter_by(vault_id=vault.id)\
-        .order_by(PaymentTransaction.created_at.desc()).limit(10).all()
-    
-    # آخر السجلات
-    recent_logs = PaymentLog.query.filter_by(vault_id=vault.id)\
-        .order_by(PaymentLog.created_at.desc()).limit(10).all()
-    
-    return render_template('payment_vault/dashboard.html',
-                         vault=vault,
-                         total_transactions=total_transactions,
-                         pending_transactions=pending_transactions,
-                         completed_transactions=completed_transactions,
-                         recent_transactions=recent_transactions,
-                         recent_logs=recent_logs)
+    flash('✅ تم فتح الخزينة السرية بنجاح!', 'success')
+    return redirect(url_for('payment_vault.settings'))
 
 
 @payment_vault_bp.route('/settings', methods=['GET', 'POST'])
@@ -195,64 +177,6 @@ def settings():
     return render_template('payment_vault/settings.html', vault=vault)
 
 
-@payment_vault_bp.route('/transactions')
-@login_required
-def transactions():
-    """قائمة المعاملات"""
-    if not current_user.is_owner:
-        flash('❌ غير مصرح - الخزينة السرية للمالك فقط!', 'danger')
-        return redirect(url_for('main.dashboard'))
-    
-    vault = PaymentVault.query.first()
-    if not vault or not vault.is_vault_accessible():
-        flash('❌ الخزينة مقفلة، يرجى إدخال كلمة المرور', 'warning')
-        return redirect(url_for('payment_vault.unlock'))
-    
-    # فلترة المعاملات
-    status = request.args.get('status', 'all')
-    page = request.args.get('page', 1, type=int)
-    
-    query = PaymentTransaction.query.filter_by(vault_id=vault.id)
-    
-    if status != 'all':
-        query = query.filter_by(payment_status=status)
-    
-    transactions = query.order_by(PaymentTransaction.created_at.desc())\
-        .paginate(page=page, per_page=20, error_out=False)
-    
-    return render_template('payment_vault/transactions.html',
-                         transactions=transactions,
-                         current_status=status)
-
-
-@payment_vault_bp.route('/logs')
-@login_required
-def logs():
-    """سجل الخزينة"""
-    if not current_user.is_owner:
-        flash('❌ غير مصرح - الخزينة السرية للمالك فقط!', 'danger')
-        return redirect(url_for('main.dashboard'))
-    
-    vault = PaymentVault.query.first()
-    if not vault or not vault.is_vault_accessible():
-        flash('❌ الخزينة مقفلة، يرجى إدخال كلمة المرور', 'warning')
-        return redirect(url_for('payment_vault.unlock'))
-    
-    # فلترة السجلات
-    level = request.args.get('level', 'all')
-    page = request.args.get('page', 1, type=int)
-    
-    query = PaymentLog.query.filter_by(vault_id=vault.id)
-    
-    if level != 'all':
-        query = query.filter_by(level=level)
-    
-    logs = query.order_by(PaymentLog.created_at.desc())\
-        .paginate(page=page, per_page=50, error_out=False)
-    
-    return render_template('payment_vault/logs.html',
-                         logs=logs,
-                         current_level=level)
 
 
 @payment_vault_bp.route('/lock')

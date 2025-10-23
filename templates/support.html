@@ -425,7 +425,7 @@
                     <button class="amount-btn" onclick="selectAmount(250)">$250</button>
                     <button class="amount-btn" onclick="selectAmount(500)">$500</button>
                 </div>
-                <input type="number" id="customAmount" class="form-control" placeholder="أو أدخل مبلغ مخصص (الحد الأدنى $10)" min="10">
+                <input type="number" id="customAmount" class="form-control" placeholder="أو أدخل مبلغ مخصص (الحد الأدنى $1)" min="1">
             </div>
             
             <div class="form-group">
@@ -515,7 +515,7 @@
             <form id="cardPaymentForm">
                 <div class="form-group">
                     <label>المبلغ (USD)</label>
-                    <input type="number" class="form-control" min="10" placeholder="الحد الأدنى $10" required>
+                    <input type="number" class="form-control" min="1" placeholder="الحد الأدنى $1" required>
                 </div>
                 
                 <div class="form-group">
@@ -587,9 +587,9 @@
                 <p class="mt-4 text-muted">
                     أو تواصل عبر WhatsApp:
                     <br>
-                    <a href="https://wa.me/970592800646" class="btn btn-success mt-2">
+                    <a href="https://wa.me/970598953362" class="btn btn-success mt-2">
                         <i class="fab fa-whatsapp mr-2"></i>
-                        +970 592 800 646
+                        +970 59 895 3362
                     </a>
                 </p>
                 
@@ -654,11 +654,11 @@
             const customAmount = document.getElementById('customAmount').value;
             const amount = customAmount || selectedAmount;
             
-            if (!amount || amount < 10) {
+            if (!amount || amount < 1) {
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
-                    text: 'الحد الأدنى للتبرع هو $10',
+                    text: 'الحد الأدنى للتبرع هو $1',
                     confirmButtonColor: '#667eea'
                 });
                 return;
@@ -772,11 +772,36 @@
         
         // Handle PayPal payment
         function handlePayPalPayment() {
+            const amount = document.getElementById('customAmount').value || 15;
+            
+            if (!amount || amount < 1) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ',
+                    text: 'الحد الأدنى للتبرع هو $1',
+                    confirmButtonColor: '#667eea'
+                });
+                return;
+            }
+            
             Swal.fire({
                 icon: 'info',
-                title: 'قريباً',
-                text: 'دفع PayPal قيد التطوير. يُرجى استخدام العملات الرقمية للدفع.',
-                confirmButtonColor: '#667eea'
+                title: 'الدفع عبر PayPal',
+                html: `
+                    <p>للدفع عبر PayPal، يُرجى التواصل معنا:</p>
+                    <hr>
+                    <p><strong>واتساب:</strong> <a href="https://wa.me/970598953362" target="_blank">+970 59 895 3362</a></p>
+                    <p><strong>المبلغ:</strong> $${amount}</p>
+                    <p>سيتم توجيهك للحصول على رابط PayPal للدفع</p>
+                `,
+                confirmButtonColor: '#667eea',
+                showCancelButton: true,
+                cancelButtonText: 'إلغاء',
+                confirmButtonText: 'تواصل معنا'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.open('https://wa.me/970598953362?text=مرحباً، أريد الدفع عبر PayPal للمبلغ $' + amount, '_blank');
+                }
             });
         }
         
@@ -790,23 +815,51 @@
             const expiry = document.querySelector('#card-form input[placeholder*="MM/YY"]').value;
             const cvv = document.querySelector('#card-form input[placeholder*="123"]').value;
             
-            if (!amount || amount < 10) {
+            if (!amount || amount < 1) {
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
-                    text: 'الحد الأدنى للتبرع هو $10',
+                    text: 'الحد الأدنى للتبرع هو $1',
                     confirmButtonColor: '#667eea'
                 });
                 return;
             }
             
             // Show processing message
-            Swal.fire({
-                icon: 'info',
-                title: 'قريباً',
-                text: 'دفع البطاقات البنكية قيد التطوير. يُرجى استخدام العملات الرقمية للدفع.',
-                confirmButtonColor: '#667eea'
-            });
+                // معالجة الدفع بالبطاقات
+                const formData = new FormData(cardForm);
+                const amount = formData.get('amount');
+                
+                if (!amount || amount < 1) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'خطأ',
+                        text: 'الحد الأدنى للتبرع هو $1',
+                        confirmButtonColor: '#667eea'
+                    });
+                    return;
+                }
+                
+                // إظهار رسالة التوجيه للتحويل البنكي
+                Swal.fire({
+                    icon: 'info',
+                    title: 'الدفع بالبطاقات',
+                    html: `
+                        <p>للدفع بالبطاقات البنكية، يُرجى التواصل معنا:</p>
+                        <hr>
+                        <p><strong>واتساب:</strong> <a href="https://wa.me/970598953362" target="_blank">+970 59 895 3362</a></p>
+                        <p><strong>المبلغ:</strong> $${amount}</p>
+                        <p>سيتم توجيهك للحصول على تفاصيل الحساب البنكي</p>
+                    `,
+                    confirmButtonColor: '#667eea',
+                    showCancelButton: true,
+                    cancelButtonText: 'إلغاء',
+                    confirmButtonText: 'تواصل معنا'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.open('https://wa.me/970598953362?text=مرحباً، أريد الدفع بالبطاقة البنكية للمبلغ $' + amount, '_blank');
+                    }
+                });
         });
     </script>
 </body>

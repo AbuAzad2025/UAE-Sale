@@ -88,10 +88,10 @@ def create_payment():
         description = data.get('description', '')
         
         # التحقق من الحد الأدنى
-        if amount < 10:
+        if amount < 1:
             return jsonify({
                 'success': False,
-                'error': 'الحد الأدنى للتبرع هو $10'
+                'error': 'الحد الأدنى للتبرع هو $1'
             }), 400
         
         # إنشاء الدفعة
@@ -190,10 +190,10 @@ def estimate_amount():
         from_currency = request.args.get('from', 'usd')
         to_currency = request.args.get('to', 'btc')
         
-        if amount < 10:
+        if amount < 1:
             return jsonify({
                 'success': False,
-                'error': 'الحد الأدنى للتبرع هو $10'
+                'error': 'الحد الأدنى للتبرع هو $1'
             }), 400
         
         nowpayments = NOWPaymentsService()

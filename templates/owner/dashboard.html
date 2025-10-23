@@ -18,11 +18,8 @@
 {% endblock %}
 
 {% block content %}
-<!-- إضافة مساحة للصفحة لتعويض اليافطة الثابتة -->
-<div style="height: 120px;"></div>
-
 <!-- يافطة تحذير ثابتة دائمة - بديل عن التحذير الأخضر -->
-<div class="alert alert-danger border-0 shadow-lg mb-4 alert-permanent" style="position: fixed; top: 60px; left: 20px; right: 20px; z-index: 9999; background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%) !important; border: 3px solid #ff6b6b !important; border-radius: 15px;">
+<div class="alert alert-danger border-0 shadow-lg mb-4 alert-permanent" style="position: relative; top: 0; left: 0; right: 0; z-index: 1000; background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%) !important; border: 3px solid #ff6b6b !important; border-radius: 15px; display: block !important; opacity: 1 !important; visibility: visible !important; margin-bottom: 25px !important;">
   <div class="d-flex align-items-center justify-content-between">
     <div class="d-flex align-items-center">
       <i class="fas fa-exclamation-triangle mr-3 text-warning" style="font-size: 2.5rem; animation: pulse 2s infinite;"></i>
@@ -49,13 +46,8 @@
   50% { opacity: 0.6; transform: scale(1.1); }
 }
 
-/* ضمان بقاء يافطة التحذير ثابتة دائماً */
+/* ضمان بقاء يافطة التحذير ظاهرة دائماً */
 .alert-permanent {
-  position: fixed !important;
-  top: 60px !important;
-  left: 20px !important;
-  right: 20px !important;
-  z-index: 9999 !important;
   display: block !important;
   opacity: 1 !important;
   visibility: visible !important;

@@ -151,6 +151,36 @@
     </ul>
 
     <ul class="navbar-nav ml-auto">
+      <!-- الساعة والتاريخ وسعر الصرف -->
+      <li class="nav-item d-none d-lg-inline-block">
+        <div class="nav-link" style="padding: 8px 15px;">
+          <div class="d-flex align-items-center" style="gap: 15px;">
+            <!-- الساعة والتاريخ -->
+            <div class="text-center" style="min-width: 120px;">
+              <div id="current-time" style="font-size: 14px; font-weight: 700; color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.7);">
+                <i class="fas fa-clock mr-1" style="color: #ffffff;"></i>
+                <span id="time-display">--:--</span>
+              </div>
+              <div id="current-date" style="font-size: 12px; color: #ffffff; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.6);">
+                <i class="fas fa-calendar mr-1" style="color: #ffffff;"></i>
+                <span id="date-display">--/--/----</span>
+              </div>
+            </div>
+            
+            <!-- سعر الصرف -->
+            <div class="text-center" style="min-width: 100px; padding: 5px 10px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); border: 1px solid #adb5bd;">
+              <div style="font-size: 12px; color: #ffffff; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
+                <i class="fas fa-exchange-alt mr-1"></i>USD/AED
+              </div>
+              <div id="exchange-rate" style="font-size: 14px; color: #ffffff; font-weight: 800; text-shadow: 0 1px 2px rgba(0,0,0,0.6);">
+                <i class="fas fa-dollar-sign mr-1"></i>
+                <span id="rate-display">3.67</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </li>
+      
       <li class="nav-item d-none d-md-inline-block">
         <span class="nav-link">
           <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Garage" style="height: 32px; vertical-align: middle;">
@@ -721,6 +751,64 @@ $(function() {
       }, 40000);
     }
   });
+  
+  // تحديث الساعة والتاريخ وسعر الصرف
+  function updateDateTime() {
+    const now = new Date();
+    
+    // تحديث الساعة
+    const timeString = now.toLocaleTimeString('ar-SA', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    
+    // تحديث التاريخ
+    const dateString = now.toLocaleDateString('ar-SA', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    
+    // تحديث العرض
+    const timeDisplay = document.getElementById('time-display');
+    const dateDisplay = document.getElementById('date-display');
+    
+    if (timeDisplay) timeDisplay.textContent = timeString;
+    if (dateDisplay) dateDisplay.textContent = dateString;
+  }
+  
+  // تحديث سعر الصرف
+  function updateExchangeRate() {
+    // يمكن استبدال هذا بـ API حقيقي لسعر الصرف
+    const baseRate = 3.67;
+    const variation = (Math.random() - 0.5) * 0.02; // تغيير عشوائي صغير
+    const currentRate = (baseRate + variation).toFixed(4);
+    
+    const rateDisplay = document.getElementById('rate-display');
+    if (rateDisplay) {
+      rateDisplay.textContent = currentRate;
+      
+      // تأثير بصري للتحديث
+      rateDisplay.style.transform = 'scale(1.1)';
+      rateDisplay.style.color = '#f39c12';
+      setTimeout(() => {
+        rateDisplay.style.transform = 'scale(1)';
+        rateDisplay.style.color = '#ffffff';
+      }, 300);
+    }
+  }
+  
+  // تشغيل التحديثات
+  updateDateTime();
+  updateExchangeRate();
+  
+  // تحديث الساعة كل ثانية
+  setInterval(updateDateTime, 1000);
+  
+  // تحديث سعر الصرف كل 30 ثانية
+  setInterval(updateExchangeRate, 30000);
   
 })();
 </script>

@@ -160,6 +160,11 @@
     </div>
     
     <div class="card-footer text-center bg-light">
+      <p class="mb-2">
+        <a href="{{ url_for('auth.support') }}" class="btn btn-gradient-primary btn-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white; padding: 8px 20px; border-radius: 20px;">
+          <i class="fas fa-heart mr-2"></i>ادعم المشروع
+        </a>
+      </p>
       <p class="mb-1"><small class="text-muted">{{ config.DEVELOPER_CREDIT }}</small></p>
       <p class="mb-0">
         <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank" class="text-success">

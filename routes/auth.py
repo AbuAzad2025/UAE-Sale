@@ -8,6 +8,12 @@ from utils.helpers import create_audit_log
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
+@auth_bp.route('/support')
+def support():
+    """صفحة الدعم - متاحة قبل تسجيل الدخول"""
+    return render_template('support.html')
+
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit("100 per hour; 50 per minute")
 def login():

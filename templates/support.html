@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>دعم المشروع - Support Azad Systems</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Bootstrap RTL -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.rtl.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Cairo', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .support-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .hero-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 50px 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(102,126,234,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.3rem;
+            color: #555;
+            margin-bottom: 30px;
+        }
+        
+        .crypto-badge {
+            display: inline-block;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 30px;
+            font-weight: 700;
+            margin: 5px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .payment-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border: 3px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .payment-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+        
+        .payment-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+            border-color: #667eea;
+        }
+        
+        .payment-card.active {
+            border-color: #28a745;
+            background: linear-gradient(135deg, rgba(102,126,234,0.05) 0%, rgba(118,75,162,0.05) 100%);
+        }
+        
+        .payment-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .payment-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .payment-desc {
+            color: #666;
+            font-size: 0.95rem;
+        }
+        
+        .donation-form {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            display: none;
+        }
+        
+        .donation-form.active {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .amount-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .amount-btn {
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        
+        .amount-btn:hover {
+            border-color: #667eea;
+            background: rgba(102,126,234,0.05);
+        }
+        
+        .amount-btn.active {
+            border-color: #28a745;
+            background: #28a745;
+            color: white;
+        }
+        
+        .crypto-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 30px;
+        }
+        
+        .wallet-address {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin: 10px 0;
+            position: relative;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.3);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.5);
+        }
+        
+        .qr-code {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: inline-block;
+            margin: 20px 0;
+        }
+        
+        .btn-donate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-donate:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        
+        .security-badge {
+            display: inline-block;
+            padding: 8px 15px;
+            background: rgba(40,167,69,0.1);
+            color: #28a745;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 5px;
+        }
+        
+        .login-link {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            text-decoration: none;
+            color: #667eea;
+            font-weight: 700;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        
+        .login-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            color: #764ba2;
+            text-decoration: none;
+        }
+        
+        .features-list {
+            text-align: right;
+            margin: 30px 0;
+        }
+        
+        .feature-item {
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            border-right: 4px solid #28a745;
+        }
+        
+        .feature-item i {
+            margin-left: 10px;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <a href="{{ url_for('auth.login') }}" class="login-link">
+        <i class="fas fa-sign-in-alt mr-2"></i>تسجيل الدخول
+    </a>
+
+    <div class="support-container">
+        <!-- Hero Section -->
+        <div class="hero-section">
+            <div class="hero-content">
+                <div class="mb-4">
+                    <i class="fas fa-heart" style="font-size: 5rem; color: #e74c3c;"></i>
+                </div>
+                <h1 class="hero-title">
+                    <i class="fas fa-hand-holding-heart"></i>
+                    ادعم المشروع
+                </h1>
+                <p class="hero-subtitle">
+                    ساهم في تطوير نظام إدارة الكراجات الأكثر تقدماً في المنطقة
+                </p>
+                <div>
+                    <span class="crypto-badge">
+                        <i class="fab fa-bitcoin"></i> Bitcoin
+                    </span>
+                    <span class="crypto-badge">
+                        <i class="fab fa-ethereum"></i> Ethereum
+                    </span>
+                    <span class="crypto-badge">
+                        <i class="fas fa-dollar-sign"></i> USDT
+                    </span>
+                    <span class="crypto-badge">
+                        <i class="fas fa-credit-card"></i> Cards
+                    </span>
+                    <span class="crypto-badge">
+                        <i class="fab fa-paypal"></i> PayPal
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Methods -->
+        <div class="payment-methods">
+            <div class="payment-card" onclick="selectMethod('crypto')">
+                <i class="fab fa-bitcoin payment-icon"></i>
+                <div class="payment-title">العملات الرقمية</div>
+                <p class="payment-desc">
+                    Bitcoin, Ethereum, USDT, BNB
+                    <br><small class="text-success"><i class="fas fa-shield-alt"></i> آمن ومجهول</small>
+                </p>
+            </div>
+            
+            <div class="payment-card" onclick="selectMethod('card')">
+                <i class="fas fa-credit-card payment-icon"></i>
+                <div class="payment-title">البطاقات البنكية</div>
+                <p class="payment-desc">
+                    Visa, Mastercard, Amex
+                    <br><small class="text-info"><i class="fas fa-lock"></i> تشفير SSL</small>
+                </p>
+            </div>
+            
+            <div class="payment-card" onclick="selectMethod('paypal')">
+                <i class="fab fa-paypal payment-icon"></i>
+                <div class="payment-title">PayPal</div>
+                <p class="payment-desc">
+                    دفع سريع وآمن
+                    <br><small class="text-primary"><i class="fas fa-check-circle"></i> حماية المشتري</small>
+                </p>
+            </div>
+            
+            <div class="payment-card" onclick="selectMethod('bank')">
+                <i class="fas fa-university payment-icon"></i>
+                <div class="payment-title">تحويل بنكي</div>
+                <p class="payment-desc">
+                    التحويل المباشر
+                    <br><small class="text-secondary"><i class="fas fa-building"></i> للمبالغ الكبيرة</small>
+                </p>
+            </div>
+        </div>
+
+        <!-- Crypto Donation Form -->
+        <div id="crypto-form" class="donation-form">
+            <h3 class="text-center mb-4">
+                <i class="fab fa-bitcoin text-warning"></i>
+                الدفع بالعملات الرقمية
+            </h3>
+            
+            <div class="alert alert-success">
+                <i class="fas fa-shield-alt mr-2"></i>
+                <strong>أمان كامل:</strong> لا تتبع، لا رسوم إضافية، تحويل فوري
+            </div>
+            
+            <div class="form-group">
+                <label><i class="fas fa-coins mr-2"></i>اختر المبلغ (بالدولار)</label>
+                <div class="amount-options">
+                    <button class="amount-btn" onclick="selectAmount(15)">$15</button>
+                    <button class="amount-btn" onclick="selectAmount(25)">$25</button>
+                    <button class="amount-btn" onclick="selectAmount(50)">$50</button>
+                    <button class="amount-btn" onclick="selectAmount(100)">$100</button>
+                    <button class="amount-btn" onclick="selectAmount(250)">$250</button>
+                    <button class="amount-btn" onclick="selectAmount(500)">$500</button>
+                </div>
+                <input type="number" id="customAmount" class="form-control" placeholder="أو أدخل مبلغ مخصص (الحد الأدنى $15)" min="15">
+            </div>
+            
+            <div class="form-group">
+                <label><i class="fab fa-bitcoin mr-2"></i>اختر العملة الرقمية</label>
+                <select class="form-control" id="cryptoType">
+                    <option value="btc">Bitcoin (BTC) - الأكثر أماناً</option>
+                    <option value="eth">Ethereum (ETH)</option>
+                    <option value="usdt">Tether (USDT) - عملة مستقرة</option>
+                    <option value="usdc">USD Coin (USDC) - عملة مستقرة</option>
+                    <option value="bnb">Binance Coin (BNB)</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-donate btn-block" onclick="generateCryptoPayment()">
+                <i class="fas fa-wallet mr-2"></i>
+                إنشاء عنوان الدفع
+            </button>
+            
+            <div class="crypto-info" id="cryptoPaymentInfo" style="display: none;">
+                <h4 class="text-center mb-4">
+                    <i class="fas fa-qrcode mr-2"></i>
+                    معلومات الدفع
+                </h4>
+                
+                <div class="features-list">
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle"></i>
+                        <strong>التحويل التلقائي:</strong> سيتم تحويل مبلغك تلقائياً إلى Bitcoin/Stablecoin
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-user-secret"></i>
+                        <strong>خصوصية كاملة:</strong> لا نحتفظ بأي معلومات شخصية
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-bolt"></i>
+                        <strong>فوري:</strong> التأكيد خلال 10-30 دقيقة
+                    </div>
+                </div>
+                
+                <div class="text-center">
+                    <div class="qr-code" id="qrCode">
+                        <!-- QR Code will be generated here -->
+                        <canvas id="qrCanvas"></canvas>
+                    </div>
+                </div>
+                
+                <div class="wallet-address">
+                    <span id="walletAddress">bc1q...</span>
+                    <button class="copy-btn" onclick="copyAddress()">
+                        <i class="fas fa-copy"></i> نسخ
+                    </button>
+                </div>
+                
+                <p class="text-center mt-3 mb-0">
+                    <small>
+                        <i class="fas fa-info-circle"></i>
+                        أرسل المبلغ المحدد إلى العنوان أعلاه
+                    </small>
+                </p>
+            </div>
+            
+            <div class="text-center mt-4">
+                <span class="security-badge">
+                    <i class="fas fa-lock mr-1"></i>SSL Encrypted
+                </span>
+                <span class="security-badge">
+                    <i class="fas fa-shield-alt mr-1"></i>Anonymous
+                </span>
+                <span class="security-badge">
+                    <i class="fas fa-bolt mr-1"></i>Instant
+                </span>
+            </div>
+        </div>
+
+        <!-- Card Payment Form -->
+        <div id="card-form" class="donation-form">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-credit-card text-primary"></i>
+                الدفع بالبطاقة البنكية
+            </h3>
+            
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle mr-2"></i>
+                سيتم تحويل المبلغ تلقائياً إلى عملة رقمية مستقرة (USDT/USDC)
+            </div>
+            
+            <form id="cardPaymentForm">
+                <div class="form-group">
+                    <label>المبلغ (USD)</label>
+                    <input type="number" class="form-control" min="15" placeholder="الحد الأدنى $15" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>رقم البطاقة</label>
+                    <input type="text" class="form-control" placeholder="1234 5678 9012 3456" maxlength="19" required>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>تاريخ الانتهاء</label>
+                            <input type="text" class="form-control" placeholder="MM/YY" maxlength="5" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>CVV</label>
+                            <input type="text" class="form-control" placeholder="123" maxlength="4" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-donate btn-block">
+                    <i class="fas fa-credit-card mr-2"></i>
+                    تأكيد الدفع
+                </button>
+            </form>
+        </div>
+
+        <!-- PayPal Form -->
+        <div id="paypal-form" class="donation-form">
+            <h3 class="text-center mb-4">
+                <i class="fab fa-paypal text-primary"></i>
+                الدفع عبر PayPal
+            </h3>
+            
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <strong>ملاحظة:</strong> سيتم تحويل التبرع إلى Bitcoin بعد استلامه
+            </div>
+            
+            <div class="text-center" id="paypal-button-container">
+                <!-- PayPal Button will be rendered here -->
+                <button class="btn btn-donate btn-lg">
+                    <i class="fab fa-paypal mr-2"></i>
+                    الدفع عبر PayPal
+                </button>
+            </div>
+        </div>
+
+        <!-- Bank Transfer Form -->
+        <div id="bank-form" class="donation-form">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-university text-success"></i>
+                التحويل البنكي
+            </h3>
+            
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle mr-2"></i>
+                للتبرعات الكبيرة (+$500)، يُرجى التواصل معنا للحصول على تفاصيل الحساب
+            </div>
+            
+            <div class="text-center">
+                <a href="mailto:support@azadsystems.com?subject=Bank Transfer Donation" class="btn btn-donate btn-lg">
+                    <i class="fas fa-envelope mr-2"></i>
+                    طلب تفاصيل الحساب
+                </a>
+                
+                <p class="mt-4 text-muted">
+                    أو تواصل عبر WhatsApp:
+                    <br>
+                    <a href="https://wa.me/970592800646" class="btn btn-success mt-2">
+                        <i class="fab fa-whatsapp mr-2"></i>
+                        +970 592 800 646
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    
+    <script>
+        let selectedAmount = 0;
+        let selectedMethod = '';
+        
+        function selectMethod(method) {
+            // Hide all forms
+            document.querySelectorAll('.donation-form').forEach(form => {
+                form.classList.remove('active');
+            });
+            
+            // Remove active class from all cards
+            document.querySelectorAll('.payment-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            
+            // Show selected form
+            document.getElementById(method + '-form').classList.add('active');
+            
+            // Add active class to selected card
+            event.currentTarget.classList.add('active');
+            
+            selectedMethod = method;
+            
+            // Scroll to form
+            document.getElementById(method + '-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        function selectAmount(amount) {
+            selectedAmount = amount;
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.amount-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class to selected button
+            event.currentTarget.classList.add('active');
+            
+            // Clear custom amount
+            document.getElementById('customAmount').value = '';
+        }
+        
+        function generateCryptoPayment() {
+            // Get amount
+            const customAmount = document.getElementById('customAmount').value;
+            const amount = customAmount || selectedAmount;
+            
+            if (!amount || amount < 15) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ',
+                    text: 'الحد الأدنى للتبرع هو $15',
+                    confirmButtonColor: '#667eea'
+                });
+                return;
+            }
+            
+            const cryptoType = document.getElementById('cryptoType').value;
+            
+            // Show loading
+            Swal.fire({
+                title: 'جاري إنشاء عنوان الدفع...',
+                html: '<i class="fas fa-spinner fa-spin fa-3x"></i>',
+                showConfirmButton: false,
+                allowOutsideClick: false
+            });
+            
+            // Simulate API call to generate payment address
+            setTimeout(() => {
+                Swal.close();
+                
+                // Generate wallet address (in real implementation, this would come from a payment gateway API)
+                const walletAddresses = {
+                    'btc': 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+                    'eth': '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
+                    'usdt': 'TYASr5UV6HEcXatwdFQfmLVUqQQQMUxHLS',
+                    'usdc': '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
+                    'bnb': 'bnb1grpf0955h0ykzq3ar5nmum7y6gdfl6lxfn46h2'
+                };
+                
+                const address = walletAddresses[cryptoType];
+                
+                // Update wallet address
+                document.getElementById('walletAddress').textContent = address;
+                
+                // Generate QR Code
+                const qrCanvas = document.getElementById('qrCanvas');
+                qrCanvas.innerHTML = '';
+                new QRCode(qrCanvas, {
+                    text: address,
+                    width: 200,
+                    height: 200,
+                    colorDark: '#667eea',
+                    colorLight: '#ffffff'
+                });
+                
+                // Show payment info
+                document.getElementById('cryptoPaymentInfo').style.display = 'block';
+                
+                // Scroll to payment info
+                document.getElementById('cryptoPaymentInfo').scrollIntoView({ behavior: 'smooth' });
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'تم إنشاء عنوان الدفع!',
+                    text: `أرسل $${amount} إلى العنوان المعروض`,
+                    confirmButtonColor: '#28a745'
+                });
+            }, 2000);
+        }
+        
+        function copyAddress() {
+            const address = document.getElementById('walletAddress').textContent;
+            
+            navigator.clipboard.writeText(address).then(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'تم النسخ!',
+                    text: 'تم نسخ العنوان إلى الحافظة',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            });
+        }
+        
+        // Handle card payment form
+        document.getElementById('cardPaymentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            Swal.fire({
+                icon: 'info',
+                title: 'قريباً',
+                text: 'هذه الميزة قيد التطوير. يُرجى استخدام العملات الرقمية للدفع.',
+                confirmButtonColor: '#667eea'
+            });
+        });
+    </script>
+</body>
+</html>
+

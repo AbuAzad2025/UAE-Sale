@@ -485,7 +485,7 @@
                 </h3>
                 
                 <div class="package-grid">
-                    <div class="package-card" onclick="selectPackage('basic', 299)">
+                    <div class="package-card" onclick="selectPackage('basic', 299, event)">
                         <div class="package-name">📦 الباقة الأساسية</div>
                         <div class="package-price">$299</div>
                         <ul class="package-features">
@@ -498,7 +498,7 @@
                         </ul>
                     </div>
                     
-                    <div class="package-card" onclick="selectPackage('professional', 599)">
+                    <div class="package-card" onclick="selectPackage('professional', 599, event)">
                         <div class="package-name">💼 الباقة الاحترافية</div>
                         <div class="package-price">$599</div>
                         <ul class="package-features">
@@ -511,7 +511,7 @@
                         </ul>
                     </div>
                     
-                    <div class="package-card" onclick="selectPackage('enterprise', 999)">
+                    <div class="package-card" onclick="selectPackage('enterprise', 999, event)">
                         <div class="package-name">🏢 باقة الشركات</div>
                         <div class="package-price">$999</div>
                         <ul class="package-features">
@@ -540,7 +540,7 @@
             
             <!-- طرق الدفع للتبرعات -->
             <div class="payment-methods">
-                <div class="payment-card" onclick="selectMethod('crypto')">
+                <div class="payment-card" onclick="selectMethod('crypto', event)">
                 <i class="fab fa-bitcoin payment-icon"></i>
                 <div class="payment-title">العملات الرقمية</div>
                 <p class="payment-desc">
@@ -549,7 +549,7 @@
                 </p>
             </div>
             
-            <div class="payment-card" onclick="selectMethod('card')">
+            <div class="payment-card" onclick="selectMethod('card', event)">
                 <i class="fas fa-credit-card payment-icon"></i>
                 <div class="payment-title">البطاقات البنكية</div>
                 <p class="payment-desc">
@@ -558,7 +558,7 @@
                 </p>
             </div>
             
-            <div class="payment-card" onclick="selectMethod('paypal')">
+            <div class="payment-card" onclick="selectMethod('paypal', event)">
                 <i class="fab fa-paypal payment-icon"></i>
                 <div class="payment-title">PayPal</div>
                 <p class="payment-desc">
@@ -567,7 +567,7 @@
                 </p>
             </div>
             
-            <div class="payment-card" onclick="selectMethod('bank')">
+            <div class="payment-card" onclick="selectMethod('bank', event)">
                 <i class="fas fa-university payment-icon"></i>
                 <div class="payment-title">تحويل بنكي</div>
                 <p class="payment-desc">
@@ -852,7 +852,7 @@
         }
         
         // Select package
-        function selectPackage(packageName, price) {
+        function selectPackage(packageName, price, event) {
             selectedPackage = packageName;
             selectedAmount = price;
             
@@ -860,13 +860,18 @@
             document.querySelectorAll('.package-card').forEach(card => {
                 card.classList.remove('active');
             });
-            event.currentTarget.classList.add('active');
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
             
             // Scroll to payment methods
-            document.querySelector('.payment-methods').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const paymentMethods = document.querySelector('.payment-methods');
+            if (paymentMethods) {
+                paymentMethods.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
         
-        function selectMethod(method) {
+        function selectMethod(method, event) {
             // Hide all forms
             document.querySelectorAll('.donation-form').forEach(form => {
                 form.classList.remove('active');
@@ -878,15 +883,20 @@
             });
             
             // Show selected form
-            document.getElementById(method + '-form').classList.add('active');
+            const selectedForm = document.getElementById(method + '-form');
+            if (selectedForm) {
+                selectedForm.classList.add('active');
+                
+                // Scroll to form
+                selectedForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
             
             // Add active class to selected card
-            event.currentTarget.classList.add('active');
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
             
             selectedMethod = method;
-            
-            // Scroll to form
-            document.getElementById(method + '-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
         
         function selectAmount(amount) {

@@ -210,27 +210,48 @@ def system_stats():
 @login_required
 @owner_required
 def audit_logs():
+    """سجل التدقيق الشامل - مراقبة كل عمليات النظام"""
     page = request.args.get('page', 1, type=int)
     action = request.args.get('action', '', type=str)
     user_id = request.args.get('user', type=int)
+    per_page = request.args.get('per_page', 50, type=int)
     
     query = AuditLog.query
     
+    # فلترة حسب العملية
     if action:
         query = query.filter_by(action=action)
     
+    # فلترة حسب المستخدم
     if user_id:
         query = query.filter_by(user_id=user_id)
     
+    # الترتيب والتقسيم
     pagination = query.order_by(AuditLog.created_at.desc()).paginate(
         page=page,
-        per_page=50,
+        per_page=per_page,
         error_out=False
     )
     
+    # إحصائيات سريعة
+    stats = {
+        'total': AuditLog.query.count(),
+        'today': AuditLog.query.filter(
+            db.func.date(AuditLog.created_at) == db.func.current_date()
+        ).count(),
+        'creates': AuditLog.query.filter_by(action='create').count(),
+        'updates': AuditLog.query.filter_by(action='update').count(),
+        'deletes': AuditLog.query.filter_by(action='delete').count(),
+    }
+    
+    # قائمة المستخدمين للفلتر
+    users = User.query.filter_by(is_active=True).all()
+    
     return render_template('owner/audit_logs.html',
                          logs=pagination.items,
-                         pagination=pagination)
+                         pagination=pagination,
+                         stats=stats,
+                         users=users)
 
 
 @owner_bp.route('/archived')

@@ -188,7 +188,7 @@
         </div>
         {% if sale.tax_amount > 0 %}
         <div class="total-row">
-          <span>الضريبة ({{ sale.tax_percent }}%):</span>
+          <span>الضريبة ({{ sale.tax_rate }}%):</span>
           <strong>{{ "{:,.2f}".format(sale.tax_amount) }} AED</strong>
         </div>
         {% endif %}

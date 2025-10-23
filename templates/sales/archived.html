@@ -34,7 +34,7 @@
         <tr>
           <td><strong>{{ sale.sale_number }}</strong></td>
           <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
-          <td>{{ sale.customer_name }}</td>
+          <td>{{ sale.customer.name if sale.customer else '-' }}</td>
           <td><strong>{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency }}</strong></td>
           <td>
             {% if sale.payment_status == 'paid' %}

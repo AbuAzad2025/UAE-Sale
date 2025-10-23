@@ -425,7 +425,7 @@
                     <button class="amount-btn" onclick="selectAmount(250)">$250</button>
                     <button class="amount-btn" onclick="selectAmount(500)">$500</button>
                 </div>
-                <input type="number" id="customAmount" class="form-control" placeholder="أو أدخل مبلغ مخصص (الحد الأدنى $15)" min="15">
+                <input type="number" id="customAmount" class="form-control" placeholder="أو أدخل مبلغ مخصص (الحد الأدنى $10)" min="10">
             </div>
             
             <div class="form-group">
@@ -452,16 +452,16 @@
                 
                 <div class="features-list">
                     <div class="feature-item">
-                        <i class="fas fa-check-circle"></i>
-                        <strong>التحويل التلقائي:</strong> سيتم تحويل مبلغك تلقائياً إلى Bitcoin/Stablecoin
-                    </div>
-                    <div class="feature-item">
                         <i class="fas fa-user-secret"></i>
                         <strong>خصوصية كاملة:</strong> لا نحتفظ بأي معلومات شخصية
                     </div>
                     <div class="feature-item">
                         <i class="fas fa-bolt"></i>
                         <strong>فوري:</strong> التأكيد خلال 10-30 دقيقة
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-shield-alt"></i>
+                        <strong>آمن:</strong> تشفير متقدم وحماية كاملة
                     </div>
                 </div>
                 
@@ -509,13 +509,13 @@
             
             <div class="alert alert-info">
                 <i class="fas fa-info-circle mr-2"></i>
-                سيتم تحويل المبلغ تلقائياً إلى عملة رقمية مستقرة (USDT/USDC)
+                دفع آمن ومحمي بتشفير SSL
             </div>
             
             <form id="cardPaymentForm">
                 <div class="form-group">
                     <label>المبلغ (USD)</label>
-                    <input type="number" class="form-control" min="15" placeholder="الحد الأدنى $15" required>
+                    <input type="number" class="form-control" min="10" placeholder="الحد الأدنى $10" required>
                 </div>
                 
                 <div class="form-group">
@@ -552,14 +552,14 @@
                 الدفع عبر PayPal
             </h3>
             
-            <div class="alert alert-warning">
-                <i class="fas fa-exclamation-triangle mr-2"></i>
-                <strong>ملاحظة:</strong> سيتم تحويل التبرع إلى Bitcoin بعد استلامه
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle mr-2"></i>
+                دفع سريع وآمن عبر PayPal
             </div>
             
             <div class="text-center" id="paypal-button-container">
                 <!-- PayPal Button will be rendered here -->
-                <button class="btn btn-donate btn-lg">
+                <button class="btn btn-donate btn-lg" onclick="handlePayPalPayment()">
                     <i class="fab fa-paypal mr-2"></i>
                     الدفع عبر PayPal
                 </button>
@@ -592,6 +592,11 @@
                         +970 592 800 646
                     </a>
                 </p>
+                
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <strong>للمبالغ الكبيرة (+$500):</strong> يُرجى التواصل معنا للحصول على تفاصيل الحساب البنكي
+                </div>
             </div>
         </div>
     </div>
@@ -649,11 +654,11 @@
             const customAmount = document.getElementById('customAmount').value;
             const amount = customAmount || selectedAmount;
             
-            if (!amount || amount < 15) {
+            if (!amount || amount < 10) {
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
-                    text: 'الحد الأدنى للتبرع هو $15',
+                    text: 'الحد الأدنى للتبرع هو $10',
                     confirmButtonColor: '#667eea'
                 });
                 return;
@@ -669,48 +674,86 @@
                 allowOutsideClick: false
             });
             
-            // Simulate API call to generate payment address
-            setTimeout(() => {
+            // Create payment via API
+            fetch('/auth/payment/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    amount: amount,
+                    crypto_currency: cryptoType,
+                    description: `تبرع لمشروع Azad Systems - $${amount}`
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
                 Swal.close();
                 
-                // Generate wallet address (in real implementation, this would come from a payment gateway API)
-                const walletAddresses = {
-                    'btc': 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-                    'eth': '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
-                    'usdt': 'TYASr5UV6HEcXatwdFQfmLVUqQQQMUxHLS',
-                    'usdc': '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
-                    'bnb': 'bnb1grpf0955h0ykzq3ar5nmum7y6gdfl6lxfn46h2'
-                };
+                if (data.success) {
+                    // Update wallet address
+                    document.getElementById('walletAddress').textContent = data.payment_address;
+                    
+                    // Generate QR Code
+                    const qrCanvas = document.getElementById('qrCanvas');
+                    qrCanvas.innerHTML = '';
+                    new QRCode(qrCanvas, {
+                        text: data.payment_address,
+                        width: 200,
+                        height: 200,
+                        colorDark: '#667eea',
+                        colorLight: '#ffffff'
+                    });
+                    
+                    // Show payment info
+                    document.getElementById('cryptoPaymentInfo').style.display = 'block';
+                    
+                    // Scroll to payment info
+                    document.getElementById('cryptoPaymentInfo').scrollIntoView({ behavior: 'smooth' });
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'تم إنشاء عنوان الدفع!',
+                        text: `أرسل $${amount} إلى العنوان المعروض`,
+                        confirmButtonColor: '#28a745'
+                    });
+                    
+                    // Redirect to thank you page after 5 seconds
+                    setTimeout(() => {
+                        window.location.href = `/auth/thank-you?payment_id=${data.payment_id}&status=pending`;
+                    }, 5000);
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'خطأ في إنشاء الدفعة',
+                        text: data.error || 'حدث خطأ غير متوقع',
+                        confirmButtonColor: '#dc3545'
+                    });
+                }
+            })
+            .catch(error => {
+                Swal.close();
+                console.error('Payment error:', error);
                 
-                const address = walletAddresses[cryptoType];
-                
-                // Update wallet address
-                document.getElementById('walletAddress').textContent = address;
-                
-                // Generate QR Code
-                const qrCanvas = document.getElementById('qrCanvas');
-                qrCanvas.innerHTML = '';
-                new QRCode(qrCanvas, {
-                    text: address,
-                    width: 200,
-                    height: 200,
-                    colorDark: '#667eea',
-                    colorLight: '#ffffff'
-                });
-                
-                // Show payment info
-                document.getElementById('cryptoPaymentInfo').style.display = 'block';
-                
-                // Scroll to payment info
-                document.getElementById('cryptoPaymentInfo').scrollIntoView({ behavior: 'smooth' });
-                
+                // Show fallback message with manual payment option
                 Swal.fire({
-                    icon: 'success',
-                    title: 'تم إنشاء عنوان الدفع!',
-                    text: `أرسل $${amount} إلى العنوان المعروض`,
-                    confirmButtonColor: '#28a745'
+                    icon: 'warning',
+                    title: 'خطأ في الاتصال',
+                    html: `
+                        <p>فشل في الاتصال بالخادم، يُرجى المحاولة مرة أخرى</p>
+                        <hr>
+                        <p><strong>الدفع اليدوي:</strong></p>
+                        <p>يمكنك إرسال التبرع مباشرة إلى:</p>
+                        <p><code>REDACTED-BITCOIN-ADDR</code></p>
+                        <p>المبلغ: $${amount} Bitcoin</p>
+                    `,
+                    confirmButtonColor: '#667eea',
+                    showCancelButton: true,
+                    cancelButtonText: 'إلغاء',
+                    confirmButtonText: 'حسناً'
                 });
-            }, 2000);
+            });
         }
         
         function copyAddress() {
@@ -727,14 +770,41 @@
             });
         }
         
+        // Handle PayPal payment
+        function handlePayPalPayment() {
+            Swal.fire({
+                icon: 'info',
+                title: 'قريباً',
+                text: 'دفع PayPal قيد التطوير. يُرجى استخدام العملات الرقمية للدفع.',
+                confirmButtonColor: '#667eea'
+            });
+        }
+        
         // Handle card payment form
         document.getElementById('cardPaymentForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
+            // Get form data
+            const amount = document.querySelector('#card-form input[type="number"]').value;
+            const cardNumber = document.querySelector('#card-form input[placeholder*="1234"]').value;
+            const expiry = document.querySelector('#card-form input[placeholder*="MM/YY"]').value;
+            const cvv = document.querySelector('#card-form input[placeholder*="123"]').value;
+            
+            if (!amount || amount < 10) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ',
+                    text: 'الحد الأدنى للتبرع هو $10',
+                    confirmButtonColor: '#667eea'
+                });
+                return;
+            }
+            
+            // Show processing message
             Swal.fire({
                 icon: 'info',
                 title: 'قريباً',
-                text: 'هذه الميزة قيد التطوير. يُرجى استخدام العملات الرقمية للدفع.',
+                text: 'دفع البطاقات البنكية قيد التطوير. يُرجى استخدام العملات الرقمية للدفع.',
                 confirmButtonColor: '#667eea'
             });
         });

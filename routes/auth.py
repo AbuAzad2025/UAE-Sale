@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_user, logout_user, current_user
 from extensions import db, limiter
-from models import User
+from models import User, Donation
 from utils.helpers import create_audit_log
+from services.nowpayments_service import NOWPaymentsService
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -65,4 +66,158 @@ def logout():
         flash('تم تسجيل الخروج بنجاح', 'success')
     
     return redirect(url_for('auth.login'))
+
+
+# Payment Routes
+@auth_bp.route('/payment/create', methods=['POST'])
+@limiter.limit("10 per minute")
+def create_payment():
+    """إنشاء دفعة جديدة"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'بيانات غير صحيحة'
+            }), 400
+        
+        amount = float(data.get('amount', 0))
+        crypto_currency = data.get('crypto_currency', 'btc')
+        customer_email = data.get('email', '')
+        description = data.get('description', '')
+        
+        # التحقق من الحد الأدنى
+        if amount < 10:
+            return jsonify({
+                'success': False,
+                'error': 'الحد الأدنى للتبرع هو $10'
+            }), 400
+        
+        # إنشاء الدفعة
+        nowpayments = NOWPaymentsService()
+        result = nowpayments.create_payment(
+            amount=amount,
+            crypto_currency=crypto_currency,
+            customer_email=customer_email,
+            description=description
+        )
+        
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'خطأ في إنشاء الدفعة: {str(e)}'
+        }), 500
+
+
+@auth_bp.route('/payment/status/<payment_id>')
+def payment_status(payment_id):
+    """الحصول على حالة الدفعة"""
+    try:
+        nowpayments = NOWPaymentsService()
+        result = nowpayments.get_payment_status(payment_id)
+        
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'خطأ في الحصول على حالة الدفعة: {str(e)}'
+        }), 500
+
+
+@auth_bp.route('/payment/callback', methods=['POST'])
+def payment_callback():
+    """معالجة callback من NOWPayments"""
+    try:
+        # الحصول على التوقيع
+        signature = request.headers.get('x-nowpayments-sig')
+        if not signature:
+            return jsonify({'error': 'توقيع مفقود'}), 400
+        
+        # التحقق من التوقيع
+        nowpayments = NOWPaymentsService()
+        if not nowpayments.verify_ipn(request.get_json(), signature):
+            return jsonify({'error': 'توقيع غير صحيح'}), 400
+        
+        # معالجة البيانات
+        payment_data = request.get_json()
+        success = nowpayments.process_payment_callback(payment_data)
+        
+        if success:
+            return jsonify({'status': 'success'})
+        else:
+            return jsonify({'error': 'فشل في معالجة الدفعة'}), 500
+            
+    except Exception as e:
+        return jsonify({
+            'error': f'خطأ في معالجة callback: {str(e)}'
+        }), 500
+
+
+@auth_bp.route('/payment/currencies')
+def available_currencies():
+    """الحصول على العملات المتاحة"""
+    try:
+        nowpayments = NOWPaymentsService()
+        result = nowpayments.get_available_currencies()
+        
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'خطأ في الحصول على العملات: {str(e)}'
+        }), 500
+
+
+@auth_bp.route('/payment/estimate')
+def estimate_amount():
+    """تقدير المبلغ للعملة الرقمية"""
+    try:
+        amount = float(request.args.get('amount', 0))
+        from_currency = request.args.get('from', 'usd')
+        to_currency = request.args.get('to', 'btc')
+        
+        if amount < 10:
+            return jsonify({
+                'success': False,
+                'error': 'الحد الأدنى للتبرع هو $10'
+            }), 400
+        
+        nowpayments = NOWPaymentsService()
+        result = nowpayments.get_estimated_amount(amount, from_currency, to_currency)
+        
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'خطأ في التقدير: {str(e)}'
+        }), 500
+
+
+@auth_bp.route('/thank-you')
+def thank_you():
+    """صفحة الشكر بعد الدفع"""
+    payment_id = request.args.get('payment_id')
+    status = request.args.get('status', 'pending')
+    
+    return render_template('thank_you.html', 
+                         payment_id=payment_id, 
+                         status=status)
 

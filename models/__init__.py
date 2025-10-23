@@ -21,6 +21,8 @@ from .invoice_settings import InvoiceSettings
 from .tenant import Tenant
 from .system_settings import SystemSettings
 from .integration_settings import IntegrationSettings
+from .donation import Donation
+from .payment_vault import PaymentVault, PaymentTransaction, PaymentLog
 
 __all__ = [
     'User', 'Role', 'Permission',
@@ -43,5 +45,7 @@ __all__ = [
     'Tenant',
     'SystemSettings',
     'IntegrationSettings',
+    'Donation',
+    'PaymentVault', 'PaymentTransaction', 'PaymentLog',
 ]
 

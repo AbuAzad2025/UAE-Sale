@@ -210,6 +210,7 @@ def register_blueprints(app):
     from routes.auth import auth_bp
     from routes.main import main_bp
     from routes.owner import owner_bp
+    from routes.payment_vault import payment_vault_bp
     
     # Register public first to handle landing page
     try:
@@ -257,6 +258,11 @@ def register_blueprints(app):
         app.register_blueprint(payments_bp)
     except Exception as e:
         app.logger.warning(f'payments_bp not registered: {e}')
+    
+    try:
+        app.register_blueprint(payment_vault_bp)
+    except Exception as e:
+        app.logger.warning(f'payment_vault_bp not registered: {e}')
     
     try:
         from routes.warehouse import warehouse_bp

@@ -247,6 +247,11 @@ class Config:
     MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "")
     MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", COMPANY_EMAIL)
     
+    # ===== NOWPayments Integration =====
+    NOWPAYMENTS_API_KEY = os.environ.get("NOWPAYMENTS_API_KEY", "REDACTED-API-KEY")
+    NOWPAYMENTS_IPN_SECRET = os.environ.get("NOWPAYMENTS_IPN_SECRET", "REDACTED-IPN-SECRET")
+    BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000")
+    
     # ===== WhatsApp (Optional) =====
     WHATSAPP_ENABLED = _bool(os.environ.get("WHATSAPP_ENABLED"), False)
     WHATSAPP_API_KEY = os.environ.get("WHATSAPP_API_KEY", "")

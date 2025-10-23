@@ -268,11 +268,13 @@ def archived():
     
     for archived in archived_sales_query.all():
         data = archived.data
+        # Get the actual sale to retrieve customer name
+        sale = Sale.query.get(archived.record_id)
         archived_items.append({
             'id': archived.record_id,
             'sale_number': data.get('sale_number'),
             'sale_date': datetime.fromisoformat(data.get('sale_date').replace('Z', '+00:00')) if isinstance(data.get('sale_date'), str) else data.get('sale_date'),
-            'customer_name': data.get('customer_name'),
+            'customer': sale.customer if sale else None,
             'total_amount': float(data.get('total_amount', 0)),
             'currency': data.get('currency'),
             'payment_status': data.get('payment_status'),

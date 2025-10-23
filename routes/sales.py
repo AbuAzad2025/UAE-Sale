@@ -189,6 +189,7 @@ def print_invoice(id):
         return redirect(url_for('sales.index'))
     
     # Get invoice settings
+    from config import Config
     settings = InvoiceSettings.get_active()
     
     # استخدام القالب النشط من الإعدادات
@@ -197,10 +198,10 @@ def print_invoice(id):
     
     # التحقق من وجود القالب، وإلا استخدام القالب الافتراضي
     try:
-        return render_template(template_path, sale=sale, settings=settings)
+        return render_template(template_path, sale=sale, settings=settings, config=Config)
     except:
         # إذا لم يوجد القالب، استخدام modern كافتراضي
-        return render_template('invoices/modern.html', sale=sale, settings=settings)
+        return render_template('invoices/modern.html', sale=sale, settings=settings, config=Config)
 
 
 @sales_bp.route('/<int:id>/cancel', methods=['POST'])

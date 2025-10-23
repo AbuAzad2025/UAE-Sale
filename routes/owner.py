@@ -7,7 +7,7 @@ from extensions import db
 from models import (
     User, Customer, Product, Sale, SaleLine, Purchase, Payment, Receipt,
     StockMovement, AuditLog, ArchivedRecord, ProductReturn, CardVault, InvoiceSettings,
-    Tenant, SystemSettings
+    Tenant, SystemSettings, IntegrationSettings
 )
 from utils.decorators import owner_required
 from sqlalchemy import text, inspect
@@ -634,8 +634,6 @@ def execute_query():
 @owner_required
 def integrations():
     """عرض إعدادات التكاملات من قاعدة البيانات"""
-    from models import IntegrationSettings
-    
     # جلب إعدادات كل خدمة من قاعدة البيانات
     whatsapp = IntegrationSettings.get_service_config('whatsapp')
     email = IntegrationSettings.get_service_config('email')
@@ -678,8 +676,6 @@ def integrations():
 def update_integration(service):
     """تحديث إعدادات التكامل - حفظ حقيقي في قاعدة البيانات"""
     try:
-        from models import IntegrationSettings
-        
         # الحصول على أو إنشاء سجل الخدمة
         integration = IntegrationSettings.get_service_config(service)
         

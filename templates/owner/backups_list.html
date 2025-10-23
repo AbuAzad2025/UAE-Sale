@@ -129,6 +129,7 @@
           <!-- نسخة يدوية فورية -->
           <div class="col-md-6 mb-3 mb-md-0">
             <form method="POST" action="{{ url_for('owner.backup_now') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <label class="font-weight-bold mb-2">
                 <i class="fas fa-hand-pointer text-success mr-1"></i>
                 نسخة احتياطية يدوية فورية
@@ -304,6 +305,7 @@
         <h4>لا توجد نسخ احتياطية</h4>
         <p class="text-muted">قم بإنشاء أول نسخة احتياطية الآن</p>
         <form method="POST" action="{{ url_for('owner.backup_now') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-success btn-lg">
             <i class="fas fa-plus-circle"></i> إنشاء نسخة احتياطية
           </button>
@@ -362,6 +364,7 @@
         </button>
       </div>
       <form method="POST" id="restoreForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-body">
           <div class="alert alert-danger">
             <i class="fas fa-shield-alt"></i>
@@ -409,6 +412,7 @@
         </button>
       </div>
       <form method="POST" id="customRestoreForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-body">
           <!-- تحذير -->
           <div class="alert alert-warning">

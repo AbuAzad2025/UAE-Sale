@@ -11,14 +11,8 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 @auth_bp.route('/support')
 def support():
-    """صفحة الدعم - متاحة قبل تسجيل الدخول"""
+    """صفحة الدعم والشراء - متاحة قبل تسجيل الدخول"""
     return render_template('support.html')
-
-
-@auth_bp.route('/payment')
-def payment_page():
-    """صفحة الدفع الموحدة - شراء المنتجات والتبرعات"""
-    return render_template('payment.html')
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])

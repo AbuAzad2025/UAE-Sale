@@ -1132,19 +1132,6 @@
             }
             
             // Show processing message
-                // معالجة الدفع بالبطاقات
-                const formData = new FormData(cardForm);
-                const paymentAmount = formData.get('amount');
-                
-                if (!paymentAmount || paymentAmount < 1) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'خطأ',
-                        text: 'الحد الأدنى للتبرع هو $1',
-                        confirmButtonColor: '#667eea'
-                    });
-                    return;
-                }
                 
                 // إظهار رسالة التوجيه للتحويل البنكي
                 Swal.fire({

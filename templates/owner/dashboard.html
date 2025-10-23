@@ -19,8 +19,8 @@
 
 {% block content %}
 
-<!-- بطاقة تحذير ثابتة دائمة -->
-<div class="alert alert-danger d-flex align-items-center mb-4" style="padding: 15px 25px; border-radius: 10px; border: 3px solid #ff6b6b; background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%); box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+<!-- بطاقة تحذير ثابتة دائمة - لا يمكن إخفاؤها أبداً -->
+<div class="owner-warning-permanent d-flex align-items-center mb-4" style="padding: 15px 25px; border-radius: 10px; border: 3px solid #ff6b6b; background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%); box-shadow: 0 4px 15px rgba(0,0,0,0.3); opacity: 1 !important; display: flex !important; visibility: visible !important; transition: none !important;">
   <i class="fas fa-exclamation-triangle mr-3" style="font-size: 2rem; color: #ffc107; animation: pulse 2s infinite;"></i>
   <span style="color: #ffffff; font-weight: 700; font-size: 1.1rem; text-shadow: 0 2px 3px rgba(0,0,0,0.5); flex: 1;">
     <i class="fas fa-shield-alt mr-2"></i> منطقة المالك - صلاحيات كاملة
@@ -35,6 +35,21 @@
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(1.1); }
+}
+
+/* حماية البطاقة من الإخفاء - لا يمكن إخفاؤها بأي طريقة */
+.owner-warning-permanent {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+.owner-warning-permanent * {
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 </style>
 

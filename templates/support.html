@@ -920,18 +920,59 @@
                 allowOutsideClick: false
             });
             
+            // تحديد نوع المعاملة والبيانات
+            const transactionData = {
+                amount: amount,
+                crypto_currency: cryptoType,
+                type: currentTab,  // 'purchase' or 'donation'
+            };
+            
+            // إضافة بيانات المشترية إذا كان شراء
+            if (currentTab === 'purchase') {
+                if (!selectedPackage) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'تنبيه',
+                        text: 'الرجاء اختيار باقة أولاً',
+                        confirmButtonColor: '#667eea'
+                    });
+                    return;
+                }
+                
+                transactionData.package = selectedPackage;
+                transactionData.customer_name = prompt('الرجاء إدخال اسمك الكامل:');
+                transactionData.customer_email = prompt('البريد الإلكتروني:');
+                transactionData.customer_phone = prompt('رقم الجوال (WhatsApp):');
+                transactionData.description = `شراء باقة ${selectedPackage} - $${amount}`;
+                
+                if (!transactionData.customer_name || !transactionData.customer_email) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'خطأ',
+                        text: 'الاسم والبريد الإلكتروني مطلوبان',
+                        confirmButtonColor: '#667eea'
+                    });
+                    return;
+                }
+            } else {
+                // بيانات التبرع (اختيارية)
+                transactionData.donor_name = prompt('اسمك (اختياري):') || null;
+                transactionData.donor_email = prompt('بريدك الإلكتروني (اختياري):') || null;
+                transactionData.donor_message = prompt('رسالة قصيرة (اختياري):') || null;
+                transactionData.description = `تبرع لمشروع Azad Systems - $${amount}`;
+            }
+            
+            // إضافة payment_method
+            transactionData.payment_method = 'crypto';
+            
             // Create payment via API
-            fetch('/auth/payment/create', {
+            fetch('/payment-vault/process-payment', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': '{{ csrf_token() }}'
                 },
-                body: JSON.stringify({
-                    amount: amount,
-                    crypto_currency: cryptoType,
-                    description: `تبرع لمشروع Azad Systems - $${amount}`
-                })
+                body: JSON.stringify(transactionData)
             })
             .then(response => response.json())
             .then(data => {

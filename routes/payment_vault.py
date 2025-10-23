@@ -8,6 +8,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import PaymentVault, PaymentTransaction, PaymentLog, Donation, CardPayment
+from services.nowpayments_service import NOWPaymentsService
 from utils.helpers import create_audit_log
 import secrets
 import string
@@ -453,6 +454,97 @@ def decrypt_card(card_id):
         return jsonify({'success': True, 'card': decrypted})
     else:
         return jsonify({'success': False, 'error': 'فشل فك التشفير'}), 400
+
+
+@payment_vault_bp.route('/process-payment', methods=['POST'])
+@limiter.limit("10 per minute")
+def process_payment():
+    """معالجة الدفع (كريبتو أو بطاقة)"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'بيانات غير صحيحة'}), 400
+        
+        payment_method = data.get('payment_method', 'crypto')  # crypto or card
+        
+        if payment_method == 'crypto':
+            # معالجة الكريبتو عبر NOWPayments
+            nowpayments = NOWPaymentsService()
+            result = nowpayments.create_payment(
+                amount=float(data.get('amount', 0)),
+                crypto_currency=data.get('crypto_currency', 'btc'),
+                customer_email=data.get('customer_email') or data.get('donor_email', ''),
+                description=data.get('description', ''),
+                transaction_type=data.get('type', 'donation'),
+                package=data.get('package', ''),
+                customer_name=data.get('customer_name', ''),
+                customer_phone=data.get('customer_phone', ''),
+                donor_name=data.get('donor_name', ''),
+                donor_email=data.get('donor_email', ''),
+                donor_message=data.get('donor_message', '')
+            )
+            return jsonify(result)
+            
+        elif payment_method == 'card':
+            # معالجة البطاقات
+            amount = float(data.get('amount', 0))
+            card_number = data.get('card_number', '').replace(' ', '')
+            cvv = data.get('cvv', '')
+            expiry = data.get('expiry', '')
+            
+            if amount < 1:
+                return jsonify({'success': False, 'error': 'الحد الأدنى هو $1'}), 400
+            
+            if not card_number or len(card_number) < 13:
+                return jsonify({'success': False, 'error': 'رقم البطاقة غير صحيح'}), 400
+            
+            # إنشاء سجل البطاقة المشفر
+            card_payment = CardPayment(
+                customer_name=data.get('customer_name', ''),
+                customer_email=data.get('customer_email', ''),
+                customer_phone=data.get('customer_phone', ''),
+                transaction_type=data.get('type', 'donation'),
+                package=data.get('package', ''),
+                amount=amount,
+                transaction_id=f'CARD_{int(datetime.now().timestamp())}',
+                payment_gateway='whatsapp',
+                status='pending',
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
+            
+            # تشفير البيانات
+            if card_payment.encrypt_card_data(card_number, cvv, expiry):
+                db.session.add(card_payment)
+                db.session.commit()
+                
+                # تسجيل
+                PaymentLog.log_action(
+                    vault_id=PaymentVault.query.first().id if PaymentVault.query.first() else None,
+                    action='card_payment_received',
+                    description=f'دفع بالبطاقة: {card_payment.get_card_display()} - ${amount}',
+                    level='info',
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent')
+                )
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'تم حفظ معلومات البطاقة بشكل آمن ومشفر',
+                    'transaction_id': card_payment.transaction_id,
+                    'whatsapp': '0598953362',
+                    'next_step': 'سيتم التواصل معك عبر WhatsApp خلال 24 ساعة'
+                })
+            else:
+                return jsonify({'success': False, 'error': 'فشل تشفير البيانات'}), 500
+        
+        else:
+            return jsonify({'success': False, 'error': 'طريقة دفع غير مدعومة'}), 400
+            
+    except Exception as e:
+        current_app.logger.error(f'خطأ في معالجة الدفع: {str(e)}')
+        return jsonify({'success': False, 'error': f'خطأ: {str(e)}'}), 500
 
 
 @payment_vault_bp.route('/change-password', methods=['GET', 'POST'])

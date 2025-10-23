@@ -26,7 +26,8 @@ class NOWPaymentsService:
     def create_payment(self, amount, currency='USD', crypto_currency='btc', 
                       order_id=None, customer_email=None, description=None,
                       transaction_type='donation', package=None, 
-                      customer_name=None, customer_phone=None):
+                      customer_name=None, customer_phone=None,
+                      donor_name=None, donor_email=None, donor_message=None):
         """
         إنشاء دفعة جديدة
         
@@ -37,6 +38,10 @@ class NOWPaymentsService:
             order_id (str): معرف الطلب
             customer_email (str): إيميل العميل
             description (str): وصف الدفعة
+            transaction_type (str): نوع المعاملة (purchase/donation)
+            package (str): الباقة المشتراة
+            customer_name (str): اسم العميل
+            customer_phone (str): رقم الجوال
             
         Returns:
             dict: معلومات الدفعة
@@ -92,12 +97,14 @@ class NOWPaymentsService:
                     # معلومات المعاملة
                     transaction_type=transaction_type,
                     package=package,
-                    customer_name=customer_name or customer_email,
-                    customer_email=customer_email,
+                    # معلومات العميل/المتبرع
+                    customer_name=customer_name if transaction_type == 'purchase' else donor_name,
+                    customer_email=customer_email if transaction_type == 'purchase' else donor_email,
                     customer_phone=customer_phone,
-                    # معلومات إضافية
-                    donor_name=customer_name if transaction_type == 'donation' else None,
-                    donor_email=customer_email if transaction_type == 'donation' else None
+                    # معلومات التبرع
+                    donor_name=donor_name,
+                    donor_email=donor_email,
+                    donor_message=donor_message
                 )
                 
                 db.session.add(donation)

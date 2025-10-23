@@ -93,6 +93,11 @@ def create_payment():
         customer_name = data.get('customer_name', '')
         customer_phone = data.get('customer_phone', '')
         
+        # معلومات التبرع
+        donor_name = data.get('donor_name', '')
+        donor_email = data.get('donor_email', '')
+        donor_message = data.get('donor_message', '')
+        
         # التحقق من الحد الأدنى
         if amount < 1:
             return jsonify({
@@ -105,12 +110,15 @@ def create_payment():
         result = nowpayments.create_payment(
             amount=amount,
             crypto_currency=crypto_currency,
-            customer_email=customer_email,
+            customer_email=customer_email or donor_email,
             description=description,
             transaction_type=transaction_type,
             package=package,
-            customer_name=customer_name,
-            customer_phone=customer_phone
+            customer_name=customer_name or donor_name,
+            customer_phone=customer_phone,
+            donor_name=donor_name,
+            donor_email=donor_email,
+            donor_message=donor_message
         )
         
         if result['success']:

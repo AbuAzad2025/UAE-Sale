@@ -2529,7 +2529,7 @@ http://localhost:8080/ai/assistant
                     product = Product(
                         name=name,
                         part_number=part_number,
-                        selling_price_aed=float(price_str),
+                        regular_price=float(price_str),
                         current_stock=quantity,
                         is_active=True
                     )
@@ -2611,9 +2611,9 @@ http://localhost:8080/ai/assistant
                         customer_id=customer.id,
                         seller_id=user.id,
                         sale_date=datetime.now(timezone.utc),
-                        subtotal=product.selling_price_aed * quantity,
-                        total_amount=product.selling_price_aed * quantity,
-                        amount_aed=product.selling_price_aed * quantity,
+                        subtotal=product.regular_price * quantity,
+                        total_amount=product.regular_price * quantity,
+                        amount_aed=product.regular_price * quantity,
                         payment_status='paid' if payment_method == 'cash' else 'unpaid',
                         status='confirmed'
                     )
@@ -2624,8 +2624,8 @@ http://localhost:8080/ai/assistant
                         sale_id=sale.id,
                         product_id=product.id,
                         quantity=quantity,
-                        unit_price=product.selling_price_aed,
-                        line_total=product.selling_price_aed * quantity
+                        unit_price=product.regular_price,
+                        line_total=product.regular_price * quantity
                     )
                     db.session.add(sale_line)
                     

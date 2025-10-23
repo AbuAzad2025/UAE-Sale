@@ -275,11 +275,14 @@
 
           <!-- زر الحذف (للنسخ اليدوية فقط) -->
           {% if backup.manual %}
-          <button type="button" class="btn btn-sm btn-danger" 
-                  onclick="confirmDelete('{{ backup.filename }}')"
-                  title="حذف النسخة نهائياً">
-            <i class="fas fa-trash mr-1"></i> حذف
-          </button>
+          <form method="POST" action="{{ url_for('owner.delete_backup', filename=backup.filename) }}" 
+                style="display: inline-block;"
+                onsubmit="return confirm('⚠️ هل أنت متأكد من حذف النسخة الاحتياطية؟\n\n📁 {{ backup.filename }}\n\n⚠️ لا يمكن التراجع عن هذا الإجراء!');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-danger" title="حذف النسخة نهائياً">
+              <i class="fas fa-trash mr-1"></i> حذف
+            </button>
+          </form>
           {% else %}
           <span class="badge badge-secondary" title="النسخ التلقائية محمية من الحذف اليدوي">
             <i class="fas fa-shield-alt"></i> محمية
@@ -556,44 +559,6 @@ function selectAllTables() {
 function deselectAllTables() {
   document.querySelectorAll('#tablesCheckboxList input[type="checkbox"]').forEach(cb => {
     cb.checked = false;
-  });
-}
-
-// تأكيد الحذف
-function confirmDelete(filename) {
-  Swal.fire({
-    title: 'هل أنت متأكد؟',
-    text: 'سيتم حذف النسخة الاحتياطية نهائياً!',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#d33',
-    cancelButtonColor: '#3085d6',
-    confirmButtonText: 'نعم، احذف',
-    cancelButtonText: 'إلغاء'
-  }).then((result) => {
-    if (result.isConfirmed) {
-      // إرسال طلب الحذف مع CSRF token
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = '{{ url_for("owner.delete_backup", filename="__FILENAME__") }}'.replace('__FILENAME__', filename);
-      
-      // إضافة CSRF token - الحصول عليه من أول form في الصفحة
-      const csrfInput = document.createElement('input');
-      csrfInput.type = 'hidden';
-      csrfInput.name = 'csrf_token';
-      // الحصول على CSRF token الحالي من أول form موجود في الصفحة
-      const existingCsrfToken = document.querySelector('input[name="csrf_token"]');
-      csrfInput.value = existingCsrfToken ? existingCsrfToken.value : '{{ csrf_token() }}';
-      form.appendChild(csrfInput);
-      
-      document.body.appendChild(form);
-      form.submit();
-      
-      // Fallback: reload بعد ثانية إذا form.submit ما اشتغل
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
-    }
   });
 }
 

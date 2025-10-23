@@ -72,6 +72,7 @@
             <thead>
               <tr>
                 <th>اسم الجدول</th>
+                <th>الوصف</th>
                 <th>عدد السجلات</th>
                 <th>الإجراءات</th>
               </tr>
@@ -80,12 +81,66 @@
               {% for table in tables %}
               <tr>
                 <td><code>{{ table.name }}</code></td>
-                <td>{{ table.rows_count }}</td>
+                <td>
+                  <small class="text-muted">
+                    {% if table.name == 'sales' %}
+                      📊 فواتير المبيعات - العمليات التجارية الرئيسية
+                    {% elif table.name == 'customers' %}
+                      👥 بيانات العملاء - معلومات الزبائن والاتصال
+                    {% elif table.name == 'products' %}
+                      📦 المنتجات - قطع الغيار والخدمات
+                    {% elif table.name == 'users' %}
+                      🔐 المستخدمين - حسابات الدخول للنظام
+                    {% elif table.name == 'payments' %}
+                      💰 المدفوعات - سندات القبض والدفع
+                    {% elif table.name == 'purchases' %}
+                      🛒 المشتريات - فواتير الشراء من الموردين
+                    {% elif table.name == 'suppliers' %}
+                      🏪 الموردين - بيانات الموردين والتواصل
+                    {% elif table.name == 'expenses' %}
+                      💸 المصروفات - النفقات والتكاليف
+                    {% elif table.name == 'cheques' %}
+                      📝 الشيكات - إدارة الشيكات الواردة والصادرة
+                    {% elif table.name == 'gl_accounts' %}
+                      📗 حسابات الأستاذ - الحسابات المحاسبية
+                    {% elif table.name == 'gl_entries' %}
+                      📘 القيود المحاسبية - العمليات المالية
+                    {% elif table.name == 'currencies' %}
+                      💱 العملات - أنواع العملات المستخدمة
+                    {% elif table.name == 'exchange_rates' %}
+                      📈 أسعار الصرف - تحويل العملات
+                    {% elif table.name == 'invoice_settings' %}
+                      🎨 إعدادات الفواتير - قوالب وترويسات
+                    {% elif table.name == 'system_settings' %}
+                      ⚙️ إعدادات النظام - التكوين العام
+                    {% elif table.name == 'audit_logs' %}
+                      📋 سجل التدقيق - مراقبة العمليات
+                    {% elif table.name == 'card_vault' %}
+                      🛡️ خزينة البطاقات - بطاقات مشفرة
+                    {% elif table.name == 'product_categories' %}
+                      📑 تصنيفات المنتجات - تنظيم القطع
+                    {% elif table.name == 'warehouses' %}
+                      🏭 المستودعات - مواقع التخزين
+                    {% elif table.name == 'archived_records' %}
+                      📁 السجلات المؤرشفة - بيانات محفوظة
+                    {% elif table.name == 'alembic_version' %}
+                      🔄 إصدار قاعدة البيانات - للتهجيرات
+                    {% else %}
+                      📄 جدول بيانات
+                    {% endif %}
+                  </small>
+                </td>
+                <td><strong>{{ table.rows_count }}</strong></td>
                 <td>
                   <a href="{{ url_for('owner.browse_table', table_name=table.name) }}" class="btn btn-sm btn-info">
                     <i class="fas fa-eye"></i> تصفح
                   </a>
-                  {% if table.name not in ['user', 'role', 'permission'] %}
+                  {% if table.name not in ['alembic_version'] %}
+                  <a href="{{ url_for('owner.sql_console') }}" class="btn btn-sm btn-primary" title="استخدم SQL Console للتعديل">
+                    <i class="fas fa-edit"></i> تعديل
+                  </a>
+                  {% endif %}
+                  {% if table.name not in ['users', 'alembic_version', 'system_settings'] %}
                   <button class="btn btn-sm btn-danger" onclick="truncateTable('{{ table.name }}')">
                     <i class="fas fa-trash"></i> مسح الكل
                   </button>

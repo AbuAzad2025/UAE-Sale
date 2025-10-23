@@ -857,6 +857,27 @@ def browse_table(table_name):
         return redirect(url_for('owner.database_tools'))
 
 
+@owner_bp.route('/edit-table-data/<table_name>')
+@login_required
+@owner_required
+def edit_table_data(table_name):
+    """تعديل بيانات الجدول"""
+    try:
+        # جلب بيانات الجدول
+        result = db.session.execute(text(f"SELECT * FROM {table_name} LIMIT 100"))
+        rows = result.fetchall()
+        columns = result.keys()
+        
+        return render_template('owner/edit_table.html',
+                             table_name=table_name,
+                             columns=columns,
+                             rows=rows)
+    
+    except Exception as e:
+        flash(f'❌ خطأ: {str(e)}', 'danger')
+        return redirect(url_for('owner.database_tools'))
+
+
 @owner_bp.route('/sql-console', methods=['GET', 'POST'])
 @login_required
 @owner_required

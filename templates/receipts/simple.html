@@ -79,7 +79,7 @@
       width: 120px;
     }
     .footer {
-      margin-top: 30px;
+      margin-top: 20px;
       padding-top: 15px;
       border-top: 1px solid #000;
       text-align: center;
@@ -209,7 +209,7 @@
     <!-- Footer -->
     <div class="footer">
       <!-- Bank Info -->
-      {% if settings and (settings.bank_name or settings.iban or settings.swift_code) %}
+      {% if settings and ((settings.bank_name and settings.bank_name != 'None') or (settings.iban and settings.iban != 'None') or (settings.swift_code and settings.swift_code != 'None')) %}
       <div class="bank-info">
         <strong>للتحويل البنكي:</strong><br>
         {% if settings.bank_name and settings.bank_name != 'None' %}{{ settings.bank_name }}{% if settings.iban and settings.iban != 'None' %} • {% endif %}{% endif %}
@@ -219,7 +219,7 @@
       {% endif %}
       
       <!-- Business Registration -->
-      {% if settings and (settings.commercial_register or settings.license_number) %}
+      {% if settings and ((settings.commercial_register and settings.commercial_register != 'None') or (settings.license_number and settings.license_number != 'None')) %}
       <div style="font-size: 8px; margin: 5px 0;">
         {% if settings.commercial_register and settings.commercial_register != 'None' %}س.ت: {{ settings.commercial_register }}{% endif %}
         {% if settings.commercial_register and settings.license_number %} | {% endif %}

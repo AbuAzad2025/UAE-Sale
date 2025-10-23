@@ -93,7 +93,7 @@
     .amount-section {
       text-align: center;
       margin: 30px 0;
-      padding: 25px;
+      padding: 18px;
       border: 3px double #28a745;
       background: linear-gradient(to bottom, #d4edda 0%, #c3e6cb 100%);
     }
@@ -176,7 +176,7 @@
     .notes p { font-size: 8px; line-height: 1.6; color: #1a1a1a; }
     .footer {
       text-align: center;
-      margin-top: 30px;
+      margin-top: 20px;
       padding-top: 15px;
       border-top: 3px double #333;
       font-size: 9px;
@@ -314,7 +314,7 @@
       {% endif %}
       
       <!-- Business Registration -->
-      {% if settings and (settings.commercial_register or settings.license_number) %}
+      {% if settings and ((settings.commercial_register and settings.commercial_register != 'None') or (settings.license_number and settings.license_number != 'None')) %}
       <p style="font-size: 8px; color: #666; margin-bottom: 5px; text-align: center;">
         {% if settings.commercial_register and settings.commercial_register != 'None' %}س.ت: {{ settings.commercial_register }}{% endif %}
         {% if settings.commercial_register and settings.license_number %} | {% endif %}

@@ -602,6 +602,9 @@ if __name__ == '__main__':
     print(f"📂 Database: {app.config['SQLALCHEMY_DATABASE_URI']}")
     print("=" * 70)
     
+    print(f"🚀 Starting server on http://{host}:{port}")
+    print("=" * 70)
+    
     app.run(
         host=host,
         port=port,

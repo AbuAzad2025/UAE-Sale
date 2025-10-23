@@ -962,13 +962,8 @@ a[href*="/reports/receivables"]:hover {
   pointer-events: none !important;
 }
 
-/* إخفاء Swal Toast فقط (وليس كل SweetAlert) */
-.swal2-container.swal2-top-end,
-.swal2-container.swal2-top-start,
-.swal2-container.swal2-bottom-end,
-.swal2-container.swal2-bottom-start {
-  display: none !important;
-}
+/* لا تخفي SweetAlert - نحتاجه للحذف والتأكيدات */
+/* فقط نخفي toast positions */
 
 .btn-outline-info {
   border: 2px solid #0c7c91 !important;

@@ -314,12 +314,56 @@
     </div>
 
     <div class="footer">
-      <div style="font-size: 11px; margin-bottom: 5px;">{{ settings.payment_terms_ar or 'شكراً لثقتكم' }}</div>
+      <!-- Bank Info -->
+      {% if settings and (settings.bank_name or settings.iban or settings.swift_code) %}
+      <div style="margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.15); border-radius: 5px;">
+        <p style="font-weight: 700; font-size: 10px; margin-bottom: 5px;">🏦 معلومات التحويل البنكي</p>
+        <div style="font-size: 9px; line-height: 1.5;">
+          {% if settings.bank_name %}<p style="margin: 2px 0;"><strong>البنك:</strong> {{ settings.bank_name }}</p>{% endif %}
+          {% if settings.iban %}<p style="margin: 2px 0;"><strong>IBAN:</strong> {{ settings.iban }}</p>{% endif %}
+          {% if settings.swift_code %}<p style="margin: 2px 0;"><strong>SWIFT:</strong> {{ settings.swift_code }}</p>{% endif %}
+        </div>
+      </div>
+      {% endif %}
+      
+      <!-- Business Registration -->
+      {% if settings and (settings.commercial_register or settings.license_number) %}
+      <div style="font-size: 8px; opacity: 0.8; margin-bottom: 8px;">
+        {% if settings.commercial_register %}س.ت: {{ settings.commercial_register }}{% endif %}
+        {% if settings.commercial_register and settings.license_number %} | {% endif %}
+        {% if settings.license_number %}رخصة: {{ settings.license_number }}{% endif %}
+      </div>
+      {% endif %}
+      
+      <!-- Default Receipt Note -->
+      {% if settings and settings.default_receipt_note_ar %}
+      <div style="background: rgba(255,255,255,0.2); padding: 8px; margin-bottom: 10px; border-radius: 5px;">
+        <p style="font-size: 9px; margin: 0;">💬 {{ settings.default_receipt_note_ar }}</p>
+      </div>
+      {% endif %}
+      
+      <div style="font-size: 11px; margin-bottom: 5px;">{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else 'شكراً لثقتكم' }}</div>
       <div>✨ نتمنى لكم تجربة ممتازة ✨</div>
-      {% if settings.website %}
+      {% if settings and settings.website %}
       <div style="margin-top: 5px; font-size: 10px;">🌐 {{ settings.website }}</div>
       {% endif %}
+      
+      <!-- Social Media -->
+      {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}
+      <div style="margin-top: 8px; font-size: 9px;">
+        {% if settings.facebook_url %}<a href="{{ settings.facebook_url }}" style="margin: 0 4px; color: rgba(255,255,255,0.9);">Facebook</a>{% endif %}
+        {% if settings.instagram_url %}<a href="{{ settings.instagram_url }}" style="margin: 0 4px; color: rgba(255,255,255,0.9);">Instagram</a>{% endif %}
+        {% if settings.whatsapp_number %}<a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 4px; color: rgba(255,255,255,0.9);">WhatsApp</a>{% endif %}
+      </div>
+      {% endif %}
     </div>
+    
+    <!-- Watermark -->
+    {% if settings and settings.enable_watermark and settings.watermark_text %}
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 80px; color: rgba(40,167,69,0.04); font-weight: 700; z-index: 0; pointer-events: none;">
+      {{ settings.watermark_text }}
+    </div>
+    {% endif %}
   </div>
 </body>
 </html>

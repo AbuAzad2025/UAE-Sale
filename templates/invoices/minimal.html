@@ -301,9 +301,54 @@
     {% endif %}
 
     <div class="footer">
-      <p>{{ settings.footer_text_ar or 'شكراً لثقتكم' }}</p>
-      {% if settings.website %}<p style="margin-top: 5px;">🌐 {{ settings.website }}</p>{% endif %}
+      <!-- Bank Info -->
+      {% if settings and (settings.bank_name or settings.iban or settings.swift_code) %}
+      <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 3px solid {{ settings.header_color or '#2c3e50' }};">
+        <p style="font-weight: 700; font-size: 10px; color: {{ settings.header_color or '#2c3e50' }}; margin-bottom: 5px;">🏦 Bank Transfer Details</p>
+        <div style="font-size: 9px; line-height: 1.6;">
+          {% if settings.bank_name %}<p style="margin: 2px 0;"><strong>Bank:</strong> {{ settings.bank_name }}</p>{% endif %}
+          {% if settings.bank_account_number %}<p style="margin: 2px 0;"><strong>Account:</strong> {{ settings.bank_account_number }}</p>{% endif %}
+          {% if settings.iban %}<p style="margin: 2px 0;"><strong>IBAN:</strong> {{ settings.iban }}</p>{% endif %}
+          {% if settings.swift_code %}<p style="margin: 2px 0;"><strong>SWIFT:</strong> {{ settings.swift_code }}</p>{% endif %}
+        </div>
+      </div>
+      {% endif %}
+      
+      <!-- Business Registration -->
+      {% if settings and (settings.commercial_register or settings.license_number) %}
+      <p style="font-size: 8px; color: #7f8c8d; margin-bottom: 8px; text-align: center;">
+        {% if settings.commercial_register %}CR: {{ settings.commercial_register }}{% endif %}
+        {% if settings.commercial_register and settings.license_number %} | {% endif %}
+        {% if settings.license_number %}License: {{ settings.license_number }}{% endif %}
+      </p>
+      {% endif %}
+      
+      <!-- Default Note -->
+      {% if settings and settings.default_invoice_note_ar %}
+      <div style="background: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-bottom: 10px; border-radius: 4px;">
+        <p style="font-size: 9px; color: #856404; margin: 0;">💬 {{ settings.default_invoice_note_ar }}</p>
+      </div>
+      {% endif %}
+      
+      <p>{{ settings.footer_text_ar if settings and settings.footer_text_ar else 'شكراً لثقتكم' }}</p>
+      {% if settings and settings.website %}<p style="margin-top: 5px;">🌐 {{ settings.website }}</p>{% endif %}
+      
+      <!-- Social Media -->
+      {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}
+      <div style="margin-top: 10px; font-size: 9px; text-align: center;">
+        {% if settings.facebook_url %}<a href="{{ settings.facebook_url }}" style="margin: 0 4px; color: #1877f2; text-decoration: none;">Facebook</a>{% endif %}
+        {% if settings.instagram_url %}<a href="{{ settings.instagram_url }}" style="margin: 0 4px; color: #e4405f; text-decoration: none;">Instagram</a>{% endif %}
+        {% if settings.whatsapp_number %}<a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 4px; color: #25d366; text-decoration: none;">WhatsApp</a>{% endif %}
+      </div>
+      {% endif %}
     </div>
+    
+    <!-- Watermark -->
+    {% if settings and settings.enable_watermark and settings.watermark_text %}
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 70px; color: rgba(44,62,80,0.03); font-weight: 300; z-index: 0; pointer-events: none;">
+      {{ settings.watermark_text }}
+    </div>
+    {% endif %}
   </div>
 </body>
 </html>

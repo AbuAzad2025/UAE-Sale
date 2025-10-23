@@ -380,12 +380,58 @@
     </div>
 
     <div class="footer">
-      <div style="font-size: 11px; margin-bottom: 5px;">{{ settings.payment_terms_ar or 'نرجو الالتزام بمواعيد الدفع المحددة' }}</div>
+      <div style="font-size: 11px; margin-bottom: 5px;">{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else 'نرجو الالتزام بمواعيد الدفع المحددة' }}</div>
+      
+      <!-- Bank Info -->
+      {% if settings and (settings.bank_name or settings.iban or settings.swift_code) %}
+      <div style="margin: 12px 0; padding: 12px; background: rgba(255,255,255,0.15); border-radius: 8px; border: 2px solid rgba(255,255,255,0.3);">
+        <p style="font-weight: 700; font-size: 11px; margin-bottom: 6px; text-align: center;">🏦 معلومات التحويل البنكي</p>
+        <div style="font-size: 9px; line-height: 1.6; text-align: center;">
+          {% if settings.bank_name %}<span><strong>البنك:</strong> {{ settings.bank_name }}</span>{% endif %}
+          {% if settings.bank_name and settings.iban %}<br>{% endif %}
+          {% if settings.iban %}<span><strong>IBAN:</strong> {{ settings.iban }}</span>{% endif %}
+          {% if settings.swift_code %}<br><span><strong>SWIFT:</strong> {{ settings.swift_code }}</span>{% endif %}
+        </div>
+      </div>
+      {% endif %}
+      
+      <!-- Business Registration -->
+      {% if settings and (settings.commercial_register or settings.license_number) %}
+      <div style="font-size: 8px; opacity: 0.8; margin-bottom: 8px; text-align: center;">
+        {% if settings.commercial_register %}<span>السجل التجاري: {{ settings.commercial_register }}</span>{% endif %}
+        {% if settings.commercial_register and settings.license_number %} ☪ {% endif %}
+        {% if settings.license_number %}<span>الرخصة: {{ settings.license_number }}</span>{% endif %}
+      </div>
+      {% endif %}
+      
+      <!-- Default Note -->
+      {% if settings and settings.default_invoice_note_ar %}
+      <div style="background: rgba(255,243,205,0.3); border-right: 3px solid #ffc107; padding: 8px; margin: 10px 0; border-radius: 5px;">
+        <p style="font-size: 9px; margin: 0;">💬 {{ settings.default_invoice_note_ar }}</p>
+      </div>
+      {% endif %}
+      
       <div>☪ شكراً لتعاملكم الكريم معنا ☪</div>
-      {% if settings.website %}
+      {% if settings and settings.website %}
       <div style="margin-top: 5px; font-size: 10px;">🌐 {{ settings.website }}</div>
       {% endif %}
+      
+      <!-- Social Media -->
+      {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}
+      <div style="margin-top: 10px; font-size: 10px;">
+        {% if settings.facebook_url %}<a href="{{ settings.facebook_url }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;">📘 Facebook</a>{% endif %}
+        {% if settings.instagram_url %}<a href="{{ settings.instagram_url }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;">📷 Instagram</a>{% endif %}
+        {% if settings.whatsapp_number %}<a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;">💬 WhatsApp</a>{% endif %}
+      </div>
+      {% endif %}
     </div>
+    
+    <!-- Watermark -->
+    {% if settings and settings.enable_watermark and settings.watermark_text %}
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 90px; color: rgba(201,169,97,0.05); font-weight: 700; z-index: 0; pointer-events: none; font-family: 'Noto Kufi Arabic';">
+      ☪ {{ settings.watermark_text }} ☪
+    </div>
+    {% endif %}
   </div>
 </body>
 </html>

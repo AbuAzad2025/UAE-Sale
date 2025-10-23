@@ -201,7 +201,7 @@
       <!-- قسم الدفعات -->
       {% if sale.payments %}
       <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
-        <h4 style="color: {{ settings.header_color }}; font-size: 12px; margin-bottom: 8px; font-weight: 700;">💰 الدفعات</h4>
+        <h4 style="color: {{ settings.header_color if settings else '#667eea' }}; font-size: 12px; margin-bottom: 8px; font-weight: 700;">💰 الدفعات</h4>
         <table style="font-size: 9px;">
           <thead>
             <tr>
@@ -243,7 +243,7 @@
       </div>
       {% endif %}
 
-      {% if settings.enable_qr_code %}
+      {% if settings and settings.enable_qr_code %}
       <div class="qr-code text-center">
         <i class="fas fa-qrcode" style="font-size: 50px; color: #ddd;"></i>
         <p style="font-size: 9px; color: #999;">مسح للدفع الإلكتروني</p>

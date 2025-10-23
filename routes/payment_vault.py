@@ -457,9 +457,9 @@ def decrypt_card(card_id):
 
 
 @payment_vault_bp.route('/process-payment', methods=['POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("20 per minute")
 def process_payment():
-    """معالجة الدفع (كريبتو أو بطاقة)"""
+    """معالجة الدفع (كريبتو أو بطاقة) - عام، لا يحتاج تسجيل دخول"""
     try:
         data = request.get_json()
         

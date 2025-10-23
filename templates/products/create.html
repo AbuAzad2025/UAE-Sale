@@ -72,7 +72,7 @@
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تصنيف المنتج (إجباري)"></i>
             </label>
             <div class="input-group">
-              <select name="category_id" id="product_category" class="form-control select2" required style="flex: 1;">
+              <select name="category_id" id="product_category" class="form-control" required style="flex: 1;">
                 <option value="">اختر فئة...</option>
                 {% for category in categories %}
                 <option value="{{ category.id }}">{{ category.name }}</option>

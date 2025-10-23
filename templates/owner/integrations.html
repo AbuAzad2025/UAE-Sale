@@ -17,98 +17,389 @@
     <section class="content">
         <div class="container-fluid">
             <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-12">
                     <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">WhatsApp</h3>
+                        <div class="card-header bg-gradient-success">
+                            <h3 class="card-title"><i class="fab fa-whatsapp mr-2"></i>WhatsApp Business API</h3>
                         </div>
                         <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
                                     <h5>تكامل WhatsApp</h5>
-                                    <p class="text-muted">إرسال الإشعارات والرسائل عبر WhatsApp</p>
+                                    <p class="text-muted">إرسال إشعارات الفواتير والمدفوعات عبر WhatsApp للعملاء</p>
                                 </div>
                                 <div>
                                     {% if integrations.whatsapp.enabled %}
-                                        <span class="badge badge-success">مفعل</span>
+                                        <span class="badge badge-success badge-lg"><i class="fas fa-check-circle mr-1"></i>مفعل</span>
                                     {% else %}
-                                        <span class="badge badge-danger">غير مفعل</span>
+                                        <span class="badge badge-danger badge-lg"><i class="fas fa-times-circle mr-1"></i>غير مفعل</span>
                                     {% endif %}
                                 </div>
                             </div>
-                            <p><strong>الحالة:</strong> {{ integrations.whatsapp.status }}</p>
+                            
+                            <hr>
+                            
+                            <form method="POST" action="{{ url_for('owner.update_integration', service='whatsapp') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-toggle-on text-success mr-1"></i>تفعيل WhatsApp
+                                    </label>
+                                    <div class="custom-control custom-switch custom-switch-on-success">
+                                        <input type="checkbox" class="custom-control-input" id="whatsapp_enabled" name="enabled" {% if integrations.whatsapp.enabled %}checked{% endif %}>
+                                        <label class="custom-control-label" for="whatsapp_enabled">تفعيل الإرسال التلقائي عبر WhatsApp</label>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    <strong>ملاحظة:</strong> يمكنك استخدام WhatsApp Business API أو خدمات مثل Twilio, MessageBird, أو واجهة مخصصة
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-key text-warning mr-1"></i>API Token / Access Key
+                                    </label>
+                                    <input type="text" class="form-control" name="api_token" placeholder="أدخل API Token هنا">
+                                    <small class="form-text text-muted">
+                                        🔐 <strong>مثال:</strong> EAA... (من Twilio أو Meta Business)
+                                    </small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-phone text-primary mr-1"></i>رقم WhatsApp Business
+                                    </label>
+                                    <input type="text" class="form-control" name="phone_number" placeholder="+971501234567">
+                                    <small class="form-text text-muted">
+                                        📱 <strong>مثال:</strong> +971501234567 (بالصيغة الدولية مع +)
+                                    </small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-server text-info mr-1"></i>API Endpoint URL
+                                    </label>
+                                    <input type="text" class="form-control" name="api_url" placeholder="https://api.whatsapp.com/send">
+                                    <small class="form-text text-muted">
+                                        🌐 <strong>مثال:</strong> https://api.twilio.com/2010-04-01/Accounts/YOUR_ACCOUNT_SID/Messages.json
+                                    </small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-comment-dots text-success mr-1"></i>قالب الرسالة الافتراضي
+                                    </label>
+                                    <textarea class="form-control" name="message_template" rows="3" placeholder="مرحباً {customer_name}، فاتورتك رقم {invoice_number} بمبلغ {amount} جاهزة!">مرحباً {customer_name}، فاتورتك رقم {invoice_number} بمبلغ {amount} جاهزة!</textarea>
+                                    <small class="form-text text-muted">
+                                        💬 <strong>المتغيرات المتاحة:</strong> {customer_name}, {invoice_number}, {amount}, {date}
+                                    </small>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save mr-1"></i>حفظ إعدادات WhatsApp
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-md-12">
                     <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">{{ t('Email') }}</h3>
+                        <div class="card-header bg-gradient-info">
+                            <h3 class="card-title"><i class="fas fa-envelope mr-2"></i>البريد الإلكتروني (SMTP)</h3>
                         </div>
                         <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
                                     <h5>تكامل البريد الإلكتروني</h5>
-                                    <p class="text-muted">إرسال الإشعارات والرسائل عبر البريد الإلكتروني</p>
+                                    <p class="text-muted">إرسال الفواتير والتقارير والإشعارات عبر البريد الإلكتروني</p>
                                 </div>
                                 <div>
                                     {% if integrations.email.enabled %}
-                                        <span class="badge badge-success">مفعل</span>
+                                        <span class="badge badge-success badge-lg"><i class="fas fa-check-circle mr-1"></i>مفعل</span>
                                     {% else %}
-                                        <span class="badge badge-danger">غير مفعل</span>
+                                        <span class="badge badge-danger badge-lg"><i class="fas fa-times-circle mr-1"></i>غير مفعل</span>
                                     {% endif %}
                                 </div>
                             </div>
-                            <p><strong>الحالة:</strong> {{ integrations.email.status }}</p>
+                            
+                            <hr>
+                            
+                            <form method="POST" action="{{ url_for('owner.update_integration', service='email') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-toggle-on text-success mr-1"></i>تفعيل البريد الإلكتروني
+                                    </label>
+                                    <div class="custom-control custom-switch custom-switch-on-success">
+                                        <input type="checkbox" class="custom-control-input" id="email_enabled" name="enabled" {% if integrations.email.enabled %}checked{% endif %}>
+                                        <label class="custom-control-label" for="email_enabled">تفعيل الإرسال التلقائي عبر Email</label>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>
+                                                <i class="fas fa-server text-primary mr-1"></i>SMTP Server
+                                            </label>
+                                            <input type="text" class="form-control" name="smtp_server" placeholder="smtp.gmail.com">
+                                            <small class="form-text text-muted">
+                                                🖥️ <strong>أمثلة:</strong><br>
+                                                • Gmail: smtp.gmail.com<br>
+                                                • Outlook: smtp.office365.com<br>
+                                                • Yahoo: smtp.mail.yahoo.com
+                                            </small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>
+                                                <i class="fas fa-network-wired text-info mr-1"></i>SMTP Port
+                                            </label>
+                                            <input type="number" class="form-control" name="smtp_port" placeholder="587" value="587">
+                                            <small class="form-text text-muted">
+                                                🔌 <strong>الافتراضي:</strong><br>
+                                                • TLS: 587<br>
+                                                • SSL: 465
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>
+                                                <i class="fas fa-user text-warning mr-1"></i>SMTP Username / Email
+                                            </label>
+                                            <input type="email" class="form-control" name="smtp_username" placeholder="your-email@gmail.com">
+                                            <small class="form-text text-muted">
+                                                📧 عادةً نفس البريد الإلكتروني الذي ترسل منه
+                                            </small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>
+                                                <i class="fas fa-lock text-danger mr-1"></i>SMTP Password / App Password
+                                            </label>
+                                            <input type="password" class="form-control" name="smtp_password" placeholder="••••••••••">
+                                            <small class="form-text text-muted">
+                                                🔐 <strong>Gmail:</strong> استخدم App Password (ليس كلمة المرور العادية)<br>
+                                                <a href="https://myaccount.google.com/apppasswords" target="_blank">إنشاء App Password</a>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-shield-alt text-success mr-1"></i>التشفير (TLS/SSL)
+                                    </label>
+                                    <select class="form-control" name="smtp_encryption">
+                                        <option value="tls" selected>TLS (Port 587) - الأكثر شيوعاً</option>
+                                        <option value="ssl">SSL (Port 465)</option>
+                                        <option value="none">بدون تشفير (غير آمن)</option>
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        🔒 <strong>ننصح بـ TLS</strong> للأمان والتوافق
+                                    </small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-paper-plane text-info mr-1"></i>اسم المُرسل
+                                    </label>
+                                    <input type="text" class="form-control" name="sender_name" placeholder="كراج الامارات">
+                                    <small class="form-text text-muted">
+                                        ✉️ الاسم الذي سيظهر للمستلم (مثال: "كراج الامارات" <no-reply@garage.ae>)
+                                    </small>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-info">
+                                    <i class="fas fa-save mr-1"></i>حفظ إعدادات البريد
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="testEmail()">
+                                    <i class="fas fa-paper-plane mr-1"></i>اختبار الإرسال
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-md-6">
                     <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Redis Cache</h3>
+                        <div class="card-header bg-gradient-danger">
+                            <h3 class="card-title"><i class="fas fa-database mr-2"></i>Redis Cache</h3>
                         </div>
                         <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
                                     <h5>تكامل Redis</h5>
-                                    <p class="text-muted">تحسين الأداء باستخدام Redis Cache</p>
+                                    <p class="text-muted">تحسين سرعة النظام بتخزين البيانات المؤقتة في الذاكرة</p>
                                 </div>
                                 <div>
                                     {% if integrations.redis.enabled %}
-                                        <span class="badge badge-success">مفعل</span>
+                                        <span class="badge badge-success badge-lg"><i class="fas fa-check-circle mr-1"></i>نشط</span>
                                     {% else %}
-                                        <span class="badge badge-danger">غير مفعل</span>
+                                        <span class="badge badge-secondary badge-lg"><i class="fas fa-ban mr-1"></i>معطل</span>
                                     {% endif %}
                                 </div>
                             </div>
-                            <p><strong>الحالة:</strong> {{ integrations.redis.status }}</p>
+                            
+                            <hr>
+                            
+                            <form method="POST" action="{{ url_for('owner.update_integration', service='redis') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-server text-primary mr-1"></i>Redis Host
+                                    </label>
+                                    <input type="text" class="form-control" name="redis_host" placeholder="localhost" value="localhost">
+                                    <small class="form-text text-muted">
+                                        🖥️ <strong>محلي:</strong> localhost أو 127.0.0.1<br>
+                                        <strong>سحابي:</strong> redis-12345.c1.us-east-1.redislabs.com
+                                    </small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-network-wired text-info mr-1"></i>Redis Port
+                                    </label>
+                                    <input type="number" class="form-control" name="redis_port" placeholder="6379" value="6379">
+                                    <small class="form-text text-muted">
+                                        🔌 <strong>الافتراضي:</strong> 6379
+                                    </small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-key text-warning mr-1"></i>Redis Password (اختياري)
+                                    </label>
+                                    <input type="password" class="form-control" name="redis_password" placeholder="••••••••••">
+                                    <small class="form-text text-muted">
+                                        🔐 اتركه فارغاً إذا لم يكن Redis محمياً بكلمة مرور
+                                    </small>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="fas fa-save mr-1"></i>حفظ إعدادات Redis
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-md-6">
                     <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">API سعر الصرف</h3>
+                        <div class="card-header bg-gradient-warning">
+                            <h3 class="card-title"><i class="fas fa-exchange-alt mr-2"></i>API سعر الصرف</h3>
                         </div>
                         <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
                                     <h5>تكامل API سعر الصرف</h5>
-                                    <p class="text-muted">جلب أسعار الصرف الحالية من API</p>
+                                    <p class="text-muted">تحديث أسعار العملات تلقائياً من الإنترنت</p>
                                 </div>
                                 <div>
                                     {% if integrations.currency_api.enabled %}
-                                        <span class="badge badge-success">مفعل</span>
+                                        <span class="badge badge-success badge-lg"><i class="fas fa-check-circle mr-1"></i>مفعل</span>
                                     {% else %}
-                                        <span class="badge badge-warning">API احتياطي</span>
+                                        <span class="badge badge-warning badge-lg"><i class="fas fa-exclamation-triangle mr-1"></i>احتياطي</span>
                                     {% endif %}
                                 </div>
                             </div>
-                            <p><strong>الحالة:</strong> {{ integrations.currency_api.status }}</p>
+                            
+                            <hr>
+                            
+                            <form method="POST" action="{{ url_for('owner.update_integration', service='currency') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-toggle-on text-success mr-1"></i>تفعيل API سعر الصرف
+                                    </label>
+                                    <div class="custom-control custom-switch custom-switch-on-success">
+                                        <input type="checkbox" class="custom-control-input" id="currency_enabled" name="enabled" {% if integrations.currency_api.enabled %}checked{% endif %}>
+                                        <label class="custom-control-label" for="currency_enabled">جلب الأسعار تلقائياً من الإنترنت</label>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <i class="fas fa-lightbulb mr-1"></i>
+                                    <strong>خدمات مجانية:</strong> exchangerate-api.com, fixer.io, currencyapi.com
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-link text-primary mr-1"></i>API Provider
+                                    </label>
+                                    <select class="form-control" name="api_provider">
+                                        <option value="exchangerate">ExchangeRate-API (مجاني)</option>
+                                        <option value="fixer">Fixer.io</option>
+                                        <option value="currencyapi">CurrencyAPI</option>
+                                        <option value="custom">مخصص (Custom)</option>
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        🌐 اختر مزود خدمة أسعار الصرف
+                                    </small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-key text-warning mr-1"></i>API Key
+                                    </label>
+                                    <input type="text" class="form-control" name="api_key" placeholder="YOUR_API_KEY_HERE">
+                                    <small class="form-text text-muted">
+                                        🔑 <strong>احصل على API Key مجاناً:</strong><br>
+                                        • <a href="https://www.exchangerate-api.com" target="_blank">ExchangeRate-API</a> (1500 request/شهر مجاناً)<br>
+                                        • <a href="https://fixer.io" target="_blank">Fixer.io</a> (100 request/شهر مجاناً)
+                                    </small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-dollar-sign text-success mr-1"></i>العملة الأساسية
+                                    </label>
+                                    <select class="form-control" name="base_currency">
+                                        <option value="USD" selected>USD - دولار أمريكي</option>
+                                        <option value="AED">AED - درهم إماراتي</option>
+                                        <option value="EUR">EUR - يورو</option>
+                                        <option value="SAR">SAR - ريال سعودي</option>
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        💱 العملة المرجعية لحساب أسعار الصرف
+                                    </small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-clock text-info mr-1"></i>تكرار التحديث
+                                    </label>
+                                    <select class="form-control" name="update_frequency">
+                                        <option value="hourly">كل ساعة</option>
+                                        <option value="daily" selected>يومياً</option>
+                                        <option value="manual">يدوي فقط</option>
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        ⏰ تحديث الأسعار تلقائياً حسب الجدول المحدد
+                                    </small>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="fas fa-save mr-1"></i>حفظ إعدادات أسعار الصرف
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="testCurrencyAPI()">
+                                    <i class="fas fa-sync mr-1"></i>تحديث الأسعار الآن
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>

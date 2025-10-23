@@ -958,15 +958,26 @@ class AzadResponses:
             return f"❌ {result['error']}"
         
         if not result['results']:
-            return f"🔍 لم أجد نتائج للبحث عن: '{search_term}'"
+            return f"لم أجد نتائج للبحث عن: '{search_term}'"
         
-        response = f"""🔍 **نتائج البحث في المعرفة عن: "{search_term}"**
+        total_found = result['total_found']
+        results_list = []
+        for i, res in enumerate(result['results'][:5]):
+            title = res['title']
+            res_type = res['type']
+            category = res['category']
+            snippet = res['snippet']
+            results_list.append(f"**{i+1}. {title}** ({res_type})\\n   الفئة: {category}\\n   {snippet}\\n")
+        
+        results_text = chr(10).join(results_list)
+        
+        response = f"""نتائج البحث في المعرفة عن: "{search_term}"
 
-📊 **عدد النتائج: {result['total_found']}**
+عدد النتائج: {total_found}
 
-{chr(10).join([f"**{i+1}. {res['title']}** ({res['type']})\\n   الفئة: {res['category']}\\n   {res['snippet']}\\n" for i, res in enumerate(result['results'][:5])])}
+{results_text}
 
-💡 **للمزيد من التفاصيل، يمكنك طلب معلومات أكثر عن أي نتيجة.**"""
+للمزيد من التفاصيل، يمكنك طلب معلومات أكثر عن أي نتيجة."""
         
         return response
     

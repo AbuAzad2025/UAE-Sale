@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db
 from models import Product, ProductCategory
@@ -76,18 +76,27 @@ def create():
                 if not sku:
                     sku = generate_sku()
                 
+                # تحويل الأسعار إلى float مع التعامل مع القيم الفارغة
+                def safe_float(value, default=0.0):
+                    if not value or value.strip() == '':
+                        return default
+                    try:
+                        return float(value)
+                    except (ValueError, TypeError):
+                        return default
+                
                 product = Product(
                     name=request.form.get('name'),
                     name_ar=request.form.get('name_ar'),
                     sku=sku,
                     barcode=request.form.get('barcode') or generate_barcode(),
                     category_id=request.form.get('category_id') or None,
-                    regular_price=request.form.get('regular_price'),
-                    merchant_price=request.form.get('merchant_price'),
-                    partner_price=request.form.get('partner_price'),
-                    cost_price=request.form.get('cost_price', 0),
-                    current_stock=request.form.get('current_stock', 0),
-                    min_stock_alert=request.form.get('min_stock_alert', 0),
+                    regular_price=safe_float(request.form.get('regular_price')),
+                    merchant_price=safe_float(request.form.get('merchant_price')),
+                    partner_price=safe_float(request.form.get('partner_price')),
+                    cost_price=safe_float(request.form.get('cost_price')),
+                    current_stock=safe_float(request.form.get('current_stock')),
+                    min_stock_alert=safe_float(request.form.get('min_stock_alert')),
                     unit=request.form.get('unit', 'piece'),
                     location=request.form.get('location'),
                     description=request.form.get('description'),

@@ -588,6 +588,11 @@ function confirmDelete(filename) {
       
       document.body.appendChild(form);
       form.submit();
+      
+      // Fallback: reload بعد ثانية إذا form.submit ما اشتغل
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     }
   });
 }

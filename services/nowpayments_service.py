@@ -24,7 +24,9 @@ class NOWPaymentsService:
         self.ipn_secret = current_app.config.get('NOWPAYMENTS_IPN_SECRET')
         
     def create_payment(self, amount, currency='USD', crypto_currency='btc', 
-                      order_id=None, customer_email=None, description=None):
+                      order_id=None, customer_email=None, description=None,
+                      transaction_type='donation', package=None, 
+                      customer_name=None, customer_phone=None):
         """
         إنشاء دفعة جديدة
         
@@ -86,7 +88,16 @@ class NOWPaymentsService:
                     status='pending',
                     gateway_name='nowpayments',
                     gateway_transaction_id=payment_data.get('payment_id'),
-                    gateway_status='pending'
+                    gateway_status='pending',
+                    # معلومات المعاملة
+                    transaction_type=transaction_type,
+                    package=package,
+                    customer_name=customer_name or customer_email,
+                    customer_email=customer_email,
+                    customer_phone=customer_phone,
+                    # معلومات إضافية
+                    donor_name=customer_name if transaction_type == 'donation' else None,
+                    donor_email=customer_email if transaction_type == 'donation' else None
                 )
                 
                 db.session.add(donation)

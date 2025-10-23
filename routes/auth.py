@@ -84,8 +84,14 @@ def create_payment():
         
         amount = float(data.get('amount', 0))
         crypto_currency = data.get('crypto_currency', 'btc')
-        customer_email = data.get('email', '')
+        customer_email = data.get('customer_email') or data.get('email', '')
         description = data.get('description', '')
+        
+        # معلومات المشترية
+        transaction_type = data.get('type', 'donation')  # purchase or donation
+        package = data.get('package', '')
+        customer_name = data.get('customer_name', '')
+        customer_phone = data.get('customer_phone', '')
         
         # التحقق من الحد الأدنى
         if amount < 1:
@@ -100,7 +106,11 @@ def create_payment():
             amount=amount,
             crypto_currency=crypto_currency,
             customer_email=customer_email,
-            description=description
+            description=description,
+            transaction_type=transaction_type,
+            package=package,
+            customer_name=customer_name,
+            customer_phone=customer_phone
         )
         
         if result['success']:

@@ -36,6 +36,13 @@ class Donation(db.Model):
     donor_email = db.Column(db.String(200))
     donor_message = db.Column(db.Text)  # رسالة من المتبرع
     
+    # Purchase Info - معلومات الشراء (للمنتجات)
+    transaction_type = db.Column(db.String(20), default='donation')  # donation, purchase
+    package = db.Column(db.String(50))  # basic, professional, enterprise
+    customer_name = db.Column(db.String(200))  # اسم العميل (للمشتريات)
+    customer_email = db.Column(db.String(200))  # إيميل العميل (للمشتريات)
+    customer_phone = db.Column(db.String(50))  # رقم الجوال
+    
     # Conversion Info - معلومات التحويل
     converted_to_crypto = db.Column(db.Boolean, default=False)
     conversion_rate = db.Column(db.Numeric(15, 6))  # سعر التحويل

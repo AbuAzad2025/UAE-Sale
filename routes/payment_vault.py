@@ -141,8 +141,8 @@ def purchases():
         flash('❌ يجب فتح الخزينة أولاً', 'warning')
         return redirect(url_for('payment_vault.unlock_vault'))
     
-    # جلب المشتريات
-    purchases = Donation.query.filter_by(payment_method='crypto').order_by(Donation.created_at.desc()).all()
+    # جلب المشتريات (حيث transaction_type = 'purchase')
+    purchases = Donation.query.filter_by(transaction_type='purchase').order_by(Donation.created_at.desc()).all()
     
     # إحصائيات
     total_purchases = len(purchases)

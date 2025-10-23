@@ -66,48 +66,62 @@ def create():
     categories = ProductCategory.query.filter_by(is_active=True).all()
     form.category_id.choices = [(0, 'بدون تصنيف')] + [(c.id, c.name) for c in categories]
     
-    if request.method == 'POST' and form.validate_on_submit():
-        try:
-            sku = request.form.get('sku')
-            if not sku:
-                sku = generate_sku()
-            
-            product = Product(
-                name=request.form.get('name'),
-                name_ar=request.form.get('name_ar'),
-                sku=sku,
-                barcode=request.form.get('barcode') or generate_barcode(),
-                category_id=request.form.get('category_id') or None,
-                regular_price=request.form.get('regular_price'),
-                merchant_price=request.form.get('merchant_price'),
-                partner_price=request.form.get('partner_price'),
-                cost_price=request.form.get('cost_price', 0),
-                current_stock=request.form.get('current_stock', 0),
-                min_stock_alert=request.form.get('min_stock_alert', 0),
-                unit=request.form.get('unit', 'piece'),
-                location=request.form.get('location'),
-                description=request.form.get('description'),
-                notes=request.form.get('notes')
-            )
-            
-            if 'image' in request.files:
-                file = request.files['image']
-                if file.filename:
-                    image_path = save_uploaded_file(file, 'products')
-                    if image_path:
-                        product.image_url = image_path
-            
-            db.session.add(product)
-            db.session.commit()
-            
-            create_audit_log('create', 'products', product.id)
-            
-            flash('تم إضافة المنتج بنجاح', 'success')
-            return redirect(url_for('products.index'))
+    if request.method == 'POST':
+        current_app.logger.info(f"POST request to create product. Form data keys: {list(request.form.keys())}")
         
-        except Exception as e:
-            db.session.rollback()
-            flash(f'حدث خطأ: {str(e)}', 'danger')
+        if form.validate_on_submit():
+            try:
+                current_app.logger.info("Form validation passed. Creating product...")
+                sku = request.form.get('sku')
+                if not sku:
+                    sku = generate_sku()
+                
+                product = Product(
+                    name=request.form.get('name'),
+                    name_ar=request.form.get('name_ar'),
+                    sku=sku,
+                    barcode=request.form.get('barcode') or generate_barcode(),
+                    category_id=request.form.get('category_id') or None,
+                    regular_price=request.form.get('regular_price'),
+                    merchant_price=request.form.get('merchant_price'),
+                    partner_price=request.form.get('partner_price'),
+                    cost_price=request.form.get('cost_price', 0),
+                    current_stock=request.form.get('current_stock', 0),
+                    min_stock_alert=request.form.get('min_stock_alert', 0),
+                    unit=request.form.get('unit', 'piece'),
+                    location=request.form.get('location'),
+                    description=request.form.get('description'),
+                    notes=request.form.get('notes')
+                )
+                
+                current_app.logger.info(f"Product object created: {product.name}")
+                
+                if 'image' in request.files:
+                    file = request.files['image']
+                    if file.filename:
+                        image_path = save_uploaded_file(file, 'products')
+                        if image_path:
+                            product.image_url = image_path
+                
+                db.session.add(product)
+                db.session.commit()
+                current_app.logger.info(f"Product saved to database with ID: {product.id}")
+                
+                create_audit_log('create', 'products', product.id)
+                
+                flash('تم إضافة المنتج بنجاح', 'success')
+                return redirect(url_for('products.index'))
+            
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error creating product: {str(e)}")
+                flash(f'حدث خطأ: {str(e)}', 'danger')
+        else:
+            # Form validation failed
+            current_app.logger.warning(f"Form validation failed. Errors: {form.errors}")
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f'خطأ في حقل {field}: {error}', 'danger')
     
     categories = ProductCategory.query.filter_by(is_active=True).all()
     return render_template('products/create.html', form=form, categories=categories)

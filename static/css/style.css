@@ -950,18 +950,24 @@ a[href*="/reports/receivables"]:hover {
   color: #ffffff !important;
 }
 
-/* إخفاء التحذيرات المنبثقة من الجوانب (Toast notifications) */
+/* إخفاء التحذيرات المنبثقة من الجوانب (Toast notifications only) */
 .toast,
 .toastr,
 .alert-toast,
 .toast-container,
-#toast-container,
-.swal-toast,
-.swal2-toast {
+#toast-container {
   display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
+}
+
+/* إخفاء Swal Toast فقط (وليس كل SweetAlert) */
+.swal2-container.swal2-top-end,
+.swal2-container.swal2-top-start,
+.swal2-container.swal2-bottom-end,
+.swal2-container.swal2-bottom-start {
+  display: none !important;
 }
 
 .btn-outline-info {

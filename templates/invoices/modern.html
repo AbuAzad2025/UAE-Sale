@@ -2,7 +2,7 @@
 <html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
 <head>
   <meta charset="UTF-8">
-  <title>شركة أزاد للأنظمة الذكية - فاتورة مبيعات #{{ sale.invoice_number }}</title>
+  <title>شركة أزاد للأنظمة الذكية - فاتورة مبيعات #{{ sale.sale_number }}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -140,7 +140,7 @@
 
     <div class="invoice-title">
       <h2>🧾 فاتورة بيع</h2>
-      <div class="invoice-number">{{ sale.invoice_number }}</div>
+      <div class="invoice-number">{{ sale.sale_number }}</div>
     </div>
 
     <div class="content">
@@ -153,7 +153,7 @@
         </div>
         <div class="info-box">
           <h3>📅 بيانات الفاتورة</h3>
-          <p><strong>التاريخ:</strong> 2025-10-17</p>
+          <p><strong>التاريخ:</strong> {{ sale.sale_date.strftime('%Y-%m-%d') }}</p>
           <p><strong>الحالة:</strong> <span style="color: #28a745">✓ مكتملة</span></p>
         </div>
       </div>
@@ -172,10 +172,10 @@
           {% for line in sale.lines %}
           <tr>
             <td>{{ loop.index }}</td>
-            <td>{{ line.product_name }}</td>
-            <td>{{ line.quantity }}</td>
-            <td>{{ line.unit_price }} AED</td>
-            <td>{{ line.total }} AED</td>
+            <td>{{ line.product.name if line.product else '-' }}</td>
+            <td>{{ "{:,.3f}".format(line.quantity) }}</td>
+            <td>{{ "{:,.2f}".format(line.unit_price) }} AED</td>
+            <td>{{ "{:,.2f}".format(line.line_total) }} AED</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -184,17 +184,17 @@
       <div class="total-section">
         <div class="total-row">
           <span>الإجمالي الفرعي:</span>
-          <strong>{{ sale.subtotal }} AED</strong>
+          <strong>{{ "{:,.2f}".format(sale.subtotal) }} AED</strong>
         </div>
-        {% if sale.tax %}
+        {% if sale.tax_amount > 0 %}
         <div class="total-row">
-          <span>الضريبة (5%):</span>
-          <strong>{{ sale.tax }} AED</strong>
+          <span>الضريبة ({{ sale.tax_percent }}%):</span>
+          <strong>{{ "{:,.2f}".format(sale.tax_amount) }} AED</strong>
         </div>
         {% endif %}
         <div class="total-row final">
           <span>الإجمالي النهائي:</span>
-          <strong>{{ sale.total }} AED</strong>
+          <strong>{{ "{:,.2f}".format(sale.total_amount) }} AED</strong>
         </div>
       </div>
 

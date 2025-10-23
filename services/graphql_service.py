@@ -7,25 +7,25 @@ from extensions import db
 class SaleType(SQLAlchemyObjectType):
     class Meta:
         model = Sale
-        exclude_fields = []
+        # interfaces = (graphene.relay.Node, )  # Optional: for relay-style queries
 
 
 class CustomerType(SQLAlchemyObjectType):
     class Meta:
         model = Customer
-        exclude_fields = []
+        # interfaces = (graphene.relay.Node, )  # Optional: for relay-style queries
 
 
 class ProductType(SQLAlchemyObjectType):
     class Meta:
         model = Product
-        exclude_fields = []
+        # interfaces = (graphene.relay.Node, )  # Optional: for relay-style queries
 
 
 class PaymentType(SQLAlchemyObjectType):
     class Meta:
         model = Payment
-        exclude_fields = []
+        # interfaces = (graphene.relay.Node, )  # Optional: for relay-style queries
 
 
 class Query(graphene.ObjectType):

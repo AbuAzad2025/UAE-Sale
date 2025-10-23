@@ -22,10 +22,10 @@
     }
     .invoice {
       {% if settings and settings.paper_size == 'A5' %}
-        width: 148mm;
+        width: 212mm;
         height: {{ '210mm' if settings.orientation == 'portrait' else '148mm' }};
       {% elif settings and settings.paper_size == 'Letter' %}
-        width: 216mm;
+        width: 212mm;
         height: {{ '279mm' if settings.orientation == 'portrait' else '216mm' }};
       {% else %}
         width: {{ '210mm' if (not settings or settings.orientation == 'portrait') else '297mm' }};
@@ -121,6 +121,20 @@
       body { padding: 0; margin: 0; background: white; }
       .no-print { display: none !important; }
       .invoice { box-shadow: none; border: none; }
+    }
+  
+    @media print {
+      .invoice {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
     }
   </style>
 </head>
@@ -321,7 +335,7 @@
     {% if settings and settings.enable_watermark %}
       {% if settings.watermark_image_path %}
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.05; z-index: 0; pointer-events: none;">
-          <img src="{{ url_for('static', filename=settings.watermark_image_path) }}" alt="Watermark" style="max-width: 400px; max-height: 400px;">
+          <img src="{{ url_for('static', filename=settings.watermark_image_path) }}" alt="Watermark" style="width: 100%; max-height: 400px;">
         </div>
       {% elif settings.watermark_text %}
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 80px; color: rgba(0,0,0,0.05); font-weight: 700; z-index: 0; pointer-events: none; white-space: nowrap;">

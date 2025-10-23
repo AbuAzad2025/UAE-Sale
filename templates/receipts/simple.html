@@ -12,11 +12,12 @@
       background: white;
     }
     @page {
-      size: A4 portrait;
-      margin: 5mm;
+      size: {{ settings.paper_size if settings else 'A4' }} {{ settings.orientation if settings else 'portrait' }};
+      margin: 2mm;
+    }
     }
     .receipt {
-      max-max-width: 200mm;
+      max-width: 100%;
       margin: 0 auto;
       background: white;
       border: 1px solid #000;
@@ -258,7 +259,7 @@
     {% if settings and settings.enable_watermark %}
       {% if settings.watermark_image_path %}
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.02; z-index: -1; pointer-events: none;">
-          <img src="{{ url_for('static', filename=settings.watermark_image_path) }}" alt="Watermark" style="max-width: 300px;">
+          <img src="{{ url_for('static', filename=settings.watermark_image_path) }}" alt="Watermark" style="width: 100%;">
         </div>
       {% elif settings.watermark_text %}
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 100px; color: rgba(0,0,0,0.02); font-weight: bold; z-index: -1;">

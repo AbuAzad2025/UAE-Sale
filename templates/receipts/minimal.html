@@ -24,10 +24,10 @@
     }
     .receipt {
       {% if settings.paper_size == 'A5' %}
-        width: 148mm;
+        width: 212mm;
         height: {{ '210mm' if settings.orientation == 'portrait' else '148mm' }};
       {% elif settings.paper_size == 'Letter' %}
-        width: 216mm;
+        width: 212mm;
         height: {{ '279mm' if settings.orientation == 'portrait' else '216mm' }};
       {% else %}
         width: {{ '210mm' if settings.orientation == 'portrait' else '297mm' }};
@@ -379,7 +379,7 @@
     {% if settings and settings.enable_watermark %}
       {% if settings.watermark_image_path %}
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.03; z-index: 0; pointer-events: none;">
-          <img src="{{ url_for('static', filename=settings.watermark_image_path) }}" alt="Watermark" style="max-width: 350px;">
+          <img src="{{ url_for('static', filename=settings.watermark_image_path) }}" alt="Watermark" style="width: 100%;">
         </div>
       {% elif settings.watermark_text %}
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 70px; color: rgba(44,62,80,0.03); font-weight: 300; z-index: 0; pointer-events: none;">

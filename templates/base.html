@@ -824,6 +824,7 @@ $(function() {
 function toggleSidebarDirection() {
   const sidebar = document.querySelector('.main-sidebar');
   const content = document.querySelector('.content-wrapper');
+  const navbar = document.querySelector('.main-header');
   const savedLayout = localStorage.getItem('sidebarLayout') || 'left';
   
   if (savedLayout === 'left') {
@@ -837,6 +838,11 @@ function toggleSidebarDirection() {
       content.style.marginLeft = '0';
       content.style.marginRight = '250px';
       content.style.transition = 'all 0.3s ease';
+    }
+    if (navbar) {
+      navbar.style.marginLeft = '0';
+      navbar.style.marginRight = '250px';
+      navbar.style.transition = 'all 0.3s ease';
     }
     localStorage.setItem('sidebarLayout', 'right');
     
@@ -860,6 +866,11 @@ function toggleSidebarDirection() {
       content.style.marginRight = '0';
       content.style.transition = 'all 0.3s ease';
     }
+    if (navbar) {
+      navbar.style.marginLeft = '250px';
+      navbar.style.marginRight = '0';
+      navbar.style.transition = 'all 0.3s ease';
+    }
     localStorage.setItem('sidebarLayout', 'left');
     
     Swal.fire({
@@ -878,6 +889,7 @@ function toggleSidebarDirection() {
   const savedLayout = localStorage.getItem('sidebarLayout');
   const sidebar = document.querySelector('.main-sidebar');
   const content = document.querySelector('.content-wrapper');
+  const navbar = document.querySelector('.main-header');
   
   if (savedLayout === 'right') {
     if (sidebar) {
@@ -887,6 +899,10 @@ function toggleSidebarDirection() {
     if (content) {
       content.style.marginLeft = '0';
       content.style.marginRight = '250px';
+    }
+    if (navbar) {
+      navbar.style.marginLeft = '0';
+      navbar.style.marginRight = '250px';
     }
   }
 })();

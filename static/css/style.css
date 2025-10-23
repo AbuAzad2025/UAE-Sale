@@ -728,6 +728,68 @@ h1, h2, h3, h4, h5, h6 {
   color: #ffffff !important;
 }
 
+/* تحسين أزرار Dashboard */
+.small-box .inner h3,
+.small-box .inner p {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  font-weight: 700 !important;
+}
+
+.small-box .inner strong {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  font-weight: 800 !important;
+}
+
+/* تحسين أزرار الإجراءات */
+a[href*="/sales/create"],
+a[href*="/customers/create"], 
+a[href*="/products/create"],
+a[href*="/reports/sales"] {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
+  border: 2px solid #00bfff !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 10px rgba(0, 191, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+a[href*="/sales/create"]:hover,
+a[href*="/customers/create"]:hover, 
+a[href*="/products/create"]:hover,
+a[href*="/reports/sales"]:hover {
+  background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 0 20px rgba(0, 191, 255, 0.6);
+  color: #ffffff !important;
+}
+
+/* تحسين أزرار "عرض الكل" */
+a[href*="/sales/"],
+a[href*="/customers/"],
+a[href*="/products/"],
+a[href*="/reports/receivables"] {
+  background: linear-gradient(135deg, #2d5016 0%, #4a7c59 100%) !important;
+  border: 2px solid #32cd32 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 10px rgba(50, 205, 50, 0.3);
+  transition: all 0.3s ease;
+}
+
+a[href*="/sales/"]:hover,
+a[href*="/customers/"]:hover,
+a[href*="/products/"]:hover,
+a[href*="/reports/receivables"]:hover {
+  background: linear-gradient(135deg, #4a7c59 0%, #2d5016 100%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 0 20px rgba(50, 205, 50, 0.6);
+  color: #ffffff !important;
+}
+
 .btn-outline-primary {
   border: 2px solid #0056b3 !important;
   color: #0056b3 !important;

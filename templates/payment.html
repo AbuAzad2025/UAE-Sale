@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>صفحة الدفع - Azad Systems</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Bootstrap RTL -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.rtl.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
+    <style>
+        * {
+            font-family: 'Cairo', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .payment-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .payment-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+        
+        .payment-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .payment-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .payment-subtitle {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        
+        .payment-type-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .payment-type-btn {
+            flex: 1;
+            min-width: 200px;
+            padding: 20px;
+            border: 3px solid #e0e0e0;
+            border-radius: 15px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .payment-type-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .payment-type-btn.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .payment-type-btn i {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .payment-type-btn h4 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .payment-form {
+            display: none;
+        }
+        
+        .payment-form.active {
+            display: block;
+        }
+        
+        .form-group label {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .form-control {
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            padding: 12px 15px;
+            font-size: 1rem;
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .btn-pay {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-pay:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-pay:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .crypto-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .crypto-option {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .crypto-option:hover {
+            border-color: #667eea;
+        }
+        
+        .crypto-option.active {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .crypto-option i {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .pricing-table {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .pricing-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .pricing-item:last-child {
+            border-bottom: none;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #667eea;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: white;
+            text-decoration: none;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+        }
+        
+        .back-link:hover {
+            color: #f0f0f0;
+            text-decoration: none;
+            transform: translateX(5px);
+        }
+        
+        .package-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .package-card:hover {
+            border-color: #667eea;
+            transform: translateY(-3px);
+        }
+        
+        .package-card.active {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .package-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .package-price {
+            font-size: 2rem;
+            font-weight: 900;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .package-features {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .package-features li {
+            padding: 5px 0;
+            color: #666;
+        }
+        
+        .package-features li i {
+            color: #28a745;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-container">
+        <a href="{{ url_for('public.landing') }}" class="back-link">
+            <i class="fas fa-arrow-right"></i> العودة للصفحة الرئيسية
+        </a>
+        
+        <div class="payment-card">
+            <div class="payment-header">
+                <h1 class="payment-title">💳 صفحة الدفع</h1>
+                <p class="payment-subtitle">اختر نوع الدفع المناسب لك</p>
+            </div>
+            
+            <!-- نوع الدفع -->
+            <div class="payment-type-selector">
+                <div class="payment-type-btn active" data-type="product">
+                    <i class="fas fa-shopping-cart"></i>
+                    <h4>شراء النظام</h4>
+                </div>
+                <div class="payment-type-btn" data-type="donation">
+                    <i class="fas fa-heart"></i>
+                    <h4>تبرع للمشروع</h4>
+                </div>
+            </div>
+            
+            <!-- نموذج شراء المنتج -->
+            <div class="payment-form active" id="product-form">
+                <h3 style="text-align: center; margin-bottom: 30px; color: #667eea;">
+                    <i class="fas fa-box"></i> اختر الباقة المناسبة
+                </h3>
+                
+                <div id="packages-container">
+                    <div class="package-card" data-package="basic" data-price="299">
+                        <div class="package-name">📦 الباقة الأساسية</div>
+                        <div class="package-price">$299</div>
+                        <ul class="package-features">
+                            <li><i class="fas fa-check"></i> نظام إدارة مستودعات كامل</li>
+                            <li><i class="fas fa-check"></i> إدارة المبيعات والمشتريات</li>
+                            <li><i class="fas fa-check"></i> تقارير أساسية</li>
+                            <li><i class="fas fa-check"></i> دعم فني لمدة 3 أشهر</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="package-card" data-package="professional" data-price="599">
+                        <div class="package-name">💼 الباقة الاحترافية</div>
+                        <div class="package-price">$599</div>
+                        <ul class="package-features">
+                            <li><i class="fas fa-check"></i> كل ميزات الباقة الأساسية</li>
+                            <li><i class="fas fa-check"></i> ذكاء اصطناعي متقدم</li>
+                            <li><i class="fas fa-check"></i> تقارير متقدمة</li>
+                            <li><i class="fas fa-check"></i> تكامل مع WhatsApp</li>
+                            <li><i class="fas fa-check"></i> دعم فني لمدة 6 أشهر</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="package-card" data-package="enterprise" data-price="999">
+                        <div class="package-name">🏢 باقة الشركات</div>
+                        <div class="package-price">$999</div>
+                        <ul class="package-features">
+                            <li><i class="fas fa-check"></i> كل ميزات الباقة الاحترافية</li>
+                            <li><i class="fas fa-check"></i> فروع غير محدودة</li>
+                            <li><i class="fas fa-check"></i> تخصيص كامل</li>
+                            <li><i class="fas fa-check"></i> تدريب فريقك</li>
+                            <li><i class="fas fa-check"></i> دعم فني مدى الحياة</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="pricing-table" style="margin-top: 30px;">
+                    <div class="pricing-item">
+                        <span>الباقة المختارة:</span>
+                        <span id="selected-package-name">-</span>
+                    </div>
+                    <div class="pricing-item">
+                        <span>السعر:</span>
+                        <span id="product-amount-display">$0</span>
+                    </div>
+                </div>
+                
+                <form id="product-payment-form">
+                    <input type="hidden" id="product-package" name="package" value="">
+                    <input type="hidden" id="product-amount" name="amount" value="0">
+                    
+                    <div class="form-group">
+                        <label>الاسم الكامل</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>البريد الإلكتروني</label>
+                        <input type="email" class="form-control" name="email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>رقم الجوال (WhatsApp)</label>
+                        <input type="tel" class="form-control" name="phone" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>اختر عملة الدفع</label>
+                        <div class="crypto-selector" id="product-crypto-selector">
+                            <div class="crypto-option active" data-crypto="btc">
+                                <i class="fab fa-bitcoin" style="color: #f7931a;"></i>
+                                <div>Bitcoin</div>
+                            </div>
+                            <div class="crypto-option" data-crypto="eth">
+                                <i class="fab fa-ethereum" style="color: #627eea;"></i>
+                                <div>Ethereum</div>
+                            </div>
+                            <div class="crypto-option" data-crypto="usdttrc20">
+                                <i class="fas fa-dollar-sign" style="color: #26a17b;"></i>
+                                <div>USDT</div>
+                            </div>
+                            <div class="crypto-option" data-crypto="ltc">
+                                <i class="fas fa-coins" style="color: #345d9d;"></i>
+                                <div>Litecoin</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn-pay" id="product-pay-btn" disabled>
+                        <i class="fas fa-shopping-cart"></i> اشترِ الآن
+                    </button>
+                </form>
+            </div>
+            
+            <!-- نموذج التبرع -->
+            <div class="payment-form" id="donation-form">
+                <h3 style="text-align: center; margin-bottom: 30px; color: #667eea;">
+                    <i class="fas fa-heart"></i> ادعم مشروعنا
+                </h3>
+                
+                <div style="background: #f8f9fa; border-radius: 15px; padding: 20px; margin-bottom: 30px; text-align: center;">
+                    <p style="font-size: 1.1rem; color: #666; margin: 0;">
+                        تبرعك يساعدنا في تطوير وتحسين النظام وتقديم خدمات أفضل للجميع
+                    </p>
+                </div>
+                
+                <form id="donation-payment-form">
+                    <div class="form-group">
+                        <label>المبلغ بالدولار ($)</label>
+                        <input type="number" class="form-control" id="donation-amount" name="amount" 
+                               min="1" step="0.01" placeholder="أدخل المبلغ (الحد الأدنى $1)" required>
+                        <small class="form-text text-muted">الحد الأدنى للتبرع: $1</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>الاسم (اختياري)</label>
+                        <input type="text" class="form-control" name="name" placeholder="اسمك">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>البريد الإلكتروني (اختياري)</label>
+                        <input type="email" class="form-control" name="email" placeholder="email@example.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>رسالة (اختياري)</label>
+                        <textarea class="form-control" name="message" rows="3" 
+                                  placeholder="اكتب رسالة قصيرة..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>اختر عملة الدفع</label>
+                        <div class="crypto-selector" id="donation-crypto-selector">
+                            <div class="crypto-option active" data-crypto="btc">
+                                <i class="fab fa-bitcoin" style="color: #f7931a;"></i>
+                                <div>Bitcoin</div>
+                            </div>
+                            <div class="crypto-option" data-crypto="eth">
+                                <i class="fab fa-ethereum" style="color: #627eea;"></i>
+                                <div>Ethereum</div>
+                            </div>
+                            <div class="crypto-option" data-crypto="usdttrc20">
+                                <i class="fas fa-dollar-sign" style="color: #26a17b;"></i>
+                                <div>USDT</div>
+                            </div>
+                            <div class="crypto-option" data-crypto="bnbbsc">
+                                <i class="fas fa-coins" style="color: #f3ba2f;"></i>
+                                <div>BNB</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn-pay" id="donation-pay-btn">
+                        <i class="fas fa-heart"></i> تبرع الآن
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- معلومات إضافية -->
+        <div class="payment-card">
+            <h4 style="text-align: center; color: #667eea; margin-bottom: 20px;">
+                <i class="fas fa-shield-alt"></i> الدفع آمن ومحمي
+            </h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; text-align: center;">
+                <div>
+                    <i class="fas fa-lock" style="font-size: 2rem; color: #28a745; margin-bottom: 10px;"></i>
+                    <div style="font-weight: 700;">تشفير SSL</div>
+                    <div style="font-size: 0.9rem; color: #666;">جميع المعاملات مشفرة</div>
+                </div>
+                <div>
+                    <i class="fas fa-check-circle" style="font-size: 2rem; color: #667eea; margin-bottom: 10px;"></i>
+                    <div style="font-weight: 700;">دفع فوري</div>
+                    <div style="font-size: 0.9rem; color: #666;">تأكيد سريع للدفع</div>
+                </div>
+                <div>
+                    <i class="fas fa-headset" style="font-size: 2rem; color: #f093fb; margin-bottom: 10px;"></i>
+                    <div style="font-weight: 700;">دعم 24/7</div>
+                    <div style="font-size: 0.9rem; color: #666;">نحن هنا لمساعدتك</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <script>
+        $(document).ready(function() {
+            let selectedCrypto = 'btc';
+            let selectedPackage = '';
+            let selectedAmount = 0;
+            
+            // التبديل بين نماذج الدفع
+            $('.payment-type-btn').click(function() {
+                $('.payment-type-btn').removeClass('active');
+                $(this).addClass('active');
+                
+                const type = $(this).data('type');
+                $('.payment-form').removeClass('active');
+                $(`#${type}-form`).addClass('active');
+            });
+            
+            // اختيار الباقة
+            $('.package-card').click(function() {
+                $('.package-card').removeClass('active');
+                $(this).addClass('active');
+                
+                selectedPackage = $(this).data('package');
+                selectedAmount = $(this).data('price');
+                
+                $('#product-package').val(selectedPackage);
+                $('#product-amount').val(selectedAmount);
+                $('#product-amount-display').text('$' + selectedAmount);
+                $('#selected-package-name').text($(this).find('.package-name').text());
+                $('#product-pay-btn').prop('disabled', false);
+            });
+            
+            // اختيار العملة الرقمية
+            $('.crypto-option').click(function() {
+                $(this).siblings().removeClass('active');
+                $(this).addClass('active');
+                selectedCrypto = $(this).data('crypto');
+            });
+            
+            // إرسال نموذج شراء المنتج
+            $('#product-payment-form').submit(function(e) {
+                e.preventDefault();
+                
+                if (!selectedPackage) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'تنبيه',
+                        text: 'الرجاء اختيار باقة أولاً',
+                        confirmButtonText: 'حسناً'
+                    });
+                    return;
+                }
+                
+                const formData = {
+                    type: 'product',
+                    amount: selectedAmount,
+                    package: selectedPackage,
+                    crypto_currency: selectedCrypto,
+                    customer_name: $('input[name="name"]').val(),
+                    customer_email: $('input[name="email"]').val(),
+                    customer_phone: $('input[name="phone"]').val(),
+                    description: `شراء ${$('#selected-package-name').text()}`
+                };
+                
+                processPayment(formData);
+            });
+            
+            // إرسال نموذج التبرع
+            $('#donation-payment-form').submit(function(e) {
+                e.preventDefault();
+                
+                const amount = parseFloat($('#donation-amount').val());
+                
+                if (amount < 1) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'تنبيه',
+                        text: 'الحد الأدنى للتبرع هو $1',
+                        confirmButtonText: 'حسناً'
+                    });
+                    return;
+                }
+                
+                const formData = {
+                    type: 'donation',
+                    amount: amount,
+                    crypto_currency: $('#donation-crypto-selector .crypto-option.active').data('crypto'),
+                    donor_name: $('#donation-payment-form input[name="name"]').val(),
+                    donor_email: $('#donation-payment-form input[name="email"]').val(),
+                    donor_message: $('#donation-payment-form textarea[name="message"]').val(),
+                    description: `تبرع بمبلغ $${amount}`
+                };
+                
+                processPayment(formData);
+            });
+            
+            // معالجة الدفع
+            function processPayment(data) {
+                Swal.fire({
+                    title: 'جاري معالجة الدفع...',
+                    html: 'الرجاء الانتظار',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                $.ajax({
+                    url: '{{ url_for("auth.create_payment") }}',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data),
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'تم إنشاء الدفعة!',
+                                html: `
+                                    <p>سيتم تحويلك إلى صفحة الدفع...</p>
+                                    <p><strong>معرف الدفعة:</strong> ${response.payment_id}</p>
+                                `,
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                if (response.payment_url) {
+                                    window.location.href = response.payment_url;
+                                } else {
+                                    // عرض معلومات الدفع
+                                    showPaymentDetails(response);
+                                }
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'خطأ',
+                                text: response.error || 'حدث خطأ أثناء معالجة الدفع',
+                                confirmButtonText: 'حسناً'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        const response = xhr.responseJSON || {};
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'خطأ',
+                            text: response.error || 'حدث خطأ في الاتصال بالخادم',
+                            confirmButtonText: 'حسناً'
+                        });
+                    }
+                });
+            }
+            
+            // عرض تفاصيل الدفع
+            function showPaymentDetails(data) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'معلومات الدفع',
+                    html: `
+                        <div style="text-align: right;">
+                            <p><strong>معرف الدفعة:</strong> ${data.payment_id}</p>
+                            <p><strong>العنوان:</strong> ${data.payment_address}</p>
+                            <p><strong>المبلغ:</strong> ${data.payment_amount}</p>
+                            <p><strong>ينتهي في:</strong> ${data.expires_at}</p>
+                        </div>
+                    `,
+                    confirmButtonText: 'حسناً'
+                });
+            }
+        });
+    </script>
+</body>
+</html>
+

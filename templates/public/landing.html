@@ -280,6 +280,24 @@
             transform: translateY(-5px) scale(1.05);
             box-shadow: 0 15px 40px rgba(212,175,55,0.6);
         }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            box-shadow: 0 10px 30px rgba(40, 167, 69, 0.4);
+        }
+        .btn-success:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(40, 167, 69, 0.6);
+        }
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            box-shadow: 0 10px 30px rgba(245, 87, 108, 0.4);
+        }
+        .btn-warning:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(245, 87, 108, 0.6);
+        }
         .btn-outline {
             background: transparent;
             color: white;
@@ -623,6 +641,12 @@
             <div class="hero-buttons">
                 <a href="{{ url_for('public.demo') }}" class="btn-hero btn-primary">
                     <i class="fas fa-rocket"></i> جرّب النظام الآن
+                </a>
+                <a href="{{ url_for('auth.payment_page') }}" class="btn-hero btn-success">
+                    <i class="fas fa-shopping-cart"></i> اشترِ النظام الآن
+                </a>
+                <a href="{{ url_for('auth.support') }}" class="btn-hero btn-warning">
+                    <i class="fas fa-heart"></i> تبرع لدعم المشروع
                 </a>
                 <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-outline">
                     <i class="fas fa-gem"></i> الباقات والأسعار

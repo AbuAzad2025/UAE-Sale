@@ -15,6 +15,12 @@ def support():
     return render_template('support.html')
 
 
+@auth_bp.route('/payment')
+def payment_page():
+    """صفحة الدفع الموحدة - شراء المنتجات والتبرعات"""
+    return render_template('payment.html')
+
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit("100 per hour; 50 per minute")
 def login():

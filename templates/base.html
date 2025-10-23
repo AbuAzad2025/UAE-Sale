@@ -699,9 +699,10 @@ $(function() {
     }, { once: true, passive: true });
   });
   
-  // Auto-hide flash messages with progress bar
+  // Auto-hide flash messages with progress bar (إلا التحذيرات الدائمة)
   document.querySelectorAll('.flash-message').forEach((alert, index) => {
-    if (!alert.classList.contains('alert-permanent')) {
+    // لا تخفي التحذيرات الدائمة أو alert-danger
+    if (!alert.classList.contains('alert-permanent') && !alert.classList.contains('alert-danger')) {
       const progressBar = alert.querySelector('.flash-timer');
       
       // Start timer animation
@@ -711,13 +712,13 @@ $(function() {
         }
       }, 100);
       
-      // Auto-hide after 20 seconds
+      // Auto-hide after 40 seconds (ضعف المدة السابقة)
       setTimeout(() => {
         alert.style.transition = 'all 0.5s ease-out';
         alert.style.transform = 'translateX(100%)';
         alert.style.opacity = '0';
         setTimeout(() => alert.remove(), 500);
-      }, 20000);
+      }, 40000);
     }
   });
   

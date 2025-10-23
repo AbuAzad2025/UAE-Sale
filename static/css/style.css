@@ -642,8 +642,9 @@ h1, h2, h3, h4, h5, h6 {
   background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
   border: 2px solid #00bfff !important;
   color: #ffffff !important;
-  font-weight: 700 !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  font-weight: 900 !important;
+  font-size: 0.95rem !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5) !important;
   box-shadow: 0 0 10px rgba(0, 191, 255, 0.3);
 }
 
@@ -651,14 +652,22 @@ h1, h2, h3, h4, h5, h6 {
   background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%) !important;
   transform: translateY(-1px);
   box-shadow: 0 0 20px rgba(0, 191, 255, 0.6);
+  color: #ffffff !important;
+}
+
+.btn-primary i {
+  color: #ffffff !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8) !important;
+  font-weight: 900 !important;
 }
 
 .btn-success {
   background: linear-gradient(135deg, #2d5016 0%, #4a7c59 100%) !important;
   border: 2px solid #32cd32 !important;
   color: #ffffff !important;
-  font-weight: 700 !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  font-weight: 900 !important;
+  font-size: 0.95rem !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5) !important;
   box-shadow: 0 0 10px rgba(50, 205, 50, 0.3);
 }
 
@@ -666,33 +675,56 @@ h1, h2, h3, h4, h5, h6 {
 .btn-success span,
 .btn-success i {
   color: #ffffff !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8) !important;
+  font-weight: 900 !important;
 }
 
 .btn-danger {
   background: linear-gradient(135deg, #8b0000 0%, #dc143c 100%) !important;
   border: 2px solid #ff4500 !important;
   color: #ffffff !important;
-  font-weight: 700 !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  font-weight: 900 !important;
+  font-size: 0.95rem !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5) !important;
   box-shadow: 0 0 10px rgba(255, 69, 0, 0.3);
+}
+
+.btn-danger i {
+  color: #ffffff !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8) !important;
+  font-weight: 900 !important;
 }
 
 .btn-warning {
   background: linear-gradient(135deg, #8b4513 0%, #cd853f 100%) !important;
   border: 2px solid #ff8c00 !important;
   color: #ffffff !important;
-  font-weight: 700 !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  font-weight: 900 !important;
+  font-size: 0.95rem !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5) !important;
   box-shadow: 0 0 10px rgba(255, 140, 0, 0.3);
+}
+
+.btn-warning i {
+  color: #ffffff !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8) !important;
+  font-weight: 900 !important;
 }
 
 .btn-info {
   background: linear-gradient(135deg, #0c7c91 0%, #0a5f6e 100%) !important;
   border: 2px solid #0c7c91 !important;
   color: #ffffff !important;
-  font-weight: 700 !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  font-weight: 900 !important;
+  font-size: 0.95rem !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5) !important;
   box-shadow: 0 3px 6px rgba(12, 124, 145, 0.3);
+}
+
+.btn-info i {
+  color: #ffffff !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8) !important;
+  font-weight: 900 !important;
 }
 
 .btn-info:hover {
@@ -916,6 +948,20 @@ a[href*="/reports/receivables"]:hover {
 .btn-outline-primary:hover {
   background: #0056b3 !important;
   color: #ffffff !important;
+}
+
+/* إخفاء التحذيرات المنبثقة من الجوانب (Toast notifications) */
+.toast,
+.toastr,
+.alert-toast,
+.toast-container,
+#toast-container,
+.swal-toast,
+.swal2-toast {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 .btn-outline-info {

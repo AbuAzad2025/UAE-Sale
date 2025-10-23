@@ -252,7 +252,7 @@
     </div>
 
     <div class="footer">
-      <p>{{ settings.payment_terms_ar }}</p>
+      <p>{{ settings.payment_terms_ar if settings else 'الدفع نقداً أو بالتحويل البنكي' }}</p>
       <p style="margin-top: 10px; font-size: 14px;">شكراً لتعاملكم معنا 🌟</p>
     </div>
   </div>

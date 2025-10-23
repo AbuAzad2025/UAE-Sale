@@ -316,8 +316,8 @@
 
   <div class="receipt">
     <div class="header">
-      {% if settings.show_logo %}
-      <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Logo" class="logo">
+      {% if settings and settings.show_logo %}
+      <img src="{{ url_for('static', filename=settings.logo_path if settings and settings.logo_path else 'img/garage_logo.png') }}" alt="Logo" class="logo">
       {% endif %}
       <div class="company-name">{{ settings.company_name_ar if settings and settings.company_name_ar else (config.COMPANY_NAME_AR if config else 'شركة أزاد') }}</div>
       <div class="company-info">
@@ -480,10 +480,16 @@
     </div>
     
     <!-- Watermark -->
-    {% if settings and settings.enable_watermark and settings.watermark_text %}
-    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 90px; color: rgba(201,169,97,0.05); font-weight: 700; z-index: 0; pointer-events: none; font-family: 'Noto Kufi Arabic';">
-      ☪ {{ settings.watermark_text }} ☪
-    </div>
+    {% if settings and settings.enable_watermark %}
+      {% if settings.watermark_image_path %}
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.05; z-index: 0; pointer-events: none;">
+          <img src="{{ url_for('static', filename=settings.watermark_image_path) }}" alt="Watermark" style="max-width: 400px;">
+        </div>
+      {% elif settings.watermark_text %}
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 90px; color: rgba(201,169,97,0.05); font-weight: 700; z-index: 0; pointer-events: none; font-family: 'Noto Kufi Arabic';">
+          ☪ {{ settings.watermark_text }} ☪
+        </div>
+      {% endif %}
     {% endif %}
   </div>
 </body>

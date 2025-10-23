@@ -339,6 +339,7 @@
                   <option value="classic" {% if settings.active_template == 'classic' %}selected{% endif %}>📄 كلاسيكي (Classic) - تقليدي بسيط</option>
                   <option value="minimal" {% if settings.active_template == 'minimal' %}selected{% endif %}>✨ بسيط (Minimal) - أنيق ونظيف</option>
                   <option value="gulf" {% if settings.active_template == 'gulf' %}selected{% endif %}>⭐ خليجي (Gulf) - بطابع خليجي</option>
+                  <option value="simple" {% if settings.active_template == 'simple' %}selected{% endif %}>📝 مبسط (Simple) - أساسيات فقط</option>
                 </select>
                 <small class="form-text text-muted">
                   🎭 اختر شكل الفاتورة المفضل - يمكن معاينته من الأسفل
@@ -382,6 +383,27 @@
                 <small class="text-muted ml-4">عرض شعار الشركة في رأس الفاتورة</small>
               </div>
               
+              <div class="form-group" id="logo-upload-group">
+                <label>
+                  <i class="fas fa-upload text-primary"></i> رفع شعار الشركة
+                </label>
+                <input type="file" class="form-control-file" name="company_logo" accept="image/png,image/jpeg,image/jpg,image/webp">
+                <small class="form-text text-muted">
+                  📐 <strong>الأبعاد المناسبة:</strong> 200×80 بكسل أو 400×160 بكسل (نسبة 2.5:1)<br>
+                  📦 <strong>الحجم:</strong> أقل من 500 كيلوبايت<br>
+                  📄 <strong>الصيغ:</strong> PNG (شفاف مفضل), JPG, WEBP<br>
+                  💡 <strong>نصيحة:</strong> استخدم خلفية شفافة للحصول على أفضل نتيجة
+                </small>
+                {% if settings and settings.logo_path %}
+                <div class="mt-2">
+                  <img src="{{ url_for('static', filename=settings.logo_path) }}" 
+                       alt="Current Logo" style="max-height: 60px; border: 1px solid #ddd; padding: 5px; background: white;">
+                  <br>
+                  <small class="text-success">✅ الشعار الحالي</small>
+                </div>
+                {% endif %}
+              </div>
+              
               <div class="custom-control custom-checkbox mb-3">
                 <input type="checkbox" class="custom-control-input" id="enable_qr_code" name="enable_qr_code" 
                        {% if settings.enable_qr_code %}checked{% endif %}>
@@ -402,14 +424,46 @@
                 <small class="text-muted ml-4">باركود رقم الفاتورة للمسح والأرشفة</small>
               </div>
               
-              <div class="custom-control custom-checkbox mb-2">
+              <div class="custom-control custom-checkbox mb-3">
                 <input type="checkbox" class="custom-control-input" id="enable_watermark" name="enable_watermark" 
                        {% if settings.enable_watermark %}checked{% endif %}>
                 <label class="custom-control-label" for="enable_watermark">
                   <i class="fas fa-stamp text-warning"></i> علامة مائية
                 </label>
                 <br>
-                <small class="text-muted ml-4">إضافة علامة مائية خلفية للفاتورة</small>
+                <small class="text-muted ml-4">نص خلفي شفاف يظهر خلف الفاتورة (مثل: نسخة أصلية، مدفوعة، الخ)</small>
+              </div>
+              
+              <div class="form-group" id="watermark-text-group" style="display: {% if settings.enable_watermark %}block{% else %}none{% endif %};">
+                <label>
+                  <i class="fas fa-font text-warning"></i> نص العلامة المائية
+                </label>
+                <input type="text" class="form-control" name="watermark_text" 
+                       value="{{ settings.watermark_text }}"
+                       placeholder="مثال: نسخة أصلية / ORIGINAL COPY / PAID">
+                <small class="form-text text-muted">
+                  💧 النص الذي سيظهر بشكل شفاف خلف الفاتورة بزاوية 45 درجة
+                </small>
+              </div>
+              
+              <div class="form-group" id="watermark-image-group" style="display: {% if settings.enable_watermark %}block{% else %}none{% endif %};">
+                <label>
+                  <i class="fas fa-image text-warning"></i> أو رفع صورة للعلامة المائية (اختياري)
+                </label>
+                <input type="file" class="form-control-file" name="watermark_image" accept="image/png,image/jpeg,image/jpg">
+                <small class="form-text text-muted">
+                  🖼️ <strong>ملاحظة:</strong> الصورة ستظهر شفافة بنسبة 5% في خلفية الفاتورة<br>
+                  📐 <strong>الأبعاد:</strong> 300×300 بكسل (مربعة) أو 400×200 (مستطيلة)<br>
+                  📄 <strong>الصيغ:</strong> PNG شفاف للحصول على أفضل نتيجة
+                </small>
+                {% if settings and settings.watermark_image_path %}
+                <div class="mt-2">
+                  <img src="{{ url_for('static', filename=settings.watermark_image_path) }}" 
+                       alt="Watermark" style="max-height: 50px; opacity: 0.3; border: 1px dashed #ffc107; padding: 5px;">
+                  <br>
+                  <small class="text-warning">✅ صورة العلامة المائية الحالية</small>
+                </div>
+                {% endif %}
               </div>
             </div>
           </div>
@@ -560,6 +614,28 @@
                     </div>
                   </div>
                 </div>
+                
+                <div class="col-12 mb-3">
+                  <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded border border-success">
+                    <div>
+                      <i class="fas fa-file text-success"></i> <strong>مبسط (Simple)</strong>
+                      <br><small class="text-muted">أساسيات فقط - بدون زخرفة</small>
+                    </div>
+                    <div>
+                      <a href="{{ url_for('owner.preview_invoice', template='simple') }}" 
+                         target="_blank" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-file-invoice"></i> فاتورة
+                      </a>
+                      <a href="{{ url_for('owner.preview_receipt', template='simple') }}" 
+                         target="_blank" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-receipt"></i> سند
+                      </a>
+                      <button type="button" class="btn btn-sm btn-success" onclick="applyTemplate('simple')">
+                        <i class="fas fa-check"></i> تطبيق
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -700,6 +776,13 @@ $(document).ready(function() {
   $('input[name="enable_qr_code"]').on('change', function() {
     $('#live-preview .qr-code').toggle($(this).is(':checked'));
   });
+  
+  // Toggle watermark fields
+  $('input[name="enable_watermark"]').on('change', function() {
+    const isChecked = $(this).is(':checked');
+    $('#watermark-text-group').toggle(isChecked);
+    $('#watermark-image-group').toggle(isChecked);
+  });
 });
 
 function applyTemplate(templateName) {
@@ -711,7 +794,8 @@ function applyTemplate(templateName) {
     'modern': 'عصري',
     'classic': 'كلاسيكي',
     'minimal': 'بسيط',
-    'gulf': 'خليجي'
+    'gulf': 'خليجي',
+    'simple': 'مبسط'
   };
   
   if (window.notify) {

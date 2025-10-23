@@ -1230,6 +1230,44 @@ def invoice_settings():
             # Template
             settings.active_template = request.form.get('active_template', 'modern')
             
+            # Handle logo upload
+            if 'company_logo' in request.files:
+                logo_file = request.files['company_logo']
+                if logo_file and logo_file.filename:
+                    import os
+                    from werkzeug.utils import secure_filename
+                    
+                    filename = secure_filename(logo_file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f"logo_{timestamp}_{filename}"
+                    
+                    upload_folder = os.path.join('static', 'uploads', 'logos')
+                    os.makedirs(upload_folder, exist_ok=True)
+                    
+                    filepath = os.path.join(upload_folder, filename)
+                    logo_file.save(filepath)
+                    
+                    settings.logo_path = f"uploads/logos/{filename}"
+            
+            # Handle watermark image upload
+            if 'watermark_image' in request.files:
+                watermark_file = request.files['watermark_image']
+                if watermark_file and watermark_file.filename:
+                    import os
+                    from werkzeug.utils import secure_filename
+                    
+                    filename = secure_filename(watermark_file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f"watermark_{timestamp}_{filename}"
+                    
+                    upload_folder = os.path.join('static', 'uploads', 'watermarks')
+                    os.makedirs(upload_folder, exist_ok=True)
+                    
+                    filepath = os.path.join(upload_folder, filename)
+                    watermark_file.save(filepath)
+                    
+                    settings.watermark_image_path = f"uploads/watermarks/{filename}"
+            
             settings.updated_by = current_user.id
             
             db.session.commit()

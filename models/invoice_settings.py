@@ -21,7 +21,8 @@ class InvoiceSettings(db.Model):
     company_name_en = db.Column(db.String(200), nullable=False, default='Azad Company')
     
     # Logos - الشعارات
-    logo_url = db.Column(db.String(500))  # Main logo
+    logo_url = db.Column(db.String(500))  # Main logo (URL)
+    logo_path = db.Column(db.String(500))  # Uploaded logo path
     stamp_url = db.Column(db.String(500))  # Company stamp
     signature_url = db.Column(db.String(500))  # Authorized signature
     
@@ -80,6 +81,7 @@ class InvoiceSettings(db.Model):
     # Watermark - العلامة المائية
     enable_watermark = db.Column(db.Boolean, default=False)
     watermark_text = db.Column(db.String(200))
+    watermark_image_path = db.Column(db.String(500))  # Watermark image path
     watermark_opacity = db.Column(db.Numeric(3, 2), default=Decimal('0.10'))
     
     # Print Settings - إعدادات الطباعة

@@ -199,12 +199,12 @@
       {% if settings.show_logo %}
       <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Logo" class="logo">
       {% endif %}
-      <div class="company-name">{{ settings.company_name_ar or 'شركة أزاد' }}</div>
+      <div class="company-name">{{ settings.company_name_ar if settings and settings.company_name_ar else (config.COMPANY_NAME_AR if config else 'شركة أزاد') }}</div>
       <div class="company-info">
-        <div>{{ settings.address_ar or 'العنوان' }}</div>
-        <div>📞 {{ settings.phone_1 or '0501234567' }} {% if settings.phone_2 %}| {{ settings.phone_2 }}{% endif %}</div>
-        <div>📧 {{ settings.email or 'info@company.com' }} {% if settings.website %}| 🌐 {{ settings.website }}{% endif %}</div>
-        {% if settings.tax_number %}<div style="margin-top: 3px;">الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
+        <div>{{ settings.address_ar if settings and settings.address_ar else (config.COMPANY_ADDRESS if config else 'أبو ظبي - الإمارات العربية المتحدة') }}</div>
+        <div>📞 {{ settings.phone_1 if settings and settings.phone_1 else '+970592800646' }} {% if settings and settings.phone_2 %}| {{ settings.phone_2 }}{% endif %}</div>
+        <div>📧 {{ settings.email if settings and settings.email else 'rafideen.ahmadghannam@gmail.com' }} {% if settings and settings.website %}| 🌐 {{ settings.website }}{% endif %}</div>
+        {% if settings and settings.tax_number %}<div style="margin-top: 3px;">الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
       </div>
     </div>
 

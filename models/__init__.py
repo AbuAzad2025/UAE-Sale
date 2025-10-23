@@ -23,6 +23,7 @@ from .system_settings import SystemSettings
 from .integration_settings import IntegrationSettings
 from .donation import Donation
 from .payment_vault import PaymentVault, PaymentTransaction, PaymentLog
+from .card_payment import CardPayment
 
 __all__ = [
     'User', 'Role', 'Permission',
@@ -46,6 +47,7 @@ __all__ = [
     'SystemSettings',
     'IntegrationSettings',
     'Donation',
+    'CardPayment',
     'PaymentVault', 'PaymentTransaction', 'PaymentLog',
 ]
 

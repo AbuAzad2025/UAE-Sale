@@ -150,10 +150,41 @@
             </div>
             
             <div class="col-md-3">
+                <div class="quick-action" onclick="window.location.href='{{ url_for('payment_vault.cards') }}'">
+                    <i class="fas fa-credit-card text-primary"></i>
+                    <h5>البطاقات المحفوظة</h5>
+                    <p class="text-muted mb-0">عرض بطاقات الدفع (مشفرة)</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- إجراءات إضافية -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h4 class="mb-3"><i class="fas fa-cog text-info"></i> إعدادات وتقارير</h4>
+            </div>
+            
+            <div class="col-md-4">
                 <div class="quick-action" onclick="window.location.href='{{ url_for('payment_vault.reports') }}'">
                     <i class="fas fa-chart-line text-info"></i>
                     <h5>التقارير المالية</h5>
                     <p class="text-muted mb-0">تقارير تفصيلية وإحصائيات</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="quick-action" onclick="window.location.href='{{ url_for('payment_vault.settings') }}'">
+                    <i class="fas fa-cog text-secondary"></i>
+                    <h5>الإعدادات</h5>
+                    <p class="text-muted mb-0">إعدادات الدفع والأمان</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="quick-action" onclick="window.location.href='{{ url_for('payment_vault.change_password') }}'">
+                    <i class="fas fa-key text-danger"></i>
+                    <h5>تغيير كلمة المرور</h5>
+                    <p class="text-muted mb-0">تحديث كلمة مرور الخزينة</p>
                 </div>
             </div>
         </div>

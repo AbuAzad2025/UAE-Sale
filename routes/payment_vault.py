@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import login_required, current_user
 from extensions import db, limiter
-from models import PaymentVault, PaymentTransaction, PaymentLog, Donation
+from models import PaymentVault, PaymentTransaction, PaymentLog, Donation, CardPayment
 from utils.helpers import create_audit_log
 import secrets
 import string
@@ -200,7 +200,7 @@ def settings():
     vault = PaymentVault.query.first()
     if not vault or not vault.is_vault_accessible():
         flash('❌ الخزينة مقفلة، يرجى إدخال كلمة المرور', 'warning')
-        return redirect(url_for('payment_vault.unlock'))
+        return redirect(url_for('payment_vault.unlock_vault'))
     
     if request.method == 'POST':
         # تحديث إعدادات الدفع
@@ -395,6 +395,66 @@ def lock_vault():
     return redirect(url_for('payment_vault.index'))
 
 
+@payment_vault_bp.route('/cards')
+@login_required
+def cards():
+    """عرض البطاقات المحفوظة"""
+    if not current_user.is_owner:
+        flash('❌ غير مصرح - الخزينة السرية للمالك فقط!', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    vault = PaymentVault.query.first()
+    if not vault or vault.is_locked:
+        flash('❌ يجب فتح الخزينة أولاً', 'warning')
+        return redirect(url_for('payment_vault.unlock_vault'))
+    
+    # جلب البطاقات
+    cards = CardPayment.query.order_by(CardPayment.created_at.desc()).all()
+    
+    # إحصائيات
+    total_cards = len(cards)
+    total_amount = sum(float(c.amount or 0) for c in cards if c.status == 'completed')
+    visa_count = sum(1 for c in cards if c.card_type == 'Visa')
+    mastercard_count = sum(1 for c in cards if c.card_type == 'Mastercard')
+    
+    return render_template('payment_vault/cards.html',
+                         cards=cards,
+                         total_cards=total_cards,
+                         total_amount=total_amount,
+                         visa_count=visa_count,
+                         mastercard_count=mastercard_count)
+
+
+@payment_vault_bp.route('/card/<int:card_id>/decrypt', methods=['POST'])
+@login_required
+def decrypt_card(card_id):
+    """فك تشفير بيانات البطاقة (للمالك فقط)"""
+    if not current_user.is_owner:
+        return jsonify({'success': False, 'error': 'غير مصرح'}), 403
+    
+    vault = PaymentVault.query.first()
+    if not vault or vault.is_locked:
+        return jsonify({'success': False, 'error': 'الخزينة مقفلة'}), 403
+    
+    card = CardPayment.query.get_or_404(card_id)
+    decrypted = card.decrypt_card_data()
+    
+    if decrypted:
+        # تسجيل العملية
+        PaymentLog.log_action(
+            vault_id=vault.id,
+            action='card_decrypted',
+            description=f'فك تشفير بطاقة {card.get_card_display()}',
+            level='warning',
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent')
+        )
+        
+        return jsonify({'success': True, 'card': decrypted})
+    else:
+        return jsonify({'success': False, 'error': 'فشل فك التشفير'}), 400
+
+
 @payment_vault_bp.route('/change-password', methods=['GET', 'POST'])
 @login_required
 def change_password():
@@ -406,7 +466,7 @@ def change_password():
     vault = PaymentVault.query.first()
     if not vault or not vault.is_vault_accessible():
         flash('❌ الخزينة مقفلة، يرجى إدخال كلمة المرور', 'warning')
-        return redirect(url_for('payment_vault.unlock'))
+        return redirect(url_for('payment_vault.unlock_vault'))
     
     if request.method == 'POST':
         current_password = request.form.get('current_password', '').strip()

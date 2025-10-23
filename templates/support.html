@@ -450,10 +450,10 @@
                 
                 <!-- Tab Buttons -->
                 <div class="tab-buttons">
-                    <button class="tab-btn active" onclick="switchTab('purchase')">
+                    <button class="tab-btn active" onclick="switchTab('purchase', event)">
                         <i class="fas fa-shopping-cart"></i> شراء النظام
                     </button>
-                    <button class="tab-btn" onclick="switchTab('donation')">
+                    <button class="tab-btn" onclick="switchTab('donation', event)">
                         <i class="fas fa-heart"></i> دعم المشروع
                     </button>
                 </div>
@@ -816,14 +816,23 @@
         });
         
         // Switch between tabs
-        function switchTab(tab) {
+        function switchTab(tab, event) {
             currentTab = tab;
             
             // Update tab buttons
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // fallback
+                document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+                    if ((tab === 'purchase' && idx === 0) || (tab === 'donation' && idx === 1)) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
             
             // Update tab content
             document.querySelectorAll('.tab-content').forEach(content => {

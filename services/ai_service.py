@@ -447,7 +447,7 @@ class AIService:
     def _perform_analysis(customer):
         from models import Sale, Payment
         
-        last_90_days = datetime.now() - timedelta(days=90)
+        last_90_days = datetime.now(timezone.utc) - timedelta(days=90)
         
         sales = Sale.query.options(
             db.joinedload(Sale.customer),

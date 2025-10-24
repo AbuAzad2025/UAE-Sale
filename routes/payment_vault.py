@@ -327,6 +327,103 @@ def packages_management():
                          package_stats=package_stats)
 
 
+@payment_vault_bp.route('/package/<int:package_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_package(package_id):
+    """تعديل باقة"""
+    if not current_user.is_owner:
+        flash('❌ غير مصرح', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    vault = PaymentVault.query.first()
+    if not vault or vault.is_locked:
+        flash('❌ يجب فتح الخزينة أولاً', 'warning')
+        return redirect(url_for('payment_vault.unlock_vault'))
+    
+    package = Package.query.get_or_404(package_id)
+    
+    if request.method == 'POST':
+        try:
+            package.name_ar = request.form.get('name_ar', package.name_ar).strip()
+            package.name_en = request.form.get('name_en', package.name_en).strip()
+            package.description_ar = request.form.get('description_ar', package.description_ar or '').strip()
+            package.description_en = request.form.get('description_en', package.description_en or '').strip()
+            package.price = float(request.form.get('price', package.price))
+            package.max_users = int(request.form.get('max_users', package.max_users or 1))
+            package.max_branches = int(request.form.get('max_branches', package.max_branches or 1))
+            package.support_duration_months = int(request.form.get('support_duration_months', package.support_duration_months))
+            package.is_active = request.form.get('is_active') == 'on'
+            package.is_featured = request.form.get('is_featured') == 'on'
+            package.badge_text = request.form.get('badge_text', package.badge_text or '').strip()
+            
+            # Features
+            features = request.form.get('features', '').strip()
+            package.features = features.split('\n') if features else []
+            
+            db.session.commit()
+            
+            create_audit_log(
+                action='update',
+                table_name='packages',
+                record_id=package.id,
+                changes={'updated': 'Package updated'}
+            )
+            
+            return jsonify({'success': True, 'message': 'تم تحديث الباقة بنجاح!'})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 400
+    
+    return jsonify({
+        'id': package.id,
+        'name_ar': package.name_ar,
+        'name_en': package.name_en,
+        'slug': package.slug,
+        'icon': package.icon,
+        'description_ar': package.description_ar or '',
+        'description_en': package.description_en or '',
+        'price': float(package.price),
+        'currency': package.currency,
+        'max_users': package.max_users,
+        'max_branches': package.max_branches,
+        'support_duration_months': package.support_duration_months,
+        'is_active': package.is_active,
+        'is_featured': package.is_featured,
+        'badge_text': package.badge_text or '',
+        'features': package.features if package.features else []
+    })
+
+
+@payment_vault_bp.route('/package/<int:package_id>/delete', methods=['POST'])
+@login_required
+def delete_package(package_id):
+    """حذف باقة"""
+    if not current_user.is_owner:
+        return jsonify({'success': False, 'error': 'غير مصرح'}), 403
+    
+    vault = PaymentVault.query.first()
+    if not vault or vault.is_locked:
+        return jsonify({'success': False, 'error': 'الخزينة مقفلة'}), 403
+    
+    package = Package.query.get_or_404(package_id)
+    
+    try:
+        db.session.delete(package)
+        db.session.commit()
+        
+        create_audit_log(
+            action='delete',
+            table_name='packages',
+            record_id=package_id,
+            changes={'deleted': f'Package {package.name} deleted'}
+        )
+        
+        return jsonify({'success': True, 'message': 'تم حذف الباقة بنجاح!'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
 @payment_vault_bp.route('/reports')
 @login_required
 def reports():

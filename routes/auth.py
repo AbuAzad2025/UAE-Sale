@@ -12,7 +12,9 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 @auth_bp.route('/support')
 def support():
     """صفحة الدعم والشراء - متاحة قبل تسجيل الدخول"""
-    return render_template('support.html')
+    # Redirect to packages support page
+    from flask import redirect, url_for
+    return redirect(url_for('packages.support_page'))
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])

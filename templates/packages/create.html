@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}إضافة باقة جديدة{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-plus"></i> إضافة باقة جديدة
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('packages.create') }}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5 class="border-bottom pb-2 mb-3">المعلومات الأساسية</h5>
+                                
+                                <div class="form-group">
+                                    <label>اسم الباقة بالعربية <span class="text-danger">*</span></label>
+                                    <input type="text" name="name_ar" class="form-control" required placeholder="مثال: الباقة الأساسية">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>اسم الباقة بالإنجليزية <span class="text-danger">*</span></label>
+                                    <input type="text" name="name_en" class="form-control" required placeholder="Example: Basic Package">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>الرابط (Slug) <span class="text-danger">*</span></label>
+                                    <input type="text" name="slug" class="form-control" required placeholder="basic-package">
+                                    <small class="form-text text-muted">يستخدم في الروابط (حروف إنجليزية صغيرة وشرطات فقط)</small>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>الأيقونة</label>
+                                            <input type="text" name="icon" class="form-control" value="📦" placeholder="📦">
+                                            <small class="form-text text-muted">أي رمز تعبيري (emoji)</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>الترتيب</label>
+                                            <input type="number" name="sort_order" class="form-control" value="0">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>السعر <span class="text-danger">*</span></label>
+                                            <input type="number" step="0.01" name="price" class="form-control" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>العملة</label>
+                                            <select name="currency" class="form-control">
+                                                <option value="USD">USD</option>
+                                                <option value="AED">AED</option>
+                                                <option value="EUR">EUR</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>مدة الدعم الفني (بالأشهر)</label>
+                                    <input type="number" name="support_duration_months" class="form-control" value="3">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5 class="border-bottom pb-2 mb-3">الوصف والشارة</h5>
+                                
+                                <div class="form-group">
+                                    <label>الوصف بالعربية</label>
+                                    <textarea name="description_ar" class="form-control" rows="3"></textarea>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>الوصف بالإنجليزية</label>
+                                    <textarea name="description_en" class="form-control" rows="3"></textarea>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="form-group">
+                                            <label>نص الشارة</label>
+                                            <input type="text" name="badge_text" class="form-control" placeholder="الأكثر شعبية">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>لون الشارة</label>
+                                            <select name="badge_color" class="form-control">
+                                                <option value="primary">أزرق</option>
+                                                <option value="success">أخضر</option>
+                                                <option value="warning">أصفر</option>
+                                                <option value="danger">أحمر</option>
+                                                <option value="info">سماوي</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <h5 class="border-bottom pb-2 mb-3 mt-4">الحدود والقيود</h5>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>عدد المستخدمين</label>
+                                            <input type="number" name="max_users" class="form-control" placeholder="غير محدود">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>عدد الفروع</label>
+                                            <input type="number" name="max_branches" class="form-control" placeholder="غير محدود">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5 class="border-bottom pb-2 mb-3">الميزات</h5>
+                                <div id="features-container">
+                                    <div class="form-group feature-item">
+                                        <label>ميزة 1</label>
+                                        <div class="input-group">
+                                            <input type="text" name="feature_0" class="form-control" placeholder="مثال: نظام إدارة مستودعات كامل">
+                                            <div class="input-group-append">
+                                                <button type="button" class="btn btn-danger" onclick="removeFeature(this)">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-primary" onclick="addFeature()">
+                                    <i class="fas fa-plus"></i> إضافة ميزة
+                                </button>
+                                <input type="hidden" name="feature_count" id="feature_count" value="1">
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5 class="border-bottom pb-2 mb-3">خيارات إضافية</h5>
+                                
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="is_active" name="is_active" checked>
+                                    <label class="custom-control-label" for="is_active">باقة نشطة</label>
+                                </div>
+                                
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="is_featured" name="is_featured">
+                                    <label class="custom-control-label" for="is_featured">باقة مميزة</label>
+                                </div>
+                                
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="has_ai" name="has_ai">
+                                    <label class="custom-control-label" for="has_ai">يتضمن ذكاء اصطناعي</label>
+                                </div>
+                                
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="has_whatsapp" name="has_whatsapp">
+                                    <label class="custom-control-label" for="has_whatsapp">تكامل WhatsApp</label>
+                                </div>
+                                
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="has_pos" name="has_pos">
+                                    <label class="custom-control-label" for="has_pos">نظام نقاط البيع</label>
+                                </div>
+                                
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="has_advanced_reports" name="has_advanced_reports">
+                                    <label class="custom-control-label" for="has_advanced_reports">تقارير متقدمة</label>
+                                </div>
+                                
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="has_customization" name="has_customization">
+                                    <label class="custom-control-label" for="has_customization">تخصيص كامل</label>
+                                </div>
+                                
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="has_training" name="has_training">
+                                    <label class="custom-control-label" for="has_training">تدريب شامل</label>
+                                </div>
+                                
+                                <div class="custom-control custom-switch mb-3">
+                                    <input type="checkbox" class="custom-control-input" id="has_priority_support" name="has_priority_support">
+                                    <label class="custom-control-label" for="has_priority_support">دعم ذو أولوية</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="text-right">
+                            <a href="{{ url_for('packages.index') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> إلغاء
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> حفظ الباقة
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let featureCount = 1;
+
+function addFeature() {
+    featureCount++;
+    const container = document.getElementById('features-container');
+    const div = document.createElement('div');
+    div.className = 'form-group feature-item';
+    div.innerHTML = `
+        <label>ميزة ${featureCount}</label>
+        <div class="input-group">
+            <input type="text" name="feature_${featureCount - 1}" class="form-control" placeholder="أدخل الميزة">
+            <div class="input-group-append">
+                <button type="button" class="btn btn-danger" onclick="removeFeature(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    container.appendChild(div);
+    document.getElementById('feature_count').value = featureCount;
+}
+
+function removeFeature(btn) {
+    const item = btn.closest('.feature-item');
+    if (document.querySelectorAll('.feature-item').length > 1) {
+        item.remove();
+        featureCount--;
+        document.getElementById('feature_count').value = featureCount;
+        // Renumber features
+        document.querySelectorAll('.feature-item').forEach((item, index) => {
+            item.querySelector('label').textContent = `ميزة ${index + 1}`;
+            item.querySelector('input').name = `feature_${index}`;
+        });
+    } else {
+        alert('يجب أن تحتوي الباقة على ميزة واحدة على الأقل');
+    }
+}
+</script>
+{% endblock %}
+

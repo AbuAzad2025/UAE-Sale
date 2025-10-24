@@ -24,6 +24,7 @@ from .integration_settings import IntegrationSettings
 from .donation import Donation
 from .payment_vault import PaymentVault, PaymentTransaction, PaymentLog
 from .card_payment import CardPayment
+from .package import Package, PackagePurchase
 
 __all__ = [
     'User', 'Role', 'Permission',
@@ -49,5 +50,6 @@ __all__ = [
     'Donation',
     'CardPayment',
     'PaymentVault', 'PaymentTransaction', 'PaymentLog',
+    'Package', 'PackagePurchase',
 ]
 

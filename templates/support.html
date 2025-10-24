@@ -145,6 +145,20 @@
         .package-card.active {
             border-color: #28a745;
             background: linear-gradient(135deg, rgba(40,167,69,0.05) 0%, rgba(32,201,151,0.05) 100%);
+            position: relative;
+        }
+        
+        .package-card.active::after {
+            content: '✓ محدد';
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #28a745;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
         }
         
         .package-name {
@@ -238,6 +252,24 @@
         .payment-card.active {
             border-color: #28a745;
             background: linear-gradient(135deg, rgba(102,126,234,0.05) 0%, rgba(118,75,162,0.05) 100%);
+            position: relative;
+        }
+        
+        .payment-card.active::after {
+            content: '✓';
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #28a745;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 900;
         }
         
         .payment-icon {
@@ -300,17 +332,58 @@
             transition: all 0.3s;
             font-weight: 700;
             font-size: 1.1rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .amount-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(102,126,234,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
         }
         
         .amount-btn:hover {
             border-color: #667eea;
             background: rgba(102,126,234,0.05);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .amount-btn:hover::before {
+            width: 300px;
+            height: 300px;
         }
         
         .amount-btn.active {
             border-color: #28a745;
-            background: #28a745;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
             color: white;
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(40,167,69,0.3);
+        }
+        
+        .amount-btn.active::after {
+            content: '✓';
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: white;
+            color: #28a745;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 900;
         }
         
         .crypto-info {
@@ -374,6 +447,34 @@
         .btn-donate:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+        
+        .btn-donate:active {
+            transform: translateY(0);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102,126,234,0.25);
+        }
+        
+        .payment-methods-header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: fadeInDown 0.5s ease;
+        }
+        
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         .security-badge {
@@ -442,19 +543,34 @@
                 </div>
                 <h1 class="hero-title">
                     <i class="fas fa-store"></i>
-                    اشترِ النظام أو ادعم المشروع
+                    نظام إدارة متجر متكامل
                 </h1>
                 <p class="hero-subtitle">
-                    احصل على نظام إدارة احترافي أو ساهم في تطويره
+                    🚀 احصل على نظام إدارة احترافي شامل أو ساهم في تطوير المشروع
                 </p>
+                <div style="background: rgba(102,126,234,0.1); padding: 20px; border-radius: 15px; margin: 20px 0; border-right: 5px solid #667eea;">
+                    <h4 style="color: #667eea; margin-bottom: 15px;">
+                        <i class="fas fa-star"></i> لماذا تختار نظامنا؟
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; text-align: right;">
+                        <div><i class="fas fa-check-circle" style="color: #28a745;"></i> إدارة شاملة للمنتجات</div>
+                        <div><i class="fas fa-check-circle" style="color: #28a745;"></i> نظام عملاء متقدم</div>
+                        <div><i class="fas fa-check-circle" style="color: #28a745;"></i> تقارير مفصلة</div>
+                        <div><i class="fas fa-check-circle" style="color: #28a745;"></i> واجهة عربية احترافية</div>
+                    </div>
+                </div>
                 
                 <!-- Tab Buttons -->
                 <div class="tab-buttons">
                     <button class="tab-btn active" onclick="switchTab('purchase', event)">
-                        <i class="fas fa-shopping-cart"></i> شراء النظام
+                        <i class="fas fa-shopping-cart"></i> 
+                        <span>شراء النظام</span>
+                        <small style="display: block; font-size: 0.8rem; opacity: 0.8;">احصل على النظام كاملاً</small>
                     </button>
                     <button class="tab-btn" onclick="switchTab('donation', event)">
-                        <i class="fas fa-heart"></i> دعم المشروع
+                        <i class="fas fa-heart"></i> 
+                        <span>دعم المشروع</span>
+                        <small style="display: block; font-size: 0.8rem; opacity: 0.8;">ساهم في التطوير</small>
                     </button>
                 </div>
                 <div>
@@ -485,52 +601,40 @@
                 </h3>
                 
                 <div class="package-grid">
-                    <div class="package-card" onclick="selectPackage('basic', 299, event)">
-                        <div class="package-name">📦 الباقة الأساسية</div>
-                        <div class="package-price">$299</div>
-                        <ul class="package-features">
-                            <li><i class="fas fa-check"></i> نظام إدارة مستودعات كامل</li>
-                            <li><i class="fas fa-check"></i> إدارة المبيعات والمشتريات</li>
-                            <li><i class="fas fa-check"></i> إدارة العملاء والموردين</li>
-                            <li><i class="fas fa-check"></i> فواتير احترافية</li>
-                            <li><i class="fas fa-check"></i> تقارير أساسية</li>
-                            <li><i class="fas fa-check"></i> دعم فني 3 أشهر</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="package-card" onclick="selectPackage('professional', 599, event)">
-                        <div class="package-name">💼 الباقة الاحترافية</div>
-                        <div class="package-price">$599</div>
-                        <ul class="package-features">
-                            <li><i class="fas fa-check"></i> كل ميزات الباقة الأساسية</li>
-                            <li><i class="fas fa-check"></i> ذكاء اصطناعي متقدم</li>
-                            <li><i class="fas fa-check"></i> تقارير وتحليلات متقدمة</li>
-                            <li><i class="fas fa-check"></i> تكامل مع WhatsApp</li>
-                            <li><i class="fas fa-check"></i> نظام نقاط البيع</li>
-                            <li><i class="fas fa-check"></i> دعم فني 6 أشهر</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="package-card" onclick="selectPackage('enterprise', 999, event)">
-                        <div class="package-name">🏢 باقة الشركات</div>
-                        <div class="package-price">$999</div>
-                        <ul class="package-features">
-                            <li><i class="fas fa-check"></i> كل ميزات الباقة الاحترافية</li>
-                            <li><i class="fas fa-check"></i> فروع غير محدودة</li>
-                            <li><i class="fas fa-check"></i> تخصيص كامل للنظام</li>
-                            <li><i class="fas fa-check"></i> تدريب شامل لفريقك</li>
-                            <li><i class="fas fa-check"></i> أولوية في الدعم</li>
-                            <li><i class="fas fa-check"></i> دعم فني مدى الحياة</li>
-                        </ul>
-                    </div>
+                    {% if packages %}
+                        {% for package in packages %}
+                        <div class="package-card" onclick="selectPackage('{{ package.slug }}', {{ package.price }}, event)" data-package-id="{{ package.id }}">
+                            <div class="package-name">{{ package.icon }} {{ package.name_ar }}</div>
+                            <div class="package-price">${{ package.price }}</div>
+                            {% if package.badge_text %}
+                            <div style="background: linear-gradient(135deg, {% if package.badge_color == 'success' %}#28a745 0%, #20c997{% elif package.badge_color == 'primary' %}#667eea 0%, #764ba2{% elif package.badge_color == 'danger' %}#ff6b6b 0%, #ee5a24{% else %}#667eea 0%, #764ba2{% endif %} 100%); color: white; padding: 8px; border-radius: 20px; margin: 10px 0; font-weight: 700; font-size: 0.9rem;">
+                                {% if package.badge_color == 'success' %}<i class="fas fa-star"></i>{% elif package.badge_color == 'primary' %}<i class="fas fa-crown"></i>{% elif package.badge_color == 'danger' %}<i class="fas fa-gem"></i>{% else %}<i class="fas fa-star"></i>{% endif %} {{ package.badge_text }}
+                            </div>
+                            {% endif %}
+                            <ul class="package-features">
+                                {% for feature in package.features %}
+                                <li><i class="fas fa-check"></i> {{ feature }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="alert alert-warning" style="grid-column: 1 / -1;">
+                            <i class="fas fa-exclamation-triangle"></i> لا توجد باقات متاحة حالياً. يُرجى المحاولة لاحقاً.
+                        </div>
+                    {% endif %}
                 </div>
             </div>
             
             <!-- طرق الدفع للشراء (تظهر بعد اختيار الباقة) -->
-            <div class="payment-methods" id="purchase-payment-methods" style="display: none;">
-                <h3 style="text-align: center; color: #667eea; margin-bottom: 30px;">
-                    <i class="fas fa-credit-card"></i> اختر طريقة الدفع
-                </h3>
+            <div id="purchase-payment-methods" style="display: none;">
+                <div class="payment-card" style="margin-bottom: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                    <h3 style="margin: 0; font-size: 1.8rem;">
+                        <i class="fas fa-credit-card"></i> اختر طريقة الدفع المناسبة
+                    </h3>
+                    <p style="margin: 10px 0 0 0; opacity: 0.9;">جميع الطرق آمنة ومحمية بتشفير SSL</p>
+                </div>
+                <div class="payment-methods">
                 
                 <div class="payment-card" onclick="selectMethod('crypto', event)">
                     <i class="fab fa-bitcoin payment-icon"></i>
@@ -567,18 +671,34 @@
                         <br><small class="text-secondary"><i class="fas fa-building"></i> للمبالغ الكبيرة</small>
                     </p>
                 </div>
+                </div>
             </div>
         </div>
         
         <!-- Donation Tab Content -->
         <div class="tab-content" id="donation-tab">
-            <div class="payment-card" style="max-width: 800px; margin: 0 auto 30px; text-align: center;">
-                <h3 style="color: #667eea; margin-bottom: 20px;">
+            <div class="payment-card" style="max-width: 900px; margin: 0 auto 30px; text-align: center; background: linear-gradient(135deg, rgba(255,107,107,0.1) 0%, rgba(238,90,36,0.1) 100%); border: 2px solid #ff6b6b;">
+                <div style="font-size: 3rem; margin-bottom: 15px;">❤️</div>
+                <h3 style="color: #ff6b6b; margin-bottom: 20px; font-size: 2rem;">
                     <i class="fas fa-heart"></i> ساهم في تطوير المشروع
                 </h3>
-                <p style="font-size: 1.1rem; color: #666; margin-bottom: 30px;">
-                    تبرعك يساعدنا في تحسين النظام وتقديم خدمات أفضل للجميع
+                <p style="font-size: 1.2rem; color: #666; margin-bottom: 20px; line-height: 1.8;">
+                    تبرعك يساعدنا في تحسين النظام وإضافة ميزات جديدة وتقديم خدمات أفضل للجميع
                 </p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 25px;">
+                    <div style="background: white; padding: 15px; border-radius: 10px; border-right: 4px solid #28a745;">
+                        <i class="fas fa-code" style="color: #667eea; font-size: 1.5rem;"></i>
+                        <p style="margin: 10px 0 0 0; color: #666;">تطوير ميزات جديدة</p>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 10px; border-right: 4px solid #28a745;">
+                        <i class="fas fa-bug" style="color: #667eea; font-size: 1.5rem;"></i>
+                        <p style="margin: 10px 0 0 0; color: #666;">إصلاح الأخطاء</p>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 10px; border-right: 4px solid #28a745;">
+                        <i class="fas fa-headset" style="color: #667eea; font-size: 1.5rem;"></i>
+                        <p style="margin: 10px 0 0 0; color: #666;">تحسين الدعم الفني</p>
+                    </div>
+                </div>
             </div>
             
             <!-- طرق الدفع للتبرعات -->
@@ -623,43 +743,69 @@
 
         <!-- Crypto Donation Form -->
         <div id="crypto-form" class="donation-form">
-            <h3 class="text-center mb-4">
-                <i class="fab fa-bitcoin text-warning"></i>
-                الدفع بالعملات الرقمية
-            </h3>
+            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 25px; border-radius: 15px; margin-bottom: 30px; color: white; text-align: center;">
+                <i class="fab fa-bitcoin" style="font-size: 3rem; margin-bottom: 15px;"></i>
+                <h3 style="margin: 0; font-size: 1.8rem;">
+                    الدفع بالعملات الرقمية
+                </h3>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">دفع آمن ومجهول بدون رسوم إضافية</p>
+            </div>
             
-            <div class="alert alert-success">
+            <div class="alert alert-success" style="border-right: 4px solid #28a745;">
                 <i class="fas fa-shield-alt mr-2"></i>
-                <strong>أمان كامل:</strong> لا تتبع، لا رسوم إضافية، تحويل فوري
+                <strong>أمان كامل:</strong> لا تتبع، لا رسوم إضافية، تحويل فوري ⚡
             </div>
             
             <div class="form-group">
-                <label><i class="fas fa-coins mr-2"></i>اختر المبلغ (بالدولار)</label>
+                <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
+                    <i class="fas fa-coins mr-2" style="color: #f5a623;"></i>اختر المبلغ (بالدولار)
+                </label>
                 <div class="amount-options">
-                    <button class="amount-btn" onclick="selectAmount(15)">$15</button>
-                    <button class="amount-btn" onclick="selectAmount(25)">$25</button>
-                    <button class="amount-btn" onclick="selectAmount(50)">$50</button>
-                    <button class="amount-btn" onclick="selectAmount(100)">$100</button>
-                    <button class="amount-btn" onclick="selectAmount(250)">$250</button>
-                    <button class="amount-btn" onclick="selectAmount(500)">$500</button>
+                    <button class="amount-btn" onclick="selectAmount(15)">
+                        <div style="font-size: 1.3rem; font-weight: 900;">$15</div>
+                        <small style="opacity: 0.7;">شكراً</small>
+                    </button>
+                    <button class="amount-btn" onclick="selectAmount(25)">
+                        <div style="font-size: 1.3rem; font-weight: 900;">$25</div>
+                        <small style="opacity: 0.7;">رائع</small>
+                    </button>
+                    <button class="amount-btn" onclick="selectAmount(50)">
+                        <div style="font-size: 1.3rem; font-weight: 900;">$50</div>
+                        <small style="opacity: 0.7;">مميز</small>
+                    </button>
+                    <button class="amount-btn" onclick="selectAmount(100)">
+                        <div style="font-size: 1.3rem; font-weight: 900;">$100</div>
+                        <small style="opacity: 0.7;">رهيب</small>
+                    </button>
+                    <button class="amount-btn" onclick="selectAmount(250)">
+                        <div style="font-size: 1.3rem; font-weight: 900;">$250</div>
+                        <small style="opacity: 0.7;">سخي</small>
+                    </button>
+                    <button class="amount-btn" onclick="selectAmount(500)">
+                        <div style="font-size: 1.3rem; font-weight: 900;">$500</div>
+                        <small style="opacity: 0.7;">VIP</small>
+                    </button>
                 </div>
-                <input type="number" id="customAmount" class="form-control" placeholder="أو أدخل مبلغ مخصص (الحد الأدنى $1)" min="1">
+                <input type="number" id="customAmount" class="form-control" placeholder="💰 أو أدخل مبلغ مخصص (الحد الأدنى $1)" min="1" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
             </div>
             
             <div class="form-group">
-                <label><i class="fab fa-bitcoin mr-2"></i>اختر العملة الرقمية</label>
-                <select class="form-control" id="cryptoType">
-                    <option value="btc">Bitcoin (BTC) - الأكثر أماناً</option>
-                    <option value="eth">Ethereum (ETH)</option>
-                    <option value="usdt">Tether (USDT) - عملة مستقرة</option>
-                    <option value="usdc">USD Coin (USDC) - عملة مستقرة</option>
-                    <option value="bnb">Binance Coin (BNB)</option>
+                <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
+                    <i class="fab fa-bitcoin mr-2" style="color: #f7931a;"></i>اختر العملة الرقمية
+                </label>
+                <select class="form-control" id="cryptoType" style="font-size: 1.05rem; padding: 15px; border: 2px solid #dee2e6;">
+                    <option value="btc">🟠 Bitcoin (BTC) - الأكثر أماناً وشهرة</option>
+                    <option value="eth">🔷 Ethereum (ETH) - سريع وموثوق</option>
+                    <option value="usdt">💵 Tether (USDT) - عملة مستقرة (1 USDT = 1 USD)</option>
+                    <option value="usdc">💲 USD Coin (USDC) - عملة مستقرة موثوقة</option>
+                    <option value="bnb">🟡 Binance Coin (BNB) - رسوم منخفضة</option>
                 </select>
             </div>
             
-            <button class="btn btn-donate btn-block" onclick="generateCryptoPayment()">
+            <button class="btn btn-donate btn-block" onclick="generateCryptoPayment()" style="font-size: 1.2rem; padding: 18px; margin-top: 25px;">
                 <i class="fas fa-wallet mr-2"></i>
-                إنشاء عنوان الدفع
+                <span>إنشاء عنوان الدفع الآن</span>
+                <i class="fas fa-arrow-left mr-2"></i>
             </button>
             
             <div class="crypto-info" id="cryptoPaymentInfo" style="display: none;">
@@ -720,97 +866,125 @@
 
         <!-- Card Payment Form -->
         <div id="card-form" class="donation-form">
-            <h3 class="text-center mb-4">
-                <i class="fas fa-credit-card text-primary"></i>
-                الدفع بالبطاقة البنكية
-            </h3>
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 15px; margin-bottom: 30px; color: white; text-align: center;">
+                <i class="fas fa-credit-card" style="font-size: 3rem; margin-bottom: 15px;"></i>
+                <h3 style="margin: 0; font-size: 1.8rem;">
+                    الدفع بالبطاقة البنكية
+                </h3>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Visa • Mastercard • American Express</p>
+            </div>
             
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle mr-2"></i>
-                دفع آمن ومحمي بتشفير SSL
+            <div class="alert alert-info" style="border-right: 4px solid #17a2b8;">
+                <i class="fas fa-lock mr-2"></i>
+                <strong>دفع آمن 100%:</strong> جميع البيانات محمية بتشفير SSL 256-bit 🔒
             </div>
             
             <form id="cardPaymentForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
-                    <label>المبلغ (USD)</label>
-                    <input type="number" id="cardAmount" class="form-control" min="1" placeholder="الحد الأدنى $1" required>
+                    <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
+                        <i class="fas fa-dollar-sign mr-2" style="color: #28a745;"></i>المبلغ (USD)
+                    </label>
+                    <input type="number" id="cardAmount" class="form-control" min="1" placeholder="💵 أدخل المبلغ (الحد الأدنى $1)" required style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
                 </div>
                 
                 <div class="form-group">
-                    <label>رقم البطاقة</label>
-                    <input type="text" class="form-control" placeholder="1234 5678 9012 3456" maxlength="19" required>
+                    <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
+                        <i class="fas fa-credit-card mr-2" style="color: #667eea;"></i>رقم البطاقة
+                    </label>
+                    <input type="text" class="form-control" placeholder="1234 5678 9012 3456" maxlength="19" required style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6; letter-spacing: 2px;">
                 </div>
                 
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label>تاريخ الانتهاء</label>
-                            <input type="text" class="form-control" placeholder="MM/YY" maxlength="5" required>
+                            <label style="font-weight: 700; color: #333;">
+                                <i class="fas fa-calendar mr-2" style="color: #667eea;"></i>تاريخ الانتهاء
+                            </label>
+                            <input type="text" class="form-control" placeholder="MM/YY" maxlength="5" required style="font-size: 1.05rem; padding: 15px; border: 2px solid #dee2e6;">
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label>CVV</label>
-                            <input type="text" class="form-control" placeholder="123" maxlength="4" required>
+                            <label style="font-weight: 700; color: #333;">
+                                <i class="fas fa-lock mr-2" style="color: #28a745;"></i>CVV
+                            </label>
+                            <input type="text" class="form-control" placeholder="123" maxlength="4" required style="font-size: 1.05rem; padding: 15px; border: 2px solid #dee2e6; text-align: center;">
                         </div>
                     </div>
                 </div>
                 
-                <button type="submit" class="btn btn-donate btn-block">
-                    <i class="fas fa-credit-card mr-2"></i>
-                    تأكيد الدفع
+                <button type="submit" class="btn btn-donate btn-block" style="font-size: 1.2rem; padding: 18px; margin-top: 25px;">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    <span>تأكيد الدفع الآن</span>
+                    <i class="fas fa-arrow-left mr-2"></i>
                 </button>
+                
+                <div class="text-center mt-4">
+                    <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/0/04/Visa.svg" alt="Visa" style="height: 30px;">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" style="height: 30px;">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/30/American_Express_logo.svg" alt="Amex" style="height: 30px;">
+                    </div>
+                </div>
             </form>
         </div>
 
         <!-- PayPal Form -->
         <div id="paypal-form" class="donation-form">
-            <h3 class="text-center mb-4">
-                <i class="fab fa-paypal text-primary"></i>
-                الدفع عبر PayPal
-            </h3>
+            <div style="background: linear-gradient(135deg, #0070ba 0%, #1546a0 100%); padding: 25px; border-radius: 15px; margin-bottom: 30px; color: white; text-align: center;">
+                <i class="fab fa-paypal" style="font-size: 3rem; margin-bottom: 15px;"></i>
+                <h3 style="margin: 0; font-size: 1.8rem;">
+                    الدفع عبر PayPal
+                </h3>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">دفع سريع وآمن مع حماية المشتري</p>
+            </div>
             
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle mr-2"></i>
-                دفع سريع وآمن عبر PayPal
+            <div class="alert alert-info" style="border-right: 4px solid #0070ba;">
+                <i class="fas fa-shield-alt mr-2"></i>
+                <strong>حماية كاملة:</strong> استرداد الأموال متاح • لا حاجة لبطاقة ائتمان 💳
             </div>
             
             <div class="text-center" id="paypal-button-container">
                 <!-- PayPal Button will be rendered here -->
-                <button class="btn btn-donate btn-lg" onclick="handlePayPalPayment()">
-                    <i class="fab fa-paypal mr-2"></i>
-                    الدفع عبر PayPal
+                <button class="btn btn-lg" onclick="handlePayPalPayment()" style="background: #0070ba; color: white; font-size: 1.3rem; padding: 20px 50px; border-radius: 50px; border: none; font-weight: 700; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: all 0.3s;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.2)'">
+                    <i class="fab fa-paypal mr-2" style="font-size: 1.5rem;"></i>
+                    <span>متابعة مع PayPal</span>
                 </button>
+                <p class="mt-3 text-muted">
+                    <i class="fas fa-info-circle"></i> سيتم توجيهك إلى صفحة PayPal الآمنة
+                </p>
             </div>
         </div>
 
         <!-- Bank Transfer Form -->
         <div id="bank-form" class="donation-form">
-            <h3 class="text-center mb-4">
-                <i class="fas fa-university text-success"></i>
-                التحويل البنكي
-            </h3>
+            <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 25px; border-radius: 15px; margin-bottom: 30px; color: white; text-align: center;">
+                <i class="fas fa-university" style="font-size: 3rem; margin-bottom: 15px;"></i>
+                <h3 style="margin: 0; font-size: 1.8rem;">
+                    التحويل البنكي المباشر
+                </h3>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">للمبالغ الكبيرة والتعاملات الرسمية</p>
+            </div>
             
-            <div class="alert alert-info">
+            <div class="alert alert-warning" style="border-right: 4px solid #ffc107;">
                 <i class="fas fa-info-circle mr-2"></i>
-                للتبرعات الكبيرة (+$500)، يُرجى التواصل معنا للحصول على تفاصيل الحساب
+                <strong>ملاحظة:</strong> للتحويلات البنكية (+$500)، يُرجى التواصل معنا للحصول على تفاصيل الحساب البنكي
             </div>
             
             <div class="text-center">
-                <a href="mailto:support@azadsystems.com?subject=Bank Transfer Donation" class="btn btn-donate btn-lg">
+                <a href="mailto:support@azadsystems.com?subject=Bank Transfer Request" class="btn btn-donate btn-lg" style="font-size: 1.2rem; padding: 18px 40px; margin: 10px;">
                     <i class="fas fa-envelope mr-2"></i>
-                    طلب تفاصيل الحساب
+                    طلب تفاصيل الحساب عبر البريد
                 </a>
                 
-                <p class="mt-4 text-muted">
-                    أو تواصل عبر WhatsApp:
-                    <br>
-                    <a href="https://wa.me/970598953362" class="btn btn-success mt-2">
-                        <i class="fab fa-whatsapp mr-2"></i>
-                        +970 XX XXX XXXX
-                    </a>
+                <p class="mt-4" style="font-size: 1.1rem; color: #666;">
+                    <strong>أو تواصل معنا مباشرة:</strong>
                 </p>
+                <a href="https://wa.me/970598953362" class="btn btn-lg mt-2" style="background: #25D366; color: white; font-size: 1.2rem; padding: 18px 40px; border-radius: 50px; font-weight: 700; box-shadow: 0 5px 15px rgba(0,0,0,0.2);">
+                    <i class="fab fa-whatsapp mr-2" style="font-size: 1.5rem;"></i>
+                    تواصل عبر WhatsApp
+                </a>
                 
                 <div class="alert alert-info mt-3">
                     <i class="fas fa-info-circle mr-2"></i>
@@ -1247,6 +1421,55 @@
             });
         });
     </script>
+    
+    <!-- Footer -->
+    <footer style="background: rgba(255,255,255,0.95); padding: 40px 20px; border-radius: 20px; margin-top: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4 text-center mb-4">
+                    <i class="fas fa-shield-alt" style="font-size: 3rem; color: #667eea; margin-bottom: 15px;"></i>
+                    <h5 style="color: #333; font-weight: 700;">أمان مضمون</h5>
+                    <p style="color: #666;">جميع المعاملات محمية بتشفير SSL 256-bit</p>
+                </div>
+                <div class="col-md-4 text-center mb-4">
+                    <i class="fas fa-headset" style="font-size: 3rem; color: #667eea; margin-bottom: 15px;"></i>
+                    <h5 style="color: #333; font-weight: 700;">دعم فني 24/7</h5>
+                    <p style="color: #666;">فريق الدعم جاهز لمساعدتك في أي وقت</p>
+                </div>
+                <div class="col-md-4 text-center mb-4">
+                    <i class="fas fa-rocket" style="font-size: 3rem; color: #667eea; margin-bottom: 15px;"></i>
+                    <h5 style="color: #333; font-weight: 700;">تحديثات مستمرة</h5>
+                    <p style="color: #666;">نضيف ميزات جديدة باستمرار</p>
+                </div>
+            </div>
+            
+            <hr style="border-color: #dee2e6; margin: 30px 0;">
+            
+            <div class="text-center">
+                <div style="margin-bottom: 20px;">
+                    <a href="https://wa.me/970598953362" style="margin: 5px; display: inline-block; width: 45px; height: 45px; background: #25D366; color: white; border-radius: 50%; line-height: 45px; text-decoration: none; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                        <i class="fab fa-whatsapp" style="font-size: 1.5rem;"></i>
+                    </a>
+                    <a href="mailto:support@azadsystems.com" style="margin: 5px; display: inline-block; width: 45px; height: 45px; background: #667eea; color: white; border-radius: 50%; line-height: 45px; text-decoration: none; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                        <i class="fas fa-envelope" style="font-size: 1.2rem;"></i>
+                    </a>
+                    <a href="https://github.com/AbuAzad2025" target="_blank" style="margin: 5px; display: inline-block; width: 45px; height: 45px; background: #333; color: white; border-radius: 50%; line-height: 45px; text-decoration: none; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                        <i class="fab fa-github" style="font-size: 1.5rem;"></i>
+                    </a>
+                </div>
+                
+                <p style="color: #666; margin: 15px 0;">
+                    <i class="fas fa-heart" style="color: #ff6b6b;"></i>
+                    صُنع بحب من فريق Azad Systems
+                </p>
+                
+                <p style="color: #999; font-size: 0.9rem; margin: 0;">
+                    © 2025 Azad Systems. جميع الحقوق محفوظة.
+                </p>
+            </div>
+        </div>
+    </footer>
+    </div>
 </body>
 </html>
 

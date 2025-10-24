@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import login_required, current_user
 from extensions import db, limiter
-from models import PaymentVault, PaymentTransaction, PaymentLog, Donation, CardPayment
+from models import PaymentVault, PaymentTransaction, PaymentLog, Donation, CardPayment, Package, PackagePurchase
 from services.nowpayments_service import NOWPaymentsService
 from utils.helpers import create_audit_log
 import secrets
@@ -291,10 +291,10 @@ def donations():
                          total_amount=total_amount)
 
 
-@payment_vault_bp.route('/packages')
+@payment_vault_bp.route('/packages-management')
 @login_required
-def packages():
-    """إدارة الباقات"""
+def packages_management():
+    """إدارة الباقات من الخزينة"""
     if not current_user.is_owner:
         flash('❌ غير مصرح - الخزينة السرية للمالك فقط!', 'danger')
         return redirect(url_for('main.dashboard'))
@@ -304,14 +304,18 @@ def packages():
         flash('❌ يجب فتح الخزينة أولاً', 'warning')
         return redirect(url_for('payment_vault.unlock_vault'))
     
-    # إحصائيات الباقات
-    basic_count = Donation.query.filter_by(transaction_type='purchase', package='basic').count()
-    pro_count = Donation.query.filter_by(transaction_type='purchase', package='professional').count()
-    ent_count = Donation.query.filter_by(transaction_type='purchase', package='enterprise').count()
+    # جلب جميع الباقات
+    packages = Package.query.order_by(Package.sort_order.asc()).all()
     
-    package_stats = [basic_count, pro_count, ent_count]
+    # إحصائيات الباقات من جدول الشراء الجديد
+    basic_purchases = PackagePurchase.query.join(Package).filter(Package.slug == 'basic').count()
+    pro_purchases = PackagePurchase.query.join(Package).filter(Package.slug == 'professional').count()
+    ent_purchases = PackagePurchase.query.join(Package).filter(Package.slug == 'enterprise').count()
+    
+    package_stats = [basic_purchases, pro_purchases, ent_purchases]
     
     return render_template('payment_vault/packages.html',
+                         packages=packages,
                          package_stats=package_stats)
 
 

@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}إدارة الباقات{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-box"></i> إدارة الباقات
+                        </h4>
+                        <a href="{{ url_for('packages.create') }}" class="btn btn-light">
+                            <i class="fas fa-plus"></i> إضافة باقة جديدة
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if packages %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>الترتيب</th>
+                                    <th>الأيقونة</th>
+                                    <th>اسم الباقة</th>
+                                    <th>السعر</th>
+                                    <th>الحالة</th>
+                                    <th>مميزة</th>
+                                    <th>المبيعات</th>
+                                    <th>الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for package in packages %}
+                                <tr>
+                                    <td>{{ package.sort_order }}</td>
+                                    <td><span style="font-size: 2rem;">{{ package.icon }}</span></td>
+                                    <td>
+                                        <strong>{{ package.name_ar }}</strong>
+                                        <br><small class="text-muted">{{ package.name_en }}</small>
+                                        {% if package.badge_text %}
+                                        <br><span class="badge badge-{{ package.badge_color }}">{{ package.badge_text }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong class="text-success">${{ package.price }}</strong>
+                                        <br><small class="text-muted">{{ package.currency }}</small>
+                                    </td>
+                                    <td>
+                                        {% if package.is_active %}
+                                        <span class="badge badge-success">نشط</span>
+                                        {% else %}
+                                        <span class="badge badge-secondary">غير نشط</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if package.is_featured %}
+                                        <i class="fas fa-star text-warning"></i>
+                                        {% else %}
+                                        <i class="far fa-star text-muted"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">{{ package.purchases|length }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('packages.edit', id=package.id) }}" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form method="POST" action="{{ url_for('packages.delete', id=package.id) }}" style="display: inline;" onsubmit="return confirm('هل أنت متأكد من حذف هذه الباقة؟');">
+                                                <button type="submit" class="btn btn-sm btn-danger">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-info-circle"></i> لا توجد باقات حالياً
+                        <br><br>
+                        <a href="{{ url_for('packages.create') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> إضافة أول باقة
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- إحصائيات سريعة -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h3>{{ packages|length }}</h3>
+                            <p class="mb-0">إجمالي الباقات</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h3>{{ packages|selectattr('is_active')|list|length }}</h3>
+                            <p class="mb-0">باقات نشطة</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <h3>{{ packages|selectattr('is_featured')|list|length }}</h3>
+                            <p class="mb-0">باقات مميزة</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h3>
+                                {% set total_purchases = namespace(value=0) %}
+                                {% for pkg in packages %}
+                                    {% set total_purchases.value = total_purchases.value + pkg.purchases|length %}
+                                {% endfor %}
+                                {{ total_purchases.value }}
+                            </h3>
+                            <p class="mb-0">إجمالي المبيعات</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

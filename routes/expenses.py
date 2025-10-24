@@ -23,9 +23,10 @@ def index():
     
     # إخفاء المصروفات المؤرشفة
     from models import ArchivedRecord
-    archived_expenses = db.session.query(ArchivedRecord.record_id).filter(
+    from sqlalchemy import select
+    archived_expenses = select(ArchivedRecord.record_id).filter(
         ArchivedRecord.table_name == 'expenses'
-    ).subquery()
+    ).scalar_subquery()
     query = query.filter(~Expense.id.in_(archived_expenses))
     
     if category_id:

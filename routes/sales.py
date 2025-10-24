@@ -24,9 +24,10 @@ def index():
     
     # إخفاء المبيعات المؤرشفة
     from models import ArchivedRecord
-    archived_sales = db.session.query(ArchivedRecord.record_id).filter(
+    from sqlalchemy import select
+    archived_sales = select(ArchivedRecord.record_id).filter(
         ArchivedRecord.table_name == 'sales'
-    ).subquery()
+    ).scalar_subquery()
     query = query.filter(~Sale.id.in_(archived_sales))
     
     if search:

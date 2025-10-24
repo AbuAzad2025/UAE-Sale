@@ -272,7 +272,7 @@ def register_payment_listeners():
     """تسجيل مستمعات سندات الصرف"""
     from models import Payment, Supplier, Purchase
     
-    @event.listens_for(Payment, 'after_commit')
+    @event.listens_for(Payment, 'after_insert')
     def auto_update_supplier_on_payment(mapper, connection, target):
         """تحديث تلقائي لرصيد المورد عند إنشاء سند صرف"""
         try:
@@ -1757,7 +1757,7 @@ def register_automatic_gl_listeners():
         except Exception as e:
             logger.error(f"Failed to create auto GL entry for purchase: {e}")
     
-    @event.listens_for(Payment, 'after_commit')
+    @event.listens_for(Payment, 'after_insert')
     def auto_create_payment_journal_entry(mapper, connection, target):
         """
         قيد محاسبي تلقائي عند إنشاء سند صرف

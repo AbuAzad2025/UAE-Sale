@@ -1025,6 +1025,23 @@ def toggle_package_status(package_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@payment_vault_bp.route('/donation/<int:donation_id>')
+@login_required
+def donation_detail(donation_id):
+    """عرض تفاصيل تبرع"""
+    if not current_user.is_owner:
+        flash('❌ غير مصرح', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    vault = PaymentVault.query.first()
+    if not vault or vault.is_locked:
+        flash('❌ يجب فتح الخزينة أولاً', 'warning')
+        return redirect(url_for('payment_vault.unlock_vault'))
+    
+    donation = Donation.query.get_or_404(donation_id)
+    return render_template('payment_vault/donation_detail.html', donation=donation)
+
+
 @payment_vault_bp.route('/donation/<int:donation_id>/approve', methods=['POST'])
 @login_required
 def approve_donation(donation_id):

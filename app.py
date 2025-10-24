@@ -31,6 +31,13 @@ def create_app(config_class=Config):
     app.config['JSON_AS_ASCII'] = False
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     
+    # إصلاح مشكلة Unicode في Windows
+    import sys
+    if sys.platform == 'win32':
+        import codecs
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
+        sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
+    
     ensure_runtime_dirs(config_class)
     assert_production_sanity(config_class)
     

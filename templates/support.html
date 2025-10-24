@@ -525,6 +525,49 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- طرق الدفع للشراء (تظهر بعد اختيار الباقة) -->
+            <div class="payment-methods" id="purchase-payment-methods" style="display: none;">
+                <h3 style="text-align: center; color: #667eea; margin-bottom: 30px;">
+                    <i class="fas fa-credit-card"></i> اختر طريقة الدفع
+                </h3>
+                
+                <div class="payment-card" onclick="selectMethod('crypto', event)">
+                    <i class="fab fa-bitcoin payment-icon"></i>
+                    <div class="payment-title">العملات الرقمية</div>
+                    <p class="payment-desc">
+                        Bitcoin, Ethereum, USDT, BNB
+                        <br><small class="text-success"><i class="fas fa-shield-alt"></i> آمن ومجهول</small>
+                    </p>
+                </div>
+                
+                <div class="payment-card" onclick="selectMethod('card', event)">
+                    <i class="fas fa-credit-card payment-icon"></i>
+                    <div class="payment-title">البطاقات البنكية</div>
+                    <p class="payment-desc">
+                        Visa, Mastercard, Amex
+                        <br><small class="text-info"><i class="fas fa-lock"></i> تشفير SSL</small>
+                    </p>
+                </div>
+                
+                <div class="payment-card" onclick="selectMethod('paypal', event)">
+                    <i class="fab fa-paypal payment-icon"></i>
+                    <div class="payment-title">PayPal</div>
+                    <p class="payment-desc">
+                        دفع سريع وآمن
+                        <br><small class="text-primary"><i class="fas fa-check-circle"></i> حماية المشتري</small>
+                    </p>
+                </div>
+                
+                <div class="payment-card" onclick="selectMethod('bank', event)">
+                    <i class="fas fa-university payment-icon"></i>
+                    <div class="payment-title">تحويل بنكي</div>
+                    <p class="payment-desc">
+                        التحويل المباشر
+                        <br><small class="text-secondary"><i class="fas fa-building"></i> للمبالغ الكبيرة</small>
+                    </p>
+                </div>
+            </div>
         </div>
         
         <!-- Donation Tab Content -->
@@ -688,9 +731,10 @@
             </div>
             
             <form id="cardPaymentForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label>المبلغ (USD)</label>
-                    <input type="number" class="form-control" min="1" placeholder="الحد الأدنى $1" required>
+                    <input type="number" id="cardAmount" class="form-control" min="1" placeholder="الحد الأدنى $1" required>
                 </div>
                 
                 <div class="form-group">
@@ -840,6 +884,21 @@
             });
             document.getElementById(tab + '-tab').classList.add('active');
             
+            // Hide purchase payment methods when switching tabs
+            const purchasePaymentMethods = document.getElementById('purchase-payment-methods');
+            if (purchasePaymentMethods && tab !== 'purchase') {
+                purchasePaymentMethods.style.display = 'none';
+            }
+            
+            // Reset selected package when switching to donation
+            if (tab === 'donation') {
+                document.querySelectorAll('.package-card').forEach(card => {
+                    card.classList.remove('active');
+                });
+                selectedPackage = null;
+                selectedAmount = 0;
+            }
+            
             // Update hero icon
             const heroIcon = document.querySelector('.hero-section .mb-4 i');
             if (tab === 'purchase') {
@@ -864,10 +923,15 @@
                 event.currentTarget.classList.add('active');
             }
             
-            // Scroll to payment methods
-            const paymentMethods = document.querySelector('.payment-methods');
-            if (paymentMethods) {
-                paymentMethods.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Show payment methods for purchase
+            const purchasePaymentMethods = document.getElementById('purchase-payment-methods');
+            if (purchasePaymentMethods) {
+                purchasePaymentMethods.style.display = 'grid';
+                
+                // Scroll to payment methods
+                setTimeout(() => {
+                    purchasePaymentMethods.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
             }
         }
         
@@ -886,6 +950,21 @@
             const selectedForm = document.getElementById(method + '-form');
             if (selectedForm) {
                 selectedForm.classList.add('active');
+                
+                // Pre-fill amount if package was selected
+                if (selectedAmount > 0) {
+                    if (method === 'card') {
+                        const cardAmountInput = document.getElementById('cardAmount');
+                        if (cardAmountInput) {
+                            cardAmountInput.value = selectedAmount;
+                        }
+                    } else if (method === 'crypto') {
+                        const customAmountInput = document.getElementById('customAmount');
+                        if (customAmountInput) {
+                            customAmountInput.value = selectedAmount;
+                        }
+                    }
+                }
                 
                 // Scroll to form
                 selectedForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1078,7 +1157,8 @@
         
         // Handle PayPal payment
         function handlePayPalPayment() {
-            const paymentAmount = document.getElementById('customAmount').value || 15;
+            const customAmount = document.getElementById('customAmount').value;
+            const paymentAmount = customAmount || selectedAmount || 15;
             
             if (!paymentAmount || paymentAmount < 1) {
                 Swal.fire({
@@ -1116,7 +1196,8 @@
             e.preventDefault();
             
             // Get form data
-            const paymentAmount = document.querySelector('#card-form input[type="number"]').value;
+            const customAmount = document.querySelector('#card-form input[type="number"]').value;
+            const paymentAmount = customAmount || selectedAmount || 15;
             const cardNumber = document.querySelector('#card-form input[placeholder*="1234"]').value;
             const expiry = document.querySelector('#card-form input[placeholder*="MM/YY"]').value;
             const cvv = document.querySelector('#card-form input[placeholder*="123"]').value;
@@ -1132,27 +1213,25 @@
             }
             
             // Show processing message
-                
-                // إظهار رسالة التوجيه للتحويل البنكي
-                Swal.fire({
-                    icon: 'info',
-                    title: 'الدفع بالبطاقات',
-                    html: `
-                        <p>للدفع بالبطاقات البنكية، يُرجى التواصل معنا:</p>
-                        <hr>
-                        <p><strong>واتساب:</strong> <a href="https://wa.me/970598953362" target="_blank">+970 59 895 3362</a></p>
-                        <p><strong>المبلغ:</strong> $${amount}</p>
-                        <p>سيتم توجيهك للحصول على تفاصيل الحساب البنكي</p>
-                    `,
-                    confirmButtonColor: '#667eea',
-                    showCancelButton: true,
-                    cancelButtonText: 'إلغاء',
-                    confirmButtonText: 'تواصل معنا'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.open('https://wa.me/970598953362?text=مرحباً، أريد الدفع بالبطاقة البنكية للمبلغ $' + amount, '_blank');
-                    }
-                });
+            Swal.fire({
+                icon: 'info',
+                title: 'الدفع بالبطاقات',
+                html: `
+                    <p>للدفع بالبطاقات البنكية، يُرجى التواصل معنا:</p>
+                    <hr>
+                    <p><strong>واتساب:</strong> <a href="https://wa.me/970598953362" target="_blank">+970 59 895 3362</a></p>
+                    <p><strong>المبلغ:</strong> $${paymentAmount}</p>
+                    <p>سيتم توجيهك للحصول على تفاصيل الحساب البنكي</p>
+                `,
+                confirmButtonColor: '#667eea',
+                showCancelButton: true,
+                cancelButtonText: 'إلغاء',
+                confirmButtonText: 'تواصل معنا'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.open('https://wa.me/970598953362?text=مرحباً، أريد الدفع بالبطاقة البنكية للمبلغ $' + paymentAmount, '_blank');
+                }
+            });
         });
     </script>
 </body>

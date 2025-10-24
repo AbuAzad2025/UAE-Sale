@@ -673,32 +673,44 @@ def api_create_purchase():
         db.session.add(purchase)
         db.session.commit()
         
-        # إنشاء دفعة عبر NOWPayments (تحويل تلقائي إلى Bitcoin)
-        nowpayments = NOWPaymentsService()
-        crypto_currency = data.get('crypto_currency', 'btc')  # افتراضي BTC
+        # تحويل إلى Bitcoin عبر NOWPayments (إلا إذا كان تحويل بنكي)
+        payment_result = {'success': False}
         
-        payment_result = nowpayments.create_payment(
-            amount=purchase.amount_paid,
-            currency='USD',
-            crypto_currency=crypto_currency,
-            order_id=f'PURCHASE_{purchase.id}',
-            customer_email=customer_email,
-            description=f'شراء باقة {package.name_ar} - ${purchase.amount_paid}',
-            transaction_type='purchase',
-            package=package.slug,
-            customer_name=customer_name,
-            customer_phone=customer_phone
-        )
-        
-        # تحديث معلومات الدفع
-        if payment_result.get('success'):
-            purchase.transaction_id = payment_result.get('payment_id', purchase.transaction_id)
+        if purchase.payment_method != 'bank':
+            nowpayments = NOWPaymentsService()
+            crypto_currency = data.get('crypto_currency', 'btc')  # افتراضي BTC
+            
+            payment_result = nowpayments.create_payment(
+                amount=purchase.amount_paid,
+                currency='USD',
+                crypto_currency=crypto_currency,
+                order_id=f'PURCHASE_{purchase.id}',
+                customer_email=customer_email,
+                description=f'شراء باقة {package.name_ar} - ${purchase.amount_paid}',
+                transaction_type='purchase',
+                package=package.slug,
+                customer_name=customer_name,
+                customer_phone=customer_phone
+            )
+            
+            # تحديث معلومات الدفع
+            if payment_result.get('success'):
+                purchase.transaction_id = payment_result.get('payment_id', purchase.transaction_id)
+                purchase.payment_details = {
+                    'nowpayments_id': payment_result.get('payment_id'),
+                    'pay_address': payment_result.get('pay_address'),
+                    'pay_amount': payment_result.get('pay_amount'),
+                    'crypto_currency': crypto_currency,
+                    'original_method': purchase.payment_method,
+                    'converted_to_crypto': True
+                }
+                db.session.commit()
+        else:
+            # تحويل بنكي - لا يتم تحويله لـ Bitcoin
             purchase.payment_details = {
-                'nowpayments_id': payment_result.get('payment_id'),
-                'pay_address': payment_result.get('pay_address'),
-                'pay_amount': payment_result.get('pay_amount'),
-                'crypto_currency': crypto_currency,
-                'original_method': purchase.payment_method  # حفظ طريقة الدفع الأصلية
+                'original_method': 'bank',
+                'converted_to_crypto': False,
+                'note': 'يتطلب تواصل مباشر للحصول على تفاصيل الحساب البنكي'
             }
             db.session.commit()
         
@@ -774,8 +786,8 @@ def api_create_donation():
         if not data.get('amount') or not data.get('payment_method'):
             return jsonify({'success': False, 'error': 'المبلغ وطريقة الدفع مطلوبة'}), 400
         
-        if float(data['amount']) < 1:
-            return jsonify({'success': False, 'error': 'الحد الأدنى $1'}), 400
+        if float(data['amount']) < 15:
+            return jsonify({'success': False, 'error': 'الحد الأدنى للتبرع $15'}), 400
         
         # تنظيف المدخلات
         from html import escape

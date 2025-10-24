@@ -786,7 +786,7 @@
                         <small style="opacity: 0.7;">VIP</small>
                     </button>
                 </div>
-                <input type="number" id="customAmount" class="form-control" placeholder="💰 أو أدخل مبلغ مخصص (الحد الأدنى $1)" min="1" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
+                <input type="number" id="customAmount" class="form-control" placeholder="💰 أو أدخل مبلغ مخصص (الحد الأدنى $15)" min="15" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
             </div>
             
             <div class="form-group">
@@ -885,7 +885,7 @@
                     <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
                         <i class="fas fa-dollar-sign mr-2" style="color: #28a745;"></i>المبلغ (USD)
                     </label>
-                    <input type="number" id="cardAmount" class="form-control" min="1" placeholder="💵 أدخل المبلغ (الحد الأدنى $1)" required style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
+                    <input type="number" id="cardAmount" class="form-control" min="15" placeholder="💵 أدخل المبلغ (الحد الأدنى $15)" required style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
                 </div>
                 
                 <div class="form-group">
@@ -1185,7 +1185,7 @@
             const customAmount = document.getElementById('customAmount').value;
             const paymentAmount = customAmount || selectedAmount;
             
-            if (!paymentAmount || paymentAmount < 1) {
+            if (!paymentAmount || paymentAmount < 15) {
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
@@ -1375,11 +1375,11 @@
             const customAmount = document.getElementById('customAmount').value;
             const paymentAmount = customAmount || selectedAmount || 0;
             
-            if (!paymentAmount || paymentAmount < 1) {
+            if (!paymentAmount || paymentAmount < 15) {
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
-                    text: 'الحد الأدنى $1',
+                    text: 'الحد الأدنى للتبرع $15',
                     confirmButtonColor: '#667eea'
                 });
                 return;
@@ -1526,11 +1526,11 @@
             const cardAmountInput = document.getElementById('cardAmount');
             const paymentAmount = parseFloat(cardAmountInput.value) || selectedAmount || 0;
             
-            if (!paymentAmount || paymentAmount < 1) {
+            if (!paymentAmount || paymentAmount < 15) {
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
-                    text: 'الحد الأدنى $1',
+                    text: 'الحد الأدنى للتبرع $15',
                     confirmButtonColor: '#667eea'
                 });
                 return;

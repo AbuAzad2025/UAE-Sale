@@ -541,6 +541,14 @@ if __name__ == '__main__':
     from services.backup_service import BackupService
     BackupService.initialize()
     
+    # جدولة القبول التلقائي للتبرعات والمشتريات (كل ساعة)
+    try:
+        from services.auto_approval_service import schedule_auto_approval
+        schedule_auto_approval()
+        print("✅ Auto-approval service started (every 1 hour)")
+    except Exception as e:
+        print(f"⚠️ Auto-approval service failed: {e}")
+    
     # جدولة النسخ الاحتياطي اليومي
     import threading
     import time

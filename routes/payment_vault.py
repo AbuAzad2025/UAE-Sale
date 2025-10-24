@@ -1042,3 +1042,22 @@ def reject_donation(donation_id):
 
 
 # route /cards موجود مسبقاً في السطر 392
+
+
+@payment_vault_bp.route('/auto-approve', methods=['POST'])
+@login_required
+def trigger_auto_approve():
+    """تشغيل القبول التلقائي يدوياً"""
+    if not current_user.is_owner:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    from services.auto_approval_service import AutoApprovalService
+    
+    result = AutoApprovalService.run_auto_approval()
+    
+    if result.get('total_approved', 0) > 0:
+        flash(f"✅ تم قبول {result['total_approved']} عملية تلقائياً بمبلغ ${result['total_amount']:.2f}", 'success')
+    else:
+        flash('ℹ️ لا توجد عمليات تحتاج للقبول التلقائي', 'info')
+    
+    return redirect(url_for('payment_vault.dashboard'))

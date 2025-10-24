@@ -369,29 +369,13 @@ def edit_package(package_id):
                 changes={'updated': 'Package updated'}
             )
             
-            return jsonify({'success': True, 'message': 'تم تحديث الباقة بنجاح!'})
+            flash('✅ تم تحديث الباقة بنجاح!', 'success')
+            return redirect(url_for('payment_vault.packages_management'))
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'error': str(e)}), 400
+            flash(f'❌ خطأ: {str(e)}', 'danger')
     
-    return jsonify({
-        'id': package.id,
-        'name_ar': package.name_ar,
-        'name_en': package.name_en,
-        'slug': package.slug,
-        'icon': package.icon,
-        'description_ar': package.description_ar or '',
-        'description_en': package.description_en or '',
-        'price': float(package.price),
-        'currency': package.currency,
-        'max_users': package.max_users,
-        'max_branches': package.max_branches,
-        'support_duration_months': package.support_duration_months,
-        'is_active': package.is_active,
-        'is_featured': package.is_featured,
-        'badge_text': package.badge_text or '',
-        'features': package.features if package.features else []
-    })
+    return render_template('payment_vault/edit_package.html', package=package)
 
 
 @payment_vault_bp.route('/package/<int:package_id>/delete', methods=['POST'])

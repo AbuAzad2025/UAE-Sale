@@ -12,7 +12,7 @@ from sqlalchemy import text
 
 # revision identifiers
 revision = 'payment_vault_columns'
-down_revision = None
+down_revision = 'add_packages'
 branch_labels = None
 depends_on = None
 

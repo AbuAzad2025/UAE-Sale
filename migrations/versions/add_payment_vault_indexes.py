@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision = 'payment_vault_indexes'
-down_revision = None
+down_revision = 'payment_vault_columns'
 branch_labels = None
 depends_on = None
 

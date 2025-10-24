@@ -604,3 +604,200 @@ def change_password():
         return redirect(url_for('payment_vault.dashboard'))
     
     return render_template('payment_vault/change_password.html')
+
+
+# ==================== API Routes للشراء والتبرع (متاحة للجميع) ====================
+
+@payment_vault_bp.route('/api/purchase', methods=['POST'])
+@limiter.limit("10 per minute")
+def api_create_purchase():
+    """API لإنشاء عملية شراء جديدة"""
+    try:
+        data = request.get_json()
+        
+        # التحقق من البيانات المطلوبة
+        required_fields = ['package_id', 'customer_name', 'customer_email', 'payment_method', 'amount_paid']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'الحقل {field} مطلوب'}), 400
+        
+        # التحقق من وجود الباقة
+        package = Package.query.get(data['package_id'])
+        if not package or not package.is_active:
+            return jsonify({'success': False, 'error': 'الباقة غير متاحة'}), 404
+        
+        # التحقق من المبلغ
+        if float(data['amount_paid']) < package.price:
+            return jsonify({'success': False, 'error': 'المبلغ المدفوع أقل من سعر الباقة'}), 400
+        
+        # إنشاء عملية الشراء
+        purchase = PackagePurchase(
+            package_id=data['package_id'],
+            customer_name=data['customer_name'],
+            customer_email=data['customer_email'],
+            customer_phone=data.get('customer_phone'),
+            company_name=data.get('company_name'),
+            payment_method=data['payment_method'],
+            payment_status='pending',
+            amount_paid=float(data['amount_paid']),
+            currency=data.get('currency', 'USD'),
+            transaction_id=data.get('transaction_id'),
+            payment_details=data.get('payment_details'),
+            notes=data.get('notes')
+        )
+        
+        db.session.add(purchase)
+        db.session.commit()
+        
+        # تسجيل في جدول التبرعات للتوافق
+        donation = Donation(
+            amount_usd=purchase.amount_paid,
+            payment_method=purchase.payment_method,
+            transaction_type='purchase',
+            package=package.slug,
+            customer_name=purchase.customer_name,
+            customer_email=purchase.customer_email,
+            customer_phone=purchase.customer_phone,
+            status='pending',
+            transaction_hash=purchase.transaction_id
+        )
+        db.session.add(donation)
+        db.session.commit()
+        
+        # تسجيل في الخزينة
+        create_audit_log(
+            action='purchase_created',
+            description=f'طلب شراء: {package.name_ar} - ${purchase.amount_paid}',
+            user_id=None,
+            ip_address=request.remote_addr
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'تم إنشاء طلب الشراء بنجاح',
+            'purchase_id': purchase.id
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@payment_vault_bp.route('/api/donation', methods=['POST'])
+@limiter.limit("10 per minute")
+def api_create_donation():
+    """API لإنشاء تبرع جديد"""
+    try:
+        data = request.get_json()
+        
+        if not data.get('amount') or not data.get('payment_method'):
+            return jsonify({'success': False, 'error': 'المبلغ وطريقة الدفع مطلوبة'}), 400
+        
+        if float(data['amount']) < 1:
+            return jsonify({'success': False, 'error': 'الحد الأدنى $1'}), 400
+        
+        donation = Donation(
+            amount_usd=float(data['amount']),
+            payment_method=data['payment_method'],
+            crypto_type=data.get('crypto_type'),
+            transaction_type='donation',
+            donor_name=data.get('donor_name'),
+            donor_email=data.get('donor_email'),
+            donor_message=data.get('message'),
+            status='pending',
+            transaction_hash=data.get('transaction_id')
+        )
+        
+        db.session.add(donation)
+        db.session.commit()
+        
+        create_audit_log(
+            action='donation_created',
+            description=f'تبرع جديد: ${donation.amount_usd}',
+            user_id=None,
+            ip_address=request.remote_addr
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'شكراً على تبرعك!',
+            'donation_id': donation.id
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ==================== Routes لإدارة المشتريات (محمية) ====================
+
+@payment_vault_bp.route('/purchases')
+@login_required
+def view_purchases():
+    """عرض جميع عمليات الشراء"""
+    if not current_user.is_owner:
+        flash('❌ غير مصرح', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    vault = PaymentVault.query.first()
+    if not vault or vault.is_locked:
+        flash('❌ يجب فتح الخزينة أولاً', 'warning')
+        return redirect(url_for('payment_vault.unlock_vault'))
+    
+    purchases = PackagePurchase.query.order_by(PackagePurchase.created_at.desc()).all()
+    
+    stats = {
+        'total': len(purchases),
+        'pending': len([p for p in purchases if p.payment_status == 'pending']),
+        'completed': len([p for p in purchases if p.payment_status == 'completed']),
+        'revenue': sum([p.amount_paid for p in purchases if p.payment_status == 'completed'])
+    }
+    
+    return render_template('payment_vault/purchases.html', purchases=purchases, stats=stats)
+
+
+@payment_vault_bp.route('/purchase/<int:id>')
+@login_required
+def purchase_detail(id):
+    """تفاصيل عملية شراء"""
+    if not current_user.is_owner:
+        return redirect(url_for('main.dashboard'))
+    
+    vault = PaymentVault.query.first()
+    if not vault or vault.is_locked:
+        return redirect(url_for('payment_vault.unlock_vault'))
+    
+    purchase = PackagePurchase.query.get_or_404(id)
+    return render_template('payment_vault/purchase_detail.html', purchase=purchase)
+
+
+@payment_vault_bp.route('/purchase/<int:id>/activate', methods=['POST'])
+@login_required
+def activate_purchase(id):
+    """تفعيل عملية شراء"""
+    if not current_user.is_owner:
+        return redirect(url_for('main.dashboard'))
+    
+    purchase = PackagePurchase.query.get_or_404(id)
+    
+    try:
+        purchase.activation_status = 'activated'
+        purchase.activation_date = datetime.now(timezone.utc)
+        purchase.payment_status = 'completed'
+        
+        # تحديث التبرع المرتبط
+        donation = Donation.query.filter_by(
+            customer_email=purchase.customer_email,
+            transaction_type='purchase'
+        ).first()
+        if donation:
+            donation.status = 'completed'
+            donation.completed_at = datetime.now(timezone.utc)
+        
+        db.session.commit()
+        flash('✅ تم تفعيل الباقة', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ خطأ: {str(e)}', 'danger')
+    
+    return redirect(url_for('payment_vault.purchase_detail', id=id))

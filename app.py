@@ -363,12 +363,7 @@ def register_blueprints(app):
     except Exception as e:
         app.logger.warning(f'api_analytics_bp not registered: {e}')
     
-    # Register packages blueprint
-    try:
-        from routes.packages import bp as packages_bp
-        app.register_blueprint(packages_bp)
-    except Exception as e:
-        app.logger.warning(f'packages_bp not registered: {e}')
+    # packages_bp تم دمجه في payment_vault_bp
 
 
 def register_cli(app):

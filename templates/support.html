@@ -1371,82 +1371,230 @@
         }
         
         // Handle PayPal payment
-        function handlePayPalPayment() {
+        async function handlePayPalPayment() {
             const customAmount = document.getElementById('customAmount').value;
-            const paymentAmount = customAmount || selectedAmount || 15;
+            const paymentAmount = customAmount || selectedAmount || 0;
             
             if (!paymentAmount || paymentAmount < 1) {
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
-                    text: 'الحد الأدنى للتبرع هو $1',
+                    text: 'الحد الأدنى $1',
                     confirmButtonColor: '#667eea'
                 });
                 return;
             }
             
-            Swal.fire({
-                icon: 'info',
-                title: 'الدفع عبر PayPal',
-                html: `
-                    <p>للدفع عبر PayPal، يُرجى التواصل معنا:</p>
-                    <hr>
-                    <p><strong>واتساب:</strong> <a href="https://wa.me/970598953362" target="_blank">+970 59 895 3362</a></p>
-                    <p><strong>المبلغ:</strong> $${amount}</p>
-                    <p>سيتم توجيهك للحصول على رابط PayPal للدفع</p>
-                `,
-                confirmButtonColor: '#667eea',
+            // طلب بيانات العميل
+            const { value: formValues } = await Swal.fire({
+                title: 'بيانات الدفع - PayPal',
+                html:
+                    '<input id="swal-name" class="swal2-input" placeholder="الاسم الكامل" required>' +
+                    '<input id="swal-email" class="swal2-input" placeholder="البريد الإلكتروني" type="email" required>' +
+                    '<input id="swal-phone" class="swal2-input" placeholder="رقم الجوال" type="tel">' +
+                    (currentTab === 'purchase' ? '<input id="swal-company" class="swal2-input" placeholder="اسم الشركة (اختياري)">' : ''),
+                focusConfirm: false,
                 showCancelButton: true,
                 cancelButtonText: 'إلغاء',
-                confirmButtonText: 'تواصل معنا'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.open('https://wa.me/970598953362?text=مرحباً، أريد الدفع عبر PayPal للمبلغ $' + amount, '_blank');
+                confirmButtonText: 'متابعة',
+                preConfirm: () => {
+                    return {
+                        name: document.getElementById('swal-name').value,
+                        email: document.getElementById('swal-email').value,
+                        phone: document.getElementById('swal-phone').value,
+                        company: currentTab === 'purchase' ? document.getElementById('swal-company')?.value : ''
+                    }
                 }
             });
+            
+            if (!formValues || !formValues.name || !formValues.email) {
+                return;
+            }
+            
+            // حفظ في DB
+            const apiEndpoint = currentTab === 'purchase' ? '/payment-vault/api/purchase' : '/payment-vault/api/donation';
+            let requestData = {};
+            
+            if (currentTab === 'purchase') {
+                const packageCard = document.querySelector('.package-card.active');
+                const packageId = packageCard ? packageCard.getAttribute('data-package-id') : null;
+                
+                if (!packageId) {
+                    Swal.fire({icon: 'error', title: 'خطأ', text: 'الرجاء اختيار باقة'});
+                    return;
+                }
+                
+                requestData = {
+                    package_id: parseInt(packageId),
+                    customer_name: formValues.name,
+                    customer_email: formValues.email,
+                    customer_phone: formValues.phone,
+                    company_name: formValues.company,
+                    payment_method: 'paypal',
+                    amount_paid: paymentAmount,
+                    currency: 'USD',
+                    transaction_id: 'PAYPAL_PENDING_' + Date.now()
+                };
+            } else {
+                requestData = {
+                    amount: paymentAmount,
+                    payment_method: 'paypal',
+                    donor_name: formValues.name,
+                    donor_email: formValues.email,
+                    transaction_id: 'PAYPAL_DONATION_' + Date.now()
+                };
+            }
+            
+            try {
+                const response = await fetch(apiEndpoint, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(requestData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'تم الحفظ!',
+                        html: `
+                            <p>تم حفظ طلبك برقم: #${data.purchase_id || data.donation_id}</p>
+                            <p>المبلغ: $${paymentAmount}</p>
+                            <hr>
+                            <p>سيتم توجيهك للتواصل معنا عبر WhatsApp</p>
+                        `,
+                        confirmButtonText: 'تواصل عبر WhatsApp'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            const message = currentTab === 'purchase' 
+                                ? `مرحباً، طلب شراء PayPal #${data.purchase_id || ''} - ${selectedPackage} - $${paymentAmount}`
+                                : `مرحباً، تبرع PayPal #${data.donation_id || ''} - $${paymentAmount}`;
+                            window.open('https://wa.me/970598953362?text=' + encodeURIComponent(message), '_blank');
+                        }
+                    });
+                } else {
+                    Swal.fire({icon: 'error', title: 'خطأ', text: data.error});
+                }
+            } catch (error) {
+                Swal.fire({icon: 'error', title: 'خطأ', text: 'فشل الاتصال'});
+            }
         }
         
         // Handle card payment form
-        document.getElementById('cardPaymentForm').addEventListener('submit', function(e) {
+        document.getElementById('cardPaymentForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             // Get form data
-            const customAmount = document.querySelector('#card-form input[type="number"]').value;
-            const paymentAmount = customAmount || selectedAmount || 15;
-            const cardNumber = document.querySelector('#card-form input[placeholder*="1234"]').value;
-            const expiry = document.querySelector('#card-form input[placeholder*="MM/YY"]').value;
-            const cvv = document.querySelector('#card-form input[placeholder*="123"]').value;
+            const cardAmountInput = document.getElementById('cardAmount');
+            const paymentAmount = parseFloat(cardAmountInput.value) || selectedAmount || 0;
             
             if (!paymentAmount || paymentAmount < 1) {
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
-                    text: 'الحد الأدنى للتبرع هو $1',
+                    text: 'الحد الأدنى $1',
                     confirmButtonColor: '#667eea'
                 });
                 return;
             }
             
-            // Show processing message
-            Swal.fire({
-                icon: 'info',
-                title: 'الدفع بالبطاقات',
-                html: `
-                    <p>للدفع بالبطاقات البنكية، يُرجى التواصل معنا:</p>
-                    <hr>
-                    <p><strong>واتساب:</strong> <a href="https://wa.me/970598953362" target="_blank">+970 59 895 3362</a></p>
-                    <p><strong>المبلغ:</strong> $${paymentAmount}</p>
-                    <p>سيتم توجيهك للحصول على تفاصيل الحساب البنكي</p>
-                `,
-                confirmButtonColor: '#667eea',
+            // طلب بيانات العميل
+            const { value: formValues } = await Swal.fire({
+                title: 'بيانات الدفع',
+                html:
+                    '<input id="swal-name" class="swal2-input" placeholder="الاسم الكامل" required>' +
+                    '<input id="swal-email" class="swal2-input" placeholder="البريد الإلكتروني" type="email" required>' +
+                    '<input id="swal-phone" class="swal2-input" placeholder="رقم الجوال" type="tel">' +
+                    (currentTab === 'purchase' ? '<input id="swal-company" class="swal2-input" placeholder="اسم الشركة (اختياري)">' : ''),
+                focusConfirm: false,
                 showCancelButton: true,
                 cancelButtonText: 'إلغاء',
-                confirmButtonText: 'تواصل معنا'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.open('https://wa.me/970598953362?text=مرحباً، أريد الدفع بالبطاقة البنكية للمبلغ $' + paymentAmount, '_blank');
+                confirmButtonText: 'متابعة',
+                preConfirm: () => {
+                    return {
+                        name: document.getElementById('swal-name').value,
+                        email: document.getElementById('swal-email').value,
+                        phone: document.getElementById('swal-phone').value,
+                        company: currentTab === 'purchase' ? document.getElementById('swal-company')?.value : ''
+                    }
                 }
             });
+            
+            if (!formValues || !formValues.name || !formValues.email) {
+                return;
+            }
+            
+            // إنشاء السجل
+            const apiEndpoint = currentTab === 'purchase' ? '/payment-vault/api/purchase' : '/payment-vault/api/donation';
+            let requestData = {};
+            
+            if (currentTab === 'purchase') {
+                const packageCard = document.querySelector('.package-card.active');
+                const packageId = packageCard ? packageCard.getAttribute('data-package-id') : null;
+                
+                if (!packageId) {
+                    Swal.fire({icon: 'error', title: 'خطأ', text: 'الرجاء اختيار باقة'});
+                    return;
+                }
+                
+                requestData = {
+                    package_id: parseInt(packageId),
+                    customer_name: formValues.name,
+                    customer_email: formValues.email,
+                    customer_phone: formValues.phone,
+                    company_name: formValues.company,
+                    payment_method: 'card',
+                    amount_paid: paymentAmount,
+                    currency: 'USD',
+                    transaction_id: 'CARD_PENDING_' + Date.now()
+                };
+            } else {
+                requestData = {
+                    amount: paymentAmount,
+                    payment_method: 'card',
+                    donor_name: formValues.name,
+                    donor_email: formValues.email,
+                    transaction_id: 'CARD_DONATION_' + Date.now()
+                };
+            }
+            
+            // حفظ في DB
+            try {
+                const response = await fetch(apiEndpoint, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(requestData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // التوجيه إلى WhatsApp
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'تم الحفظ!',
+                        html: `
+                            <p>تم حفظ طلبك برقم: #${data.purchase_id || data.donation_id}</p>
+                            <p>المبلغ: $${paymentAmount}</p>
+                            <hr>
+                            <p>سيتم توجيهك للتواصل معنا عبر WhatsApp للحصول على تفاصيل الدفع</p>
+                        `,
+                        confirmButtonText: 'تواصل عبر WhatsApp'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            const message = currentTab === 'purchase' 
+                                ? `مرحباً، طلب شراء #${data.purchase_id || ''} - الباقة: ${selectedPackage} - المبلغ: $${paymentAmount}`
+                                : `مرحباً، تبرع #${data.donation_id || ''} - المبلغ: $${paymentAmount}`;
+                            window.open('https://wa.me/970598953362?text=' + encodeURIComponent(message), '_blank');
+                        }
+                    });
+                } else {
+                    Swal.fire({icon: 'error', title: 'خطأ', text: data.error});
+                }
+            } catch (error) {
+                Swal.fire({icon: 'error', title: 'خطأ', text: 'فشل الاتصال بالخادم'});
+            }
         });
     </script>
     

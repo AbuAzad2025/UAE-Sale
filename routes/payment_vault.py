@@ -692,10 +692,10 @@ def api_create_purchase():
         
         # تسجيل في الخزينة
         create_audit_log(
-            action='purchase_created',
-            description=f'طلب شراء: {package.name_ar} - ${purchase.amount_paid}',
-            user_id=None,
-            ip_address=request.remote_addr
+            action=f'purchase_created: {package.name_ar} - ${purchase.amount_paid}',
+            table_name='package_purchases',
+            record_id=purchase.id,
+            changes={'customer': customer_name, 'package': package.name_ar, 'amount': purchase.amount_paid}
         )
         
         return jsonify({
@@ -763,10 +763,10 @@ def api_create_donation():
         db.session.commit()
         
         create_audit_log(
-            action='donation_created',
-            description=f'تبرع جديد: ${donation.amount_usd}',
-            user_id=None,
-            ip_address=request.remote_addr
+            action=f'donation_created: ${donation.amount_usd}',
+            table_name='donations',
+            record_id=donation.id,
+            changes={'amount': float(donation.amount_usd), 'method': donation.payment_method}
         )
         
         return jsonify({

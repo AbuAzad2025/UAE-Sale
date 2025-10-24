@@ -176,18 +176,20 @@
                                         </button>
                                         {% if donation.status == 'pending' %}
                                         <form method="POST" action="{{ url_for('payment_vault.approve_donation', donation_id=donation.id) }}" style="display: inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('قبول هذا التبرع؟')">
                                                 <i class="fas fa-check"></i>
                                             </button>
                                         </form>
                                         <form method="POST" action="{{ url_for('payment_vault.reject_donation', donation_id=donation.id) }}" style="display: inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('رفض هذا التبرع؟')">
                                                 <i class="fas fa-times"></i>
                                             </button>
                                         </form>
                                         {% endif %}
                                         {% if donation.donor_email %}
-                                        <button class="btn btn-sm btn-primary" onclick="sendThankYou('{{ donation.donor_email }}', '{{ donation.donor_name or \"المتبرع\" }}', {{ donation.amount_usd }})">
+                                        <button class="btn btn-sm btn-primary" onclick="sendThankYou('{{ donation.donor_email }}', '{{ donation.donor_name or "متبرع" }}', {{ donation.amount_usd }})">
                                             <i class="fas fa-envelope"></i>
                                         </button>
                                         {% endif %}

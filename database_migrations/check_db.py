@@ -1,7 +1,23 @@
 """التحقق من بنية قاعدة البيانات"""
 import sqlite3
+import glob
 
-conn = sqlite3.connect('instance/garage.db')
+# الكشف عن قاعدة البيانات تلقائياً
+db_files = glob.glob('instance/*.db')
+db_files = [f for f in db_files if 'backup' not in f]
+
+if 'instance/app.db' in db_files:
+    DB_PATH = 'instance/app.db'
+elif 'instance/garage.db' in db_files:
+    DB_PATH = 'instance/garage.db'
+elif db_files:
+    DB_PATH = db_files[0]
+else:
+    DB_PATH = 'instance/app.db'
+
+print(f'📁 استخدام قاعدة البيانات: {DB_PATH}')
+
+conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
 
 # التحقق من جدول payment_vault

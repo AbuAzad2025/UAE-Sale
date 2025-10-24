@@ -7,7 +7,7 @@ import os
 from datetime import datetime
 
 # مسار قاعدة البيانات
-DB_PATH = 'instance/garage.db'
+DB_PATH = 'instance/app.db'
 
 def migrate_payment_vault():
     """تهجير آمن لجدول payment_vault"""
@@ -97,6 +97,10 @@ def migrate_payment_vault():
                 'stripe_publishable_key': 'VARCHAR(255)',
                 'stripe_secret_key': 'VARCHAR(255)',
                 'stripe_webhook_secret': 'VARCHAR(255)',
+                'mollie_api_key': 'VARCHAR(255)',
+                'square_access_token': 'VARCHAR(255)',
+                'razorpay_key_id': 'VARCHAR(255)',
+                'razorpay_key_secret': 'VARCHAR(255)',
             }
             
             # 4. إضافة الأعمدة المفقودة

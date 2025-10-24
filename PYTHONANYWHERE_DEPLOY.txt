@@ -1,43 +1,60 @@
 ═══════════════════════════════════════════════════════════════
-🚀 أوامر النشر الكاملة على PythonAnywhere
+🚀 أوامر النشر الصحيحة على PythonAnywhere
 ═══════════════════════════════════════════════════════════════
 
-📋 انسخ والصق هذه الأوامر في Bash Console على PythonAnywhere:
+⚠️ المشكلة: instance/app.db تم تعديلها محلياً
+✅ الحل: stash التغييرات المحلية
 
+──────────────────────────────────────────────────────────────
+📋 انسخ والصق هذه الأوامر في Bash Console:
 ──────────────────────────────────────────────────────────────
 
 cd ~/UAE-Sale
-git remote set-url origin git@github.com:AbuAzad2025/UAE-Sale.git
-ssh-keyscan github.com >> ~/.ssh/known_hosts
+cp instance/app.db instance/app.db.backup_manual
+git stash
 GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy -o IdentitiesOnly=yes' git pull origin main
-cp instance/app.db instance/app.db.backup_$(date +%Y%m%d_%H%M%S)
 python database_migrations/migrate_payment_vault.py
 python database_migrations/check_db.py
-flask db upgrade
 touch /var/www/uaesale_azad_pythonanywhere_com_wsgi.py
 
 ──────────────────────────────────────────────────────────────
 
-✅ هذه الأوامر تفعل التالي بالترتيب:
+✅ ما تفعله الأوامر:
 
-1. الانتقال لمجلد المشروع
-2. إعداد SSH للريبو الخاص
-3. إضافة GitHub للـ known hosts
-4. سحب آخر التحديثات (باستخدام SSH key)
-5. نسخة احتياطية من قاعدة البيانات
-6. تهجير جدول payment_vault (إضافة 19 عمود)
-7. فحص قاعدة البيانات (التحقق من 38 عمود)
-8. تطبيق Alembic migrations
-9. إعادة تحميل التطبيق
+1. cd ~/UAE-Sale
+   → الانتقال لمجلد المشروع
+
+2. cp instance/app.db instance/app.db.backup_manual
+   → نسخة احتياطية من قاعدة البيانات
+
+3. git stash
+   → حفظ التغييرات المحلية مؤقتاً
+
+4. git pull
+   → سحب آخر التحديثات (مع SSH للريبو الخاص)
+
+5. python database_migrations/migrate_payment_vault.py
+   → تهجير جدول payment_vault (إضافة 19 عمود)
+
+6. python database_migrations/check_db.py
+   → فحص قاعدة البيانات (التحقق من 38 عمود)
+
+7. touch wsgi.py
+   → إعادة تحميل التطبيق
 
 ═══════════════════════════════════════════════════════════════
 
-⚠️ ملاحظات مهمة:
+✅ النتيجة المتوقعة:
 
-✅ جميع الأوامر آمنة (لا تحذف بيانات)
-✅ نسخة احتياطية تلقائية قبل التهجير
-✅ التهجير يضيف الأعمدة المفقودة فقط
-✅ يحافظ على جميع البيانات الموجودة
+📁 استخدام قاعدة البيانات: instance/app.db
+🔧 بدء عملية التهجير...
+📋 الجدول موجود، سيتم تحديثه...
+  ✅ تم إضافة عمود: paypal_client_id
+  ✅ تم إضافة عمود: bank_name
+  ... (19 عمود)
+✅ تم إضافة 19 عمود جديد
+📊 إجمالي الأعمدة بعد التهجير: 38
+✅ جميع الأعمدة المطلوبة موجودة
+✅ اكتمل التهجير بنجاح!
 
 ═══════════════════════════════════════════════════════════════
-

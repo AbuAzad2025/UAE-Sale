@@ -47,20 +47,26 @@ class AnalyticsService:
             month_label = month_start.strftime('%b %Y')
             
             # حساب المشتريات
-            month_purchases = sum(
-                float(d.amount_usd or 0) 
-                for d in donations 
-                if d.transaction_type == 'purchase' 
-                and d.created_at and month_start.replace(tzinfo=None) <= d.created_at.replace(tzinfo=None) < month_end.replace(tzinfo=None)
-            )
+            month_purchases = 0
+            for d in donations:
+                if d.transaction_type == 'purchase' and d.created_at:
+                    try:
+                        dt = d.created_at.replace(tzinfo=None) if d.created_at.tzinfo else d.created_at
+                        if month_start.replace(tzinfo=None) <= dt < month_end.replace(tzinfo=None):
+                            month_purchases += float(d.amount_usd or 0)
+                    except:
+                        pass
             
             # حساب التبرعات
-            month_donations = sum(
-                float(d.amount_usd or 0) 
-                for d in donations 
-                if d.transaction_type == 'donation' 
-                and d.created_at and month_start.replace(tzinfo=None) <= d.created_at.replace(tzinfo=None) < month_end.replace(tzinfo=None)
-            )
+            month_donations = 0
+            for d in donations:
+                if d.transaction_type == 'donation' and d.created_at:
+                    try:
+                        dt = d.created_at.replace(tzinfo=None) if d.created_at.tzinfo else d.created_at
+                        if month_start.replace(tzinfo=None) <= dt < month_end.replace(tzinfo=None):
+                            month_donations += float(d.amount_usd or 0)
+                    except:
+                        pass
             
             labels.append(month_label)
             purchases_data.append(round(month_purchases, 2))

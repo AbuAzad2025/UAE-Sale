@@ -88,18 +88,36 @@ def create_app(config_class=Config):
     
     @app.after_request
     def security_headers(response):
+        # Basic Security Headers
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'SAMEORIGIN'
         response.headers['X-XSS-Protection'] = '1; mode=block'
         
+        # HSTS في الإنتاج فقط
         if not app.config.get('DEBUG'):
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         
+        # Content Security Policy
+        csp_directives = [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net cdnjs.cloudflare.com",
+            "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com fonts.googleapis.com",
+            "img-src 'self' data: https: upload.wikimedia.org",
+            "font-src 'self' fonts.gstatic.com cdnjs.cloudflare.com",
+            "connect-src 'self'",
+            "frame-ancestors 'self'",
+        ]
+        response.headers['Content-Security-Policy'] = "; ".join(csp_directives)
+        
+        # إخفاء معلومات الخادم
         response.headers.pop('Server', None)
         response.headers.pop('X-Powered-By', None)
         
-        if request.path.startswith('/auth/') or request.path.startswith('/api/'):
+        # Cache Control
+        if request.path.startswith('/auth/') or request.path.startswith('/api/') or request.path.startswith('/payment-vault/'):
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, private'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
         elif request.path.startswith('/static/'):
             response.cache_control.max_age = 31536000
             response.cache_control.public = True

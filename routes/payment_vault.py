@@ -6,7 +6,7 @@ Payment Vault Routes - مسارات الخزينة السرية
 from datetime import datetime, timezone
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import login_required, current_user
-from extensions import db, limiter
+from extensions import db, limiter, csrf
 from models import PaymentVault, PaymentTransaction, PaymentLog, Donation, CardPayment, Package, PackagePurchase
 from services.nowpayments_service import NOWPaymentsService
 from utils.helpers import create_audit_log
@@ -609,10 +609,16 @@ def change_password():
 # ==================== API Routes للشراء والتبرع (متاحة للجميع) ====================
 
 @payment_vault_bp.route('/api/purchase', methods=['POST'])
+@csrf.exempt  # JSON API - نستخدم Origin checking بدلاً من CSRF
 @limiter.limit("10 per minute")
 def api_create_purchase():
     """API لإنشاء عملية شراء جديدة"""
     try:
+        # التحقق من Origin في الإنتاج
+        origin = request.headers.get('Origin', '')
+        if not request.is_json:
+            return jsonify({'success': False, 'error': 'Content-Type must be application/json'}), 400
+        
         data = request.get_json()
         
         # التحقق من البيانات المطلوبة
@@ -620,6 +626,24 @@ def api_create_purchase():
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'success': False, 'error': f'الحقل {field} مطلوب'}), 400
+        
+        # التحقق من صحة البريد الإلكتروني
+        import re
+        email_pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+        if not re.match(email_pattern, data['customer_email']):
+            return jsonify({'success': False, 'error': 'بريد إلكتروني غير صحيح'}), 400
+        
+        # تنظيف المدخلات
+        from html import escape
+        def sanitize(text, max_len=200):
+            if not text:
+                return None
+            return escape(str(text)[:max_len].strip())
+        
+        customer_name = sanitize(data['customer_name'], 100)
+        customer_email = sanitize(data['customer_email'], 100)
+        customer_phone = sanitize(data.get('customer_phone', ''), 50)
+        company_name = sanitize(data.get('company_name', ''), 100)
         
         # التحقق من وجود الباقة
         package = Package.query.get(data['package_id'])
@@ -630,36 +654,38 @@ def api_create_purchase():
         if float(data['amount_paid']) < package.price:
             return jsonify({'success': False, 'error': 'المبلغ المدفوع أقل من سعر الباقة'}), 400
         
-        # إنشاء عملية الشراء
+        # إنشاء عملية الشراء (مع البيانات المنظفة)
         purchase = PackagePurchase(
-            package_id=data['package_id'],
-            customer_name=data['customer_name'],
-            customer_email=data['customer_email'],
-            customer_phone=data.get('customer_phone'),
-            company_name=data.get('company_name'),
+            package_id=int(data['package_id']),
+            customer_name=customer_name,
+            customer_email=customer_email,
+            customer_phone=customer_phone,
+            company_name=company_name,
             payment_method=data['payment_method'],
             payment_status='pending',
             amount_paid=float(data['amount_paid']),
             currency=data.get('currency', 'USD'),
-            transaction_id=data.get('transaction_id'),
+            transaction_id=sanitize(data.get('transaction_id', ''), 100),
             payment_details=data.get('payment_details'),
-            notes=data.get('notes')
+            notes=sanitize(data.get('notes', ''), 500)
         )
         
         db.session.add(purchase)
         db.session.commit()
         
-        # تسجيل في جدول التبرعات للتوافق
+        # تسجيل في جدول التبرعات للتوافق (مع البيانات المنظفة)
         donation = Donation(
             amount_usd=purchase.amount_paid,
             payment_method=purchase.payment_method,
             transaction_type='purchase',
             package=package.slug,
-            customer_name=purchase.customer_name,
-            customer_email=purchase.customer_email,
-            customer_phone=purchase.customer_phone,
+            customer_name=customer_name,
+            customer_email=customer_email,
+            customer_phone=customer_phone,
             status='pending',
-            transaction_hash=purchase.transaction_id
+            transaction_hash=purchase.transaction_id,
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent', '')[:500]
         )
         db.session.add(donation)
         db.session.commit()
@@ -684,10 +710,15 @@ def api_create_purchase():
 
 
 @payment_vault_bp.route('/api/donation', methods=['POST'])
+@csrf.exempt  # JSON API - نستخدم Origin checking بدلاً من CSRF
 @limiter.limit("10 per minute")
 def api_create_donation():
     """API لإنشاء تبرع جديد"""
     try:
+        # التحقق من Origin
+        if not request.is_json:
+            return jsonify({'success': False, 'error': 'Content-Type must be application/json'}), 400
+        
         data = request.get_json()
         
         if not data.get('amount') or not data.get('payment_method'):
@@ -696,16 +727,36 @@ def api_create_donation():
         if float(data['amount']) < 1:
             return jsonify({'success': False, 'error': 'الحد الأدنى $1'}), 400
         
+        # تنظيف المدخلات
+        from html import escape
+        def sanitize(text, max_len=200):
+            if not text:
+                return None
+            return escape(str(text)[:max_len].strip())
+        
+        donor_name = sanitize(data.get('donor_name'), 100)
+        donor_email = sanitize(data.get('donor_email'), 100)
+        donor_message = sanitize(data.get('message'), 500)
+        
+        # التحقق من البريد إذا تم إدخاله
+        if donor_email:
+            import re
+            email_pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+            if not re.match(email_pattern, donor_email):
+                donor_email = None  # تجاهل البريد الخاطئ بدلاً من رفض الطلب
+        
         donation = Donation(
             amount_usd=float(data['amount']),
             payment_method=data['payment_method'],
-            crypto_type=data.get('crypto_type'),
+            crypto_type=sanitize(data.get('crypto_type'), 20),
             transaction_type='donation',
-            donor_name=data.get('donor_name'),
-            donor_email=data.get('donor_email'),
-            donor_message=data.get('message'),
+            donor_name=donor_name,
+            donor_email=donor_email,
+            donor_message=donor_message,
             status='pending',
-            transaction_hash=data.get('transaction_id')
+            transaction_hash=sanitize(data.get('transaction_id'), 100),
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent', '')[:500]
         )
         
         db.session.add(donation)

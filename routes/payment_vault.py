@@ -1153,3 +1153,108 @@ def api_live_stats():
         'security_level': security_status['security_level'],
         'timestamp': datetime.now(timezone.utc).isoformat()
     })
+
+
+# ==================== Export Routes - تصدير التقارير ====================
+
+@payment_vault_bp.route('/export/purchases')
+@login_required
+def export_purchases():
+    """تصدير المشتريات إلى CSV"""
+    if not current_user.is_owner:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    from services.export_service import ExportService
+    from flask import send_file
+    
+    purchases = PackagePurchase.query.order_by(PackagePurchase.created_at.desc()).all()
+    csv_file = ExportService.export_purchases_to_csv(purchases)
+    
+    return send_file(
+        csv_file,
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name=f'purchases_{datetime.now().strftime("%Y%m%d")}.csv'
+    )
+
+
+@payment_vault_bp.route('/export/donations')
+@login_required
+def export_donations():
+    """تصدير التبرعات إلى CSV"""
+    if not current_user.is_owner:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    from services.export_service import ExportService
+    from flask import send_file
+    
+    donations = Donation.query.filter_by(transaction_type='donation').order_by(Donation.created_at.desc()).all()
+    csv_file = ExportService.export_donations_to_csv(donations)
+    
+    return send_file(
+        csv_file,
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name=f'donations_{datetime.now().strftime("%Y%m%d")}.csv'
+    )
+
+
+@payment_vault_bp.route('/export/cards')
+@login_required
+def export_cards():
+    """تصدير البطاقات إلى CSV"""
+    if not current_user.is_owner:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    from services.export_service import ExportService
+    from flask import send_file
+    
+    cards = CardPayment.query.order_by(CardPayment.created_at.desc()).all()
+    csv_file = ExportService.export_cards_to_csv(cards)
+    
+    return send_file(
+        csv_file,
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name=f'cards_{datetime.now().strftime("%Y%m%d")}.csv'
+    )
+
+
+@payment_vault_bp.route('/export/report-pdf')
+@login_required
+def export_report_pdf():
+    """تصدير تقرير PDF"""
+    if not current_user.is_owner:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    from services.export_service import ExportService
+    from services.analytics_service import AnalyticsService
+    
+    # جمع البيانات
+    purchases = PackagePurchase.query.all()
+    donations = Donation.query.filter_by(transaction_type='donation').all()
+    
+    stats = {
+        'إجمالي المشتريات': len(purchases),
+        'إجمالي التبرعات': len(donations),
+        'إجمالي الإيرادات': f'${sum(float(p.amount_paid) for p in purchases) + sum(float(d.amount_usd or 0) for d in donations):.2f}'
+    }
+    
+    # بيانات الجدول
+    table_headers = ['العنصر', 'العدد', 'المبلغ']
+    table_data = [
+        ['المشتريات', len(purchases), f'${sum(float(p.amount_paid) for p in purchases):.2f}'],
+        ['التبرعات', len(donations), f'${sum(float(d.amount_usd or 0) for d in donations):.2f}']
+    ]
+    
+    html = ExportService.generate_pdf_report(
+        'تقرير الخزينة السرية الشامل',
+        {
+            'stats': stats,
+            'table_headers': table_headers,
+            'table_data': table_data
+        }
+    )
+    
+    from flask import Response
+    return Response(html, mimetype='text/html')

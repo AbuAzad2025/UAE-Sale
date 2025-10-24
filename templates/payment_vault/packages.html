@@ -102,88 +102,53 @@
 <div class="content-wrapper">
     <div class="container-fluid">
         
-        <!-- الباقات -->
+        <!-- الباقات من قاعدة البيانات -->
         <div class="package-grid">
-            <!-- الباقة الأساسية -->
-            <div class="package-item">
-                <div class="package-header">
-                    <div class="package-name">📦 الباقة الأساسية</div>
-                    <div class="package-price">$299</div>
+            {% if packages %}
+                {% for package in packages %}
+                <div class="package-item {% if package.is_featured %}featured{% endif %}">
+                    {% if package.is_featured and package.badge_text %}
+                    <div style="position: absolute; top: -15px; right: 50%; transform: translateX(50%); background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 5px 20px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">
+                        ⭐ {{ package.badge_text }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="package-header">
+                        <div class="package-name">{{ package.icon }} {{ package.name_ar }}</div>
+                        <div class="package-price">${{ "{:,.0f}".format(package.price) }}</div>
+                        <small class="text-muted">{{ package.currency }}</small>
+                    </div>
+                    
+                    <ul class="package-features">
+                        {% for feature in package.features %}
+                        <li><i class="fas fa-check"></i> {{ feature }}</li>
+                        {% endfor %}
+                    </ul>
+                    
+                    <div style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 5px; font-size: 0.85rem;">
+                        <div><i class="fas fa-users"></i> المستخدمين: {{ package.max_users or '∞' }}</div>
+                        <div><i class="fas fa-building"></i> الفروع: {{ package.max_branches or '∞' }}</div>
+                        <div><i class="fas fa-headset"></i> الدعم: {{ package.support_duration_months }} شهر</div>
+                    </div>
+                    
+                    <div class="package-actions">
+                        <button class="btn btn-sm btn-primary" onclick="editPackage({{ package.id }})">
+                            <i class="fas fa-edit"></i> تعديل
+                        </button>
+                        <button class="btn btn-sm btn-info" onclick="viewPackageStats({{ package.id }}, '{{ package.name_ar }}')">
+                            <i class="fas fa-chart-bar"></i> إحصائيات
+                        </button>
+                        <button class="btn btn-sm {% if package.is_active %}btn-success{% else %}btn-secondary{% endif %}" onclick="togglePackageStatus({{ package.id }})">
+                            <i class="fas fa-power-off"></i> {{ 'نشط' if package.is_active else 'معطل' }}
+                        </button>
+                    </div>
                 </div>
-                
-                <ul class="package-features">
-                    <li><i class="fas fa-check"></i> نظام إدارة مستودعات كامل</li>
-                    <li><i class="fas fa-check"></i> إدارة المبيعات والمشتريات</li>
-                    <li><i class="fas fa-check"></i> إدارة العملاء والموردين</li>
-                    <li><i class="fas fa-check"></i> فواتير احترافية</li>
-                    <li><i class="fas fa-check"></i> تقارير أساسية</li>
-                    <li><i class="fas fa-check"></i> دعم فني 3 أشهر</li>
-                </ul>
-                
-                <div class="package-actions">
-                    <button class="btn btn-sm btn-primary" onclick="editPackage('basic')">
-                        <i class="fas fa-edit"></i> تعديل
-                    </button>
-                    <button class="btn btn-sm btn-info" onclick="viewStats('basic')">
-                        <i class="fas fa-chart-bar"></i> إحصائيات
-                    </button>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> لا توجد باقات. يرجى إضافة باقات من قاعدة البيانات.
                 </div>
-            </div>
-            
-            <!-- الباقة الاحترافية -->
-            <div class="package-item featured">
-                <div style="position: absolute; top: -15px; right: 50%; transform: translateX(50%); background: #667eea; color: white; padding: 5px 20px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">
-                    ⭐ الأكثر شعبية
-                </div>
-                <div class="package-header">
-                    <div class="package-name">💼 الباقة الاحترافية</div>
-                    <div class="package-price">$599</div>
-                </div>
-                
-                <ul class="package-features">
-                    <li><i class="fas fa-check"></i> كل ميزات الباقة الأساسية</li>
-                    <li><i class="fas fa-check"></i> ذكاء اصطناعي متقدم</li>
-                    <li><i class="fas fa-check"></i> تقارير وتحليلات متقدمة</li>
-                    <li><i class="fas fa-check"></i> تكامل مع WhatsApp</li>
-                    <li><i class="fas fa-check"></i> نظام نقاط البيع</li>
-                    <li><i class="fas fa-check"></i> دعم فني 6 أشهر</li>
-                </ul>
-                
-                <div class="package-actions">
-                    <button class="btn btn-sm btn-primary" onclick="editPackage('professional')">
-                        <i class="fas fa-edit"></i> تعديل
-                    </button>
-                    <button class="btn btn-sm btn-info" onclick="viewStats('professional')">
-                        <i class="fas fa-chart-bar"></i> إحصائيات
-                    </button>
-                </div>
-            </div>
-            
-            <!-- باقة الشركات -->
-            <div class="package-item">
-                <div class="package-header">
-                    <div class="package-name">🏢 باقة الشركات</div>
-                    <div class="package-price">$999</div>
-                </div>
-                
-                <ul class="package-features">
-                    <li><i class="fas fa-check"></i> كل ميزات الباقة الاحترافية</li>
-                    <li><i class="fas fa-check"></i> فروع غير محدودة</li>
-                    <li><i class="fas fa-check"></i> تخصيص كامل للنظام</li>
-                    <li><i class="fas fa-check"></i> تدريب شامل لفريقك</li>
-                    <li><i class="fas fa-check"></i> أولوية في الدعم</li>
-                    <li><i class="fas fa-check"></i> دعم فني مدى الحياة</li>
-                </ul>
-                
-                <div class="package-actions">
-                    <button class="btn btn-sm btn-primary" onclick="editPackage('enterprise')">
-                        <i class="fas fa-edit"></i> تعديل
-                    </button>
-                    <button class="btn btn-sm btn-info" onclick="viewStats('enterprise')">
-                        <i class="fas fa-chart-bar"></i> إحصائيات
-                    </button>
-                </div>
-            </div>
+            {% endif %}
         </div>
         
         <!-- إحصائيات الباقات -->
@@ -298,33 +263,54 @@
     });
 
 function editPackage(packageId) {
-    Swal.fire({
-        title: 'تعديل الباقة',
-        html: '<p>سيتم فتح نموذج تعديل الباقة</p>',
-        icon: 'info'
-    });
+    window.location.href = `/payment-vault/package/${packageId}/edit`;
 }
 
-function viewStats(packageId) {
-    Swal.fire({
-        title: 'إحصائيات الباقة',
-        html: `<p>إحصائيات تفصيلية لباقة ${packageId}</p>`,
-        icon: 'info'
-    });
+function viewPackageStats(packageId, packageName) {
+    fetch(`/payment-vault/api/package-stats/${packageId}`)
+        .then(r => r.json())
+        .then(data => {
+            Swal.fire({
+                title: `إحصائيات ${packageName}`,
+                html: `
+                    <div style="text-align: right;">
+                        <p><strong>إجمالي المبيعات:</strong> ${data.total_sales || 0}</p>
+                        <p><strong>الإيرادات:</strong> $${data.total_revenue || 0}</p>
+                        <p><strong>معلق:</strong> ${data.pending || 0}</p>
+                        <p><strong>مكتمل:</strong> ${data.completed || 0}</p>
+                    </div>
+                `,
+                icon: 'info',
+                confirmButtonText: 'حسناً'
+            });
+        })
+        .catch(() => {
+            Swal.fire({
+                icon: 'error',
+                title: 'خطأ',
+                text: 'فشل في جلب الإحصائيات'
+            });
+        });
 }
 
-function savePackage() {
-    const form = document.getElementById('addPackageForm');
-    const formData = new FormData(form);
-    
+function togglePackageStatus(packageId) {
     Swal.fire({
-        icon: 'success',
-        title: 'تم!',
-        text: 'تم حفظ الباقة بنجاح',
-        confirmButtonText: 'حسناً'
-    }).then(() => {
-        $('#addPackageModal').modal('hide');
-        location.reload();
+        title: 'تغيير حالة الباقة',
+        text: 'هل تريد تغيير حالة هذه الباقة (نشط/معطل)؟',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'نعم',
+        cancelButtonText: 'إلغاء'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/payment-vault/package/${packageId}/toggle`, {method: 'POST'})
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('تم!', 'تم تحديث الحالة', 'success').then(() => location.reload());
+                    }
+                });
+        }
     });
 }
 </script>

@@ -953,3 +953,43 @@ def activate_purchase(id):
         flash(f'❌ خطأ: {str(e)}', 'danger')
     
     return redirect(url_for('payment_vault.purchase_detail', id=id))
+
+
+@payment_vault_bp.route('/api/package-stats/<int:package_id>')
+@login_required
+def api_package_stats(package_id):
+    """API لإحصائيات باقة محددة"""
+    if not current_user.is_owner:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    package = Package.query.get_or_404(package_id)
+    purchases = PackagePurchase.query.filter_by(package_id=package_id).all()
+    
+    stats = {
+        'total_sales': len(purchases),
+        'total_revenue': sum([p.amount_paid for p in purchases if p.payment_status == 'completed']),
+        'pending': len([p for p in purchases if p.payment_status == 'pending']),
+        'completed': len([p for p in purchases if p.payment_status == 'completed']),
+        'failed': len([p for p in purchases if p.payment_status == 'failed'])
+    }
+    
+    return jsonify(stats)
+
+
+@payment_vault_bp.route('/package/<int:package_id>/toggle', methods=['POST'])
+@login_required
+def toggle_package_status(package_id):
+    """تبديل حالة الباقة (نشط/معطل)"""
+    if not current_user.is_owner:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    package = Package.query.get_or_404(package_id)
+    package.is_active = not package.is_active
+    
+    try:
+        db.session.commit()
+        status_text = 'تم تنشيط' if package.is_active else 'تم تعطيل'
+        return jsonify({'success': True, 'message': f'{status_text} الباقة {package.name_ar}'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500

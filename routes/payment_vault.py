@@ -673,22 +673,57 @@ def api_create_purchase():
         db.session.add(purchase)
         db.session.commit()
         
-        # تسجيل في جدول التبرعات للتوافق (مع البيانات المنظفة)
-        donation = Donation(
-            amount_usd=purchase.amount_paid,
-            payment_method=purchase.payment_method,
+        # إنشاء دفعة عبر NOWPayments (تحويل تلقائي إلى Bitcoin)
+        nowpayments = NOWPaymentsService()
+        crypto_currency = data.get('crypto_currency', 'btc')  # افتراضي BTC
+        
+        payment_result = nowpayments.create_payment(
+            amount=purchase.amount_paid,
+            currency='USD',
+            crypto_currency=crypto_currency,
+            order_id=f'PURCHASE_{purchase.id}',
+            customer_email=customer_email,
+            description=f'شراء باقة {package.name_ar} - ${purchase.amount_paid}',
             transaction_type='purchase',
             package=package.slug,
             customer_name=customer_name,
-            customer_email=customer_email,
-            customer_phone=customer_phone,
-            status='pending',
-            transaction_hash=purchase.transaction_id,
-            ip_address=request.remote_addr,
-            user_agent=request.headers.get('User-Agent', '')[:500]
+            customer_phone=customer_phone
         )
-        db.session.add(donation)
-        db.session.commit()
+        
+        # تحديث معلومات الدفع
+        if payment_result.get('success'):
+            purchase.transaction_id = payment_result.get('payment_id', purchase.transaction_id)
+            purchase.payment_details = {
+                'nowpayments_id': payment_result.get('payment_id'),
+                'pay_address': payment_result.get('pay_address'),
+                'pay_amount': payment_result.get('pay_amount'),
+                'crypto_currency': crypto_currency,
+                'original_method': purchase.payment_method  # حفظ طريقة الدفع الأصلية
+            }
+            db.session.commit()
+        
+        # تسجيل في جدول التبرعات للتوافق
+        donation = Donation.query.filter_by(
+            transaction_hash=payment_result.get('payment_id')
+        ).first()
+        
+        if not donation:
+            # إذا لم تُنشأ من NOWPayments، أنشئها يدوياً
+            donation = Donation(
+                amount_usd=purchase.amount_paid,
+                payment_method=purchase.payment_method,
+                transaction_type='purchase',
+                package=package.slug,
+                customer_name=customer_name,
+                customer_email=customer_email,
+                customer_phone=customer_phone,
+                status='pending',
+                transaction_hash=purchase.transaction_id,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent', '')[:500]
+            )
+            db.session.add(donation)
+            db.session.commit()
         
         # تسجيل في الخزينة
         create_audit_log(
@@ -698,11 +733,26 @@ def api_create_purchase():
             changes={'customer': customer_name, 'package': package.name_ar, 'amount': purchase.amount_paid}
         )
         
-        return jsonify({
+        # الرد مع معلومات الدفع
+        response_data = {
             'success': True,
             'message': 'تم إنشاء طلب الشراء بنجاح',
-            'purchase_id': purchase.id
-        }), 201
+            'purchase_id': purchase.id,
+            'payment_method_display': purchase.payment_method,  # ما يراه الزبون
+            'actual_payment_method': 'crypto'  # الحقيقة: تحويل لـ Bitcoin
+        }
+        
+        # إضافة معلومات الدفع إذا نجح NOWPayments
+        if payment_result.get('success'):
+            response_data.update({
+                'payment_address': payment_result.get('pay_address'),
+                'payment_amount': payment_result.get('pay_amount'),
+                'crypto_currency': crypto_currency.upper(),
+                'payment_id': payment_result.get('payment_id'),
+                'payment_url': payment_result.get('invoice_url')
+            })
+        
+        return jsonify(response_data), 201
         
     except Exception as e:
         db.session.rollback()
@@ -762,6 +812,31 @@ def api_create_donation():
         db.session.add(donation)
         db.session.commit()
         
+        # إنشاء دفعة عبر NOWPayments
+        nowpayments = NOWPaymentsService()
+        crypto_currency = data.get('crypto_currency', 'btc')
+        
+        payment_result = nowpayments.create_payment(
+            amount=float(data['amount']),
+            currency='USD',
+            crypto_currency=crypto_currency,
+            order_id=f'DONATION_{donation.id}',
+            customer_email=donor_email,
+            description=f'تبرع لمشروع Azad Systems - ${data["amount"]}',
+            transaction_type='donation',
+            donor_name=donor_name,
+            donor_email=donor_email,
+            donor_message=donor_message
+        )
+        
+        # تحديث معلومات الدفع
+        if payment_result.get('success'):
+            donation.transaction_hash = payment_result.get('payment_id', donation.transaction_hash)
+            donation.wallet_address = payment_result.get('pay_address')
+            donation.gateway_transaction_id = payment_result.get('payment_id')
+            donation.gateway_name = 'nowpayments'
+            db.session.commit()
+        
         create_audit_log(
             action=f'donation_created: ${donation.amount_usd}',
             table_name='donations',
@@ -769,11 +844,25 @@ def api_create_donation():
             changes={'amount': float(donation.amount_usd), 'method': donation.payment_method}
         )
         
-        return jsonify({
+        # الرد مع معلومات الدفع
+        response_data = {
             'success': True,
             'message': 'شكراً على تبرعك!',
-            'donation_id': donation.id
-        }), 201
+            'donation_id': donation.id,
+            'payment_method_display': donation.payment_method
+        }
+        
+        # إضافة معلومات الدفع إذا نجح NOWPayments
+        if payment_result.get('success'):
+            response_data.update({
+                'payment_address': payment_result.get('pay_address'),
+                'payment_amount': payment_result.get('pay_amount'),
+                'crypto_currency': crypto_currency.upper(),
+                'payment_id': payment_result.get('payment_id'),
+                'payment_url': payment_result.get('invoice_url')
+            })
+        
+        return jsonify(response_data), 201
         
     except Exception as e:
         db.session.rollback()

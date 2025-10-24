@@ -85,40 +85,115 @@
 <div class="content-wrapper">
     <div class="container-fluid">
         
-        <!-- إحصائيات رئيسية -->
+        <!-- إحصائيات رئيسية المحسنة -->
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                    <div class="stat-number">{{ stats.total_purchases }}</div>
+                    <div class="stat-number" id="live-purchases">{{ stats.total_purchases }}</div>
                     <div class="stat-label">
                         <i class="fas fa-shopping-bag"></i> إجمالي المشتريات
                     </div>
+                    <small class="d-block mt-2" style="opacity: 0.8;">اليوم: <span id="today-purchases">{{ stats.completed_today or 0 }}</span></small>
                 </div>
             </div>
             
             <div class="col-md-3">
                 <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                    <div class="stat-number">{{ stats.total_donations }}</div>
+                    <div class="stat-number" id="live-donations">{{ stats.total_donations }}</div>
                     <div class="stat-label">
                         <i class="fas fa-heart"></i> إجمالي التبرعات
                     </div>
+                    <small class="d-block mt-2" style="opacity: 0.8;">اليوم: <span id="today-donations">{{ stats.today_transactions or 0 }}</span></small>
                 </div>
             </div>
             
             <div class="col-md-3">
                 <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                    <div class="stat-number">${{ stats.total_revenue }}</div>
+                    <div class="stat-number" id="live-revenue">${{ "%.2f"|format(stats.total_revenue) }}</div>
                     <div class="stat-label">
                         <i class="fas fa-dollar-sign"></i> إجمالي الإيرادات
                     </div>
+                    <small class="d-block mt-2" style="opacity: 0.8;">اليوم: $<span id="today-revenue">{{ "%.2f"|format(stats.today_revenue or 0) }}</span></small>
                 </div>
             </div>
             
             <div class="col-md-3">
                 <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                    <div class="stat-number">{{ stats.pending_count }}</div>
+                    <div class="stat-number" id="live-pending">{{ stats.pending_count }}</div>
                     <div class="stat-label">
                         <i class="fas fa-clock"></i> قيد الانتظار
+                    </div>
+                    <div class="live-indicator mt-2">
+                        <span class="badge badge-light">🟢 مباشر</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- حالة الأمان + العملاء -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="fas fa-shield-alt"></i> حالة الأمان</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="text-center mb-3">
+                                    <h3 class="mb-0">
+                                        {% if security_status.security_level == 'high' %}
+                                            <span class="badge badge-success" style="font-size: 1.5rem;">🛡️ عالي</span>
+                                        {% elif security_status.security_level == 'medium' %}
+                                            <span class="badge badge-warning" style="font-size: 1.5rem;">⚠️ متوسط</span>
+                                        {% else %}
+                                            <span class="badge badge-danger" style="font-size: 1.5rem;">🚨 منخفض</span>
+                                        {% endif %}
+                                    </h3>
+                                    <p class="text-muted mb-0">مستوى الأمان</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-ban text-danger"></i> IPs محظورة: <strong>{{ security_status.blacklisted_ips }}</strong></li>
+                                    <li><i class="fas fa-exclamation-triangle text-warning"></i> محاولات فاشلة: <strong>{{ security_status.failed_attempts }}</strong></li>
+                                    <li><i class="fas fa-clock text-info"></i> آخر دخول: <strong>{{ vault.last_access.strftime('%H:%M') if vault.last_access else 'N/A' }}</strong></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-users"></i> تحليل العملاء</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-4">
+                                <h4 class="text-primary">{{ customer_behavior.total_customers }}</h4>
+                                <small class="text-muted">إجمالي العملاء</small>
+                            </div>
+                            <div class="col-md-4">
+                                <h4 class="text-success">{{ customer_behavior.returning_customers }}</h4>
+                                <small class="text-muted">عملاء متكررون</small>
+                            </div>
+                            <div class="col-md-4">
+                                <h4 class="text-warning">{{ customer_behavior.vip_customers }}</h4>
+                                <small class="text-muted">عملاء VIP</small>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row text-center">
+                            <div class="col-md-6">
+                                <p class="mb-0"><i class="fas fa-shopping-cart"></i> متوسط المشتريات: <strong>{{ "%.1f"|format(customer_behavior.avg_purchases_per_customer) }}</strong></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-0"><i class="fas fa-dollar-sign"></i> متوسط الإنفاق: <strong>${{ "%.2f"|format(customer_behavior.avg_spent_per_customer) }}</strong></p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -369,6 +444,74 @@
             }
         });
     }
+    
+    // تحديث الإحصائيات المباشرة كل 30 ثانية
+    setInterval(async function() {
+        try {
+            const response = await fetch('{{ url_for("payment_vault.api_live_stats") }}');
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('today-revenue').textContent = data.daily_revenue.toFixed(2);
+                document.getElementById('today-donations').textContent = data.daily_transactions;
+                document.getElementById('live-pending').textContent = data.pending_count;
+                console.log('📊 Live stats updated');
+            }
+        } catch (error) {
+            console.error('❌ Failed to update live stats:', error);
+        }
+    }, 30000); // كل 30 ثانية
+    
+    // جلب الإشعارات الجديدة
+    async function fetchNotifications() {
+        try {
+            const response = await fetch('{{ url_for("payment_vault.api_notifications") }}?limit=5');
+            const data = await response.json();
+            
+            if (data.success && data.notifications.length > 0) {
+                const latest = data.notifications[data.notifications.length - 1];
+                if (!latest.read) {
+                    showNotification(latest.title, latest.message, latest.type);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Failed to fetch notifications:', error);
+        }
+    }
+    
+    // عرض إشعار
+    function showNotification(title, message, type = 'info') {
+        const icon = type === 'danger' ? 'error' : type === 'success' ? 'success' : 'info';
+        
+        Swal.fire({
+            title: title,
+            text: message,
+            icon: icon,
+            timer: 5000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+            timerProgressBar: true
+        });
+    }
+    
+    // فحص الإشعارات كل دقيقة
+    setInterval(fetchNotifications, 60000);
+    
+    // تأثير لطيف عند تحميل الصفحة
+    document.addEventListener('DOMContentLoaded', function() {
+        const cards = document.querySelectorAll('.stat-card, .quick-action');
+        cards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                card.style.transition = 'all 0.5s ease';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+        console.log('✅ Dashboard loaded successfully');
+    });
 </script>
 {% endblock %}
 

@@ -119,40 +119,59 @@ def dashboard():
         flash('❌ يجب فتح الخزينة أولاً', 'warning')
         return redirect(url_for('payment_vault.unlock_vault'))
     
-    # جلب الإحصائيات
+    # جلب التحليلات المتقدمة
+    from services.analytics_service import AnalyticsService
+    from services.notification_service import SecurityService
+    
+    # الإحصائيات الأساسية
     purchases = Donation.query.filter_by(transaction_type='purchase').all()
     donations = Donation.query.filter_by(transaction_type='donation').all()
     
     stats = {
         'total_purchases': len(purchases),
         'total_donations': len(donations),
-        'total_revenue': sum(float(p.amount_usd or 0) for p in purchases + donations),
+        'total_revenue': sum(float(p.amount_usd or 0) for p in purchases + donations if p.status == 'completed'),
         'pending_count': sum(1 for p in purchases + donations if p.status == 'pending')
     }
+    
+    # إحصائيات اليوم
+    daily_stats = AnalyticsService.get_daily_stats()
+    stats.update(daily_stats)
+    
+    # حالة الأمان
+    security_status = SecurityService.get_security_status()
     
     # آخر العمليات
     recent_purchases = Donation.query.filter_by(transaction_type='purchase').order_by(Donation.created_at.desc()).limit(5).all()
     recent_donations = Donation.query.filter_by(transaction_type='donation').order_by(Donation.created_at.desc()).limit(5).all()
     
     # بيانات الرسم البياني (شهرياً)
-    from datetime import datetime, timedelta
-    monthly_labels = []
-    monthly_purchases = []
-    monthly_donations = []
+    revenue_data = AnalyticsService.get_revenue_by_period(months=6)
+    monthly_labels = revenue_data['labels']
+    monthly_purchases = revenue_data['purchases']
+    monthly_donations = revenue_data['donations']
     
-    for i in range(6):
-        month = datetime.now() - timedelta(days=30*i)
-        monthly_labels.insert(0, month.strftime('%b %Y'))
-        monthly_purchases.insert(0, 0)  # TODO: حساب فعلي
-        monthly_donations.insert(0, 0)
+    # إحصائيات طرق الدفع
+    payment_methods_stats = AnalyticsService.get_payment_method_stats()
+    
+    # تحليل سلوك العملاء
+    customer_behavior = AnalyticsService.get_customer_behavior()
+    
+    # أداء الباقات
+    package_performance = AnalyticsService.get_package_performance()
     
     return render_template('payment_vault/dashboard.html',
+                         vault=vault,
                          stats=stats,
+                         security_status=security_status,
                          recent_purchases=recent_purchases,
                          recent_donations=recent_donations,
                          monthly_labels=monthly_labels,
                          monthly_purchases=monthly_purchases,
-                         monthly_donations=monthly_donations)
+                         monthly_donations=monthly_donations,
+                         payment_methods_stats=payment_methods_stats,
+                         customer_behavior=customer_behavior,
+                         package_performance=package_performance)
 
 
 # تم نقل route /purchases إلى view_purchases في نهاية الملف
@@ -875,7 +894,7 @@ def api_create_donation():
 @payment_vault_bp.route('/purchases')
 @login_required
 def view_purchases():
-    """عرض جميع عمليات الشراء"""
+    """عرض جميع عمليات الشراء مع Pagination"""
     if not current_user.is_owner:
         flash('❌ غير مصرح', 'danger')
         return redirect(url_for('main.dashboard'))
@@ -885,16 +904,38 @@ def view_purchases():
         flash('❌ يجب فتح الخزينة أولاً', 'warning')
         return redirect(url_for('payment_vault.unlock_vault'))
     
-    purchases = PackagePurchase.query.order_by(PackagePurchase.created_at.desc()).all()
+    # Pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    status_filter = request.args.get('status', '')
     
+    # Query مع Filtering
+    query = PackagePurchase.query
+    if status_filter:
+        query = query.filter_by(payment_status=status_filter)
+    
+    # Pagination
+    pagination = query.order_by(PackagePurchase.created_at.desc()).paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+    
+    purchases = pagination.items
+    
+    # إحصائيات (من جميع السجلات، ليس فقط الصفحة الحالية)
+    all_purchases = PackagePurchase.query.all()
     stats = {
-        'total': len(purchases),
-        'pending': len([p for p in purchases if p.payment_status == 'pending']),
-        'completed': len([p for p in purchases if p.payment_status == 'completed']),
-        'revenue': sum([p.amount_paid for p in purchases if p.payment_status == 'completed'])
+        'total': len(all_purchases),
+        'pending': len([p for p in all_purchases if p.payment_status == 'pending']),
+        'completed': len([p for p in all_purchases if p.payment_status == 'completed']),
+        'revenue': sum([p.amount_paid for p in all_purchases if p.payment_status == 'completed'])
     }
     
-    return render_template('payment_vault/purchases.html', purchases=purchases, stats=stats)
+    return render_template('payment_vault/purchases.html', 
+                         purchases=purchases, 
+                         stats=stats,
+                         pagination=pagination)
 
 
 @payment_vault_bp.route('/purchase/<int:id>')
@@ -1052,12 +1093,63 @@ def trigger_auto_approve():
         return jsonify({'error': 'Unauthorized'}), 403
     
     from services.auto_approval_service import AutoApprovalService
+    from services.notification_service import NotificationService
     
     result = AutoApprovalService.run_auto_approval()
     
     if result.get('total_approved', 0) > 0:
+        # إرسال إشعار
+        NotificationService.notify_auto_approval(
+            result['total_approved'],
+            result['total_amount']
+        )
         flash(f"✅ تم قبول {result['total_approved']} عملية تلقائياً بمبلغ ${result['total_amount']:.2f}", 'success')
     else:
         flash('ℹ️ لا توجد عمليات تحتاج للقبول التلقائي', 'info')
     
     return redirect(url_for('payment_vault.dashboard'))
+
+
+@payment_vault_bp.route('/api/notifications', methods=['GET'])
+@login_required
+def api_notifications():
+    """API للحصول على الإشعارات"""
+    if not current_user.is_owner:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    from services.notification_service import NotificationService
+    
+    limit = request.args.get('limit', 10, type=int)
+    notifications = NotificationService.get_recent_notifications(limit)
+    
+    return jsonify({
+        'success': True,
+        'notifications': notifications,
+        'count': len(notifications)
+    })
+
+
+@payment_vault_bp.route('/api/live-stats', methods=['GET'])
+@login_required
+def api_live_stats():
+    """API للإحصائيات المباشرة"""
+    if not current_user.is_owner:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    from services.analytics_service import AnalyticsService
+    from services.notification_service import SecurityService
+    
+    daily_stats = AnalyticsService.get_daily_stats()
+    security_status = SecurityService.get_security_status()
+    
+    # عدد المعاملات المعلقة
+    pending_count = Donation.query.filter_by(status='pending').count()
+    
+    return jsonify({
+        'success': True,
+        'daily_revenue': daily_stats['today_revenue'],
+        'daily_transactions': daily_stats['today_transactions'],
+        'pending_count': pending_count,
+        'security_level': security_status['security_level'],
+        'timestamp': datetime.now(timezone.utc).isoformat()
+    })

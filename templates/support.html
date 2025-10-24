@@ -1206,11 +1206,8 @@
             });
             
             // تحديد نوع المعاملة والبيانات
-            const transactionData = {
-                amount: paymentAmount,
-                crypto_currency: cryptoType,
-                type: currentTab,  // 'purchase' or 'donation'
-            };
+            let apiEndpoint = '';
+            let requestData = {};
             
             // إضافة بيانات المشترية إذا كان شراء
             if (currentTab === 'purchase') {
@@ -1224,13 +1221,26 @@
                     return;
                 }
                 
-                transactionData.package = selectedPackage;
-                transactionData.customer_name = prompt('الرجاء إدخال اسمك الكامل:');
-                transactionData.customer_email = prompt('البريد الإلكتروني:');
-                transactionData.customer_phone = prompt('رقم الجوال (WhatsApp):');
-                transactionData.description = `شراء باقة ${selectedPackage} - $${amount}`;
+                // جلب package_id من البطاقة المحددة
+                const packageCard = document.querySelector('.package-card.active');
+                const packageId = packageCard ? packageCard.getAttribute('data-package-id') : null;
                 
-                if (!transactionData.customer_name || !transactionData.customer_email) {
+                if (!packageId) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'خطأ',
+                        text: 'لم يتم التعرف على الباقة المحددة',
+                        confirmButtonColor: '#667eea'
+                    });
+                    return;
+                }
+                
+                const customerName = prompt('الرجاء إدخال اسمك الكامل:');
+                const customerEmail = prompt('البريد الإلكتروني:');
+                const customerPhone = prompt('رقم الجوال (WhatsApp):');
+                const companyName = prompt('اسم الشركة (اختياري):');
+                
+                if (!customerName || !customerEmail) {
                     Swal.fire({
                         icon: 'error',
                         title: 'خطأ',
@@ -1239,67 +1249,85 @@
                     });
                     return;
                 }
+                
+                apiEndpoint = '/payment-vault/api/purchase';
+                requestData = {
+                    package_id: parseInt(packageId),
+                    customer_name: customerName,
+                    customer_email: customerEmail,
+                    customer_phone: customerPhone || '',
+                    company_name: companyName || '',
+                    payment_method: 'crypto',
+                    amount_paid: paymentAmount,
+                    currency: 'USD',
+                    transaction_id: 'CRYPTO_' + Date.now(),
+                    payment_details: {
+                        crypto_type: cryptoType,
+                        amount: paymentAmount
+                    }
+                };
             } else {
                 // بيانات التبرع (اختيارية)
-                transactionData.donor_name = prompt('اسمك (اختياري):') || null;
-                transactionData.donor_email = prompt('بريدك الإلكتروني (اختياري):') || null;
-                transactionData.donor_message = prompt('رسالة قصيرة (اختياري):') || null;
-                transactionData.description = `تبرع لمشروع Azad Systems - $${amount}`;
+                const donorName = prompt('اسمك (اختياري):');
+                const donorEmail = prompt('بريدك الإلكتروني (اختياري):');
+                const donorMessage = prompt('رسالة قصيرة (اختياري):');
+                
+                apiEndpoint = '/payment-vault/api/donation';
+                requestData = {
+                    amount: paymentAmount,
+                    payment_method: 'crypto',
+                    crypto_type: cryptoType,
+                    donor_name: donorName || null,
+                    donor_email: donorEmail || null,
+                    message: donorMessage || null,
+                    transaction_id: 'DONATION_' + Date.now()
+                };
             }
             
-            // إضافة payment_method
-            transactionData.payment_method = 'crypto';
-            
             // Create payment via API
-            fetch('/payment-vault/process-payment', {
+            fetch(apiEndpoint, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token() }}'
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(transactionData)
+                body: JSON.stringify(requestData)
             })
             .then(response => response.json())
             .then(data => {
                 Swal.close();
                 
                 if (data.success) {
-                    // Update wallet address
-                    document.getElementById('walletAddress').textContent = data.payment_address;
-                    
-                    // Generate QR Code
-                    const qrCanvas = document.getElementById('qrCanvas');
-                    qrCanvas.innerHTML = '';
-                    new QRCode(qrCanvas, {
-                        text: data.payment_address,
-                        width: 200,
-                        height: 200,
-                        colorDark: '#667eea',
-                        colorLight: '#ffffff'
-                    });
-                    
-                    // Show payment info
-                    document.getElementById('cryptoPaymentInfo').style.display = 'block';
-                    
-                    // Scroll to payment info
-                    document.getElementById('cryptoPaymentInfo').scrollIntoView({ behavior: 'smooth' });
+                    const recordId = data.purchase_id || data.donation_id;
+                    const recordType = data.purchase_id ? 'شراء' : 'تبرع';
                     
                     Swal.fire({
                         icon: 'success',
-                        title: 'تم إنشاء عنوان الدفع!',
-                        text: `أرسل $${amount} إلى العنوان المعروض`,
-                        confirmButtonColor: '#28a745'
+                        title: 'تم إنشاء الطلب بنجاح!',
+                        html: `
+                            <div style="text-align: center;">
+                                <p style="font-size: 1.2rem; margin: 20px 0;">${data.message}</p>
+                                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                                    <p><strong>رقم الطلب:</strong> #${recordId}</p>
+                                    <p><strong>المبلغ:</strong> $${paymentAmount}</p>
+                                    <p><strong>العملة:</strong> ${cryptoType.toUpperCase()}</p>
+                                </div>
+                                <p style="color: #667eea; font-size: 0.95rem;">
+                                    <i class="fas fa-info-circle"></i> 
+                                    سنتواصل معك قريباً لتأكيد الدفع وإرسال تفاصيل المحفظة
+                                </p>
+                            </div>
+                        `,
+                        confirmButtonText: 'حسناً',
+                        confirmButtonColor: '#28a745',
+                        allowOutsideClick: false
+                    }).then(() => {
+                        location.reload();
                     });
-                    
-                    // Redirect to thank you page after 5 seconds
-                    setTimeout(() => {
-                        window.location.href = `/auth/thank-you?payment_id=${data.payment_id}&status=pending`;
-                    }, 5000);
                 } else {
                     Swal.fire({
                         icon: 'error',
-                        title: 'خطأ في إنشاء الدفعة',
-                        text: data.error || 'حدث خطأ غير متوقع',
+                        title: 'خطأ',
+                        text: data.error || 'حدث خطأ أثناء إنشاء الطلب',
                         confirmButtonColor: '#dc3545'
                     });
                 }

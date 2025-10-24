@@ -951,8 +951,8 @@
             if (selectedForm) {
                 selectedForm.classList.add('active');
                 
-                // Pre-fill amount if package was selected
-                if (selectedAmount > 0) {
+                // Pre-fill amount ONLY if in purchase tab and package was selected
+                if (currentTab === 'purchase' && selectedAmount > 0) {
                     if (method === 'card') {
                         const cardAmountInput = document.getElementById('cardAmount');
                         if (cardAmountInput) {
@@ -962,6 +962,19 @@
                         const customAmountInput = document.getElementById('customAmount');
                         if (customAmountInput) {
                             customAmountInput.value = selectedAmount;
+                        }
+                    }
+                } else {
+                    // Clear amount fields for donation
+                    if (method === 'card') {
+                        const cardAmountInput = document.getElementById('cardAmount');
+                        if (cardAmountInput) {
+                            cardAmountInput.value = '';
+                        }
+                    } else if (method === 'crypto') {
+                        const customAmountInput = document.getElementById('customAmount');
+                        if (customAmountInput) {
+                            customAmountInput.value = '';
                         }
                     }
                 }

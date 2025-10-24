@@ -23,12 +23,39 @@ class PaymentVault(db.Model):
     is_locked = db.Column(db.Boolean, default=True)  # هل مقفلة
     last_access = db.Column(db.DateTime, default=datetime.utcnow)  # آخر وصول
     
-    # Payment Settings - إعدادات الدفع
-    nowpayments_api_key = db.Column(db.String(255))  # API Key
+    # Payment Gateway Settings - إعدادات بوابات الدفع
+    nowpayments_api_key = db.Column(db.String(255))  # NOWPayments API Key
     nowpayments_ipn_secret = db.Column(db.String(255))  # IPN Secret
     bitcoin_address = db.Column(db.String(255))  # عنوان Bitcoin
     ethereum_address = db.Column(db.String(255))  # عنوان Ethereum
     usdt_address = db.Column(db.String(255))  # عنوان USDT
+    
+    # PayPal Settings - إعدادات PayPal
+    paypal_client_id = db.Column(db.String(255))  # PayPal Client ID
+    paypal_client_secret = db.Column(db.String(255))  # PayPal Secret (مشفر)
+    paypal_business_email = db.Column(db.String(200))  # البريد التجاري
+    paypal_mode = db.Column(db.String(20), default='sandbox')  # sandbox أو live
+    
+    # Bank Account Settings - الحساب البنكي للشركة
+    bank_name = db.Column(db.String(200))  # اسم البنك
+    bank_account_name = db.Column(db.String(200))  # اسم صاحب الحساب
+    bank_account_number = db.Column(db.String(100))  # رقم الحساب
+    bank_iban = db.Column(db.String(50))  # IBAN
+    bank_swift_code = db.Column(db.String(20))  # SWIFT/BIC Code
+    bank_branch = db.Column(db.String(200))  # اسم الفرع
+    bank_country = db.Column(db.String(100))  # البلد
+    bank_currency = db.Column(db.String(10), default='USD')  # العملة
+    
+    # Stripe Settings - إعدادات Stripe
+    stripe_publishable_key = db.Column(db.String(255))  # Public Key
+    stripe_secret_key = db.Column(db.String(255))  # Secret Key (مشفر)
+    stripe_webhook_secret = db.Column(db.String(255))  # Webhook Secret
+    
+    # Other Payment Gateways - بوابات أخرى
+    mollie_api_key = db.Column(db.String(255))  # Mollie
+    square_access_token = db.Column(db.String(255))  # Square
+    razorpay_key_id = db.Column(db.String(255))  # Razorpay
+    razorpay_key_secret = db.Column(db.String(255))  # Razorpay Secret
     
     # Payment Limits - حدود الدفع
     min_donation_amount = db.Column(db.Numeric(10, 2), default=Decimal('10.00'))  # الحد الأدنى

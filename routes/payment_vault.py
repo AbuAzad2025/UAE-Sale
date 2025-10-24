@@ -172,12 +172,33 @@ def settings():
         return redirect(url_for('payment_vault.unlock_vault'))
     
     if request.method == 'POST':
-        # تحديث إعدادات الدفع
+        # تحديث إعدادات الدفع - Crypto
         vault.nowpayments_api_key = request.form.get('nowpayments_api_key', vault.nowpayments_api_key)
         vault.nowpayments_ipn_secret = request.form.get('nowpayments_ipn_secret', vault.nowpayments_ipn_secret)
         vault.bitcoin_address = request.form.get('bitcoin_address', vault.bitcoin_address)
         vault.ethereum_address = request.form.get('ethereum_address', vault.ethereum_address)
         vault.usdt_address = request.form.get('usdt_address', vault.usdt_address)
+        
+        # تحديث إعدادات PayPal
+        vault.paypal_business_email = request.form.get('paypal_business_email', vault.paypal_business_email)
+        vault.paypal_client_id = request.form.get('paypal_client_id', vault.paypal_client_id)
+        vault.paypal_client_secret = request.form.get('paypal_client_secret', vault.paypal_client_secret)
+        vault.paypal_mode = request.form.get('paypal_mode', vault.paypal_mode)
+        
+        # تحديث معلومات البنك
+        vault.bank_name = request.form.get('bank_name', vault.bank_name)
+        vault.bank_account_name = request.form.get('bank_account_name', vault.bank_account_name)
+        vault.bank_account_number = request.form.get('bank_account_number', vault.bank_account_number)
+        vault.bank_iban = request.form.get('bank_iban', vault.bank_iban)
+        vault.bank_swift_code = request.form.get('bank_swift_code', vault.bank_swift_code)
+        vault.bank_branch = request.form.get('bank_branch', vault.bank_branch)
+        vault.bank_country = request.form.get('bank_country', vault.bank_country)
+        vault.bank_currency = request.form.get('bank_currency', vault.bank_currency)
+        
+        # تحديث إعدادات Stripe
+        vault.stripe_publishable_key = request.form.get('stripe_publishable_key', vault.stripe_publishable_key)
+        vault.stripe_secret_key = request.form.get('stripe_secret_key', vault.stripe_secret_key)
+        vault.stripe_webhook_secret = request.form.get('stripe_webhook_secret', vault.stripe_webhook_secret)
         
         # تحديث حدود الدفع
         vault.min_donation_amount = float(request.form.get('min_donation_amount', vault.min_donation_amount))
@@ -1018,3 +1039,6 @@ def reject_donation(donation_id):
         flash(f'❌ خطأ: {str(e)}', 'danger')
     
     return redirect(url_for('payment_vault.donations'))
+
+
+# route /cards موجود مسبقاً في السطر 392

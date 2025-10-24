@@ -51,7 +51,7 @@ class AnalyticsService:
                 float(d.amount_usd or 0) 
                 for d in donations 
                 if d.transaction_type == 'purchase' 
-                and month_start <= d.created_at < month_end
+                and d.created_at and month_start <= d.created_at.replace(tzinfo=timezone.utc) < month_end
             )
             
             # حساب التبرعات
@@ -59,7 +59,7 @@ class AnalyticsService:
                 float(d.amount_usd or 0) 
                 for d in donations 
                 if d.transaction_type == 'donation' 
-                and month_start <= d.created_at < month_end
+                and d.created_at and month_start <= d.created_at.replace(tzinfo=timezone.utc) < month_end
             )
             
             labels.append(month_label)

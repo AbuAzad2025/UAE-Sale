@@ -399,7 +399,7 @@ def delete_package(package_id):
             action='delete',
             table_name='packages',
             record_id=package_id,
-            changes={'deleted': f'Package {package.name} deleted'}
+            changes={'deleted': f'Package {package.name_ar} deleted'}
         )
         
         return jsonify({'success': True, 'message': 'تم حذف الباقة بنجاح!'})

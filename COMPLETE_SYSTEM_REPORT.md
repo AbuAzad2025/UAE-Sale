@@ -716,38 +716,51 @@ database_migrations/
 └── README.md                 - دليل مفصل
 ```
 
-### الاستخدام على PythonAnywhere
+### الاستخدام على PythonAnywhere (ريبو خاص)
 
-#### الطريقة السريعة:
+#### الطريقة السريعة (نسخ ولصق):
 ```bash
-cd ~/UAE-Sale && \
-git pull origin main && \
-python database_migrations/migrate_payment_vault.py && \
+cd ~/UAE-Sale
+git remote set-url origin git@github.com:AbuAzad2025/UAE-Sale.git
+ssh-keyscan github.com >> ~/.ssh/known_hosts
+GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy -o IdentitiesOnly=yes' git pull origin main
+python database_migrations/migrate_payment_vault.py
+python database_migrations/check_db.py
+flask db upgrade
 touch /var/www/uaesale_azad_pythonanywhere_com_wsgi.py
 ```
 
-#### الطريقة التفصيلية:
+#### الطريقة التفصيلية (مع نسخة احتياطية):
 ```bash
 # 1. الانتقال للمشروع
 cd ~/UAE-Sale
 
-# 2. نسخة احتياطية
-cp instance/app.db instance/app.db.backup_$(date +%Y%m%d)
+# 2. نسخة احتياطية من قاعدة البيانات
+cp instance/app.db instance/app.db.backup_$(date +%Y%m%d_%H%M%S)
 
-# 3. سحب التحديثات
-git pull origin main
+# 3. إعداد SSH للريبو الخاص
+git remote set-url origin git@github.com:AbuAzad2025/UAE-Sale.git
+ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-# 4. فحص الوضع الحالي
+# 4. سحب التحديثات
+GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy -o IdentitiesOnly=yes' git pull origin main
+
+# 5. فحص الوضع الحالي
 python database_migrations/check_db.py
 
-# 5. تطبيق التهجير
+# 6. تطبيق التهجير الآمن (يحافظ على البيانات)
 python database_migrations/migrate_payment_vault.py
 
-# 6. فحص بعد التهجير
+# 7. فحص بعد التهجير
 python database_migrations/check_db.py
 
-# 7. إعادة تحميل
+# 8. تطبيق Alembic migrations
+flask db upgrade
+
+# 9. إعادة تحميل التطبيق
 touch /var/www/uaesale_azad_pythonanywhere_com_wsgi.py
+
+echo "✅ اكتمل النشر بنجاح!"
 ```
 
 ### ما يفعله migrate_payment_vault.py

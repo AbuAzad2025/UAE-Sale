@@ -317,13 +317,16 @@ python migrate_payment_vault.py
 ## 🚀 البدء السريع
 
 ```bash
-# على PythonAnywhere - نسخ ولصق:
+# على PythonAnywhere (ريبو خاص) - نسخ ولصق:
 
-cd ~/UAE-Sale && \
-git pull origin main && \
-cp instance/garage.db instance/garage.db.backup_$(date +%Y%m%d) && \
-python migrate_payment_vault.py && \
-python check_db.py && \
+cd ~/UAE-Sale
+git remote set-url origin git@github.com:AbuAzad2025/UAE-Sale.git
+ssh-keyscan github.com >> ~/.ssh/known_hosts
+GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy -o IdentitiesOnly=yes' git pull origin main
+cp instance/app.db instance/app.db.backup_$(date +%Y%m%d_%H%M%S)
+python database_migrations/migrate_payment_vault.py
+python database_migrations/check_db.py
+flask db upgrade
 touch /var/www/uaesale_azad_pythonanywhere_com_wsgi.py
 
 echo "✅ اكتمل التهجير!"

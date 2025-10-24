@@ -1,0 +1,43 @@
+═══════════════════════════════════════════════════════════════
+🚀 أوامر النشر الكاملة على PythonAnywhere
+═══════════════════════════════════════════════════════════════
+
+📋 انسخ والصق هذه الأوامر في Bash Console على PythonAnywhere:
+
+──────────────────────────────────────────────────────────────
+
+cd ~/UAE-Sale
+git remote set-url origin git@github.com:AbuAzad2025/UAE-Sale.git
+ssh-keyscan github.com >> ~/.ssh/known_hosts
+GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy -o IdentitiesOnly=yes' git pull origin main
+cp instance/app.db instance/app.db.backup_$(date +%Y%m%d_%H%M%S)
+python database_migrations/migrate_payment_vault.py
+python database_migrations/check_db.py
+flask db upgrade
+touch /var/www/uaesale_azad_pythonanywhere_com_wsgi.py
+
+──────────────────────────────────────────────────────────────
+
+✅ هذه الأوامر تفعل التالي بالترتيب:
+
+1. الانتقال لمجلد المشروع
+2. إعداد SSH للريبو الخاص
+3. إضافة GitHub للـ known hosts
+4. سحب آخر التحديثات (باستخدام SSH key)
+5. نسخة احتياطية من قاعدة البيانات
+6. تهجير جدول payment_vault (إضافة 19 عمود)
+7. فحص قاعدة البيانات (التحقق من 38 عمود)
+8. تطبيق Alembic migrations
+9. إعادة تحميل التطبيق
+
+═══════════════════════════════════════════════════════════════
+
+⚠️ ملاحظات مهمة:
+
+✅ جميع الأوامر آمنة (لا تحذف بيانات)
+✅ نسخة احتياطية تلقائية قبل التهجير
+✅ التهجير يضيف الأعمدة المفقودة فقط
+✅ يحافظ على جميع البيانات الموجودة
+
+═══════════════════════════════════════════════════════════════
+

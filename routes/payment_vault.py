@@ -1258,3 +1258,281 @@ def export_report_pdf():
     
     from flask import Response
     return Response(html, mimetype='text/html')
+
+
+# ==================== Webhook Routes - معالجة Webhooks ====================
+
+@payment_vault_bp.route('/webhook/nowpayments', methods=['POST'])
+@csrf.exempt
+@limiter.limit("100 per minute")
+def nowpayments_webhook():
+    """Webhook من NOWPayments"""
+    try:
+        from services.webhook_service import WebhookService
+        
+        # الحصول على البيانات
+        payload = request.data
+        signature = request.headers.get('x-nowpayments-sig', '')
+        
+        # التحقق من التوقيع
+        vault = PaymentVault.query.first()
+        if vault and vault.nowpayments_ipn_secret:
+            if not WebhookService.verify_nowpayments_signature(
+                payload,
+                signature,
+                vault.nowpayments_ipn_secret
+            ):
+                logger.warning('❌ NOWPayments webhook signature verification failed')
+                return jsonify({'error': 'Invalid signature'}), 403
+        
+        # معالجة الـ webhook
+        data = request.get_json()
+        result = WebhookService.process_nowpayments_webhook(data)
+        
+        # تسجيل
+        if vault:
+            PaymentLog.log_action(
+                vault_id=vault.id,
+                action='nowpayments_webhook_received',
+                description=f'Payment status: {data.get("payment_status")}',
+                level='info',
+                transaction_id=data.get('payment_id'),
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
+        
+        return jsonify(result), 200 if result.get('success') else 400
+        
+    except Exception as e:
+        logger.error(f'❌ NOWPayments webhook error: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+
+@payment_vault_bp.route('/webhook/stripe', methods=['POST'])
+@csrf.exempt
+@limiter.limit("100 per minute")
+def stripe_webhook():
+    """Webhook من Stripe"""
+    try:
+        from services.webhook_service import WebhookService
+        
+        # الحصول على البيانات
+        payload = request.data
+        signature = request.headers.get('Stripe-Signature', '')
+        
+        # التحقق من التوقيع
+        vault = PaymentVault.query.first()
+        if vault and vault.stripe_webhook_secret:
+            if not WebhookService.verify_stripe_signature(
+                payload,
+                signature,
+                vault.stripe_webhook_secret
+            ):
+                logger.warning('❌ Stripe webhook signature verification failed')
+                return jsonify({'error': 'Invalid signature'}), 403
+        
+        # معالجة الـ webhook
+        data = request.get_json()
+        result = WebhookService.process_stripe_webhook(data)
+        
+        # تسجيل
+        if vault:
+            PaymentLog.log_action(
+                vault_id=vault.id,
+                action='stripe_webhook_received',
+                description=f'Event type: {data.get("type")}',
+                level='info',
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
+        
+        return jsonify(result), 200 if result.get('success') else 400
+        
+    except Exception as e:
+        logger.error(f'❌ Stripe webhook error: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+
+# ==================== Health & Monitoring Routes - المراقبة ====================
+
+@payment_vault_bp.route('/health', methods=['GET'])
+def health_check():
+    """فحص صحة النظام"""
+    from services.health_service import HealthCheckService
+    
+    result = HealthCheckService.run_full_health_check()
+    status_code = 200 if result['overall_status'] == 'healthy' else 503
+    
+    return jsonify(result), status_code
+
+
+@payment_vault_bp.route('/metrics', methods=['GET'])
+@login_required
+def system_metrics():
+    """مقاييس النظام (للمالك فقط)"""
+    if not current_user.is_owner:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    from services.health_service import HealthCheckService
+    
+    metrics = HealthCheckService.get_system_metrics()
+    return jsonify(metrics)
+
+
+# ==================== API v2 - Enhanced API with Versioning ====================
+
+@payment_vault_bp.route('/api/v2/purchases', methods=['GET'])
+@login_required
+@limiter.limit("60 per minute")
+def api_v2_purchases():
+    """API v2 للمشتريات - محسن مع Filtering & Pagination"""
+    if not current_user.is_owner:
+        return jsonify({'error': 'Unauthorized', 'version': '2.0'}), 403
+    
+    # Parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    status = request.args.get('status', '')
+    package_id = request.args.get('package_id', type=int)
+    search = request.args.get('search', '')
+    sort_by = request.args.get('sort_by', 'created_at')
+    order = request.args.get('order', 'desc')
+    
+    # Query
+    query = PackagePurchase.query
+    
+    # Filters
+    if status:
+        query = query.filter_by(payment_status=status)
+    if package_id:
+        query = query.filter_by(package_id=package_id)
+    if search:
+        query = query.filter(
+            db.or_(
+                PackagePurchase.customer_name.ilike(f'%{search}%'),
+                PackagePurchase.customer_email.ilike(f'%{search}%')
+            )
+        )
+    
+    # Sorting
+    if hasattr(PackagePurchase, sort_by):
+        column = getattr(PackagePurchase, sort_by)
+        if order == 'asc':
+            query = query.order_by(column.asc())
+        else:
+            query = query.order_by(column.desc())
+    
+    # Pagination
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    
+    return jsonify({
+        'version': '2.0',
+        'success': True,
+        'data': [p.to_dict() for p in pagination.items],
+        'pagination': {
+            'page': pagination.page,
+            'per_page': pagination.per_page,
+            'total': pagination.total,
+            'pages': pagination.pages,
+            'has_next': pagination.has_next,
+            'has_prev': pagination.has_prev
+        },
+        'filters_applied': {
+            'status': status,
+            'package_id': package_id,
+            'search': search
+        }
+    })
+
+
+@payment_vault_bp.route('/api/v2/donations', methods=['GET'])
+@login_required
+@limiter.limit("60 per minute")
+def api_v2_donations():
+    """API v2 للتبرعات - محسن مع Filtering & Pagination"""
+    if not current_user.is_owner:
+        return jsonify({'error': 'Unauthorized', 'version': '2.0'}), 403
+    
+    # Parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    status = request.args.get('status', '')
+    search = request.args.get('search', '')
+    
+    # Query
+    query = Donation.query.filter_by(transaction_type='donation')
+    
+    # Filters
+    if status:
+        query = query.filter_by(status=status)
+    if search:
+        query = query.filter(
+            db.or_(
+                Donation.donor_name.ilike(f'%{search}%'),
+                Donation.donor_email.ilike(f'%{search}%')
+            )
+        )
+    
+    # Pagination
+    pagination = query.order_by(Donation.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    # Convert to dict
+    donations_data = []
+    for donation in pagination.items:
+        donations_data.append({
+            'id': donation.id,
+            'donor_name': donation.donor_name,
+            'donor_email': donation.donor_email,
+            'amount_usd': float(donation.amount_usd or 0),
+            'payment_method': donation.payment_method,
+            'status': donation.status,
+            'created_at': donation.created_at.isoformat() if donation.created_at else None
+        })
+    
+    return jsonify({
+        'version': '2.0',
+        'success': True,
+        'data': donations_data,
+        'pagination': {
+            'page': pagination.page,
+            'per_page': pagination.per_page,
+            'total': pagination.total,
+            'pages': pagination.pages
+        }
+    })
+
+
+@payment_vault_bp.route('/api/v2/stats', methods=['GET'])
+@login_required
+@limiter.limit("60 per minute")
+def api_v2_stats():
+    """API v2 للإحصائيات - شاملة ومحسنة"""
+    if not current_user.is_owner:
+        return jsonify({'error': 'Unauthorized', 'version': '2.0'}), 403
+    
+    from services.analytics_service import AnalyticsService
+    from services.notification_service import SecurityService
+    
+    # جمع الإحصائيات
+    daily_stats = AnalyticsService.get_daily_stats()
+    revenue_data = AnalyticsService.get_revenue_by_period(months=6)
+    payment_methods = AnalyticsService.get_payment_method_stats()
+    customer_behavior = AnalyticsService.get_customer_behavior()
+    package_performance = AnalyticsService.get_package_performance()
+    security_status = SecurityService.get_security_status()
+    
+    return jsonify({
+        'version': '2.0',
+        'success': True,
+        'data': {
+            'daily': daily_stats,
+            'revenue_trend': revenue_data,
+            'payment_methods': payment_methods,
+            'customers': customer_behavior,
+            'packages': package_performance,
+            'security': security_status
+        },
+        'generated_at': datetime.now(timezone.utc).isoformat()
+    })

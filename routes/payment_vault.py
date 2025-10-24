@@ -155,39 +155,7 @@ def dashboard():
                          monthly_donations=monthly_donations)
 
 
-@payment_vault_bp.route('/purchases')
-@login_required
-def purchases():
-    """عرض مشتريات النظام"""
-    if not current_user.is_owner:
-        flash('❌ غير مصرح - الخزينة السرية للمالك فقط!', 'danger')
-        return redirect(url_for('main.dashboard'))
-    
-    # التحقق من فتح الخزينة
-    vault = PaymentVault.query.first()
-    if not vault or vault.is_locked:
-        flash('❌ يجب فتح الخزينة أولاً', 'warning')
-        return redirect(url_for('payment_vault.unlock_vault'))
-    
-    # جلب المشتريات (حيث transaction_type = 'purchase')
-    purchases = Donation.query.filter_by(transaction_type='purchase').order_by(Donation.created_at.desc()).all()
-    
-    # إحصائيات
-    total_purchases = len(purchases)
-    completed_purchases = sum(1 for p in purchases if p.status == 'completed')
-    pending_purchases = sum(1 for p in purchases if p.status == 'pending')
-    total_amount = sum(float(p.amount_usd or 0) for p in purchases)
-    
-    # جلب التبرعات
-    donations = Donation.query.order_by(Donation.created_at.desc()).limit(5).all()
-    
-    return render_template('payment_vault/purchases.html',
-                         purchases=purchases,
-                         donations=donations,
-                         total_purchases=total_purchases,
-                         completed_purchases=completed_purchases,
-                         pending_purchases=pending_purchases,
-                         total_amount=total_amount)
+# تم نقل route /purchases إلى view_purchases في نهاية الملف
 
 
 @payment_vault_bp.route('/settings', methods=['GET', 'POST'])
@@ -993,3 +961,60 @@ def toggle_package_status(package_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@payment_vault_bp.route('/donation/<int:donation_id>/approve', methods=['POST'])
+@login_required
+def approve_donation(donation_id):
+    """قبول تبرع"""
+    if not current_user.is_owner:
+        flash('❌ غير مصرح', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    donation = Donation.query.get_or_404(donation_id)
+    
+    try:
+        donation.status = 'completed'
+        donation.completed_at = datetime.now(timezone.utc)
+        db.session.commit()
+        
+        create_audit_log(
+            action=f'donation_approved: ${donation.amount_usd}',
+            table_name='donations',
+            record_id=donation.id
+        )
+        
+        flash('✅ تم قبول التبرع', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ خطأ: {str(e)}', 'danger')
+    
+    return redirect(url_for('payment_vault.donations'))
+
+
+@payment_vault_bp.route('/donation/<int:donation_id>/reject', methods=['POST'])
+@login_required
+def reject_donation(donation_id):
+    """رفض تبرع"""
+    if not current_user.is_owner:
+        flash('❌ غير مصرح', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    donation = Donation.query.get_or_404(donation_id)
+    
+    try:
+        donation.status = 'failed'
+        db.session.commit()
+        
+        create_audit_log(
+            action=f'donation_rejected: ${donation.amount_usd}',
+            table_name='donations',
+            record_id=donation.id
+        )
+        
+        flash('✅ تم رفض التبرع', 'warning')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ خطأ: {str(e)}', 'danger')
+    
+    return redirect(url_for('payment_vault.donations'))

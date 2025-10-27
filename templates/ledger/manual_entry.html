@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+{% block title %}إضافة قيد يدوي - Manual Journal Entry{% endblock %}
+{% block page_title %}إضافة قيد يدوي{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col-12">
+    <a href="{{ url_for('ledger.index') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-right mr-2"></i>العودة
+    </a>
+    <a href="{{ url_for('ledger.journal_entries') }}" class="btn btn-info">
+      <i class="fas fa-book mr-2"></i>عرض القيود
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-gradient-success">
+    <h3 class="card-title text-white">
+      <i class="fas fa-plus-circle mr-2"></i>قيد يدوي جديد
+    </h3>
+  </div>
+  <div class="card-body">
+    <form method="post" id="journalEntryForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      
+      <!-- معلومات القيد -->
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>وصف القيد <span class="text-danger">*</span></label>
+            <input type="text" name="description" class="form-control" required 
+                   placeholder="مثال: قيد تسوية، شراء معدات، إلخ...">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>التاريخ <span class="text-danger">*</span></label>
+            <input type="date" name="entry_date" class="form-control" required
+                   value="{{ today.strftime('%Y-%m-%d') if today else '' }}">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>عدد السطور</label>
+            <input type="number" id="lineCountInput" class="form-control" value="2" min="2" max="20">
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-12">
+          <div class="form-group">
+            <label>ملاحظات</label>
+            <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات إضافية (اختياري)"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- جدول السطور -->
+      <div class="card">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">
+            <i class="fas fa-list mr-2"></i>سطور القيد
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-bordered mb-0" id="linesTable">
+              <thead class="bg-light">
+                <tr>
+                  <th width="5%">#</th>
+                  <th width="35%">الحساب <span class="text-danger">*</span></th>
+                  <th width="30%">البيان</th>
+                  <th width="15%" class="text-center">مدين</th>
+                  <th width="15%" class="text-center">دائن</th>
+                </tr>
+              </thead>
+              <tbody id="linesTableBody">
+                <!-- سطور القيد ستضاف هنا بواسطة JavaScript -->
+              </tbody>
+              <tfoot class="bg-light">
+                <tr>
+                  <th colspan="3" class="text-left">الإجمالي:</th>
+                  <th class="text-center text-success">
+                    <span id="totalDebit">0.00</span>
+                  </th>
+                  <th class="text-center text-danger">
+                    <span id="totalCredit">0.00</span>
+                  </th>
+                </tr>
+                <tr id="balanceRow">
+                  <th colspan="3" class="text-left">الفرق:</th>
+                  <th colspan="2" class="text-center" id="balanceCell">
+                    <span id="difference" class="badge badge-secondary">0.00</span>
+                  </th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" name="line_count" id="lineCount" value="2">
+
+      <!-- أزرار الحفظ -->
+      <div class="row mt-3">
+        <div class="col-12">
+          <button type="submit" class="btn btn-success btn-lg" id="submitBtn" disabled>
+            <i class="fas fa-save mr-2"></i>حفظ القيد
+          </button>
+          <button type="button" class="btn btn-primary" onclick="addLine()">
+            <i class="fas fa-plus mr-2"></i>إضافة سطر
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="resetForm()">
+            <i class="fas fa-redo mr-2"></i>إعادة تعيين
+          </button>
+          <div class="float-left">
+            <div id="balanceStatus" class="alert alert-warning d-inline-block mb-0 py-2">
+              <i class="fas fa-exclamation-triangle mr-2"></i>
+              القيد غير متوازن! المدين يجب أن يساوي الدائن
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// قائمة الحسابات (من Backend)
+const accounts = [
+  {% for account in accounts %}
+  {
+    id: {{ account.id }},
+    code: '{{ account.code }}',
+    name_ar: '{{ account.name_ar }}',
+    name_en: '{{ account.name }}',
+    full_name: '{{ account.code }} - {{ account.name_ar or account.name }}'
+  }{{ ',' if not loop.last else '' }}
+  {% endfor %}
+];
+
+let lineCounter = 0;
+
+// إضافة سطر جديد
+function addLine() {
+  lineCounter++;
+  const tbody = document.getElementById('linesTableBody');
+  const row = document.createElement('tr');
+  row.id = `line_${lineCounter}`;
+  row.innerHTML = `
+    <td class="text-center">${lineCounter}</td>
+    <td>
+      <select name="line_${lineCounter - 1}_account" class="form-control account-select" required onchange="calculateTotals()">
+        <option value="">-- اختر الحساب --</option>
+        ${accounts.map(acc => `<option value="${acc.code}">${acc.full_name}</option>`).join('')}
+      </select>
+    </td>
+    <td>
+      <input type="text" name="line_${lineCounter - 1}_description" class="form-control" 
+             placeholder="البيان">
+    </td>
+    <td>
+      <input type="number" name="line_${lineCounter - 1}_debit" class="form-control text-center debit-input" 
+             step="0.01" min="0" value="0" onchange="handleDebitChange(this)" onkeyup="calculateTotals()">
+    </td>
+    <td>
+      <input type="number" name="line_${lineCounter - 1}_credit" class="form-control text-center credit-input" 
+             step="0.01" min="0" value="0" onchange="handleCreditChange(this)" onkeyup="calculateTotals()">
+    </td>
+  `;
+  tbody.appendChild(row);
+  document.getElementById('lineCount').value = lineCounter;
+}
+
+// عند تغيير المدين، صفّر الدائن
+function handleDebitChange(input) {
+  const value = parseFloat(input.value) || 0;
+  if (value > 0) {
+    const row = input.closest('tr');
+    const creditInput = row.querySelector('.credit-input');
+    creditInput.value = 0;
+  }
+  calculateTotals();
+}
+
+// عند تغيير الدائن، صفّر المدين
+function handleCreditChange(input) {
+  const value = parseFloat(input.value) || 0;
+  if (value > 0) {
+    const row = input.closest('tr');
+    const debitInput = row.querySelector('.debit-input');
+    debitInput.value = 0;
+  }
+  calculateTotals();
+}
+
+// حساب الإجماليات والتوازن
+function calculateTotals() {
+  const debitInputs = document.querySelectorAll('.debit-input');
+  const creditInputs = document.querySelectorAll('.credit-input');
+  
+  let totalDebit = 0;
+  let totalCredit = 0;
+  
+  debitInputs.forEach(input => {
+    totalDebit += parseFloat(input.value) || 0;
+  });
+  
+  creditInputs.forEach(input => {
+    totalCredit += parseFloat(input.value) || 0;
+  });
+  
+  document.getElementById('totalDebit').textContent = totalDebit.toFixed(2);
+  document.getElementById('totalCredit').textContent = totalCredit.toFixed(2);
+  
+  const difference = Math.abs(totalDebit - totalCredit);
+  const differenceSpan = document.getElementById('difference');
+  const balanceStatus = document.getElementById('balanceStatus');
+  const submitBtn = document.getElementById('submitBtn');
+  
+  differenceSpan.textContent = difference.toFixed(2);
+  
+  if (difference < 0.01 && totalDebit > 0 && totalCredit > 0) {
+    // متوازن ✅
+    differenceSpan.className = 'badge badge-success';
+    differenceSpan.innerHTML = '<i class="fas fa-check mr-1"></i> متوازن';
+    balanceStatus.className = 'alert alert-success d-inline-block mb-0 py-2';
+    balanceStatus.innerHTML = '<i class="fas fa-check-circle mr-2"></i>القيد متوازن - يمكنك الحفظ الآن';
+    submitBtn.disabled = false;
+  } else {
+    // غير متوازن ❌
+    differenceSpan.className = 'badge badge-danger';
+    balanceStatus.className = 'alert alert-warning d-inline-block mb-0 py-2';
+    balanceStatus.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>القيد غير متوازن! المدين يجب أن يساوي الدائن';
+    submitBtn.disabled = true;
+  }
+}
+
+// إعادة تعيين النموذج
+function resetForm() {
+  if (confirm('هل أنت متأكد من إعادة تعيين النموذج؟ سيتم مسح جميع البيانات.')) {
+    document.getElementById('journalEntryForm').reset();
+    document.getElementById('linesTableBody').innerHTML = '';
+    lineCounter = 0;
+    const initialLines = parseInt(document.getElementById('lineCountInput').value) || 2;
+    for (let i = 0; i < initialLines; i++) {
+      addLine();
+    }
+  }
+}
+
+// عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', function() {
+  // إضافة السطور الابتدائية
+  const initialLines = parseInt(document.getElementById('lineCountInput').value) || 2;
+  for (let i = 0; i < initialLines; i++) {
+    addLine();
+  }
+  
+  // عند تغيير عدد السطور
+  document.getElementById('lineCountInput').addEventListener('change', function() {
+    const newCount = parseInt(this.value) || 2;
+    const currentCount = lineCounter;
+    
+    if (newCount > currentCount) {
+      for (let i = currentCount; i < newCount; i++) {
+        addLine();
+      }
+    }
+  });
+});
+</script>
+
+<style>
+.account-select {
+  font-size: 0.9rem;
+}
+#balanceStatus {
+  font-weight: bold;
+}
+.table input, .table select {
+  border-radius: 0.25rem;
+}
+</style>
+{% endblock %}
+

@@ -397,17 +397,20 @@ function loadTemplate(templateType) {
       break;
   }
   
-  // حساب الإجماليات فوراً بعد إضافة السطور
-  console.log(`✅ Template loaded, calling calculateTotals immediately...`);
+  // حساب الإجماليات بعد تحديث الـ DOM
+  console.log(`✅ Template loaded, calling calculateTotals after DOM update...`);
   
-  // استدعاء فوري
-  calculateTotals();
-  
-  // استدعاء احتياطي بعد تأخير بسيط للتأكد
-  setTimeout(() => {
-    console.log('🔄 Backup calculateTotals() call');
+  // استخدام requestAnimationFrame للتأكد من تحديث الـ DOM
+  requestAnimationFrame(() => {
+    console.log('🎬 requestAnimationFrame - calling calculateTotals()');
     calculateTotals();
-  }, 100);
+    
+    // استدعاء احتياطي للتأكد
+    setTimeout(() => {
+      console.log('🔄 Backup calculateTotals() call');
+      calculateTotals();
+    }, 50);
+  });
 }
 
 // إضافة سطر مع بيانات محددة
@@ -439,6 +442,13 @@ function addLineWithData(accountCode, accountName, debit, credit) {
     </td>
   `;
   tbody.appendChild(row);
+  
+  // تعيين القيم بعد إضافة الصف للـ DOM (مهم جداً!)
+  const debitInput = row.querySelector('.debit-input');
+  const creditInput = row.querySelector('.credit-input');
+  if (debitInput) debitInput.value = debit;
+  if (creditInput) creditInput.value = credit;
+  
   lineCounter++;
   document.getElementById('lineCountHidden').value = lineCounter;
 }

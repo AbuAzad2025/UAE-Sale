@@ -314,26 +314,26 @@ function loadTemplate(templateType) {
   switch(templateType) {
     case 'cash_sale':
       descriptionInput.value = 'مبيعة نقدية';
-      addLineWithData('1110', 'صندوق', 0, 1000); // مثال
-      addLineWithData('4100', 'إيرادات المبيعات', 1000, 0);
+      addLineWithData('1110', 'صندوق', 1000, 0); // مدين - الصندوق يزيد
+      addLineWithData('4100', 'إيرادات المبيعات', 0, 1000); // دائن - الإيرادات
       break;
       
     case 'credit_sale':
       descriptionInput.value = 'مبيعة آجلة';
-      addLineWithData('1130', 'الذمم المدينة', 0, 1000); // مثال
-      addLineWithData('4100', 'إيرادات المبيعات', 1000, 0);
+      addLineWithData('1130', 'الذمم المدينة', 1000, 0); // مدين - الذمم تزيد
+      addLineWithData('4100', 'إيرادات المبيعات', 0, 1000); // دائن - الإيرادات
       break;
       
     case 'expense':
       descriptionInput.value = 'مصروف';
-      addLineWithData('5100', 'المصروفات العامة', 0, 500); // مثال
-      addLineWithData('1110', 'صندوق', 500, 0);
+      addLineWithData('6100', 'مصروف رواتب', 500, 0); // مدين - المصروف يزيد
+      addLineWithData('1110', 'صندوق', 0, 500); // دائن - الصندوق ينقص
       break;
       
     case 'adjustment':
       descriptionInput.value = 'قيد تسوية';
-      addLineWithData('1110', 'صندوق', 0, 200); // مثال
-      addLineWithData('1130', 'الذمم المدينة', 200, 0);
+      addLineWithData('1110', 'صندوق', 200, 0); // مدين - الصندوق يزيد
+      addLineWithData('1130', 'الذمم المدينة', 0, 200); // دائن - الذمم تنقص
       break;
   }
   

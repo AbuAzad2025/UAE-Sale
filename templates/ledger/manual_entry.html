@@ -3,6 +3,19 @@
 {% block page_title %}إضافة قيد يدوي{% endblock %}
 
 {% block content %}
+
+<!-- ملخص سريع -->
+<div class="alert alert-info">
+  <h5><i class="fas fa-info-circle mr-2"></i>ملخص سريع - كيف تُنشئ قيد يدوي:</h5>
+  <ol class="mb-0">
+    <li>أدخل <strong>وصف القيد</strong> (مثال: شراء معدات، قيد تسوية)</li>
+    <li>اختر <strong>الحسابات</strong> من القائمة المنسدلة</li>
+    <li>أدخل المبالغ في <strong>المدين أو الدائن</strong> (ليس الاثنين معاً)</li>
+    <li>تأكد من <strong>التوازن</strong>: إجمالي المدين = إجمالي الدائن</li>
+    <li>اضغط <strong>حفظ القيد</strong> عندما يتحول الزر للأخضر ✅</li>
+  </ol>
+</div>
+
 <div class="row mb-3">
   <div class="col-12">
     <a href="{{ url_for('ledger.index') }}" class="btn btn-secondary">
@@ -23,27 +36,22 @@
   <div class="card-body">
     <form method="post" id="journalEntryForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="line_count" id="lineCountHidden" value="2">
       
       <!-- معلومات القيد -->
       <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-8">
           <div class="form-group">
             <label>وصف القيد <span class="text-danger">*</span></label>
             <input type="text" name="description" class="form-control" required 
-                   placeholder="مثال: قيد تسوية، شراء معدات، إلخ...">
+                   placeholder="مثال: قيد تسوية، شراء معدات، تعديل رصيد">
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <div class="form-group">
             <label>التاريخ <span class="text-danger">*</span></label>
             <input type="date" name="entry_date" class="form-control" required
-                   value="{{ today.strftime('%Y-%m-%d') if today else '' }}">
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="form-group">
-            <label>عدد السطور</label>
-            <input type="number" id="lineCountInput" class="form-control" value="2" min="2" max="20">
+                   value="{{ today.strftime('%Y-%m-%d') }}">
           </div>
         </div>
       </div>
@@ -51,8 +59,9 @@
       <div class="row">
         <div class="col-12">
           <div class="form-group">
-            <label>ملاحظات</label>
-            <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات إضافية (اختياري)"></textarea>
+            <label>ملاحظات (اختياري)</label>
+            <textarea name="notes" class="form-control" rows="2" 
+                      placeholder="أي ملاحظات إضافية..."></textarea>
           </div>
         </div>
       </div>
@@ -101,8 +110,6 @@
         </div>
       </div>
 
-      <input type="hidden" name="line_count" id="lineCount" value="2">
-
       <!-- أزرار الحفظ -->
       <div class="row mt-3">
         <div class="col-12">
@@ -145,33 +152,33 @@ let lineCounter = 0;
 
 // إضافة سطر جديد
 function addLine() {
-  lineCounter++;
   const tbody = document.getElementById('linesTableBody');
   const row = document.createElement('tr');
   row.id = `line_${lineCounter}`;
   row.innerHTML = `
-    <td class="text-center">${lineCounter}</td>
+    <td class="text-center">${lineCounter + 1}</td>
     <td>
-      <select name="line_${lineCounter - 1}_account" class="form-control account-select" required onchange="calculateTotals()">
+      <select name="line_${lineCounter}_account" class="form-control account-select" required>
         <option value="">-- اختر الحساب --</option>
         ${accounts.map(acc => `<option value="${acc.code}">${acc.full_name}</option>`).join('')}
       </select>
     </td>
     <td>
-      <input type="text" name="line_${lineCounter - 1}_description" class="form-control" 
-             placeholder="البيان">
+      <input type="text" name="line_${lineCounter}_description" class="form-control" 
+             placeholder="البيان (اختياري)">
     </td>
     <td>
-      <input type="number" name="line_${lineCounter - 1}_debit" class="form-control text-center debit-input" 
+      <input type="number" name="line_${lineCounter}_debit" class="form-control text-center debit-input" 
              step="0.01" min="0" value="0" onchange="handleDebitChange(this)" onkeyup="calculateTotals()">
     </td>
     <td>
-      <input type="number" name="line_${lineCounter - 1}_credit" class="form-control text-center credit-input" 
+      <input type="number" name="line_${lineCounter}_credit" class="form-control text-center credit-input" 
              step="0.01" min="0" value="0" onchange="handleCreditChange(this)" onkeyup="calculateTotals()">
     </td>
   `;
   tbody.appendChild(row);
-  document.getElementById('lineCount').value = lineCounter;
+  lineCounter++;
+  document.getElementById('lineCountHidden').value = lineCounter;
 }
 
 // عند تغيير المدين، صفّر الدائن
@@ -244,32 +251,19 @@ function resetForm() {
     document.getElementById('journalEntryForm').reset();
     document.getElementById('linesTableBody').innerHTML = '';
     lineCounter = 0;
-    const initialLines = parseInt(document.getElementById('lineCountInput').value) || 2;
-    for (let i = 0; i < initialLines; i++) {
-      addLine();
-    }
+    // إضافة سطرين افتراضيين
+    addLine();
+    addLine();
+    calculateTotals();
   }
 }
 
 // عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', function() {
-  // إضافة السطور الابتدائية
-  const initialLines = parseInt(document.getElementById('lineCountInput').value) || 2;
-  for (let i = 0; i < initialLines; i++) {
-    addLine();
-  }
-  
-  // عند تغيير عدد السطور
-  document.getElementById('lineCountInput').addEventListener('change', function() {
-    const newCount = parseInt(this.value) || 2;
-    const currentCount = lineCounter;
-    
-    if (newCount > currentCount) {
-      for (let i = currentCount; i < newCount; i++) {
-        addLine();
-      }
-    }
-  });
+  // إضافة سطرين افتراضيين
+  addLine();
+  addLine();
+  calculateTotals();
 });
 </script>
 

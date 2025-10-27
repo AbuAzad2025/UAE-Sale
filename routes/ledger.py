@@ -299,7 +299,7 @@ def manual_entry():
     # الحصول على الحسابات النشطة (غير رئيسية)
     accounts = GLAccount.query.filter_by(is_active=True, is_header=False).order_by(GLAccount.code).all()
     
-    return render_template('ledger/manual_entry.html', accounts=accounts)
+    return render_template('ledger/manual_entry.html', accounts=accounts, today=date.today())
 
 
 @ledger_bp.route('/entry/<int:id>')

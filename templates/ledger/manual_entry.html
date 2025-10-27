@@ -318,15 +318,23 @@ function calculateTotals() {
     // متوازن ✅
     differenceSpan.className = 'badge badge-success';
     differenceSpan.innerHTML = '<i class="fas fa-check mr-1"></i> متوازن';
-    balanceStatus.className = 'alert alert-success d-inline-block mb-0 py-2';
-    balanceStatus.innerHTML = '<i class="fas fa-check-circle mr-2"></i>القيد متوازن - يمكنك الحفظ الآن';
+    if (balanceStatus) {
+      balanceStatus.className = 'alert alert-success d-inline-block mb-0 py-2';
+      balanceStatus.innerHTML = '<i class="fas fa-check-circle mr-2"></i>القيد متوازن - يمكنك الحفظ الآن';
+    }
     submitBtn.disabled = false;
+    submitBtn.removeAttribute('disabled');
+    submitBtn.className = 'btn btn-success btn-lg';
   } else {
     // غير متوازن ❌
     differenceSpan.className = 'badge badge-danger';
-    balanceStatus.className = 'alert alert-warning d-inline-block mb-0 py-2';
-    balanceStatus.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>القيد غير متوازن! المدين يجب أن يساوي الدائن';
+    if (balanceStatus) {
+      balanceStatus.className = 'alert alert-warning d-inline-block mb-0 py-2';
+      balanceStatus.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>القيد غير متوازن! المدين يجب أن يساوي الدائن';
+    }
     submitBtn.disabled = true;
+    submitBtn.setAttribute('disabled', 'disabled');
+    submitBtn.className = 'btn btn-secondary btn-lg';
   }
 }
 

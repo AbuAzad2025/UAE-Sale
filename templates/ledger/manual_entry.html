@@ -362,7 +362,8 @@ function resetForm() {
 
 // قوالب سريعة
 function loadTemplate(templateType) {
-  console.log(`🔥 loadTemplate('${templateType}') called`);
+  const randomId = Math.random().toString(36).substring(7);
+  console.log(`🔥🔥🔥 loadTemplate('${templateType}') called - ID: ${randomId} - VERSION: 2.0 🔥🔥🔥`);
   // مسح السطور الحالية
   document.getElementById('linesTableBody').innerHTML = '';
   lineCounter = 0;

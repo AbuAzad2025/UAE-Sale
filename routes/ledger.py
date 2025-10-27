@@ -390,7 +390,10 @@ def api_search_accounts():
 def api_calculate_journal_balance():
     """API لحساب توازن القيد اليدوي - Backend Calculation"""
     try:
-        data = request.get_json()
+        data = request.get_json(force=True)
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
         lines = data.get('lines', [])
         
         total_debit = Decimal('0')

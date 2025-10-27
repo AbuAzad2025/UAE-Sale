@@ -117,6 +117,37 @@
             <i class="fas fa-list mr-2"></i>سطور القيد
           </h5>
         </div>
+        
+        <!-- توضيح المدين والدائن - بسيط وواضح -->
+        <div class="alert alert-light border-info m-3 mb-0" style="background: linear-gradient(135deg, #e8f5e9 0%, #fff3e0 100%); border-width: 2px;">
+          <div class="row text-center">
+            <div class="col-md-6 border-left">
+              <h6 class="text-success mb-2">
+                <i class="fas fa-plus-circle mr-2"></i><strong>مدين (Debit)</strong>
+              </h6>
+              <div class="badge badge-success mb-2" style="font-size: 14px;">لنا ↓ ما يدخل للشركة</div>
+              <p class="mb-1 small"><strong>أمثلة:</strong></p>
+              <ul class="text-right small mb-0" style="list-style: none; padding-right: 0;">
+                <li>💰 استلام فلوس → صندوق <strong>مدين</strong></li>
+                <li>📦 شراء بضاعة → مخزون <strong>مدين</strong></li>
+                <li>📋 مصروف → حساب المصروف <strong>مدين</strong></li>
+              </ul>
+            </div>
+            <div class="col-md-6">
+              <h6 class="text-danger mb-2">
+                <i class="fas fa-minus-circle mr-2"></i><strong>دائن (Credit)</strong>
+              </h6>
+              <div class="badge badge-danger mb-2" style="font-size: 14px;">علينا ↑ ما يطلع من الشركة</div>
+              <p class="mb-1 small"><strong>أمثلة:</strong></p>
+              <ul class="text-right small mb-0" style="list-style: none; padding-right: 0;">
+                <li>💸 دفع فلوس → صندوق <strong>دائن</strong></li>
+                <li>📈 مبيعات → إيرادات <strong>دائن</strong></li>
+                <li>👥 قرض → خصوم <strong>دائن</strong></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
         <div class="card-body p-0">
           <div class="table-responsive">
             <table class="table table-bordered mb-0" id="linesTable">
@@ -125,8 +156,18 @@
                   <th width="5%">#</th>
                   <th width="35%">الحساب <span class="text-danger">*</span></th>
                   <th width="30%">البيان</th>
-                  <th width="15%" class="text-center">مدين</th>
-                  <th width="15%" class="text-center">دائن</th>
+                  <th width="15%" class="text-center">
+                    <i class="fas fa-arrow-down text-success mr-1"></i>
+                    <strong class="text-success">مدين</strong>
+                    <br>
+                    <small class="text-muted">(لنا)</small>
+                  </th>
+                  <th width="15%" class="text-center">
+                    <i class="fas fa-arrow-up text-danger mr-1"></i>
+                    <strong class="text-danger">دائن</strong>
+                    <br>
+                    <small class="text-muted">(علينا)</small>
+                  </th>
                 </tr>
               </thead>
               <tbody id="linesTableBody">

@@ -118,6 +118,62 @@ class Cheque(db.Model):
         else:
             self.amount_aed = self.amount
     
+    def receive_cheque(self):
+        """تسجيل استلام الشيك الوارد"""
+        if self.cheque_type == 'incoming':
+            from services.gl_service import GLService
+            try:
+                # قيد استلام الشيك: نقل من الذمم المدينة إلى شيكات تحت التحصيل
+                lines = [{
+                    'account': '1150',  # شيكات تحت التحصيل
+                    'debit': self.amount_aed,
+                    'credit': 0,
+                    'description': f'استلام شيك رقم {self.cheque_bank_number}'
+                }, {
+                    'account': '1130',  # الذمم المدينة
+                    'debit': 0,
+                    'credit': self.amount_aed,
+                    'description': f'استلام شيك من عميل - رقم {self.cheque_bank_number}'
+                }]
+                
+                GLService.post_entry(
+                    lines=lines,
+                    description=f'استلام شيك وارد رقم {self.cheque_bank_number}',
+                    reference_type='cheque_receive',
+                    reference_id=self.id
+                )
+            except Exception as e:
+                from app import app
+                app.logger.error(f'Failed to create GL entry for cheque receipt {self.id}: {e}')
+    
+    def issue_cheque(self):
+        """تسجيل إصدار الشيك الصادر"""
+        if self.cheque_type == 'outgoing':
+            from services.gl_service import GLService
+            try:
+                # قيد إصدار الشيك: نقل من الذمم الدائنة إلى شيكات مؤجلة الدفع
+                lines = [{
+                    'account': '2110',  # الذمم الدائنة
+                    'debit': self.amount_aed,
+                    'credit': 0,
+                    'description': f'إصدار شيك رقم {self.cheque_bank_number}'
+                }, {
+                    'account': '2120',  # شيكات مؤجلة الدفع
+                    'debit': 0,
+                    'credit': self.amount_aed,
+                    'description': f'إصدار شيك لمورد - رقم {self.cheque_bank_number}'
+                }]
+                
+                GLService.post_entry(
+                    lines=lines,
+                    description=f'إصدار شيك صادر رقم {self.cheque_bank_number}',
+                    reference_type='cheque_issue',
+                    reference_id=self.id
+                )
+            except Exception as e:
+                from app import app
+                app.logger.error(f'Failed to create GL entry for cheque issue {self.id}: {e}')
+    
     def deposit_cheque(self, deposit_date=None):
         """إيداع الشيك في البنك"""
         if self.status not in ['pending', 'under_collection']:
@@ -157,6 +213,9 @@ class Cheque(db.Model):
         # حساب ربح/خسارة فرق العملة
         self.currency_gain_loss = self.actual_amount_aed - self.amount_aed
         
+        # إنشاء قيد محاسبي تلقائي
+        self._create_clearing_journal_entry()
+        
         # تحديث الدفعة المرتبطة
         from models.payment import Payment, Receipt
         payment = Payment.query.filter_by(cheque_id=self.id).first()
@@ -168,6 +227,94 @@ class Cheque(db.Model):
         if receipt:
             receipt.confirm_receipt()
     
+    def _create_clearing_journal_entry(self):
+        """إنشاء القيد المحاسبي عند صرف الشيك"""
+        from services.gl_service import GLService
+        from extensions import db
+        
+        try:
+            lines = []
+            
+            if self.cheque_type == 'incoming':
+                # شيك وارد - نقل من "شيكات تحت التحصيل" إلى "البنك"
+                lines.append({
+                    'account': '1120',  # البنك
+                    'debit': self.actual_amount_aed,
+                    'credit': 0,
+                    'description': f'صرف شيك وارد رقم {self.cheque_bank_number}'
+                })
+                lines.append({
+                    'account': '1150',  # شيكات تحت التحصيل
+                    'debit': 0,
+                    'credit': self.amount_aed,
+                    'description': f'صرف شيك رقم {self.cheque_bank_number}'
+                })
+                
+                # إضافة ربح/خسارة فرق العملة إن وجد
+                if self.currency_gain_loss and abs(self.currency_gain_loss) > Decimal('0.01'):
+                    if self.currency_gain_loss > 0:
+                        # ربح
+                        lines.append({
+                            'account': '4400',  # أرباح فرق العملة
+                            'debit': 0,
+                            'credit': abs(self.currency_gain_loss),
+                            'description': f'ربح فرق عملة - شيك {self.cheque_bank_number}'
+                        })
+                    else:
+                        # خسارة
+                        lines.append({
+                            'account': '6900',  # خسائر فرق العملة
+                            'debit': abs(self.currency_gain_loss),
+                            'credit': 0,
+                            'description': f'خسارة فرق عملة - شيك {self.cheque_bank_number}'
+                        })
+            
+            elif self.cheque_type == 'outgoing':
+                # شيك صادر - نقل من "شيكات مؤجلة الدفع" إلى "البنك"
+                lines.append({
+                    'account': '2120',  # شيكات مؤجلة الدفع
+                    'debit': self.amount_aed,
+                    'credit': 0,
+                    'description': f'صرف شيك صادر رقم {self.cheque_bank_number}'
+                })
+                lines.append({
+                    'account': '1120',  # البنك
+                    'debit': 0,
+                    'credit': self.actual_amount_aed,
+                    'description': f'صرف شيك رقم {self.cheque_bank_number}'
+                })
+                
+                # إضافة ربح/خسارة فرق العملة إن وجد
+                if self.currency_gain_loss and abs(self.currency_gain_loss) > Decimal('0.01'):
+                    if self.currency_gain_loss > 0:
+                        # خسارة (للشيك الصادر ربح فرق العملة يعتبر خسارة)
+                        lines.append({
+                            'account': '6900',  # خسائر فرق العملة
+                            'debit': abs(self.currency_gain_loss),
+                            'credit': 0,
+                            'description': f'خسارة فرق عملة - شيك {self.cheque_bank_number}'
+                        })
+                    else:
+                        # ربح
+                        lines.append({
+                            'account': '4400',  # أرباح فرق العملة
+                            'debit': 0,
+                            'credit': abs(self.currency_gain_loss),
+                            'description': f'ربح فرق عملة - شيك {self.cheque_bank_number}'
+                        })
+            
+            GLService.post_entry(
+                lines=lines,
+                description=f'صرف شيك {self.cheque_type_ar} رقم {self.cheque_bank_number}',
+                reference_type='cheque_clear',
+                reference_id=self.id
+            )
+        
+        except Exception as e:
+            # لا نوقف العملية إذا فشل القيد المحاسبي
+            from app import app
+            app.logger.error(f'Failed to create GL entry for cheque {self.id}: {e}')
+    
     def bounce_cheque(self, reason):
         """رفض الشيك من البنك - إرجاع الدين"""
         if self.status not in ['deposited', 'pending']:
@@ -176,6 +323,9 @@ class Cheque(db.Model):
         self.status = 'bounced'
         self.bounce_reason = reason
         self.clearance_date = datetime.now().date()
+        
+        # إنشاء قيد محاسبي تلقائي للارتداد
+        self._create_bounce_journal_entry()
         
         # إلغاء الدفعة المرتبطة
         from models.payment import Payment, Receipt
@@ -187,6 +337,54 @@ class Cheque(db.Model):
         receipt = Receipt.query.filter_by(cheque_id=self.id).first()
         if receipt:
             receipt.reject_receipt(reason)
+    
+    def _create_bounce_journal_entry(self):
+        """إنشاء القيد المحاسبي عند ارتداد الشيك"""
+        from services.gl_service import GLService
+        
+        try:
+            lines = []
+            
+            if self.cheque_type == 'incoming':
+                # شيك وارد مرتد - إرجاع الدين للعميل
+                lines.append({
+                    'account': '1130',  # الذمم المدينة
+                    'debit': self.amount_aed,
+                    'credit': 0,
+                    'description': f'ارتداد شيك رقم {self.cheque_bank_number} - إرجاع الدين'
+                })
+                lines.append({
+                    'account': '1150',  # شيكات تحت التحصيل
+                    'debit': 0,
+                    'credit': self.amount_aed,
+                    'description': f'ارتداد شيك رقم {self.cheque_bank_number}'
+                })
+            
+            elif self.cheque_type == 'outgoing':
+                # شيك صادر مرتد - إرجاع الالتزام
+                lines.append({
+                    'account': '2120',  # شيكات مؤجلة الدفع
+                    'debit': self.amount_aed,
+                    'credit': 0,
+                    'description': f'ارتداد شيك صادر رقم {self.cheque_bank_number}'
+                })
+                lines.append({
+                    'account': '2110',  # الذمم الدائنة
+                    'debit': 0,
+                    'credit': self.amount_aed,
+                    'description': f'ارتداد شيك رقم {self.cheque_bank_number} - إرجاع الالتزام'
+                })
+            
+            GLService.post_entry(
+                lines=lines,
+                description=f'ارتداد شيك {self.cheque_type_ar} رقم {self.cheque_bank_number}',
+                reference_type='cheque_bounce',
+                reference_id=self.id
+            )
+        
+        except Exception as e:
+            from app import app
+            app.logger.error(f'Failed to create GL entry for bounced cheque {self.id}: {e}')
     
     def cancel_cheque(self, reason=None):
         """إلغاء الشيك"""

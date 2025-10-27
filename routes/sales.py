@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from extensions import db
+from extensions import db, csrf
 from models import Sale, Customer, Product, InvoiceSettings
 from services.sale_service import SaleService
 from services.currency_service import CurrencyService
@@ -333,8 +333,6 @@ def restore(id):
 # =====================================
 
 @sales_bp.route('/api/calculate-totals', methods=['POST'])
-@login_required
-@permission_required('manage_sales')
 def api_calculate_sale_totals():
     """API لحساب إجماليات فاتورة المبيعات - Backend Calculation"""
     try:

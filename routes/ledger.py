@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
 from flask_login import login_required, current_user
 from sqlalchemy import func
-from extensions import db
+from extensions import db, csrf
 from models import GLAccount, GLJournalEntry, GLJournalLine, Cheque, PaymentVault
 from services.gl_service import GLService
 from services.cash_flow_service import CashFlowService
@@ -385,7 +385,6 @@ def api_search_accounts():
 
 
 @ledger_bp.route('/api/calculate-journal-balance', methods=['POST'])
-@login_required
 def api_calculate_journal_balance():
     """API لحساب توازن القيد اليدوي - Backend Calculation"""
     try:

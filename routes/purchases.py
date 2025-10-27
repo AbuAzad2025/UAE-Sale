@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
-from extensions import db
+from extensions import db, csrf
 from models import Purchase, PurchaseLine, Product, Supplier
 from services.stock_service import StockService
 from services.currency_service import CurrencyService
@@ -254,8 +254,6 @@ def print_purchase(id):
 # =====================================
 
 @purchases_bp.route('/api/calculate-totals', methods=['POST'])
-@login_required
-@admin_required
 def api_calculate_purchase_totals():
     """API لحساب إجماليات فاتورة المشتريات - Backend Calculation"""
     try:

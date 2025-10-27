@@ -260,21 +260,36 @@ def manual_entry():
             
             # جمع السطور
             lines = []
-            line_count = int(request.form.get('line_count', 0))
             
-            for i in range(line_count):
+            # جمع جميع السطور من الفورم
+            i = 0
+            while True:
                 account_code = request.form.get(f'line_{i}_account')
+                if not account_code:
+                    break
+                
                 debit = request.form.get(f'line_{i}_debit', 0)
                 credit = request.form.get(f'line_{i}_credit', 0)
                 line_description = request.form.get(f'line_{i}_description', '')
                 
-                if account_code:
+                # تحويل القيم الفارغة إلى صفر
+                try:
+                    debit_value = float(debit) if debit and debit.strip() else 0
+                    credit_value = float(credit) if credit and credit.strip() else 0
+                except (ValueError, AttributeError):
+                    debit_value = 0
+                    credit_value = 0
+                
+                # إضافة السطر فقط إذا كان فيه قيمة
+                if debit_value > 0 or credit_value > 0:
                     lines.append({
                         'account_code': account_code,
-                        'debit': float(debit) if debit else 0,
-                        'credit': float(credit) if credit else 0,
+                        'debit': debit_value,
+                        'credit': credit_value,
                         'description': line_description
                     })
+                
+                i += 1
             
             # إنشاء القيد
             entry = GLService.create_manual_entry(

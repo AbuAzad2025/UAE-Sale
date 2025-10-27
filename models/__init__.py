@@ -26,6 +26,9 @@ from .payment_vault import PaymentVault, PaymentTransaction, PaymentLog
 from .card_payment import CardPayment
 from .package import Package, PackagePurchase
 from .bank_reconciliation import BankReconciliation, BankReconciliationItem
+from .budget import Budget, BudgetLine
+from .cost_center import CostCenter
+from .fixed_asset import FixedAsset, DepreciationSchedule
 
 __all__ = [
     'User', 'Role', 'Permission',
@@ -53,5 +56,8 @@ __all__ = [
     'PaymentVault', 'PaymentTransaction', 'PaymentLog',
     'Package', 'PackagePurchase',
     'BankReconciliation', 'BankReconciliationItem',
+    'Budget', 'BudgetLine',
+    'CostCenter',
+    'FixedAsset', 'DepreciationSchedule',
 ]
 

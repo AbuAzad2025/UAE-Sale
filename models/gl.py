@@ -163,9 +163,13 @@ class GLJournalLine(db.Model):
     debit = db.Column(db.Numeric(18, 3), default=0)
     credit = db.Column(db.Numeric(18, 3), default=0)
     amount_aed = db.Column(db.Numeric(18, 3), default=0)
+    
+    # مركز التكلفة (اختياري)
+    cost_center_id = db.Column(db.Integer, db.ForeignKey('cost_centers.id'))
 
     entry = db.relationship('GLJournalEntry', back_populates='lines')
     account = db.relationship('GLAccount')
+    cost_center = db.relationship('CostCenter')
 
     def __repr__(self):
         return f'<GLLine acc={self.account_id} d={self.debit} c={self.credit}>'

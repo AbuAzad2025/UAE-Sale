@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, flash, redirect,
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from extensions import db
-from models import GLAccount, GLJournalEntry, GLJournalLine
+from models import GLAccount, GLJournalEntry, GLJournalLine, Cheque, PaymentVault
 from services.gl_service import GLService
 from services.cash_flow_service import CashFlowService
 from services.aging_analysis_service import AgingAnalysisService

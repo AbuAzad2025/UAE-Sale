@@ -9,7 +9,7 @@ from services.cash_flow_service import CashFlowService
 from services.aging_analysis_service import AgingAnalysisService
 from services.bank_reconciliation_service import BankReconciliationService
 from utils.decorators import permission_required
-from utils.audit import create_audit_log
+from utils.helpers import create_audit_log
 
 admin_ledger_bp = Blueprint('admin_ledger', __name__, url_prefix='/admin/ledger')
 

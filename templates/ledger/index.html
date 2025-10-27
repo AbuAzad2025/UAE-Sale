@@ -26,6 +26,20 @@
   </div>
 </div>
 
+<div class="row mb-3">
+  <div class="col-12">
+    <a href="{{ url_for('ledger.cash_flow') }}" class="btn btn-outline-primary">
+      <i class="fas fa-money-bill-wave mr-2"></i>قائمة التدفقات النقدية
+    </a>
+    <a href="{{ url_for('ledger.aging_analysis') }}?type=receivables" class="btn btn-outline-success">
+      <i class="fas fa-user-clock mr-2"></i>تحليل عمر الذمم المدينة
+    </a>
+    <a href="{{ url_for('ledger.aging_analysis') }}?type=payables" class="btn btn-outline-danger">
+      <i class="fas fa-building mr-2"></i>تحليل عمر الذمم الدائنة
+    </a>
+  </div>
+</div>
+
 <div class="card">
   <div class="card-header bg-gradient-primary">
     <h3 class="card-title text-white">الحسابات</h3>

@@ -4,10 +4,12 @@ from sqlalchemy import func
 from extensions import db
 from models import GLAccount, GLJournalEntry, GLJournalLine
 from services.gl_service import GLService
+from services.cash_flow_service import CashFlowService
+from services.aging_analysis_service import AgingAnalysisService
 from utils.decorators import admin_required, permission_required
 from utils.helpers import create_audit_log
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 ledger_bp = Blueprint('ledger', __name__, url_prefix='/ledger')
 
@@ -365,4 +367,55 @@ def api_search_accounts():
         'type': acc.type,
         'balance': float(acc.get_balance())
     } for acc in accounts])
+
+
+@ledger_bp.route('/cash-flow')
+@login_required
+@permission_required('view_ledger')
+def cash_flow():
+    """قائمة التدفقات النقدية"""
+    # الحصول على الفترة (آخر شهر افتراضياً)
+    today = date.today()
+    default_start = (today - timedelta(days=30)).strftime('%Y-%m-%d')
+    default_end = today.strftime('%Y-%m-%d')
+    
+    date_from = request.args.get('date_from', default_start, type=str)
+    date_to = request.args.get('date_to', default_end, type=str)
+    
+    try:
+        report = CashFlowService.generate_cash_flow(date_from, date_to)
+        
+        return render_template('ledger/cash_flow.html',
+                             report=report,
+                             date_from=date_from,
+                             date_to=date_to)
+    except Exception as e:
+        flash(f'❌ خطأ في إنشاء قائمة التدفقات: {str(e)}', 'danger')
+        return redirect(url_for('ledger.index'))
+
+
+@ledger_bp.route('/aging-analysis')
+@login_required
+@permission_required('view_ledger')
+def aging_analysis():
+    """تحليل عمر الذمم"""
+    analysis_type = request.args.get('type', 'receivables', type=str)  # receivables or payables
+    as_of_date = request.args.get('as_of_date', type=str)
+    
+    try:
+        if analysis_type == 'receivables':
+            report = AgingAnalysisService.get_receivables_aging(as_of_date)
+            title = 'تحليل عمر الذمم المدينة'
+        else:
+            report = AgingAnalysisService.get_payables_aging(as_of_date)
+            title = 'تحليل عمر الذمم الدائنة'
+        
+        return render_template('ledger/aging_analysis.html',
+                             report=report,
+                             analysis_type=analysis_type,
+                             title=title,
+                             as_of_date=as_of_date or date.today().strftime('%Y-%m-%d'))
+    except Exception as e:
+        flash(f'❌ خطأ في إنشاء تحليل العمر: {str(e)}', 'danger')
+        return redirect(url_for('ledger.index'))
 

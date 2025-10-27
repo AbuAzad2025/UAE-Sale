@@ -347,6 +347,12 @@ def register_blueprints(app):
         app.logger.warning(f'ledger_bp not registered: {e}')
     
     try:
+        from routes.advanced_ledger import advanced_ledger_bp
+        app.register_blueprint(advanced_ledger_bp)
+    except Exception as e:
+        app.logger.warning(f'advanced_ledger_bp not registered: {e}')
+    
+    try:
         from routes.admin_ledger import admin_ledger_bp
         app.register_blueprint(admin_ledger_bp)
     except Exception as e:

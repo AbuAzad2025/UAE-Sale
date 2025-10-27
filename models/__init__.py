@@ -29,6 +29,7 @@ from .bank_reconciliation import BankReconciliation, BankReconciliationItem
 from .budget import Budget, BudgetLine
 from .cost_center import CostCenter
 from .fixed_asset import FixedAsset, DepreciationSchedule
+from .advanced_accounting import CustomsTax, ExpenseCategory, AdvancedExpense, TaxCalculationRule
 
 __all__ = [
     'User', 'Role', 'Permission',
@@ -59,5 +60,6 @@ __all__ = [
     'Budget', 'BudgetLine',
     'CostCenter',
     'FixedAsset', 'DepreciationSchedule',
+    'CustomsTax', 'ExpenseCategory', 'AdvancedExpense', 'TaxCalculationRule',
 ]
 

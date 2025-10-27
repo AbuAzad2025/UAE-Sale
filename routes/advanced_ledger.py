@@ -4,7 +4,8 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 from extensions import db
 from models import GLAccount, GLJournalEntry, GLJournalLine, Cheque, PaymentVault
-from models.advanced_accounting import CustomsTax, ExpenseCategory, AdvancedExpense, TaxCalculationRule
+from models.advanced_accounting import CustomsTax, AdvancedExpense, TaxCalculationRule
+from models.expense import ExpenseCategory
 from services.gl_service import GLService
 from services.advanced_journal_manager import AdvancedJournalEntryManager
 from services.cheque_accounting_integration import ChequeAccountingIntegration

@@ -37,37 +37,6 @@ class CustomsTax(db.Model):
         }
         return types.get(self.tax_type, self.tax_type)
 
-class ExpenseCategory(db.Model):
-    """نموذج فئات المصروفات المتقدمة"""
-    __tablename__ = 'expense_categories'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(20), unique=True, nullable=False)
-    name = db.Column(db.String(200), nullable=False)
-    name_ar = db.Column(db.String(200), nullable=False)
-    parent_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'))
-    gl_account_id = db.Column(db.Integer, db.ForeignKey('gl_accounts.id'), nullable=False)
-    is_deductible = db.Column(db.Boolean, default=True)  # قابل للخصم ضريبياً
-    max_deduction_rate = db.Column(db.Numeric(5, 4), default=1.0)  # أقصى نسبة خصم
-    requires_approval = db.Column(db.Boolean, default=False)
-    approval_limit = db.Column(db.Numeric(18, 3), default=0)  # حد الموافقة
-    is_active = db.Column(db.Boolean, default=True)
-    description = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    
-    parent = db.relationship('ExpenseCategory', remote_side=[id], backref='children')
-    gl_account = db.relationship('GLAccount')
-    
-    def __repr__(self):
-        return f'<ExpenseCategory {self.name_ar}>'
-    
-    @property
-    def full_name(self):
-        if self.parent:
-            return f"{self.parent.full_name} - {self.name_ar}"
-        return self.name_ar
-
 class AdvancedExpense(db.Model):
     """نموذج المصروفات المتقدمة"""
     __tablename__ = 'advanced_expenses'

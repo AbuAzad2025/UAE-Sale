@@ -397,20 +397,17 @@ function loadTemplate(templateType) {
       break;
   }
   
-  // حساب الإجماليات عدة مرات للتأكد
-  console.log(`⏰ Scheduling calculateTotals() calls...`);
+  // حساب الإجماليات فوراً بعد إضافة السطور
+  console.log(`✅ Template loaded, calling calculateTotals immediately...`);
+  
+  // استدعاء فوري
+  calculateTotals();
+  
+  // استدعاء احتياطي بعد تأخير بسيط للتأكد
   setTimeout(() => {
-    console.log('⏰ 50ms timeout - calling calculateTotals()');
+    console.log('🔄 Backup calculateTotals() call');
     calculateTotals();
-  }, 50);
-  setTimeout(() => {
-    console.log('⏰ 200ms timeout - calling calculateTotals()');
-    calculateTotals();
-  }, 200);
-  setTimeout(() => {
-    console.log('⏰ 500ms timeout - calling calculateTotals()');
-    calculateTotals();
-  }, 500);
+  }, 100);
 }
 
 // إضافة سطر مع بيانات محددة

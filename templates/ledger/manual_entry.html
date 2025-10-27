@@ -378,7 +378,10 @@ function loadTemplate(templateType) {
       break;
   }
   
-  calculateTotals();
+  // حساب الإجماليات عدة مرات للتأكد
+  setTimeout(() => calculateTotals(), 50);
+  setTimeout(() => calculateTotals(), 200);
+  setTimeout(() => calculateTotals(), 500);
 }
 
 // إضافة سطر مع بيانات محددة
@@ -410,11 +413,6 @@ function addLineWithData(accountCode, accountName, debit, credit) {
   tbody.appendChild(row);
   lineCounter++;
   document.getElementById('lineCountHidden').value = lineCounter;
-  
-  // حساب الإجماليات فوراً بعد إضافة السطر
-  setTimeout(() => {
-    calculateTotals();
-  }, 100);
 }
 
 // دالة لإظهار/إخفاء البطاقات

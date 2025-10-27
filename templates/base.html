@@ -502,6 +502,14 @@
                   <p>الميزانية</p>
                 </a>
               </li>
+              {% if current_user.has_permission('admin') %}
+              <li class="nav-item">
+                <a href="{{ url_for('admin_ledger.dashboard') }}" class="nav-link">
+                  <i class="fas fa-cogs nav-icon"></i>
+                  <p>لوحة التحكم الإدارية</p>
+                </a>
+              </li>
+              {% endif %}
             </ul>
           </li>
           {% endif %}

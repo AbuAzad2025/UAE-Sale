@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block title %}إضافة حساب محاسبي جديد - Add Account{% endblock %}
+{% block page_title %}إضافة حساب محاسبي جديد{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col-12">
+    <a href="{{ url_for('admin_ledger.accounts_management') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-right mr-2"></i>العودة
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-gradient-success">
+    <h3 class="card-title text-white">
+      <i class="fas fa-plus-circle mr-2"></i>إضافة حساب محاسبي جديد
+    </h3>
+  </div>
+  <div class="card-body">
+    <form method="POST">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>كود الحساب <span class="text-danger">*</span></label>
+            <input type="text" name="code" class="form-control" required 
+                   placeholder="مثال: 1110, 1130, 4100" maxlength="20">
+            <small class="form-text text-muted">يجب أن يكون فريداً وغير مكرر</small>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>نوع الحساب <span class="text-danger">*</span></label>
+            <select name="type" class="form-control" required>
+              <option value="">-- اختر نوع الحساب --</option>
+              <option value="asset">أصول</option>
+              <option value="liability">خصوم</option>
+              <option value="equity">حقوق الملكية</option>
+              <option value="revenue">إيرادات</option>
+              <option value="expense">مصروفات</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>اسم الحساب (عربي) <span class="text-danger">*</span></label>
+            <input type="text" name="name_ar" class="form-control" required 
+                   placeholder="مثال: الصندوق، الذمم المدينة">
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>اسم الحساب (إنجليزي)</label>
+            <input type="text" name="name" class="form-control" 
+                   placeholder="مثال: Cash, Accounts Receivable">
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>الحساب الرئيسي</label>
+            <select name="parent_id" class="form-control">
+              <option value="">-- اختر الحساب الرئيسي (اختياري) --</option>
+              {% for parent in parent_accounts %}
+              <option value="{{ parent.id }}">{{ parent.full_name }} ({{ parent.code }})</option>
+              {% endfor %}
+            </select>
+            <small class="form-text text-muted">إذا تركت فارغاً، سيصبح حساب رئيسي</small>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>العملة</label>
+            <select name="currency" class="form-control">
+              <option value="AED" selected>درهم إماراتي (AED)</option>
+              <option value="USD">دولار أمريكي (USD)</option>
+              <option value="EUR">يورو (EUR)</option>
+              <option value="SAR">ريال سعودي (SAR)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-12">
+          <div class="form-group">
+            <label>وصف الحساب</label>
+            <textarea name="description" class="form-control" rows="3" 
+                      placeholder="وصف تفصيلي للحساب (اختياري)"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-check">
+            <input type="checkbox" name="is_header" class="form-check-input" id="is_header">
+            <label class="form-check-label" for="is_header">
+              حساب رئيسي (لا يقبل قيود مباشرة)
+            </label>
+            <small class="form-text text-muted">الحسابات الرئيسية تستخدم للتجميع فقط</small>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-check">
+            <input type="checkbox" name="is_active" class="form-check-input" id="is_active" checked>
+            <label class="form-check-label" for="is_active">
+              حساب نشط
+            </label>
+            <small class="form-text text-muted">الحسابات غير النشطة لا تظهر في القوائم</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mt-4">
+        <div class="col-12">
+          <button type="submit" class="btn btn-success btn-lg">
+            <i class="fas fa-save mr-2"></i>حفظ الحساب
+          </button>
+          <a href="{{ url_for('admin_ledger.accounts_management') }}" class="btn btn-secondary btn-lg">
+            <i class="fas fa-times mr-2"></i>إلغاء
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- مساعدة سريعة -->
+<div class="card mt-4">
+  <div class="card-header bg-gradient-info">
+    <h5 class="card-title text-white mb-0">
+      <i class="fas fa-lightbulb mr-2"></i>مساعدة سريعة
+    </h5>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <h6>أنواع الحسابات:</h6>
+        <ul class="list-unstyled">
+          <li><span class="badge badge-success mr-2">أصول</span> ما تملكه الشركة</li>
+          <li><span class="badge badge-warning mr-2">خصوم</span> ما تدين به الشركة</li>
+          <li><span class="badge badge-info mr-2">حقوق الملكية</span> رأس المال والأرباح</li>
+          <li><span class="badge badge-primary mr-2">إيرادات</span> دخل الشركة</li>
+          <li><span class="badge badge-danger mr-2">مصروفات</span> تكاليف الشركة</li>
+        </ul>
+      </div>
+      <div class="col-md-6">
+        <h6>أمثلة على أكواد الحسابات:</h6>
+        <ul class="list-unstyled">
+          <li><code>1110</code> - الصندوق</li>
+          <li><code>1130</code> - الذمم المدينة</li>
+          <li><code>2100</code> - الذمم الدائنة</li>
+          <li><code>4100</code> - إيرادات المبيعات</li>
+          <li><code>5100</code> - المصروفات العامة</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

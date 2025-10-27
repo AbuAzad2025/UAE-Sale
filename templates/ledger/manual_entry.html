@@ -16,6 +16,33 @@
   </ol>
 </div>
 
+<!-- قوالب سريعة -->
+<div class="alert alert-success">
+  <h5><i class="fas fa-magic mr-2"></i>قوالب سريعة:</h5>
+  <div class="row">
+    <div class="col-md-3">
+      <button type="button" class="btn btn-outline-success btn-sm btn-block" onclick="loadTemplate('cash_sale')">
+        <i class="fas fa-cash-register mr-1"></i>مبيعة نقدية
+      </button>
+    </div>
+    <div class="col-md-3">
+      <button type="button" class="btn btn-outline-success btn-sm btn-block" onclick="loadTemplate('credit_sale')">
+        <i class="fas fa-credit-card mr-1"></i>مبيعة آجلة
+      </button>
+    </div>
+    <div class="col-md-3">
+      <button type="button" class="btn btn-outline-warning btn-sm btn-block" onclick="loadTemplate('expense')">
+        <i class="fas fa-receipt mr-1"></i>مصروف
+      </button>
+    </div>
+    <div class="col-md-3">
+      <button type="button" class="btn btn-outline-info btn-sm btn-block" onclick="loadTemplate('adjustment')">
+        <i class="fas fa-balance-scale mr-1"></i>تسوية
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="row mb-3">
   <div class="col-12">
     <a href="{{ url_for('ledger.index') }}" class="btn btn-secondary">
@@ -255,6 +282,75 @@ function resetForm() {
     addLine();
     calculateTotals();
   }
+}
+
+// قوالب سريعة
+function loadTemplate(templateType) {
+  // مسح السطور الحالية
+  document.getElementById('linesTableBody').innerHTML = '';
+  lineCounter = 0;
+  
+  // تعيين الوصف
+  const descriptionInput = document.querySelector('input[name="description"]');
+  
+  switch(templateType) {
+    case 'cash_sale':
+      descriptionInput.value = 'مبيعة نقدية';
+      addLineWithData('1110', 'صندوق', 0, 1000); // مثال
+      addLineWithData('4100', 'إيرادات المبيعات', 1000, 0);
+      break;
+      
+    case 'credit_sale':
+      descriptionInput.value = 'مبيعة آجلة';
+      addLineWithData('1130', 'الذمم المدينة', 0, 1000); // مثال
+      addLineWithData('4100', 'إيرادات المبيعات', 1000, 0);
+      break;
+      
+    case 'expense':
+      descriptionInput.value = 'مصروف';
+      addLineWithData('5100', 'المصروفات العامة', 0, 500); // مثال
+      addLineWithData('1110', 'صندوق', 500, 0);
+      break;
+      
+    case 'adjustment':
+      descriptionInput.value = 'قيد تسوية';
+      addLineWithData('1110', 'صندوق', 0, 200); // مثال
+      addLineWithData('1130', 'الذمم المدينة', 200, 0);
+      break;
+  }
+  
+  calculateTotals();
+}
+
+// إضافة سطر مع بيانات محددة
+function addLineWithData(accountCode, accountName, debit, credit) {
+  const tbody = document.getElementById('linesTableBody');
+  const row = document.createElement('tr');
+  row.id = `line_${lineCounter}`;
+  row.innerHTML = `
+    <td class="text-center">${lineCounter + 1}</td>
+    <td>
+      <select name="line_${lineCounter}_account" class="form-control account-select" required>
+        <option value="">-- اختر الحساب --</option>
+        ${accounts.map(acc => `<option value="${acc.code}" ${acc.code === accountCode ? 'selected' : ''}>${acc.full_name}</option>`).join('')}
+      </select>
+    </td>
+    <td>
+      <input type="text" name="line_${lineCounter}_description" class="form-control" 
+             value="${accountName}" placeholder="البيان (اختياري)">
+    </td>
+    <td>
+      <input type="number" name="line_${lineCounter}_debit" class="form-control text-center debit-input" 
+             step="0.01" min="0" value="${debit}" onchange="handleDebitChange(this)" onkeyup="calculateTotals()">
+    </td>
+    <td>
+      <input type="number" name="line_${lineCounter}_credit" class="form-control text-center credit-input" 
+             step="0.01" min="0" value="${credit}" onchange="handleCreditChange(this)" onkeyup="calculateTotals()">
+    </td>
+  `;
+  tbody.appendChild(row);
+  lineCounter++;
+  document.getElementById('lineCountHidden').value = lineCounter;
 }
 
 // عند تحميل الصفحة

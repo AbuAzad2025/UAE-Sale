@@ -1,0 +1,45 @@
+{
+  "timestamp": "2025-10-27T23:19:16.069633",
+  "summary": {
+    "critical_errors": 0,
+    "high_errors": 0,
+    "warnings": 0,
+    "grade": "ممتاز ✅",
+    "score": 95
+  },
+  "details": {
+    "gl_accounts": {
+      "total": 50,
+      "active": 50,
+      "header": 1,
+      "detail": 49
+    },
+    "journal_entries": {
+      "total": 7,
+      "posted": 7,
+      "reversed": 1,
+      "unbalanced": 0
+    },
+    "trial_balance": {
+      "total_debit": 1357.25,
+      "total_credit": 1357.25,
+      "difference": 0.0,
+      "is_balanced": true,
+      "accounts_count": 9
+    },
+    "sales": {
+      "total_count": 1,
+      "confirmed_count": 1,
+      "total_amount": 257.25,
+      "total_paid": 0.0,
+      "total_balance": 257.25
+    },
+    "cheques": {
+      "total": 0,
+      "incoming": 0,
+      "outgoing": 0
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

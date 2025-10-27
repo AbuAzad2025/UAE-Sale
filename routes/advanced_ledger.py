@@ -9,6 +9,7 @@ from services.gl_service import GLService
 from services.advanced_journal_manager import AdvancedJournalEntryManager
 from services.cheque_accounting_integration import ChequeAccountingIntegration
 from services.real_time_listeners import accounting_event_stream
+from services.advanced_analytics import AdvancedFinancialAnalytics
 from utils.decorators import permission_required
 from utils.helpers import create_audit_log
 
@@ -393,3 +394,102 @@ def cheque_accounting_summary_api(cheque_id):
             'success': False,
             'error': str(e)
         }), 400
+
+@advanced_ledger_bp.route('/professional-reports')
+@login_required
+@permission_required('view_ledger')
+def professional_reports():
+    """تقارير مالية احترافية مع رسوم بيانية"""
+    # الحصول على البيانات
+    trends = AdvancedFinancialAnalytics.get_trend_analysis(months=12)
+    expense_breakdown = AdvancedFinancialAnalytics.get_expense_breakdown()
+    revenue_breakdown = AdvancedFinancialAnalytics.get_revenue_breakdown()
+    
+    # حساب الإحصائيات
+    total_revenue = sum(item['revenue'] for item in trends)
+    total_expenses = sum(item['expenses'] for item in trends)
+    net_profit = total_revenue - total_expenses
+    profit_margin = (net_profit / total_revenue * 100) if total_revenue > 0 else 0
+    
+    # تحضير البيانات للرسوم البيانية
+    months = [item['month'] for item in trends]
+    revenue_data = [item['revenue'] for item in trends]
+    expense_data = [item['expenses'] for item in trends]
+    profit_data = [item['profit'] for item in trends]
+    
+    return render_template('ledger/advanced/professional_reports.html',
+                         monthly_data=trends,
+                         total_revenue=total_revenue,
+                         total_expenses=total_expenses,
+                         net_profit=net_profit,
+                         profit_margin=profit_margin,
+                         months=months,
+                         revenue_data=revenue_data,
+                         expense_data=expense_data,
+                         profit_data=profit_data,
+                         date_from=date.today() - timedelta(days=365),
+                         date_to=date.today())
+
+@advanced_ledger_bp.route('/advanced-analytics')
+@login_required
+@permission_required('admin')
+def advanced_analytics():
+    """نظام التحليل المالي المتقدم"""
+    # الحصول على جميع البيانات التحليلية
+    dashboard_summary = AdvancedFinancialAnalytics.get_dashboard_summary()
+    
+    return render_template('ledger/advanced/advanced_analytics.html',
+                         summary=dashboard_summary,
+                         ratios=dashboard_summary['ratios'],
+                         trends=dashboard_summary['trends'],
+                         expense_breakdown=dashboard_summary['expense_breakdown'],
+                         revenue_breakdown=dashboard_summary['revenue_breakdown'],
+                         forecast=dashboard_summary['forecast'])
+
+@advanced_ledger_bp.route('/api/financial-ratios')
+@login_required
+@permission_required('view_ledger')
+def api_financial_ratios():
+    """API للنسب المالية"""
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+    
+    if date_from:
+        date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+    if date_to:
+        date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+    
+    ratios = AdvancedFinancialAnalytics.get_financial_ratios(date_from, date_to)
+    
+    return jsonify({
+        'success': True,
+        'ratios': ratios
+    })
+
+@advanced_ledger_bp.route('/api/trend-analysis')
+@login_required
+@permission_required('view_ledger')
+def api_trend_analysis():
+    """API لتحليل الاتجاهات"""
+    months = int(request.args.get('months', 12))
+    
+    trends = AdvancedFinancialAnalytics.get_trend_analysis(months=months)
+    
+    return jsonify({
+        'success': True,
+        'trends': trends
+    })
+
+@advanced_ledger_bp.route('/api/forecasting')
+@login_required
+@permission_required('admin')
+def api_forecasting():
+    """API للتوقعات المالية"""
+    months_ahead = int(request.args.get('months', 6))
+    
+    forecast = AdvancedFinancialAnalytics.get_forecasting_data(months_ahead=months_ahead)
+    
+    return jsonify({
+        'success': True,
+        'forecast': forecast
+    })

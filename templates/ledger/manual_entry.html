@@ -362,9 +362,11 @@ function resetForm() {
 
 // قوالب سريعة
 function loadTemplate(templateType) {
+  console.log(`🔥 loadTemplate('${templateType}') called`);
   // مسح السطور الحالية
   document.getElementById('linesTableBody').innerHTML = '';
   lineCounter = 0;
+  console.log(`🗑️ Cleared table, lineCounter = ${lineCounter}`);
   
   // تعيين الوصف
   const descriptionInput = document.querySelector('input[name="description"]');
@@ -396,16 +398,28 @@ function loadTemplate(templateType) {
   }
   
   // حساب الإجماليات عدة مرات للتأكد
-  setTimeout(() => calculateTotals(), 50);
-  setTimeout(() => calculateTotals(), 200);
-  setTimeout(() => calculateTotals(), 500);
+  console.log(`⏰ Scheduling calculateTotals() calls...`);
+  setTimeout(() => {
+    console.log('⏰ 50ms timeout - calling calculateTotals()');
+    calculateTotals();
+  }, 50);
+  setTimeout(() => {
+    console.log('⏰ 200ms timeout - calling calculateTotals()');
+    calculateTotals();
+  }, 200);
+  setTimeout(() => {
+    console.log('⏰ 500ms timeout - calling calculateTotals()');
+    calculateTotals();
+  }, 500);
 }
 
 // إضافة سطر مع بيانات محددة
 function addLineWithData(accountCode, accountName, debit, credit) {
+  console.log(`➕ addLineWithData(${accountCode}, "${accountName}", ${debit}, ${credit})`);
   const tbody = document.getElementById('linesTableBody');
   const row = document.createElement('tr');
   row.id = `line_${lineCounter}`;
+  console.log(`  Creating row: line_${lineCounter}`);
   row.innerHTML = `
     <td class="text-center">${lineCounter + 1}</td>
     <td>

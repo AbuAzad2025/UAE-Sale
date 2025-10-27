@@ -4,41 +4,59 @@
 
 {% block content %}
 
-<!-- ملخص سريع -->
-<div class="alert alert-info">
-  <h5><i class="fas fa-info-circle mr-2"></i>ملخص سريع - كيف تُنشئ قيد يدوي:</h5>
-  <ol class="mb-0">
-    <li>أدخل <strong>وصف القيد</strong> (مثال: شراء معدات، قيد تسوية)</li>
-    <li>اختر <strong>الحسابات</strong> من القائمة المنسدلة</li>
-    <li>أدخل المبالغ في <strong>المدين أو الدائن</strong> (ليس الاثنين معاً)</li>
-    <li>تأكد من <strong>التوازن</strong>: إجمالي المدين = إجمالي الدائن</li>
-    <li>اضغط <strong>حفظ القيد</strong> عندما يتحول الزر للأخضر ✅</li>
-  </ol>
+<!-- ملخص سريع - FIXED -->
+<div class="card border-info mb-3" id="quickSummaryCard" style="position: relative;">
+  <div class="card-header bg-info text-white">
+    <h5 class="mb-0">
+      <i class="fas fa-info-circle mr-2"></i>ملخص سريع - كيف تُنشئ قيد يدوي
+      <button type="button" class="btn btn-sm btn-light float-left" onclick="toggleCard('quickSummary')" style="padding: 2px 8px;">
+        <i class="fas fa-minus" id="quickSummaryIcon"></i>
+      </button>
+    </h5>
+  </div>
+  <div class="card-body" id="quickSummaryBody">
+    <ol class="mb-0 text-right">
+      <li class="mb-2"><strong>أدخل وصف القيد</strong> (مثال: شراء معدات، قيد تسوية)</li>
+      <li class="mb-2"><strong>اختر الحسابات</strong> من القائمة المنسدلة</li>
+      <li class="mb-2"><strong>أدخل المبالغ</strong> في المدين أو الدائن (ليس الاثنين معاً)</li>
+      <li class="mb-2"><strong>تأكد من التوازن</strong>: إجمالي المدين = إجمالي الدائن</li>
+      <li class="mb-2"><strong>اضغط حفظ القيد</strong> عندما يتحول الزر للأخضر ✅</li>
+    </ol>
+  </div>
 </div>
 
-<!-- قوالب سريعة -->
-<div class="alert alert-success">
-  <h5><i class="fas fa-magic mr-2"></i>قوالب سريعة:</h5>
-  <div class="row">
-    <div class="col-md-3">
-      <button type="button" class="btn btn-outline-success btn-sm btn-block" onclick="loadTemplate('cash_sale')">
-        <i class="fas fa-cash-register mr-1"></i>مبيعة نقدية
+<!-- قوالب سريعة - FIXED -->
+<div class="card border-success mb-3" id="quickTemplatesCard" style="position: relative;">
+  <div class="card-header bg-success text-white">
+    <h5 class="mb-0">
+      <i class="fas fa-magic mr-2"></i>قوالب سريعة
+      <button type="button" class="btn btn-sm btn-light float-left" onclick="toggleCard('quickTemplates')" style="padding: 2px 8px;">
+        <i class="fas fa-minus" id="quickTemplatesIcon"></i>
       </button>
-    </div>
-    <div class="col-md-3">
-      <button type="button" class="btn btn-outline-success btn-sm btn-block" onclick="loadTemplate('credit_sale')">
-        <i class="fas fa-credit-card mr-1"></i>مبيعة آجلة
-      </button>
-    </div>
-    <div class="col-md-3">
-      <button type="button" class="btn btn-outline-warning btn-sm btn-block" onclick="loadTemplate('expense')">
-        <i class="fas fa-receipt mr-1"></i>مصروف
-      </button>
-    </div>
-    <div class="col-md-3">
-      <button type="button" class="btn btn-outline-info btn-sm btn-block" onclick="loadTemplate('adjustment')">
-        <i class="fas fa-balance-scale mr-1"></i>تسوية
-      </button>
+    </h5>
+  </div>
+  <div class="card-body" id="quickTemplatesBody">
+    <div class="row">
+      <div class="col-md-3 mb-2">
+        <button type="button" class="btn btn-success btn-block" onclick="loadTemplate('cash_sale')">
+          <i class="fas fa-cash-register mr-1"></i>مبيعة نقدية
+        </button>
+      </div>
+      <div class="col-md-3 mb-2">
+        <button type="button" class="btn btn-primary btn-block" onclick="loadTemplate('credit_sale')">
+          <i class="fas fa-credit-card mr-1"></i>مبيعة آجلة
+        </button>
+      </div>
+      <div class="col-md-3 mb-2">
+        <button type="button" class="btn btn-warning btn-block" onclick="loadTemplate('expense')">
+          <i class="fas fa-receipt mr-1"></i>مصروف
+        </button>
+      </div>
+      <div class="col-md-3 mb-2">
+        <button type="button" class="btn btn-info btn-block" onclick="loadTemplate('adjustment')">
+          <i class="fas fa-balance-scale mr-1"></i>تسوية
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -353,6 +371,22 @@ function addLineWithData(accountCode, accountName, debit, credit) {
   document.getElementById('lineCountHidden').value = lineCounter;
 }
 
+// دالة لإظهار/إخفاء البطاقات
+function toggleCard(cardName) {
+  const body = document.getElementById(cardName + 'Body');
+  const icon = document.getElementById(cardName + 'Icon');
+  
+  if (body.style.display === 'none') {
+    body.style.display = 'block';
+    icon.classList.remove('fa-plus');
+    icon.classList.add('fa-minus');
+  } else {
+    body.style.display = 'none';
+    icon.classList.remove('fa-minus');
+    icon.classList.add('fa-plus');
+  }
+}
+
 // عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', function() {
   // تعيين التاريخ الحالي
@@ -363,18 +397,92 @@ document.addEventListener('DOMContentLoaded', function() {
   addLine();
   addLine();
   calculateTotals();
+  
+  // التأكد من أن البطاقات مرئية
+  document.getElementById('quickSummaryBody').style.display = 'block';
+  document.getElementById('quickTemplatesBody').style.display = 'block';
 });
 </script>
 
 <style>
+/* تنسيق البطاقات الثابتة */
+#quickSummaryCard, #quickTemplatesCard {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-width: 2px !important;
+  animation: fadeIn 0.5s ease-in;
+}
+
+#quickSummaryCard .card-header,
+#quickTemplatesCard .card-header {
+  font-weight: bold;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+#quickSummaryBody,
+#quickTemplatesBody {
+  display: block !important;
+  padding: 1.5rem;
+  background: #f8f9fa;
+}
+
+#quickSummaryBody ol li,
+#quickTemplatesBody .row {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* تنسيق الأزرار */
+#quickTemplatesBody .btn {
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#quickTemplatesBody .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* تنسيق الحسابات */
 .account-select {
   font-size: 0.9rem;
 }
+
 #balanceStatus {
   font-weight: bold;
 }
+
 .table input, .table select {
   border-radius: 0.25rem;
+}
+
+/* رسوم متحركة */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* منع الاختفاء */
+.card-body {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 </style>
 {% endblock %}

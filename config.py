@@ -73,6 +73,13 @@ class Config:
     HOST = os.environ.get("HOST", "0.0.0.0")
     PORT = _int("PORT", 8080)
     
+    # CSRF Exemptions
+    WTF_CSRF_EXEMPT_LIST = [
+        '/sales/api/calculate-totals',
+        '/purchases/api/calculate-totals',
+        '/ledger/api/calculate-journal-balance'
+    ]
+    
     # ===== Database =====
     _db_uri = os.environ.get("DATABASE_URL") or f"sqlite:///{os.path.join(instance_dir, 'app.db')}"
     

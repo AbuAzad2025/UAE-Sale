@@ -45,17 +45,6 @@ def create_app(config_class=Config):
     init_extensions(app)
     setup_advanced_logging(app)
     
-    # CSRF exemption for API endpoints
-    @app.before_request
-    def csrf_protect():
-        """Exempt API endpoints from CSRF protection"""
-        if request.path.startswith('/sales/api/') or \
-           request.path.startswith('/purchases/api/') or \
-           request.path.startswith('/ledger/api/') or \
-           request.path.endswith('/api/calculate-totals') or \
-           request.path.endswith('/api/calculate-journal-balance'):
-            csrf._csrf_disable = True
-    
     if COMPRESS_AVAILABLE:
         compress = Compress()
         compress.init_app(app)

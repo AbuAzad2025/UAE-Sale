@@ -25,6 +25,7 @@ from .donation import Donation
 from .payment_vault import PaymentVault, PaymentTransaction, PaymentLog
 from .card_payment import CardPayment
 from .package import Package, PackagePurchase
+from .bank_reconciliation import BankReconciliation, BankReconciliationItem
 
 __all__ = [
     'User', 'Role', 'Permission',
@@ -51,5 +52,6 @@ __all__ = [
     'CardPayment',
     'PaymentVault', 'PaymentTransaction', 'PaymentLog',
     'Package', 'PackagePurchase',
+    'BankReconciliation', 'BankReconciliationItem',
 ]
 

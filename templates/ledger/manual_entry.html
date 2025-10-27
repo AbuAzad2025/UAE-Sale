@@ -254,7 +254,7 @@ function addLine() {
     </td>
     <td>
       <input type="number" name="line_${lineCounter}_debit" class="form-control text-center debit-input" 
-             step="0.01" min="0" value="0" oninput="handleDebitChange(this)" onchange="handleDebitChange(this)" onkeyup="calculateTotals()">
+             step="0.01" min="0" value="0" oninput="handleDebitChange(this)" onchange="handleDebitChange(this)" onkeyup="calculateJournalTotals()">
     </td>
     <td>
       <input type="number" name="line_${lineCounter}_credit" class="form-control text-center credit-input" 
@@ -274,7 +274,7 @@ function handleDebitChange(input) {
     const creditInput = row.querySelector('.credit-input');
     creditInput.value = 0;
   }
-  calculateTotals();
+  calculateJournalTotals();
 }
 
 // عند تغيير الدائن، صفّر المدين
@@ -285,65 +285,81 @@ function handleCreditChange(input) {
     const debitInput = row.querySelector('.debit-input');
     debitInput.value = 0;
   }
-  calculateTotals();
+  calculateJournalTotals();
 }
 
-// حساب الإجماليات والتوازن
-function calculateTotals() {
-  console.log('🔵 calculateTotals() called');
+// حساب الإجماليات والتوازن للقيد اليدوي - BACKEND CALCULATION
+async function calculateJournalTotals() {
+  console.log('🔵 calculateJournalTotals() called - BACKEND VERSION 🚀');
+  
+  // جمع البيانات من الفورم
   const debitInputs = document.querySelectorAll('.debit-input');
   const creditInputs = document.querySelectorAll('.credit-input');
   
-  console.log(`🔍 Debit inputs: ${debitInputs.length}, Credit inputs: ${creditInputs.length}`);
+  const lines = [];
+  const lineCount = Math.max(debitInputs.length, creditInputs.length);
   
-  let totalDebit = 0;
-  let totalCredit = 0;
+  for (let i = 0; i < lineCount; i++) {
+    const debit = debitInputs[i] ? (parseFloat(debitInputs[i].value) || 0) : 0;
+    const credit = creditInputs[i] ? (parseFloat(creditInputs[i].value) || 0) : 0;
+    lines.push({ debit, credit });
+  }
   
-  debitInputs.forEach(input => {
-    const val = parseFloat(input.value) || 0;
-    console.log(`  Debit input value: ${input.value} → ${val}`);
-    totalDebit += val;
-  });
+  console.log(`📊 Sending ${lines.length} lines to backend for calculation`);
   
-  creditInputs.forEach(input => {
-    const val = parseFloat(input.value) || 0;
-    console.log(`  Credit input value: ${input.value} → ${val}`);
-    totalCredit += val;
-  });
-  
-  console.log(`💰 Total Debit: ${totalDebit}, Total Credit: ${totalCredit}`);
-  
-  document.getElementById('totalDebit').textContent = totalDebit.toFixed(2);
-  document.getElementById('totalCredit').textContent = totalCredit.toFixed(2);
-  
-  const difference = Math.abs(totalDebit - totalCredit);
-  const differenceSpan = document.getElementById('difference');
-  const balanceStatus = document.getElementById('balanceStatus');
-  const submitBtn = document.getElementById('submitBtn');
-  
-  differenceSpan.textContent = difference.toFixed(2);
-  
-  if (difference < 0.01 && totalDebit > 0 && totalCredit > 0) {
-    // متوازن ✅
-    differenceSpan.className = 'badge badge-success';
-    differenceSpan.innerHTML = '<i class="fas fa-check mr-1"></i> متوازن';
-    if (balanceStatus) {
-      balanceStatus.className = 'alert alert-success d-inline-block mb-0 py-2';
-      balanceStatus.innerHTML = '<i class="fas fa-check-circle mr-2"></i>القيد متوازن - يمكنك الحفظ الآن';
+  try {
+    // إرسال البيانات للـ backend
+    const response = await fetch('/ledger/api/calculate-journal-balance', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ lines })
+    });
+    
+    const result = await response.json();
+    console.log('✅ Backend response:', result);
+    
+    if (result.success) {
+      // تحديث العرض
+      document.getElementById('totalDebit').textContent = result.total_debit.toFixed(2);
+      document.getElementById('totalCredit').textContent = result.total_credit.toFixed(2);
+      
+      const differenceSpan = document.getElementById('difference');
+      const balanceStatus = document.getElementById('balanceStatus');
+      const submitBtn = document.getElementById('submitBtn');
+      
+      differenceSpan.textContent = result.difference.toFixed(2);
+      
+      if (result.is_balanced) {
+        // متوازن ✅
+        differenceSpan.className = 'badge badge-success';
+        differenceSpan.innerHTML = '<i class="fas fa-check mr-1"></i> متوازن';
+        if (balanceStatus) {
+          balanceStatus.className = 'alert alert-success d-inline-block mb-0 py-2';
+          balanceStatus.innerHTML = '<i class="fas fa-check-circle mr-2"></i>القيد متوازن - يمكنك الحفظ الآن';
+        }
+        submitBtn.disabled = false;
+        submitBtn.removeAttribute('disabled');
+        submitBtn.className = 'btn btn-success btn-lg';
+        console.log('✅ Button ENABLED by backend!');
+      } else {
+        // غير متوازن ❌
+        differenceSpan.className = 'badge badge-danger';
+        if (balanceStatus) {
+          balanceStatus.className = 'alert alert-warning d-inline-block mb-0 py-2';
+          balanceStatus.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>القيد غير متوازن! المدين يجب أن يساوي الدائن';
+        }
+        submitBtn.disabled = true;
+        submitBtn.setAttribute('disabled', 'disabled');
+        submitBtn.className = 'btn btn-secondary btn-lg';
+        console.log('❌ Button DISABLED by backend');
+      }
+    } else {
+      console.error('❌ Backend error:', result.error);
     }
-    submitBtn.disabled = false;
-    submitBtn.removeAttribute('disabled');
-    submitBtn.className = 'btn btn-success btn-lg';
-  } else {
-    // غير متوازن ❌
-    differenceSpan.className = 'badge badge-danger';
-    if (balanceStatus) {
-      balanceStatus.className = 'alert alert-warning d-inline-block mb-0 py-2';
-      balanceStatus.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>القيد غير متوازن! المدين يجب أن يساوي الدائن';
-    }
-    submitBtn.disabled = true;
-    submitBtn.setAttribute('disabled', 'disabled');
-    submitBtn.className = 'btn btn-secondary btn-lg';
+  } catch (error) {
+    console.error('❌ Failed to call backend:', error);
   }
 }
 
@@ -356,7 +372,7 @@ function resetForm() {
     // إضافة سطرين افتراضيين
     addLine();
     addLine();
-    calculateTotals();
+    calculateJournalTotals();
   }
 }
 
@@ -403,13 +419,13 @@ function loadTemplate(templateType) {
   
   // استخدام requestAnimationFrame للتأكد من تحديث الـ DOM
   requestAnimationFrame(() => {
-    console.log('🎬 requestAnimationFrame - calling calculateTotals()');
-    calculateTotals();
+    console.log('🎬 requestAnimationFrame - calling calculateJournalTotals()');
+    calculateJournalTotals();
     
     // استدعاء احتياطي للتأكد
     setTimeout(() => {
-      console.log('🔄 Backup calculateTotals() call');
-      calculateTotals();
+      console.log('🔄 Backup calculateJournalTotals() call');
+      calculateJournalTotals();
     }, 50);
   });
 }
@@ -435,11 +451,11 @@ function addLineWithData(accountCode, accountName, debit, credit) {
     </td>
     <td>
       <input type="number" name="line_${lineCounter}_debit" class="form-control text-center debit-input" 
-             step="0.01" min="0" value="${debit}" oninput="handleDebitChange(this)" onchange="handleDebitChange(this)" onkeyup="calculateTotals()">
+             step="0.01" min="0" value="${debit}" oninput="handleDebitChange(this)" onchange="handleDebitChange(this)" onkeyup="calculateJournalTotals()">
     </td>
     <td>
       <input type="number" name="line_${lineCounter}_credit" class="form-control text-center credit-input" 
-             step="0.01" min="0" value="${credit}" oninput="handleCreditChange(this)" onchange="handleCreditChange(this)" onkeyup="calculateTotals()">
+             step="0.01" min="0" value="${credit}" oninput="handleCreditChange(this)" onchange="handleCreditChange(this)" onkeyup="calculateJournalTotals()">
     </td>
   `;
   tbody.appendChild(row);
@@ -479,7 +495,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // إضافة سطرين افتراضيين
   addLine();
   addLine();
-  calculateTotals();
+  calculateJournalTotals();
   
   // التأكد من أن البطاقات مرئية
   document.getElementById('quickSummaryBody').style.display = 'block';

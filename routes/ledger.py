@@ -384,6 +384,41 @@ def api_search_accounts():
     } for acc in accounts])
 
 
+@ledger_bp.route('/api/calculate-journal-balance', methods=['POST'])
+@login_required
+@permission_required('view_ledger')
+def api_calculate_journal_balance():
+    """API لحساب توازن القيد اليدوي - Backend Calculation"""
+    try:
+        data = request.get_json()
+        lines = data.get('lines', [])
+        
+        total_debit = Decimal('0')
+        total_credit = Decimal('0')
+        
+        for line in lines:
+            debit = Decimal(str(line.get('debit', 0) or 0))
+            credit = Decimal(str(line.get('credit', 0) or 0))
+            total_debit += debit
+            total_credit += credit
+        
+        difference = abs(total_debit - total_credit)
+        is_balanced = difference < Decimal('0.01') and total_debit > 0 and total_credit > 0
+        
+        return jsonify({
+            'success': True,
+            'total_debit': float(total_debit),
+            'total_credit': float(total_credit),
+            'difference': float(difference),
+            'is_balanced': is_balanced
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 400
+
+
 @ledger_bp.route('/cash-flow')
 @login_required
 @permission_required('view_ledger')

@@ -375,12 +375,68 @@ function calculateLineTotal(index) {
 }
 
 // =====================================
-// حساب إجمالي الفاتورة
+// حساب إجمالي الفاتورة - Backend Calculation
 // =====================================
-function calculateTotals() {
+async function calculateTotals() {
+  try {
+    // جمع البيانات من الفورم
+    const lines = [];
+    $('.product-line').each(function() {
+      const lineId = $(this).attr('id');
+      const lineNumber = lineId.split('_')[1];
+      
+      const qty = parseFloat($(`.line-quantity[data-line="${lineNumber}"]`).val()) || 0;
+      const cost = parseFloat($(`.line-cost[data-line="${lineNumber}"]`).val()) || 0;
+      const discount = parseFloat($(`.line-discount[data-line="${lineNumber}"]`).val()) || 0;
+      
+      if (qty > 0 || cost > 0) {
+        lines.push({
+          quantity: qty,
+          unit_cost: cost,
+          discount_percent: discount
+        });
+      }
+    });
+    
+    const tax_rate = parseFloat($('#tax_rate').val()) || 0;
+    
+    // إرسال للـ backend
+    const response = await fetch('/purchases/api/calculate-totals', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        lines: lines,
+        tax_rate: tax_rate
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // تحديث الواجهة
+      $('#summary_subtotal').text(result.subtotal.toFixed(2) + ' AED');
+      $('#summary_tax').text(result.tax_amount.toFixed(2) + ' AED');
+      $('#summary_total').text(result.total.toFixed(2) + ' AED');
+      
+      console.log('✅ Totals calculated (backend):', result);
+    } else {
+      console.error('Backend calculation error:', result.error);
+      // Fallback to client-side
+      calculateTotalsClientSide();
+    }
+  } catch (error) {
+    console.error('Failed to calculate totals via backend:', error);
+    // Fallback to client-side
+    calculateTotalsClientSide();
+  }
+}
+
+// Fallback: حساب محلي
+function calculateTotalsClientSide() {
   let subtotal = 0;
   
-  // حساب مجموع جميع الأسطر الموجودة
   $('.product-line').each(function() {
     const lineId = $(this).attr('id');
     const lineNumber = lineId.split('_')[1];
@@ -388,8 +444,6 @@ function calculateTotals() {
     const qty = parseFloat($(`.line-quantity[data-line="${lineNumber}"]`).val()) || 0;
     const cost = parseFloat($(`.line-cost[data-line="${lineNumber}"]`).val()) || 0;
     const discount = parseFloat($(`.line-discount[data-line="${lineNumber}"]`).val()) || 0;
-    
-    console.log(`Line ${lineNumber}: qty=${qty}, cost=${cost}, discount=${discount}`);
     
     const lineSubtotal = qty * cost;
     const lineDiscountAmount = lineSubtotal * (discount / 100);
@@ -407,7 +461,7 @@ function calculateTotals() {
   $('#summary_tax').text(taxAmount.toFixed(2) + ' AED');
   $('#summary_total').text(total.toFixed(2) + ' AED');
   
-  console.log('✅ Totals calculated:', {subtotal, taxAmount, total});
+  console.log('✅ Totals calculated (client-side fallback):', {subtotal, taxAmount, total});
 }
 
 // =====================================

@@ -326,3 +326,60 @@ def restore(id):
         db.session.rollback()
     
     return redirect(url_for('sales.archived'))
+
+
+# =====================================
+# API Endpoints - Backend Calculations
+# =====================================
+
+@sales_bp.route('/api/calculate-totals', methods=['POST'])
+@login_required
+@permission_required('manage_sales')
+def api_calculate_sale_totals():
+    """API لحساب إجماليات فاتورة المبيعات - Backend Calculation"""
+    try:
+        from decimal import Decimal
+        
+        data = request.get_json(force=True)
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        lines = data.get('lines', [])
+        discount_amount = Decimal(str(data.get('discount_amount', 0)))
+        shipping_cost = Decimal(str(data.get('shipping_cost', 0)))
+        tax_rate = Decimal(str(data.get('tax_rate', 0)))
+        
+        # حساب المجموع الفرعي
+        subtotal = Decimal('0')
+        for line in lines:
+            try:
+                qty = Decimal(str(line.get('quantity', 0)))
+                price = Decimal(str(line.get('unit_price', 0)))
+                discount_percent = Decimal(str(line.get('discount_percent', 0)))
+                
+                if qty > 0 and price > 0:
+                    line_subtotal = qty * price
+                    line_discount = line_subtotal * (discount_percent / Decimal('100'))
+                    line_total = line_subtotal - line_discount
+                    subtotal += line_total
+            except (ValueError, TypeError, KeyError):
+                continue
+        
+        # حساب الإجماليات
+        after_discount = subtotal - discount_amount + shipping_cost
+        tax_amount = after_discount * (tax_rate / Decimal('100'))
+        total = after_discount + tax_amount
+        
+        return jsonify({
+            'success': True,
+            'subtotal': float(subtotal),
+            'discount': float(discount_amount),
+            'shipping': float(shipping_cost),
+            'tax_rate': float(tax_rate),
+            'tax_amount': float(tax_amount),
+            'total': float(total),
+            'line_count': len([l for l in lines if Decimal(str(l.get('quantity', 0))) > 0])
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

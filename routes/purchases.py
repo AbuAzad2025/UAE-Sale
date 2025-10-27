@@ -248,3 +248,56 @@ def print_purchase(id):
     purchase = Purchase.query.get_or_404(id)
     return render_template('purchases/print.html', purchase=purchase)
 
+
+# =====================================
+# API Endpoints - Backend Calculations
+# =====================================
+
+@purchases_bp.route('/api/calculate-totals', methods=['POST'])
+@login_required
+@admin_required
+def api_calculate_purchase_totals():
+    """API لحساب إجماليات فاتورة المشتريات - Backend Calculation"""
+    try:
+        from flask import jsonify
+        
+        data = request.get_json(force=True)
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        lines = data.get('lines', [])
+        tax_rate = Decimal(str(data.get('tax_rate', 0)))
+        
+        # حساب المجموع الفرعي
+        subtotal = Decimal('0')
+        for line in lines:
+            try:
+                qty = Decimal(str(line.get('quantity', 0)))
+                cost = Decimal(str(line.get('unit_cost', 0)))
+                discount_percent = Decimal(str(line.get('discount_percent', 0)))
+                
+                if qty > 0 and cost > 0:
+                    line_subtotal = qty * cost
+                    line_discount = line_subtotal * (discount_percent / Decimal('100'))
+                    line_total = line_subtotal - line_discount
+                    subtotal += line_total
+            except (ValueError, TypeError, KeyError):
+                continue
+        
+        # حساب الضريبة والإجمالي
+        tax_amount = subtotal * (tax_rate / Decimal('100'))
+        total = subtotal + tax_amount
+        
+        return jsonify({
+            'success': True,
+            'subtotal': float(subtotal),
+            'tax_rate': float(tax_rate),
+            'tax_amount': float(tax_amount),
+            'total': float(total),
+            'line_count': len([l for l in lines if Decimal(str(l.get('quantity', 0))) > 0])
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f'Error in calculate_purchase_totals: {str(e)}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+

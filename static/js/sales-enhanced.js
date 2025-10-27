@@ -240,7 +240,74 @@ function loadProductPrice(index) {
 /**
  * Calculate All Totals
  */
-function calculateTotals() {
+// حساب الإجماليات - Backend Calculation
+async function calculateTotals() {
+    try {
+        // جمع البيانات من الفورم
+        const lines = [];
+        $('[name^="lines"][name$="[quantity]"]').each(function() {
+            const $line = $(this).closest('.product-line');
+            const qty = parseFloat($(this).val()) || 0;
+            const price = parseFloat($line.find('[name$="[unit_price]"]').val()) || 0;
+            const discount = parseFloat($line.find('[name$="[discount_percent]"]').val()) || 0;
+            
+            if (qty > 0 || price > 0) {
+                lines.push({
+                    quantity: qty,
+                    unit_price: price,
+                    discount_percent: discount
+                });
+            }
+        });
+        
+        const discount_amount = parseFloat($('[name="discount_amount"]').val()) || 0;
+        const shipping_cost = parseFloat($('[name="shipping_cost"]').val()) || 0;
+        const tax_rate = parseFloat($('[name="tax_rate"]').val()) || 0;
+        
+        // إرسال للـ backend
+        const response = await fetch('/sales/api/calculate-totals', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                lines: lines,
+                discount_amount: discount_amount,
+                shipping_cost: shipping_cost,
+                tax_rate: tax_rate
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // تحديث الواجهة
+            $('#subtotal').text(azad.formatNumber(result.subtotal));
+            $('#total').text(azad.formatNumber(result.total));
+            $('#line_count_display').text(result.line_count);
+            
+            return {
+                subtotal: result.subtotal,
+                discount: result.discount,
+                shipping: result.shipping,
+                tax: result.tax_amount,
+                total: result.total,
+                lineCount: result.line_count
+            };
+        } else {
+            console.error('Backend calculation error:', result.error);
+            // Fallback to client-side calculation
+            return calculateTotalsClientSide();
+        }
+    } catch (error) {
+        console.error('Failed to calculate totals via backend:', error);
+        // Fallback to client-side calculation
+        return calculateTotalsClientSide();
+    }
+}
+
+// Fallback: حساب محلي في حالة فشل الـ backend
+function calculateTotalsClientSide() {
     let subtotal = 0;
     let lineCount = 0;
     

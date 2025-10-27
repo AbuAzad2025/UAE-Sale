@@ -224,10 +224,69 @@ function copyToClipboard(text) {
 /**
  * Calculate Totals (for sales/purchase forms)
  */
-function calculateTotals() {
+// حساب الإجماليات - Backend Calculation (used as fallback/legacy)
+// NOTE: This is now replaced by sales-enhanced.js for modern pages
+async function calculateTotals() {
+    try {
+        // Detect which type of form (sales or purchases)
+        const isSalesForm = $('[name^="lines"][name$="[unit_price]"]').length > 0;
+        const isPurchaseForm = $('[name^="lines"][name$="[unit_cost]"]').length > 0;
+        
+        if (isSalesForm) {
+            // Use sales API
+            const lines = [];
+            $('[name^="lines"][name$="[quantity]"]').each(function() {
+                const $line = $(this).closest('.product-line');
+                const qty = parseFloat($(this).val()) || 0;
+                const price = parseFloat($line.find('[name$="[unit_price]"]').val()) || 0;
+                const discount = parseFloat($line.find('[name$="[discount_percent]"]').val()) || 0;
+                
+                if (qty > 0 || price > 0) {
+                    lines.push({
+                        quantity: qty,
+                        unit_price: price,
+                        discount_percent: discount
+                    });
+                }
+            });
+            
+            const response = await fetch('/sales/api/calculate-totals', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    lines: lines,
+                    discount_amount: parseFloat($('[name="discount_amount"]').val()) || 0,
+                    shipping_cost: parseFloat($('[name="shipping_cost"]').val()) || 0,
+                    tax_rate: parseFloat($('[name="tax_rate"]').val()) || 0
+                })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                $('#subtotal').text(formatNumber(result.subtotal));
+                $('#total').text(formatNumber(result.total));
+                return {
+                    subtotal: result.subtotal,
+                    discount: result.discount,
+                    shipping: result.shipping,
+                    tax: result.tax_amount,
+                    total: result.total
+                };
+            }
+        }
+        
+        // Fallback to client-side
+        return calculateTotalsClientSide();
+    } catch (error) {
+        console.error('Backend calculation failed, using client-side:', error);
+        return calculateTotalsClientSide();
+    }
+}
+
+// Client-side fallback calculation
+function calculateTotalsClientSide() {
     let subtotal = 0;
     
-    // Calculate subtotal from all lines
     $('[name^="lines"][name$="[quantity]"]').each(function() {
         const qty = parseFloat($(this).val()) || 0;
         const price = parseFloat($(this).closest('.product-line').find('[name$="[unit_price]"]').val()) || 0;
@@ -236,17 +295,14 @@ function calculateTotals() {
         subtotal += lineTotal;
     });
     
-    // Get other values
     const discount = parseFloat($('[name="discount_amount"]').val()) || 0;
     const shipping = parseFloat($('[name="shipping_cost"]').val()) || 0;
     const taxRate = parseFloat($('[name="tax_rate"]').val()) || 0;
     
-    // Calculate totals
     const afterDiscount = subtotal - discount + shipping;
     const tax = afterDiscount * (taxRate / 100);
     const total = afterDiscount + tax;
     
-    // Update display
     $('#subtotal').text(formatNumber(subtotal));
     $('#total').text(formatNumber(total));
     

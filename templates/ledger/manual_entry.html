@@ -213,11 +213,11 @@ function addLine() {
     </td>
     <td>
       <input type="number" name="line_${lineCounter}_debit" class="form-control text-center debit-input" 
-             step="0.01" min="0" value="0" onchange="handleDebitChange(this)" onkeyup="calculateTotals()">
+             step="0.01" min="0" value="0" oninput="handleDebitChange(this)" onchange="handleDebitChange(this)" onkeyup="calculateTotals()">
     </td>
     <td>
       <input type="number" name="line_${lineCounter}_credit" class="form-control text-center credit-input" 
-             step="0.01" min="0" value="0" onchange="handleCreditChange(this)" onkeyup="calculateTotals()">
+             step="0.01" min="0" value="0" oninput="handleCreditChange(this)" onchange="handleCreditChange(this)" onkeyup="calculateTotals()">
     </td>
   `;
   tbody.appendChild(row);
@@ -359,11 +359,11 @@ function addLineWithData(accountCode, accountName, debit, credit) {
     </td>
     <td>
       <input type="number" name="line_${lineCounter}_debit" class="form-control text-center debit-input" 
-             step="0.01" min="0" value="${debit}" onchange="handleDebitChange(this)" onkeyup="calculateTotals()">
+             step="0.01" min="0" value="${debit}" oninput="handleDebitChange(this)" onchange="handleDebitChange(this)" onkeyup="calculateTotals()">
     </td>
     <td>
       <input type="number" name="line_${lineCounter}_credit" class="form-control text-center credit-input" 
-             step="0.01" min="0" value="${credit}" onchange="handleCreditChange(this)" onkeyup="calculateTotals()">
+             step="0.01" min="0" value="${credit}" oninput="handleCreditChange(this)" onchange="handleCreditChange(this)" onkeyup="calculateTotals()">
     </td>
   `;
   tbody.appendChild(row);

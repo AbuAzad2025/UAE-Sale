@@ -290,19 +290,28 @@ function handleCreditChange(input) {
 
 // حساب الإجماليات والتوازن
 function calculateTotals() {
+  console.log('🔵 calculateTotals() called');
   const debitInputs = document.querySelectorAll('.debit-input');
   const creditInputs = document.querySelectorAll('.credit-input');
+  
+  console.log(`🔍 Debit inputs: ${debitInputs.length}, Credit inputs: ${creditInputs.length}`);
   
   let totalDebit = 0;
   let totalCredit = 0;
   
   debitInputs.forEach(input => {
-    totalDebit += parseFloat(input.value) || 0;
+    const val = parseFloat(input.value) || 0;
+    console.log(`  Debit input value: ${input.value} → ${val}`);
+    totalDebit += val;
   });
   
   creditInputs.forEach(input => {
-    totalCredit += parseFloat(input.value) || 0;
+    const val = parseFloat(input.value) || 0;
+    console.log(`  Credit input value: ${input.value} → ${val}`);
+    totalCredit += val;
   });
+  
+  console.log(`💰 Total Debit: ${totalDebit}, Total Credit: ${totalCredit}`);
   
   document.getElementById('totalDebit').textContent = totalDebit.toFixed(2);
   document.getElementById('totalCredit').textContent = totalCredit.toFixed(2);

@@ -410,6 +410,11 @@ function addLineWithData(accountCode, accountName, debit, credit) {
   tbody.appendChild(row);
   lineCounter++;
   document.getElementById('lineCountHidden').value = lineCounter;
+  
+  // حساب الإجماليات فوراً بعد إضافة السطر
+  setTimeout(() => {
+    calculateTotals();
+  }, 100);
 }
 
 // دالة لإظهار/إخفاء البطاقات

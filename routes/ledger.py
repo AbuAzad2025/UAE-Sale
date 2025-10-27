@@ -1,10 +1,13 @@
-from flask import Blueprint, render_template, request
-from flask_login import login_required
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
+from flask_login import login_required, current_user
 from sqlalchemy import func
 from extensions import db
 from models import GLAccount, GLJournalEntry, GLJournalLine
+from services.gl_service import GLService
 from utils.decorators import admin_required, permission_required
+from utils.helpers import create_audit_log
 from decimal import Decimal
+from datetime import datetime
 
 ledger_bp = Blueprint('ledger', __name__, url_prefix='/ledger')
 
@@ -211,4 +214,155 @@ def balance_sheet():
                          total_assets=float(total_assets),
                          total_liabilities=float(total_liabilities),
                          total_equity=float(total_equity))
+
+
+@ledger_bp.route('/accounts-tree')
+@login_required
+@permission_required('view_ledger')
+def accounts_tree():
+    """عرض شجرة الحسابات"""
+    tree = GLService.get_accounts_tree()
+    return render_template('ledger/accounts_tree.html', accounts_tree=tree)
+
+
+@ledger_bp.route('/account/<int:id>/statement')
+@login_required
+@permission_required('view_ledger')
+def account_statement(id):
+    """كشف حساب تفصيلي"""
+    date_from = request.args.get('date_from', type=str)
+    date_to = request.args.get('date_to', type=str)
+    
+    statement = GLService.get_account_statement(id, date_from, date_to)
+    
+    return render_template('ledger/account_statement.html',
+                         statement=statement,
+                         date_from=date_from,
+                         date_to=date_to)
+
+
+@ledger_bp.route('/manual-entry', methods=['GET', 'POST'])
+@login_required
+@permission_required('manage_ledger')
+def manual_entry():
+    """إضافة قيد يدوي"""
+    if request.method == 'POST':
+        try:
+            description = request.form.get('description')
+            entry_date = request.form.get('entry_date')
+            notes = request.form.get('notes')
+            
+            # تحويل التاريخ
+            if entry_date:
+                entry_date = datetime.strptime(entry_date, '%Y-%m-%d')
+            
+            # جمع السطور
+            lines = []
+            line_count = int(request.form.get('line_count', 0))
+            
+            for i in range(line_count):
+                account_code = request.form.get(f'line_{i}_account')
+                debit = request.form.get(f'line_{i}_debit', 0)
+                credit = request.form.get(f'line_{i}_credit', 0)
+                line_description = request.form.get(f'line_{i}_description', '')
+                
+                if account_code:
+                    lines.append({
+                        'account_code': account_code,
+                        'debit': float(debit) if debit else 0,
+                        'credit': float(credit) if credit else 0,
+                        'description': line_description
+                    })
+            
+            # إنشاء القيد
+            entry = GLService.create_manual_entry(
+                description=description,
+                lines=lines,
+                entry_date=entry_date,
+                notes=notes,
+                created_by=current_user.id
+            )
+            
+            create_audit_log('create', 'gl_journal_entries', entry.id)
+            
+            flash(f'✅ تم إنشاء القيد {entry.entry_number} بنجاح', 'success')
+            return redirect(url_for('ledger.view_entry', id=entry.id))
+        
+        except ValueError as e:
+            flash(f'❌ خطأ: {str(e)}', 'danger')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'❌ خطأ: {str(e)}', 'danger')
+    
+    # الحصول على الحسابات النشطة (غير رئيسية)
+    accounts = GLAccount.query.filter_by(is_active=True, is_header=False).order_by(GLAccount.code).all()
+    
+    return render_template('ledger/manual_entry.html', accounts=accounts)
+
+
+@ledger_bp.route('/entry/<int:id>')
+@login_required
+@permission_required('view_ledger')
+def view_entry(id):
+    """عرض تفاصيل القيد"""
+    entry = GLJournalEntry.query.get_or_404(id)
+    lines = entry.lines.all()
+    
+    return render_template('ledger/view_entry.html', entry=entry, lines=lines)
+
+
+@ledger_bp.route('/entry/<int:id>/reverse', methods=['POST'])
+@login_required
+@permission_required('manage_ledger')
+def reverse_entry(id):
+    """عكس القيد"""
+    try:
+        entry = GLJournalEntry.query.get_or_404(id)
+        
+        description = request.form.get('description')
+        reversed_entry = entry.reverse_entry(description)
+        
+        db.session.commit()
+        
+        create_audit_log('create', 'gl_journal_entries', reversed_entry.id, 
+                        changes={'reversed_from': entry.entry_number})
+        
+        flash(f'✅ تم عكس القيد بنجاح - القيد الجديد: {reversed_entry.entry_number}', 'success')
+        return redirect(url_for('ledger.view_entry', id=reversed_entry.id))
+    
+    except ValueError as e:
+        flash(f'❌ خطأ: {str(e)}', 'danger')
+        return redirect(url_for('ledger.view_entry', id=id))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ خطأ: {str(e)}', 'danger')
+        return redirect(url_for('ledger.view_entry', id=id))
+
+
+@ledger_bp.route('/api/accounts/search')
+@login_required
+@permission_required('view_ledger')
+def api_search_accounts():
+    """API للبحث عن الحسابات"""
+    query = request.args.get('q', '').strip()
+    
+    accounts = GLAccount.query.filter(
+        GLAccount.is_active == True,
+        GLAccount.is_header == False,
+        db.or_(
+            GLAccount.code.ilike(f'%{query}%'),
+            GLAccount.name.ilike(f'%{query}%'),
+            GLAccount.name_ar.ilike(f'%{query}%')
+        )
+    ).order_by(GLAccount.code).limit(20).all()
+    
+    return jsonify([{
+        'id': acc.id,
+        'code': acc.code,
+        'name': acc.name,
+        'name_ar': acc.name_ar,
+        'full_name': acc.full_name,
+        'type': acc.type,
+        'balance': float(acc.get_balance())
+    } for acc in accounts])
 

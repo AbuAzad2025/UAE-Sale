@@ -6,7 +6,7 @@
     <h1 class="mb-0"><i class="fas fa-receipt mr-2"></i>سند قبض جديد</h1>
   </div>
   <div>
-    <a href="{{ url_for('payments.index') }}" class="btn btn-secondary">
+    <a href="{{ url_for('payments.receipts') }}" class="btn btn-secondary">
       <i class="fas fa-arrow-right mr-2"></i>العودة للمدفوعات
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
@@ -18,7 +18,7 @@
 
 {% block content %}
 <div class="card">
-  <form method="POST" action="{{ url_for('payments.create') }}">
+  <form method="POST" action="{{ url_for('payments.create_receipt') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     
     <div class="card-body">
@@ -115,7 +115,7 @@
       <button type="submit" class="btn btn-success btn-lg">
         <i class="fas fa-save mr-2"></i>حفظ سند القبض
       </button>
-      <a href="{{ url_for('payments.index') }}" class="btn btn-secondary btn-lg">
+      <a href="{{ url_for('payments.receipts') }}" class="btn btn-secondary btn-lg">
         <i class="fas fa-times mr-2"></i>{{ t('Cancel') }}
       </a>
     </div>

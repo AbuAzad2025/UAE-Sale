@@ -42,6 +42,7 @@ class Cheque(db.Model):
     due_date = db.Column(db.Date, nullable=False, index=True)  # تاريخ الاستحقاق
     deposit_date = db.Column(db.Date)  # تاريخ الإيداع في البنك
     clearance_date = db.Column(db.Date)  # تاريخ الصرف الفعلي (تأكيد البنك)
+    cleared_date = db.Column(db.Date)  # تاريخ الصرف (alias for clearance_date)
     
     # الحالة
     status = db.Column(db.String(20), default='pending', index=True)
@@ -61,6 +62,8 @@ class Cheque(db.Model):
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), index=True)
     supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), index=True)
     sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'), index=True)
+    purchase_id = db.Column(db.Integer, db.ForeignKey('purchases.id'), index=True)
+    payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), index=True)
     receipt_id = db.Column(db.Integer, db.ForeignKey('receipts.id'), index=True)
     expense_id = db.Column(db.Integer, db.ForeignKey('expenses.id'), index=True)
     

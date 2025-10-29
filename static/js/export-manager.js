@@ -48,9 +48,7 @@ class ExportManager {
             link.href = URL.createObjectURL(blob);
             link.download = filename;
             link.click();
-        } catch (e) {
-            console.error('Export failed:', e);
-        }
+        } catch (e) {        }
     }
     
     static printElement(elementId) {

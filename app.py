@@ -12,6 +12,7 @@ from extensions import (
     init_extensions, setup_logging
 )
 from utils.monitoring import setup_advanced_logging
+from utils.enhanced_logging import setup_enhanced_logging
 from utils.asset_compression import register_compression_cli
 from config_redis import init_redis
 
@@ -44,6 +45,7 @@ def create_app(config_class=Config):
     setup_logging(app)
     init_extensions(app)
     setup_advanced_logging(app)
+    setup_enhanced_logging(app)
     
     if COMPRESS_AVAILABLE:
         compress = Compress()
@@ -92,6 +94,29 @@ def create_app(config_class=Config):
                     db.session.commit()
             except Exception:
                 db.session.rollback()
+    
+    @app.before_request
+    def check_session_timeout():
+        """التحقق من انتهاء الجلسة بسبب عدم النشاط"""
+        if current_user.is_authenticated and request.endpoint not in ['auth.login', 'auth.logout', 'static']:
+            from flask import session
+            last_activity = session.get('last_activity')
+            
+            if last_activity:
+                try:
+                    last_time = datetime.fromisoformat(last_activity)
+                    inactive_duration = (datetime.now() - last_time).total_seconds()
+                    
+                    if inactive_duration > 1800:
+                        from flask_login import logout_user
+                        logout_user()
+                        session.pop('last_activity', None)
+                        flash('⏱️ انتهت الجلسة بسبب عدم النشاط لمدة 30 دقيقة', 'warning')
+                        return redirect(url_for('auth.login'))
+                except Exception:
+                    pass
+            
+            session['last_activity'] = datetime.now().isoformat()
     
     @app.after_request
     def security_headers(response):
@@ -196,23 +221,85 @@ def create_app(config_class=Config):
     
     @app.errorhandler(403)
     def forbidden(e):
+        app.logger.warning(f'403 Forbidden: {request.url} | User: {current_user.username if current_user.is_authenticated else "Anonymous"}')
         if request.accept_mimetypes.accept_json:
-            return {'error': 'Forbidden'}, 403
+            return {'error': 'Forbidden', 'message': 'ليس لديك صلاحية للوصول'}, 403
         return render_template('errors/403.html'), 403
     
     @app.errorhandler(404)
     def not_found(e):
+        app.logger.info(f'404 Not Found: {request.url}')
         if request.accept_mimetypes.accept_json:
-            return {'error': 'Not Found'}, 404
+            return {'error': 'Not Found', 'message': 'الصفحة غير موجودة'}, 404
         return render_template('errors/404.html'), 404
+    
+    @app.errorhandler(429)
+    def rate_limit_exceeded(e):
+        app.logger.warning(f'429 Rate Limit: {request.url} | IP: {request.remote_addr}')
+        if request.accept_mimetypes.accept_json:
+            return {'error': 'Too Many Requests', 'message': 'تجاوزت الحد المسموح من الطلبات. حاول لاحقاً'}, 429
+        flash('⚠️ تجاوزت الحد المسموح من الطلبات. الرجاء الانتظار قليلاً', 'warning')
+        return redirect(url_for('main.dashboard'))
     
     @app.errorhandler(500)
     def internal_error(e):
         db.session.rollback()
-        app.logger.exception('Internal Server Error')
+        
+        # توليد error ID للتتبع
+        import uuid
+        error_id = uuid.uuid4().hex[:8]
+        
+        # تسجيل مفصل
+        app.logger.error(
+            f'❌ 500 Internal Error [ID: {error_id}]\n'
+            f'URL: {request.url}\n'
+            f'Method: {request.method}\n'
+            f'User: {current_user.username if current_user.is_authenticated else "Anonymous"}\n'
+            f'IP: {request.remote_addr}\n'
+            f'Error: {str(e)}',
+            exc_info=True
+        )
+        
         if request.accept_mimetypes.accept_json:
-            return {'error': 'Internal Server Error'}, 500
-        return render_template('errors/500.html'), 500
+            return {'error': 'Internal Server Error', 'error_id': error_id}, 500
+        
+        return render_template('errors/500.html', error_id=error_id), 500
+    
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(e):
+        """معالج شامل لجميع الأخطاء غير المتوقعة"""
+        import uuid
+        import traceback
+        
+        error_id = uuid.uuid4().hex[:8]
+        
+        # تسجيل كامل
+        app.logger.critical(
+            f'💥 Unexpected Error [ID: {error_id}]\n'
+            f'Type: {type(e).__name__}\n'
+            f'URL: {request.url}\n'
+            f'Method: {request.method}\n'
+            f'User: {current_user.username if current_user.is_authenticated else "Anonymous"}\n'
+            f'IP: {request.remote_addr}\n'
+            f'Traceback:\n{traceback.format_exc()}',
+            exc_info=True
+        )
+        
+        db.session.rollback()
+        
+        # TODO: إرسال تنبيه للمطورين في الإنتاج
+        # if not app.debug:
+        #     send_error_notification(error_id, str(e))
+        
+        if request.accept_mimetypes.accept_json:
+            return {
+                'error': 'An unexpected error occurred',
+                'error_id': error_id,
+                'message': 'حدث خطأ غير متوقع. تم تسجيل المشكلة.'
+            }, 500
+        
+        flash(f'⚠️ حدث خطأ غير متوقع. معرف الخطأ: {error_id}', 'danger')
+        return render_template('errors/500.html', error_id=error_id), 500
     
     register_blueprints(app)
     
@@ -408,6 +495,38 @@ def register_cli(app):
     def init_db():
         db.create_all()
         print('Database initialized')
+    
+    @app.cli.command()
+    def add_indexes():
+        """إضافة performance indexes للجداول"""
+        print('Adding performance indexes...')
+        
+        indexes = [
+            "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)",
+            "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)",
+            "CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active)",
+            "CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)",
+            "CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone)",
+            "CREATE INDEX IF NOT EXISTS idx_products_name ON products(name)",
+            "CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku)",
+            "CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(sale_date)",
+            "CREATE INDEX IF NOT EXISTS idx_sales_customer_id ON sales(customer_id)",
+            "CREATE INDEX IF NOT EXISTS idx_sales_status ON sales(status)"
+        ]
+        
+        try:
+            for idx_sql in indexes:
+                try:
+                    db.session.execute(db.text(idx_sql))
+                    print(f'✓ {idx_sql.split("idx_")[1].split(" ")[0]}')
+                except Exception as e:
+                    print(f'⚠ {idx_sql}: {e}')
+            
+            db.session.commit()
+            print('\n✅ Performance indexes added successfully')
+        except Exception as e:
+            db.session.rollback()
+            print(f'❌ Error adding indexes: {e}')
     
     @app.cli.command()
     def seed_data():

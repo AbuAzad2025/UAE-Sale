@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
 from flask_login import login_required, current_user
-from extensions import db
+from extensions import db, limiter
 from models import Expense, ExpenseCategory
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
@@ -49,6 +49,7 @@ def index():
 @expenses_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 @admin_required
+@limiter.limit("10 per minute", methods=['POST'])
 def create():
     if request.method == 'POST':
         try:
@@ -115,12 +116,12 @@ def create():
             
             create_audit_log('create', 'expenses', expense.id)
             
-            flash('تم إضافة المصروف بنجاح', 'success')
+            flash('✅ تم إضافة المصروف بنجاح!', 'success')
             return redirect(url_for('expenses.view', id=expense.id))
         
         except Exception as e:
             db.session.rollback()
-            flash(f'حدث خطأ: {str(e)}', 'danger')
+            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     categories = ExpenseCategory.query.filter_by(is_active=True).all()
     exchange_rates = CurrencyService.get_all_rates('AED')
@@ -165,12 +166,12 @@ def edit(id):
             db.session.commit()
             
             create_audit_log('update', 'expenses', id)
-            flash('تم تحديث المصروف بنجاح', 'success')
+            flash('✅ تم تحديث المصروف بنجاح!', 'success')
             return redirect(url_for('expenses.view', id=id))
         
         except Exception as e:
             db.session.rollback()
-            flash(f'حدث خطأ: {str(e)}', 'danger')
+            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     return render_template('expenses/edit.html', expense=expense, categories=categories)
 
@@ -202,12 +203,12 @@ def delete(id):
         
         create_audit_log('delete', 'expenses', id)
         
-        flash(f'تم إلغاء المصروف "{expense.expense_number}" بنجاح', 'success')
+        flash(f'✅ تم إلغاء المصروف "{expense.expense_number}" بنجاح!', 'success')
         return redirect(url_for('expenses.index'))
     
     except Exception as e:
         db.session.rollback()
-        flash(f'خطأ في الحذف: {str(e)}', 'danger')
+        flash(f'❌ خطأ في الحذف: {str(e)}\n💡 راجع البيانات المدخلة.', 'danger')
         return redirect(url_for('expenses.view', id=id))
 
 
@@ -251,7 +252,7 @@ def create_category():
                 }
             })
         
-        flash('تم إضافة فئة المصروف بنجاح', 'success')
+        flash('✅ تم إضافة فئة المصروف بنجاح!', 'success')
         return redirect(url_for('expenses.categories'))
     
     except Exception as e:
@@ -263,7 +264,7 @@ def create_category():
                 'error': str(e)
             }), 400
         
-        flash(f'حدث خطأ: {str(e)}', 'danger')
+        flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
         return redirect(url_for('expenses.categories'))
 
 

@@ -1,2 +1,95 @@
-{% include 'payments/print.html' %}
-
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>طباعة إيصال - {{ receipt.receipt_number }}</title>
+  <style>
+    body { font-family: 'Arial', sans-serif; direction: rtl; text-align: right; }
+    .receipt { max-width: 800px; margin: 20px auto; padding: 30px; border: 2px solid #333; }
+    .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
+    .header h1 { margin: 0; color: #007A3D; }
+    .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+    .info-label { font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: right; }
+    th { background: #007A3D; color: white; }
+    .total { font-size: 1.2em; font-weight: bold; background: #f0f0f0; }
+    .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #333; }
+    @media print { .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="receipt">
+    <div class="header">
+      <h1>{{ company.name_ar or 'شركة أزاد للأنظمة الذكية' }}</h1>
+      <p>{{ company.address or '' }}</p>
+      <p>هاتف: {{ company.phone or '' }}</p>
+      <h2>إيصال دفع</h2>
+    </div>
+    
+    <div class="info-row">
+      <div><span class="info-label">رقم الإيصال:</span> {{ receipt.receipt_number }}</div>
+      <div><span class="info-label">التاريخ:</span> {{ receipt.receipt_date.strftime('%Y-%m-%d') if receipt.receipt_date else '' }}</div>
+    </div>
+    
+    <div class="info-row">
+      <div><span class="info-label">العميل:</span> {{ receipt.customer.name if receipt.customer else 'عميل نقدي' }}</div>
+      <div><span class="info-label">الدافع:</span> {{ receipt.received_by.full_name if receipt.received_by else 'موظف' }}</div>
+    </div>
+    
+    <table>
+      <thead>
+        <tr>
+          <th>البيان</th>
+          <th>المبلغ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>المبلغ المدفوع (AED)</td>
+          <td>{{ "%.2f"|format(receipt.amount_aed) }}</td>
+        </tr>
+        {% if receipt.payment_method %}
+        <tr>
+          <td>طريقة الدفع</td>
+          <td>{{ receipt.payment_method }}</td>
+        </tr>
+        {% endif %}
+        {% if receipt.reference_number %}
+        <tr>
+          <td>رقم المرجع</td>
+          <td>{{ receipt.reference_number }}</td>
+        </tr>
+        {% endif %}
+      </tbody>
+      <tfoot>
+        <tr class="total">
+          <td>الإجمالي</td>
+          <td>{{ "%.2f"|format(receipt.amount_aed) }} AED</td>
+        </tr>
+      </tfoot>
+    </table>
+    
+    {% if receipt.notes %}
+    <div style="margin-top: 20px;">
+      <strong>ملاحظات:</strong> {{ receipt.notes }}
+    </div>
+    {% endif %}
+    
+    <div class="footer">
+      <p>شكراً لتعاملكم معنا</p>
+      <p style="font-size: 0.9em; color: #666;">تم الطباعة: {{ now().strftime('%Y-%m-%d %H:%M') }}</p>
+    </div>
+  </div>
+  
+  <div class="no-print" style="text-align: center; margin-top: 20px;">
+    <button onclick="window.print()" class="btn btn-primary" style="padding: 10px 30px; font-size: 1.1em;">
+      <i class="fas fa-print"></i> طباعة
+    </button>
+    <button onclick="window.close()" class="btn btn-secondary" style="padding: 10px 30px; font-size: 1.1em; margin-right: 10px;">
+      إغلاق
+    </button>
+  </div>
+</body>
+</html>

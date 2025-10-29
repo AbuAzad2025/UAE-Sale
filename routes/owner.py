@@ -3,12 +3,15 @@ from decimal import Decimal
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import func, desc
-from extensions import db
+from extensions import db, limiter
 from models import (
     User, Customer, Product, Sale, SaleLine, Purchase, Payment, Receipt,
     StockMovement, AuditLog, ArchivedRecord, ProductReturn, CardVault, InvoiceSettings,
-    Tenant, SystemSettings, IntegrationSettings
+    Tenant, SystemSettings, IntegrationSettings, Expense
 )
+from models.login_history import LoginHistory
+from models.security_alert import SecurityAlert
+from models.api_key import APIKey
 from utils.decorators import owner_required
 from sqlalchemy import text, inspect
 import json
@@ -201,7 +204,7 @@ def system_stats():
                 db_stats[table_name] = count
     
     except Exception as e:
-        flash(f'خطأ في جلب الإحصائيات: {str(e)}', 'danger')
+        flash(f'❌ خطأ في جلب الإحصائيات: {str(e)}\n💡 حاول تحديث الصفحة.', 'danger')
     
     return render_template('owner/system_stats.html', db_stats=db_stats)
 
@@ -301,29 +304,42 @@ def users_list():
 @owner_bp.route('/users/create', methods=['GET', 'POST'])
 @login_required
 @owner_required
+@limiter.limit("5 per minute", methods=['POST'])
 def create_user():
     """إضافة مستخدم جديد"""
     from models import Role
     from werkzeug.security import generate_password_hash
+    from utils.password_validator import PasswordValidator
     
     if request.method == 'POST':
         try:
-            username = request.form.get('username', '').strip()
-            email = request.form.get('email', '').strip()
-            password = request.form.get('password', '').strip()
-            full_name = request.form.get('full_name', '').strip()
+            from utils.sanitizer import InputSanitizer
+            
+            username = InputSanitizer.sanitize_text(request.form.get('username', ''), max_length=20)
+            email = InputSanitizer.sanitize_email(request.form.get('email', ''))
+            password = request.form.get('password', '').strip()  # لا نعدل password
+            full_name = InputSanitizer.sanitize_text(request.form.get('full_name', ''), max_length=100)
             role_id = request.form.get('role_id', type=int)
             is_owner = request.form.get('is_owner') == 'on'
             
             # التحقق من البيانات
             if not username or not password:
-                flash('اسم المستخدم وكلمة المرور إجبارية', 'error')
+                from utils.error_messages import ErrorMessages
+                flash(ErrorMessages.user_required_fields(), 'error')
+                return redirect(url_for('owner.create_user'))
+            
+            # التحقق من قوة كلمة المرور
+            is_valid, errors = PasswordValidator.validate(password)
+            if not is_valid:
+                from utils.error_messages import ErrorMessages
+                flash(ErrorMessages.weak_password(errors), 'danger')
                 return redirect(url_for('owner.create_user'))
             
             # التحقق من عدم وجود المستخدم
             existing = User.query.filter_by(username=username).first()
             if existing:
-                flash('اسم المستخدم موجود مسبقاً', 'error')
+                from utils.error_messages import ErrorMessages
+                flash(ErrorMessages.user_exists(username), 'error')
                 return redirect(url_for('owner.create_user'))
             
             # إنشاء المستخدم
@@ -345,7 +361,8 @@ def create_user():
             
         except Exception as e:
             db.session.rollback()
-            flash(f'خطأ في إضافة المستخدم: {str(e)}', 'error')
+            from utils.error_messages import ErrorMessages
+            flash(ErrorMessages.user_update_failed(str(e)), 'error')
     
     roles = Role.query.all()
     return render_template('owner/create_user.html', roles=roles)
@@ -354,6 +371,7 @@ def create_user():
 @owner_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
 @login_required
 @owner_required
+@limiter.limit("10 per minute", methods=['POST'])
 def edit_user(user_id):
     """تعديل مستخدم"""
     from models import Role
@@ -427,13 +445,15 @@ def delete_user(user_id):
     user = User.query.get_or_404(user_id)
     
     # لا يمكن حذف المالك
+    from utils.error_messages import ErrorMessages
+    
     if user.is_owner:
-        flash('لا يمكن حذف حساب المالك', 'error')
+        flash(ErrorMessages.user_delete_owner(), 'error')
         return redirect(url_for('owner.users_list'))
     
     # لا يمكن حذف نفسك
     if user.id == current_user.id:
-        flash('لا يمكنك حذف حسابك الخاص', 'error')
+        flash(ErrorMessages.user_delete_self(), 'error')
         return redirect(url_for('owner.users_list'))
     
     try:
@@ -1644,9 +1664,838 @@ def preview_receipt(template):
             SampleAllocation('S-2025-0002', '700.00')
         ]
     
-    return render_template(f'receipts/{template}.html', 
+    return render_template(f'receipts/{template}.html',
                          receipt=SampleReceipt(),
                          settings=settings,
                          preview=True)
+
+
+@owner_bp.route('/system-health')
+@login_required
+@owner_required
+def system_health():
+    try:
+        import psutil
+        import platform
+        
+        try:
+            cpu_percent = psutil.cpu_percent(interval=0.5)
+        except:
+            cpu_percent = 0
+        
+        try:
+            memory = psutil.virtual_memory()
+        except:
+            memory = type('obj', (object,), {'total': 0, 'used': 0, 'percent': 0})()
+        
+        try:
+            disk = psutil.disk_usage('.')
+        except:
+            disk = type('obj', (object,), {'total': 0, 'used': 0, 'free': 0, 'percent': 0})()
+        
+        try:
+            db_size = os.path.getsize('instance/app.db') if os.path.exists('instance/app.db') else 0
+            db_size_mb = db_size / (1024 * 1024)
+        except:
+            db_size_mb = 0
+        
+        health_data = {
+            'cpu': {
+                'percent': cpu_percent,
+                'status': 'جيد' if cpu_percent < 70 else 'تحذير' if cpu_percent < 90 else 'خطر'
+            },
+            'memory': {
+                'total': memory.total / (1024**3) if memory.total else 0,
+                'used': memory.used / (1024**3) if memory.used else 0,
+                'percent': memory.percent,
+                'status': 'جيد' if memory.percent < 70 else 'تحذير' if memory.percent < 90 else 'خطر'
+            },
+            'disk': {
+                'total': disk.total / (1024**3) if disk.total else 0,
+                'used': disk.used / (1024**3) if disk.used else 0,
+                'free': disk.free / (1024**3) if disk.free else 0,
+                'percent': disk.percent,
+                'status': 'جيد' if disk.percent < 70 else 'تحذير' if disk.percent < 90 else 'خطر'
+            },
+            'database': {
+                'size_mb': round(db_size_mb, 2),
+                'status': 'جيد' if db_size_mb < 500 else 'تحذير' if db_size_mb < 1000 else 'خطر'
+            },
+            'system': {
+                'os': platform.system(),
+                'version': platform.version(),
+                'python': platform.python_version()
+            }
+        }
+        
+        try:
+            active_users = db.session.query(func.count(User.id)).filter(
+                User.last_seen >= datetime.now(timezone.utc) - timedelta(minutes=30),
+                User.is_active == True
+            ).scalar() or 0
+        except:
+            active_users = 0
+        
+        health_data['active_users'] = active_users
+        
+        return render_template('owner/system_health.html', health=health_data)
+    
+    except Exception as e:
+        flash(f'خطأ في تحميل معلومات النظام: {str(e)}', 'danger')
+        return redirect(url_for('owner.dashboard'))
+
+
+@owner_bp.route('/activity-monitor')
+@login_required
+@owner_required
+def activity_monitor():
+    recent_audits = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(100).all()
+    
+    active_users = User.query.filter(
+        User.last_seen >= datetime.now(timezone.utc) - timedelta(minutes=30),
+        User.is_active == True
+    ).all()
+    
+    recent_sales = Sale.query.filter(
+        Sale.created_at >= datetime.now(timezone.utc) - timedelta(hours=24)
+    ).order_by(Sale.created_at.desc()).limit(20).all()
+    
+    stats = {
+        'active_now': len(active_users),
+        'today_sales': len(recent_sales),
+        'recent_actions': len(recent_audits)
+    }
+    
+    return render_template('owner/activity_monitor.html',
+                         recent_audits=recent_audits,
+                         active_users=active_users,
+                         recent_sales=recent_sales,
+                         stats=stats)
+
+
+@owner_bp.route('/error-logs')
+@login_required
+@owner_required
+def error_logs():
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    
+    error_file = 'logs/errors.log'
+    errors_list = []
+    
+    if os.path.exists(error_file):
+        with open(error_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+            for line in reversed(lines[-1000:]):
+                if line.strip():
+                    errors_list.append(line.strip())
+    
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated_errors = errors_list[start:end]
+    
+    total_pages = (len(errors_list) + per_page - 1) // per_page
+    
+    return render_template('owner/error_logs.html',
+                         errors=paginated_errors,
+                         page=page,
+                         total_pages=total_pages,
+                         total_errors=len(errors_list))
+
+
+@owner_bp.route('/login-history')
+@login_required
+@owner_required
+def login_history():
+    page = request.args.get('page', 1, type=int)
+    user_filter = request.args.get('user_id', type=int)
+    success_filter = request.args.get('success')
+    
+    query = LoginHistory.query
+    
+    if user_filter:
+        query = query.filter_by(user_id=user_filter)
+    
+    if success_filter is not None:
+        query = query.filter_by(success=success_filter == 'true')
+    
+    pagination = query.order_by(LoginHistory.login_time.desc()).paginate(
+        page=page, per_page=50, error_out=False
+    )
+    
+    users = User.query.all()
+    
+    stats = {
+        'total_logins': LoginHistory.query.filter_by(success=True).count(),
+        'failed_logins': LoginHistory.query.filter_by(success=False).count(),
+        'today_logins': LoginHistory.query.filter(
+            LoginHistory.login_time >= datetime.now(timezone.utc).replace(hour=0, minute=0)
+        ).count()
+    }
+    
+    return render_template('owner/login_history.html',
+                         logins=pagination.items,
+                         pagination=pagination,
+                         users=users,
+                         stats=stats)
+
+
+@owner_bp.route('/performance-metrics')
+@login_required
+@owner_required
+def performance_metrics():
+    performance_file = 'logs/performance.log'
+    slow_queries = []
+    
+    if os.path.exists(performance_file):
+        with open(performance_file, 'r', encoding='utf-8') as f:
+            for line in f.readlines()[-200:]:
+                if 'SLOW' in line:
+                    slow_queries.append(line.strip())
+    
+    metrics = {
+        'slow_queries_count': len(slow_queries),
+        'slow_queries': slow_queries[-20:]
+    }
+    
+    return render_template('owner/performance_metrics.html', metrics=metrics)
+
+
+@owner_bp.route('/security-alerts')
+@login_required
+@owner_required
+def security_alerts():
+    page = request.args.get('page', 1, type=int)
+    severity_filter = request.args.get('severity')
+    
+    query = SecurityAlert.query
+    
+    if severity_filter:
+        query = query.filter_by(severity=severity_filter)
+    
+    pagination = query.filter_by(is_resolved=False).order_by(
+        SecurityAlert.created_at.desc()
+    ).paginate(page=page, per_page=30, error_out=False)
+    
+    stats = {
+        'unresolved': SecurityAlert.query.filter_by(is_resolved=False).count(),
+        'critical': SecurityAlert.query.filter_by(severity='critical', is_resolved=False).count(),
+        'high': SecurityAlert.query.filter_by(severity='high', is_resolved=False).count()
+    }
+    
+    return render_template('owner/security_alerts.html',
+                         alerts=pagination.items,
+                         pagination=pagination,
+                         stats=stats)
+
+
+@owner_bp.route('/security-alerts/<int:id>/resolve', methods=['POST'])
+@login_required
+@owner_required
+def resolve_alert(id):
+    alert = SecurityAlert.query.get_or_404(id)
+    alert.is_resolved = True
+    alert.resolved_at = datetime.now(timezone.utc)
+    alert.resolved_by = current_user.id
+    db.session.commit()
+    flash('✅ تم حل التنبيه الأمني', 'success')
+    return redirect(url_for('owner.security_alerts'))
+
+
+@owner_bp.route('/ip-whitelist', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def ip_whitelist():
+    if request.method == 'POST':
+        ip_address = request.form.get('ip_address')
+        description = request.form.get('description')
+        
+        settings = SystemSettings.get_current()
+        whitelist = settings.owner_whitelist_ips or []
+        
+        whitelist.append({'ip': ip_address, 'description': description})
+        settings.owner_whitelist_ips = whitelist
+        db.session.commit()
+        
+        flash('✅ تم إضافة IP للقائمة البيضاء', 'success')
+        return redirect(url_for('owner.ip_whitelist'))
+    
+    settings = SystemSettings.get_current()
+    whitelist = settings.owner_whitelist_ips or []
+    
+    return render_template('owner/ip_whitelist.html', whitelist=whitelist)
+
+
+@owner_bp.route('/ip-whitelist/<int:index>/delete', methods=['POST'])
+@login_required
+@owner_required
+def delete_ip_whitelist(index):
+    settings = SystemSettings.get_current()
+    whitelist = settings.owner_whitelist_ips or []
+    
+    if 0 <= index < len(whitelist):
+        whitelist.pop(index)
+        settings.owner_whitelist_ips = whitelist
+        db.session.commit()
+        flash('✅ تم حذف IP من القائمة البيضاء', 'success')
+    
+    return redirect(url_for('owner.ip_whitelist'))
+
+
+@owner_bp.route('/api-keys', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def api_keys():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        service = request.form.get('service')
+        
+        key = APIKey(
+            name=name,
+            key=APIKey.generate_key(),
+            service=service,
+            created_by=current_user.id
+        )
+        
+        db.session.add(key)
+        db.session.commit()
+        
+        flash(f'✅ تم إنشاء API Key: {key.key}', 'success')
+        return redirect(url_for('owner.api_keys'))
+    
+    keys = APIKey.query.order_by(APIKey.created_at.desc()).all()
+    
+    return render_template('owner/api_keys.html', keys=keys)
+
+
+@owner_bp.route('/api-keys/<int:id>/toggle', methods=['POST'])
+@login_required
+@owner_required
+def toggle_api_key(id):
+    key = APIKey.query.get_or_404(id)
+    key.is_active = not key.is_active
+    db.session.commit()
+    
+    status = 'تفعيل' if key.is_active else 'تعطيل'
+    flash(f'✅ تم {status} API Key', 'success')
+    return redirect(url_for('owner.api_keys'))
+
+
+@owner_bp.route('/financial-dashboard-advanced')
+@login_required
+@owner_required
+def financial_dashboard_advanced():
+    today = datetime.now().date()
+    month_start = today.replace(day=1)
+    
+    months_data = []
+    for i in range(12):
+        month_date = month_start - timedelta(days=30*i)
+        month_start_date = month_date.replace(day=1)
+        
+        if month_date.month == 12:
+            month_end_date = month_date.replace(year=month_date.year+1, month=1, day=1) - timedelta(days=1)
+        else:
+            month_end_date = month_date.replace(month=month_date.month+1, day=1) - timedelta(days=1)
+        
+        revenue = db.session.query(func.sum(Sale.total_amount)).filter(
+            Sale.sale_date >= month_start_date,
+            Sale.sale_date <= month_end_date,
+            Sale.status == 'confirmed'
+        ).scalar() or 0
+        
+        expenses = db.session.query(func.sum(Expense.amount)).filter(
+            Expense.expense_date >= month_start_date,
+            Expense.expense_date <= month_end_date
+        ).scalar() or 0
+        
+        profit = revenue - expenses
+        
+        months_data.append({
+            'month': month_date.strftime('%Y-%m'),
+            'revenue': float(revenue),
+            'expenses': float(expenses),
+            'profit': float(profit),
+            'margin': (profit / revenue * 100) if revenue > 0 else 0
+        })
+    
+    months_data.reverse()
+    
+    kpis = {
+        'avg_revenue': sum(m['revenue'] for m in months_data) / 12,
+        'avg_profit': sum(m['profit'] for m in months_data) / 12,
+        'avg_margin': sum(m['margin'] for m in months_data) / 12,
+        'growth_rate': ((months_data[-1]['revenue'] - months_data[0]['revenue']) / months_data[0]['revenue'] * 100) if months_data[0]['revenue'] > 0 else 0
+    }
+    
+    return render_template('owner/financial_dashboard_advanced.html',
+                         months_data=months_data,
+                         kpis=kpis)
+
+
+@owner_bp.route('/tax-settings', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def tax_settings():
+    if request.method == 'POST':
+        settings = SystemSettings.get_current()
+        
+        settings.default_tax_rate = request.form.get('default_tax_rate', type=float)
+        settings.vat_enabled = request.form.get('vat_enabled') == 'on'
+        settings.vat_number = request.form.get('vat_number')
+        settings.tax_id_number = request.form.get('tax_id_number')
+        
+        db.session.commit()
+        flash('✅ تم تحديث إعدادات الضرائب', 'success')
+        return redirect(url_for('owner.tax_settings'))
+    
+    settings = SystemSettings.get_current()
+    
+    return render_template('owner/tax_settings.html', settings=settings)
+
+
+@owner_bp.route('/currency-settings', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def currency_settings():
+    from services.currency_service import CurrencyService
+    
+    if request.method == 'POST':
+        settings = SystemSettings.get_current()
+        
+        settings.default_currency = request.form.get('default_currency', 'AED')
+        settings.auto_update_rates = request.form.get('auto_update_rates') == 'on'
+        
+        db.session.commit()
+        flash('✅ تم تحديث إعدادات العملات', 'success')
+        return redirect(url_for('owner.currency_settings'))
+    
+    settings = SystemSettings.get_current()
+    rates = CurrencyService.get_all_rates('AED')
+    
+    return render_template('owner/currency_settings.html',
+                         settings=settings,
+                         rates=rates)
+
+
+@owner_bp.route('/payment-gateways', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def payment_gateways():
+    from models import PaymentVault
+    
+    vault = PaymentVault.query.first()
+    if not vault:
+        vault = PaymentVault()
+        db.session.add(vault)
+        db.session.commit()
+    
+    if request.method == 'POST':
+        vault.stripe_publishable_key = request.form.get('stripe_publishable_key')
+        vault.stripe_secret_key = request.form.get('stripe_secret_key')
+        vault.paypal_client_id = request.form.get('paypal_client_id')
+        vault.paypal_client_secret = request.form.get('paypal_client_secret')
+        vault.nowpayments_api_key = request.form.get('nowpayments_api_key')
+        
+        db.session.commit()
+        flash('✅ تم تحديث إعدادات بوابات الدفع', 'success')
+        return redirect(url_for('owner.payment_gateways'))
+    
+    return render_template('owner/payment_gateways.html', vault=vault)
+
+
+@owner_bp.route('/email-settings', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def email_settings():
+    if request.method == 'POST':
+        settings = SystemSettings.get_current()
+        
+        settings.smtp_server = request.form.get('smtp_server')
+        settings.smtp_port = request.form.get('smtp_port', type=int)
+        settings.smtp_username = request.form.get('smtp_username')
+        settings.smtp_password = request.form.get('smtp_password')
+        settings.smtp_use_tls = request.form.get('smtp_use_tls') == 'on'
+        settings.email_from = request.form.get('email_from')
+        
+        db.session.commit()
+        flash('✅ تم تحديث إعدادات البريد الإلكتروني', 'success')
+        return redirect(url_for('owner.email_settings'))
+    
+    settings = SystemSettings.get_current()
+    
+    return render_template('owner/email_settings.html', settings=settings)
+
+
+@owner_bp.route('/sms-settings', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def sms_settings():
+    if request.method == 'POST':
+        settings = SystemSettings.get_current()
+        
+        settings.sms_provider = request.form.get('sms_provider')
+        settings.sms_api_key = request.form.get('sms_api_key')
+        settings.sms_sender_name = request.form.get('sms_sender_name')
+        settings.sms_enabled = request.form.get('sms_enabled') == 'on'
+        
+        db.session.commit()
+        flash('✅ تم تحديث إعدادات الرسائل النصية', 'success')
+        return redirect(url_for('owner.sms_settings'))
+    
+    settings = SystemSettings.get_current()
+    
+    return render_template('owner/sms_settings.html', settings=settings)
+
+
+@owner_bp.route('/whatsapp-settings', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def whatsapp_settings():
+    if request.method == 'POST':
+        settings = SystemSettings.get_current()
+        
+        settings.whatsapp_api_url = request.form.get('whatsapp_api_url')
+        settings.whatsapp_api_key = request.form.get('whatsapp_api_key')
+        settings.whatsapp_phone_number = request.form.get('whatsapp_phone_number')
+        settings.whatsapp_enabled = request.form.get('whatsapp_enabled') == 'on'
+        
+        db.session.commit()
+        flash('✅ تم تحديث إعدادات واتساب', 'success')
+        return redirect(url_for('owner.whatsapp_settings'))
+    
+    settings = SystemSettings.get_current()
+    
+    return render_template('owner/whatsapp_settings.html', settings=settings)
+
+
+@owner_bp.route('/notification-templates', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def notification_templates():
+    if request.method == 'POST':
+        settings = SystemSettings.get_current()
+        
+        templates = {
+            'invoice_email': request.form.get('invoice_email_template'),
+            'payment_sms': request.form.get('payment_sms_template'),
+            'reminder_whatsapp': request.form.get('reminder_whatsapp_template')
+        }
+        
+        settings.notification_templates = templates
+        db.session.commit()
+        
+        flash('✅ تم تحديث قوالب الإشعارات', 'success')
+        return redirect(url_for('owner.notification_templates'))
+    
+    settings = SystemSettings.get_current()
+    templates = settings.notification_templates or {}
+    
+    return render_template('owner/notification_templates.html',
+                         templates=templates)
+
+
+@owner_bp.route('/database-optimize', methods=['POST'])
+@login_required
+@owner_required
+def database_optimize():
+    try:
+        conn = db.engine.raw_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('VACUUM')
+        cursor.execute('ANALYZE')
+        
+        conn.commit()
+        cursor.close()
+        
+        flash('✅ تم تحسين قاعدة البيانات بنجاح', 'success')
+    except Exception as e:
+        flash(f'❌ خطأ في التحسين: {str(e)}', 'danger')
+    
+    return redirect(url_for('owner.system_health'))
+
+
+@owner_bp.route('/verify-backups')
+@login_required
+@owner_required
+def verify_backups():
+    try:
+        from services.backup_service import BackupService
+        
+        backups = BackupService.list_backups()
+        
+        verified = []
+        for backup in backups:
+            file_path = os.path.join('instance/backups', backup['filename'])
+            
+            is_valid = os.path.exists(file_path) and os.path.getsize(file_path) > 1000
+            
+            verified.append({
+                'filename': backup.get('filename', 'Unknown'),
+                'size': backup.get('size_mb', 0),
+                'created': backup.get('datetime', backup.get('timestamp', 'Unknown')),
+                'valid': is_valid
+            })
+        
+        return render_template('owner/verify_backups.html', backups=verified)
+    
+    except Exception as e:
+        flash(f'خطأ في تحميل النسخ الاحتياطية: {str(e)}', 'danger')
+        return redirect(url_for('owner.dashboard'))
+
+
+@owner_bp.route('/data-cleanup', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def data_cleanup():
+    if request.method == 'POST':
+        days = request.form.get('days', 90, type=int)
+        cleanup_type = request.form.get('cleanup_type')
+        
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+        deleted_count = 0
+        
+        if cleanup_type == 'logs':
+            deleted_count = AuditLog.query.filter(AuditLog.created_at < cutoff_date).delete()
+        elif cleanup_type == 'archived':
+            deleted_count = ArchivedRecord.query.filter(ArchivedRecord.archived_at < cutoff_date).delete()
+        
+        db.session.commit()
+        
+        flash(f'✅ تم حذف {deleted_count} سجل قديم', 'success')
+        return redirect(url_for('owner.data_cleanup'))
+    
+    stats = {
+        'old_logs': AuditLog.query.filter(
+            AuditLog.created_at < datetime.now(timezone.utc) - timedelta(days=90)
+        ).count(),
+        'old_archived': ArchivedRecord.query.filter(
+            ArchivedRecord.archived_at < datetime.now(timezone.utc) - timedelta(days=180)
+        ).count()
+    }
+    
+    return render_template('owner/data_cleanup.html', stats=stats)
+
+
+@owner_bp.route('/import-export-tools')
+@login_required
+@owner_required
+def import_export_tools():
+    return render_template('owner/import_export_tools.html')
+
+
+@owner_bp.route('/export-excel/<table_name>')
+@login_required
+@owner_required
+def export_excel(table_name):
+    try:
+        import pandas as pd
+        from io import BytesIO
+        from flask import send_file
+        
+        today_str = datetime.now().strftime('%Y-%m-%d')
+        
+        model_map = {
+            'customers': Customer,
+            'products': Product,
+            'sales': Sale,
+            'expenses': Expense
+        }
+        
+        if table_name not in model_map:
+            flash('جدول غير موجود', 'danger')
+            return redirect(url_for('owner.import_export_tools'))
+        
+        model = model_map[table_name]
+        data = model.query.all()
+        
+        df_data = []
+        for item in data:
+            if hasattr(item, 'to_dict'):
+                df_data.append(item.to_dict())
+            else:
+                df_data.append({col.name: getattr(item, col.name) for col in item.__table__.columns})
+        
+        if not df_data:
+            flash('لا توجد بيانات للتصدير', 'warning')
+            return redirect(url_for('owner.import_export_tools'))
+        
+        df = pd.DataFrame(df_data)
+        
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name=table_name)
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=f'{table_name}_{today_str}.xlsx'
+        )
+    except Exception as e:
+        flash(f'خطأ في التصدير: {str(e)}', 'danger')
+        return redirect(url_for('owner.import_export_tools'))
+
+
+@owner_bp.route('/sales-insights')
+@login_required
+@owner_required
+def sales_insights():
+    today = datetime.now().date()
+    last_30_days = today - timedelta(days=30)
+    
+    daily_sales = db.session.query(
+        func.date(Sale.sale_date).label('date'),
+        func.count(Sale.id).label('count'),
+        func.sum(Sale.total_amount).label('total')
+    ).filter(
+        Sale.sale_date >= last_30_days,
+        Sale.status == 'confirmed'
+    ).group_by(func.date(Sale.sale_date)).all()
+    
+    top_products = db.session.query(
+        Product.name,
+        func.sum(SaleLine.quantity).label('total_qty'),
+        func.sum(SaleLine.line_total).label('total_revenue')
+    ).join(SaleLine).join(Sale).filter(
+        Sale.sale_date >= last_30_days,
+        Sale.status == 'confirmed'
+    ).group_by(Product.id).order_by(desc('total_revenue')).limit(10).all()
+    
+    insights = {
+        'daily_sales': [{'date': str(d.date), 'count': d.count, 'total': float(d.total)} for d in daily_sales],
+        'top_products': [{'name': p.name, 'qty': float(p.total_qty), 'revenue': float(p.total_revenue)} for p in top_products]
+    }
+    
+    return render_template('owner/sales_insights.html', insights=insights)
+
+
+@owner_bp.route('/customer-insights')
+@login_required
+@owner_required
+def customer_insights():
+    customers_data = []
+    
+    for customer in Customer.query.filter_by(is_active=True).all():
+        total_sales = db.session.query(func.sum(Sale.total_amount)).filter(
+            Sale.customer_id == customer.id,
+            Sale.status == 'confirmed'
+        ).scalar() or 0
+        
+        sales_count = Sale.query.filter_by(customer_id=customer.id, status='confirmed').count()
+        
+        last_sale = Sale.query.filter_by(customer_id=customer.id).order_by(Sale.sale_date.desc()).first()
+        
+        if last_sale:
+            sale_date = last_sale.sale_date.date() if hasattr(last_sale.sale_date, 'date') else last_sale.sale_date
+            days_since_last = (datetime.now().date() - sale_date).days
+        else:
+            days_since_last = 999
+        
+        customers_data.append({
+            'name': customer.name,
+            'lifetime_value': float(total_sales),
+            'sales_count': sales_count,
+            'avg_sale': float(total_sales / sales_count) if sales_count > 0 else 0,
+            'days_since_last': days_since_last,
+            'status': 'نشط' if days_since_last < 30 else 'خامل' if days_since_last < 90 else 'متوقف'
+        })
+    
+    customers_data.sort(key=lambda x: x['lifetime_value'], reverse=True)
+    
+    return render_template('owner/customer_insights.html', customers=customers_data[:50])
+
+
+@owner_bp.route('/product-performance')
+@login_required
+@owner_required
+def product_performance():
+    last_90_days = datetime.now().date() - timedelta(days=90)
+    
+    products_perf = db.session.query(
+        Product.id,
+        Product.name,
+        Product.code,
+        func.sum(SaleLine.quantity).label('total_sold'),
+        func.sum(SaleLine.line_total).label('total_revenue'),
+        func.count(Sale.id).label('transactions')
+    ).join(SaleLine).join(Sale).filter(
+        Sale.sale_date >= last_90_days,
+        Sale.status == 'confirmed'
+    ).group_by(Product.id).all()
+    
+    performance_data = []
+    for p in products_perf:
+        product = Product.query.get(p.id)
+        
+        margin = p.total_revenue - (product.purchase_price * p.total_sold) if product.purchase_price else 0
+        margin_percent = (margin / p.total_revenue * 100) if p.total_revenue > 0 else 0
+        
+        performance_data.append({
+            'name': p.name,
+            'code': p.code,
+            'sold': float(p.total_sold),
+            'revenue': float(p.total_revenue),
+            'transactions': p.transactions,
+            'margin': float(margin),
+            'margin_percent': float(margin_percent),
+            'status': 'ممتاز' if p.total_sold > 50 else 'جيد' if p.total_sold > 10 else 'ضعيف'
+        })
+    
+    performance_data.sort(key=lambda x: x['revenue'], reverse=True)
+    
+    return render_template('owner/product_performance.html', products=performance_data[:100])
+
+
+@owner_bp.route('/forecasting')
+@login_required
+@owner_required
+def forecasting():
+    months_back = 12
+    today = datetime.now().date()
+    
+    historical_data = []
+    for i in range(months_back):
+        month_start = (today.replace(day=1) - timedelta(days=30*i)).replace(day=1)
+        
+        if month_start.month == 12:
+            month_end = month_start.replace(year=month_start.year+1, month=1, day=1) - timedelta(days=1)
+        else:
+            month_end = month_start.replace(month=month_start.month+1, day=1) - timedelta(days=1)
+        
+        revenue = db.session.query(func.sum(Sale.total_amount)).filter(
+            Sale.sale_date >= month_start,
+            Sale.sale_date <= month_end,
+            Sale.status == 'confirmed'
+        ).scalar() or 0
+        
+        historical_data.append({
+            'month': month_start.strftime('%Y-%m'),
+            'revenue': float(revenue)
+        })
+    
+    historical_data.reverse()
+    
+    if len(historical_data) >= 3:
+        avg_revenue = sum(m['revenue'] for m in historical_data[-3:]) / 3
+        trend = (historical_data[-1]['revenue'] - historical_data[-3]['revenue']) / 3
+        
+        forecast = {
+            'next_month': avg_revenue + trend,
+            'next_3_months': (avg_revenue + trend) * 3,
+            'confidence': 'متوسطة' if len(historical_data) >= 6 else 'منخفضة'
+        }
+    else:
+        forecast = {
+            'next_month': 0,
+            'next_3_months': 0,
+            'confidence': 'غير متوفرة'
+        }
+    
+    return render_template('owner/forecasting.html',
+                         historical=historical_data,
+                         forecast=forecast)
 
 

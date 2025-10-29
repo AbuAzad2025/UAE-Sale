@@ -21,7 +21,7 @@
         </h5>
       </div>
       <div class="card-body">
-        <form>
+        <form action="">
           <div class="form-group">
             <label>العملة الأساسية:</label>
             <select class="form-control">
@@ -74,7 +74,7 @@
         </h5>
       </div>
       <div class="card-body">
-        <form>
+        <form action="">
           <div class="form-group">
             <label>طول كود الحساب:</label>
             <select class="form-control">
@@ -132,7 +132,7 @@
         </h5>
       </div>
       <div class="card-body">
-        <form>
+        <form action="">
           <div class="form-group">
             <label>تنسيق التواريخ:</label>
             <select class="form-control">
@@ -186,7 +186,7 @@
         </h5>
       </div>
       <div class="card-body">
-        <form>
+        <form action="">
           <div class="form-group">
             <label>مدة انتهاء الجلسة (دقيقة):</label>
             <input type="number" class="form-control" value="30" min="5" max="480">
@@ -238,7 +238,7 @@
       <div class="card-body">
         <div class="row">
           <div class="col-md-6">
-            <form>
+            <form action="">
               <div class="form-group">
                 <label>تكرار النسخ الاحتياطي:</label>
                 <select class="form-control">
@@ -352,7 +352,7 @@
 function createBackup() {
   if (confirm('هل تريد إنشاء نسخة احتياطية الآن؟')) {
     // إرسال طلب إنشاء نسخة احتياطية
-    fetch('/admin/backup/create', {
+    fetch('{{ url_for("owner.backup_now") }}', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -367,9 +367,7 @@ function createBackup() {
         alert('فشل في إنشاء النسخة الاحتياطية: ' + data.message);
       }
     })
-    .catch(error => {
-      console.error('Error:', error);
-      alert('حدث خطأ في إنشاء النسخة الاحتياطية');
+    .catch(error => {      alert('حدث خطأ في إنشاء النسخة الاحتياطية');
     });
   }
 }

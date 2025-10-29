@@ -1,9 +1,7 @@
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
         navigator.serviceWorker.register('/static/sw.js')
-            .then(function(registration) {
-                console.log('ServiceWorker registration successful');
-                
+            .then(function(registration) {                
                 registration.addEventListener('updatefound', function() {
                     const newWorker = registration.installing;
                     
@@ -16,9 +14,7 @@ if ('serviceWorker' in navigator) {
                     });
                 });
             })
-            .catch(function(err) {
-                console.log('ServiceWorker registration failed: ', err);
-            });
+            .catch(function(err) {            });
         
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', function() {
@@ -32,9 +28,7 @@ if ('serviceWorker' in navigator) {
 
 if ('Notification' in window && navigator.serviceWorker) {
     Notification.requestPermission().then(function(permission) {
-        if (permission === 'granted') {
-            console.log('Notifications enabled');
-        }
+        if (permission === 'granted') {        }
     });
 }
 

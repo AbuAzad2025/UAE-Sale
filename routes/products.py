@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
-from extensions import db
+from extensions import db, limiter
 from models import Product, ProductCategory
 from utils.decorators import permission_required
 from utils.helpers import create_audit_log, generate_sku, generate_barcode, save_uploaded_file
@@ -58,6 +58,7 @@ def index():
 @products_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 @permission_required('manage_products')
+@limiter.limit("10 per minute", methods=['POST'])
 def create():
     from forms.product import ProductForm
     form = ProductForm()
@@ -124,13 +125,13 @@ def create():
             except Exception as e:
                 db.session.rollback()
                 current_app.logger.error(f"Error creating product: {str(e)}")
-                flash(f'حدث خطأ: {str(e)}', 'danger')
+                flash(f'❌ فشل إضافة المنتج: {str(e)}\n💡 تأكد من:\n   • اسم المنتج فريد\n   • الأسعار صحيحة\n   • SKU غير مكرر', 'danger')
         else:
             # Form validation failed
             current_app.logger.warning(f"Form validation failed. Errors: {form.errors}")
             for field, errors in form.errors.items():
                 for error in errors:
-                    flash(f'خطأ في حقل {field}: {error}', 'danger')
+                    flash(f'⚠️ خطأ في حقل {field}: {error}', 'danger')
     
     categories = ProductCategory.query.filter_by(is_active=True).all()
     return render_template('products/create.html', form=form, categories=categories)
@@ -193,12 +194,12 @@ def edit(id):
             
             create_audit_log('update', 'products', product.id)
             
-            flash('تم تحديث بيانات المنتج بنجاح', 'success')
+            flash('✅ تم تحديث بيانات المنتج بنجاح!', 'success')
             return redirect(url_for('products.view', id=product.id))
         
         except Exception as e:
             db.session.rollback()
-            flash(f'حدث خطأ: {str(e)}', 'danger')
+            flash(f'❌ فشل تحديث المنتج: {str(e)}', 'danger')
     
     categories = ProductCategory.query.filter_by(is_active=True).all()
     return render_template('products/edit.html', form=form, product=product, categories=categories)
@@ -221,20 +222,20 @@ def delete(id):
             # soft delete
             product.is_active = False
             db.session.commit()
-            flash(f'تم إلغاء تفعيل المنتج "{product.name}" (لديه عمليات مسجلة)', 'warning')
+            flash(f'⚠️ تم إلغاء تفعيل المنتج "{product.name}" (لديه عمليات مسجلة).\n💡 لا يمكن حذفه نهائياً للحفاظ على السجلات.', 'warning')
             create_audit_log('deactivate', 'products', id)
         else:
             # hard delete
             db.session.delete(product)
             db.session.commit()
-            flash(f'تم حذف المنتج "{product.name}" نهائياً', 'success')
+            flash(f'✅ تم حذف المنتج "{product.name}" نهائياً!', 'success')
             create_audit_log('delete', 'products', id)
         
         return redirect(url_for('products.index'))
     
     except Exception as e:
         db.session.rollback()
-        flash(f'خطأ في الحذف: {str(e)}', 'danger')
+        flash(f'❌ فشل الحذف: {str(e)}', 'danger')
         return redirect(url_for('products.view', id=id))
 
 
@@ -318,7 +319,7 @@ def create_category():
                 }
             })
         
-        flash('تم إضافة التصنيف بنجاح', 'success')
+            flash('✅ تم إضافة التصنيف بنجاح!', 'success')
         return redirect(url_for('products.categories'))
     
     except Exception as e:
@@ -330,7 +331,7 @@ def create_category():
                 'error': str(e)
             }), 400
         
-        flash(f'حدث خطأ: {str(e)}', 'danger')
+        flash(f'❌ حدث خطأ: {str(e)}', 'danger')
         return redirect(url_for('products.categories'))
 
 

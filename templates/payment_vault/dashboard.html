@@ -455,12 +455,8 @@
             if (data.success) {
                 document.getElementById('today-revenue').textContent = data.daily_revenue.toFixed(2);
                 document.getElementById('today-donations').textContent = data.daily_transactions;
-                document.getElementById('live-pending').textContent = data.pending_count;
-                console.log('📊 Live stats updated');
-            }
-        } catch (error) {
-            console.error('❌ Failed to update live stats:', error);
-        }
+                document.getElementById('live-pending').textContent = data.pending_count;            }
+        } catch (error) {        }
     }, 30000); // كل 30 ثانية
     
     // جلب الإشعارات الجديدة
@@ -475,9 +471,7 @@
                     showNotification(latest.title, latest.message, latest.type);
                 }
             }
-        } catch (error) {
-            console.error('❌ Failed to fetch notifications:', error);
-        }
+        } catch (error) {        }
     }
     
     // عرض إشعار
@@ -510,9 +504,7 @@
                 card.style.opacity = '1';
                 card.style.transform = 'translateY(0)';
             }, index * 100);
-        });
-        console.log('✅ Dashboard loaded successfully');
-    });
+        });    });
 </script>
 {% endblock %}
 

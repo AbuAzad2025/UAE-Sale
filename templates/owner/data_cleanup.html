@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}تنظيف البيانات{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="mb-3">
+    <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-right"></i> رجوع للوحة المالك
+    </a>
+    <a href="{{ url_for('owner.verify_backups') }}" class="btn btn-success">
+      <i class="fas fa-check-double"></i> التحقق من النسخ
+    </a>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-trash-alt"></i> تنظيف البيانات القديمة</h3>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>تحذير:</strong> هذا الإجراء لا يمكن التراجع عنه! تأكد من عمل نسخة احتياطية قبل الحذف.
+      </div>
+      
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <div class="info-box">
+            <span class="info-box-icon bg-warning">
+              <i class="fas fa-file-alt"></i>
+            </span>
+            <div class="info-box-content">
+              <span class="info-box-text">سجلات قديمة (90+ يوم)</span>
+              <span class="info-box-number">{{ stats.old_logs }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="info-box">
+            <span class="info-box-icon bg-secondary">
+              <i class="fas fa-archive"></i>
+            </span>
+            <div class="info-box-content">
+              <span class="info-box-text">أرشيف قديم (180+ يوم)</span>
+              <span class="info-box-number">{{ stats.old_archived }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <form method="post" action="">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+        <div class="form-group">
+          <label>نوع البيانات للحذف</label>
+          <select name="cleanup_type" class="form-control" required>
+            <option value="">اختر...</option>
+            <option value="logs">سجلات المراجعة</option>
+            <option value="archived">السجلات المؤرشفة</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>حذف البيانات الأقدم من (أيام)</label>
+          <input type="number" name="days" class="form-control" value="90" min="30" max="365">
+        </div>
+        
+        <button type="submit" 
+                class="btn btn-danger btn-lg" 
+                onclick="return confirm('هل أنت متأكد من حذف البيانات القديمة؟ هذا الإجراء لا يمكن التراجع عنه!')">
+          <i class="fas fa-trash"></i> تنظيف الآن
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

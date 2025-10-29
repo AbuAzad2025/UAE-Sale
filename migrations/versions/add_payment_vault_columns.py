@@ -145,7 +145,9 @@ def upgrade():
 
 
 def downgrade():
-    """إزالة الأعمدة المضافة"""
+    """إزالة الأعمدة المضافة وحذف الجدول إن لزم الأمر"""
+    
+    # حذف الأعمدة
     try:
         op.drop_column('payment_vault', 'stripe_webhook_secret')
     except:
@@ -218,5 +220,19 @@ def downgrade():
     
     try:
         op.drop_column('payment_vault', 'paypal_client_id')
+    except:
+        pass
+    
+    # حذف الجدول إذا تم إنشاؤه في upgrade
+    # ملاحظة: يُنفذ فقط إذا كان الجدول تم إنشاؤه بواسطة هذا الـ migration
+    # يمكن تعطيل هذا إذا كان الجدول موجود من migration سابق
+    try:
+        from sqlalchemy import text
+        conn = op.get_bind()
+        # التحقق إذا الجدول فارغ قبل حذفه
+        result = conn.execute(text("SELECT COUNT(*) FROM payment_vault"))
+        count = result.scalar()
+        if count == 0:
+            op.drop_table('payment_vault')
     except:
         pass

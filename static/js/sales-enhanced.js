@@ -294,14 +294,10 @@ async function calculateTotals() {
                 total: result.total,
                 lineCount: result.line_count
             };
-        } else {
-            console.error('Backend calculation error:', result.error);
-            // Fallback to client-side calculation
+        } else {            // Fallback to client-side calculation
             return calculateTotalsClientSide();
         }
-    } catch (error) {
-        console.error('Failed to calculate totals via backend:', error);
-        // Fallback to client-side calculation
+    } catch (error) {        // Fallback to client-side calculation
         return calculateTotalsClientSide();
     }
 }

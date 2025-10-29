@@ -20,13 +20,13 @@ class SaleService:
         """
         # Input validations
         if not customer or not customer.is_active:
-            raise ValueError('العميل غير صالح أو غير نشط')
+            raise ValueError('⚠️ العميل غير صالح أو غير نشط.\n💡 اختر عميل نشط من القائمة أو قم بتفعيله.')
         
         if not seller or not seller.is_active:
             raise ValueError('البائع غير صالح أو غير نشط')
         
         if not lines_data or len(lines_data) == 0:
-            raise ValueError('يجب إضافة منتج واحد على الأقل')
+            raise ValueError('⚠️ يجب إضافة منتج واحد على الأقل للفاتورة.\n💡 اضغط زر "➕ إضافة صف" واختر منتجاً.')
         
         # Validate discount and tax
         discount_decimal = Decimal(str(discount_amount)) if discount_amount else Decimal('0')
@@ -80,7 +80,7 @@ class SaleService:
                 
                 # Validate quantity
                 if quantity <= Decimal('0'):
-                    raise ValueError(f'{product.name}: الكمية يجب أن تكون أكبر من صفر')
+                    raise ValueError(f'⚠️ المنتج "{product.name}": الكمية يجب أن تكون أكبر من صفر.\n💡 أدخل كمية صحيحة مثل: 1, 2, 5, 10')
                 
                 # Check stock availability
                 available, msg = StockService.check_availability(product.id, quantity)
@@ -95,7 +95,7 @@ class SaleService:
                 
                 # Validate unit price
                 if unit_price <= Decimal('0'):
-                    raise ValueError(f'{product.name}: السعر يجب أن يكون أكبر من صفر')
+                    raise ValueError(f'⚠️ المنتج "{product.name}": السعر يجب أن يكون أكبر من صفر.\n💡 أدخل سعر صحيح بالدرهم.')
                 
                 discount_percent = Decimal(str(line_data.get('discount_percent', 0)))
                 
@@ -290,11 +290,11 @@ class SaleService:
         # Validate cheque details if payment method is cheque
         if payment_method == 'cheque':
             if not cheque_number:
-                raise ValueError('رقم الشيك مطلوب')
+                raise ValueError('⚠️ رقم الشيك مطلوب عند الدفع بشيك.\n💡 أدخل رقم الشيك وتاريخ الاستحقاق واسم البنك.')
             if not cheque_date:
-                raise ValueError('تاريخ الشيك مطلوب')
+                raise ValueError('⚠️ تاريخ الاستحقاق مطلوب للشيك.\n💡 حدد تاريخ صرف الشيك من البنك.')
             if not bank_name:
-                raise ValueError('اسم البنك مطلوب')
+                raise ValueError('⚠️ اسم البنك مطلوب للشيك.\n💡 أدخل اسم البنك المسحوب عليه الشيك.')
             
             # Convert cheque_date to date object if it's a string
             if isinstance(cheque_date, str):

@@ -67,7 +67,7 @@ def create():
             
             db.session.commit()
             
-            flash('تم إضافة المستخدم بنجاح', 'success')
+            flash('✅ تم إضافة المستخدم بنجاح!', 'success')
             return redirect(url_for('users.index'))
         
         except Exception as e:
@@ -75,7 +75,7 @@ def create():
             import traceback
             error_details = traceback.format_exc()
             current_app.logger.error(f'User creation error: {error_details}')
-            flash(f'حدث خطأ: {str(e)}', 'danger')
+            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     roles = Role.query.filter_by(is_active=True).all()
     return render_template('users/create.html', roles=roles)
@@ -111,12 +111,12 @@ def edit(id):
             
             create_audit_log('update', 'users', user.id)
             
-            flash('تم تحديث بيانات المستخدم بنجاح', 'success')
+            flash('✅ تم تحديث بيانات المستخدم بنجاح!', 'success')
             return redirect(url_for('users.view', id=user.id))
         
         except Exception as e:
             db.session.rollback()
-            flash(f'حدث خطأ: {str(e)}', 'danger')
+            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     roles = Role.query.filter_by(is_active=True).all()
     return render_template('users/edit.html', user=user, roles=roles)
@@ -132,7 +132,8 @@ def toggle_active(id):
     db.session.commit()
     
     status = 'تفعيل' if user.is_active else 'تعطيل'
-    flash(f'تم {status} المستخدم بنجاح', 'success')
+    status_msg = 'تفعيل' if user.is_active else 'إلغاء تفعيل'
+    flash(f'✅ تم {status_msg} المستخدم "{user.username}" بنجاح!', 'success')
     
     create_audit_log('toggle_active', 'users', user.id)
     
@@ -143,13 +144,13 @@ def toggle_active(id):
 @login_required
 def delete(id):
     if not current_user.is_owner:
-        flash('فقط المالك يمكنه حذف المستخدمين', 'danger')
+        flash('👑 فقط المالك يمكنه حذف المستخدمين.\n💡 اتصل بمالك النظام لتنفيذ هذه العملية.', 'danger')
         return redirect(url_for('users.index'))
     
     user = User.query.filter_by(id=id, is_owner=False).first_or_404()
     
     if user.id == current_user.id:
-        flash('لا يمكنك حذف حسابك الخاص', 'danger')
+        flash('⚠️ لا يمكنك حذف حسابك الخاص.\n💡 اطلب من مدير آخر حذف حسابك إذا لزم الأمر.', 'danger')
         return redirect(url_for('users.index'))
     
     try:
@@ -159,19 +160,19 @@ def delete(id):
         if sales_count > 0:
             user.is_active = False
             db.session.commit()
-            flash(f'تم تعطيل المستخدم "{user.username}" (لديه {sales_count} عملية بيع مسجلة)', 'warning')
+            flash(f'⚠️ تم إلغاء تفعيل المستخدم "{user.username}" (لديه {sales_count} عملية مسجلة).\n💡 لا يمكن حذفه نهائياً للحفاظ على السجلات.', 'warning')
             create_audit_log('deactivate', 'users', id)
         else:
             username = user.username
             db.session.delete(user)
             db.session.commit()
-            flash(f'تم حذف المستخدم "{username}" نهائياً', 'success')
+            flash(f'✅ تم حذف المستخدم "{username}" نهائياً!', 'success')
             create_audit_log('delete', 'users', id)
         
         return redirect(url_for('users.index'))
     
     except Exception as e:
         db.session.rollback()
-        flash(f'خطأ في الحذف: {str(e)}', 'danger')
+        flash(f'❌ خطأ في الحذف: {str(e)}\n💡 راجع البيانات المدخلة.', 'danger')
         return redirect(url_for('users.index'))
 

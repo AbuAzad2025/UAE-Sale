@@ -6,6 +6,11 @@
 $(document).ready(function() {
     // Initialize all components
     initializeApp();
+    
+    // Initialize new features
+    if (typeof initAutoSave === 'function') initAutoSave();
+    if (typeof initProgressIndicators === 'function') initProgressIndicators();
+    if (typeof initSmartDefaults === 'function') initSmartDefaults();
 });
 
 /**
@@ -277,9 +282,7 @@ async function calculateTotals() {
         
         // Fallback to client-side
         return calculateTotalsClientSide();
-    } catch (error) {
-        console.error('Backend calculation failed, using client-side:', error);
-        return calculateTotalsClientSide();
+    } catch (error) {        return calculateTotalsClientSide();
     }
 }
 
@@ -465,9 +468,7 @@ function checkConnection() {
 }
 
 // Global error handler
-window.onerror = function(msg, url, lineNo, columnNo, error) {
-    console.error('Error: ' + msg + '\nURL: ' + url + '\nLine: ' + lineNo);
-    showError('حدث خطأ غير متوقع');
+window.onerror = function(msg, url, lineNo, columnNo, error) {    showError('حدث خطأ غير متوقع');
     return false;
 };
 
@@ -559,4 +560,228 @@ window.UI = {
         this.toast(message, 'info', duration);
     }
 };
+
+// =====================================
+// Auto-save + Progress + Smart Defaults
+// =====================================
+let autoSaveTimer;
+window.initAutoSave = function() {
+    $('form[data-autosave]').each(function() {
+        const $form = $(this);
+        $form.find('input, textarea').on('input', function() {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => {
+                sessionStorage.setItem('autosave_' + $form.attr('id'), $form.serialize());
+                if (window.Swal) Swal.fire({toast:true, position:'top-end', icon:'success', title:'💾 محفوظ', timer:1000, showConfirmButton:false});
+            }, 30000);
+        });
+    });
+};
+
+window.initProgressIndicators = function() {
+    $('form[data-show-progress]').each(function() {
+        const $form = $(this);
+        const $required = $form.find('[required]');
+        if ($required.length === 0) return;
+        
+        $form.prepend(`<div class="mb-3"><div class="progress" style="height:8px"><div class="progress-bar bg-success" id="prog-bar" style="width:0%"></div></div></div>`);
+        
+        function update() {
+            const filled = $required.filter(function() { return $(this).val() !== ''; }).length;
+            const pct = (filled / $required.length) * 100;
+            $('#prog-bar').css('width', pct + '%');
+        }
+        $required.on('input change', update);
+        update();
+    });
+};
+
+window.initSmartDefaults = function() {
+    $('form').on('submit', function() {
+        const custId = $(this).find('[name="customer_id"]').val();
+        if (custId) sessionStorage.setItem('last_customer_id', custId);
+        
+        const payMethod = $(this).find('[name="payment_method"]').val();
+        if (payMethod) sessionStorage.setItem('last_payment_method', payMethod);
+    });
+};
+
+// =====================================
+// Keyboard Shortcuts
+// =====================================
+$(document).on('keydown', function(e) {
+    // Ctrl+S = حفظ
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        $('form').first().submit();
+        return false;
+    }
+    
+    // Ctrl+N = جديد
+    if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        const createBtn = $('a[href*="/create"]').first();
+        if (createBtn.length) window.location = createBtn.attr('href');
+    }
+    
+    // Ctrl+F = بحث
+    if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        $('.dataTables_filter input').focus();
+    }
+    
+    // Esc = إلغاء/رجوع
+    if (e.key === 'Escape') {
+        const cancelBtn = $('a:contains("إلغاء"), a:contains("العودة")').first();
+        if (cancelBtn.length) window.location = cancelBtn.attr('href');
+    }
+});
+
+// =====================================
+// Lazy Loading للصور
+// =====================================
+if ('IntersectionObserver' in window) {
+    const imgObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                img.src = img.dataset.src;
+                img.classList.remove('lazy');
+                imgObserver.unobserve(img);
+            }
+        });
+    });
+    
+    document.querySelectorAll('img[data-src]').forEach(img => imgObserver.observe(img));
+}
+
+// =====================================
+// Graceful Degradation for AJAX
+// =====================================
+window.submitWithFallback = async function(url, data, method='POST') {
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        return await response.json();
+    } catch (error) {        // Fallback: create form and submit
+        const form = document.createElement('form');
+        form.method = method;
+        form.action = url;
+        for (let key in data) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = data[key];
+            form.appendChild(input);
+        }
+        document.body.appendChild(form);
+        form.submit();
+    }
+};
+
+// =====================================
+// Retry Mechanism for AJAX
+// =====================================
+window.fetchWithRetry = async function(url, options = {}, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const response = await fetch(url, options);
+            if (response.ok) return response;
+            
+            if (i < retries - 1) {
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+            }
+        } catch (error) {
+            if (i === retries - 1) throw error;
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+        }
+    }
+};
+
+// =====================================
+// Undo/Redo System
+// =====================================
+const formHistory = [];
+let historyIndex = -1;
+
+window.saveFormState = function() {
+    const state = $('form').first().serialize();
+    formHistory.push(state);
+    historyIndex++;
+    if (formHistory.length > 50) formHistory.shift();
+};
+
+window.undoForm = function() {
+    if (historyIndex > 0) {
+        historyIndex--;
+        restoreFormState(formHistory[historyIndex]);
+    }
+};
+
+window.redoForm = function() {
+    if (historyIndex < formHistory.length - 1) {
+        historyIndex++;
+        restoreFormState(formHistory[historyIndex]);
+    }
+};
+
+function restoreFormState(serialized) {
+    const data = new URLSearchParams(serialized);
+    data.forEach((value, key) => {
+        $(`[name="${key}"]`).val(value);
+    });
+}
+
+// Ctrl+Z = Undo, Ctrl+Y = Redo
+$(document).on('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undoForm();
+    }
+    if (e.ctrlKey && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redoForm();
+    }
+});
+
+// =====================================
+// Inline Editing
+// =====================================
+$(document).on('dblclick', '.editable', function() {
+    const $this = $(this);
+    const originalValue = $this.text();
+    const entityType = $this.data('entity');
+    const entityId = $this.data('id');
+    const field = $this.data('field');
+    
+    const input = $(`<input type="text" class="form-control form-control-sm" value="${originalValue}">`);
+    $this.html(input);
+    input.focus().select();
+    
+    input.on('blur', async function() {
+        const newValue = $(this).val();
+        if (newValue !== originalValue) {
+            try {
+                await fetch(`/api/inline-edit/${entityType}/${entityId}`, {
+                    method: 'PATCH',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({field: field, value: newValue})
+                });
+                $this.text(newValue);
+            } catch {
+                $this.text(originalValue);
+            }
+        } else {
+            $this.text(originalValue);
+        }
+    });
+    
+    input.on('keydown', function(e) {
+        if (e.key === 'Enter') $(this).blur();
+        if (e.key === 'Escape') { $this.text(originalValue); }
+    });
+});
 

@@ -75,9 +75,7 @@ function t(key, params = {}) {
     const lang = getCurrentLanguage();
     const translation = translations[key];
     
-    if (!translation) {
-        console.warn(`Translation missing for key: ${key}`);
-        return key;
+    if (!translation) {        return key;
     }
     
     let text = translation[lang] || translation['ar'] || key;

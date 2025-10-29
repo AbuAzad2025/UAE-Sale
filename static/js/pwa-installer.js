@@ -28,9 +28,7 @@ function showInstallPromotion() {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
             
-            if (outcome === 'accepted') {
-                console.log('User accepted installation');
-            }
+            if (outcome === 'accepted') {            }
             
             deferredPrompt = null;
         }
@@ -47,8 +45,6 @@ function showInstallPromotion() {
     }
 }
 
-window.addEventListener('appinstalled', () => {
-    console.log('PWA installed successfully');
-    deferredPrompt = null;
+window.addEventListener('appinstalled', () => {    deferredPrompt = null;
 });
 

@@ -409,12 +409,7 @@ function loadCustomerBalance() {
   if (!customerId) {
     $('#customerInfo').hide();
     return;
-  }
-  
-  console.log('🔍 جاري تحميل بيانات العميل:', customerId);
-  $.get('/customers/' + customerId + '/balance', function(data) {
-    console.log('📊 بيانات العميل المستلمة:', data);
-    // عرض الرصيد مع اللون المناسب
+  }  $.get('/customers/' + customerId + '/balance', function(data) {    // عرض الرصيد مع اللون المناسب
     var balanceClass = data.balance < 0 ? 'text-danger' : 'text-success';
     $('#customerBalance').text(data.balance.toFixed(2) + ' AED')
       .removeClass('text-danger text-success').addClass(balanceClass);
@@ -442,9 +437,7 @@ function loadCustomerBalance() {
     } else {
       $('#unpaidSales').html('<small class="text-success"><i class="fas fa-check"></i> لا توجد فواتير معلقة</small>');
     }
-  }).fail(function() {
-    console.error('فشل تحميل بيانات الزبون');
-  });
+  }).fail(function() {  });
 }
 </script>
 {% endblock %}

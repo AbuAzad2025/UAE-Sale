@@ -254,7 +254,7 @@ def create_from_sale(sale_id):
             return redirect(url_for('payments.view_receipt', id=receipt.id))
         
         except Exception as e:
-            flash(f'حدث خطأ: {str(e)}', 'danger')
+            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     # استخدام القالب الموحد مع بيانات إضافية
     customers = [sale.customer]  # العميل من الفاتورة
@@ -329,7 +329,7 @@ def create_receipt():
             return redirect(url_for('payments.view_receipt', id=receipt.id))
         
         except Exception as e:
-            flash(f'حدث خطأ: {str(e)}', 'danger')
+            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
     exchange_rates = CurrencyService.get_all_rates('AED')
@@ -348,7 +348,7 @@ def view_receipt(id):
     receipt = Receipt.query.get_or_404(id)
     
     if current_user.is_seller() and receipt.user_id != current_user.id:
-        flash('ليس لديك صلاحية لعرض هذا السند', 'danger')
+        flash('🚫 ليس لديك صلاحية لعرض هذا السند', 'danger')
         return redirect(url_for('payments.receipts'))
     
     return render_template('payments/view_receipt.html', receipt=receipt)
@@ -361,7 +361,7 @@ def print_receipt(id):
     receipt = Receipt.query.get_or_404(id)
     
     if current_user.is_seller() and receipt.user_id != current_user.id:
-        flash('ليس لديك صلاحية لطباعة هذا السند', 'danger')
+        flash('🚫 ليس لديك صلاحية لطباعة هذا السند', 'danger')
         return redirect(url_for('payments.receipts'))
     
     # Get invoice settings
@@ -520,7 +520,7 @@ def delete_receipt(id):
     
     except Exception as e:
         db.session.rollback()
-        flash(f'خطأ في الحذف: {str(e)}', 'danger')
+        flash(f'❌ فشل الحذف: {str(e)}', 'danger')
         return redirect(url_for('payments.view_receipt', id=id))
 
 
@@ -556,7 +556,7 @@ def create_payment(purchase_id):
             currency = request.form.get('currency', default='AED')
             
             if amount <= 0 or amount > balance:
-                flash('المبلغ غير صحيح', 'danger')
+                flash('⚠️ المبلغ غير صحيح.\n💡 تحقق من الصيغة الصحيحة وحاول مرة أخرى.', 'danger')
                 return redirect(url_for('payments.create_payment', purchase_id=purchase_id))
             
             # تحويل إلى Decimal للحسابات الدقيقة
@@ -589,7 +589,7 @@ def create_payment(purchase_id):
             
         except Exception as e:
             db.session.rollback()
-            flash(f'خطأ: {str(e)}', 'danger')
+            flash(f'❌ حدث خطأ: {str(e)}', 'danger')
     
     # استخدام نفس القالب الموحد لسندات القبض/الصرف
     return render_template('payments/create_receipt.html',

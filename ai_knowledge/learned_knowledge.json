@@ -895,6 +895,26 @@
         "question": "Expense pattern analysis",
         "response": "{\"category_id\": 1, \"amount\": 370.0, \"payment_method\": \"cash\", \"is_recurring\": false}",
         "timestamp": "2025-10-22T18:24:21.255433"
+      },
+      {
+        "question": "Product terminology: Test Product",
+        "response": "{\"arabic\": \"Test Product\", \"english\": \"Test Product\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+        "timestamp": "2025-10-28T11:22:10.027591"
+      },
+      {
+        "question": "Product terminology: Test Product",
+        "response": "{\"arabic\": \"Test Product\", \"english\": \"Test Product\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+        "timestamp": "2025-10-28T11:22:10.142041"
+      },
+      {
+        "question": "Product terminology: Test Product",
+        "response": "{\"arabic\": \"Test Product\", \"english\": \"Test Product\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+        "timestamp": "2025-10-28T11:22:42.503341"
+      },
+      {
+        "question": "Product terminology: Test Product",
+        "response": "{\"arabic\": \"Test Product\", \"english\": \"Test Product\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+        "timestamp": "2025-10-28T11:22:42.582493"
       }
     ],
     "customs_question": [
@@ -999,7 +1019,7 @@
   "failed_responses": {},
   "expertise_areas": {
     "sales_question": 21,
-    "general_question": 157,
+    "general_question": 161,
     "customs_question": 1,
     "inventory_question": 14
   },

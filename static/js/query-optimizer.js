@@ -8,9 +8,7 @@ class QueryOptimizer {
         const cacheKey = this.getCacheKey(url, options);
         
         const cached = this.cache.get(cacheKey);
-        if (cached && (Date.now() - cached.timestamp < this.cacheTimeout)) {
-            console.log('Cache hit:', url);
-            return cached.data;
+        if (cached && (Date.now() - cached.timestamp < this.cacheTimeout)) {            return cached.data;
         }
         
         const startTime = Date.now();

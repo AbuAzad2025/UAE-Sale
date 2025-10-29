@@ -1133,5 +1133,49 @@
       "subtype": "expense_management"
     },
     "success": true
+  },
+  {
+    "timestamp": "2025-10-28T11:22:10.027495",
+    "question": "Product terminology: Test Product",
+    "response": "{\"arabic\": \"Test Product\", \"english\": \"Test Product\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-28T11:22:10.141944",
+    "question": "Product terminology: Test Product",
+    "response": "{\"arabic\": \"Test Product\", \"english\": \"Test Product\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-28T11:22:42.503255",
+    "question": "Product terminology: Test Product",
+    "response": "{\"arabic\": \"Test Product\", \"english\": \"Test Product\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-28T11:22:42.582384",
+    "question": "Product terminology: Test Product",
+    "response": "{\"arabic\": \"Test Product\", \"english\": \"Test Product\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
   }
 ]

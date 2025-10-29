@@ -34,9 +34,7 @@ $(document).ready(function() {
                     priceInput.after(badge);
                 }
             },
-            error: function() {
-                console.log('AI price recommendation failed, using default');
-            }
+            error: function() {            }
         });
     }
     
@@ -96,9 +94,7 @@ $(document).ready(function() {
                 
                 $('#customer_analysis').html(analysisHtml);
             },
-            error: function() {
-                console.log('Customer analysis failed');
-            }
+            error: function() {            }
         });
     }
     
@@ -152,9 +148,7 @@ $(document).ready(function() {
                     $(`#market_info_${lineIndex}`).html(marketInfo);
                 }
             },
-            error: function() {
-                console.log('Market search failed');
-            }
+            error: function() {            }
         });
     }
     
@@ -188,9 +182,7 @@ $(document).ready(function() {
                     $('#compatible_vehicles').html(`<div class="alert alert-info mt-2">${result.raw_response}</div>`);
                 }
             },
-            error: function() {
-                console.log('Compatibility search failed');
-            }
+            error: function() {            }
         });
     }
     

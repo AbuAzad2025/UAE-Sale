@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}تعديل حساب محاسبي - {{ account.name_ar }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="fas fa-edit"></i> تعديل حساب محاسبي - {{ account.code }}
+          </h3>
+        </div>
+        <div class="card-body">
+          <form method="post" action="{{ url_for('admin_ledger.edit_account', id=account.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>كود الحساب *</label>
+                  <input type="text" name="code" class="form-control" value="{{ account.code }}" required readonly>
+                  <small class="text-muted">لا يمكن تغيير كود الحساب</small>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>نوع الحساب *</label>
+                  <select name="type" class="form-control" required>
+                    <option value="asset" {% if account.type == 'asset' %}selected{% endif %}>أصول</option>
+                    <option value="liability" {% if account.type == 'liability' %}selected{% endif %}>خصوم</option>
+                    <option value="equity" {% if account.type == 'equity' %}selected{% endif %}>حقوق ملكية</option>
+                    <option value="revenue" {% if account.type == 'revenue' %}selected{% endif %}>إيرادات</option>
+                    <option value="expense" {% if account.type == 'expense' %}selected{% endif %}>مصروفات</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>الاسم بالعربي *</label>
+                  <input type="text" name="name_ar" class="form-control" value="{{ account.name_ar }}" required>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>الاسم بالإنجليزي</label>
+                  <input type="text" name="name" class="form-control" value="{{ account.name or '' }}">
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>الحساب الأب</label>
+                  <select name="parent_id" class="form-control">
+                    <option value="">لا يوجد (حساب رئيسي)</option>
+                    {% for parent in parent_accounts %}
+                    <option value="{{ parent.id }}" {% if account.parent_id == parent.id %}selected{% endif %}>
+                      {{ parent.code }} - {{ parent.name_ar }}
+                    </option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="form-group">
+                  <div class="custom-control custom-switch mt-4">
+                    <input type="checkbox" class="custom-control-input" id="is_header" name="is_header" 
+                           {% if account.is_header %}checked{% endif %}>
+                    <label class="custom-control-label" for="is_header">حساب رئيسي (Header)</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>الوصف</label>
+              <textarea name="description" class="form-control" rows="3">{{ account.description or '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+              <button type="submit" class="btn btn-success btn-lg">
+                <i class="fas fa-save"></i> حفظ التعديلات
+              </button>
+              <a href="{{ url_for('admin_ledger.accounts_management') }}" class="btn btn-secondary btn-lg">
+                <i class="fas fa-times"></i> إلغاء
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

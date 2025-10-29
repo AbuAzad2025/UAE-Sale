@@ -208,9 +208,7 @@ function reverseEntry(entryId) {
         alert('فشل في عكس القيد: ' + data.message);
       }
     })
-    .catch(error => {
-      console.error('Error:', error);
-      alert('حدث خطأ في عكس القيد');
+    .catch(error => {      alert('حدث خطأ في عكس القيد');
     });
   }
 }

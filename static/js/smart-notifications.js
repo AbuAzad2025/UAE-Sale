@@ -28,9 +28,7 @@ class SmartNotifications {
                     priority: 'high'
                 });
             }
-        } catch (e) {
-            console.log('Low stock check failed:', e);
-        }
+        } catch (e) {        }
     }
     
     async checkOverduePayments() {
@@ -48,9 +46,7 @@ class SmartNotifications {
                     priority: 'medium'
                 });
             }
-        } catch (e) {
-            console.log('Overdue check failed:', e);
-        }
+        } catch (e) {        }
     }
     
     async checkSystemHealth() {
@@ -68,9 +64,7 @@ class SmartNotifications {
                     priority: 'critical'
                 });
             }
-        } catch (e) {
-            console.log('Health check failed:', e);
-        }
+        } catch (e) {        }
     }
     
     notify(notification) {

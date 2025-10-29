@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
-from extensions import db, csrf
+from extensions import db, limiter, csrf
 from models import Purchase, PurchaseLine, Product, Supplier
 from services.stock_service import StockService
 from services.currency_service import CurrencyService
@@ -47,6 +47,7 @@ def index():
 @purchases_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 @admin_required
+@limiter.limit("10 per minute", methods=['POST'])
 def create():
     if request.method == 'POST':
         try:
@@ -73,7 +74,7 @@ def create():
             
             # التحقق من وجود اسم المورد
             if not supplier_name:
-                flash('❌ يجب إدخال اسم المورد', 'danger')
+                flash('⚠️ يجب إدخال اسم المورد.\n💡 اكتب اسم المورد أو اختر من القائمة.', 'danger')
                 return redirect(url_for('purchases.create'))
             
             currency = request.form.get('currency', 'AED')
@@ -147,7 +148,7 @@ def create():
             if lines_added == 0:
                 current_app.logger.warning("No lines added - rolling back")
                 db.session.rollback()
-                flash('❌ يجب إضافة منتج واحد على الأقل', 'danger')
+                flash('⚠️ يجب إضافة منتج واحد على الأقل للفاتورة.\n💡 اضغط زر "➕ إضافة صف" واختر منتجاً.', 'danger')
                 return redirect(url_for('purchases.create'))
             
             # حساب الإجماليات يدوياً من البيانات المحفوظة
@@ -217,7 +218,7 @@ def create():
             
             create_audit_log('create', 'purchases', purchase.id)
             
-            flash('✅ تم إنشاء فاتورة الشراء بنجاح', 'success')
+            flash('✅ تم إنشاء فاتورة الشراء بنجاح!', 'success')
             return redirect(url_for('purchases.view', id=purchase.id))
         
         except Exception as e:
@@ -226,7 +227,7 @@ def create():
             import traceback
             current_app.logger.error(f"Traceback: {traceback.format_exc()}")
             db.session.rollback()
-            flash(f'حدث خطأ: {str(e)}', 'danger')
+            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     exchange_rates = CurrencyService.get_all_rates('AED')
     
@@ -247,6 +248,70 @@ def view(id):
 def print_purchase(id):
     purchase = Purchase.query.get_or_404(id)
     return render_template('purchases/print.html', purchase=purchase)
+
+
+@purchases_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit(id):
+    """تعديل فاتورة شراء - الملاحظات والخصم فقط"""
+    purchase = Purchase.query.get_or_404(id)
+    
+    # منع التعديل للفواتير المدفوعة
+    if purchase.paid_amount > 0:
+        flash('⚠️ لا يمكن تعديل فاتورة شراء تم الدفع عليها.\n💡 للحفاظ على السجلات المحاسبية.', 'danger')
+        return redirect(url_for('purchases.view', id=id))
+    
+    if request.method == 'POST':
+        try:
+            # تعديل الملاحظات فقط
+            purchase.notes = request.form.get('notes', '')
+            
+            db.session.commit()
+            create_audit_log('update', 'purchases', id)
+            
+            flash('✅ تم تحديث فاتورة الشراء بنجاح!', 'success')
+            return redirect(url_for('purchases.view', id=id))
+        
+        except Exception as e:
+            db.session.rollback()
+            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات.', 'danger')
+    
+    return render_template('purchases/edit.html', purchase=purchase)
+
+
+@purchases_bp.route('/<int:id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete(id):
+    """حذف (أرشفة) فاتورة شراء - فقط الفواتير غير المدفوعة"""
+    purchase = Purchase.query.get_or_404(id)
+    
+    if purchase.paid_amount > 0:
+        flash('⚠️ لا يمكن حذف فاتورة شراء مدفوعة.\n💡 قم بإلغائها أولاً أو إرجاع المدفوعات.', 'danger')
+        return redirect(url_for('purchases.view', id=id))
+    
+    try:
+        # أرشفة بدلاً من الحذف
+        from models import ArchivedRecord
+        archived = ArchivedRecord(
+            table_name='purchases',
+            record_id=id,
+            reason=request.form.get('reason', 'حذف من قبل المستخدم'),
+            archived_by=current_user.id
+        )
+        db.session.add(archived)
+        db.session.commit()
+        
+        create_audit_log('archive', 'purchases', id)
+        
+        flash('✅ تم أرشفة فاتورة الشراء بنجاح!', 'success')
+        return redirect(url_for('purchases.index'))
+    
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ حدث خطأ: {str(e)}', 'danger')
+        return redirect(url_for('purchases.view', id=id))
 
 
 # =====================================

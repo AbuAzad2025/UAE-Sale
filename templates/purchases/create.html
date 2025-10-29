@@ -177,7 +177,7 @@
       <a href="{{ url_for('purchases.index') }}" class="btn btn-secondary btn-lg">
         <i class="fas fa-times mr-2"></i> إلغاء
       </a>
-      <button type="button" class="btn btn-info btn-lg float-left" onclick="calculateTotals(); console.log('🔄 Manual recalculation triggered');">
+      <button type="button" class="btn btn-info btn-lg float-left" onclick="calculateTotals();">
         <i class="fas fa-calculator mr-2"></i> إعادة الحساب
       </button>
       <button type="button" class="btn btn-warning btn-lg float-left ml-2" onclick="debugTotals()">
@@ -330,9 +330,7 @@ function addLine() {
   // حساب الإجمالي عند التغيير - استخدام setTimeout للتأكد من التحميل
   setTimeout(function() {
     $(`.line-quantity[data-line="${lineIndex}"], .line-cost[data-line="${lineIndex}"], .line-discount[data-line="${lineIndex}"]`)
-      .on('input change keyup', function() {
-        console.log('🔄 Input changed, recalculating...');
-        calculateLineTotal(lineIndex);
+      .on('input change keyup', function() {        calculateLineTotal(lineIndex);
         calculateTotals();
       });
   }, 100);
@@ -401,7 +399,7 @@ async function calculateTotals() {
     const tax_rate = parseFloat($('#tax_rate').val()) || 0;
     
     // إرسال للـ backend
-    const response = await fetch('/purchases/api/calculate-totals', {
+    const response = await fetch('{{ url_for("purchases.api_calculate_purchase_totals") }}', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -418,17 +416,10 @@ async function calculateTotals() {
       // تحديث الواجهة
       $('#summary_subtotal').text(result.subtotal.toFixed(2) + ' AED');
       $('#summary_tax').text(result.tax_amount.toFixed(2) + ' AED');
-      $('#summary_total').text(result.total.toFixed(2) + ' AED');
-      
-      console.log('✅ Totals calculated (backend):', result);
-    } else {
-      console.error('Backend calculation error:', result.error);
-      // Fallback to client-side
+      $('#summary_total').text(result.total.toFixed(2) + ' AED');    } else {      // Fallback to client-side
       calculateTotalsClientSide();
     }
-  } catch (error) {
-    console.error('Failed to calculate totals via backend:', error);
-    // Fallback to client-side
+  } catch (error) {    // Fallback to client-side
     calculateTotalsClientSide();
   }
 }
@@ -459,37 +450,19 @@ function calculateTotalsClientSide() {
   
   $('#summary_subtotal').text(subtotal.toFixed(2) + ' AED');
   $('#summary_tax').text(taxAmount.toFixed(2) + ' AED');
-  $('#summary_total').text(total.toFixed(2) + ' AED');
-  
-  console.log('✅ Totals calculated (client-side fallback):', {subtotal, taxAmount, total});
-}
+  $('#summary_total').text(total.toFixed(2) + ' AED');}
 
 // =====================================
 // Debug function
 // =====================================
-function debugTotals() {
-  console.log('🔍 Debug Totals:');
-  console.log('lineIndex:', lineIndex);
-  console.log('Product lines found:', $('.product-line').length);
-  
+function debugTotals() {  
   $('.product-line').each(function(index) {
     const lineId = $(this).attr('id');
     const lineNumber = lineId.split('_')[1];
     
     const qty = $(`.line-quantity[data-line="${lineNumber}"]`).val();
     const cost = $(`.line-cost[data-line="${lineNumber}"]`).val();
-    const discount = $(`.line-discount[data-line="${lineNumber}"]`).val();
-    
-    console.log(`Line ${lineNumber}:`, {
-      id: lineId,
-      qty: qty,
-      cost: cost,
-      discount: discount,
-      qty_parsed: parseFloat(qty) || 0,
-      cost_parsed: parseFloat(cost) || 0,
-      discount_parsed: parseFloat(discount) || 0
-    });
-  });
+    const discount = $(`.line-discount[data-line="${lineNumber}"]`).val();  });
   
   calculateTotals();
 }
@@ -497,9 +470,7 @@ function debugTotals() {
 // =====================================
 // Force Calculate - حساب فوري قوي
 // =====================================
-function forceCalculate() {
-  console.log('⚡ Force Calculate triggered!');
-  
+function forceCalculate() {  
   let subtotal = 0;
   let lineCount = 0;
   
@@ -510,10 +481,7 @@ function forceCalculate() {
     
     const qty = parseFloat($(`.line-quantity[data-line="${lineNumber}"]`).val()) || 0;
     const cost = parseFloat($(`.line-cost[data-line="${lineNumber}"]`).val()) || 0;
-    const discount = parseFloat($(`.line-discount[data-line="${lineNumber}"]`).val()) || 0;
-    
-    console.log(`⚡ Force Line ${lineNumber}: qty=${qty}, cost=${cost}, discount=${discount}`);
-    
+    const discount = parseFloat($(`.line-discount[data-line="${lineNumber}"]`).val()) || 0;    
     const lineSubtotal = qty * cost;
     const lineDiscountAmount = lineSubtotal * (discount / 100);
     const lineTotal = lineSubtotal - lineDiscountAmount;
@@ -529,10 +497,7 @@ function forceCalculate() {
   
   $('#summary_subtotal').text(subtotal.toFixed(2) + ' AED');
   $('#summary_tax').text(taxAmount.toFixed(2) + ' AED');
-  $('#summary_total').text(total.toFixed(2) + ' AED');
-  
-  console.log(`⚡ Force Calculate result: subtotal=${subtotal}, tax=${taxAmount}, total=${total}, lines=${lineCount}`);
-  
+  $('#summary_total').text(total.toFixed(2) + ' AED');  
   // إظهار رسالة للمستخدم
   if (subtotal > 0) {
     alert(`✅ تم الحساب بنجاح!\nالمجموع الفرعي: ${subtotal.toFixed(2)} AED\nالإجمالي: ${total.toFixed(2)} AED`);
@@ -586,9 +551,7 @@ $('#supplier_id').on('change', function() {
 // =====================================
 // Event Delegation - للتعامل مع العناصر المضافة ديناميكياً
 // =====================================
-$(document).on('input change keyup', '.line-quantity, .line-cost, .line-discount', function() {
-  console.log('🔄 Field changed, recalculating...');
-  const lineNumber = $(this).data('line');
+$(document).on('input change keyup', '.line-quantity, .line-cost, .line-discount', function() {  const lineNumber = $(this).data('line');
   if (lineNumber !== undefined) {
     calculateLineTotal(lineNumber);
     calculateTotals();
@@ -598,25 +561,17 @@ $(document).on('input change keyup', '.line-quantity, .line-cost, .line-discount
 // =====================================
 // التهيئة عند تحميل الصفحة
 // =====================================
-$(document).ready(function() {
-  console.log('🚀 Page loaded, initializing...');
-  
+$(document).ready(function() {  
   // إضافة أول سطر
   addLine();
   
   // حساب عند تغيير الضريبة
-  $('#tax_rate').on('input change', function() {
-    console.log('🔄 Tax rate changed');
-    calculateTotals();
+  $('#tax_rate').on('input change', function() {    calculateTotals();
   });
   
   // التحقق قبل الإرسال
-  $('#purchaseForm').on('submit', function(e) {
-    console.log('🚀 Form submission started!');
-    
-    const lineCount = $('.product-line').length;
-    console.log('📊 Line count:', lineCount);
-    
+  $('#purchaseForm').on('submit', function(e) {    
+    const lineCount = $('.product-line').length;    
     if (lineCount === 0) {
       e.preventDefault();
       toastr.error('❌ يجب إضافة منتج واحد على الأقل');
@@ -630,13 +585,7 @@ $(document).ready(function() {
       return false;
     }
     
-    // طباعة جميع البيانات قبل الإرسال
-    console.log('📋 Form data being sent:');
-    console.log('Supplier ID:', $('#supplier_id').val());
-    console.log('Currency:', $('#currency').val());
-    console.log('Exchange Rate:', $('#exchange_rate').val());
-    console.log('Tax Rate:', $('#tax_rate').val());
-    
+    // طباعة جميع البيانات قبل الإرسال    
     // طباعة بيانات كل سطر
     $('.product-line').each(function(index) {
       const lineId = $(this).attr('id');
@@ -645,18 +594,7 @@ $(document).ready(function() {
       const productId = $(`.line-product[data-line="${lineNumber}"]`).val();
       const quantity = $(`.line-quantity[data-line="${lineNumber}"]`).val();
       const cost = $(`.line-cost[data-line="${lineNumber}"]`).val();
-      const discount = $(`.line-discount[data-line="${lineNumber}"]`).val();
-      
-      console.log(`Line ${lineNumber}:`, {
-        product_id: productId,
-        quantity: quantity,
-        unit_cost: cost,
-        discount_percent: discount
-      });
-    });
-    
-    console.log('✅ Form validation passed, submitting...');
-  });
+      const discount = $(`.line-discount[data-line="${lineNumber}"]`).val();    });  });
 });
 </script>
 {% endblock %}

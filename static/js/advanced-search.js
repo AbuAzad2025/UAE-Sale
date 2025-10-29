@@ -36,9 +36,7 @@ class AdvancedSearch {
             }
             
             this.onResult(data);
-        } catch (error) {
-            console.error('Search failed:', error);
-            this.onResult({success: false, error: error.message});
+        } catch (error) {            this.onResult({success: false, error: error.message});
         }
     }
     

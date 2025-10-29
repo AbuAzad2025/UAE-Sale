@@ -234,7 +234,7 @@
 <script>
 // ملء قائمة الحسابات
 document.addEventListener('DOMContentLoaded', function() {
-  fetch('/ledger/api/accounts/search')
+  fetch('{{ url_for("ledger.api_search_accounts") }}')
     .then(response => response.json())
     .then(data => {
       const select = document.querySelector('select[name="account_id"]');
@@ -245,7 +245,9 @@ document.addEventListener('DOMContentLoaded', function() {
         select.appendChild(option);
       });
     })
-    .catch(error => console.error('Error loading accounts:', error));
+    .catch(error => {
+      // خطأ في تحميل الحسابات
+    });
 });
 
 // تحديث رابط كشف الحساب

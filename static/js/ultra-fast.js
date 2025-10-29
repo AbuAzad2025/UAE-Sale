@@ -84,10 +84,7 @@
             target.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         });
-      });
-
-      console.log('🚀 Ultra Fast System Ready!');
-    }
+      });    }
   };
 
   // Initialize when DOM is ready

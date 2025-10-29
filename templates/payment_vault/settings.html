@@ -24,7 +24,7 @@
                         </h5>
                     </div>
                     <div class="card-body">
-                        <form method="POST">
+                        <form method="POST" action="{{ url_for('payment_vault.settings') }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <!-- Payment Settings -->
                             <div class="row">

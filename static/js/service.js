@@ -357,9 +357,7 @@
               $field.val(data[key]);
             }
           });
-        } catch (e) {
-          console.warn('Failed to restore form data:', e);
-        }
+        } catch (e) {        }
       }
       
       // حفظ تلقائي

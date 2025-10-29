@@ -4,7 +4,7 @@
 """
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from extensions import db
+from extensions import db, limiter
 from models import Supplier, Purchase
 from utils.decorators import admin_required
 from utils.helpers import create_audit_log
@@ -64,6 +64,7 @@ def index():
 @suppliers_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 @admin_required
+@limiter.limit("10 per minute", methods=['POST'])
 def create():
     """إضافة مورد جديد"""
     if request.method == 'POST':
@@ -101,12 +102,12 @@ def create():
             
             create_audit_log('create', 'suppliers', supplier.id)
             
-            flash('✅ تم إضافة المورد بنجاح', 'success')
+            flash('✅ تم إضافة المورد بنجاح!', 'success')
             return redirect(url_for('suppliers.view', id=supplier.id))
         
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     return render_template('suppliers/create.html')
 
@@ -174,12 +175,12 @@ def edit(id):
             
             create_audit_log('update', 'suppliers', supplier.id)
             
-            flash('✅ تم تحديث المورد بنجاح', 'success')
+            flash('✅ تم تحديث المورد بنجاح!', 'success')
             return redirect(url_for('suppliers.view', id=supplier.id))
         
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     return render_template('suppliers/edit.html', supplier=supplier)
 
@@ -197,7 +198,7 @@ def delete(id):
         
         create_audit_log('delete', 'suppliers', supplier.id)
         
-        flash('✅ تم إلغاء تفعيل المورد', 'success')
+        flash(f'✅ تم إلغاء تفعيل المورد "{supplier.name}"!\n💡 يمكنك إعادة تفعيله لاحقاً إذا لزم الأمر.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'❌ خطأ: {str(e)}', 'danger')

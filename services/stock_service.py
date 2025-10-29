@@ -44,7 +44,7 @@ class StockService:
             product = Product.query.get(product_id)
             
             if not product:
-                raise ValueError(f'المنتج غير موجود: {product_id}')
+                raise ValueError(f'⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.')
             
             warehouse = Warehouse.query.filter_by(is_active=True).first()
             
@@ -69,7 +69,7 @@ class StockService:
             product.current_stock += Decimal(str(quantity))
             
             if product.current_stock < 0:
-                raise ValueError(f'المخزون غير كافٍ: {product.name}')
+                raise ValueError(f'❌ المخزون غير كافٍ للمنتج "{product.name}"!\n📦 المتوفر: {product.current_stock} | المطلوب: {quantity}\n💡 قلل الكمية أو اطلب مخزون جديد من المورد.')
             
             db.session.flush()
             

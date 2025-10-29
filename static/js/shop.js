@@ -406,41 +406,14 @@
           // تحديث قيمة الحقل في النموذج
           const onlineImageField = document.querySelector('input[name="online_image"]');
           if (onlineImageField) {
-            onlineImageField.value = url;
-            console.log('تم تحديث حقل صورة الأونلاين:', url);
-            // إضافة تأثير بصري
+            onlineImageField.value = url;            // إضافة تأثير بصري
             onlineImageField.style.backgroundColor = '#d4edda';
             setTimeout(() => {
               onlineImageField.style.backgroundColor = '';
             }, 2000);
-          } else {
-            console.log('لم يتم العثور على حقل صورة الأونلاين');
-          }
+          } else {          }
           
-          // حفظ صورة الأونلاين فوراً في قاعدة البيانات
-          try {
-            const saveResponse = await fetch('/shop/admin/products/' + window.location.pathname.match(/\/(\d+)\/edit/)[1] + '/update_fields', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrf()
-              },
-              body: JSON.stringify({
-                online_image: url
-              })
-            });
-            
-            if (saveResponse.ok) {
-              console.log('✅ تم حفظ صورة الأونلاين في قاعدة البيانات');
-              setStatus('✅ تم رفع وحفظ صورة الأونلاين بنجاح!');
-            } else {
-              console.log('⚠️ تم رفع صورة الأونلاين لكن فشل الحفظ في قاعدة البيانات');
-              setStatus('✅ تم رفع صورة الأونلاين! ⚠️ تأكد من الضغط على "حفظ" لحفظ التغييرات.');
-            }
-          } catch (saveError) {
-            console.log('⚠️ خطأ في حفظ صورة الأونلاين:', saveError);
-            setStatus('✅ تم رفع صورة الأونلاين! ⚠️ تأكد من الضغط على "حفظ" لحفظ التغييرات.');
-          }
+          // تم رفع الصورة - يجب الضغط على "حفظ" لحفظ التغييرات
         } catch {
           setStatus('تعذر رفع الصورة');
         }
@@ -623,42 +596,14 @@
             // تحديث قيمة الحقل في النموذج
             const imageField = document.querySelector('input[name="image"]');
             if (imageField) {
-              imageField.value = url;
-              console.log('تم تحديث حقل الصورة الرئيسية:', url);
-              // إضافة تأثير بصري
+              imageField.value = url;              // إضافة تأثير بصري
               imageField.style.backgroundColor = '#d4edda';
               setTimeout(() => {
                 imageField.style.backgroundColor = '';
               }, 2000);
-            } else {
-              console.log('لم يتم العثور على حقل الصورة الرئيسية');
-            }
+            } else {            }
             
-            // حفظ الصورة فوراً في قاعدة البيانات
-            try {
-              const saveResponse = await fetch('/shop/admin/products/' + window.location.pathname.match(/\/(\d+)\/edit/)[1] + '/update_fields', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'X-CSRFToken': csrf()
-                },
-                body: JSON.stringify({
-                  image: url
-                })
-              });
-              
-              if (saveResponse.ok) {
-                console.log('✅ تم حفظ الصورة في قاعدة البيانات');
-                alert('✅ تم رفع وحفظ صورة المنتج بنجاح!');
-              } else {
-                console.log('⚠️ تم رفع الصورة لكن فشل الحفظ في قاعدة البيانات');
-                alert('✅ تم رفع الصورة! ⚠️ تأكد من الضغط على "حفظ" لحفظ التغييرات.');
-              }
-            } catch (saveError) {
-              console.log('⚠️ خطأ في حفظ الصورة:', saveError);
-              alert('✅ تم رفع الصورة! ⚠️ تأكد من الضغط على "حفظ" لحفظ التغييرات.');
-            }
-            
+            // تم رفع الصورة - يجب الضغط على "حفظ" لحفظ التغييرات
             this.value = '';
           } else {
             alert(js.error || 'فشل الرفع');

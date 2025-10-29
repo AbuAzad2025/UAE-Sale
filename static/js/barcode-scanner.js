@@ -63,9 +63,7 @@ class CameraBarcodeScanner {
             this.video.play();
             this.isScanning = true;
             this.scan();
-        } catch (error) {
-            console.error('Camera access denied:', error);
-            alert('لا يمكن الوصول إلى الكاميرا');
+        } catch (error) {            alert('لا يمكن الوصول إلى الكاميرا');
         }
     }
     

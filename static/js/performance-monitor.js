@@ -17,9 +17,7 @@ class PerformanceMonitor {
             this.log('connect_time', connectTime);
             this.log('render_time', renderTime);
             
-            if (pageLoadTime > 3000) {
-                console.warn(`Slow page load: ${pageLoadTime}ms`);
-            }
+            if (pageLoadTime > 3000) {            }
         });
     }
     
@@ -27,9 +25,7 @@ class PerformanceMonitor {
         const duration = Date.now() - startTime;
         this.log('api_call', duration, {url: url});
         
-        if (duration > 2000) {
-            console.warn(`Slow API call to ${url}: ${duration}ms`);
-        }
+        if (duration > 2000) {        }
         
         return duration;
     }

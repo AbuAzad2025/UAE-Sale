@@ -973,7 +973,7 @@
                 <strong>دفع آمن 100%:</strong> جميع البيانات محمية بتشفير SSL 256-bit 🔒
             </div>
             
-            <form id="cardPaymentForm">
+            <form id="cardPaymentForm" action="">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
@@ -1442,9 +1442,7 @@
                 }
             })
             .catch(error => {
-                Swal.close();
-                console.error('Payment error:', error);
-                
+                Swal.close();                
                 // Show fallback message with manual payment option
                 Swal.fire({
                     icon: 'warning',

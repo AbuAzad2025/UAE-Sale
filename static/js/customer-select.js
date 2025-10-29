@@ -1,8 +1,5 @@
 (function($) {
   'use strict';
-
-  console.log('🔵 تحميل customer-select.js');
-
   // =====================================
   // UNIVERSAL SMART SEARCH SYSTEM
   // =====================================
@@ -12,17 +9,10 @@
   // =====================================
     // CUSTOMER SEARCH
   // =====================================
-    initCustomerSearch: function() {
-      console.log('🔵 تهيئة البحث عن العملاء');
-      console.log('🔍 عدد عناصر customer-select:', $('.customer-select').length);
-      
+    initCustomerSearch: function() {      
       $('.customer-select').each(function(index) {
-        const $select = $(this);
-        console.log(`🔵 تهيئة customer-select #${index}:`, $select.attr('id') || 'no-id');
-        
-    if ($select.hasClass('select2-hidden-accessible')) {
-          console.log('🔧 تدمير Select2 الموجود');
-      $select.select2('destroy');
+        const $select = $(this);        
+    if ($select.hasClass('select2-hidden-accessible')) {      $select.select2('destroy');
     }
     
         $select.select2({
@@ -30,16 +20,12 @@
             url: '/customers/api/search',
         dataType: 'json',
             delay: 300,
-        data: function(params) {
-              console.log('🔍 طلب البحث عن العملاء:', params.term);
-          return {
+        data: function(params) {          return {
             q: params.term || '',
             page: params.page || 1
           };
         },
-        processResults: function(data) {
-              console.log('📊 نتائج البحث عن العملاء:', data);
-              const items = Array.isArray(data) ? data : (data.results || []);
+        processResults: function(data) {              const items = Array.isArray(data) ? data : (data.results || []);
               const results = {
                 results: items.map(item => ({
                   id: item.id,
@@ -49,9 +35,7 @@
                   balance: item.balance || 0
                 })),
                 pagination: { more: false }
-              };
-              console.log('✅ نتائج معالجة البحث:', results);
-              return results;
+              };              return results;
         },
         cache: true
       },
@@ -63,26 +47,16 @@
           templateResult: SmartSearch.formatCustomerResult,
           templateSelection: SmartSearch.formatCustomerSelection,
           escapeMarkup: function(markup) { return markup; }
-        });
-        
-        console.log('✅ تم تهيئة customer-select #' + index);
-      });
+        });      });
     },
     
     // =====================================
     // SUPPLIER SEARCH
     // =====================================
-    initSupplierSearch: function() {
-      console.log('🔵 تهيئة البحث عن الموردين');
-      console.log('🔍 عدد عناصر supplier-select:', $('.supplier-select').length);
-      
+    initSupplierSearch: function() {      
       $('.supplier-select').each(function(index) {
-        const $select = $(this);
-        console.log(`🔵 تهيئة supplier-select #${index}:`, $select.attr('id') || 'no-id');
-        
-        if ($select.hasClass('select2-hidden-accessible')) {
-          console.log('🔧 تدمير Select2 الموجود');
-          $select.select2('destroy');
+        const $select = $(this);        
+        if ($select.hasClass('select2-hidden-accessible')) {          $select.select2('destroy');
         }
         
         $select.select2({
@@ -90,16 +64,12 @@
             url: '/suppliers/api/search',
             dataType: 'json',
             delay: 300,
-            data: function(params) {
-              console.log('🔍 طلب البحث عن الموردين:', params.term);
-              return {
+            data: function(params) {              return {
                 q: params.term || '',
                 page: params.page || 1
               };
             },
-            processResults: function(data) {
-              console.log('📊 نتائج البحث عن الموردين:', data);
-              const items = Array.isArray(data) ? data : (data.results || []);
+            processResults: function(data) {              const items = Array.isArray(data) ? data : (data.results || []);
               const results = {
                 results: items.map(item => ({
                   id: item.id,
@@ -109,9 +79,7 @@
                   balance: item.balance || 0
                 })),
                 pagination: { more: false }
-              };
-              console.log('✅ نتائج معالجة البحث:', results);
-              return results;
+              };              return results;
             },
             cache: true
           },
@@ -123,26 +91,16 @@
           templateResult: SmartSearch.formatSupplierResult,
           templateSelection: SmartSearch.formatSupplierSelection,
           escapeMarkup: function(markup) { return markup; }
-        });
-        
-        console.log('✅ تم تهيئة supplier-select #' + index);
-      });
+        });      });
     },
   
   // =====================================
     // PRODUCT SEARCH
   // =====================================
-    initProductSearch: function() {
-      console.log('🔵 تهيئة البحث عن المنتجات');
-      console.log('🔍 عدد عناصر product-select:', $('.product-select').length);
-      
+    initProductSearch: function() {      
       $('.product-select').each(function(index) {
-        const $select = $(this);
-        console.log(`🔵 تهيئة product-select #${index}:`, $select.attr('id') || 'no-id');
-    
-    if ($select.hasClass('select2-hidden-accessible')) {
-          console.log('🔧 تدمير Select2 الموجود');
-      $select.select2('destroy');
+        const $select = $(this);    
+    if ($select.hasClass('select2-hidden-accessible')) {      $select.select2('destroy');
     }
     
         $select.select2({
@@ -150,16 +108,12 @@
             url: '/products/api/search',
         dataType: 'json',
             delay: 300,
-        data: function(params) {
-              console.log('🔍 طلب البحث عن المنتجات:', params.term);
-          return {
+        data: function(params) {          return {
             q: params.term || '',
             page: params.page || 1
           };
         },
-        processResults: function(data) {
-              console.log('📊 نتائج البحث عن المنتجات:', data);
-              const items = Array.isArray(data) ? data : (data.results || []);
+        processResults: function(data) {              const items = Array.isArray(data) ? data : (data.results || []);
               const results = {
                 results: items.map(item => ({
                   id: item.id,
@@ -170,9 +124,7 @@
                   stock: item.stock || 0
                 })),
                 pagination: { more: false }
-              };
-              console.log('✅ نتائج معالجة البحث:', results);
-              return results;
+              };              return results;
         },
         cache: true
       },
@@ -184,10 +136,7 @@
           templateResult: SmartSearch.formatProductResult,
           templateSelection: SmartSearch.formatProductSelection,
           escapeMarkup: function(markup) { return markup; }
-        });
-        
-        console.log('✅ تم تهيئة product-select #' + index);
-      });
+        });      });
     },
     
     // =====================================
@@ -276,25 +225,18 @@
   // =====================================
     // INITIALIZATION
   // =====================================
-    init: function() {
-      console.log('🔵 تهيئة نظام البحث الذكي الشامل');
-      
+    init: function() {      
       // تهيئة جميع أنواع البحث
       this.initCustomerSearch();
       this.initSupplierSearch();
-      this.initProductSearch();
-      
-      console.log('✅ تم تهيئة نظام البحث الذكي بنجاح');
-    }
+      this.initProductSearch();    }
   };
   
   // =====================================
   // AUTO-INITIALIZATION
   // =====================================
   
-  $(document).ready(function() {
-    console.log('🔵 Document ready - تهيئة نظام البحث الشامل');
-    
+  $(document).ready(function() {    
     // تأخير بسيط للتأكد من تحميل جميع الملفات
     setTimeout(function() {
       SmartSearch.init();
@@ -302,9 +244,7 @@
   });
   
   // تهيئة فورية عند تحميل الصفحة
-  $(window).on('load', function() {
-    console.log('🔵 Window loaded - إعادة تهيئة نظام البحث');
-    SmartSearch.init();
+  $(window).on('load', function() {    SmartSearch.init();
   });
   
   // =====================================
@@ -314,8 +254,5 @@
   window.SmartSearch = SmartSearch;
   window.initCustomerSelect = SmartSearch.initCustomerSearch;
   window.initSupplierSelect = SmartSearch.initSupplierSearch;
-  window.initProductSelect = SmartSearch.initProductSearch;
-
-  console.log('✅ تم تحميل customer-select.js بنجاح');
-  
+  window.initProductSelect = SmartSearch.initProductSearch;  
 })(jQuery);

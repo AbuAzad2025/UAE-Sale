@@ -374,7 +374,7 @@
           <span>&times;</span>
         </button>
       </div>
-      <form method="POST" id="restoreForm">
+      <form method="POST" id="restoreForm" action="">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-body">
           <div class="alert alert-danger">
@@ -422,7 +422,7 @@
           <span>&times;</span>
         </button>
       </div>
-      <form method="POST" id="customRestoreForm">
+      <form method="POST" id="customRestoreForm" action="">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-body">
           <!-- تحذير -->

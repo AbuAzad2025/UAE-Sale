@@ -361,9 +361,7 @@ function initSmartSearch() {
             selectedIndex = -1;
             showResults(data);
           })
-          .catch(error => {
-            console.error('خطأ في البحث:', error);
-            hideResults();
+          .catch(error => {            hideResults();
           });
       }, 300);
     }

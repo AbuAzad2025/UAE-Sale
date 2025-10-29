@@ -112,7 +112,34 @@ class SystemSettings(db.Model):
     api_rate_limit = db.Column(db.Integer, default=100)  # requests per minute
     
     # Custom Settings - إعدادات مخصصة (JSON)
-    custom_settings = db.Column(db.Text)  # JSON for extensibility
+    custom_settings = db.Column(db.Text)
+    
+    smtp_server = db.Column(db.String(200))
+    smtp_port = db.Column(db.Integer, default=587)
+    smtp_username = db.Column(db.String(200))
+    smtp_password = db.Column(db.String(200))
+    smtp_use_tls = db.Column(db.Boolean, default=True)
+    email_from = db.Column(db.String(200))
+    
+    sms_provider = db.Column(db.String(50))
+    sms_api_key = db.Column(db.String(200))
+    sms_sender_name = db.Column(db.String(50))
+    sms_enabled = db.Column(db.Boolean, default=False)
+    
+    whatsapp_api_url = db.Column(db.String(500))
+    whatsapp_api_key = db.Column(db.String(200))
+    whatsapp_phone_number = db.Column(db.String(20))
+    whatsapp_enabled = db.Column(db.Boolean, default=False)
+    
+    notification_templates = db.Column(db.Text)
+    
+    vat_enabled = db.Column(db.Boolean, default=False)
+    vat_number = db.Column(db.String(50))
+    tax_id_number = db.Column(db.String(50))
+    
+    auto_update_rates = db.Column(db.Boolean, default=False)
+    
+    owner_whitelist_ips = db.Column(db.Text)
     
     # Meta
     is_active = db.Column(db.Boolean, default=True)

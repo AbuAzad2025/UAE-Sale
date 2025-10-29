@@ -120,9 +120,7 @@
       const points = chart.getElementsAtEventForMode(event, 'nearest', { intersect: true }, true);
       if (points.length) {
         const point = points[0];
-        const data = chart.data.datasets[point.datasetIndex].data[point.index];
-        console.log('نقطة محددة:', data);
-        
+        const data = chart.data.datasets[point.datasetIndex].data[point.index];        
         // يمكن إضافة مزيد من التفاعل هنا
         showDataDetails(data, point.datasetIndex, point.index);
       }

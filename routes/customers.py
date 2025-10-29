@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from extensions import db
+from extensions import db, limiter
 from models import Customer, Sale
 from utils.decorators import permission_required
 from utils.helpers import create_audit_log
@@ -49,6 +49,7 @@ def index():
 @customers_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 @permission_required('manage_customers')
+@limiter.limit("10 per minute", methods=['POST'])
 def create():
     from forms.customer import CustomerForm
     form = CustomerForm()
@@ -72,12 +73,13 @@ def create():
             
             create_audit_log('create', 'customers', customer.id)
             
-            flash('تم إضافة الزبون بنجاح', 'success')
+            flash('✅ تم إضافة الزبون بنجاح!', 'success')
             return redirect(url_for('customers.index'))
         
         except Exception as e:
             db.session.rollback()
-            flash(f'حدث خطأ: {str(e)}', 'danger')
+            from utils.error_messages import ErrorMessages
+            flash(ErrorMessages.database_error(str(e)), 'danger')
     
     return render_template('customers/create.html', form=form)
 
@@ -123,12 +125,13 @@ def edit(id):
             
             create_audit_log('update', 'customers', customer.id)
             
-            flash('تم تحديث بيانات الزبون بنجاح', 'success')
+            flash('✅ تم تحديث بيانات الزبون بنجاح!', 'success')
             return redirect(url_for('customers.view', id=customer.id))
         
         except Exception as e:
             db.session.rollback()
-            flash(f'حدث خطأ: {str(e)}', 'danger')
+            from utils.error_messages import ErrorMessages
+            flash(ErrorMessages.database_error(str(e)), 'danger')
     
     return render_template('customers/edit.html', customer=customer)
 
@@ -144,11 +147,11 @@ def delete(id):
     if sales_count > 0:
         customer.is_active = False
         db.session.commit()
-        flash('تم تعطيل الزبون (لديه عمليات مسجلة)', 'warning')
+        flash(f'⚠️ تم إلغاء تفعيل العميل "{customer.name}" (لديه معاملات مسجلة).\n💡 لا يمكن حذفه نهائياً للحفاظ على السجلات المالية.', 'warning')
     else:
         db.session.delete(customer)
         db.session.commit()
-        flash('تم حذف الزبون بنجاح', 'success')
+        flash(f'✅ تم حذف العميل "{customer.name}" نهائياً!', 'success')
     
     create_audit_log('delete', 'customers', id)
     

@@ -5,7 +5,7 @@
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from extensions import db
+from extensions import db, limiter
 from models import Cheque, Customer, Supplier, Sale, Receipt, Expense
 from services.currency_service import CurrencyService
 from utils.decorators import admin_required, permission_required
@@ -125,6 +125,7 @@ def outgoing():
 @cheques_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 @permission_required('manage_payments')
+@limiter.limit("10 per minute", methods=['POST'])
 def create():
     """إضافة شيك جديد"""
     if request.method == 'POST':
@@ -180,7 +181,7 @@ def create():
         
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات وحاول مرة أخرى.', 'danger')
     
     customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
     suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
@@ -216,7 +217,7 @@ def edit(id):
     
     # لا يمكن تعديل شيك تم صرفه أو ملغي
     if cheque.status in ['cleared', 'cancelled', 'bounced']:
-        flash('❌ لا يمكن تعديل شيك تم صرفه أو إلغاؤه', 'danger')
+        flash('⚠️ لا يمكن تعديل شيك تم صرفه أو إلغاؤه.\n💡 الشيكات المصروفة أو الملغاة لا يمكن تعديلها للحفاظ على السجلات.', 'danger')
         return redirect(url_for('cheques.view', id=id))
     
     if request.method == 'POST':
@@ -256,7 +257,7 @@ def edit(id):
         
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات وحاول مرة أخرى.', 'danger')
     
     customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
     suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
@@ -293,7 +294,7 @@ def deposit_cheque(id):
         db.session.rollback()
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات وحاول مرة أخرى.', 'danger')
     
     return redirect(url_for('cheques.view', id=id))
 
@@ -335,7 +336,7 @@ def clear_cheque(id):
         db.session.rollback()
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات وحاول مرة أخرى.', 'danger')
     
     return redirect(url_for('cheques.view', id=id))
 
@@ -366,7 +367,7 @@ def bounce_cheque(id):
         db.session.rollback()
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات وحاول مرة أخرى.', 'danger')
     
     return redirect(url_for('cheques.view', id=id))
 
@@ -379,7 +380,7 @@ def cancel(id):
     cheque = Cheque.query.get_or_404(id)
     
     if cheque.status == 'cleared':
-        flash('❌ لا يمكن إلغاء شيك تم صرفه', 'danger')
+        flash('⚠️ لا يمكن إلغاء شيك تم صرفه.\n💡 الشيك تم صرفه بالفعل. لا يمكن التراجع عنه.', 'danger')
         return redirect(url_for('cheques.view', id=id))
     
     try:
@@ -394,7 +395,7 @@ def cancel(id):
     
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات وحاول مرة أخرى.', 'danger')
     
     return redirect(url_for('cheques.view', id=id))
 
@@ -419,7 +420,7 @@ def delete(id):
     
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات وحاول مرة أخرى.', 'danger')
         return redirect(url_for('cheques.view', id=id))
 
 
@@ -440,7 +441,7 @@ def restore(id):
     
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات وحاول مرة أخرى.', 'danger')
     
     return redirect(url_for('cheques.view', id=id))
 

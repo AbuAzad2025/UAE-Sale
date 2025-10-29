@@ -306,10 +306,10 @@ def manual_entry():
             return redirect(url_for('ledger.view_entry', id=entry.id))
         
         except ValueError as e:
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     # الحصول على الحسابات النشطة (غير رئيسية)
     accounts = GLAccount.query.filter_by(is_active=True, is_header=False).order_by(GLAccount.code).all()
@@ -441,7 +441,7 @@ def cash_flow():
                              date_from=date_from,
                              date_to=date_to)
     except Exception as e:
-        flash(f'❌ خطأ في إنشاء قائمة التدفقات: {str(e)}', 'danger')
+        flash(f'❌ فشل إنشاء قائمة التدفقات: {str(e)}\n💡 تحقق من الفترة المحددة وحاول مرة أخرى.', 'danger')
         return redirect(url_for('ledger.index'))
 
 
@@ -467,7 +467,7 @@ def aging_analysis():
                              title=title,
                              as_of_date=as_of_date or date.today().strftime('%Y-%m-%d'))
     except Exception as e:
-        flash(f'❌ خطأ في إنشاء تحليل العمر: {str(e)}', 'danger')
+        flash(f'❌ فشل إنشاء تحليل الأعمار: {str(e)}\n💡 تحقق من البيانات وحاول مرة أخرى.', 'danger')
         return redirect(url_for('ledger.index'))
 
 # ==================== لوحة التحكم الإدارية ====================
@@ -554,7 +554,7 @@ def admin_add_account():
             # التحقق من عدم تكرار الكود
             existing = GLAccount.query.filter_by(code=code).first()
             if existing:
-                flash('❌ كود الحساب موجود مسبقاً', 'danger')
+                flash('⚠️ كود الحساب موجود مسبقاً.\n💡 استخدم كود فريد أو اختر كود آخر.', 'danger')
                 return redirect(url_for('ledger.admin_add_account'))
             
             # حساب المستوى
@@ -584,7 +584,7 @@ def admin_add_account():
             
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     # الحصول على الحسابات الرئيسية للقائمة المنسدلة
     parent_accounts = GLAccount.query.filter_by(is_header=True).order_by(GLAccount.code).all()

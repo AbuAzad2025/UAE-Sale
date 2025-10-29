@@ -30,6 +30,9 @@ from .budget import Budget, BudgetLine
 from .cost_center import CostCenter
 from .fixed_asset import FixedAsset, DepreciationSchedule
 from .advanced_accounting import CustomsTax, AdvancedExpense, TaxCalculationRule
+from .login_history import LoginHistory
+from .security_alert import SecurityAlert
+from .api_key import APIKey
 
 __all__ = [
     'User', 'Role', 'Permission',
@@ -61,5 +64,6 @@ __all__ = [
     'CostCenter',
     'FixedAsset', 'DepreciationSchedule',
     'CustomsTax', 'AdvancedExpense', 'TaxCalculationRule',
+    'LoginHistory', 'SecurityAlert', 'APIKey',
 ]
 

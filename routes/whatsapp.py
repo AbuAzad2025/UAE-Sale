@@ -27,7 +27,7 @@ def send_invoice(sale_id):
     if result['success']:
         flash('تم إرسال الفاتورة عبر واتساب بنجاح', 'success')
     else:
-        flash(f'فشل الإرسال: {result.get("error")}', 'danger')
+        flash(f'❌ فشل الإرسال: {result.get("error")}\n💡 حاول مرة أخرى أو اتصل بالدعم.', 'danger')
     
     return jsonify(result)
 
@@ -54,7 +54,7 @@ def send_reminder(customer_id):
     if result['success']:
         flash('تم إرسال التذكير بنجاح', 'success')
     else:
-        flash(f'فشل الإرسال: {result.get("error")}', 'danger')
+        flash(f'❌ فشل الإرسال: {result.get("error")}\n💡 حاول مرة أخرى أو اتصل بالدعم.', 'danger')
     
     return jsonify(result)
 

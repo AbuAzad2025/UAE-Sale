@@ -15,9 +15,23 @@
     <h3 style="font-size: 48px; font-weight: 700; color: #f5576c;">500</h3>
     <p class="lead">خطأ في الخادم</p>
     <p class="text-muted">عذراً، حدث خطأ غير متوقع. يرجى المحاولة لاحقاً</p>
-    <a href="{{ url_for('main.dashboard') }}" class="btn btn-danger btn-lg mt-3">
-      <i class="fas fa-home mr-2"></i>العودة للرئيسية
-    </a>
+    
+    {% if error_id %}
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin: 20px 0; font-family: 'Courier New', monospace;">
+      <i class="fas fa-fingerprint text-danger mr-2"></i>
+      <strong>معرف الخطأ:</strong> <span style="color: #dc3545; font-weight: bold;">{{ error_id }}</span>
+    </div>
+    <p class="text-muted" style="font-size: 14px;">احتفظ بهذا المعرف عند التواصل مع الدعم</p>
+    {% endif %}
+    
+    <div class="mt-4">
+      <a href="{{ url_for('main.dashboard') }}" class="btn btn-danger btn-lg">
+        <i class="fas fa-home mr-2"></i>العودة للرئيسية
+      </a>
+      <a href="javascript:location.reload()" class="btn btn-secondary btn-lg">
+        <i class="fas fa-redo mr-2"></i>إعادة المحاولة
+      </a>
+    </div>
   </div>
 </div>
 </body>

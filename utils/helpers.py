@@ -114,21 +114,45 @@ def allowed_file(filename, allowed_extensions=None):
 
 
 def save_uploaded_file(file, upload_folder='uploads', allowed_extensions=None):
-    if file and allowed_file(file.filename, allowed_extensions):
-        filename = secure_filename(file.filename)
-        
-        name, ext = os.path.splitext(filename)
-        unique_filename = f'{name}_{uuid.uuid4().hex[:8]}{ext}'
-        
-        full_upload_folder = os.path.join(current_app.static_folder, upload_folder)
-        os.makedirs(full_upload_folder, exist_ok=True)
-        
-        filepath = os.path.join(full_upload_folder, unique_filename)
-        file.save(filepath)
-        
-        return os.path.join(upload_folder, unique_filename).replace('\\', '/')
+    """حفظ ملف مرفوع مع فحوصات أمان"""
+    if not file or not file.filename:
+        return None
     
-    return None
+    # فحص نوع الملف
+    if not allowed_file(file.filename, allowed_extensions):
+        raise ValueError('نوع الملف غير مسموح')
+    
+    # فحص حجم الملف (5MB max)
+    MAX_FILE_SIZE = 5 * 1024 * 1024
+    file.seek(0, os.SEEK_END)
+    file_length = file.tell()
+    file.seek(0)
+    
+    if file_length > MAX_FILE_SIZE:
+        raise ValueError('حجم الملف أكبر من المسموح (5MB)')
+    
+    # فحص محتوى الملف (magic bytes)
+    file_header = file.read(512)
+    file.seek(0)
+    
+    # فحص أنه ليس ملف تنفيذي
+    if file_header.startswith(b'MZ') or file_header.startswith(b'\x7fELF'):
+        raise ValueError('ملفات تنفيذية غير مسموحة')
+    
+    filename = secure_filename(file.filename)
+    name, ext = os.path.splitext(filename)
+    unique_filename = f'{name}_{uuid.uuid4().hex[:8]}{ext}'
+    
+    full_upload_folder = os.path.join(current_app.static_folder, upload_folder)
+    os.makedirs(full_upload_folder, exist_ok=True)
+    
+    filepath = os.path.join(full_upload_folder, unique_filename)
+    file.save(filepath)
+    
+    # تسجيل
+    current_app.logger.info(f'File uploaded: {unique_filename} ({file_length} bytes)')
+    
+    return os.path.join(upload_folder, unique_filename).replace('\\', '/')
 
 
 def convert_currency(amount, from_currency, to_currency='AED'):

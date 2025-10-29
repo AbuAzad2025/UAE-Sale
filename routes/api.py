@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
 from extensions import db
-from models import Customer, Supplier, Product
+from models import Customer, Supplier, Product, User
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -206,4 +206,69 @@ def api_search():
         } for c in customers]
         
         return jsonify({'results': results, 'has_more': has_more})
+
+
+@api_bp.route('/check-username')
+@login_required
+def check_username():
+    """التحقق من توفر اسم المستخدم"""
+    username = request.args.get('username', '').strip()
+    
+    if not username or len(username) < 3:
+        return jsonify({'available': False, 'error': 'اسم المستخدم قصير جداً'})
+    
+    import re
+    if not re.match(r'^[a-zA-Z0-9_]{3,20}$', username):
+        return jsonify({'available': False, 'error': 'استخدم حروف إنجليزية وأرقام و_ فقط'})
+    
+    existing = User.query.filter_by(username=username).first()
+    
+    if existing:
+        from datetime import datetime
+        year = datetime.now().year
+        suggestions = [f'{username}_{year}', f'{username}_2024', f'{username}_admin']
+        
+        return jsonify({
+            'available': False,
+            'message': f'اسم المستخدم "{username}" موجود مسبقاً',
+            'suggestions': suggestions
+        })
+    
+    return jsonify({'available': True, 'message': 'اسم المستخدم متاح ✓'})
+
+
+@api_bp.route('/products/low-stock')
+@login_required
+def products_low_stock():
+    """API للمنتجات قليلة المخزون"""
+    try:
+        from models import Product
+        
+        low_stock_products = Product.query.filter(
+            Product.current_stock <= Product.min_stock,
+            Product.is_active == True
+        ).order_by(Product.current_stock).all()
+        
+        products_data = []
+        for product in low_stock_products:
+            products_data.append({
+                'id': product.id,
+                'name': product.name,
+                'code': product.code,
+                'current_stock': float(product.current_stock),
+                'min_stock': float(product.min_stock),
+                'needed': float(product.min_stock - product.current_stock)
+            })
+        
+        return jsonify({
+            'success': True,
+            'products': products_data,
+            'count': len(products_data)
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 

@@ -171,9 +171,7 @@ function unlockVault(vaultId) {
         alert('فشل في فتح المحفظة: ' + data.message);
       }
     })
-    .catch(error => {
-      console.error('Error:', error);
-      alert('حدث خطأ في فتح المحفظة');
+    .catch(error => {      alert('حدث خطأ في فتح المحفظة');
     });
   }
 }
@@ -196,9 +194,7 @@ function lockVault(vaultId) {
         alert('فشل في قفل المحفظة: ' + data.message);
       }
     })
-    .catch(error => {
-      console.error('Error:', error);
-      alert('حدث خطأ في قفل المحفظة');
+    .catch(error => {      alert('حدث خطأ في قفل المحفظة');
     });
   }
 }

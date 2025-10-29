@@ -22,7 +22,7 @@
 
 <div class="content">
   <div class="container-fluid">
-    <form method="POST" id="editUserForm">
+    <form method="POST" action="{{ url_for('owner.edit_user', user_id=user.id) }}" id="editUserForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       
       <div class="row">

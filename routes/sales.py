@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from extensions import db, csrf
+from extensions import db, csrf, limiter
 from models import Sale, Customer, Product, InvoiceSettings
 from services.sale_service import SaleService
 from services.currency_service import CurrencyService
@@ -64,6 +64,7 @@ def index():
 @sales_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 @permission_required('manage_sales')
+@limiter.limit("15 per minute", methods=['POST'])
 def create():
     if request.method == 'POST':
         try:
@@ -101,7 +102,8 @@ def create():
                     continue
             
             if not lines_data:
-                flash('يجب إضافة منتج واحد على الأقل', 'danger')
+                from utils.error_messages import ErrorMessages
+                flash(ErrorMessages.sale_no_lines(), 'danger')
                 return redirect(url_for('sales.create'))
             
             currency = request.form.get('currency', 'AED')
@@ -154,13 +156,15 @@ def create():
             
             create_audit_log('create', 'sales', sale.id)
             
-            flash('تم إنشاء الفاتورة بنجاح', 'success')
+            flash('✅ تم إنشاء الفاتورة بنجاح!', 'success')
             return redirect(url_for('sales.view', id=sale.id))
         
         except ValueError as e:
-            flash(str(e), 'danger')
+            # رسالة الخطأ من SaleService (مثل: insufficient stock)
+            flash(f'⚠️ {str(e)}\n💡 تحقق من الكميات المتوفرة في المخزون.', 'danger')
         except Exception as e:
-            flash(f'حدث خطأ: {str(e)}', 'danger')
+            from utils.error_messages import ErrorMessages
+            flash(ErrorMessages.database_error(str(e)), 'danger')
     
     # No need to load customers or exchange rates - loaded via AJAX for speed
     return render_template('sales/create.html')
@@ -173,7 +177,8 @@ def view(id):
     sale = Sale.query.get_or_404(id)
     
     if current_user.is_seller() and sale.seller_id != current_user.id:
-        flash('ليس لديك صلاحية لعرض هذه الفاتورة', 'danger')
+        from utils.error_messages import ErrorMessages
+        flash(ErrorMessages.permission_denied('عرض هذه الفاتورة'), 'danger')
         return redirect(url_for('sales.index'))
     
     return render_template('sales/view.html', sale=sale)
@@ -186,7 +191,8 @@ def print_invoice(id):
     sale = Sale.query.get_or_404(id)
     
     if current_user.is_seller() and sale.seller_id != current_user.id:
-        flash('ليس لديك صلاحية لطباعة هذه الفاتورة', 'danger')
+        from utils.error_messages import ErrorMessages
+        flash(ErrorMessages.permission_denied('طباعة هذه الفاتورة'), 'danger')
         return redirect(url_for('sales.index'))
     
     # Get invoice settings
@@ -205,12 +211,52 @@ def print_invoice(id):
         return render_template('invoices/modern.html', sale=sale, settings=settings, config=Config)
 
 
+@sales_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+@permission_required('manage_sales')
+def edit(id):
+    """تعديل فاتورة - فقط الفواتير غير المدفوعة وغير الملغاة"""
+    sale = Sale.query.get_or_404(id)
+    
+    # منع التعديل للفواتير المدفوعة أو الملغاة
+    if sale.payment_status == 'paid':
+        flash('⚠️ لا يمكن تعديل فاتورة مدفوعة بالكامل.\n💡 الفواتير المدفوعة لا يمكن تعديلها محاسبياً.', 'danger')
+        return redirect(url_for('sales.view', id=id))
+    
+    if sale.status == 'cancelled':
+        flash('⚠️ لا يمكن تعديل فاتورة ملغاة.\n💡 قم بإنشاء فاتورة جديدة بدلاً من ذلك.', 'danger')
+        return redirect(url_for('sales.view', id=id))
+    
+    if request.method == 'POST':
+        try:
+            # السماح فقط بتعديل الملاحظات والخصم
+            sale.notes = request.form.get('notes', '')
+            discount_amount = request.form.get('discount_amount', type=float, default=0)
+            sale.discount_amount = discount_amount
+            
+            # إعادة حساب الإجماليات
+            sale.calculate_totals()
+            
+            db.session.commit()
+            create_audit_log('update', 'sales', id)
+            
+            flash('✅ تم تحديث الفاتورة بنجاح!', 'success')
+            return redirect(url_for('sales.view', id=id))
+        
+        except Exception as e:
+            db.session.rollback()
+            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة.', 'danger')
+    
+    return render_template('sales/edit.html', sale=sale)
+
+
 @sales_bp.route('/<int:id>/cancel', methods=['POST'])
 @login_required
 @permission_required('manage_sales')
 def cancel(id):
     if current_user.is_seller():
-        flash('ليس لديك صلاحية لإلغاء الفواتير', 'danger')
+        from utils.error_messages import ErrorMessages
+        flash(ErrorMessages.permission_denied('إلغاء الفواتير'), 'danger')
         return redirect(url_for('sales.index'))
     
     sale = Sale.query.get_or_404(id)
@@ -220,10 +266,10 @@ def cancel(id):
         
         create_audit_log('cancel', 'sales', sale.id)
         
-        flash('تم إلغاء الفاتورة بنجاح', 'success')
+        flash('✅ تم إلغاء الفاتورة بنجاح!', 'success')
     
     except Exception as e:
-        flash(f'حدث خطأ: {str(e)}', 'danger')
+        flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     return redirect(url_for('sales.view', id=id))
 

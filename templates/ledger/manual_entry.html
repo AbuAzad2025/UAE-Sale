@@ -79,7 +79,7 @@
     </h3>
   </div>
   <div class="card-body">
-    <form method="post" id="journalEntryForm">
+    <form method="post" action="{{ url_for('ledger.manual_entry') }}" id="journalEntryForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="line_count" id="lineCountHidden" value="2">
       

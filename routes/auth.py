@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import login_user, logout_user, current_user
 from extensions import db, limiter
 from models import User, Donation
@@ -30,24 +30,53 @@ def login():
         remember = request.form.get('remember', False)
         
         if not username or not password:
-            flash('الرجاء إدخال اسم المستخدم وكلمة المرور', 'danger')
+            flash('⚠️ الرجاء إدخال اسم المستخدم وكلمة المرور.\n💡 كلا الحقلين مطلوبان للدخول.', 'danger')
             return render_template('auth/login.html')
         
         user = User.query.filter_by(username=username).first()
         
         if not user or not user.check_password(password):
-            flash('اسم المستخدم أو كلمة المرور غير صحيحة', 'danger')
+            flash('❌ اسم المستخدم أو كلمة المرور غير صحيحة.\n💡 تأكد من كتابة البيانات بشكل صحيح أو اتصل بالمدير.', 'danger')
             create_audit_log('login_failed', 'users', None, {'username': username})
+            
+            from models.login_history import LoginHistory
+            failed_login = LoginHistory(
+                user_id=user.id if user else None,
+                username=username,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string[:500] if request.user_agent.string else None,
+                success=False,
+                failure_reason='Invalid credentials',
+                browser=request.user_agent.browser
+            )
+            db.session.add(failed_login)
+            db.session.commit()
+            
             return render_template('auth/login.html')
         
         if not user.is_active:
-            flash('حسابك غير نشط، الرجاء الاتصال بالإدارة', 'danger')
+            flash('⚠️ حسابك غير نشط!\n💡 اتصل بمدير النظام لإعادة تفعيل حسابك.', 'danger')
             return render_template('auth/login.html')
         
         login_user(user, remember=remember)
         
+        session['last_activity'] = datetime.now().isoformat()
+        session.permanent = True
+        
         user.last_login = datetime.now(timezone.utc)
         user.login_attempts = 0
+        
+        from models.login_history import LoginHistory
+        successful_login = LoginHistory(
+            user_id=user.id,
+            username=user.username,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string[:500] if request.user_agent.string else None,
+            success=True,
+            browser=request.user_agent.browser,
+            device_type='mobile' if request.user_agent.platform in ['android', 'iphone'] else 'desktop'
+        )
+        db.session.add(successful_login)
         db.session.commit()
         
         create_audit_log('login', 'users', user.id)
@@ -66,7 +95,8 @@ def logout():
     if current_user.is_authenticated:
         create_audit_log('logout', 'users', current_user.id)
         logout_user()
-        flash('تم تسجيل الخروج بنجاح', 'success')
+        session.pop('last_activity', None)
+        flash('✅ تم تسجيل الخروج بنجاح. نراك قريباً!', 'success')
     
     return redirect(url_for('auth.login'))
 

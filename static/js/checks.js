@@ -30,7 +30,7 @@
         console.log('%c🔄 جلب الشيكات...', 'color: #667eea; font-weight: bold;');
         
         $.ajax({
-            url: '/checks/api/checks',
+            url: '/cheques/api/stats',
             method: 'GET',
             dataType: 'json',
             xhrFields: {
@@ -265,7 +265,7 @@
     // تحميل الإحصائيات
     window.loadStatistics = function() {
         console.log('📊 جلب إحصائيات API...');
-        $.get('/checks/api/statistics', function(response) {
+        $.get('/cheques/api/stats', function(response) {
             if (response.success) {
                 console.log('✅ إحصائيات API:', response.statistics);
             }
@@ -275,7 +275,7 @@
     // تحميل التنبيهات
     window.loadAlerts = function() {
         console.log('📢 جلب التنبيهات...');
-        $.get('/checks/api/alerts', function(response) {
+        $.get('/cheques/api/alerts', function(response) {
             if (response.success) {
                 console.log('✅ التنبيهات:', response.alerts ? response.alerts.length : 0);
             }
@@ -294,8 +294,8 @@
     window.viewCheckDetails = function(checkId) {
         console.log('👁️ عرض تفاصيل الشيك:', checkId);
         
-        // استدعاء API للحصول على التفاصيل
-        $.get('/checks/api/checks', function(response) {
+        // استدعاء API للحصول على التفاصيل  
+        $.get('/cheques/api/stats', function(response) {
             if (response.success && response.checks) {
                 const check = response.checks.find(c => c.id == checkId || c.id == 'split-' + checkId || c.id == 'expense-' + checkId);
                 
@@ -386,7 +386,7 @@
             showLoaderOnConfirm: true,
             preConfirm: () => {
                 return $.ajax({
-                    url: '/checks/api/update-status/' + checkId,
+                    url: '/cheques/' + checkId + '/deposit',
                     method: 'POST',
                     contentType: 'application/json',
                     xhrFields: {
@@ -509,7 +509,7 @@
             showLoaderOnConfirm: true,
             preConfirm: () => {
                 return $.ajax({
-                    url: '/checks/api/update-status/' + checkId,
+                    url: '/cheques/' + checkId + '/deposit',
                     method: 'POST',
                     contentType: 'application/json',
                     xhrFields: {

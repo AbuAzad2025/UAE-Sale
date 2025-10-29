@@ -94,7 +94,11 @@ def dashboard():
         except Exception:
             pass
     
-    recent_sales = Sale.query.filter_by(
+    # Optimized query with eager loading (N+1 problem fix)
+    recent_sales = Sale.query.options(
+        db.joinedload(Sale.customer),
+        db.joinedload(Sale.seller)
+    ).filter_by(
         status='confirmed'
     ).order_by(Sale.sale_date.desc()).limit(10).all()
     

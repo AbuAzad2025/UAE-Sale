@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}تقرير المخزون{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="fas fa-boxes"></i> تقرير المخزون
+          </h3>
+          <div class="card-tools">
+            <button onclick="window.print()" class="btn btn-primary">
+              <i class="fas fa-print"></i> طباعة
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- إحصائيات سريعة -->
+          {% if stats %}
+          <div class="row mb-4">
+            <div class="col-md-3">
+              <div class="info-box">
+                <span class="info-box-icon bg-info"><i class="fas fa-boxes"></i></span>
+                <div class="info-box-content">
+                  <span class="info-box-text">إجمالي المنتجات</span>
+                  <span class="info-box-number">{{ stats.total_products }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="info-box">
+                <span class="info-box-icon bg-success"><i class="fas fa-check"></i></span>
+                <div class="info-box-content">
+                  <span class="info-box-text">متوفر</span>
+                  <span class="info-box-number">{{ stats.in_stock }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="info-box">
+                <span class="info-box-icon bg-warning"><i class="fas fa-exclamation-triangle"></i></span>
+                <div class="info-box-content">
+                  <span class="info-box-text">ناقص</span>
+                  <span class="info-box-number">{{ stats.low_stock }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="info-box">
+                <span class="info-box-icon bg-danger"><i class="fas fa-times"></i></span>
+                <div class="info-box-content">
+                  <span class="info-box-text">نفذ</span>
+                  <span class="info-box-number">{{ stats.out_of_stock }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- جدول المخزون -->
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th>المنتج</th>
+                <th>الكود</th>
+                <th>الكمية المتاحة</th>
+                <th>الحد الأدنى</th>
+                <th>سعر الشراء</th>
+                <th>سعر البيع</th>
+                <th>القيمة الإجمالية</th>
+                <th>الحالة</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for product in products %}
+              <tr>
+                <td>{{ product.name }}</td>
+                <td>{{ product.code }}</td>
+                <td>{{ product.current_stock }}</td>
+                <td>{{ product.min_stock }}</td>
+                <td>{{ product.purchase_price }}</td>
+                <td>{{ product.sale_price }}</td>
+                <td>{{ (product.current_stock * product.purchase_price)|round(2) }}</td>
+                <td>
+                  {% if product.current_stock == 0 %}
+                    <span class="badge badge-danger">نفذ</span>
+                  {% elif product.current_stock <= product.min_stock %}
+                    <span class="badge badge-warning">ناقص</span>
+                  {% else %}
+                    <span class="badge badge-success">متوفر</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="8" class="text-center">لا توجد منتجات</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

@@ -494,9 +494,7 @@ function initSmartSearch() {
             selectedIndex = -1;
             showResults(data);
           })
-          .catch(error => {
-            console.error('خطأ في البحث:', error);
-            hideResults();
+          .catch(error => {            hideResults();
           });
       }, 300);
     }
@@ -646,8 +644,6 @@ document.addEventListener('click', async function (e) {
     } else {
       alert('خطأ في أرشفة الدفعة');
     }
-  } catch (error) {
-    console.error('Error archiving payment:', error);
-    alert('خطأ في أرشفة الدفعة');
+  } catch (error) {    alert('خطأ في أرشفة الدفعة');
   }
 });

@@ -21,7 +21,7 @@
 
 <div class="content">
   <div class="container-fluid">
-    <form method="POST">
+    <form method="POST" action="{{ url_for('owner.system_config') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       
       <!-- الوحدات -->

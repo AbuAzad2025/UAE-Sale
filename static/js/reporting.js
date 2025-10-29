@@ -231,36 +231,9 @@
       aggregates: { count: ['id'] }
     };
     const csrf = form.querySelector('input[name="csrf_token"]')?.value || '';
-    showLoading(true);
-    try {
-      const r = await fetch('/reports/api/dynamic', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(csrf ? { 'X-CSRFToken': csrf } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!r.ok) throw new Error('فشل الاتصال بالسيرفر');
-      const data = await r.json();
-      let rows = Array.isArray(data.data) ? data.data : [];
-      const headersFromRows = rows.length ? Object.keys(rows[0]) : (cols || []);
-      const headers = filterList(headersFromRows);
-      rows = rows.map(rec => {
-        const o = {};
-        headers.forEach(h => { o[h] = rec[h]; });
-        return o;
-      });
-      const limited = rows.slice(0, payload.limit || 1000);
-      renderTable(headers, limited);
-      renderSummary(data.summary || {});
-      saveState();
-    } catch (e) {
-      alert("حدث خطأ أثناء جلب التقرير: " + e.message);
-      console.error(e);
-    } finally {
-      showLoading(false);
-    }
+    // استخدام التقارير الثابتة الموجودة
+    alert('⚠️ يرجى استخدام التقارير الموجودة في القائمة:\n• تقرير المبيعات\n• تقرير المشتريات\n• تقرير الذمم\n• تقرير المخزون');
+    return;
   }
 
   function renderSummary(summary) {

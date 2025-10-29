@@ -21,10 +21,11 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 مثال: تعديل routes، templates، models، services
 
-الأوامر:
-────────
+⚠️ للريبو Private - استخدم هذه الأوامر بالضبط:
+───────────────────────────────────────────────────
 cd ~/UAE-Sale
-git stash
+git remote set-url origin git@github.com:AbuAzad2025/UAE-Sale.git
+ssh-keyscan github.com >> ~/.ssh/known_hosts
 GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy -o IdentitiesOnly=yes' git pull origin main
 touch /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
 
@@ -34,10 +35,11 @@ touch /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 مثال: أضفت مكتبة جديدة في requirements.txt
 
-الأوامر:
-────────
+⚠️ للريبو Private - استخدم هذه الأوامر بالضبط:
+───────────────────────────────────────────────────
 cd ~/UAE-Sale
-git stash
+git remote set-url origin git@github.com:AbuAzad2025/UAE-Sale.git
+ssh-keyscan github.com >> ~/.ssh/known_hosts
 GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy -o IdentitiesOnly=yes' git pull origin main
 pip3.10 install --user -r requirements.txt
 touch /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
@@ -48,10 +50,11 @@ touch /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 مثال: أضفت models جديدة أو عدلت database schema
 
-الأوامر:
-────────
+⚠️ للريبو Private - استخدم هذه الأوامر بالضبط:
+───────────────────────────────────────────────────
 cd ~/UAE-Sale
-git stash
+git remote set-url origin git@github.com:AbuAzad2025/UAE-Sale.git
+ssh-keyscan github.com >> ~/.ssh/known_hosts
 GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy -o IdentitiesOnly=yes' git pull origin main
 pip3.10 install --user -r requirements.txt
 flask db upgrade
@@ -92,17 +95,23 @@ touch /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🎯 السكريبت السريع (لكل الحالات)
+🎯 السكريبت السريع (لكل الحالات) - Private Repo
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+⚠️ نسخ والصق هذه الأوامر كاملة - تغطي كل شيء:
+────────────────────────────────────────────────────────
+
 cd ~/UAE-Sale
-git stash
+git remote set-url origin git@github.com:AbuAzad2025/UAE-Sale.git
+ssh-keyscan github.com >> ~/.ssh/known_hosts
 GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy -o IdentitiesOnly=yes' git pull origin main
 pip3.10 install --user -r requirements.txt
 flask db upgrade
 touch /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
 
-هذا السكريبت يغطي كل شيء! (إذا ما في تغييرات، الأوامر ستتخطى تلقائياً)
+✅ هذا السكريبت يغطي كل شيء!
+✅ إذا ما في تغييرات، الأوامر ستتخطى تلقائياً
+✅ آمن للاستخدام دائماً
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

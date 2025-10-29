@@ -279,9 +279,10 @@ class FixedAsset(db.Model):
             'description': f'إقفال حساب الأصل - {self.name_ar}'
         })
         
+        disposal_type = 'بيع' if self.disposal_price > 0 else 'إتلاف'
         GLService.post_entry(
             lines=lines,
-            description=f'قيد {'بيع' if self.disposal_price > 0 else 'إتلاف'} أصل - {self.asset_number}',
+            description=f'قيد {disposal_type} أصل - {self.asset_number}',
             reference_type='asset_disposal',
             reference_id=self.id
         )

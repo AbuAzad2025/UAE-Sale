@@ -1,0 +1,168 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    ⚠️ ممنوع حذف هذا الملف نهائياً ⚠️                         ║
+║              📚 دليل التحديث على PythonAnywhere - سريع ومختصر               ║
+║                        ملف مرجعي أساسي للنشر والتحديث                        ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+🚨 تحذير مهم:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⛔ هذا الملف يحتوي على جميع أوامر النشر والتحديث
+⛔ حذفه سيسبب مشاكل في التحديثات المستقبلية
+⛔ احتفظ به دائماً في المشروع
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 الموقع: https://uaesale-azad.pythonanywhere.com
+📂 المشروع: /home/Azad/UAE-Sale
+🔧 WSGI: /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 الحالة 1: تحديث ملفات فقط (بدون مكتبات أو migrations)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+مثال: تعديل routes، templates، models، services
+
+الأوامر:
+────────
+cd ~/UAE-Sale
+git stash
+GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy -o IdentitiesOnly=yes' git pull origin main
+touch /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📦 الحالة 2: تحديث ملفات + مكتبات جديدة
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+مثال: أضفت مكتبة جديدة في requirements.txt
+
+الأوامر:
+────────
+cd ~/UAE-Sale
+git stash
+GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy -o IdentitiesOnly=yes' git pull origin main
+pip3.10 install --user -r requirements.txt
+touch /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🗄️ الحالة 3: تحديث ملفات + مكتبات + migrations
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+مثال: أضفت models جديدة أو عدلت database schema
+
+الأوامر:
+────────
+cd ~/UAE-Sale
+git stash
+GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy -o IdentitiesOnly=yes' git pull origin main
+pip3.10 install --user -r requirements.txt
+flask db upgrade
+touch /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚨 في حالة وجود أخطاء - Debugging
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. فحص آخر الأخطاء:
+   tail -50 /var/log/uaesale-azad.pythonanywhere.com.error.log
+
+2. فحص server log:
+   tail -50 /var/log/uaesale-azad.pythonanywhere.com.server.log
+
+3. فحص التطبيق يدوياً:
+   cd ~/UAE-Sale
+   python3.10 -c "from app import create_app; create_app(); print('OK')"
+
+4. فحص مكتبة معينة:
+   python3.10 -c "import LIBRARY_NAME; print('OK')"
+
+5. إذا مكتبة مفقودة:
+   pip3.10 install --user LIBRARY_NAME
+   touch /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 نصائح مهمة
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ دائماً git stash قبل git pull (لحفظ التغييرات المحلية)
+✅ استخدم python3.10 (ليس python3.13)
+✅ استخدم pip3.10 (ليس pip)
+✅ دائماً touch WSGI بعد أي تحديث
+✅ افحص logs إذا فيه مشكلة
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 السكريبت السريع (لكل الحالات)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cd ~/UAE-Sale
+git stash
+GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy -o IdentitiesOnly=yes' git pull origin main
+pip3.10 install --user -r requirements.txt
+flask db upgrade
+touch /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
+
+هذا السكريبت يغطي كل شيء! (إذا ما في تغييرات، الأوامر ستتخطى تلقائياً)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 خطوات التطوير الكاملة
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+على Windows:
+─────────────
+1. طور وعدل الملفات
+2. اختبر محلياً: python app.py
+3. تأكد كل شيء يعمل
+4. رفع GitHub:
+   git add -A
+   git commit -m "وصف التحديث"
+   git push origin main
+
+على PythonAnywhere Console:
+────────────────────────────
+1. سحب التحديثات:
+   cd ~/UAE-Sale
+   git stash
+   GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy -o IdentitiesOnly=yes' git pull origin main
+
+2. تثبيت مكتبات (إذا لزم):
+   pip3.10 install --user -r requirements.txt
+
+3. تطبيق migrations (إذا لزم):
+   flask db upgrade
+
+4. إعادة تحميل:
+   touch /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
+
+5. افتح الموقع:
+   https://uaesale-azad.pythonanywhere.com
+
+6. إذا فيه خطأ:
+   tail -50 /var/log/uaesale-azad.pythonanywhere.com.error.log
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 معلومات مهمة
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Python Version:
+- Local: 3.13
+- PythonAnywhere: 3.10 (مهم! استخدم python3.10 و pip3.10)
+
+SSH Key:
+- المسار: ~/.ssh/pythonanywhere_deploy
+- الاستخدام: GIT_SSH_COMMAND='ssh -i ~/.ssh/pythonanywhere_deploy ...'
+
+WSGI Reload:
+- الطريقة الوحيدة: touch /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
+- لازم تنفذه بعد أي تحديث!
+
+Git Stash:
+- استخدمه إذا PythonAnywhere عدل ملفات محلياً (AI logs, database)
+- يحفظ التغييرات ويسمح بالـ pull
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ تم! كل شيء موثق وجاهز!
+

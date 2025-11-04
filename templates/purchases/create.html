@@ -38,7 +38,7 @@
       </div>
       
       <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-4">
           <div class="form-group">
             <label>
               <i class="fas fa-truck text-success"></i> المورد 
@@ -54,7 +54,32 @@
           </div>
         </div>
         
-        <div class="col-md-3">
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-warehouse text-info"></i> المستودع
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المستودع الذي ستُضاف إليه البضاعة (إجباري)"></i>
+            </label>
+            <select name="warehouse_id" id="warehouse_id" class="form-control" required>
+              <option value="">اختر مستودع...</option>
+              {% if warehouses %}
+                {% for warehouse in warehouses %}
+                <option value="{{ warehouse.id }}" {% if warehouse.is_main %}selected{% endif %}>
+                  {% if warehouse.is_main %}⭐{% elif warehouse.parent_id %}🔀{% else %}📦{% endif %}
+                  {{ warehouse.name_ar or warehouse.name }}
+                  {% if warehouse.code %}({{ warehouse.code }}){% endif %}
+                </option>
+                {% endfor %}
+              {% endif %}
+            </select>
+            <small class="form-text text-info">
+              <i class="fas fa-info-circle"></i> ستُضاف البضاعة لهذا المستودع
+            </small>
+          </div>
+        </div>
+        
+        <div class="col-md-2">
           <div class="form-group">
             <label>
               <i class="fas fa-phone text-info"></i> هاتف المورد
@@ -64,7 +89,7 @@
           </div>
         </div>
         
-        <div class="col-md-3">
+        <div class="col-md-2">
           <div class="form-group">
             <label>
               <i class="fas fa-envelope text-secondary"></i> بريد المورد

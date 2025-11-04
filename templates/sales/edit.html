@@ -29,6 +29,9 @@
                 <p><strong>التاريخ:</strong> {{ sale.sale_date.strftime('%Y-%m-%d') }}</p>
                 <p><strong>العميل:</strong> {{ sale.customer.name }}</p>
                 <p><strong>البائع:</strong> {{ sale.seller.full_name }}</p>
+                {% if sale.warehouse %}
+                <p><strong><i class="fas fa-warehouse text-info"></i> المستودع:</strong> {{ sale.warehouse.name_ar or sale.warehouse.name }}</p>
+                {% endif %}
               </div>
               <div class="col-md-6">
                 <h5>الإجماليات</h5>

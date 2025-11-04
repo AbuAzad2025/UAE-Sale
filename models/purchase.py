@@ -9,10 +9,9 @@ class Purchase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     purchase_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     
-    # Supplier Reference (new field)
     supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), index=True)
+    warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), nullable=True, index=True)
     
-    # Legacy fields (kept for backwards compatibility)
     supplier_name = db.Column(db.String(200), nullable=False)
     supplier_phone = db.Column(db.String(20))
     supplier_email = db.Column(db.String(120))
@@ -40,6 +39,13 @@ class Purchase(db.Model):
     user = db.relationship('User', foreign_keys=[user_id])
     supplier = db.relationship('Supplier', back_populates='purchases')
     lines = db.relationship('PurchaseLine', back_populates='purchase', lazy='joined', cascade='all, delete-orphan')
+    
+    @property
+    def warehouse(self):
+        if self.warehouse_id:
+            from models import Warehouse
+            return Warehouse.query.get(self.warehouse_id)
+        return None
     
     def __repr__(self):
         return f'<Purchase {self.purchase_number}>'

@@ -1177,5 +1177,1916 @@
       "subtype": "product_terms"
     },
     "success": true
+  },
+  {
+    "timestamp": "2025-10-29T17:08:56.849756",
+    "question": "Product terminology: فلتر زيت",
+    "response": "{\"arabic\": \"فلتر زيت\", \"english\": \"فلتر زيت\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T17:08:56.914891",
+    "question": "Product terminology: فلتر هواء",
+    "response": "{\"arabic\": \"فلتر هواء\", \"english\": \"فلتر هواء\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T17:08:56.973522",
+    "question": "Product terminology: بطارية 70AH",
+    "response": "{\"arabic\": \"بطارية 70AH\", \"english\": \"بطارية 70AH\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T17:08:57.045198",
+    "question": "Product terminology: إطار 195/65R15",
+    "response": "{\"arabic\": \"إطار 195/65R15\", \"english\": \"إطار 195/65R15\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T17:08:57.104355",
+    "question": "Product terminology: فرامل أمامية",
+    "response": "{\"arabic\": \"فرامل أمامية\", \"english\": \"فرامل أمامية\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T17:08:57.152684",
+    "question": "Product terminology: فرامل خلفية",
+    "response": "{\"arabic\": \"فرامل خلفية\", \"english\": \"فرامل خلفية\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T17:08:57.198014",
+    "question": "Product terminology: شمعات احتراق",
+    "response": "{\"arabic\": \"شمعات احتراق\", \"english\": \"شمعات احتراق\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T17:08:57.242722",
+    "question": "Product terminology: مساحات زجاج",
+    "response": "{\"arabic\": \"مساحات زجاج\", \"english\": \"مساحات زجاج\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T17:08:57.292419",
+    "question": "Product terminology: مصباح LED",
+    "response": "{\"arabic\": \"مصباح LED\", \"english\": \"مصباح LED\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T17:57:03.943624",
+    "question": "Product terminology: بطارية 70AH",
+    "response": "{\"arabic\": \"بطارية 70AH\", \"english\": \"بطارية 70AH\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T17:57:04.007935",
+    "question": "Product terminology: إطار 195/65R15",
+    "response": "{\"arabic\": \"إطار 195/65R15\", \"english\": \"إطار 195/65R15\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T17:57:04.071549",
+    "question": "Product terminology: فرامل أمامية",
+    "response": "{\"arabic\": \"فرامل أمامية\", \"english\": \"فرامل أمامية\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T17:57:04.136656",
+    "question": "Product terminology: شمعات احتراق",
+    "response": "{\"arabic\": \"شمعات احتراق\", \"english\": \"شمعات احتراق\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T17:57:04.198838",
+    "question": "Product terminology: مصباح LED",
+    "response": "{\"arabic\": \"مصباح LED\", \"english\": \"مصباح LED\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:05:00.808444",
+    "question": "Expense pattern analysis",
+    "response": "{\"category_id\": 1, \"amount\": 5000.0, \"payment_method\": \"cash\", \"is_recurring\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "expense_management"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:06:19.648302",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 2, \"customer_id\": 7, \"amount\": 740.0, \"items_count\": 0, \"discount_percent\": 0.0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 18, \"month\": 10, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 2,
+        "customer_id": 7,
+        "amount": 740.0,
+        "items_count": 0,
+        "discount_percent": 0.0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 18,
+          "month": 10,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:06:19.703375",
+    "question": "Sale analysis - TEST-SALE-20251029180619",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:06:19.748255",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"TEST-SALE-20251029180619\", \"payment_terms\": {\"cash_percentage\": 0.0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0.0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:06:19.795651",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"TEST-SALE-20251029180619\", \"total_revenue\": 740.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 740.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:06:19.926316",
+    "question": "Expense pattern analysis",
+    "response": "{\"category_id\": 1, \"amount\": 5000.0, \"payment_method\": \"cash\", \"is_recurring\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "expense_management"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:04.142165",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 2, \"customer_id\": 3, \"amount\": 900.0, \"items_count\": 0, \"discount_percent\": 0.0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 18, \"month\": 10, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 2,
+        "customer_id": 3,
+        "amount": 900.0,
+        "items_count": 0,
+        "discount_percent": 0.0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 18,
+          "month": 10,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:04.186958",
+    "question": "Sale analysis - TEST-SALE-20251029180804",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:04.235376",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"TEST-SALE-20251029180804\", \"payment_terms\": {\"cash_percentage\": 0.0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0.0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:04.281523",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"TEST-SALE-20251029180804\", \"total_revenue\": 900.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 900.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:04.406241",
+    "question": "Expense pattern analysis",
+    "response": "{\"category_id\": 1, \"amount\": 5000.0, \"payment_method\": \"cash\", \"is_recurring\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "expense_management"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:19.051584",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 3, \"customer_id\": 7, \"amount\": 915.0, \"items_count\": 0, \"discount_percent\": 0.0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 18, \"month\": 10, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 3,
+        "customer_id": 7,
+        "amount": 915.0,
+        "items_count": 0,
+        "discount_percent": 0.0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 18,
+          "month": 10,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:19.114018",
+    "question": "Sale analysis - TEST-SALE-20251029180819",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 3
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:19.171287",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"TEST-SALE-20251029180819\", \"payment_terms\": {\"cash_percentage\": 0.0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0.0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:19.226659",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"TEST-SALE-20251029180819\", \"total_revenue\": 915.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 915.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:19.355057",
+    "question": "Expense pattern analysis",
+    "response": "{\"category_id\": 1, \"amount\": 5000.0, \"payment_method\": \"cash\", \"is_recurring\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "expense_management"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:40.610277",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 4, \"customer_id\": 6, \"amount\": 290.0, \"items_count\": 0, \"discount_percent\": 0.0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 18, \"month\": 10, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 4,
+        "customer_id": 6,
+        "amount": 290.0,
+        "items_count": 0,
+        "discount_percent": 0.0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 18,
+          "month": 10,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:40.660403",
+    "question": "Sale analysis - TEST-SALE-20251029180840",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 4
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:40.705999",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"TEST-SALE-20251029180840\", \"payment_terms\": {\"cash_percentage\": 0.0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0.0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:40.753757",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"TEST-SALE-20251029180840\", \"total_revenue\": 290.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 290.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-10-29T18:08:40.966309",
+    "question": "Expense pattern analysis",
+    "response": "{\"category_id\": 1, \"amount\": 5000.0, \"payment_method\": \"cash\", \"is_recurring\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "expense_management"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:27.663868",
+    "question": "Product terminology: Oil Filter Mobil 1",
+    "response": "{\"arabic\": \"فلتر زيت موبيل 1\", \"english\": \"Oil Filter Mobil 1\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:27.728513",
+    "question": "Product terminology: Air Filter Mann",
+    "response": "{\"arabic\": \"فلتر هواء مان\", \"english\": \"Air Filter Mann\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:27.791881",
+    "question": "Product terminology: Brake Pads Front",
+    "response": "{\"arabic\": \"فحمات فرامل أمامية\", \"english\": \"Brake Pads Front\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:27.865925",
+    "question": "Product terminology: Brake Pads Rear",
+    "response": "{\"arabic\": \"فحمات فرامل خلفية\", \"english\": \"Brake Pads Rear\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:27.919400",
+    "question": "Product terminology: Spark Plugs Set",
+    "response": "{\"arabic\": \"بواجي شمعات كومبليت\", \"english\": \"Spark Plugs Set\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:27.972846",
+    "question": "Product terminology: Battery 12V 70Ah",
+    "response": "{\"arabic\": \"بطارية 12 فولت\", \"english\": \"Battery 12V 70Ah\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:28.023619",
+    "question": "Product terminology: Tire 195/65R15",
+    "response": "{\"arabic\": \"إطار 195/65R15\", \"english\": \"Tire 195/65R15\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:28.086497",
+    "question": "Product terminology: Tire 205/55R16",
+    "response": "{\"arabic\": \"إطار 205/55R16\", \"english\": \"Tire 205/55R16\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:28.144534",
+    "question": "Product terminology: Headlight Assembly",
+    "response": "{\"arabic\": \"فانوس أمامي كومبليت\", \"english\": \"Headlight Assembly\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:28.193945",
+    "question": "Product terminology: Side Mirror Left",
+    "response": "{\"arabic\": \"مرآة جانبية يسار\", \"english\": \"Side Mirror Left\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:28.242943",
+    "question": "Product terminology: Wiper Blades Set",
+    "response": "{\"arabic\": \"مساحات زجاج كومبليت\", \"english\": \"Wiper Blades Set\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:28.301471",
+    "question": "Product terminology: Floor Mats Luxury",
+    "response": "{\"arabic\": \"فرش أرضية فاخر\", \"english\": \"Floor Mats Luxury\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:28.352053",
+    "question": "Product terminology: Car Cover Premium",
+    "response": "{\"arabic\": \"غطاء سيارة بريميوم\", \"english\": \"Car Cover Premium\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:55.684310",
+    "question": "Product terminology: Oil Filter Mobil 1",
+    "response": "{\"arabic\": \"فلتر زيت موبيل 1\", \"english\": \"Oil Filter Mobil 1\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:55.773365",
+    "question": "Product terminology: Air Filter Mann",
+    "response": "{\"arabic\": \"فلتر هواء مان\", \"english\": \"Air Filter Mann\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:55.877590",
+    "question": "Product terminology: Brake Pads Front",
+    "response": "{\"arabic\": \"فحمات فرامل أمامية\", \"english\": \"Brake Pads Front\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:56.297465",
+    "question": "Product terminology: Brake Pads Rear",
+    "response": "{\"arabic\": \"فحمات فرامل خلفية\", \"english\": \"Brake Pads Rear\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:56.379180",
+    "question": "Product terminology: Spark Plugs Set",
+    "response": "{\"arabic\": \"بواجي شمعات كومبليت\", \"english\": \"Spark Plugs Set\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:56.453524",
+    "question": "Product terminology: Battery 12V 70Ah",
+    "response": "{\"arabic\": \"بطارية 12 فولت\", \"english\": \"Battery 12V 70Ah\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:56.516302",
+    "question": "Product terminology: Tire 195/65R15",
+    "response": "{\"arabic\": \"إطار 195/65R15\", \"english\": \"Tire 195/65R15\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:56.579828",
+    "question": "Product terminology: Tire 205/55R16",
+    "response": "{\"arabic\": \"إطار 205/55R16\", \"english\": \"Tire 205/55R16\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:56.643483",
+    "question": "Product terminology: Headlight Assembly",
+    "response": "{\"arabic\": \"فانوس أمامي كومبليت\", \"english\": \"Headlight Assembly\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:56.705644",
+    "question": "Product terminology: Side Mirror Left",
+    "response": "{\"arabic\": \"مرآة جانبية يسار\", \"english\": \"Side Mirror Left\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:56.762801",
+    "question": "Product terminology: Wiper Blades Set",
+    "response": "{\"arabic\": \"مساحات زجاج كومبليت\", \"english\": \"Wiper Blades Set\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:56.824072",
+    "question": "Product terminology: Floor Mats Luxury",
+    "response": "{\"arabic\": \"فرش أرضية فاخر\", \"english\": \"Floor Mats Luxury\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:56.881094",
+    "question": "Product terminology: Car Cover Premium",
+    "response": "{\"arabic\": \"غطاء سيارة بريميوم\", \"english\": \"Car Cover Premium\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:56.958474",
+    "question": "Product performance - Oil Filter Mobil 1",
+    "response": "{\"product_id\": 1, \"name\": \"Oil Filter Mobil 1\", \"current_stock\": 25.0, \"min_stock\": 10.0, \"cost_price\": 15.0, \"sell_price\": 25.0, \"margin\": 10.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:57.029583",
+    "question": "Product performance - Oil Filter Mobil 1",
+    "response": "{\"product_id\": 1, \"name\": \"Oil Filter Mobil 1\", \"current_stock\": 50.0, \"min_stock\": 10.0, \"cost_price\": 15.0, \"sell_price\": 25.0, \"margin\": 10.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:57.096741",
+    "question": "Product performance - Oil Filter Mobil 1",
+    "response": "{\"product_id\": 1, \"name\": \"Oil Filter Mobil 1\", \"current_stock\": 75.0, \"min_stock\": 10.0, \"cost_price\": 15.0, \"sell_price\": 25.0, \"margin\": 10.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:57.162722",
+    "question": "Product performance - Oil Filter Mobil 1",
+    "response": "{\"product_id\": 1, \"name\": \"Oil Filter Mobil 1\", \"current_stock\": 100.0, \"min_stock\": 10.0, \"cost_price\": 15.0, \"sell_price\": 25.0, \"margin\": 10.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:57.229475",
+    "question": "Product performance - Air Filter Mann",
+    "response": "{\"product_id\": 2, \"name\": \"Air Filter Mann\", \"current_stock\": 20.0, \"min_stock\": 10.0, \"cost_price\": 20.0, \"sell_price\": 35.0, \"margin\": 15.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:57.292927",
+    "question": "Product performance - Air Filter Mann",
+    "response": "{\"product_id\": 2, \"name\": \"Air Filter Mann\", \"current_stock\": 40.0, \"min_stock\": 10.0, \"cost_price\": 20.0, \"sell_price\": 35.0, \"margin\": 15.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:57.360554",
+    "question": "Product performance - Air Filter Mann",
+    "response": "{\"product_id\": 2, \"name\": \"Air Filter Mann\", \"current_stock\": 60.0, \"min_stock\": 10.0, \"cost_price\": 20.0, \"sell_price\": 35.0, \"margin\": 15.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:57.426421",
+    "question": "Product performance - Air Filter Mann",
+    "response": "{\"product_id\": 2, \"name\": \"Air Filter Mann\", \"current_stock\": 80.0, \"min_stock\": 10.0, \"cost_price\": 20.0, \"sell_price\": 35.0, \"margin\": 15.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:57.578475",
+    "question": "Product performance - Brake Pads Front",
+    "response": "{\"product_id\": 5, \"name\": \"Brake Pads Front\", \"current_stock\": 12.0, \"min_stock\": 10.0, \"cost_price\": 80.0, \"sell_price\": 150.0, \"margin\": 70.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 5
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:57.647830",
+    "question": "Product performance - Brake Pads Front",
+    "response": "{\"product_id\": 5, \"name\": \"Brake Pads Front\", \"current_stock\": 24.0, \"min_stock\": 10.0, \"cost_price\": 80.0, \"sell_price\": 150.0, \"margin\": 70.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 5
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:57.713282",
+    "question": "Product performance - Brake Pads Front",
+    "response": "{\"product_id\": 5, \"name\": \"Brake Pads Front\", \"current_stock\": 36.0, \"min_stock\": 10.0, \"cost_price\": 80.0, \"sell_price\": 150.0, \"margin\": 70.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 5
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:57.769568",
+    "question": "Product performance - Brake Pads Front",
+    "response": "{\"product_id\": 5, \"name\": \"Brake Pads Front\", \"current_stock\": 48.0, \"min_stock\": 10.0, \"cost_price\": 80.0, \"sell_price\": 150.0, \"margin\": 70.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 5
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:57.828899",
+    "question": "Product performance - Brake Pads Rear",
+    "response": "{\"product_id\": 6, \"name\": \"Brake Pads Rear\", \"current_stock\": 12.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 6
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:57.885605",
+    "question": "Product performance - Brake Pads Rear",
+    "response": "{\"product_id\": 6, \"name\": \"Brake Pads Rear\", \"current_stock\": 24.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 6
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:57.944900",
+    "question": "Product performance - Brake Pads Rear",
+    "response": "{\"product_id\": 6, \"name\": \"Brake Pads Rear\", \"current_stock\": 36.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 6
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.000902",
+    "question": "Product performance - Brake Pads Rear",
+    "response": "{\"product_id\": 6, \"name\": \"Brake Pads Rear\", \"current_stock\": 48.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 6
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.067734",
+    "question": "Product performance - Spark Plugs Set",
+    "response": "{\"product_id\": 7, \"name\": \"Spark Plugs Set\", \"current_stock\": 15.0, \"min_stock\": 10.0, \"cost_price\": 40.0, \"sell_price\": 70.0, \"margin\": 30.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 7
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.141403",
+    "question": "Product performance - Spark Plugs Set",
+    "response": "{\"product_id\": 7, \"name\": \"Spark Plugs Set\", \"current_stock\": 30.0, \"min_stock\": 10.0, \"cost_price\": 40.0, \"sell_price\": 70.0, \"margin\": 30.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 7
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.207234",
+    "question": "Product performance - Spark Plugs Set",
+    "response": "{\"product_id\": 7, \"name\": \"Spark Plugs Set\", \"current_stock\": 45.0, \"min_stock\": 10.0, \"cost_price\": 40.0, \"sell_price\": 70.0, \"margin\": 30.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 7
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.276819",
+    "question": "Product performance - Spark Plugs Set",
+    "response": "{\"product_id\": 7, \"name\": \"Spark Plugs Set\", \"current_stock\": 60.0, \"min_stock\": 10.0, \"cost_price\": 40.0, \"sell_price\": 70.0, \"margin\": 30.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 7
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.343053",
+    "question": "Product performance - Battery 12V 70Ah",
+    "response": "{\"product_id\": 8, \"name\": \"Battery 12V 70Ah\", \"current_stock\": 7.0, \"min_stock\": 10.0, \"cost_price\": 150.0, \"sell_price\": 250.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 8
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.411796",
+    "question": "Product performance - Battery 12V 70Ah",
+    "response": "{\"product_id\": 8, \"name\": \"Battery 12V 70Ah\", \"current_stock\": 14.0, \"min_stock\": 10.0, \"cost_price\": 150.0, \"sell_price\": 250.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 8
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.477141",
+    "question": "Product performance - Battery 12V 70Ah",
+    "response": "{\"product_id\": 8, \"name\": \"Battery 12V 70Ah\", \"current_stock\": 21.0, \"min_stock\": 10.0, \"cost_price\": 150.0, \"sell_price\": 250.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 8
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.544674",
+    "question": "Product performance - Battery 12V 70Ah",
+    "response": "{\"product_id\": 8, \"name\": \"Battery 12V 70Ah\", \"current_stock\": 28.0, \"min_stock\": 10.0, \"cost_price\": 150.0, \"sell_price\": 250.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 8
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.609066",
+    "question": "Product performance - Tire 195/65R15",
+    "response": "{\"product_id\": 9, \"name\": \"Tire 195/65R15\", \"current_stock\": 10.0, \"min_stock\": 10.0, \"cost_price\": 180.0, \"sell_price\": 320.0, \"margin\": 140.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 9
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.665849",
+    "question": "Product performance - Tire 195/65R15",
+    "response": "{\"product_id\": 9, \"name\": \"Tire 195/65R15\", \"current_stock\": 20.0, \"min_stock\": 10.0, \"cost_price\": 180.0, \"sell_price\": 320.0, \"margin\": 140.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 9
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.725532",
+    "question": "Product performance - Tire 195/65R15",
+    "response": "{\"product_id\": 9, \"name\": \"Tire 195/65R15\", \"current_stock\": 30.0, \"min_stock\": 10.0, \"cost_price\": 180.0, \"sell_price\": 320.0, \"margin\": 140.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 9
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.781708",
+    "question": "Product performance - Tire 195/65R15",
+    "response": "{\"product_id\": 9, \"name\": \"Tire 195/65R15\", \"current_stock\": 40.0, \"min_stock\": 10.0, \"cost_price\": 180.0, \"sell_price\": 320.0, \"margin\": 140.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 9
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.840318",
+    "question": "Product performance - Tire 205/55R16",
+    "response": "{\"product_id\": 10, \"name\": \"Tire 205/55R16\", \"current_stock\": 8.0, \"min_stock\": 10.0, \"cost_price\": 200.0, \"sell_price\": 350.0, \"margin\": 150.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 10
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.909053",
+    "question": "Product performance - Tire 205/55R16",
+    "response": "{\"product_id\": 10, \"name\": \"Tire 205/55R16\", \"current_stock\": 16.0, \"min_stock\": 10.0, \"cost_price\": 200.0, \"sell_price\": 350.0, \"margin\": 150.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 10
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:58.992578",
+    "question": "Product performance - Tire 205/55R16",
+    "response": "{\"product_id\": 10, \"name\": \"Tire 205/55R16\", \"current_stock\": 24.0, \"min_stock\": 10.0, \"cost_price\": 200.0, \"sell_price\": 350.0, \"margin\": 150.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 10
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:59.080542",
+    "question": "Product performance - Tire 205/55R16",
+    "response": "{\"product_id\": 10, \"name\": \"Tire 205/55R16\", \"current_stock\": 32.0, \"min_stock\": 10.0, \"cost_price\": 200.0, \"sell_price\": 350.0, \"margin\": 150.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 10
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:59.164229",
+    "question": "Product performance - Headlight Assembly",
+    "response": "{\"product_id\": 11, \"name\": \"Headlight Assembly\", \"current_stock\": 6.0, \"min_stock\": 10.0, \"cost_price\": 120.0, \"sell_price\": 220.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 11
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:59.242907",
+    "question": "Product performance - Headlight Assembly",
+    "response": "{\"product_id\": 11, \"name\": \"Headlight Assembly\", \"current_stock\": 12.0, \"min_stock\": 10.0, \"cost_price\": 120.0, \"sell_price\": 220.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 11
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:59.321979",
+    "question": "Product performance - Headlight Assembly",
+    "response": "{\"product_id\": 11, \"name\": \"Headlight Assembly\", \"current_stock\": 18.0, \"min_stock\": 10.0, \"cost_price\": 120.0, \"sell_price\": 220.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 11
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:59.407406",
+    "question": "Product performance - Headlight Assembly",
+    "response": "{\"product_id\": 11, \"name\": \"Headlight Assembly\", \"current_stock\": 24.0, \"min_stock\": 10.0, \"cost_price\": 120.0, \"sell_price\": 220.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 11
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:59.515874",
+    "question": "Product performance - Side Mirror Left",
+    "response": "{\"product_id\": 12, \"name\": \"Side Mirror Left\", \"current_stock\": 10.0, \"min_stock\": 10.0, \"cost_price\": 60.0, \"sell_price\": 110.0, \"margin\": 50.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 12
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:59.610267",
+    "question": "Product performance - Side Mirror Left",
+    "response": "{\"product_id\": 12, \"name\": \"Side Mirror Left\", \"current_stock\": 20.0, \"min_stock\": 10.0, \"cost_price\": 60.0, \"sell_price\": 110.0, \"margin\": 50.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 12
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:59.698699",
+    "question": "Product performance - Side Mirror Left",
+    "response": "{\"product_id\": 12, \"name\": \"Side Mirror Left\", \"current_stock\": 30.0, \"min_stock\": 10.0, \"cost_price\": 60.0, \"sell_price\": 110.0, \"margin\": 50.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 12
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:59.779500",
+    "question": "Product performance - Side Mirror Left",
+    "response": "{\"product_id\": 12, \"name\": \"Side Mirror Left\", \"current_stock\": 40.0, \"min_stock\": 10.0, \"cost_price\": 60.0, \"sell_price\": 110.0, \"margin\": 50.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 12
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:59.867252",
+    "question": "Product performance - Wiper Blades Set",
+    "response": "{\"product_id\": 13, \"name\": \"Wiper Blades Set\", \"current_stock\": 25.0, \"min_stock\": 10.0, \"cost_price\": 25.0, \"sell_price\": 45.0, \"margin\": 20.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 13
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:09:59.943844",
+    "question": "Product performance - Wiper Blades Set",
+    "response": "{\"product_id\": 13, \"name\": \"Wiper Blades Set\", \"current_stock\": 50.0, \"min_stock\": 10.0, \"cost_price\": 25.0, \"sell_price\": 45.0, \"margin\": 20.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 13
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:00.011658",
+    "question": "Product performance - Wiper Blades Set",
+    "response": "{\"product_id\": 13, \"name\": \"Wiper Blades Set\", \"current_stock\": 75.0, \"min_stock\": 10.0, \"cost_price\": 25.0, \"sell_price\": 45.0, \"margin\": 20.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 13
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:00.079705",
+    "question": "Product performance - Wiper Blades Set",
+    "response": "{\"product_id\": 13, \"name\": \"Wiper Blades Set\", \"current_stock\": 100.0, \"min_stock\": 10.0, \"cost_price\": 25.0, \"sell_price\": 45.0, \"margin\": 20.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 13
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:00.146973",
+    "question": "Product performance - Floor Mats Luxury",
+    "response": "{\"product_id\": 14, \"name\": \"Floor Mats Luxury\", \"current_stock\": 15.0, \"min_stock\": 10.0, \"cost_price\": 50.0, \"sell_price\": 90.0, \"margin\": 40.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 14
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:00.224539",
+    "question": "Product performance - Floor Mats Luxury",
+    "response": "{\"product_id\": 14, \"name\": \"Floor Mats Luxury\", \"current_stock\": 30.0, \"min_stock\": 10.0, \"cost_price\": 50.0, \"sell_price\": 90.0, \"margin\": 40.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 14
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:00.304896",
+    "question": "Product performance - Floor Mats Luxury",
+    "response": "{\"product_id\": 14, \"name\": \"Floor Mats Luxury\", \"current_stock\": 45.0, \"min_stock\": 10.0, \"cost_price\": 50.0, \"sell_price\": 90.0, \"margin\": 40.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 14
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:00.380505",
+    "question": "Product performance - Floor Mats Luxury",
+    "response": "{\"product_id\": 14, \"name\": \"Floor Mats Luxury\", \"current_stock\": 60.0, \"min_stock\": 10.0, \"cost_price\": 50.0, \"sell_price\": 90.0, \"margin\": 40.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 14
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:00.453094",
+    "question": "Product performance - Car Cover Premium",
+    "response": "{\"product_id\": 15, \"name\": \"Car Cover Premium\", \"current_stock\": 7.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 15
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:00.562656",
+    "question": "Product performance - Car Cover Premium",
+    "response": "{\"product_id\": 15, \"name\": \"Car Cover Premium\", \"current_stock\": 14.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 15
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:00.646229",
+    "question": "Product performance - Car Cover Premium",
+    "response": "{\"product_id\": 15, \"name\": \"Car Cover Premium\", \"current_stock\": 21.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 15
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:00.772651",
+    "question": "Product performance - Car Cover Premium",
+    "response": "{\"product_id\": 15, \"name\": \"Car Cover Premium\", \"current_stock\": 28.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 15
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:01.225809",
+    "question": "Product performance - Headlight Assembly",
+    "response": "{\"product_id\": 11, \"name\": \"Headlight Assembly\", \"current_stock\": 44.0, \"min_stock\": 10.0, \"cost_price\": 120.0, \"sell_price\": 220.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 11
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:01.331567",
+    "question": "Product performance - Headlight Assembly",
+    "response": "{\"product_id\": 11, \"name\": \"Headlight Assembly\", \"current_stock\": 44.0, \"min_stock\": 10.0, \"cost_price\": 120.0, \"sell_price\": 220.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 11
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:01.502760",
+    "question": "Product performance - Car Cover Premium",
+    "response": "{\"product_id\": 15, \"name\": \"Car Cover Premium\", \"current_stock\": 43.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 15
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:01.676240",
+    "question": "Product performance - Car Cover Premium",
+    "response": "{\"product_id\": 15, \"name\": \"Car Cover Premium\", \"current_stock\": 43.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 15
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:01.784107",
+    "question": "Product performance - Wiper Blades Set",
+    "response": "{\"product_id\": 13, \"name\": \"Wiper Blades Set\", \"current_stock\": 112.0, \"min_stock\": 10.0, \"cost_price\": 25.0, \"sell_price\": 45.0, \"margin\": 20.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 13
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:01.902038",
+    "question": "Product performance - Spark Plugs Set",
+    "response": "{\"product_id\": 7, \"name\": \"Spark Plugs Set\", \"current_stock\": 71.0, \"min_stock\": 10.0, \"cost_price\": 40.0, \"sell_price\": 70.0, \"margin\": 30.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 7
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:02.003351",
+    "question": "Product performance - Spark Plugs Set",
+    "response": "{\"product_id\": 7, \"name\": \"Spark Plugs Set\", \"current_stock\": 71.0, \"min_stock\": 10.0, \"cost_price\": 40.0, \"sell_price\": 70.0, \"margin\": 30.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 7
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:02.067127",
+    "question": "Product performance - Air Filter Mann",
+    "response": "{\"product_id\": 2, \"name\": \"Air Filter Mann\", \"current_stock\": 90.0, \"min_stock\": 10.0, \"cost_price\": 20.0, \"sell_price\": 35.0, \"margin\": 15.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:02.137064",
+    "question": "Product performance - Air Filter Mann",
+    "response": "{\"product_id\": 2, \"name\": \"Air Filter Mann\", \"current_stock\": 90.0, \"min_stock\": 10.0, \"cost_price\": 20.0, \"sell_price\": 35.0, \"margin\": 15.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:02.201860",
+    "question": "Product performance - Brake Pads Front",
+    "response": "{\"product_id\": 5, \"name\": \"Brake Pads Front\", \"current_stock\": 59.0, \"min_stock\": 10.0, \"cost_price\": 80.0, \"sell_price\": 150.0, \"margin\": 70.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 5
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:02.281140",
+    "question": "Product performance - Brake Pads Front",
+    "response": "{\"product_id\": 5, \"name\": \"Brake Pads Front\", \"current_stock\": 59.0, \"min_stock\": 10.0, \"cost_price\": 80.0, \"sell_price\": 150.0, \"margin\": 70.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 5
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:02.342918",
+    "question": "Product performance - Headlight Assembly",
+    "response": "{\"product_id\": 11, \"name\": \"Headlight Assembly\", \"current_stock\": 54.0, \"min_stock\": 10.0, \"cost_price\": 120.0, \"sell_price\": 220.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 11
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:02.419117",
+    "question": "Product performance - Headlight Assembly",
+    "response": "{\"product_id\": 11, \"name\": \"Headlight Assembly\", \"current_stock\": 54.0, \"min_stock\": 10.0, \"cost_price\": 120.0, \"sell_price\": 220.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 11
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:02.483109",
+    "question": "Product performance - Battery 12V 70Ah",
+    "response": "{\"product_id\": 8, \"name\": \"Battery 12V 70Ah\", \"current_stock\": 36.0, \"min_stock\": 10.0, \"cost_price\": 150.0, \"sell_price\": 250.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 8
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:02.585529",
+    "question": "Product performance - Spark Plugs Set",
+    "response": "{\"product_id\": 7, \"name\": \"Spark Plugs Set\", \"current_stock\": 80.0, \"min_stock\": 10.0, \"cost_price\": 40.0, \"sell_price\": 70.0, \"margin\": 30.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 7
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:02.654082",
+    "question": "Product performance - Spark Plugs Set",
+    "response": "{\"product_id\": 7, \"name\": \"Spark Plugs Set\", \"current_stock\": 80.0, \"min_stock\": 10.0, \"cost_price\": 40.0, \"sell_price\": 70.0, \"margin\": 30.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 7
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:02.716624",
+    "question": "Product performance - Air Filter Mann",
+    "response": "{\"product_id\": 2, \"name\": \"Air Filter Mann\", \"current_stock\": 109.0, \"min_stock\": 10.0, \"cost_price\": 20.0, \"sell_price\": 35.0, \"margin\": 15.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:02.793252",
+    "question": "Product performance - Air Filter Mann",
+    "response": "{\"product_id\": 2, \"name\": \"Air Filter Mann\", \"current_stock\": 109.0, \"min_stock\": 10.0, \"cost_price\": 20.0, \"sell_price\": 35.0, \"margin\": 15.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:02.899160",
+    "question": "Product performance - Oil Filter Mobil 1",
+    "response": "{\"product_id\": 1, \"name\": \"Oil Filter Mobil 1\", \"current_stock\": 112.0, \"min_stock\": 10.0, \"cost_price\": 15.0, \"sell_price\": 25.0, \"margin\": 10.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:03.115019",
+    "question": "Product performance - Brake Pads Front",
+    "response": "{\"product_id\": 5, \"name\": \"Brake Pads Front\", \"current_stock\": 67.0, \"min_stock\": 10.0, \"cost_price\": 80.0, \"sell_price\": 150.0, \"margin\": 70.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 5
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:03.228951",
+    "question": "Product performance - Brake Pads Front",
+    "response": "{\"product_id\": 5, \"name\": \"Brake Pads Front\", \"current_stock\": 67.0, \"min_stock\": 10.0, \"cost_price\": 80.0, \"sell_price\": 150.0, \"margin\": 70.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 5
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:03.300040",
+    "question": "Product performance - Wiper Blades Set",
+    "response": "{\"product_id\": 13, \"name\": \"Wiper Blades Set\", \"current_stock\": 127.0, \"min_stock\": 10.0, \"cost_price\": 25.0, \"sell_price\": 45.0, \"margin\": 20.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 13
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:03.369915",
+    "question": "Product performance - Wiper Blades Set",
+    "response": "{\"product_id\": 13, \"name\": \"Wiper Blades Set\", \"current_stock\": 127.0, \"min_stock\": 10.0, \"cost_price\": 25.0, \"sell_price\": 45.0, \"margin\": 20.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 13
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:03.439688",
+    "question": "Product performance - Air Filter Mann",
+    "response": "{\"product_id\": 2, \"name\": \"Air Filter Mann\", \"current_stock\": 114.0, \"min_stock\": 10.0, \"cost_price\": 20.0, \"sell_price\": 35.0, \"margin\": 15.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:03.510290",
+    "question": "Product performance - Air Filter Mann",
+    "response": "{\"product_id\": 2, \"name\": \"Air Filter Mann\", \"current_stock\": 114.0, \"min_stock\": 10.0, \"cost_price\": 20.0, \"sell_price\": 35.0, \"margin\": 15.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:03.591842",
+    "question": "Product performance - Tire 195/65R15",
+    "response": "{\"product_id\": 9, \"name\": \"Tire 195/65R15\", \"current_stock\": 46.0, \"min_stock\": 10.0, \"cost_price\": 180.0, \"sell_price\": 320.0, \"margin\": 140.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 9
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:03.749995",
+    "question": "Product performance - Tire 195/65R15",
+    "response": "{\"product_id\": 9, \"name\": \"Tire 195/65R15\", \"current_stock\": 46.0, \"min_stock\": 10.0, \"cost_price\": 180.0, \"sell_price\": 320.0, \"margin\": 140.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 9
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:03.897962",
+    "question": "Product performance - Headlight Assembly",
+    "response": "{\"product_id\": 11, \"name\": \"Headlight Assembly\", \"current_stock\": 60.0, \"min_stock\": 10.0, \"cost_price\": 120.0, \"sell_price\": 220.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 11
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:04.556417",
+    "question": "Product performance - Tire 205/55R16",
+    "response": "{\"product_id\": 10, \"name\": \"Tire 205/55R16\", \"current_stock\": 38.0, \"min_stock\": 10.0, \"cost_price\": 200.0, \"sell_price\": 350.0, \"margin\": 150.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 10
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:04.685817",
+    "question": "Product performance - Tire 205/55R16",
+    "response": "{\"product_id\": 10, \"name\": \"Tire 205/55R16\", \"current_stock\": 38.0, \"min_stock\": 10.0, \"cost_price\": 200.0, \"sell_price\": 350.0, \"margin\": 150.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 10
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:05.156873",
+    "question": "Product performance - Brake Pads Rear",
+    "response": "{\"product_id\": 6, \"name\": \"Brake Pads Rear\", \"current_stock\": 64.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 6
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:05.365881",
+    "question": "Product performance - Headlight Assembly",
+    "response": "{\"product_id\": 11, \"name\": \"Headlight Assembly\", \"current_stock\": 74.0, \"min_stock\": 10.0, \"cost_price\": 120.0, \"sell_price\": 220.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 11
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:05.565409",
+    "question": "Product performance - Headlight Assembly",
+    "response": "{\"product_id\": 11, \"name\": \"Headlight Assembly\", \"current_stock\": 74.0, \"min_stock\": 10.0, \"cost_price\": 120.0, \"sell_price\": 220.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 11
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:05.698458",
+    "question": "Product performance - Brake Pads Front",
+    "response": "{\"product_id\": 5, \"name\": \"Brake Pads Front\", \"current_stock\": 76.0, \"min_stock\": 10.0, \"cost_price\": 80.0, \"sell_price\": 150.0, \"margin\": 70.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 5
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:05.889818",
+    "question": "Product performance - Brake Pads Front",
+    "response": "{\"product_id\": 5, \"name\": \"Brake Pads Front\", \"current_stock\": 76.0, \"min_stock\": 10.0, \"cost_price\": 80.0, \"sell_price\": 150.0, \"margin\": 70.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 5
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:06.052492",
+    "question": "Product performance - Spark Plugs Set",
+    "response": "{\"product_id\": 7, \"name\": \"Spark Plugs Set\", \"current_stock\": 98.0, \"min_stock\": 10.0, \"cost_price\": 40.0, \"sell_price\": 70.0, \"margin\": 30.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 7
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:06.219980",
+    "question": "Product performance - Spark Plugs Set",
+    "response": "{\"product_id\": 7, \"name\": \"Spark Plugs Set\", \"current_stock\": 98.0, \"min_stock\": 10.0, \"cost_price\": 40.0, \"sell_price\": 70.0, \"margin\": 30.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 7
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:06.469482",
+    "question": "Product performance - Air Filter Mann",
+    "response": "{\"product_id\": 2, \"name\": \"Air Filter Mann\", \"current_stock\": 131.0, \"min_stock\": 10.0, \"cost_price\": 20.0, \"sell_price\": 35.0, \"margin\": 15.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:06.755540",
+    "question": "Product performance - Car Cover Premium",
+    "response": "{\"product_id\": 15, \"name\": \"Car Cover Premium\", \"current_stock\": 51.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 15
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:06.898974",
+    "question": "Product performance - Car Cover Premium",
+    "response": "{\"product_id\": 15, \"name\": \"Car Cover Premium\", \"current_stock\": 51.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 15
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:07.044131",
+    "question": "Product performance - Battery 12V 70Ah",
+    "response": "{\"product_id\": 8, \"name\": \"Battery 12V 70Ah\", \"current_stock\": 52.0, \"min_stock\": 10.0, \"cost_price\": 150.0, \"sell_price\": 250.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 8
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:07.193363",
+    "question": "Product performance - Battery 12V 70Ah",
+    "response": "{\"product_id\": 8, \"name\": \"Battery 12V 70Ah\", \"current_stock\": 52.0, \"min_stock\": 10.0, \"cost_price\": 150.0, \"sell_price\": 250.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 8
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:07.325593",
+    "question": "Product performance - Brake Pads Front",
+    "response": "{\"product_id\": 5, \"name\": \"Brake Pads Front\", \"current_stock\": 82.0, \"min_stock\": 10.0, \"cost_price\": 80.0, \"sell_price\": 150.0, \"margin\": 70.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 5
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:07.429437",
+    "question": "Product performance - Brake Pads Front",
+    "response": "{\"product_id\": 5, \"name\": \"Brake Pads Front\", \"current_stock\": 82.0, \"min_stock\": 10.0, \"cost_price\": 80.0, \"sell_price\": 150.0, \"margin\": 70.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 5
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:07.552010",
+    "question": "Product performance - Brake Pads Rear",
+    "response": "{\"product_id\": 6, \"name\": \"Brake Pads Rear\", \"current_stock\": 78.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 6
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:07.767220",
+    "question": "Product performance - Side Mirror Left",
+    "response": "{\"product_id\": 12, \"name\": \"Side Mirror Left\", \"current_stock\": 48.0, \"min_stock\": 10.0, \"cost_price\": 60.0, \"sell_price\": 110.0, \"margin\": 50.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 12
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:07.886515",
+    "question": "Product performance - Side Mirror Left",
+    "response": "{\"product_id\": 12, \"name\": \"Side Mirror Left\", \"current_stock\": 48.0, \"min_stock\": 10.0, \"cost_price\": 60.0, \"sell_price\": 110.0, \"margin\": 50.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 12
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:08.002109",
+    "question": "Product performance - Brake Pads Rear",
+    "response": "{\"product_id\": 6, \"name\": \"Brake Pads Rear\", \"current_stock\": 84.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 6
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:08.107951",
+    "question": "Product performance - Brake Pads Rear",
+    "response": "{\"product_id\": 6, \"name\": \"Brake Pads Rear\", \"current_stock\": 84.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 6
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:08.244625",
+    "question": "Product performance - Battery 12V 70Ah",
+    "response": "{\"product_id\": 8, \"name\": \"Battery 12V 70Ah\", \"current_stock\": 71.0, \"min_stock\": 10.0, \"cost_price\": 150.0, \"sell_price\": 250.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 8
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:08.322285",
+    "question": "Product performance - Battery 12V 70Ah",
+    "response": "{\"product_id\": 8, \"name\": \"Battery 12V 70Ah\", \"current_stock\": 71.0, \"min_stock\": 10.0, \"cost_price\": 150.0, \"sell_price\": 250.0, \"margin\": 100.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 8
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:08.383669",
+    "question": "Product performance - Tire 195/65R15",
+    "response": "{\"product_id\": 9, \"name\": \"Tire 195/65R15\", \"current_stock\": 59.0, \"min_stock\": 10.0, \"cost_price\": 180.0, \"sell_price\": 320.0, \"margin\": 140.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 9
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:08.484990",
+    "question": "Product performance - Brake Pads Front",
+    "response": "{\"product_id\": 5, \"name\": \"Brake Pads Front\", \"current_stock\": 93.0, \"min_stock\": 10.0, \"cost_price\": 80.0, \"sell_price\": 150.0, \"margin\": 70.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 5
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:08.548719",
+    "question": "Product performance - Brake Pads Front",
+    "response": "{\"product_id\": 5, \"name\": \"Brake Pads Front\", \"current_stock\": 93.0, \"min_stock\": 10.0, \"cost_price\": 80.0, \"sell_price\": 150.0, \"margin\": 70.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 5
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:08.619033",
+    "question": "Product performance - Brake Pads Rear",
+    "response": "{\"product_id\": 6, \"name\": \"Brake Pads Rear\", \"current_stock\": 95.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 6
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-04T20:10:08.690396",
+    "question": "Product performance - Brake Pads Rear",
+    "response": "{\"product_id\": 6, \"name\": \"Brake Pads Rear\", \"current_stock\": 95.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 6
+    },
+    "success": true
   }
 ]

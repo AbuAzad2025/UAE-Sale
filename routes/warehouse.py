@@ -104,10 +104,16 @@ def create_warehouse():
             name_ar = request.form.get('name_ar', '').strip()
             code = request.form.get('code', '').strip()
             location = request.form.get('location', '').strip()
+            parent_id = request.form.get('parent_id', type=int) or None
+            manager_id = request.form.get('manager_id', type=int) or None
             is_main = request.form.get('is_main') == 'on'
             
             if not name:
                 flash('اسم المستودع مطلوب', 'error')
+                return redirect(url_for('warehouse.create_warehouse'))
+            
+            if not location:
+                flash('الموقع مطلوب', 'error')
                 return redirect(url_for('warehouse.create_warehouse'))
             
             # Check if code exists
@@ -117,20 +123,32 @@ def create_warehouse():
                     flash('رمز المستودع موجود مسبقاً', 'error')
                     return redirect(url_for('warehouse.create_warehouse'))
             
+            # Check if parent warehouse exists
+            if parent_id:
+                parent_warehouse = Warehouse.query.get(parent_id)
+                if not parent_warehouse:
+                    flash('المستودع الأب غير موجود', 'error')
+                    return redirect(url_for('warehouse.create_warehouse'))
+                if not parent_warehouse.is_active:
+                    flash('المستودع الأب غير نشط', 'error')
+                    return redirect(url_for('warehouse.create_warehouse'))
+            
             warehouse = Warehouse(
                 name=name,
                 name_ar=name_ar,
                 code=code,
                 location=location,
+                parent_id=parent_id,
                 is_main=is_main,
-                manager_id=current_user.id,
+                manager_id=manager_id or current_user.id,
                 is_active=True
             )
             
             db.session.add(warehouse)
             db.session.commit()
             
-            flash(f'تم إنشاء المستودع {name} بنجاح', 'success')
+            warehouse_type = "فرعي" if parent_id else "مستقل"
+            flash(f'✓ تم إنشاء المستودع {warehouse_type} "{name}" بنجاح', 'success')
             return redirect(url_for('warehouse.list_warehouses'))
             
         except Exception as e:
@@ -138,7 +156,18 @@ def create_warehouse():
             flash(f'خطأ في إنشاء المستودع: {str(e)}', 'error')
             return redirect(url_for('warehouse.create_warehouse'))
     
-    return render_template('warehouse/create_warehouse.html')
+    # GET request - show form with data
+    from models import User
+    
+    # Get all active warehouses for parent selection (except sub-warehouses)
+    parent_warehouses = Warehouse.query.filter_by(is_active=True, parent_id=None).all()
+    
+    # Get all users for manager selection
+    users = User.query.filter_by(is_active=True).all()
+    
+    return render_template('warehouse/create_warehouse.html', 
+                         parent_warehouses=parent_warehouses,
+                         users=users)
 
 
 @warehouse_bp.route('/list')
@@ -165,10 +194,17 @@ def add_stock(product_id):
         # Update product stock
         product.current_stock = (product.current_stock or Decimal('0')) + quantity
         
-        # Create stock movement
+        if not warehouse_id:
+            warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
+            if not warehouse:
+                warehouse = Warehouse.query.filter_by(is_active=True).first()
+            if not warehouse:
+                return jsonify({'success': False, 'message': 'لا يوجد مستودع نشط'}), 400
+            warehouse_id = warehouse.id
+        
         movement = StockMovement(
             product_id=product_id,
-            warehouse_id=warehouse_id or 1,  # Default warehouse
+            warehouse_id=warehouse_id,
             movement_type='adjustment',
             quantity=quantity,
             user_id=current_user.id,

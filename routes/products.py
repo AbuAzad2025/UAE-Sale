@@ -61,6 +61,8 @@ def index():
 @limiter.limit("10 per minute", methods=['POST'])
 def create():
     from forms.product import ProductForm
+    from models import Warehouse
+    
     form = ProductForm()
     
     # تعيين choices للتصنيفات
@@ -86,6 +88,21 @@ def create():
                     except (ValueError, TypeError):
                         return default
                 
+                warehouse_id = request.form.get('warehouse_id', type=int)
+                current_stock = safe_float(request.form.get('current_stock'))
+                
+                # التحقق من المستودع
+                if not warehouse_id:
+                    flash('⚠️ يجب اختيار المستودع', 'warning')
+                    warehouses = Warehouse.query.filter_by(is_active=True).all()
+                    return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses)
+                
+                warehouse = Warehouse.query.get(warehouse_id)
+                if not warehouse or not warehouse.is_active:
+                    flash('⚠️ المستودع المحدد غير صالح', 'warning')
+                    warehouses = Warehouse.query.filter_by(is_active=True).all()
+                    return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses)
+                
                 product = Product(
                     name=request.form.get('name'),
                     name_ar=request.form.get('name_ar'),
@@ -96,7 +113,7 @@ def create():
                     merchant_price=safe_float(request.form.get('merchant_price')),
                     partner_price=safe_float(request.form.get('partner_price')),
                     cost_price=safe_float(request.form.get('cost_price')),
-                    current_stock=safe_float(request.form.get('current_stock')),
+                    current_stock=current_stock,
                     min_stock_alert=safe_float(request.form.get('min_stock_alert')),
                     unit=request.form.get('unit', 'piece'),
                     location=request.form.get('location'),
@@ -114,12 +131,26 @@ def create():
                             product.image_url = image_path
                 
                 db.session.add(product)
+                db.session.flush()  # للحصول على product.id
+                
+                # إضافة حركة مخزون إذا كانت الكمية أكبر من صفر
+                if current_stock > 0:
+                    StockService.create_movement(
+                        product_id=product.id,
+                        quantity=current_stock,
+                        movement_type='adjustment',
+                        reference_type='Product Creation',
+                        reference_id=product.id,
+                        notes=f'مخزون أولي عند إضافة المنتج إلى المستودع: {warehouse.name_ar or warehouse.name}',
+                        warehouse_id=warehouse_id
+                    )
+                
                 db.session.commit()
                 current_app.logger.info(f"Product saved to database with ID: {product.id}")
                 
                 create_audit_log('create', 'products', product.id)
                 
-                flash('تم إضافة المنتج بنجاح', 'success')
+                flash(f'✓ تم إضافة المنتج "{product.name}" بنجاح إلى المستودع "{warehouse.name_ar or warehouse.name}"', 'success')
                 return redirect(url_for('products.index'))
             
             except Exception as e:
@@ -133,8 +164,11 @@ def create():
                 for error in errors:
                     flash(f'⚠️ خطأ في حقل {field}: {error}', 'danger')
     
+    # GET request - إرسال البيانات للقالب
     categories = ProductCategory.query.filter_by(is_active=True).all()
-    return render_template('products/create.html', form=form, categories=categories)
+    warehouses = Warehouse.query.filter_by(is_active=True).order_by(Warehouse.is_main.desc(), Warehouse.name).all()
+    
+    return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses)
 
 
 @products_bp.route('/<int:id>')

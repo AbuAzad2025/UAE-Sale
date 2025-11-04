@@ -2980,7 +2980,14 @@ def upload_excel():
             return jsonify({'success': False, 'error': 'لم يتم رفع ملف'}), 400
         
         file = request.files['file']
-        warehouse_id = request.form.get('warehouse_id', 1)
+        warehouse_id = request.form.get('warehouse_id', type=int)
+        if not warehouse_id:
+            from models import Warehouse
+            warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
+            if not warehouse:
+                warehouse = Warehouse.query.filter_by(is_active=True).first()
+            if warehouse:
+                warehouse_id = warehouse.id
         
         if file.filename == '':
             return jsonify({'success': False, 'error': 'لم يتم اختيار ملف'}), 400

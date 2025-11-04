@@ -11,7 +11,7 @@ from utils.helpers import generate_number
 class SaleService:
     
     @staticmethod
-    def create_sale(customer, seller, lines_data, currency='AED', user_exchange_rate=None, 
+    def create_sale(customer, seller, lines_data, warehouse_id=None, currency='AED', user_exchange_rate=None, 
                     discount_amount=0, shipping_cost=0, tax_rate=0, notes=None, payment_data=None):
         """
         Create a new sale with proper validations and decimal precision
@@ -42,6 +42,24 @@ class SaleService:
         if tax_rate_decimal < Decimal('0') or tax_rate_decimal > Decimal('100'):
             raise ValueError('نسبة الضريبة يجب أن تكون بين 0 و 100')
         
+        # تحديد المستودع بطريقة ذكية
+        from models import Warehouse
+        if not warehouse_id:
+            # البحث عن المستودع الرئيسي أولاً
+            warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
+            if not warehouse:
+                # أول مستودع نشط
+                warehouse = Warehouse.query.filter_by(is_active=True).first()
+            if warehouse:
+                warehouse_id = warehouse.id
+        else:
+            # التحقق من صحة المستودع المحدد
+            warehouse = Warehouse.query.get(warehouse_id)
+            if not warehouse:
+                raise ValueError('⚠️ المستودع المحدد غير موجود.\n💡 اختر مستودع موجود من القائمة.')
+            if not warehouse.is_active:
+                raise ValueError('⚠️ المستودع المحدد غير نشط.\n💡 اختر مستودع نشط من القائمة.')
+        
         try:
             sale_number = generate_number('S', Sale, 'sale_number')
             
@@ -59,6 +77,7 @@ class SaleService:
                 sale_number=sale_number,
                 customer_id=customer.id,
                 seller_id=seller.id,
+                warehouse_id=warehouse_id,  # ← المستودع المحدد
                 currency='AED',  # Always AED for invoice
                 exchange_rate=Decimal('1'),  # Always 1 for AED
                 discount_amount=discount_decimal,
@@ -156,7 +175,8 @@ class SaleService:
             
             db.session.flush()
             
-            StockService.process_sale_lines(sale)
+            # تمرير warehouse_id لحركات المخزون
+            StockService.process_sale_lines(sale, warehouse_id)
             
             if payment_data and payment_data.get('amount', 0) > 0:
                 payment = SaleService.create_payment_for_sale(

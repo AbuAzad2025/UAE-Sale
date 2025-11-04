@@ -87,3 +87,7 @@ ai_knowledge/models/*.joblib
 *.temp
 ~$*
 
+# Arabic documentation files (temporary reports)
+*.md
+!README.md
+

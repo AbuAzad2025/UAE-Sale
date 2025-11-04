@@ -53,7 +53,7 @@
         </div>
         <div class="card-body">
           <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-4">
               <div class="form-group">
                 <label class="font-weight-bold">
                   <i class="fas fa-user text-primary mr-1"></i>الزبون 
@@ -66,7 +66,33 @@
                 <small class="form-text text-muted">💡 الفلتر الذكي: ابحث بالاسم أو رقم الهاتف</small>
               </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label class="font-weight-bold">
+                  <i class="fas fa-warehouse text-info mr-1"></i>المستودع 
+                  <span class="text-danger">*</span>
+                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المستودع الذي سيُخصم منه المخزون (إجباري)"></i>
+                </label>
+                <select name="warehouse_id" id="warehouse_id" class="form-control" required>
+                  <option value="">اختر مستودع...</option>
+                  {% if warehouses %}
+                    {% for warehouse in warehouses %}
+                    <option value="{{ warehouse.id }}" {% if warehouse.is_main %}selected{% endif %}>
+                      {% if warehouse.is_main %}⭐{% elif warehouse.parent_id %}🔀{% else %}📦{% endif %}
+                      {{ warehouse.name_ar or warehouse.name }}
+                      {% if warehouse.code %}({{ warehouse.code }}){% endif %}
+                    </option>
+                    {% endfor %}
+                  {% else %}
+                    <option value="">لا توجد مستودعات متاحة</option>
+                  {% endif %}
+                </select>
+                <small class="form-text text-info">
+                  <i class="fas fa-info-circle"></i> سيُخصم المخزون من هذا المستودع
+                </small>
+              </div>
+            </div>
+            <div class="col-md-2">
               <div class="form-group">
                 <label class="font-weight-bold">
                   <i class="fas fa-money-bill-wave text-success mr-1"></i>عملة الدفع
@@ -88,7 +114,7 @@
                 </small>
               </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
               <div class="form-group">
                 <label class="font-weight-bold">
                   <i class="fas fa-exchange-alt text-info mr-1"></i>سعر الصرف

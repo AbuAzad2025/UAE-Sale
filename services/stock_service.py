@@ -8,50 +8,69 @@ from models import Product, StockMovement, Warehouse
 class StockService:
     
     @staticmethod
-    def add_stock(product_id, quantity, reference_type=None, reference_id=None, notes=None):
+    def add_stock(product_id, quantity, reference_type=None, reference_id=None, notes=None, warehouse_id=None):
         return StockService.create_movement(
             product_id=product_id,
             quantity=abs(Decimal(str(quantity))),
             movement_type='purchase',
             reference_type=reference_type,
             reference_id=reference_id,
-            notes=notes
+            notes=notes,
+            warehouse_id=warehouse_id
         )
     
     @staticmethod
-    def remove_stock(product_id, quantity, reference_type=None, reference_id=None, notes=None):
+    def remove_stock(product_id, quantity, reference_type=None, reference_id=None, notes=None, warehouse_id=None):
         return StockService.create_movement(
             product_id=product_id,
             quantity=-abs(Decimal(str(quantity))),
             movement_type='sale',
             reference_type=reference_type,
             reference_id=reference_id,
-            notes=notes
+            notes=notes,
+            warehouse_id=warehouse_id
         )
     
     @staticmethod
-    def adjust_stock(product_id, quantity, notes=None):
+    def adjust_stock(product_id, quantity, notes=None, warehouse_id=None):
         return StockService.create_movement(
             product_id=product_id,
             quantity=Decimal(str(quantity)),
             movement_type='adjustment',
-            notes=notes
+            notes=notes,
+            warehouse_id=warehouse_id
         )
     
     @staticmethod
-    def create_movement(product_id, quantity, movement_type, reference_type=None, reference_id=None, notes=None):
+    def create_movement(product_id, quantity, movement_type, reference_type=None, reference_id=None, notes=None, warehouse_id=None):
         try:
             product = Product.query.get(product_id)
             
             if not product:
                 raise ValueError(f'⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.')
             
-            warehouse = Warehouse.query.filter_by(is_active=True).first()
+            # تحديد المستودع
+            if warehouse_id:
+                # استخدام المستودع المحدد
+                warehouse = Warehouse.query.filter_by(id=warehouse_id, is_active=True).first()
+                if not warehouse:
+                    raise ValueError(f'⚠️ المستودع المحدد غير موجود أو غير نشط (ID: {warehouse_id}).')
+            else:
+                # البحث عن المستودع الرئيسي أولاً، ثم أول مستودع نشط
+                warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
+                if not warehouse:
+                    warehouse = Warehouse.query.filter_by(is_active=True).first()
+                
+                # إذا لم يوجد أي مستودع، إنشاء واحد افتراضي
+                if not warehouse:
+                    warehouse = Warehouse(name='Main Warehouse', name_ar='المستودع الرئيسي', is_active=True, is_main=True)
+                    db.session.add(warehouse)
+                    db.session.flush()
             
-            if not warehouse:
-                warehouse = Warehouse(name='Main Warehouse', name_ar='المستودع الرئيسي', is_active=True)
-                db.session.add(warehouse)
-                db.session.flush()
+            try:
+                user_id = current_user.id if current_user and current_user.is_authenticated else None
+            except:
+                user_id = None
             
             movement = StockMovement(
                 product_id=product_id,
@@ -60,7 +79,7 @@ class StockService:
                 quantity=Decimal(str(quantity)),
                 reference_type=reference_type,
                 reference_id=reference_id,
-                user_id=current_user.id if current_user.is_authenticated else None,
+                user_id=user_id,
                 notes=notes
             )
             
@@ -85,25 +104,35 @@ class StockService:
             raise
     
     @staticmethod
-    def process_sale_lines(sale):
+    def process_sale_lines(sale, warehouse_id=None):
+        """معالجة بيوع مع خصم من مستودع محدد"""
+        # استخدام warehouse_id من sale إذا لم يُمرر
+        if not warehouse_id and hasattr(sale, 'warehouse_id'):
+            warehouse_id = sale.warehouse_id
+        
         for line in sale.lines:
             StockService.remove_stock(
                 product_id=line.product_id,
                 quantity=line.quantity,
                 reference_type='Sale',
                 reference_id=sale.id,
-                notes=f'بيع: {sale.sale_number}'
+                notes=f'بيع: {sale.sale_number}',
+                warehouse_id=warehouse_id  # ← تمرير المستودع
             )
     
     @staticmethod
-    def process_purchase_lines(purchase):
+    def process_purchase_lines(purchase, warehouse_id=None):
+        if not warehouse_id and hasattr(purchase, 'warehouse_id'):
+            warehouse_id = purchase.warehouse_id
+        
         for line in purchase.lines:
             StockService.add_stock(
                 product_id=line.product_id,
                 quantity=line.quantity,
                 reference_type='Purchase',
                 reference_id=purchase.id,
-                notes=f'شراء: {purchase.purchase_number}'
+                notes=f'شراء: {purchase.purchase_number}',
+                warehouse_id=warehouse_id
             )
             
             product = Product.query.get(line.product_id)
@@ -112,13 +141,18 @@ class StockService:
     
     @staticmethod
     def reverse_sale(sale):
+        """إلغاء بيع - إرجاع للمستودع الأصلي"""
+        # استخدام نفس المستودع الذي تم البيع منه
+        warehouse_id = getattr(sale, 'warehouse_id', None)
+        
         for line in sale.lines:
             StockService.add_stock(
                 product_id=line.product_id,
                 quantity=line.quantity,
                 reference_type='Sale-Reversed',
                 reference_id=sale.id,
-                notes=f'إلغاء بيع: {sale.sale_number}'
+                notes=f'إلغاء بيع: {sale.sale_number}',
+                warehouse_id=warehouse_id  # ← نفس المستودع
             )
     
     @staticmethod

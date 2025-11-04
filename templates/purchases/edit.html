@@ -28,6 +28,9 @@
                 <p><strong>رقم الفاتورة:</strong> {{ purchase.purchase_number }}</p>
                 <p><strong>التاريخ:</strong> {{ purchase.purchase_date.strftime('%Y-%m-%d') }}</p>
                 <p><strong>المورد:</strong> {{ purchase.supplier_name }}</p>
+                {% if purchase.warehouse %}
+                <p><strong><i class="fas fa-warehouse text-info"></i> المستودع:</strong> {{ purchase.warehouse.name_ar or purchase.warehouse.name }}</p>
+                {% endif %}
               </div>
               <div class="col-md-6">
                 <h5>الإجماليات</h5>

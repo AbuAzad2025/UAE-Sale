@@ -136,7 +136,30 @@
       <hr>
       <h5 class="text-warning"><i class="fas fa-warehouse"></i> المخزون</h5>
       <div class="row">
-        <div class="col-md-4">
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-warehouse text-info"></i> المستودع
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المستودع الذي سيُضاف إليه المنتج (إجباري)"></i>
+            </label>
+            <select name="warehouse_id" class="form-control" required>
+              <option value="">اختر مستودع...</option>
+              {% if warehouses %}
+                {% for warehouse in warehouses %}
+                <option value="{{ warehouse.id }}" {% if warehouse.is_main %}selected{% endif %}>
+                  {% if warehouse.is_main %}⭐{% elif warehouse.parent_id %}🔀{% else %}📦{% endif %}
+                  {{ warehouse.name_ar or warehouse.name }}
+                  {% if warehouse.code %}({{ warehouse.code }}){% endif %}
+                </option>
+                {% endfor %}
+              {% else %}
+                <option value="">لا توجد مستودعات متاحة</option>
+              {% endif %}
+            </select>
+          </div>
+        </div>
+        <div class="col-md-3">
           <div class="form-group">
             <label>
               <i class="fas fa-boxes text-success"></i> الكمية الحالية
@@ -145,7 +168,7 @@
             <input type="number" name="current_stock" class="form-control" step="0.001" min="0" value="0" placeholder="0">
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <div class="form-group">
             <label>
               <i class="fas fa-exclamation-triangle text-warning"></i> حد التنبيه
@@ -154,7 +177,7 @@
             <input type="number" name="min_stock_alert" class="form-control" step="0.001" min="0" value="10" placeholder="10">
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <div class="form-group">
             <label>
               <i class="fas fa-balance-scale text-primary"></i> الوحدة

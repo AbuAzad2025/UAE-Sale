@@ -141,10 +141,14 @@ def create():
                     'bank_name': request.form.get('bank_name'),
                 }
             
+            # قراءة warehouse_id من النموذج
+            warehouse_id = request.form.get('warehouse_id', type=int)
+            
             sale = SaleService.create_sale(
                 customer=customer,
                 seller=current_user,
                 lines_data=lines_data,
+                warehouse_id=warehouse_id,  # ← تمرير المستودع
                 currency='AED',  # Invoice always in AED
                 user_exchange_rate=1.0,  # Always 1 for AED
                 discount_amount=discount_amount,
@@ -166,8 +170,15 @@ def create():
             from utils.error_messages import ErrorMessages
             flash(ErrorMessages.database_error(str(e)), 'danger')
     
+    # تحميل المستودعات للقالب
+    from models import Warehouse
+    warehouses = Warehouse.query.filter_by(is_active=True).order_by(
+        Warehouse.is_main.desc(),  # الرئيسي أولاً
+        Warehouse.name
+    ).all()
+    
     # No need to load customers or exchange rates - loaded via AJAX for speed
-    return render_template('sales/create.html')
+    return render_template('sales/create.html', warehouses=warehouses)
 
 
 @sales_bp.route('/<int:id>')

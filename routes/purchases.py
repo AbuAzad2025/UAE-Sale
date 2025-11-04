@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from extensions import db, limiter, csrf
-from models import Purchase, PurchaseLine, Product, Supplier
+from models import Purchase, PurchaseLine, Product, Supplier, Warehouse
 from services.stock_service import StockService
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
@@ -88,7 +88,8 @@ def create():
             
             purchase = Purchase(
                 purchase_number=purchase_number,
-                supplier_id=supplier_id,  # ربط المورد
+                supplier_id=supplier_id,
+                warehouse_id=warehouse_id,
                 supplier_name=supplier_name,
                 supplier_phone=supplier_phone,
                 supplier_email=supplier_email,
@@ -98,7 +99,6 @@ def create():
                 tax_rate=request.form.get('tax_rate', type=float, default=0),
                 notes=request.form.get('notes'),
                 user_id=current_user.id,
-                # تعيين قيم افتراضية لتجنب NOT NULL constraint
                 subtotal=0,
                 tax_amount=0,
                 total_amount=0,
@@ -184,7 +184,7 @@ def create():
             
             db.session.flush()
             
-            StockService.process_purchase_lines(purchase)
+            StockService.process_purchase_lines(purchase, warehouse_id)
             
             # القيود المحاسبية
             try:
@@ -230,8 +230,11 @@ def create():
             flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     exchange_rates = CurrencyService.get_all_rates('AED')
+    warehouses = Warehouse.query.filter_by(is_active=True).order_by(
+        Warehouse.is_main.desc(), Warehouse.name
+    ).all()
     
-    return render_template('purchases/create.html', exchange_rates=exchange_rates)
+    return render_template('purchases/create.html', exchange_rates=exchange_rates, warehouses=warehouses)
 
 
 @purchases_bp.route('/<int:id>')

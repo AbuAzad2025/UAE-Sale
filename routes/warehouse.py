@@ -94,6 +94,7 @@ def out_of_stock():
     return render_template('warehouse/out_of_stock.html', products=products)
 
 
+@warehouse_bp.route('/create', methods=['GET', 'POST'])
 @warehouse_bp.route('/create-warehouse', methods=['GET', 'POST'])
 @login_required
 @permission_required('admin')

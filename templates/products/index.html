@@ -173,16 +173,16 @@
         <form id="stockForm" action="">
           <input type="hidden" id="productId" name="product_id">
           <div class="form-group">
-            <label>اسم المنتج</label>
-            <input type="text" id="productName" class="form-control" readonly>
+            <label for="productName">اسم المنتج</label>
+            <input type="text" id="productName" name="product_name" class="form-control" readonly autocomplete="off">
           </div>
           <div class="form-group">
-            <label>المخزون الحالي</label>
-            <input type="number" id="currentStock" class="form-control" readonly>
+            <label for="currentStock">المخزون الحالي</label>
+            <input type="number" id="currentStock" name="current_stock" class="form-control" readonly autocomplete="off">
           </div>
           <div class="form-group">
-            <label>نوع التعديل</label>
-            <select id="adjustmentType" class="form-control" required>
+            <label for="adjustmentType">نوع التعديل</label>
+            <select id="adjustmentType" name="adjustment_type" class="form-control" required autocomplete="off">
               <option value="" selected>بلا</option>
               <option value="add">{{ t('Add') }}</option>
               <option value="subtract">خصم</option>
@@ -190,12 +190,12 @@
             </select>
           </div>
           <div class="form-group">
-            <label>{{ t('Quantity') }}</label>
-            <input type="number" id="adjustmentQuantity" class="form-control" step="0.001" min="0" required>
+            <label for="adjustmentQuantity">{{ t('Quantity') }}</label>
+            <input type="number" id="adjustmentQuantity" name="adjustment_quantity" class="form-control" step="0.001" min="0" required autocomplete="off">
           </div>
           <div class="form-group">
-            <label>السبب</label>
-            <select id="adjustmentReason" class="form-control" required>
+            <label for="adjustmentReason">السبب</label>
+            <select id="adjustmentReason" name="adjustment_reason" class="form-control" required autocomplete="off">
               <option value="" selected>بلا</option>
               <option value="purchase">شراء</option>
               <option value="return">إرجاع</option>
@@ -205,8 +205,8 @@
             </select>
           </div>
           <div class="form-group">
-            <label>{{ t('Notes') }}</label>
-            <textarea id="adjustmentNotes" class="form-control" rows="3"></textarea>
+            <label for="adjustmentNotes">{{ t('Notes') }}</label>
+            <textarea id="adjustmentNotes" name="adjustment_notes" class="form-control" rows="3" autocomplete="off"></textarea>
           </div>
         </form>
       </div>

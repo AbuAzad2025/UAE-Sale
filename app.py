@@ -1,6 +1,7 @@
 import os
 import uuid
 from datetime import datetime, timezone
+import time
 from decimal import Decimal
 from flask import Flask, render_template, request, g, redirect, url_for, flash
 from flask_login import current_user
@@ -55,13 +56,25 @@ def create_app(config_class=Config):
     if app.config.get('CACHE_TYPE') == 'redis':
         init_redis(app)
     
-    from models import User, Customer
+    from models import User, Customer, ProductCategory
     
     # تفعيل المستمعات التلقائية للتحديثات المالية
     try:
         from models.events import register_all_listeners
         with app.app_context():
             register_all_listeners()
+            # تفعيل الفئات القديمة التي لا تحتوي على is_active
+            try:
+                legacy_updates = ProductCategory.query.filter(ProductCategory.is_active.is_(None)).update(
+                    {"is_active": True}, synchronize_session=False
+                )
+                if legacy_updates:
+                    db.session.commit()
+                    app.logger.info(f"[OK] Activated {legacy_updates} legacy product categories")
+            except Exception as legacy_error:
+                db.session.rollback()
+                app.logger.warning(f"Failed to activate legacy product categories: {legacy_error}")
+
             app.logger.info("[OK] Event listeners activated")
     except Exception as e:
         app.logger.warning(f"Failed to register event listeners: {e}")
@@ -135,6 +148,7 @@ def create_app(config_class=Config):
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net cdnjs.cloudflare.com",
             "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com fonts.googleapis.com",
             "img-src 'self' data: https: upload.wikimedia.org",
+            "media-src 'self' data:",
             "font-src 'self' fonts.gstatic.com cdnjs.cloudflare.com",
             "connect-src 'self'",
             "frame-ancestors 'self'",
@@ -297,6 +311,9 @@ def create_app(config_class=Config):
                 'error_id': error_id,
                 'message': 'حدث خطأ غير متوقع. تم تسجيل المشكلة.'
             }, 500
+        
+        # منح وقت إضافي لقراءة رسالة الخطأ في الطرفية
+        time.sleep(5)
         
         flash(f'⚠️ حدث خطأ غير متوقع. معرف الخطأ: {error_id}', 'danger')
         return render_template('errors/500.html', error_id=error_id), 500

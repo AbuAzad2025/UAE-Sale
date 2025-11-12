@@ -102,9 +102,11 @@
                                 <a href="{{ url_for('expenses.edit', id=expense.id) }}" class="btn btn-primary mb-2">
                                     <i class="fas fa-edit"></i> تعديل المصروف
                                 </a>
-                                <button type="button" class="btn btn-info mb-2">
+                                <a href="{{ url_for('expenses.print_expense', id=expense.id) }}"
+                                   target="_blank"
+                                   class="btn btn-info mb-2">
                                     <i class="fas fa-print"></i> طباعة
-                                </button>
+                                </a>
                             </div>
                         </div>
                     </div>

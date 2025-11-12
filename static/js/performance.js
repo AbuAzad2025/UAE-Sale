@@ -187,22 +187,6 @@ $(document).ready(function() {
         }
     });
 
-    // Optimize select2
-    if ($.fn.select2) {
-        $('.select2').select2({
-            width: '100%',
-            language: 'ar',
-            dir: 'rtl',
-            placeholder: 'اختر...',
-            allowClear: true,
-            minimumInputLength: 2,
-            ajax: {
-                delay: 300,
-                cache: true
-            }
-        });
-    }
-
     // Add performance monitoring - تحسين
     if (window.performance && window.performance.timing) {
         window.addEventListener('load', function() {

@@ -74,26 +74,38 @@ class GLService:
             ('6990', 'مصروفات متنوعة', 'Miscellaneous Expenses', 'expense', '6000', False, 1),
         ]
         
+        created_any = False
+        created_cache = {}
+        
         for code, name_ar, name_en, acc_type, parent_code, is_header, level in core:
             acc = GLAccount.query.filter_by(code=code).first()
-            if not acc:
-                parent_id = None
-                if parent_code:
-                    parent_acc = GLAccount.query.filter_by(code=parent_code).first()
-                    if parent_acc:
-                        parent_id = parent_acc.id
-                
-                db.session.add(GLAccount(
-                    code=code,
-                    name=name_en,
-                    name_ar=name_ar,
-                    type=acc_type,
-                    parent_id=parent_id,
-                    is_header=is_header,
-                    level=level,
-                    currency='AED'
-                ))
-        db.session.commit()
+            if acc:
+                created_cache[code] = acc
+                continue
+            
+            parent_id = None
+            if parent_code:
+                parent_acc = created_cache.get(parent_code) or GLAccount.query.filter_by(code=parent_code).first()
+                if parent_acc:
+                    parent_id = parent_acc.id
+            
+            acc = GLAccount(
+                code=code,
+                name=name_en,
+                name_ar=name_ar,
+                type=acc_type,
+                parent_id=parent_id,
+                is_header=is_header,
+                level=level,
+                currency='AED'
+            )
+            db.session.add(acc)
+            db.session.flush()
+            created_cache[code] = acc
+            created_any = True
+        
+        if created_any:
+            db.session.flush()
     
     @staticmethod
     def create_journal_entry(entry_type, description, lines, reference_type=None, reference_id=None):
@@ -126,6 +138,8 @@ class GLService:
         entry_number = generate_number('JE', GLJournalEntry, 'entry_number')
         
         # Create entry
+        GLService.ensure_core_accounts()
+
         entry = GLJournalEntry(
             entry_number=entry_number,
             description=description,
@@ -172,6 +186,11 @@ class GLService:
         total_credit = Decimal('0')
         for ln in lines:
             account = ln['account'] if isinstance(ln['account'], GLAccount) else GLAccount.query.filter_by(code=ln['account']).first()
+            if not account:
+                GLService.ensure_core_accounts()
+                account = GLAccount.query.filter_by(code=ln['account']).first()
+            if not account:
+                raise ValueError(f"GL account '{ln['account']}' not found while posting entry '{description}'")
             debit = Decimal(str(ln.get('debit', 0) or 0))
             credit = Decimal(str(ln.get('credit', 0) or 0))
             amount_aed = (debit - credit) * Decimal(str(exchange_rate))

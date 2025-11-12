@@ -139,6 +139,14 @@ def view(id):
     return render_template('expenses/view.html', expense=expense)
 
 
+@expenses_bp.route('/<int:id>/print')
+@login_required
+@admin_required
+def print_expense(id):
+    expense = Expense.query.get_or_404(id)
+    return render_template('expenses/print.html', expense=expense)
+
+
 @expenses_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
 @admin_required

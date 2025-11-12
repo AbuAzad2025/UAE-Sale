@@ -5,15 +5,127 @@
   <div>
     <h1 class="mb-0"><i class="fas fa-file-invoice-dollar mr-2"></i>فاتورة شراء جديدة</h1>
   </div>
-  <div>
-    <a href="{{ url_for('purchases.index') }}" class="btn btn-secondary">
+  <div class="purchase-header-actions">
+    <a href="{{ url_for('purchases.index') }}" class="purchase-header-link purchase-header-link--primary">
       <i class="fas fa-arrow-right mr-2"></i>العودة للمشتريات
     </a>
-    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+    <a href="{{ url_for('main.dashboard') }}" class="purchase-header-link purchase-header-link--secondary">
       <i class="fas fa-home mr-2"></i>الرئيسية
     </a>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.purchase-create-form .form-control,
+.purchase-create-form .form-select {
+  min-height: 48px;
+  height: auto;
+  padding: 0.65rem 0.85rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.purchase-create-form .form-control::placeholder {
+  text-align: center;
+  color: #6c757d;
+  opacity: 0.85;
+}
+
+.purchase-create-form .input-group-text {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+}
+
+.purchase-create-form .select2-container--default .select2-selection--single {
+  height: 48px;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
+}
+
+.purchase-create-form .select2-container--default .select2-selection--single .select2-selection__rendered {
+  width: 100%;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  line-height: 1.5 !important;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.purchase-create-form .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.purchase-create-form .select2-dropdown {
+  text-align: center;
+}
+
+.purchase-create-form .select2-results__option {
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+.purchase-create-form textarea.form-control {
+  text-align: right;
+  line-height: 1.6;
+}
+
+.purchase-create-form textarea.form-control::placeholder {
+  text-align: right;
+}
+
+.purchase-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.purchase-header-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.7rem 1.8rem;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 1rem;
+  text-decoration: none;
+  position: relative;
+  z-index: 1;
+}
+
+.purchase-header-link i {
+  font-size: 0.95rem;
+}
+
+.purchase-header-link--primary {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #1552d6, #0e3da8);
+  box-shadow: 0 10px 22px rgba(14, 61, 168, 0.28);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+.purchase-header-link--secondary {
+  color: #0b3c91 !important;
+  background: rgba(222, 235, 255, 0.92);
+  border: 2px solid rgba(11, 60, 145, 0.35);
+  box-shadow: 0 6px 18px rgba(11, 60, 145, 0.15);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.65);
+}
+
+</style>
 {% endblock %}
 
 {% block content %}
@@ -22,7 +134,7 @@
     <h3 class="card-title"><i class="fas fa-shopping-cart"></i> بيانات فاتورة الشراء</h3>
   </div>
   
-  <form method="POST" action="{{ url_for('purchases.create') }}" id="purchaseForm">
+  <form method="POST" action="{{ url_for('purchases.create') }}" id="purchaseForm" class="purchase-create-form">
     {{ form.hidden_tag() if form else '' }}
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="line_count" id="line_count" value="0">
@@ -40,23 +152,30 @@
       <div class="row">
         <div class="col-md-4">
           <div class="form-group">
-            <label>
+            <label for="supplier_id">
               <i class="fas fa-truck text-success"></i> المورد 
               <span class="text-danger">*</span>
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر المورد - الفلتر الذكي (إجباري)"></i>
             </label>
-            <select name="supplier_id" id="supplier_id" class="form-control supplier-select" required>
-              <option value="" selected>بلا</option>
-            </select>
+            <div class="input-group">
+              <select name="supplier_id" id="supplier_id" class="form-control supplier-select" required>
+                <option value="" selected>بلا</option>
+              </select>
+              <div class="input-group-append">
+                <a href="{{ url_for('suppliers.create') }}" class="btn btn-success" target="_blank" title="إضافة مورد جديد">
+                  <i class="fas fa-plus"></i>
+                </a>
+              </div>
+            </div>
             <small class="form-text text-muted">
-              💡 ابحث عن المورد أو اضغط "➕ مورد جديد" أسفل القائمة
+              💡 لا يوجد المورد؟ اضغط زر الإضافة لفتح صفحة الموردين في نافذة جديدة.
             </small>
           </div>
         </div>
         
         <div class="col-md-4">
           <div class="form-group">
-            <label>
+            <label for="warehouse_id">
               <i class="fas fa-warehouse text-info"></i> المستودع
               <span class="text-danger">*</span>
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المستودع الذي ستُضاف إليه البضاعة (إجباري)"></i>
@@ -81,7 +200,7 @@
         
         <div class="col-md-2">
           <div class="form-group">
-            <label>
+            <label for="supplier_phone">
               <i class="fas fa-phone text-info"></i> هاتف المورد
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="يُملأ تلقائياً عند اختيار المورد"></i>
             </label>
@@ -91,7 +210,7 @@
         
         <div class="col-md-2">
           <div class="form-group">
-            <label>
+            <label for="supplier_email">
               <i class="fas fa-envelope text-secondary"></i> بريد المورد
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="يُملأ تلقائياً عند اختيار المورد"></i>
             </label>
@@ -112,7 +231,7 @@
       <div class="row">
         <div class="col-md-4">
           <div class="form-group">
-            <label>
+            <label for="currency">
               <i class="fas fa-dollar-sign text-success"></i> العملة
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عملة الفاتورة (افتراضي: AED)"></i>
             </label>
@@ -128,7 +247,7 @@
         
         <div class="col-md-4">
           <div class="form-group">
-            <label>سعر الصرف</label>
+            <label for="exchange_rate">سعر الصرف</label>
             <input type="number" name="exchange_rate" id="exchange_rate" 
                    class="form-control" value="1.000000" step="0.000001" min="0">
             <small class="form-text text-muted">سعر الصرف مقابل الدرهم</small>
@@ -137,7 +256,7 @@
         
         <div class="col-md-4">
           <div class="form-group">
-            <label>نسبة الضريبة %</label>
+            <label for="tax_rate">نسبة الضريبة %</label>
             <input type="number" name="tax_rate" id="tax_rate" 
                    class="form-control" value="0" step="0.01" min="0" max="100">
             <small class="form-text text-muted">مثال: 5 للضريبة 5%</small>
@@ -164,8 +283,8 @@
       <div class="row mt-4">
         <div class="col-md-8">
           <div class="form-group">
-            <label>{{ t('Notes') }}</label>
-            <textarea name="notes" class="form-control" rows="4" 
+            <label for="notes">{{ t('Notes') }}</label>
+            <textarea name="notes" id="notes" class="form-control" rows="4" 
                       placeholder="أي ملاحظات إضافية عن فاتورة الشراء..."></textarea>
           </div>
         </div>
@@ -230,8 +349,9 @@ function addLine() {
       <div class="row align-items-end">
         <!-- المنتج -->
         <div class="col-md-4">
-          <label class="small"><i class="fas fa-box"></i> المنتج</label>
+          <label class="small" for="line_${lineIndex}_product_id"><i class="fas fa-box"></i> المنتج</label>
           <select name="lines[${lineIndex}][product_id]" 
+                  id="line_${lineIndex}_product_id"
                   class="form-control product-select line-product" 
                   data-line="${lineIndex}" required>
             <option value="">بلا</option>
@@ -240,31 +360,34 @@ function addLine() {
         
         <!-- الكمية -->
         <div class="col-md-2">
-          <label class="small"><i class="fas fa-sort-numeric-up"></i> الكمية</label>
+          <label class="small" for="line_${lineIndex}_quantity"><i class="fas fa-sort-numeric-up"></i> الكمية</label>
           <input type="number" name="lines[${lineIndex}][quantity]" 
+                 id="line_${lineIndex}_quantity"
                  class="form-control line-quantity" data-line="${lineIndex}"
                  placeholder="{{ t('Quantity') }}" value="1" step="0.01" min="0.01" required>
         </div>
         
         <!-- التكلفة -->
         <div class="col-md-2">
-          <label class="small"><i class="fas fa-dollar-sign"></i> التكلفة</label>
+          <label class="small" for="line_${lineIndex}_unit_cost"><i class="fas fa-dollar-sign"></i> التكلفة</label>
           <input type="number" name="lines[${lineIndex}][unit_cost]" 
+                 id="line_${lineIndex}_unit_cost"
                  class="form-control line-cost" data-line="${lineIndex}"
                  placeholder="0.00" step="0.01" min="0" required>
         </div>
         
         <!-- الخصم -->
         <div class="col-md-2">
-          <label class="small"><i class="fas fa-percentage"></i> خصم%</label>
+          <label class="small" for="line_${lineIndex}_discount"><i class="fas fa-percentage"></i> خصم%</label>
           <input type="number" name="lines[${lineIndex}][discount_percent]" 
+                 id="line_${lineIndex}_discount"
                  class="form-control line-discount" data-line="${lineIndex}"
                  placeholder="0" value="0" step="0.01" min="0" max="100">
         </div>
         
         <!-- الإجمالي -->
         <div class="col-md-1">
-          <label class="small"><i class="fas fa-equals"></i> المجموع</label>
+          <label class="small" for="line_total_${lineIndex}"><i class="fas fa-equals"></i> المجموع</label>
           <input type="text" class="form-control line-total bg-light" 
                  id="line_total_${lineIndex}" data-line="${lineIndex}" value="0.00" readonly>
         </div>

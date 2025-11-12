@@ -448,19 +448,34 @@ class AIService:
         from models import Sale, Payment
         
         last_90_days = datetime.now(timezone.utc) - timedelta(days=90)
-        
+
+        def _normalize_datetime(value):
+            if value is None:
+                return None
+            if value.tzinfo is None:
+                return value.replace(tzinfo=timezone.utc)
+            return value
+
         sales = Sale.query.options(
             db.joinedload(Sale.customer),
             db.joinedload(Sale.lines)
         ).filter(
             Sale.customer_id == customer.id,
+            Sale.created_at != None,  # noqa: E711
             Sale.created_at >= last_90_days
         ).all()
         
         payments = Payment.query.filter(
             Payment.customer_id == customer.id,
+            Payment.created_at != None,  # noqa: E711
             Payment.created_at >= last_90_days
         ).all()
+
+        normalized_payment_times = []
+        for payment in payments:
+            normalized_dt = _normalize_datetime(payment.created_at)
+            if normalized_dt:
+                normalized_payment_times.append((normalized_dt, payment))
         
         total_sales = sum((s.total_amount or 0) for s in sales)
         total_paid = sum((p.amount or 0) for p in payments)
@@ -469,10 +484,22 @@ class AIService:
         if sales and payments:
             pay_delays = []
             for sale in sales:
-                relevant_payments = [p for p in payments if p.created_at >= sale.created_at]
+                sale_created_at = _normalize_datetime(sale.created_at)
+                if not sale_created_at:
+                    continue
+
+                relevant_payments = [
+                    payment_dt for payment_dt, _ in normalized_payment_times
+                    if payment_dt >= sale_created_at
+                ]
+
                 if relevant_payments:
-                    first_payment = min(relevant_payments, key=lambda p: p.created_at)
-                    delay = (first_payment.created_at - sale.created_at).days
+                    first_payment_dt = min(relevant_payments)
+                    try:
+                        delay = (first_payment_dt - sale_created_at).days
+                    except TypeError:
+                        # Fallback: ignore invalid datetime arithmetic
+                        continue
                     pay_delays.append(delay)
             
             if pay_delays:

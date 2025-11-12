@@ -391,6 +391,8 @@ def restore(id):
 # =====================================
 
 @sales_bp.route('/api/calculate-totals', methods=['POST'])
+@login_required
+@permission_required('manage_sales')
 def api_calculate_sale_totals():
     """API لحساب إجماليات فاتورة المبيعات - Backend Calculation"""
     try:

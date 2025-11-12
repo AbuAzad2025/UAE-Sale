@@ -2,6 +2,61 @@
 {% block title %}شركة أزاد للأنظمة الذكية - {% if is_payment %}إنشاء سند صرف جديد{% else %}إنشاء سند قبض جديد{% endif %}{% endblock %}
 {% block page_title %}{% if is_payment %}سند صرف جديد{% else %}سند قبض جديد{% endif %}{% endblock %}
 
+{% block extra_css %}
+<style>
+.receipt-create-form .form-control,
+.receipt-create-form .form-select {
+  min-height: 48px;
+  height: auto;
+  padding: 0.65rem 0.85rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.receipt-create-form .form-control::placeholder {
+  text-align: center;
+  color: #6c757d;
+  opacity: 0.85;
+}
+
+.receipt-create-form .select2-container--default .select2-selection--single {
+  height: 48px;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
+}
+
+.receipt-create-form .select2-container--default .select2-selection--single .select2-selection__rendered {
+  width: 100%;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  line-height: 1.5 !important;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.receipt-create-form .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.receipt-create-form textarea.form-control {
+  text-align: right;
+  line-height: 1.6;
+}
+
+.receipt-create-form textarea.form-control::placeholder {
+  text-align: right;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 {% set submitted = form_data if form_data is defined else None %}
 {% set selected_customer_id = submitted.get('customer_id') if submitted and submitted.get('customer_id') else (preselected_customer.id if preselected_customer else '') %}
@@ -73,7 +128,7 @@
 {% endif %}
 
 <div class="card">
-  <form method="POST" action="{% if sale %}{{ url_for('payments.create_from_sale', sale_id=sale.id) }}{% elif purchase %}{{ url_for('payments.create_payment', purchase_id=purchase.id) }}{% else %}{{ url_for('payments.create_receipt') }}{% endif %}">
+  <form method="POST" action="{% if sale %}{{ url_for('payments.create_from_sale', sale_id=sale.id) }}{% elif purchase %}{{ url_for('payments.create_payment', purchase_id=purchase.id) }}{% else %}{{ url_for('payments.create_receipt') }}{% endif %}" class="receipt-create-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     
     <div class="card-body">

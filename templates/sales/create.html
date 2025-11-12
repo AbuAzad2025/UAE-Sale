@@ -37,11 +37,79 @@
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 .total-box h2, .total-box h3 { text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+
+.sale-create-form .form-control,
+.sale-create-form .form-select {
+  min-height: 48px;
+  height: auto;
+  padding: 0.65rem 0.85rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.sale-create-form .form-control::placeholder {
+  text-align: center;
+  color: #6c757d;
+  opacity: 0.85;
+}
+
+.sale-create-form .input-group-text {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+}
+
+.sale-create-form .select2-container--default .select2-selection--single {
+  height: 48px;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
+}
+
+.sale-create-form .select2-container--default .select2-selection--single .select2-selection__rendered {
+  width: 100%;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  line-height: 1.5 !important;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.sale-create-form .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.sale-create-form .select2-dropdown {
+  text-align: center;
+}
+
+.sale-create-form .select2-results__option {
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+.sale-create-form textarea.form-control {
+  text-align: right;
+  line-height: 1.6;
+}
+
+.sale-create-form textarea.form-control::placeholder {
+  text-align: right;
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<form method="POST" action="{{ url_for('sales.create') }}" id="saleForm">
+<form method="POST" action="{{ url_for('sales.create') }}" id="saleForm" class="sale-create-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="line_count" id="line_count" value="0">
   

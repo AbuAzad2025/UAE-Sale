@@ -3132,5 +3132,994 @@
       "product_id": 1
     },
     "success": true
+  },
+  {
+    "timestamp": "2025-11-12T18:31:39.384802",
+    "question": "Product terminology: hassaaaaaaaaa",
+    "response": "{\"arabic\": \"hassaaaaaaaaa\", \"english\": \"hassaaaaaaaaa\", \"commercial_name\": null, \"part_number\": \"\", \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:14:51.720432",
+    "question": "Product terminology: zaaah",
+    "response": "{\"arabic\": \"zaaah\", \"english\": \"zaaah\", \"commercial_name\": null, \"part_number\": \"\", \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:14:51.778930",
+    "question": "Product performance - zaaah",
+    "response": "{\"product_id\": 2, \"name\": \"zaaah\", \"current_stock\": 80.0, \"min_stock\": 10.0, \"cost_price\": 1500.0, \"sell_price\": 4500.0, \"margin\": 3000.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:10.029432",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:10.060661",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:10.089860",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:10.115014",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:16.531336",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:16.560034",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:16.580243",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:16.606017",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:23.368807",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:23.399729",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:23.430349",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:23.459245",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:30.062482",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:30.096014",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:30.129673",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:30.159736",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:37.640734",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:37.676487",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:37.707469",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:37.745639",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:45.345324",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:45.372611",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:45.395833",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:45.421454",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:52.193739",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:52.220862",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:52.254464",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:28:52.285248",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:29:16.789135",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:29:16.824337",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:29:16.859911",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:29:16.890717",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:33:00.963634",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:33:00.992213",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:33:01.018484",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:33:01.049528",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:33:47.605768",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:33:47.628641",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:33:47.661567",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:33:47.704694",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:33:57.155141",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:33:57.189409",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:33:57.231786",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:33:57.269617",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:34:03.122591",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:34:03.164168",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:34:03.205819",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:34:03.297487",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:34:11.035806",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:34:11.077545",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:34:11.117927",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:34:11.153270",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:34:17.009061",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:34:17.030660",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:34:17.056301",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:34:17.083764",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:35:35.177234",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:35:35.216706",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:35:35.248899",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:35:35.283562",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:41:29.841897",
+    "question": "Sale pattern analysis",
+    "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_pattern",
+      "data": {
+        "sale_id": 1,
+        "customer_id": 1,
+        "amount": 0.0,
+        "items_count": 0,
+        "discount_percent": 0,
+        "payment_status": "unpaid",
+        "time_pattern": {
+          "day_of_week": "Wednesday",
+          "hour": 17,
+          "month": 11,
+          "is_weekend": false
+        }
+      }
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:41:29.874777",
+    "question": "Sale analysis - S-2025-0001",
+    "response": "{\"anomalies\": [], \"insights\": []}",
+    "user_feedback": 5,
+    "context": {
+      "type": "sale_analysis",
+      "sale_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:41:29.905061",
+    "question": "Sales practice analysis",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 15.0, \"discount_percent\": 0}, \"shipping_included\": true, \"tax_applied\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "sales_practice"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:41:29.939510",
+    "question": "Revenue recognition principle",
+    "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+    "user_feedback": 5,
+    "context": {
+      "type": "accounting_learning",
+      "subtype": "revenue_recognition"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T19:41:30.068841",
+    "question": "Product performance - zaaah",
+    "response": "{\"product_id\": 2, \"name\": \"zaaah\", \"current_stock\": 75.0, \"min_stock\": 10.0, \"cost_price\": 1500.0, \"sell_price\": 4500.0, \"margin\": 3000.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T21:05:51.538179",
+    "question": "Product performance - hassaaaaaaaaa",
+    "response": "{\"product_id\": 1, \"name\": \"hassaaaaaaaaa\", \"current_stock\": 1200.0, \"min_stock\": 10.0, \"cost_price\": 200.0, \"sell_price\": 800.0, \"margin\": 600.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T21:07:19.549295",
+    "question": "Product performance - zaaah",
+    "response": "{\"product_id\": 2, \"name\": \"zaaah\", \"current_stock\": 1075.0, \"min_stock\": 10.0, \"cost_price\": 1500.0, \"sell_price\": 4500.0, \"margin\": 3000.0}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 2
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T21:13:20.758174",
+    "question": "Expense pattern analysis",
+    "response": "{\"category_id\": 1, \"amount\": 8000.0, \"payment_method\": \"cash\", \"is_recurring\": false}",
+    "user_feedback": 5,
+    "context": {
+      "type": "professional_learning",
+      "subtype": "expense_management"
+    },
+    "success": true
   }
 ]

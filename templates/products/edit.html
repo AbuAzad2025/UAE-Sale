@@ -283,35 +283,6 @@ $(function () {
     trigger: 'hover'
   });
   
-  // تفعيل Select2
-  $('.select2').each(function() {
-    const placeholder = $(this).data('placeholder') || 'اختر...';
-    const allowClearAttr = $(this).data('allow-clear');
-    const allowClear = allowClearAttr === true || allowClearAttr === 'true';
-    const dropdownParent = $(this).closest('.modal');
-    const $select = $(this);
-    
-    if ($select.hasClass('select2-hidden-accessible')) {
-      $select.select2('destroy');
-    }
-    
-    $select.select2({
-      placeholder: placeholder,
-      allowClear: allowClear,
-      dir: 'rtl',
-      minimumResultsForSearch: Infinity,
-      language: {
-        inputTooShort: () => 'اكتب حرفين على الأقل',
-        noResults: () => 'لا توجد نتائج',
-        searching: () => 'جارٍ البحث...',
-        loadingMore: () => 'جاري تحميل المزيد...'
-      },
-      width: '100%',
-      minimumInputLength: 0,
-      dropdownParent: dropdownParent.length ? dropdownParent : $(document.body)
-    });
-  });
-  
   // حفظ الفئة الجديدة
   $('#saveCategoryBtn').click(function() {
     const name = $('#category_name').val().trim();

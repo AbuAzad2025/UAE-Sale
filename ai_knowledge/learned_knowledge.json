@@ -128,6 +128,86 @@
         "question": "Sales practice analysis",
         "response": "{\"sale_number\": \"TEST-SALE-20251029180840\", \"payment_terms\": {\"cash_percentage\": 0.0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0.0}, \"shipping_included\": false, \"tax_applied\": false}",
         "timestamp": "2025-10-29T18:08:40.706034"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:28:10.089899"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:28:16.580282"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:28:23.430458"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:28:30.129709"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:28:37.707547"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:28:45.395871"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:28:52.254558"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:29:16.859970"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:33:01.018523"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:33:47.661635"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:33:57.231891"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:34:03.205871"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:34:11.117972"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:34:17.056351"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 0.0, \"discount_percent\": 0}, \"shipping_included\": false, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:35:35.249023"
+      },
+      {
+        "question": "Sales practice analysis",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"payment_terms\": {\"cash_percentage\": 0, \"credit_given\": true}, \"discount_strategy\": {\"discount_amount\": 15.0, \"discount_percent\": 0}, \"shipping_included\": true, \"tax_applied\": false}",
+        "timestamp": "2025-11-12T19:41:29.905169"
       }
     ],
     "general_question": [
@@ -1780,6 +1860,281 @@
         "question": "Product performance - test",
         "response": "{\"product_id\": 1, \"name\": \"test\", \"current_stock\": 15.0, \"min_stock\": 10.0, \"cost_price\": 0.05, \"sell_price\": 0.06, \"margin\": 0.009999999999999995}",
         "timestamp": "2025-11-12T03:20:07.516144"
+      },
+      {
+        "question": "Product terminology: hassaaaaaaaaa",
+        "response": "{\"arabic\": \"hassaaaaaaaaa\", \"english\": \"hassaaaaaaaaa\", \"commercial_name\": null, \"part_number\": \"\", \"category\": null}",
+        "timestamp": "2025-11-12T18:31:39.384872"
+      },
+      {
+        "question": "Product terminology: zaaah",
+        "response": "{\"arabic\": \"zaaah\", \"english\": \"zaaah\", \"commercial_name\": null, \"part_number\": \"\", \"category\": null}",
+        "timestamp": "2025-11-12T19:14:51.720567"
+      },
+      {
+        "question": "Product performance - zaaah",
+        "response": "{\"product_id\": 2, \"name\": \"zaaah\", \"current_stock\": 80.0, \"min_stock\": 10.0, \"cost_price\": 1500.0, \"sell_price\": 4500.0, \"margin\": 3000.0}",
+        "timestamp": "2025-11-12T19:14:51.778980"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:28:10.029502"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:28:10.060703"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:28:10.115115"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:28:16.531369"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:28:16.560061"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:28:16.606181"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:28:23.368860"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:28:23.399772"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:28:23.459303"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:28:30.062596"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:28:30.096053"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:28:30.159809"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:28:37.640833"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:28:37.676570"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:28:37.745720"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:28:45.345352"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:28:45.372643"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:28:45.421515"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:28:52.193794"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:28:52.220903"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:28:52.285291"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:29:16.789196"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:29:16.824403"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:29:16.890763"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:33:00.963679"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:33:00.992291"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:33:01.049568"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:33:47.605821"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:33:47.628673"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:33:47.704747"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:33:57.155182"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:33:57.189469"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:33:57.269668"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:34:03.122680"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:34:03.164222"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:34:03.297557"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:34:11.035905"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:34:11.077619"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:34:11.153316"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:34:17.009093"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:34:17.030733"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:34:17.083802"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:35:35.177376"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:35:35.216763"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:35:35.283631"
+      },
+      {
+        "question": "Sale pattern analysis",
+        "response": "{\"sale_id\": 1, \"customer_id\": 1, \"amount\": 0.0, \"items_count\": 0, \"discount_percent\": 0, \"payment_status\": \"unpaid\", \"time_pattern\": {\"day_of_week\": \"Wednesday\", \"hour\": 17, \"month\": 11, \"is_weekend\": false}}",
+        "timestamp": "2025-11-12T19:41:29.841938"
+      },
+      {
+        "question": "Sale analysis - S-2025-0001",
+        "response": "{\"anomalies\": [], \"insights\": []}",
+        "timestamp": "2025-11-12T19:41:29.874812"
+      },
+      {
+        "question": "Revenue recognition principle",
+        "response": "{\"sale_number\": \"S-2025-0001\", \"total_revenue\": 0.0, \"revenue_recognized\": true, \"cash_received\": 0.0, \"accounts_receivable\": 0.0, \"recognition_principle\": \"accrual\"}",
+        "timestamp": "2025-11-12T19:41:29.939554"
+      },
+      {
+        "question": "Product performance - zaaah",
+        "response": "{\"product_id\": 2, \"name\": \"zaaah\", \"current_stock\": 75.0, \"min_stock\": 10.0, \"cost_price\": 1500.0, \"sell_price\": 4500.0, \"margin\": 3000.0}",
+        "timestamp": "2025-11-12T19:41:30.068889"
+      },
+      {
+        "question": "Product performance - hassaaaaaaaaa",
+        "response": "{\"product_id\": 1, \"name\": \"hassaaaaaaaaa\", \"current_stock\": 1200.0, \"min_stock\": 10.0, \"cost_price\": 200.0, \"sell_price\": 800.0, \"margin\": 600.0}",
+        "timestamp": "2025-11-12T21:05:51.538271"
+      },
+      {
+        "question": "Product performance - zaaah",
+        "response": "{\"product_id\": 2, \"name\": \"zaaah\", \"current_stock\": 1075.0, \"min_stock\": 10.0, \"cost_price\": 1500.0, \"sell_price\": 4500.0, \"margin\": 3000.0}",
+        "timestamp": "2025-11-12T21:07:19.549357"
+      },
+      {
+        "question": "Expense pattern analysis",
+        "response": "{\"category_id\": 1, \"amount\": 8000.0, \"payment_method\": \"cash\", \"is_recurring\": false}",
+        "timestamp": "2025-11-12T21:13:20.758335"
       }
     ],
     "customs_question": [
@@ -1883,8 +2238,8 @@
   },
   "failed_responses": {},
   "expertise_areas": {
-    "sales_question": 25,
-    "general_question": 330,
+    "sales_question": 41,
+    "general_question": 385,
     "customs_question": 1,
     "inventory_question": 14
   },

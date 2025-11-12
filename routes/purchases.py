@@ -49,6 +49,8 @@ def index():
 @admin_required
 @limiter.limit("10 per minute", methods=['POST'])
 def create():
+    warehouse_id_val = request.form.get('warehouse_id', type=int) if request.method == 'POST' else None
+
     if request.method == 'POST':
         try:
             current_app.logger.info("POST request received for purchase creation")
@@ -63,6 +65,9 @@ def create():
             supplier_name = request.form.get('supplier_name', '')
             supplier_phone = request.form.get('supplier_phone', '')
             supplier_email = request.form.get('supplier_email', '')
+            if not warehouse_id_val:
+                flash('⚠️ يجب اختيار المستودع الذي ستُضاف إليه البضاعة.', 'danger')
+                return redirect(url_for('purchases.create'))
             
             # إذا تم اختيار مورد من القائمة
             if supplier_id:
@@ -90,7 +95,7 @@ def create():
             purchase = Purchase(
                 purchase_number=purchase_number,
                 supplier_id=supplier_id,
-                warehouse_id=warehouse_id,
+                warehouse_id=warehouse_id_val,
                 supplier_name=supplier_name,
                 supplier_phone=supplier_phone,
                 supplier_email=supplier_email,
@@ -185,7 +190,7 @@ def create():
             
             db.session.flush()
             
-            StockService.process_purchase_lines(purchase, warehouse_id)
+            StockService.process_purchase_lines(purchase, warehouse_id_val)
             
             # القيود المحاسبية
             try:

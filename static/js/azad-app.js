@@ -231,6 +231,11 @@ function copyToClipboard(text) {
  */
 // حساب الإجماليات - Backend Calculation (used as fallback/legacy)
 // NOTE: This is now replaced by sales-enhanced.js for modern pages
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
 async function calculateTotals() {
     try {
         // Detect which type of form (sales or purchases)
@@ -257,7 +262,11 @@ async function calculateTotals() {
             
             const response = await fetch('/sales/api/calculate-totals', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     lines: lines,
                     discount_amount: parseFloat($('[name="discount_amount"]').val()) || 0,

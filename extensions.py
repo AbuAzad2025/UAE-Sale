@@ -91,6 +91,16 @@ class ColorFormatter(logging.Formatter):
         
         if record.exc_info:
             message += "\n" + self.formatException(record.exc_info)
+
+        try:
+            target_encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+        except Exception:
+            target_encoding = "utf-8"
+
+        try:
+            message = message.encode(target_encoding, errors='replace').decode(target_encoding, errors='replace')
+        except Exception:
+            message = message.encode('ascii', 'replace').decode('ascii')
         
         return message
 

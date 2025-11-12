@@ -16,9 +16,64 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+.expense-create-form .form-control,
+.expense-create-form .form-select {
+  min-height: 48px;
+  height: auto;
+  padding: 0.65rem 0.85rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.expense-create-form .form-control::placeholder {
+  text-align: center;
+  color: #6c757d;
+  opacity: 0.85;
+}
+
+.expense-create-form .select2-container--default .select2-selection--single {
+  height: 48px;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
+}
+
+.expense-create-form .select2-container--default .select2-selection--single .select2-selection__rendered {
+  width: 100%;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  line-height: 1.5 !important;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.expense-create-form .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.expense-create-form textarea.form-control {
+  text-align: right;
+  line-height: 1.6;
+}
+
+.expense-create-form textarea.form-control::placeholder {
+  text-align: right;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
-  <form method="POST" action="{{ url_for('expenses.create') }}">
+  <form method="POST" action="{{ url_for('expenses.create') }}" class="expense-create-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     
     <div class="card-body">
@@ -195,6 +250,37 @@ $(function () {
     placement: 'top',
     trigger: 'hover'
   });
+  
+  // تحديث سعر الصرف عند تغيير العملة
+  $('#currency').on('change', function() {
+    const currency = $(this).val();
+    
+    if (!currency || currency === 'AED') {
+      $('#exchange_rate').val('1.000000');
+      return;
+    }
+    
+    $.ajax({
+      url: `/api/currency-rate/${currency}/AED`,
+      method: 'GET',
+      success: function(data) {
+        if (data && data.rate) {
+          $('#exchange_rate').val(parseFloat(data.rate).toFixed(6));
+        } else if (window.toastr) {
+          toastr.warning('⚠️ تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+        } else {
+          alert('⚠️ تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+        }
+      },
+      error: function() {
+        if (window.toastr) {
+          toastr.warning('⚠️ تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+        } else {
+          alert('⚠️ تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+        }
+      }
+    });
+  }).trigger('change');
 });
 
 // إدارة حقول الدفع الديناميكية

@@ -67,6 +67,7 @@ def create():
     
     # تعيين choices للتصنيفات
     categories = ProductCategory.query.filter_by(is_active=True).all()
+    current_app.logger.debug(f"Product categories for form: {[ (c.id, c.name, c.is_active) for c in categories ]}")
     form.category_id.choices = [(0, 'بلا')] + [(c.id, c.name) for c in categories]
     preselected_warehouse_id = request.args.get('warehouse_id', type=int)
     
@@ -370,21 +371,40 @@ def categories():
 def create_category():
     try:
         # دعم JSON و Form Data
-        if request.is_json:
-            data = request.get_json()
-        else:
-            data = request.form
-        
+        data = request.get_json() if request.is_json else request.form
+
+        name = (data.get('name') or '').strip()
+        name_ar = (data.get('name_ar') or '').strip() or None
+        description = (data.get('description') or '').strip() or None
+
+        if not name:
+            message = '⚠️ يجب إدخال اسم الفئة.'
+            if request.is_json:
+                return jsonify({'success': False, 'error': message}), 400
+            flash(message, 'warning')
+            return redirect(url_for('products.categories'))
+
+        # منع التكرار (نفس الاسم بغض النظر عن حالة الأحرف)
+        existing = ProductCategory.query.filter(
+            db.func.lower(ProductCategory.name) == name.lower()
+        ).first()
+        if existing:
+            message = '⚠️ هذه الفئة موجودة مسبقاً.'
+            if request.is_json:
+                return jsonify({'success': False, 'error': message}), 400
+            flash(message, 'warning')
+            return redirect(url_for('products.categories'))
+
         category = ProductCategory(
-            name=data.get('name'),
-            name_ar=data.get('name_ar'),
-            description=data.get('description')
+            name=name,
+            name_ar=name_ar,
+            description=description,
+            is_active=True
         )
-        
+
         db.session.add(category)
         db.session.commit()
-        
-        # إرجاع JSON إذا كان الطلب JSON
+
         if request.is_json:
             return jsonify({
                 'success': True,
@@ -396,19 +416,19 @@ def create_category():
                     'description': category.description
                 }
             })
-        
-            flash('✅ تم إضافة التصنيف بنجاح!', 'success')
+
+        flash('✅ تم إضافة التصنيف بنجاح!', 'success')
         return redirect(url_for('products.categories'))
-    
+
     except Exception as e:
         db.session.rollback()
-        
+
         if request.is_json:
             return jsonify({
                 'success': False,
                 'error': str(e)
             }), 400
-        
+
         flash(f'❌ حدث خطأ: {str(e)}', 'danger')
         return redirect(url_for('products.categories'))
 

@@ -16,9 +16,38 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+.customer-create-form .form-control,
+.customer-create-form .form-select {
+  min-height: 48px;
+  height: auto;
+  padding: 0.65rem 0.85rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.customer-create-form .form-control::placeholder {
+  text-align: center;
+  color: #6c757d;
+  opacity: 0.85;
+}
+
+.customer-create-form textarea.form-control {
+  text-align: right;
+  line-height: 1.6;
+}
+
+.customer-create-form textarea.form-control::placeholder {
+  text-align: right;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
-  <form method="POST" action="{{ url_for('customers.create') }}">
+  <form method="POST" action="{{ url_for('customers.create') }}" class="customer-create-form">
     {{ form.hidden_tag() }}
     <div class="card-body">
       <div class="row">

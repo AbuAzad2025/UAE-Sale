@@ -6,6 +6,11 @@
 let lineIndex = 0;
 const productsCache = {};
 
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
 /**
  * Add Product Line
  */
@@ -268,8 +273,10 @@ async function calculateTotals() {
         const response = await fetch('/sales/api/calculate-totals', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
             },
+            credentials: 'same-origin',
             body: JSON.stringify({
                 lines: lines,
                 discount_amount: discount_amount,

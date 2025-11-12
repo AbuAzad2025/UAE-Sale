@@ -16,13 +16,68 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+.supplier-create-form .form-control,
+.supplier-create-form .form-select {
+  min-height: 48px;
+  height: auto;
+  padding: 0.65rem 0.85rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.supplier-create-form .form-control::placeholder {
+  text-align: center;
+  color: #6c757d;
+  opacity: 0.85;
+}
+
+.supplier-create-form .select2-container--default .select2-selection--single {
+  height: 48px;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
+}
+
+.supplier-create-form .select2-container--default .select2-selection--single .select2-selection__rendered {
+  width: 100%;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  line-height: 1.5 !important;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.supplier-create-form .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.supplier-create-form textarea.form-control {
+  text-align: right;
+  line-height: 1.6;
+}
+
+.supplier-create-form textarea.form-control::placeholder {
+  text-align: right;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card card-success">
   <div class="card-header">
     <h3 class="card-title"><i class="fas fa-plus-circle mr-2"></i>بيانات المورد</h3>
   </div>
   
-  <form method="POST" action="{{ url_for('suppliers.create') }}">
+  <form method="POST" action="{{ url_for('suppliers.create') }}" class="supplier-create-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     
     <div class="card-body">

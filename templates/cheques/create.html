@@ -16,6 +16,61 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+.cheque-create-form .form-control,
+.cheque-create-form .form-select {
+  min-height: 48px;
+  height: auto;
+  padding: 0.65rem 0.85rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.cheque-create-form .form-control::placeholder {
+  text-align: center;
+  color: #6c757d;
+  opacity: 0.85;
+}
+
+.cheque-create-form .select2-container--default .select2-selection--single {
+  height: 48px;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
+}
+
+.cheque-create-form .select2-container--default .select2-selection--single .select2-selection__rendered {
+  width: 100%;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  line-height: 1.5 !important;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.cheque-create-form .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.cheque-create-form textarea.form-control {
+  text-align: right;
+  line-height: 1.6;
+}
+
+.cheque-create-form textarea.form-control::placeholder {
+  text-align: right;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
   <div class="card-header bg-primary">
@@ -24,7 +79,7 @@
     </h3>
   </div>
   <div class="card-body">
-    <form method="POST" action="{{ url_for('cheques.create') }}" id="chequeForm">
+    <form method="POST" action="{{ url_for('cheques.create') }}" id="chequeForm" class="cheque-create-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       
       <!-- النوع -->
@@ -211,37 +266,91 @@
 
 {% block extra_js %}
 <script>
-// تغيير الحقول حسب نوع الشيك
-$('#cheque_type').change(function() {
-  const type = $(this).val();
+$(function() {
+  // تغيير الحقول حسب نوع الشيك
+  $('#cheque_type').on('change', function() {
+    const type = $(this).val();
+    
+    if (type === 'incoming') {
+      $('#incomingFields').slideDown();
+      $('#outgoingFields').slideUp();
+    } else if (type === 'outgoing') {
+      $('#outgoingFields').slideDown();
+      $('#incomingFields').slideUp();
+    } else {
+      $('#incomingFields').slideUp();
+      $('#outgoingFields').slideUp();
+    }
+  }).trigger('change');
   
-  if (type === 'incoming') {
-    $('#incomingFields').slideDown();
-    $('#outgoingFields').slideUp();
-  } else if (type === 'outgoing') {
-    $('#outgoingFields').slideDown();
-    $('#incomingFields').slideUp();
+  // Select2 للعملاء والموردين (تأكد من تحميل الإضافة)
+  if (window.jQuery && $.fn && $.fn.select2) {
+    $('.customer-select, .supplier-select').select2({
+      theme: 'bootstrap4',
+      language: 'ar',
+      placeholder: 'اختر...',
+      allowClear: true
+    });
   } else {
-    $('#incomingFields').slideUp();
-    $('#outgoingFields').slideUp();
+    console.warn('Select2 لم يتم تحميله، سيتم استخدام القائمة العادية.');
   }
-});
-
-// Select2 للعملاء والموردين
-$('.customer-select, .supplier-select').select2({
-  theme: 'bootstrap4',
-  language: 'ar',
-  placeholder: 'اختر...',
-  allowClear: true
-});
-
-// تاريخ افتراضي للاستحقاق (30 يوم من اليوم)
-$('input[name="issue_date"]').change(function() {
-  const issueDate = new Date($(this).val());
-  const dueDate = new Date(issueDate);
-  dueDate.setDate(dueDate.getDate() + 30);
   
-  $('input[name="due_date"]').val(dueDate.toISOString().split('T')[0]);
+  // تحديث سعر الصرف ديناميكياً
+  $('#currency').on('change', function() {
+    const currency = $(this).val();
+    
+    if (!currency || currency === 'AED') {
+      $('input[name="exchange_rate"]').val('1.000000');
+      return;
+    }
+    
+    $.ajax({
+      url: `/api/currency-rate/${currency}/AED`,
+      method: 'GET',
+      success: function(data) {
+        if (data && data.rate) {
+          $('input[name="exchange_rate"]').val(parseFloat(data.rate).toFixed(6));
+        } else if (window.toastr) {
+          toastr.warning('⚠️ تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+        } else {
+          alert('⚠️ تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+        }
+      },
+      error: function() {
+        if (window.toastr) {
+          toastr.warning('⚠️ تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+        } else {
+          alert('⚠️ تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+        }
+      }
+    });
+  }).trigger('change');
+  
+  // تاريخ افتراضي للاستحقاق (30 يوم من اليوم)
+  $('input[name="issue_date"]').on('change', function() {
+    const raw = $(this).val();
+    if (!raw) {
+      $('input[name="due_date"]').val('');
+      return;
+    }
+    
+    const issueDate = new Date(raw);
+    if (isNaN(issueDate.getTime())) {
+      console.warn('Invalid issue date value:', raw);
+      $('input[name="due_date"]').val('');
+      return;
+    }
+    
+    const dueDate = new Date(issueDate);
+    dueDate.setDate(dueDate.getDate() + 30);
+    $('input[name="due_date"]').val(dueDate.toISOString().split('T')[0]);
+  });
+  
+  // إذا كان هناك تاريخ مُدخل مسبقاً فحدّث تاريخ الاستحقاق
+  const initialIssueDate = $('input[name="issue_date"]').val();
+  if (initialIssueDate) {
+    $('input[name="issue_date"]').trigger('change');
+  }
 });
 </script>
 {% endblock %}

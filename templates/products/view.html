@@ -38,7 +38,7 @@
           <li class="list-group-item">
             <b>{{ t('Inventory') }}</b>
             <span class="float-left {% if product.min_stock_alert and product.current_stock < product.min_stock_alert %}text-danger{% else %}text-success{% endif %}">
-              {{ product.current_stock }} {{ product.unit }}
+            {{ product.current_stock }} {{ product.unit or 'بلا' }}
             </span>
           </li>
           <li class="list-group-item">

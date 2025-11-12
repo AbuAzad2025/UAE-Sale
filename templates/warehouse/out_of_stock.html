@@ -115,7 +115,7 @@
               <span class="badge badge-danger px-3 py-2" style="font-size: 1.2rem; animation: pulse 2s infinite;">
                 <i class="fas fa-times mr-1"></i>{{ product.current_stock }}
               </span>
-              <br><small class="text-muted">{{ product.unit }}</small>
+              <br><small class="text-muted">{{ product.unit or 'بلا' }}</small>
             </td>
             <td>
               <span class="badge badge-secondary">{{ product.min_stock_alert }}</span>

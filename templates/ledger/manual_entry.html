@@ -244,7 +244,7 @@ function addLine() {
     <td class="text-center">${lineCounter + 1}</td>
     <td>
       <select name="line_${lineCounter}_account" class="form-control account-select" required>
-        <option value="">-- اختر الحساب --</option>
+        <option value="">بلا</option>
         ${accounts.map(acc => `<option value="${acc.code}">${acc.full_name}</option>`).join('')}
       </select>
     </td>
@@ -402,7 +402,7 @@ function addLineWithData(accountCode, accountName, debit, credit) {
     <td class="text-center">${lineCounter + 1}</td>
     <td>
       <select name="line_${lineCounter}_account" class="form-control account-select" required>
-        <option value="">-- اختر الحساب --</option>
+        <option value="">بلا</option>
         ${accounts.map(acc => `<option value="${acc.code}" ${acc.code === accountCode ? 'selected' : ''}>${acc.full_name}</option>`).join('')}
       </select>
     </td>

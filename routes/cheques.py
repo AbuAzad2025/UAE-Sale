@@ -132,7 +132,16 @@ def create():
         try:
             cheque_number = generate_number('CHQ', Cheque, 'cheque_number')
             
-            cheque_type = request.form.get('cheque_type')
+            cheque_type = (request.form.get('cheque_type') or '').strip()
+            if not cheque_type:
+                flash('⚠️ يرجى اختيار نوع الشيك.', 'warning')
+                customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
+                suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+                exchange_rates = CurrencyService.get_all_rates('AED')
+                return render_template('cheques/create.html',
+                                     customers=customers,
+                                     suppliers=suppliers,
+                                     exchange_rates=exchange_rates)
             amount = Decimal(str(request.form.get('amount')))
             currency = request.form.get('currency', 'AED')
             

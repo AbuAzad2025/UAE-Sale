@@ -77,7 +77,8 @@ def create():
                 flash('⚠️ يجب إدخال اسم المورد.\n💡 اكتب اسم المورد أو اختر من القائمة.', 'danger')
                 return redirect(url_for('purchases.create'))
             
-            currency = request.form.get('currency', 'AED')
+            currency_value = request.form.get('currency')
+            currency = currency_value if currency_value else 'AED'
             user_exchange_rate = request.form.get('exchange_rate', type=float)
             
             exchange_rate = CurrencyService.get_exchange_rate(

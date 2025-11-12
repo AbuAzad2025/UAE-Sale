@@ -221,7 +221,18 @@ def create_from_sale(sale_id):
             amount = request.form.get('amount', type=float)
             currency = request.form.get('currency', 'AED')
             user_exchange_rate = request.form.get('exchange_rate', type=float)
-            payment_method = request.form.get('payment_method', 'cash')
+            payment_method_value = (request.form.get('payment_method') or '').strip()
+            if not payment_method_value:
+                flash('⚠️ يرجى اختيار طريقة الدفع.', 'warning')
+                exchange_rates = CurrencyService.get_all_rates('AED')
+                suggested_amount = sale.balance_due
+                return render_template('payments/create_receipt.html',
+                                     customers=[sale.customer],
+                                     preselected_customer=sale.customer,
+                                     suggested_amount=suggested_amount,
+                                     exchange_rates=exchange_rates,
+                                     sale=sale,
+                                     form_data=request.form)
             
             reference_number = request.form.get('reference_number')
             cheque_number = request.form.get('cheque_number')
@@ -237,7 +248,7 @@ def create_from_sale(sale_id):
                 'amount': amount,
                 'currency': currency,
                 'user_exchange_rate': user_exchange_rate,
-                'payment_method': payment_method,
+                'payment_method': payment_method_value,
                 'reference_number': reference_number,
                 'cheque_number': cheque_number,
                 'cheque_date': cheque_date,
@@ -286,12 +297,33 @@ def create_receipt():
     if request.method == 'POST':
         try:
             customer_id = request.form.get('customer_id', type=int)
+            if not customer_id:
+                flash('⚠️ يرجى اختيار الزبون.', 'warning')
+                customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
+                exchange_rates = CurrencyService.get_all_rates('AED')
+                return render_template('payments/create_receipt.html',
+                                     customers=customers,
+                                     preselected_customer=preselected_customer,
+                                     suggested_amount=suggested_amount,
+                                     exchange_rates=exchange_rates,
+                                     form_data=request.form)
+            
             customer = Customer.query.get_or_404(customer_id)
             
             amount = request.form.get('amount', type=float)
             currency = request.form.get('currency', 'AED')
             user_exchange_rate = request.form.get('exchange_rate', type=float)
-            payment_method = request.form.get('payment_method', 'cash')
+            payment_method_value = (request.form.get('payment_method') or '').strip()
+            if not payment_method_value:
+                flash('⚠️ يرجى اختيار طريقة الدفع.', 'warning')
+                customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
+                exchange_rates = CurrencyService.get_all_rates('AED')
+                return render_template('payments/create_receipt.html',
+                                     customers=customers,
+                                     preselected_customer=preselected_customer,
+                                     suggested_amount=suggested_amount,
+                                     exchange_rates=exchange_rates,
+                                     form_data=request.form)
             
             reference_number = request.form.get('reference_number')
             cheque_number = request.form.get('cheque_number')
@@ -312,7 +344,7 @@ def create_receipt():
                 'amount': amount,
                 'currency': currency,
                 'user_exchange_rate': user_exchange_rate,
-                'payment_method': payment_method,
+                'payment_method': payment_method_value,
                 'reference_number': reference_number,
                 'cheque_number': cheque_number,
                 'cheque_date': cheque_date,
@@ -550,7 +582,15 @@ def create_payment(purchase_id):
             from decimal import Decimal
             
             amount = request.form.get('amount', type=float)
-            payment_method = request.form.get('payment_method', 'cash')
+            payment_method_value = (request.form.get('payment_method') or '').strip()
+            if not payment_method_value:
+                flash('⚠️ يرجى اختيار طريقة الدفع.', 'warning')
+                return render_template('payments/create_receipt.html',
+                                     purchase=purchase,
+                                     supplier=supplier,
+                                     suggested_amount=suggested_amount,
+                                     is_payment=True,
+                                     form_data=request.form)
             notes = request.form.get('notes', '')
             exchange_rate = request.form.get('exchange_rate', type=float, default=1.0)
             currency = request.form.get('currency', default='AED')
@@ -574,7 +614,7 @@ def create_payment(purchase_id):
                 currency=currency,
                 exchange_rate=exchange_rate_decimal,
                 amount_aed=amount_aed,
-                payment_method=payment_method,
+                payment_method=payment_method_value,
                 notes=notes,
                 user_id=current_user.id,
                 direction='outgoing',

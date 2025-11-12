@@ -124,7 +124,7 @@
                   <i class="fas fa-check mr-1"></i>{{ product.current_stock }}
                 </span>
               {% endif %}
-              <small class="text-muted d-block">{{ product.unit }}</small>
+              <small class="text-muted d-block">{{ product.unit or 'بلا' }}</small>
             </td>
             <td class="text-center">
               <div class="btn-group btn-group-sm">
@@ -183,6 +183,7 @@
           <div class="form-group">
             <label>نوع التعديل</label>
             <select id="adjustmentType" class="form-control" required>
+              <option value="" selected>بلا</option>
               <option value="add">{{ t('Add') }}</option>
               <option value="subtract">خصم</option>
               <option value="set">تعيين</option>
@@ -195,6 +196,7 @@
           <div class="form-group">
             <label>السبب</label>
             <select id="adjustmentReason" class="form-control" required>
+              <option value="" selected>بلا</option>
               <option value="purchase">شراء</option>
               <option value="return">إرجاع</option>
               <option value="adjustment">{{ t('Edit') }}</option>
@@ -268,7 +270,9 @@ function adjustStock(productId, productName, currentStock) {
   $('#productId').val(productId);
   $('#productName').val(productName);
   $('#currentStock').val(currentStock);
+  $('#adjustmentType').val('');
   $('#adjustmentQuantity').val('');
+  $('#adjustmentReason').val('');
   $('#adjustmentNotes').val('');
   $('#stockModal').modal('show');
 }
@@ -279,6 +283,16 @@ function saveStockAdjustment() {
   const quantity = parseFloat($('#adjustmentQuantity').val());
   const reason = $('#adjustmentReason').val();
   const notes = $('#adjustmentNotes').val();
+  
+  if (!adjustmentType) {
+    alert('يرجى اختيار نوع التعديل');
+    return;
+  }
+  
+  if (!reason) {
+    alert('يرجى اختيار سبب التعديل');
+    return;
+  }
   
   if (!quantity || quantity <= 0) {
     alert('يرجى إدخال كمية صحيحة');

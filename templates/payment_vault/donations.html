@@ -87,7 +87,7 @@
                 <div class="col-md-3">
                     <label>الحالة</label>
                     <select name="status" class="form-control" onchange="this.form.submit()">
-                        <option value="">الكل</option>
+                        <option value="">بلا</option>
                         <option value="completed" {% if request.args.get('status') == 'completed' %}selected{% endif %}>مكتملة</option>
                         <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>قيد الانتظار</option>
                         <option value="failed" {% if request.args.get('status') == 'failed' %}selected{% endif %}>فاشلة</option>
@@ -97,7 +97,7 @@
                 <div class="col-md-3">
                     <label>العملة الرقمية</label>
                     <select name="crypto" class="form-control" onchange="this.form.submit()">
-                        <option value="">الكل</option>
+                        <option value="">بلا</option>
                         <option value="btc" {% if request.args.get('crypto') == 'btc' %}selected{% endif %}>Bitcoin</option>
                         <option value="eth" {% if request.args.get('crypto') == 'eth' %}selected{% endif %}>Ethereum</option>
                         <option value="usdttrc20" {% if request.args.get('crypto') == 'usdttrc20' %}selected{% endif %}>USDT</option>

@@ -6,6 +6,7 @@
     <title>شركة أزاد للأنظمة الذكية - اتصل بنا</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
     <style>
         :root {
             --gulf-gold: #D4AF37;
@@ -13,7 +14,7 @@
             --gradient-gulf: linear-gradient(135deg, #1B4D89 0%, #6B46C1 50%, #D4AF37 100%);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Tajawal', sans-serif; background: #0a0e27; color: white; }
+        body { font-family: 'Tajawal', sans-serif; background: #040914; color: #f8fafc; }
         
         .navbar {
             background: rgba(10,14,39,0.95);
@@ -55,12 +56,12 @@
             margin-bottom: 60px;
         }
         .contact-card {
-            background: rgba(255,255,255,0.05);
+            background: rgba(15,23,42,0.85);
             backdrop-filter: blur(10px);
             padding: 40px;
             border-radius: 20px;
             text-align: center;
-            border: 2px solid rgba(212,175,55,0.3);
+            border: 2px solid rgba(212,175,55,0.35);
             transition: all 0.4s;
         }
         .contact-card:hover {
@@ -78,7 +79,7 @@
             margin-bottom: 15px;
         }
         .contact-card a {
-            color: white;
+            color: #f8fafc;
             text-decoration: none;
             font-size: 1.2rem;
             font-weight: 700;
@@ -88,7 +89,7 @@
         }
     </style>
 </head>
-<body>
+<body class="keep-theme contact-page">
 
     <!-- Language Switcher -->
     <div style="position: fixed; top: 20px; left: 20px; z-index: 9999;">

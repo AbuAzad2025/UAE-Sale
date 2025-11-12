@@ -5,19 +5,20 @@
   <div class="card">
     <div class="card-header"><h3><i class="fas fa-plus"></i> إضافة فئة مصروفات</h3></div>
     <div class="card-body">
+      {% set form_data = form_data if form_data is defined else request.form %}
       <form method="post" action="">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="row">
           <div class="col-md-6">
             <div class="form-group">
               <label>الكود *</label>
-              <input type="text" name="code" class="form-control" required>
+              <input type="text" name="code" class="form-control" required value="{{ form_data.get('code', '') }}">
             </div>
           </div>
           <div class="col-md-6">
             <div class="form-group">
               <label>الاسم *</label>
-              <input type="text" name="name_ar" class="form-control" required>
+              <input type="text" name="name_ar" class="form-control" required value="{{ form_data.get('name_ar', '') }}">
             </div>
           </div>
         </div>
@@ -26,9 +27,11 @@
             <div class="form-group">
               <label>الفئة الأب</label>
               <select name="parent_id" class="form-control">
-                <option value="">لا يوجد</option>
+                <option value="" {% if not form_data.get('parent_id') %}selected{% endif %}>بلا</option>
                 {% for parent in parent_categories %}
-                <option value="{{ parent.id }}">{{ parent.name_ar }}</option>
+                <option value="{{ parent.id }}" {% if form_data.get('parent_id') and form_data.get('parent_id')|int == parent.id %}selected{% endif %}>
+                  {{ parent.name_ar }}
+                </option>
                 {% endfor %}
               </select>
             </div>
@@ -38,7 +41,9 @@
               <label>الحساب المحاسبي *</label>
               <select name="gl_account_id" class="form-control" required>
                 {% for account in accounts %}
-                <option value="{{ account.id }}">{{ account.code }} - {{ account.name_ar }}</option>
+                <option value="{{ account.id }}" {% if form_data.get('gl_account_id') and form_data.get('gl_account_id')|int == account.id %}selected{% endif %}>
+                  {{ account.code }} - {{ account.name_ar }}
+                </option>
                 {% endfor %}
               </select>
             </div>

@@ -32,7 +32,7 @@
               <div class="col-md-3">
                 <label>المورد</label>
                 <select name="supplier_id" class="form-control">
-                  <option value="">الكل</option>
+                  <option value="">بلا</option>
                   {% for supplier in suppliers %}
                   <option value="{{ supplier.id }}" {% if supplier_id == supplier.id %}selected{% endif %}>
                     {{ supplier.name }}

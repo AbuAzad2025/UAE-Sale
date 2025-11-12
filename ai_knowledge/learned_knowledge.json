@@ -1760,6 +1760,26 @@
         "question": "Product performance - Brake Pads Rear",
         "response": "{\"product_id\": 6, \"name\": \"Brake Pads Rear\", \"current_stock\": 95.0, \"min_stock\": 10.0, \"cost_price\": 70.0, \"sell_price\": 130.0, \"margin\": 60.0}",
         "timestamp": "2025-11-04T20:10:08.690480"
+      },
+      {
+        "question": "Product terminology: Air Filter Heavy Duty",
+        "response": "{\"arabic\": \"فلتر هواء للمعدات الثقيلة\", \"english\": \"Air Filter Heavy Duty\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+        "timestamp": "2025-11-04T22:12:39.456301"
+      },
+      {
+        "question": "Product terminology: toyota10s",
+        "response": "{\"arabic\": \"toyota10s\", \"english\": \"toyota10s\", \"commercial_name\": null, \"part_number\": \"\", \"category\": null}",
+        "timestamp": "2025-11-12T03:18:29.654047"
+      },
+      {
+        "question": "Product terminology: test",
+        "response": "{\"arabic\": \"test\", \"english\": \"test\", \"commercial_name\": null, \"part_number\": \"\", \"category\": null}",
+        "timestamp": "2025-11-12T03:20:07.364308"
+      },
+      {
+        "question": "Product performance - test",
+        "response": "{\"product_id\": 1, \"name\": \"test\", \"current_stock\": 15.0, \"min_stock\": 10.0, \"cost_price\": 0.05, \"sell_price\": 0.06, \"margin\": 0.009999999999999995}",
+        "timestamp": "2025-11-12T03:20:07.516144"
       }
     ],
     "customs_question": [
@@ -1864,7 +1884,7 @@
   "failed_responses": {},
   "expertise_areas": {
     "sales_question": 25,
-    "general_question": 326,
+    "general_question": 330,
     "customs_question": 1,
     "inventory_question": 14
   },

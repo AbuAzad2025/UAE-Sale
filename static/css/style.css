@@ -64,8 +64,8 @@
   --dark-text-alt: #e0e0e0;
   
   /* Enhanced Navbar */
-  --navbar-bg: linear-gradient(90deg, #1f4037 0%, #99f2c8 100%);
-  --navbar-text: #ffffff;
+  --navbar-bg: linear-gradient(135deg, #0b1220 0%, #111a2d 100%);
+  --navbar-text: #f8fafc;
   --navbar-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   
   /* Enhanced Transitions */
@@ -118,6 +118,39 @@ body {
 .main-sidebar .nav-link .nav-icon {
   margin-right:.5rem;
   margin-left:0;
+}
+.main-sidebar .nav-treeview>.nav-item>.nav-link {
+  color:var(--sidebar-link-default)!important;
+  background:transparent;
+  margin:0.15rem 0 0.15rem 0;
+  padding-right:2.25rem;
+  padding-left:1rem;
+  border-radius:6px;
+}
+.main-sidebar .nav-treeview>.nav-item>.nav-link .nav-icon {
+  color:inherit!important;
+  opacity:0.85;
+  transition:color .3s ease,opacity .3s ease;
+}
+.main-sidebar .nav-treeview>.nav-item>.nav-link:hover,
+.main-sidebar .nav-treeview>.nav-item>.nav-link:focus {
+  color:var(--sidebar-link-hover)!important;
+  background:var(--sidebar-link-hover-bg);
+  opacity:1;
+}
+.main-sidebar .nav-treeview>.nav-item>.nav-link:hover .nav-icon,
+.main-sidebar .nav-treeview>.nav-item>.nav-link:focus .nav-icon {
+  color:var(--sidebar-link-hover)!important;
+  opacity:1;
+}
+.main-sidebar .nav-treeview>.nav-item>.nav-link.active {
+  color:var(--sidebar-link-hover)!important;
+  background:rgba(255,255,255,.18);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+}
+.main-sidebar .nav-treeview>.nav-item>.nav-link.active .nav-icon {
+  color:var(--sidebar-link-hover)!important;
+  opacity:1;
 }
 .main-sidebar .nav-link:hover,
 .main-sidebar .nav-link.active {
@@ -1017,21 +1050,30 @@ a:not(.dropdown-item):hover {
   text-decoration: underline !important;
 }
 
-/* Dropdown Items - Override Everything */
+/* Dropdown Items */
 .dropdown-menu .dropdown-item,
 .navbar .dropdown-menu .dropdown-item {
-  color: #000000 !important;
-  font-weight: 700 !important;
-  font-size: 15px !important;
-  background-color: #f8f9fa !important;
+  color: #e2e8f0 !important;
+  font-weight: 600 !important;
+  font-size: 0.95rem !important;
+  background-color: transparent !important;
   text-decoration: none !important;
-  text-shadow: none !important;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dropdown-menu .dropdown-item i,
+.navbar .dropdown-menu .dropdown-item i {
+  color: inherit !important;
+  opacity: 0.85;
 }
 
 .dropdown-menu .dropdown-item:hover,
 .navbar .dropdown-menu .dropdown-item:hover {
-  background-color: #007bff !important;
+  background-color: rgba(56, 189, 248, 0.2) !important;
   color: #ffffff !important;
+  border-radius: 0.6rem;
 }
 
 /* روابط في Sidebar */

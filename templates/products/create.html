@@ -18,6 +18,11 @@
 
 {% block content %}
 <div class="card">
+  {% set form_data = request.form %}
+  {% set selected_warehouse = form_data.get('warehouse_id') %}
+  {% if not selected_warehouse and preselected_warehouse_id %}
+    {% set selected_warehouse = preselected_warehouse_id|string %}
+  {% endif %}
   <form method="POST" action="{{ url_for('products.create') }}" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="card-body">
@@ -45,7 +50,16 @@
       </div>
 
       <div class="row">
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-hashtag text-primary"></i> رقم القطعة (Part Number)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="رقم القطعة الداخلي أو رقم المورد (اختياري)"></i>
+            </label>
+            <input type="text" name="part_number" class="form-control" placeholder="مثال: PN-12345">
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
           <div class="form-group">
             <label>
               <i class="fas fa-hashtag text-primary"></i> رقم القطعة (SKU)
@@ -55,7 +69,7 @@
             <input type="text" name="sku" class="form-control" placeholder="يتم توليده تلقائياً">
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-3">
           <div class="form-group">
             <label>
               <i class="fas fa-barcode text-secondary"></i> {{ t('Barcode') }}
@@ -64,18 +78,20 @@
             <input type="text" name="barcode" class="form-control" placeholder="يتم توليده تلقائياً">
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-3">
           <div class="form-group">
             <label>
               <i class="fas fa-folder text-warning"></i> الفئة
-              <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تصنيف المنتج (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="يمكن تركها بلا لتصنيف المنتج لاحقاً (اختياري)"></i>
             </label>
             <div class="input-group">
-              <select name="category_id" id="product_category" class="form-control" required style="flex: 1;">
-                <option value="">اختر فئة...</option>
+              {% set selected_category = form_data.get('category_id') %}
+              <select name="category_id" id="product_category" class="form-control select2" style="flex: 1;" data-placeholder="اختر الفئة...">
+                <option value="0" {% if not selected_category or selected_category == '0' %}selected{% endif %}>بلا</option>
                 {% for category in categories %}
-                <option value="{{ category.id }}">{{ category.name }}</option>
+                <option value="{{ category.id }}" {% if selected_category and selected_category|int == category.id %}selected{% endif %}>
+                  {{ category.name }}
+                </option>
                 {% endfor %}
               </select>
               <div class="input-group-append">
@@ -136,39 +152,39 @@
       <hr>
       <h5 class="text-warning"><i class="fas fa-warehouse"></i> المخزون</h5>
       <div class="row">
-        <div class="col-md-3">
+        <div class="col-12 col-lg-6">
           <div class="form-group">
             <label>
               <i class="fas fa-warehouse text-info"></i> المستودع
               <span class="text-danger">*</span>
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المستودع الذي سيُضاف إليه المنتج (إجباري)"></i>
             </label>
-            <select name="warehouse_id" class="form-control" required>
-              <option value="">اختر مستودع...</option>
+            <select name="warehouse_id" class="form-control warehouse-select" required>
+              <option value="" {% if not selected_warehouse %}selected{% endif %}>بلا</option>
               {% if warehouses %}
                 {% for warehouse in warehouses %}
-                <option value="{{ warehouse.id }}" {% if warehouse.is_main %}selected{% endif %}>
+                <option value="{{ warehouse.id }}" {% if selected_warehouse and selected_warehouse|int == warehouse.id %}selected{% endif %}>
                   {% if warehouse.is_main %}⭐{% elif warehouse.parent_id %}🔀{% else %}📦{% endif %}
                   {{ warehouse.name_ar or warehouse.name }}
                   {% if warehouse.code %}({{ warehouse.code }}){% endif %}
                 </option>
                 {% endfor %}
               {% else %}
-                <option value="">لا توجد مستودعات متاحة</option>
+                <option value="" disabled>لا توجد مستودعات متاحة</option>
               {% endif %}
             </select>
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-6 col-lg-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-boxes text-success"></i> الكمية الحالية
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المخزون الحالي (افتراضي: 0)"></i>
+              <i class="fas fa-boxes text-success"></i> الكمية المُدخلة
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الكمية التي سيتم إضافتها مباشرةً إلى المخزون عند إنشاء المنتج (افتراضي: 0)"></i>
             </label>
-            <input type="number" name="current_stock" class="form-control" step="0.001" min="0" value="0" placeholder="0">
+            <input type="number" name="current_stock" class="form-control" step="0.001" min="0" value="0" placeholder="أدخل الكمية الأولية">
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-6 col-lg-2">
           <div class="form-group">
             <label>
               <i class="fas fa-exclamation-triangle text-warning"></i> حد التنبيه
@@ -177,20 +193,21 @@
             <input type="number" name="min_stock_alert" class="form-control" step="0.001" min="0" value="10" placeholder="10">
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-6 col-lg-2">
           <div class="form-group">
             <label>
               <i class="fas fa-balance-scale text-primary"></i> الوحدة
-              <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="وحدة القياس للمنتج (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="يمكن اختيار الوحدة أو تركها بلا للمنتجات غير المقيسة"></i>
             </label>
-            <select name="unit" class="form-control" required>
-              <option value="piece">قطعة</option>
-              <option value="kg">كيلو</option>
-              <option value="liter">لتر</option>
-              <option value="meter">متر</option>
-              <option value="box">صندوق</option>
-              <option value="set">طقم</option>
+            {% set selected_unit = form_data.get('unit') if form_data.get('unit') is not none else 'piece' %}
+            <select name="unit" class="form-control select2" data-placeholder="اختر الوحدة..." data-allow-clear="true">
+              <option value="" {% if not selected_unit %}selected{% endif %}>بلا</option>
+              <option value="piece" {% if selected_unit == 'piece' %}selected{% endif %}>قطعة</option>
+              <option value="kg" {% if selected_unit == 'kg' %}selected{% endif %}>كيلو</option>
+              <option value="liter" {% if selected_unit == 'liter' %}selected{% endif %}>لتر</option>
+              <option value="meter" {% if selected_unit == 'meter' %}selected{% endif %}>متر</option>
+              <option value="box" {% if selected_unit == 'box' %}selected{% endif %}>صندوق</option>
+              <option value="set" {% if selected_unit == 'set' %}selected{% endif %}>طقم</option>
             </select>
           </div>
         </div>
@@ -294,10 +311,32 @@
 <script>
 $(document).ready(function() {
   // تفعيل Select2
-  $('.select2').select2({
-    placeholder: 'اختر فئة...',
-    dir: 'rtl',
-    language: 'ar'
+  $('.select2').each(function() {
+    const placeholder = $(this).data('placeholder') || 'اختر...';
+    const allowClearAttr = $(this).data('allow-clear');
+    const allowClear = allowClearAttr === true || allowClearAttr === 'true';
+    const dropdownParent = $(this).closest('.modal');
+    const $select = $(this);
+    
+    if ($select.hasClass('select2-hidden-accessible')) {
+      $select.select2('destroy');
+    }
+    
+    $select.select2({
+      placeholder: placeholder,
+      allowClear: allowClear,
+      dir: 'rtl',
+      minimumResultsForSearch: Infinity,
+      language: {
+        inputTooShort: () => 'اكتب حرفين على الأقل',
+        noResults: () => 'لا توجد نتائج',
+        searching: () => 'جارٍ البحث...',
+        loadingMore: () => 'جاري تحميل المزيد...'
+      },
+      width: '100%',
+      minimumInputLength: 0,
+      dropdownParent: dropdownParent.length ? dropdownParent : $(document.body)
+    });
   });
   
   // تفعيل Tooltips

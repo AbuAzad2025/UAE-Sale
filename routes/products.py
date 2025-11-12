@@ -67,7 +67,8 @@ def create():
     
     # تعيين choices للتصنيفات
     categories = ProductCategory.query.filter_by(is_active=True).all()
-    form.category_id.choices = [(0, 'بدون تصنيف')] + [(c.id, c.name) for c in categories]
+    form.category_id.choices = [(0, 'بلا')] + [(c.id, c.name) for c in categories]
+    preselected_warehouse_id = request.args.get('warehouse_id', type=int)
     
     if request.method == 'POST':
         current_app.logger.info(f"POST request to create product. Form data keys: {list(request.form.keys())}")
@@ -90,6 +91,7 @@ def create():
                 
                 warehouse_id = request.form.get('warehouse_id', type=int)
                 current_stock = safe_float(request.form.get('current_stock'))
+                initial_stock = current_stock
                 
                 # التحقق من المستودع
                 if not warehouse_id:
@@ -103,19 +105,22 @@ def create():
                     warehouses = Warehouse.query.filter_by(is_active=True).all()
                     return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses)
                 
+                unit_value = request.form.get('unit') or None
+                
                 product = Product(
                     name=request.form.get('name'),
                     name_ar=request.form.get('name_ar'),
                     sku=sku,
+                    part_number=request.form.get('part_number'),
                     barcode=request.form.get('barcode') or generate_barcode(),
-                    category_id=request.form.get('category_id') or None,
+                    category_id=(form.category_id.data or None),
                     regular_price=safe_float(request.form.get('regular_price')),
                     merchant_price=safe_float(request.form.get('merchant_price')),
                     partner_price=safe_float(request.form.get('partner_price')),
                     cost_price=safe_float(request.form.get('cost_price')),
-                    current_stock=current_stock,
+                    current_stock=0,
                     min_stock_alert=safe_float(request.form.get('min_stock_alert')),
-                    unit=request.form.get('unit', 'piece'),
+                    unit=unit_value,
                     location=request.form.get('location'),
                     description=request.form.get('description'),
                     notes=request.form.get('notes')
@@ -134,10 +139,10 @@ def create():
                 db.session.flush()  # للحصول على product.id
                 
                 # إضافة حركة مخزون إذا كانت الكمية أكبر من صفر
-                if current_stock > 0:
+                if initial_stock > 0:
                     StockService.create_movement(
                         product_id=product.id,
-                        quantity=current_stock,
+                        quantity=initial_stock,
                         movement_type='adjustment',
                         reference_type='Product Creation',
                         reference_id=product.id,
@@ -166,9 +171,13 @@ def create():
     
     # GET request - إرسال البيانات للقالب
     categories = ProductCategory.query.filter_by(is_active=True).all()
-    warehouses = Warehouse.query.filter_by(is_active=True).order_by(Warehouse.is_main.desc(), Warehouse.name).all()
+    warehouses = Warehouse.query.filter_by(is_active=True).order_by(Warehouse.is_main.desc(), Warehouse.created_at.desc(), Warehouse.name).all()
     
-    return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses)
+    return render_template('products/create.html',
+                           form=form,
+                           categories=categories,
+                           warehouses=warehouses,
+                           preselected_warehouse_id=preselected_warehouse_id)
 
 
 @products_bp.route('/<int:id>')
@@ -192,30 +201,65 @@ def view(id):
 def edit(id):
     product = Product.query.get_or_404(id)
     from forms.product import ProductForm
+    from models import Warehouse
     form = ProductForm(obj=product)
     
     # تعيين choices للتصنيفات
     categories = ProductCategory.query.filter_by(is_active=True).all()
-    form.category_id.choices = [(0, 'بدون تصنيف')] + [(c.id, c.name) for c in categories]
+    form.category_id.choices = [(0, 'بلا')] + [(c.id, c.name) for c in categories]
+    warehouses = Warehouse.query.filter_by(is_active=True).order_by(Warehouse.is_main.desc(), Warehouse.name).all()
     
     if request.method == 'POST' and form.validate_on_submit():
         try:
+            def safe_float(value, default=None):
+                if value is None or value == '':
+                    return default
+                try:
+                    return float(value)
+                except (ValueError, TypeError):
+                    return default
+            
+            old_stock = float(product.current_stock or 0)
+            new_stock = safe_float(request.form.get('current_stock'), default=old_stock)
+            
+            if new_stock is not None and new_stock < 0:
+                flash('⚠️ لا يمكن أن تكون الكمية أقل من صفر.', 'warning')
+                return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses)
+            
+            warehouse_id = request.form.get('warehouse_id', type=int)
+            
             product.name = request.form.get('name')
             product.name_ar = request.form.get('name_ar')
             product.sku = request.form.get('sku')
+            product.part_number = request.form.get('part_number')
             product.barcode = request.form.get('barcode')
-            product.category_id = request.form.get('category_id') or None
-            product.regular_price = request.form.get('regular_price')
-            product.merchant_price = request.form.get('merchant_price')
-            product.partner_price = request.form.get('partner_price')
-            product.min_stock_alert = request.form.get('min_stock_alert')
-            product.unit = request.form.get('unit')
+            product.category_id = (form.category_id.data or None)
+            product.regular_price = safe_float(request.form.get('regular_price'), default=0)
+            product.merchant_price = safe_float(request.form.get('merchant_price'))
+            product.partner_price = safe_float(request.form.get('partner_price'))
+            product.min_stock_alert = safe_float(request.form.get('min_stock_alert'), default=0)
+            unit_value = request.form.get('unit')
+            if 'unit' in request.form:
+                product.unit = unit_value or None
             product.location = request.form.get('location')
             product.description = request.form.get('description')
             product.notes = request.form.get('notes')
             
             if current_user.can_see_costs():
-                product.cost_price = request.form.get('cost_price')
+                product.cost_price = safe_float(request.form.get('cost_price'), default=0)
+            
+            if new_stock is not None and abs(new_stock - old_stock) > 1e-6:
+                if not warehouse_id:
+                    warehouse_id = None
+                StockService.create_movement(
+                    product_id=product.id,
+                    quantity=new_stock - old_stock,
+                    movement_type='adjustment',
+                    reference_type='Product Update',
+                    reference_id=product.id,
+                    notes=f'تعديل مخزون من {old_stock} إلى {new_stock}',
+                    warehouse_id=warehouse_id
+                )
             
             if 'image' in request.files:
                 file = request.files['image']
@@ -236,7 +280,7 @@ def edit(id):
             flash(f'❌ فشل تحديث المنتج: {str(e)}', 'danger')
     
     categories = ProductCategory.query.filter_by(is_active=True).all()
-    return render_template('products/edit.html', form=form, product=product, categories=categories)
+    return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses)
 
 
 @products_bp.route('/<int:id>/delete', methods=['POST'])

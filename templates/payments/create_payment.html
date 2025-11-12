@@ -3,6 +3,9 @@
 {% block page_title %}إنشاء سند صرف{% endblock %}
 
 {% block content %}
+{% set submitted = form_data if form_data is defined else None %}
+{% set selected_payment_method = submitted.get('payment_method') if submitted and submitted.get('payment_method') else 'cash' %}
+{% set submitted_amount = submitted.get('amount') if submitted and submitted.get('amount') else balance %}
 <div class="row">
   <div class="col-md-8 offset-md-2">
     <!-- معلومات الفاتورة -->
@@ -56,7 +59,7 @@
             <div class="input-group">
               <input type="number" class="form-control" id="amount" name="amount" 
                      step="0.01" min="0.01" max="{{ balance }}" 
-                     value="{{ balance }}" required>
+                     value="{{ submitted_amount }}" required>
               <div class="input-group-append">
                 <span class="input-group-text">AED</span>
               </div>
@@ -69,9 +72,9 @@
           <div class="form-group">
             <label for="payment_method">طريقة الدفع <span class="text-danger">*</span></label>
             <select class="form-control" id="payment_method" name="payment_method" required>
-              <option value="cash">نقدي</option>
-              <option value="bank">بنك</option>
-              <option value="cheque">شيك</option>
+              <option value="cash" {% if selected_payment_method == 'cash' %}selected{% endif %}>نقدي</option>
+              <option value="bank" {% if selected_payment_method == 'bank' %}selected{% endif %}>بنك</option>
+              <option value="cheque" {% if selected_payment_method == 'cheque' %}selected{% endif %}>شيك</option>
             </select>
           </div>
 

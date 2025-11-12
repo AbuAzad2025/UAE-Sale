@@ -106,7 +106,8 @@ def create():
                 flash(ErrorMessages.sale_no_lines(), 'danger')
                 return redirect(url_for('sales.create'))
             
-            currency = request.form.get('currency', 'AED')
+            currency_value = request.form.get('currency')
+            currency = currency_value if currency_value else 'AED'
             user_exchange_rate = request.form.get('exchange_rate', type=float)
             
             # Track manual exchange rate changes for audit
@@ -306,7 +307,7 @@ def api_get_price():
         'price': float(price),
         'cost_price': float(product.cost_price) if current_user.can_see_costs() else None,
         'current_stock': float(product.current_stock),
-        'unit': product.unit
+        'unit': product.unit or 'بلا'
     })
 
 

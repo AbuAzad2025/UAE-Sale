@@ -3088,5 +3088,49 @@
       "product_id": 6
     },
     "success": true
+  },
+  {
+    "timestamp": "2025-11-04T22:12:39.456244",
+    "question": "Product terminology: Air Filter Heavy Duty",
+    "response": "{\"arabic\": \"فلتر هواء للمعدات الثقيلة\", \"english\": \"Air Filter Heavy Duty\", \"commercial_name\": null, \"part_number\": null, \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T03:18:29.653927",
+    "question": "Product terminology: toyota10s",
+    "response": "{\"arabic\": \"toyota10s\", \"english\": \"toyota10s\", \"commercial_name\": null, \"part_number\": \"\", \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T03:20:07.364201",
+    "question": "Product terminology: test",
+    "response": "{\"arabic\": \"test\", \"english\": \"test\", \"commercial_name\": null, \"part_number\": \"\", \"category\": null}",
+    "user_feedback": 5,
+    "context": {
+      "type": "linguistic_learning",
+      "subtype": "product_terms"
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T03:20:07.515930",
+    "question": "Product performance - test",
+    "response": "{\"product_id\": 1, \"name\": \"test\", \"current_stock\": 15.0, \"min_stock\": 10.0, \"cost_price\": 0.05, \"sell_price\": 0.06, \"margin\": 0.009999999999999995}",
+    "user_feedback": 5,
+    "context": {
+      "type": "product_performance",
+      "product_id": 1
+    },
+    "success": true
   }
 ]

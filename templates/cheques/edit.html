@@ -139,7 +139,7 @@
             <div class="form-group">
               <label><i class="fas fa-user"></i> العميل (اختياري):</label>
               <select name="customer_id" class="form-control customer-select">
-                <option value="">-- بدون ربط --</option>
+                <option value="">بلا</option>
                 {% for customer in customers %}
                 <option value="{{ customer.id }}" {% if cheque.customer_id == customer.id %}selected{% endif %}>
                   {{ customer.name }}
@@ -175,7 +175,7 @@
             <div class="form-group">
               <label><i class="fas fa-truck"></i> المورد (اختياري):</label>
               <select name="supplier_id" class="form-control supplier-select">
-                <option value="">-- بدون ربط --</option>
+                <option value="">بلا</option>
                 {% for supplier in suppliers %}
                 <option value="{{ supplier.id }}" {% if cheque.supplier_id == supplier.id %}selected{% endif %}>
                   {{ supplier.name }}

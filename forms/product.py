@@ -18,11 +18,13 @@ class ProductForm(FlaskForm):
     current_stock = DecimalField('الكمية الحالية', default=0, validators=[Optional(), NumberRange(min=0)])
     min_stock_alert = DecimalField('الحد الأدنى للتنبيه', default=0, validators=[Optional(), NumberRange(min=0)])
     unit = SelectField('الوحدة', choices=[
+        ('', 'بلا'),
         ('piece', 'قطعة'),
         ('kg', 'كيلوجرام'),
         ('liter', 'لتر'),
         ('meter', 'متر'),
-        ('box', 'صندوق')
+        ('box', 'صندوق'),
+        ('set', 'طقم')
     ], default='piece', validators=[Optional()])
     warranty_period = DecimalField('فترة الكفالة', validators=[Optional(), NumberRange(min=0)])
     warranty_unit = SelectField('وحدة الكفالة', choices=[

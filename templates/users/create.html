@@ -96,6 +96,7 @@
     </h3>
   </div>
   
+  {% set form_data = form_data if form_data is defined else request.form %}
   <form method="POST" action="{{ url_for('users.create') }}" id="createUserForm">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     
@@ -112,7 +113,8 @@
                 <i class="fas fa-user text-primary"></i> اسم المستخدم
                 <span class="text-danger">*</span>
               </label>
-              <input type="text" name="username" class="form-control" placeholder="مثال: ahmed123" required minlength="3" pattern="[a-zA-Z0-9_]+" title="أحرف إنجليزية وأرقام فقط">
+              <input type="text" name="username" class="form-control" placeholder="مثال: ahmed123" required minlength="3" pattern="[a-zA-Z0-9_]+" title="أحرف إنجليزية وأرقام فقط"
+                     value="{{ form_data.get('username', '') }}">
               <small class="form-text text-muted">اسم فريد للدخول (أحرف إنجليزية وأرقام فقط)</small>
             </div>
           </div>
@@ -123,7 +125,8 @@
                 <i class="fas fa-envelope text-info"></i> البريد الإلكتروني
                 <span class="text-danger">*</span>
               </label>
-              <input type="email" name="email" class="form-control" placeholder="example@domain.com" required>
+              <input type="email" name="email" class="form-control" placeholder="example@domain.com" required
+                     value="{{ form_data.get('email', '') }}">
               <small class="form-text text-muted">بريد فريد للمستخدم (إجباري)</small>
             </div>
           </div>
@@ -141,7 +144,8 @@
                 <i class="fas fa-user-tag text-success"></i> الاسم الكامل
                 <span class="text-danger">*</span>
               </label>
-              <input type="text" name="full_name" class="form-control" placeholder="Ahmed Mohamed Ali" required minlength="3">
+              <input type="text" name="full_name" class="form-control" placeholder="Ahmed Mohamed Ali" required minlength="3"
+                     value="{{ form_data.get('full_name', '') }}">
               <small class="form-text text-muted">الاسم الكامل بالإنجليزية</small>
             </div>
           </div>
@@ -151,7 +155,8 @@
               <label>
                 <i class="fas fa-user-tag text-success"></i> الاسم بالعربية
               </label>
-              <input type="text" name="full_name_ar" class="form-control" placeholder="أحمد محمد علي">
+              <input type="text" name="full_name_ar" class="form-control" placeholder="أحمد محمد علي"
+                     value="{{ form_data.get('full_name_ar', '') }}">
               <small class="form-text text-muted">الاسم الكامل بالعربية</small>
             </div>
           </div>
@@ -163,7 +168,8 @@
               <label>
                 <i class="fas fa-phone text-warning"></i> رقم الهاتف
               </label>
-              <input type="text" name="phone" class="form-control" placeholder="+971-50-123-4567">
+              <input type="text" name="phone" class="form-control" placeholder="+971-50-123-4567"
+                     value="{{ form_data.get('phone', '') }}">
               <small class="form-text text-muted">رقم الهاتف للتواصل</small>
             </div>
           </div>
@@ -211,10 +217,11 @@
                 <i class="fas fa-users-cog text-primary"></i> الدور الوظيفي
                 <span class="text-danger">*</span>
               </label>
+              {% set selected_role = form_data.get('role_id') %}
               <select name="role_id" class="form-control" required>
-                <option value="">-- اختر الدور --</option>
+                <option value="" {% if not selected_role %}selected{% endif %}>بلا</option>
                 {% for role in roles %}
-                <option value="{{ role.id }}">
+                <option value="{{ role.id }}" {% if selected_role and selected_role|int == role.id %}selected{% endif %}>
                   {{ role.name_ar or role.name }}
                   {% if role.description %}({{ role.description }}){% endif %}
                 </option>
@@ -229,9 +236,10 @@
               <label>
                 <i class="fas fa-toggle-on text-success"></i> حالة الحساب
               </label>
+              {% set selected_active = form_data.get('is_active', '1') %}
               <select name="is_active" class="form-control">
-                <option value="1" selected>نشط (يمكنه تسجيل الدخول)</option>
-                <option value="0">غير نشط (محظور)</option>
+                <option value="1" {% if selected_active != '0' %}selected{% endif %}>نشط (يمكنه تسجيل الدخول)</option>
+                <option value="0" {% if selected_active == '0' %}selected{% endif %}>غير نشط (محظور)</option>
               </select>
               <small class="form-text text-muted">الحالة الافتراضية: نشط</small>
             </div>

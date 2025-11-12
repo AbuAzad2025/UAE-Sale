@@ -22,6 +22,7 @@
 
 <div class="content">
   <div class="container-fluid">
+    {% set form_data = form_data if form_data is defined else request.form %}
     <form method="POST" action="{{ url_for('owner.create_user') }}" id="userForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       
@@ -37,18 +38,21 @@
                 <label>اسم المستخدم * <small class="text-muted">(للدخول)</small></label>
                 <input type="text" name="username" class="form-control" required 
                        pattern="[a-zA-Z0-9_]{3,20}" 
-                       placeholder="مثال: ahmad_manager">
+                       placeholder="مثال: ahmad_manager"
+                       value="{{ form_data.get('username', '') }}">
                 <small class="text-muted">حروف إنجليزية وأرقام و_ فقط (3-20 حرف)</small>
               </div>
               
               <div class="form-group">
                 <label>{{ t('Full Name') }}</label>
-                <input type="text" name="full_name" class="form-control" placeholder="أحمد محمود">
+                <input type="text" name="full_name" class="form-control" placeholder="أحمد محمود"
+                       value="{{ form_data.get('full_name', '') }}">
               </div>
               
               <div class="form-group">
                 <label>{{ t('Email') }}</label>
-                <input type="email" name="email" class="form-control" placeholder="ahmad@example.com">
+                <input type="email" name="email" class="form-control" placeholder="ahmad@example.com"
+                       value="{{ form_data.get('email', '') }}">
               </div>
               
               <div class="form-group">
@@ -89,10 +93,13 @@
             <div class="card-body">
               <div class="form-group">
                 <label>الدور الوظيفي *</label>
+                {% set selected_role = form_data.get('role_id') %}
                 <select name="role_id" class="form-control" required id="role_select">
-                  <option value="">اختر الدور...</option>
+                  <option value="" {% if not selected_role %}selected{% endif %}>بلا</option>
                   {% for role in roles %}
-                  <option value="{{ role.id }}">{{ role.name }}</option>
+                  <option value="{{ role.id }}" {% if selected_role and selected_role|int == role.id %}selected{% endif %}>
+                    {{ role.name }}
+                  </option>
                   {% endfor %}
                 </select>
               </div>
@@ -104,7 +111,8 @@
               
               <div class="form-group">
                 <div class="custom-control custom-switch">
-                  <input type="checkbox" class="custom-control-input" id="is_owner" name="is_owner">
+                  <input type="checkbox" class="custom-control-input" id="is_owner" name="is_owner"
+                         {% if form_data.get('is_owner') == 'on' %}checked{% endif %}>
                   <label class="custom-control-label" for="is_owner">
                     <i class="fas fa-crown text-warning"></i> <strong>مالك النظام</strong>
                     <br><small class="text-danger">⚠️ صلاحيات كاملة - استخدم بحذر!</small>
@@ -114,7 +122,8 @@
               
               <div class="form-group">
                 <div class="custom-control custom-switch">
-                  <input type="checkbox" class="custom-control-input" id="is_active" name="is_active" checked>
+                  <input type="checkbox" class="custom-control-input" id="is_active" name="is_active"
+                         {% if form_data.get('is_active', 'on') == 'on' %}checked{% endif %}>
                   <label class="custom-control-label" for="is_active">
                     <i class="fas fa-check-circle text-success"></i> تفعيل الحساب
                   </label>

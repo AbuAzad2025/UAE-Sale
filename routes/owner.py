@@ -311,6 +311,9 @@ def create_user():
     from werkzeug.security import generate_password_hash
     from utils.password_validator import PasswordValidator
     
+    roles = Role.query.all()
+    default_form = {'is_active': 'on'}
+    
     if request.method == 'POST':
         try:
             from utils.sanitizer import InputSanitizer
@@ -321,26 +324,37 @@ def create_user():
             full_name = InputSanitizer.sanitize_text(request.form.get('full_name', ''), max_length=100)
             role_id = request.form.get('role_id', type=int)
             is_owner = request.form.get('is_owner') == 'on'
+            is_active = request.form.get('is_active') == 'on'
+            
+            def _form_values():
+                values = request.form.to_dict()
+                values['is_owner'] = 'on' if is_owner else 'off'
+                values['is_active'] = 'on' if is_active else 'off'
+                return values
             
             # التحقق من البيانات
             if not username or not password:
                 from utils.error_messages import ErrorMessages
                 flash(ErrorMessages.user_required_fields(), 'error')
-                return redirect(url_for('owner.create_user'))
+                return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
+            
+            if not role_id:
+                flash('⚠️ يرجى اختيار الدور الوظيفي.', 'warning')
+                return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
             
             # التحقق من قوة كلمة المرور
             is_valid, errors = PasswordValidator.validate(password)
             if not is_valid:
                 from utils.error_messages import ErrorMessages
                 flash(ErrorMessages.weak_password(errors), 'danger')
-                return redirect(url_for('owner.create_user'))
+                return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
             
             # التحقق من عدم وجود المستخدم
             existing = User.query.filter_by(username=username).first()
             if existing:
                 from utils.error_messages import ErrorMessages
                 flash(ErrorMessages.user_exists(username), 'error')
-                return redirect(url_for('owner.create_user'))
+                return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
             
             # إنشاء المستخدم
             user = User(
@@ -350,7 +364,7 @@ def create_user():
                 full_name=full_name,
                 role_id=role_id,
                 is_owner=is_owner,
-                is_active=True
+                is_active=is_active
             )
             
             db.session.add(user)
@@ -363,9 +377,9 @@ def create_user():
             db.session.rollback()
             from utils.error_messages import ErrorMessages
             flash(ErrorMessages.user_update_failed(str(e)), 'error')
+            return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
     
-    roles = Role.query.all()
-    return render_template('owner/create_user.html', roles=roles)
+    return render_template('owner/create_user.html', roles=roles, form_data=default_form)
 
 
 @owner_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
@@ -1203,7 +1217,11 @@ def export_database():
 def convert_database():
     """تحويل بين أنواع قواعد البيانات"""
     if request.method == 'POST':
-        target_db = request.form.get('target_db')
+        target_db = (request.form.get('target_db') or '').strip()
+        
+        if not target_db:
+            flash('⚠️ يرجى اختيار قاعدة البيانات المستهدفة.', 'warning')
+            return render_template('owner/convert_database.html')
         
         if target_db == 'postgresql':
             flash('🔄 جاري التحويل إلى PostgreSQL...', 'info')
@@ -2134,7 +2152,8 @@ def sms_settings():
     if request.method == 'POST':
         settings = SystemSettings.get_current()
         
-        settings.sms_provider = request.form.get('sms_provider')
+        sms_provider = (request.form.get('sms_provider') or '').strip()
+        settings.sms_provider = sms_provider or None
         settings.sms_api_key = request.form.get('sms_api_key')
         settings.sms_sender_name = request.form.get('sms_sender_name')
         settings.sms_enabled = request.form.get('sms_enabled') == 'on'
@@ -2251,7 +2270,19 @@ def verify_backups():
 def data_cleanup():
     if request.method == 'POST':
         days = request.form.get('days', 90, type=int)
-        cleanup_type = request.form.get('cleanup_type')
+        cleanup_type = (request.form.get('cleanup_type') or '').strip()
+        
+        if not cleanup_type:
+            flash('⚠️ يرجى اختيار نوع البيانات للحذف.', 'warning')
+            stats = {
+                'old_logs': AuditLog.query.filter(
+                    AuditLog.created_at < datetime.now(timezone.utc) - timedelta(days=90)
+                ).count(),
+                'old_archived': ArchivedRecord.query.filter(
+                    ArchivedRecord.archived_at < datetime.now(timezone.utc) - timedelta(days=180)
+                ).count()
+            }
+            return render_template('owner/data_cleanup.html', stats=stats)
         
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         deleted_count = 0

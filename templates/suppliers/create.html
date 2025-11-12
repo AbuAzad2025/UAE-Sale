@@ -27,6 +27,8 @@
     
     <div class="card-body">
       <!-- معلومات أساسية -->
+      {% set supplier_type_value = request.form.get('supplier_type', '') %}
+      {% set rating_value = request.form.get('rating', '') %}
       <div class="row">
         <div class="col-md-12">
           <h5 class="text-success mb-3">
@@ -80,11 +82,12 @@
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تصنيف نوع التوريد (إجباري)"></i>
             </label>
             <select name="supplier_type" class="form-control" required>
-              <option value="parts">قطع غيار</option>
-              <option value="equipment">معدات</option>
-              <option value="services">خدمات</option>
-              <option value="materials">مواد خام</option>
-              <option value="other">{{ t('Other') }}</option>
+              <option value="" {% if supplier_type_value == '' %}selected{% endif %}>بلا</option>
+              <option value="parts" {% if supplier_type_value == 'parts' %}selected{% endif %}>قطع غيار</option>
+              <option value="equipment" {% if supplier_type_value == 'equipment' %}selected{% endif %}>معدات</option>
+              <option value="services" {% if supplier_type_value == 'services' %}selected{% endif %}>خدمات</option>
+              <option value="materials" {% if supplier_type_value == 'materials' %}selected{% endif %}>مواد خام</option>
+              <option value="other" {% if supplier_type_value == 'other' %}selected{% endif %}>{{ t('Other') }}</option>
             </select>
           </div>
         </div>
@@ -96,11 +99,12 @@
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تقييم جودة المورد (افتراضي: 3 نجوم)"></i>
             </label>
             <select name="rating" class="form-control">
-              <option value="1">⭐ نجمة واحدة</option>
-              <option value="2">⭐⭐ نجمتان</option>
-              <option value="3" selected>⭐⭐⭐ 3 نجوم</option>
-              <option value="4">⭐⭐⭐⭐ 4 نجوم</option>
-              <option value="5">⭐⭐⭐⭐⭐ 5 نجوم</option>
+              <option value="" {% if rating_value == '' %}selected{% endif %}>بلا</option>
+              <option value="1" {% if rating_value == '1' %}selected{% endif %}>⭐ نجمة واحدة</option>
+              <option value="2" {% if rating_value == '2' %}selected{% endif %}>⭐⭐ نجمتان</option>
+              <option value="3" {% if rating_value == '3' %}selected{% endif %}>⭐⭐⭐ 3 نجوم</option>
+              <option value="4" {% if rating_value == '4' %}selected{% endif %}>⭐⭐⭐⭐ 4 نجوم</option>
+              <option value="5" {% if rating_value == '5' %}selected{% endif %}>⭐⭐⭐⭐⭐ 5 نجوم</option>
             </select>
           </div>
         </div>

@@ -58,8 +58,17 @@ def customs_taxes():
 @permission_required('admin')
 def add_customs_tax():
     """إضافة ضريبة أو جمرك جديد"""
+    accounts = GLAccount.query.filter_by(is_active=True, is_header=False).order_by(GLAccount.code).all()
+    
     if request.method == 'POST':
         try:
+            gl_account_id = request.form.get('gl_account_id', type=int)
+            if not gl_account_id:
+                flash('⚠️ يرجى اختيار الحساب المحاسبي.', 'warning')
+                return render_template('ledger/advanced/add_customs_tax.html',
+                                       accounts=accounts,
+                                       form_data=request.form)
+            
             tax = CustomsTax(
                 name=request.form.get('name'),
                 name_ar=request.form.get('name_ar'),
@@ -67,7 +76,7 @@ def add_customs_tax():
                 rate=Decimal(request.form.get('rate', 0)),
                 is_percentage=bool(request.form.get('is_percentage')),
                 fixed_amount=Decimal(request.form.get('fixed_amount', 0)),
-                gl_account_id=int(request.form.get('gl_account_id')),
+                gl_account_id=gl_account_id,
                 effective_from=datetime.strptime(request.form.get('effective_from'), '%Y-%m-%d').date(),
                 effective_to=datetime.strptime(request.form.get('effective_to'), '%Y-%m-%d').date() if request.form.get('effective_to') else None,
                 description=request.form.get('description')
@@ -83,9 +92,10 @@ def add_customs_tax():
         except Exception as e:
             db.session.rollback()
             flash(f'❌ خطأ: {str(e)}', 'danger')
+            return render_template('ledger/advanced/add_customs_tax.html',
+                                   accounts=accounts,
+                                   form_data=request.form)
     
-    # الحصول على الحسابات المحاسبية
-    accounts = GLAccount.query.filter_by(is_active=True, is_header=False).order_by(GLAccount.code).all()
     return render_template('ledger/advanced/add_customs_tax.html', accounts=accounts)
 
 @advanced_ledger_bp.route('/expense-categories')
@@ -101,14 +111,27 @@ def expense_categories():
 @permission_required('admin')
 def add_expense_category():
     """إضافة فئة مصروفات جديدة"""
+    parent_categories = ExpenseCategory.query.filter_by(parent_id=None, is_active=True).all()
+    accounts = GLAccount.query.filter_by(is_active=True, is_header=False).order_by(GLAccount.code).all()
+    
     if request.method == 'POST':
         try:
+            gl_account_id = request.form.get('gl_account_id', type=int)
+            if not gl_account_id:
+                flash('⚠️ يرجى اختيار الحساب المحاسبي.', 'warning')
+                return render_template('ledger/advanced/add_expense_category.html',
+                                       parent_categories=parent_categories,
+                                       accounts=accounts,
+                                       form_data=request.form)
+            
+            parent_id = request.form.get('parent_id', type=int) if request.form.get('parent_id') else None
+            
             category = ExpenseCategory(
                 code=request.form.get('code'),
                 name=request.form.get('name'),
                 name_ar=request.form.get('name_ar'),
-                parent_id=int(request.form.get('parent_id')) if request.form.get('parent_id') else None,
-                gl_account_id=int(request.form.get('gl_account_id')),
+                parent_id=parent_id,
+                gl_account_id=gl_account_id,
                 is_deductible=bool(request.form.get('is_deductible')),
                 max_deduction_rate=Decimal(request.form.get('max_deduction_rate', 1.0)),
                 requires_approval=bool(request.form.get('requires_approval')),
@@ -126,13 +149,14 @@ def add_expense_category():
         except Exception as e:
             db.session.rollback()
             flash(f'❌ خطأ: {str(e)}', 'danger')
-    
-    # الحصول على الفئات الرئيسية والحسابات
-    parent_categories = ExpenseCategory.query.filter_by(parent_id=None, is_active=True).all()
-    accounts = GLAccount.query.filter_by(is_active=True, is_header=False).order_by(GLAccount.code).all()
+            return render_template('ledger/advanced/add_expense_category.html',
+                                   parent_categories=parent_categories,
+                                   accounts=accounts,
+                                   form_data=request.form)
     
     return render_template('ledger/advanced/add_expense_category.html', 
-                         parent_categories=parent_categories, accounts=accounts)
+                         parent_categories=parent_categories,
+                         accounts=accounts)
 
 @advanced_ledger_bp.route('/advanced-expenses')
 @login_required

@@ -3,6 +3,11 @@
 {% block page_title %}{% if is_payment %}سند صرف جديد{% else %}سند قبض جديد{% endif %}{% endblock %}
 
 {% block content %}
+{% set submitted = form_data if form_data is defined else None %}
+{% set selected_customer_id = submitted.get('customer_id') if submitted and submitted.get('customer_id') else (preselected_customer.id if preselected_customer else '') %}
+{% set selected_currency = submitted.get('currency') if submitted and submitted.get('currency') else (purchase.currency if purchase else sale.currency if sale else 'AED') %}
+{% set selected_payment_method = submitted.get('payment_method') if submitted and submitted.get('payment_method') else 'cash' %}
+{% set selected_ewallet = submitted.get('ewallet_name') if submitted and submitted.get('ewallet_name') else '' %}
 {% if sale %}
 <!-- معلومات فاتورة المبيعات -->
 <div class="row mb-4">
@@ -82,9 +87,9 @@
               <span class="text-danger">*</span>
             </label>
             <select name="customer_id" id="customer_id" class="form-control customer-select" required>
-              <option value="">ابحث عن زبون...</option>
+              <option value="" {% if not selected_customer_id %}selected{% endif %}>بلا</option>
               {% if preselected_customer %}
-              <option value="{{ preselected_customer.id }}" selected>
+              <option value="{{ preselected_customer.id }}" {% if selected_customer_id and selected_customer_id|string == preselected_customer.id|string %}selected{% endif %}>
                 {{ preselected_customer.name }}{% if preselected_customer.phone %} - {{ preselected_customer.phone }}{% endif %}
               </option>
               {% endif %}
@@ -111,7 +116,7 @@
               <span class="text-danger">*</span>
             </label>
             <input type="number" name="amount" id="amount" class="form-control" step="0.01" min="0.01" 
-                   value="{{ suggested_amount if suggested_amount else '' }}" 
+                   value="{{ submitted.get('amount') if submitted and submitted.get('amount') else (suggested_amount if suggested_amount else '') }}" 
                    data-suggested-amount="{{ suggested_amount if suggested_amount else '' }}"
                    placeholder="0.00" required>
             {% if suggested_amount %}
@@ -129,21 +134,20 @@
               <i class="fas fa-dollar-sign text-warning"></i> العملة
             </label>
             <select name="currency" id="currency" class="form-control">
-              {% if purchase %}
-                <option value="{{ purchase.currency }}" selected>{{ purchase.currency }}</option>
-              {% elif sale %}
-                <option value="{{ sale.currency }}" selected>{{ sale.currency }}</option>
-              {% else %}
-                <option value="AED" selected>AED - درهم إماراتي</option>
-              {% endif %}
-              <option value="USD">USD - دولار أمريكي</option>
-              <option value="EUR">EUR - يورو</option>
-              <option value="GBP">GBP - جنيه إسترليني</option>
-              <option value="SAR">SAR - ريال سعودي</option>
-              <option value="KWD">KWD - دينار كويتي</option>
-              <option value="QAR">QAR - ريال قطري</option>
-              <option value="OMR">OMR - ريال عماني</option>
-              <option value="BHD">BHD - دينار بحريني</option>
+              {% set currency_options = [
+                ('AED', 'AED - درهم إماراتي'),
+                ('USD', 'USD - دولار أمريكي'),
+                ('EUR', 'EUR - يورو'),
+                ('GBP', 'GBP - جنيه إسترليني'),
+                ('SAR', 'SAR - ريال سعودي'),
+                ('KWD', 'KWD - دينار كويتي'),
+                ('QAR', 'QAR - ريال قطري'),
+                ('OMR', 'OMR - ريال عماني'),
+                ('BHD', 'BHD - دينار بحريني')
+              ] %}
+              {% for value, label in currency_options %}
+              <option value="{{ value }}" {% if selected_currency == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
             </select>
           </div>
         </div>
@@ -175,10 +179,10 @@
               <i class="fas fa-credit-card text-info"></i> طريقة الدفع
             </label>
             <select name="payment_method" id="payment_method" class="form-control" required>
-              <option value="cash">نقداً</option>
-              <option value="bank_transfer">تحويل بنكي</option>
-              <option value="cheque">شيك</option>
-              <option value="card">بطاقة ائتمان</option>
+              <option value="cash" {% if selected_payment_method == 'cash' %}selected{% endif %}>نقداً</option>
+              <option value="bank_transfer" {% if selected_payment_method == 'bank_transfer' %}selected{% endif %}>تحويل بنكي</option>
+              <option value="cheque" {% if selected_payment_method == 'cheque' %}selected{% endif %}>شيك</option>
+              <option value="card" {% if selected_payment_method == 'card' %}selected{% endif %}>بطاقة ائتمان</option>
             </select>
           </div>
         </div>
@@ -255,11 +259,11 @@
           <div class="form-group">
             <label><i class="fas fa-wallet"></i> اسم المحفظة</label>
             <select name="ewallet_name" class="form-control">
-              <option value="">اختر المحفظة</option>
-              <option value="paypal">PayPal</option>
-              <option value="apple_pay">Apple Pay</option>
-              <option value="google_pay">Google Pay</option>
-              <option value="samsung_pay">Samsung Pay</option>
+              <option value="" {% if not selected_ewallet %}selected{% endif %}>بلا</option>
+              <option value="paypal" {% if selected_ewallet == 'paypal' %}selected{% endif %}>PayPal</option>
+              <option value="apple_pay" {% if selected_ewallet == 'apple_pay' %}selected{% endif %}>Apple Pay</option>
+              <option value="google_pay" {% if selected_ewallet == 'google_pay' %}selected{% endif %}>Google Pay</option>
+              <option value="samsung_pay" {% if selected_ewallet == 'samsung_pay' %}selected{% endif %}>Samsung Pay</option>
               <option value="other">أخرى</option>
             </select>
           </div>

@@ -81,22 +81,41 @@ def accounts_management():
 @permission_required('admin')
 def add_account():
     """إضافة حساب محاسبي جديد"""
+    parent_accounts = GLAccount.query.filter_by(is_header=True).order_by(GLAccount.code).all()
+    default_form = {'is_active': 'on'}
+    
     if request.method == 'POST':
         try:
-            code = request.form.get('code')
-            name = request.form.get('name')
-            name_ar = request.form.get('name_ar')
-            account_type = request.form.get('type')
-            parent_id = request.form.get('parent_id') or None
+            code = (request.form.get('code') or '').strip()
+            name = (request.form.get('name') or '').strip()
+            name_ar = (request.form.get('name_ar') or '').strip()
+            account_type = (request.form.get('type') or '').strip()
+            parent_id_raw = (request.form.get('parent_id') or '').strip()
+            parent_id = int(parent_id_raw) if parent_id_raw else None
             currency = request.form.get('currency', 'AED')
-            is_header = bool(request.form.get('is_header'))
+            is_header = 'on' in request.form.getlist('is_header')
+            is_active = 'on' in request.form.getlist('is_active')
             description = request.form.get('description')
+            
+            if not account_type:
+                flash('⚠️ يرجى اختيار نوع الحساب.', 'warning')
+                form_values = request.form.to_dict()
+                form_values['is_header'] = 'on' if is_header else 'off'
+                form_values['is_active'] = 'on' if is_active else 'off'
+                return render_template('admin/ledger/add_account.html',
+                                       parent_accounts=parent_accounts,
+                                       form_data=form_values)
             
             # التحقق من عدم تكرار الكود
             existing = GLAccount.query.filter_by(code=code).first()
             if existing:
                 flash('❌ كود الحساب موجود مسبقاً', 'danger')
-                return redirect(url_for('admin_ledger.add_account'))
+                form_values = request.form.to_dict()
+                form_values['is_header'] = 'on' if is_header else 'off'
+                form_values['is_active'] = 'on' if is_active else 'off'
+                return render_template('admin/ledger/add_account.html',
+                                       parent_accounts=parent_accounts,
+                                       form_data=form_values)
             
             # حساب المستوى
             level = 0
@@ -112,6 +131,7 @@ def add_account():
                 parent_id=parent_id,
                 currency=currency,
                 is_header=is_header,
+                is_active=is_active,
                 level=level,
                 description=description
             )
@@ -126,10 +146,16 @@ def add_account():
         except Exception as e:
             db.session.rollback()
             flash(f'❌ خطأ: {str(e)}', 'danger')
+            form_values = request.form.to_dict()
+            form_values['is_header'] = 'on' if 'on' in request.form.getlist('is_header') else 'off'
+            form_values['is_active'] = 'on' if 'on' in request.form.getlist('is_active') else 'off'
+            return render_template('admin/ledger/add_account.html',
+                                   parent_accounts=parent_accounts,
+                                   form_data=form_values)
     
-    # الحصول على الحسابات الرئيسية للقائمة المنسدلة
-    parent_accounts = GLAccount.query.filter_by(is_header=True).order_by(GLAccount.code).all()
-    return render_template('admin/ledger/add_account.html', parent_accounts=parent_accounts)
+    return render_template('admin/ledger/add_account.html',
+                         parent_accounts=parent_accounts,
+                         form_data=default_form)
 
 @admin_ledger_bp.route('/accounts/<int:id>/edit', methods=['GET', 'POST'])
 @login_required

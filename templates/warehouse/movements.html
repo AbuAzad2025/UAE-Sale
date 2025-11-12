@@ -46,10 +46,36 @@
 {% block content %}
 <div class="card">
   <div class="card-header">
-    <div class="d-flex justify-content-between align-items-center">
-      <h3 class="card-title mb-0">
-        <i class="fas fa-history mr-2"></i>سجل الحركات
-      </h3>
+    <div class="d-flex justify-content-between align-items-center flex-wrap" style="gap: .75rem;">
+      <div>
+        <h3 class="card-title mb-0">
+          <i class="fas fa-history mr-2"></i>سجل الحركات
+        </h3>
+        {% if current_warehouse %}
+        <small class="text-muted d-block mt-1">
+          <i class="fas fa-warehouse mr-1"></i>المستودع الحالي: {{ current_warehouse.name_ar or current_warehouse.name }}
+        </small>
+        {% endif %}
+      </div>
+      <form method="GET" class="form-inline d-flex align-items-center" style="gap: .5rem;">
+        <label class="sr-only" for="warehouseFilter">المستودع</label>
+        <select name="warehouse" id="warehouseFilter" class="form-control select2" style="min-width: 220px;" data-placeholder="اختر مستودع...">
+          <option value="">كل المستودعات</option>
+          {% for w in warehouses %}
+          <option value="{{ w.id }}" {% if current_warehouse and w.id == current_warehouse.id %}selected{% endif %}>
+            {{ w.name_ar or w.name }}
+          </option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-outline-primary">
+          <i class="fas fa-filter mr-1"></i>تصفية
+        </button>
+        {% if current_warehouse %}
+        <a href="{{ url_for('warehouse.movements') }}" class="btn btn-outline-secondary">
+          <i class="fas fa-times mr-1"></i>إزالة التصفية
+        </a>
+        {% endif %}
+      </form>
       <div class="btn-group">
         <button type="button" class="btn btn-sm btn-outline-primary active" id="filterAll">
           <i class="fas fa-list mr-1"></i>الكل
@@ -164,7 +190,7 @@
         <ul class="pagination">
           {% if pagination.has_prev %}
           <li class="page-item">
-            <a class="page-link" href="{{ url_for('warehouse.movements', page=pagination.prev_num) }}">
+            <a class="page-link" href="{{ url_for('warehouse.movements', page=pagination.prev_num, warehouse=request.args.get('warehouse')) }}">
               <i class="fas fa-chevron-right"></i>
             </a>
           </li>
@@ -173,7 +199,7 @@
           {% for page_num in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
             {% if page_num %}
               <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                <a class="page-link" href="{{ url_for('warehouse.movements', page=page_num) }}">{{ page_num }}</a>
+                <a class="page-link" href="{{ url_for('warehouse.movements', page=page_num, warehouse=request.args.get('warehouse')) }}">{{ page_num }}</a>
               </li>
             {% else %}
               <li class="page-item disabled"><span class="page-link">...</span></li>
@@ -182,7 +208,7 @@
           
           {% if pagination.has_next %}
           <li class="page-item">
-            <a class="page-link" href="{{ url_for('warehouse.movements', page=pagination.next_num) }}">
+            <a class="page-link" href="{{ url_for('warehouse.movements', page=pagination.next_num, warehouse=request.args.get('warehouse')) }}">
               <i class="fas fa-chevron-left"></i>
             </a>
           </li>
@@ -198,6 +224,15 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
+  if ($.fn.select2) {
+    $('#warehouseFilter').select2({
+      placeholder: $('#warehouseFilter').data('placeholder') || 'اختر مستودع...',
+      allowClear: true,
+      width: 'resolve',
+      dir: 'rtl'
+    });
+  }
+
   const table = $('#movementsTable').DataTable({
     language: { url: "{{ url_for('static', filename='datatables/Arabic.json') }}" },
     pageLength: 50,

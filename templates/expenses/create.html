@@ -32,7 +32,7 @@
             </label>
             <div class="input-group">
               <select name="category_id" id="expense_category" class="form-control" required style="flex: 1;">
-                <option value="">اختر فئة...</option>
+                <option value="">بلا</option>
                 {% for category in categories %}
                 <option value="{{ category.id }}">{{ category.name_ar }} - {{ category.name }}</option>
                 {% endfor %}

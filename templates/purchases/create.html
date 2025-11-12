@@ -46,7 +46,7 @@
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر المورد - الفلتر الذكي (إجباري)"></i>
             </label>
             <select name="supplier_id" id="supplier_id" class="form-control supplier-select" required>
-              <option value="">اختر المورد...</option>
+              <option value="" selected>بلا</option>
             </select>
             <small class="form-text text-muted">
               💡 ابحث عن المورد أو اضغط "➕ مورد جديد" أسفل القائمة
@@ -62,10 +62,10 @@
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المستودع الذي ستُضاف إليه البضاعة (إجباري)"></i>
             </label>
             <select name="warehouse_id" id="warehouse_id" class="form-control" required>
-              <option value="">اختر مستودع...</option>
+              <option value="" selected>بلا</option>
               {% if warehouses %}
                 {% for warehouse in warehouses %}
-                <option value="{{ warehouse.id }}" {% if warehouse.is_main %}selected{% endif %}>
+                <option value="{{ warehouse.id }}">
                   {% if warehouse.is_main %}⭐{% elif warehouse.parent_id %}🔀{% else %}📦{% endif %}
                   {{ warehouse.name_ar or warehouse.name }}
                   {% if warehouse.code %}({{ warehouse.code }}){% endif %}
@@ -234,7 +234,7 @@ function addLine() {
           <select name="lines[${lineIndex}][product_id]" 
                   class="form-control product-select line-product" 
                   data-line="${lineIndex}" required>
-            <option value="">اختر منتج...</option>
+            <option value="">بلا</option>
           </select>
         </div>
         

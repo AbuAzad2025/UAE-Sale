@@ -79,6 +79,7 @@
           <div class="form-group">
             <label>نوع المورد</label>
             <select name="supplier_type" class="form-control">
+              <option value="" {% if not supplier.supplier_type %}selected{% endif %}>بلا</option>
               <option value="parts" {% if supplier.supplier_type == 'parts' %}selected{% endif %}>قطع غيار</option>
               <option value="equipment" {% if supplier.supplier_type == 'equipment' %}selected{% endif %}>معدات</option>
               <option value="services" {% if supplier.supplier_type == 'services' %}selected{% endif %}>خدمات</option>
@@ -92,6 +93,7 @@
           <div class="form-group">
             <label>التقييم</label>
             <select name="rating" class="form-control">
+              <option value="" {% if supplier.rating is none %}selected{% endif %}>بلا</option>
               <option value="1" {% if supplier.rating == 1 %}selected{% endif %}>⭐ نجمة واحدة</option>
               <option value="2" {% if supplier.rating == 2 %}selected{% endif %}>⭐⭐ نجمتان</option>
               <option value="3" {% if supplier.rating == 3 %}selected{% endif %}>⭐⭐⭐ 3 نجوم</option>

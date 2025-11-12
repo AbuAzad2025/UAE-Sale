@@ -20,7 +20,7 @@ function addLine() {
                     </label>
                     <select name="lines[${lineIndex}][product_id]" class="form-control product-select" required 
                             data-index="${lineIndex}" onchange="loadProductPrice(${lineIndex})">
-                        <option value="">ابحث عن منتج...</option>
+                        <option value="">بلا</option>
                     </select>
                     <small class="text-muted">ابحث بالاسم أو رقم القطعة</small>
                 </div>

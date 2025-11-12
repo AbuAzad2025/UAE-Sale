@@ -24,6 +24,7 @@
         <div class="form-group">
           <label>مزود الخدمة</label>
           <select name="sms_provider" class="form-control">
+            <option value="" {% if not settings.sms_provider %}selected{% endif %}>بلا</option>
             <option value="twilio" {% if settings.sms_provider == 'twilio' %}selected{% endif %}>Twilio</option>
             <option value="nexmo" {% if settings.sms_provider == 'nexmo' %}selected{% endif %}>Nexmo (Vonage)</option>
             <option value="local" {% if settings.sms_provider == 'local' %}selected{% endif %}>مزود محلي</option>

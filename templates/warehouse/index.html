@@ -170,7 +170,7 @@
                 <h5 class="mb-0 {% if product.current_stock <= 0 %}text-danger{% elif product.is_low_stock() %}text-warning{% else %}text-success{% endif %}">
                   {{ "{:.0f}".format(product.current_stock) }}
                 </h5>
-                <small class="text-muted">{{ product.unit }}</small>
+                <small class="text-muted">{{ product.unit or 'بلا' }}</small>
               </div>
             </td>
             <td>

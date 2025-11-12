@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>شركة أزاد للأنظمة الذكية - فاتورة مبيعات #{{ sale.sale_number }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -138,7 +139,7 @@
     }
   </style>
 </head>
-<body>
+<body class="invoice-print modern-invoice">
   <div class="invoice">
     <div class="header">
       {% if settings and settings.show_logo %}

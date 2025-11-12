@@ -58,6 +58,7 @@ def movements():
     per_page = request.args.get('per_page', 50, type=int)
     product_id = request.args.get('product', type=int)
     movement_type = request.args.get('type', '', type=str)
+    warehouse_id = request.args.get('warehouse', type=int)
     
     query = StockMovement.query
     
@@ -66,6 +67,12 @@ def movements():
     
     if movement_type:
         query = query.filter_by(movement_type=movement_type)
+
+    if warehouse_id:
+        query = query.filter_by(warehouse_id=warehouse_id)
+        current_warehouse = Warehouse.query.get(warehouse_id)
+    else:
+        current_warehouse = None
     
     pagination = query.order_by(StockMovement.created_at.desc()).paginate(
         page=page,
@@ -73,9 +80,13 @@ def movements():
         error_out=False
     )
     
+    warehouses = Warehouse.query.filter_by(is_active=True).order_by(Warehouse.name).all()
+    
     return render_template('warehouse/movements.html',
                          movements=pagination.items,
-                         pagination=pagination)
+                         pagination=pagination,
+                         warehouses=warehouses,
+                         current_warehouse=current_warehouse)
 
 
 @warehouse_bp.route('/low-stock')
@@ -99,6 +110,11 @@ def out_of_stock():
 @login_required
 @permission_required('admin')
 def create_warehouse():
+    from models import User
+    
+    parent_warehouses = Warehouse.query.filter_by(is_active=True, parent_id=None).all()
+    users = User.query.filter_by(is_active=True).all()
+    
     if request.method == 'POST':
         try:
             name = request.form.get('name', '').strip()
@@ -110,29 +126,42 @@ def create_warehouse():
             is_main = request.form.get('is_main') == 'on'
             
             if not name:
-                flash('اسم المستودع مطلوب', 'error')
-                return redirect(url_for('warehouse.create_warehouse'))
+                flash('اسم المستودع مطلوب', 'warning')
+                return render_template('warehouse/create_warehouse.html',
+                                       parent_warehouses=parent_warehouses,
+                                       users=users,
+                                       form_data=request.form)
             
             if not location:
-                flash('الموقع مطلوب', 'error')
-                return redirect(url_for('warehouse.create_warehouse'))
+                flash('الموقع مطلوب', 'warning')
+                return render_template('warehouse/create_warehouse.html',
+                                       parent_warehouses=parent_warehouses,
+                                       users=users,
+                                       form_data=request.form)
             
-            # Check if code exists
             if code:
                 existing = Warehouse.query.filter_by(code=code).first()
                 if existing:
-                    flash('رمز المستودع موجود مسبقاً', 'error')
-                    return redirect(url_for('warehouse.create_warehouse'))
+                    flash('رمز المستودع موجود مسبقاً', 'warning')
+                    return render_template('warehouse/create_warehouse.html',
+                                           parent_warehouses=parent_warehouses,
+                                           users=users,
+                                           form_data=request.form)
             
-            # Check if parent warehouse exists
             if parent_id:
                 parent_warehouse = Warehouse.query.get(parent_id)
                 if not parent_warehouse:
-                    flash('المستودع الأب غير موجود', 'error')
-                    return redirect(url_for('warehouse.create_warehouse'))
+                    flash('المستودع الأب غير موجود', 'warning')
+                    return render_template('warehouse/create_warehouse.html',
+                                           parent_warehouses=parent_warehouses,
+                                           users=users,
+                                           form_data=request.form)
                 if not parent_warehouse.is_active:
-                    flash('المستودع الأب غير نشط', 'error')
-                    return redirect(url_for('warehouse.create_warehouse'))
+                    flash('المستودع الأب غير نشط', 'warning')
+                    return render_template('warehouse/create_warehouse.html',
+                                           parent_warehouses=parent_warehouses,
+                                           users=users,
+                                           form_data=request.form)
             
             warehouse = Warehouse(
                 name=name,
@@ -141,7 +170,7 @@ def create_warehouse():
                 location=location,
                 parent_id=parent_id,
                 is_main=is_main,
-                manager_id=manager_id or current_user.id,
+                manager_id=manager_id,
                 is_active=True
             )
             
@@ -155,16 +184,10 @@ def create_warehouse():
         except Exception as e:
             db.session.rollback()
             flash(f'خطأ في إنشاء المستودع: {str(e)}', 'error')
-            return redirect(url_for('warehouse.create_warehouse'))
-    
-    # GET request - show form with data
-    from models import User
-    
-    # Get all active warehouses for parent selection (except sub-warehouses)
-    parent_warehouses = Warehouse.query.filter_by(is_active=True, parent_id=None).all()
-    
-    # Get all users for manager selection
-    users = User.query.filter_by(is_active=True).all()
+            return render_template('warehouse/create_warehouse.html',
+                                   parent_warehouses=parent_warehouses,
+                                   users=users,
+                                   form_data=request.form)
     
     return render_template('warehouse/create_warehouse.html', 
                          parent_warehouses=parent_warehouses,

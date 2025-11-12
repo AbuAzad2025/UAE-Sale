@@ -43,9 +43,19 @@ def index():
 @login_required
 @admin_required
 def create():
+    roles = Role.query.filter_by(is_active=True).all()
+    default_form = {'is_active': '1'}
+    
     if request.method == 'POST':
         try:
             role_id = request.form.get('role_id', type=int)
+            if not role_id:
+                flash('⚠️ يرجى اختيار الدور الوظيفي.', 'warning')
+                form_values = request.form.to_dict()
+                form_values['is_active'] = request.form.get('is_active', '1')
+                return render_template('users/create.html', roles=roles, form_data=form_values)
+            
+            is_active = request.form.get('is_active', '1') == '1'
             
             user = User(
                 username=request.form.get('username'),
@@ -54,7 +64,8 @@ def create():
                 full_name_ar=request.form.get('full_name_ar'),
                 phone=request.form.get('phone'),
                 role_id=role_id,
-                is_owner=False
+                is_owner=False,
+                is_active=is_active
             )
             
             password = request.form.get('password')
@@ -76,9 +87,11 @@ def create():
             error_details = traceback.format_exc()
             current_app.logger.error(f'User creation error: {error_details}')
             flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            form_values = request.form.to_dict()
+            form_values['is_active'] = request.form.get('is_active', '1')
+            return render_template('users/create.html', roles=roles, form_data=form_values)
     
-    roles = Role.query.filter_by(is_active=True).all()
-    return render_template('users/create.html', roles=roles)
+    return render_template('users/create.html', roles=roles, form_data=default_form)
 
 
 @users_bp.route('/<int:id>')

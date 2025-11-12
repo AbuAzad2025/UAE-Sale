@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>شركة أزاد للأنظمة الذكية - فاتورة مبيعات #{{ sale.sale_number }}</title>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -211,7 +212,7 @@
     }
   </style>
 </head>
-<body>
+<body class="invoice-print sale-invoice">
   <div class="no-print" style="text-align: center; margin-bottom: 20px;">
     <button onclick="window.print()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer;">
       <i class="fas fa-print"></i> طباعة الفاتورة

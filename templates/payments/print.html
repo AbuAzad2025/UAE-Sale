@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>شركة أزاد للأنظمة الذكية - سند قبض #{{ receipt.receipt_number }}</title>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     @page {
@@ -49,7 +50,7 @@
     }
   </style>
 </head>
-<body>
+<body class="receipt-print payment-receipt">
   <div class="no-print" style="text-align: center; margin-bottom: 20px;">
     <button onclick="window.print()" style="background: #28a745; color: white; border: none; padding: 10px 25px; border-radius: 8px; font-size: 16px; cursor: pointer;">
       <i class="fas fa-print"></i> طباعة

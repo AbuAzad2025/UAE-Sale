@@ -95,7 +95,7 @@
                                 <i class="fas fa-tasks text-primary"></i> العملية:
                             </label>
                             <select name="action" class="form-control">
-                                <option value="">الكل</option>
+                                <option value="">بلا</option>
                                 <option value="create" {% if request.args.get('action') == 'create' %}selected{% endif %}>إنشاء</option>
                                 <option value="update" {% if request.args.get('action') == 'update' %}selected{% endif %}>تعديل</option>
                                 <option value="delete" {% if request.args.get('action') == 'delete' %}selected{% endif %}>حذف</option>
@@ -111,7 +111,7 @@
                                 <i class="fas fa-user text-success"></i> المستخدم:
                             </label>
                             <select name="user" class="form-control">
-                                <option value="">الكل</option>
+                                <option value="">بلا</option>
                                 {% for log in logs %}
                                     {% if log.user and log.user.id not in request.args.values() %}
                                     <option value="{{ log.user.id }}" {% if request.args.get('user', type=int) == log.user.id %}selected{% endif %}>

@@ -15,7 +15,7 @@ class SaleForm(FlaskForm):
     shipping_cost = DecimalField('الشحن', default=0, validators=[Optional(), NumberRange(min=0)])
     tax_rate = DecimalField('الضريبة %', default=0, validators=[Optional(), NumberRange(min=0, max=100)])
     payment_method = SelectField('طريقة الدفع', choices=[
-        ('', 'آجل'),
+        ('', 'آجل (بدون دفع)'),
         ('cash', 'نقدي'),
         ('card', 'بطاقة'),
         ('bank_transfer', 'تحويل بنكي'),

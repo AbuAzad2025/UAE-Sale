@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>سند قبض - {{ receipt.receipt_number }}</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -206,7 +207,7 @@
     }
   </style>
 </head>
-<body>
+<body class="receipt-print minimal-receipt">
   <div class="no-print" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000;">
     <button onclick="window.print()" style="background: {{ settings.header_color or '#28a745' }}; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer;">
       طباعة

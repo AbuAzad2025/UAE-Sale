@@ -69,6 +69,20 @@ def create():
     """إضافة مورد جديد"""
     if request.method == 'POST':
         try:
+            supplier_type_value = (request.form.get('supplier_type') or '').strip()
+            if not supplier_type_value:
+                flash('⚠️ يرجى اختيار نوع المورد.', 'warning')
+                return render_template('suppliers/create.html')
+            
+            rating_value = (request.form.get('rating') or '').strip()
+            rating = None
+            if rating_value:
+                try:
+                    rating = int(rating_value)
+                except ValueError:
+                    flash('⚠️ قيمة التقييم غير صحيحة.', 'warning')
+                    return render_template('suppliers/create.html')
+            
             initial_balance = request.form.get('initial_balance', type=float, default=0)
             
             supplier = Supplier(
@@ -84,8 +98,8 @@ def create():
                 country=request.form.get('country', 'UAE'),
                 tax_number=request.form.get('tax_number'),
                 commercial_registration=request.form.get('commercial_registration'),
-                supplier_type=request.form.get('supplier_type', 'parts'),
-                rating=request.form.get('rating', type=int, default=3),
+                supplier_type=supplier_type_value,
+                rating=rating if rating is not None else None,
                 credit_limit=request.form.get('credit_limit', type=float, default=0),
                 payment_terms_days=request.form.get('payment_terms_days', type=int, default=30),
                 preferred_currency=request.form.get('preferred_currency', 'AED'),
@@ -162,8 +176,11 @@ def edit(id):
             supplier.country = request.form.get('country')
             supplier.tax_number = request.form.get('tax_number')
             supplier.commercial_registration = request.form.get('commercial_registration')
-            supplier.supplier_type = request.form.get('supplier_type')
-            supplier.rating = request.form.get('rating', type=int)
+            supplier_type_value = (request.form.get('supplier_type') or '').strip()
+            supplier.supplier_type = supplier_type_value or None
+            
+            rating_value = (request.form.get('rating') or '').strip()
+            supplier.rating = int(rating_value) if rating_value else None
             supplier.credit_limit = request.form.get('credit_limit', type=float)
             supplier.payment_terms_days = request.form.get('payment_terms_days', type=int)
             supplier.preferred_currency = request.form.get('preferred_currency')

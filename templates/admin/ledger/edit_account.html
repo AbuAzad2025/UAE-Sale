@@ -60,7 +60,7 @@
                 <div class="form-group">
                   <label>الحساب الأب</label>
                   <select name="parent_id" class="form-control">
-                    <option value="">لا يوجد (حساب رئيسي)</option>
+                    <option value="">بلا (حساب رئيسي)</option>
                     {% for parent in parent_accounts %}
                     <option value="{{ parent.id }}" {% if account.parent_id == parent.id %}selected{% endif %}>
                       {{ parent.code }} - {{ parent.name_ar }}

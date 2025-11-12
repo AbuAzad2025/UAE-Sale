@@ -1318,18 +1318,19 @@ def reports():
         return redirect(url_for('main.dashboard'))
     
     # إحصائيات عامة
-    from models import User, Customer, Product, Sale, Invoice, Receipt, PaymentVault, PaymentTransaction
+    from models import User, Customer, Product, Sale, Receipt, PaymentVault, PaymentTransaction
     
+    vault = PaymentVault.query.first()
     stats = {
         'total_users': User.query.count(),
         'total_customers': Customer.query.count(),
         'total_products': Product.query.count(),
         'total_sales': Sale.query.count(),
-        'total_invoices': Invoice.query.count(),
+        'total_invoices': Sale.query.filter(Sale.payment_status == 'paid').count(),
         'total_receipts': Receipt.query.count(),
         'total_donations': PaymentTransaction.query.filter_by(transaction_type='donation').count(),
         'total_payments': PaymentTransaction.query.filter_by(transaction_type='payment').count(),
-        'vault_status': PaymentVault.query.first().is_locked if PaymentVault.query.first() else True
+        'vault_status': vault.is_locked if vault else True
     }
     
     return render_template('owner/reports.html', stats=stats)

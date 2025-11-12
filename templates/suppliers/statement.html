@@ -8,7 +8,7 @@
     size: A4 portrait;
     margin: 15mm;
   }
-  .main-sidebar, .main-header, .main-footer, 
+  .main-sidebar, .main-header, .main-footer,
   .content-header, .no-print, button, .btn {
     display: none !important;
   }
@@ -22,7 +22,22 @@
   }
   body {
     background: white !important;
+    padding: 20px;
   }
+}
+
+.statement-header {
+  background: linear-gradient(135deg, #17a2b8 0%, #007bff 100%);
+  color: white;
+  padding: 30px;
+  border-radius: 8px 8px 0 0;
+}
+
+.statement-info {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
 }
 </style>
 {% endblock %}
@@ -48,37 +63,6 @@
     </a>
   </div>
 </div>
-{% endblock %}
-
-{% block extra_css %}
-<style>
-@media print {
-  .main-sidebar, .main-header, .main-footer, .no-print {
-    display: none !important;
-  }
-  .content-wrapper {
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  body {
-    padding: 20px;
-  }
-}
-
-.statement-header {
-  background: linear-gradient(135deg, #17a2b8 0%, #007bff 100%);
-  color: white;
-  padding: 30px;
-  border-radius: 8px 8px 0 0;
-}
-
-.statement-info {
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-</style>
 {% endblock %}
 
 {% block content %}

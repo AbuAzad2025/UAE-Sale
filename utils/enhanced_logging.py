@@ -2,10 +2,30 @@
 Enhanced Logging System - نظام تسجيل محسّن
 """
 
+import io
 import logging
 import os
-from logging.handlers import RotatingFileHandler
+import sys
 from datetime import datetime
+from logging.handlers import RotatingFileHandler
+
+
+def _ensure_utf8_stream(stream):
+    """
+    ضمان أن المجرى (stdout / stderr) يستخدم UTF-8 لتفادي أخطاء الترميز في Windows.
+    """
+    if hasattr(stream, "reconfigure"):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+            return stream
+        except Exception:
+            pass
+    if hasattr(stream, "buffer"):
+        try:
+            return io.TextIOWrapper(stream.buffer, encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+    return stream
 
 
 def setup_enhanced_logging(app):
@@ -89,13 +109,26 @@ def setup_enhanced_logging(app):
     # =====================================
     # Console Handler (للتطوير)
     # =====================================
-    if app.debug:
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.DEBUG)
-        console_handler.setFormatter(logging.Formatter(
-            '%(levelname)s: %(message)s'
-        ))
-        app.logger.addHandler(console_handler)
+    utf8_stdout = _ensure_utf8_stream(sys.stdout)
+    utf8_stderr = _ensure_utf8_stream(sys.stderr)
+
+    # إزالة أي معالجات بث سابقة لتجنب التكرار
+    for handler in list(app.logger.handlers):
+        if isinstance(handler, logging.StreamHandler) and handler.stream in (sys.stdout, sys.stderr):
+            app.logger.removeHandler(handler)
+
+    console_handler = logging.StreamHandler(utf8_stdout)
+    console_handler.setLevel(logging.DEBUG if app.debug else logging.INFO)
+    console_handler.setFormatter(logging.Formatter(
+        '%(levelname)s: %(message)s'
+    ))
+    app.logger.addHandler(console_handler)
+
+    werkzeug_logger = logging.getLogger('werkzeug')
+    for handler in list(werkzeug_logger.handlers):
+        if isinstance(handler, logging.StreamHandler):
+            werkzeug_logger.removeHandler(handler)
+    werkzeug_logger.addHandler(logging.StreamHandler(utf8_stderr))
     
     app.logger.info('=' * 60)
     app.logger.info('[OK] Enhanced Logging System initialized')

@@ -5,24 +5,43 @@
 {% block content %}
 <div class="content-header">
   <div class="container-fluid">
-    <div class="row mb-2">
+    <div class="row mb-2 align-items-center">
       <div class="col-sm-6">
         <h1 class="m-0">✏️ تعديل مستخدم: {{ user.username }}</h1>
       </div>
-      <div class="col-sm-6">
-        <ol class="breadcrumb float-sm-left">
-          <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">لوحة المالك</a></li>
-          <li class="breadcrumb-item"><a href="{{ url_for('owner.users_list') }}">{{ t('Users') }}</a></li>
-          <li class="breadcrumb-item active">{{ t('Edit') }}</li>
-        </ol>
+      <div class="col-sm-6 d-flex justify-content-end">
+        <div class="d-flex align-items-center">
+          <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary ml-2">
+            <i class="fas fa-arrow-right mr-1"></i> الرجوع للوحة المالك
+          </a>
+          <ol class="breadcrumb float-sm-left mb-0">
+            <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">لوحة المالك</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('owner.users_list') }}">{{ t('Users') }}</a></li>
+            <li class="breadcrumb-item active">{{ t('Edit') }}</li>
+          </ol>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<div class="content">
+<div class="container-fluid mb-3">
+  <div class="btn-group quick-nav" role="group">
+    <a href="{{ url_for('owner.users_list') }}" class="btn btn-primary">
+      <i class="fas fa-users"></i> قائمة المستخدمين
+    </a>
+    <a href="{{ url_for('owner.create_user') }}" class="btn btn-outline-primary">
+      <i class="fas fa-user-plus"></i> إضافة مستخدم
+    </a>
+    <a href="{{ url_for('owner.roles_permissions') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-user-shield"></i> الأدوار والصلاحيات
+    </a>
+  </div>
+</div>
+
+<div class="content edit-user-page">
   <div class="container-fluid">
-    <form method="POST" action="{{ url_for('owner.edit_user', user_id=user.id) }}" id="editUserForm">
+    <form method="POST" action="{{ url_for('owner.edit_user', user_id=user.id) }}" id="editUserForm" class="edit-user-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       
       <div class="row">
@@ -175,5 +194,51 @@ $(document).ready(function() {
   });
 });
 </script>
+
+<style>
+  .quick-nav .btn {
+    min-width: 170px;
+  }
+
+  .quick-nav .btn + .btn {
+    margin-left: 0.5rem;
+  }
+
+  .edit-user-form .form-control,
+  .edit-user-form textarea.form-control,
+  .edit-user-form select.form-control {
+    height: auto !important;
+    min-height: 56px;
+    padding: 0.95rem 1.35rem;
+    font-size: 0.95rem;
+    border-radius: 10px;
+    line-height: 1.7;
+    width: 100%;
+  }
+
+  .edit-user-form .form-control::placeholder {
+    color: #64748b;
+    opacity: 0.85;
+    text-align: center;
+  }
+
+  .edit-user-form select.form-control {
+    text-align-last: center;
+    padding-inline-start: 2.2rem;
+    padding-inline-end: 2.2rem;
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23647894' d='M6 8a1 1 0 0 1-.707-.293l-5-5a1 1 0 0 1 1.414-1.414L6 5.586 10.293 1.293a1 1 0 0 1 1.414 1.414l-5 5A1 1 0 0 1 6 8'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 0.8rem center;
+    background-size: 12px;
+  }
+
+  .edit-user-form select.form-control option {
+    text-align: center;
+    padding: 0.75rem 1rem;
+  }
+</style>
 {% endblock %}
 

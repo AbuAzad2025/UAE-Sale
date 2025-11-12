@@ -2135,6 +2135,26 @@
         "question": "Expense pattern analysis",
         "response": "{\"category_id\": 1, \"amount\": 8000.0, \"payment_method\": \"cash\", \"is_recurring\": false}",
         "timestamp": "2025-11-12T21:13:20.758335"
+      },
+      {
+        "question": "كيفك",
+        "response": "",
+        "timestamp": "2025-11-12T22:16:37.909760"
+      },
+      {
+        "question": "أخبرني عن كمبيوترات السيارات",
+        "response": "",
+        "timestamp": "2025-11-12T22:16:45.764525"
+      },
+      {
+        "question": "تحسين ذاتي",
+        "response": "",
+        "timestamp": "2025-11-13T01:24:27.799429"
+      },
+      {
+        "question": "حالة الشبكات العصبية",
+        "response": "📦 **تحليل المخزون:**\n\n✅ **المخزون صحي!** جميع المنتجات فوق الحد الأدنى\n\n💡 **رؤى:**\n✅ المخزون صحي - لا توجد منتجات بمخزون منخفض\n",
+        "timestamp": "2025-11-13T01:24:36.478377"
       }
     ],
     "customs_question": [
@@ -2239,15 +2259,15 @@
   "failed_responses": {},
   "expertise_areas": {
     "sales_question": 41,
-    "general_question": 385,
+    "general_question": 389,
     "customs_question": 1,
     "inventory_question": 14
   },
   "learning_stats": {
-    "total_interactions": 97,
-    "successful_answers": 97,
+    "total_interactions": 360,
+    "successful_answers": 360,
     "learning_rate": 1.0,
-    "last_updated": "2025-10-22T16:10:25.491188"
+    "last_updated": "2025-11-13T01:24:27.834850"
   },
   "system_updates_oct_2025": {
     "date": "2025-10-19",

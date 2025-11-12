@@ -1,12 +1,15 @@
+from datetime import datetime
+
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
+from sqlalchemy import select
+
 from extensions import db
 from models import Receipt, Customer, InvoiceSettings
 from services.payment_service import PaymentService
 from services.currency_service import CurrencyService
 from utils.decorators import permission_required
 from utils.helpers import create_audit_log
-from datetime import datetime
 
 payments_bp = Blueprint('payments', __name__, url_prefix='/payments')
 
@@ -52,15 +55,15 @@ def receipts():
     
     # إخفاء السندات المؤرشفة
     from models import ArchivedRecord
-    archived_receipts = db.session.query(ArchivedRecord.record_id).filter(
+    archived_receipts_select = select(ArchivedRecord.record_id).where(
         ArchivedRecord.table_name == 'receipts'
-    ).subquery()
-    archived_payments = db.session.query(ArchivedRecord.record_id).filter(
+    )
+    archived_payments_select = select(ArchivedRecord.record_id).where(
         ArchivedRecord.table_name == 'payments'
-    ).subquery()
+    )
     
-    receipts_query = receipts_query.filter(~Receipt.id.in_(archived_receipts))
-    payments_query = payments_query.filter(~Payment.id.in_(archived_payments))
+    receipts_query = receipts_query.filter(Receipt.id.notin_(archived_receipts_select))
+    payments_query = payments_query.filter(Payment.id.notin_(archived_payments_select))
     
     if current_user.is_seller():
         receipts_query = receipts_query.filter_by(user_id=current_user.id)

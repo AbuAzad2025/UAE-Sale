@@ -29,7 +29,7 @@
             <h3 class="card-title text-white"><i class="fas fa-plus-circle"></i> معلومات المستودع</h3>
           </div>
           {% set form_data = form_data if form_data is defined else request.form %}
-          <form method="POST" action="{{ url_for('warehouse.create_warehouse') }}">
+          <form method="POST" action="{{ url_for('warehouse.create_warehouse') }}" class="warehouse-create-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="card-body">
               <div class="row">
@@ -150,5 +150,52 @@ $(function () {
   });
 });
 </script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .warehouse-create-form .form-control,
+  .warehouse-create-form textarea.form-control,
+  .warehouse-create-form select.form-control {
+    min-height: 56px;
+    height: auto !important;
+    padding: 0.95rem 1.35rem;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    text-align: center;
+  }
+
+  .warehouse-create-form .form-control::placeholder {
+    text-align: center;
+    color: #64748b;
+    opacity: 0.85;
+  }
+
+  .warehouse-create-form textarea.form-control {
+    text-align: right;
+  }
+
+  .warehouse-create-form textarea.form-control::placeholder {
+    text-align: right;
+  }
+
+  .warehouse-create-form select.form-control {
+    text-align-last: center;
+    padding-inline-start: 2.2rem;
+    padding-inline-end: 2.2rem;
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23647894' d='M6 8a1 1 0 0 1-.707-.293l-5-5a1 1 0 0 1 1.414-1.414L6 5.586 10.293 1.293a1 1 0 0 1 1.414 1.414l-5 5A1 1 0 0 1 6 8'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 0.8rem center;
+    background-size: 12px;
+  }
+
+  .warehouse-create-form select.form-control option {
+    text-align: center;
+    padding: 0.75rem 1rem;
+  }
+</style>
 {% endblock %}
 {% endblock %}

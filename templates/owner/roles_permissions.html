@@ -5,21 +5,40 @@
 {% block content %}
 <div class="content-header">
   <div class="container-fluid">
-    <div class="row mb-2">
+    <div class="row mb-2 align-items-center">
       <div class="col-sm-6">
         <h1 class="m-0">🔐 الأدوار والصلاحيات</h1>
       </div>
-      <div class="col-sm-6">
-        <ol class="breadcrumb float-sm-left">
-          <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">لوحة المالك</a></li>
-          <li class="breadcrumb-item active">الأدوار والصلاحيات</li>
-        </ol>
+      <div class="col-sm-6 d-flex justify-content-end">
+        <div class="d-flex align-items-center">
+          <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary ml-2">
+            <i class="fas fa-arrow-right mr-1"></i> الرجوع للوحة المالك
+          </a>
+          <ol class="breadcrumb float-sm-left mb-0">
+            <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">لوحة المالك</a></li>
+            <li class="breadcrumb-item active">الأدوار والصلاحيات</li>
+          </ol>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<div class="content">
+<div class="container-fluid mb-3">
+  <div class="btn-group quick-nav" role="group">
+    <a href="{{ url_for('owner.roles_permissions') }}" class="btn btn-primary">
+      <i class="fas fa-user-shield"></i> الأدوار والصلاحيات
+    </a>
+    <a href="{{ url_for('owner.users_list') }}" class="btn btn-outline-primary">
+      <i class="fas fa-users"></i> إدارة المستخدمين
+    </a>
+    <a href="{{ url_for('owner.audit_logs') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-history"></i> سجل التدقيق
+    </a>
+  </div>
+</div>
+
+<div class="content roles-permissions-page">
   <div class="container-fluid">
     
     <!-- نظرة عامة -->
@@ -344,5 +363,14 @@
     
   </div>
 </div>
+<style>
+  .quick-nav .btn {
+    min-width: 170px;
+  }
+
+  .quick-nav .btn + .btn {
+    margin-left: 0.5rem;
+  }
+</style>
 {% endblock %}
 

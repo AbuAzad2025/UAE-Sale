@@ -1,4 +1,5 @@
 from decimal import Decimal, ROUND_HALF_UP
+import time
 
 try:
     from forex_python.converter import CurrencyRates
@@ -7,6 +8,9 @@ except ImportError:
     FOREX_AVAILABLE = False
 
 class CurrencyService:
+    
+    CACHE_TTL_SECONDS = 300  # 5 دقائق
+    _rates_cache = {}
     
     FALLBACK_RATES = {
         'AED': Decimal('1.00'),
@@ -22,8 +26,15 @@ class CurrencyService:
     
     @staticmethod
     def get_all_rates(base='AED'):
+        base = (base or 'AED').upper()
+        cache_entry = CurrencyService._rates_cache.get(base)
+        if cache_entry and (time.time() - cache_entry['timestamp']) < CurrencyService.CACHE_TTL_SECONDS:
+            return cache_entry['rates'].copy()
+        
         if not FOREX_AVAILABLE:
-            return CurrencyService.FALLBACK_RATES
+            rates = CurrencyService.FALLBACK_RATES.copy()
+            CurrencyService._rates_cache[base] = {'timestamp': time.time(), 'rates': rates}
+            return rates
         
         try:
             c = CurrencyRates()
@@ -40,9 +51,12 @@ class CurrencyService:
                     except:
                         rates[currency] = CurrencyService.FALLBACK_RATES.get(currency, Decimal('1.00'))
             
-            return rates
+            CurrencyService._rates_cache[base] = {'timestamp': time.time(), 'rates': rates}
+            return rates.copy()
         except:
-            return CurrencyService.FALLBACK_RATES
+            rates = CurrencyService.FALLBACK_RATES.copy()
+            CurrencyService._rates_cache[base] = {'timestamp': time.time(), 'rates': rates}
+            return rates
     
     @staticmethod
     def convert(amount, from_currency, to_currency):

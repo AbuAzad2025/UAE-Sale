@@ -818,6 +818,42 @@
       "assistant_response": "",
       "context": {},
       "type": "conversation"
+    },
+    {
+      "id": 92,
+      "timestamp": "2025-11-12T22:16:37.904836",
+      "user_id": 1,
+      "user_message": "كيفك",
+      "assistant_response": "",
+      "context": {},
+      "type": "conversation"
+    },
+    {
+      "id": 93,
+      "timestamp": "2025-11-12T22:16:45.760582",
+      "user_id": 1,
+      "user_message": "أخبرني عن كمبيوترات السيارات",
+      "assistant_response": "",
+      "context": {},
+      "type": "conversation"
+    },
+    {
+      "id": 94,
+      "timestamp": "2025-11-13T01:24:27.794020",
+      "user_id": 1,
+      "user_message": "تحسين ذاتي",
+      "assistant_response": "",
+      "context": {},
+      "type": "conversation"
+    },
+    {
+      "id": 95,
+      "timestamp": "2025-11-13T01:24:36.472436",
+      "user_id": 1,
+      "user_message": "حالة الشبكات العصبية",
+      "assistant_response": "📦 **تحليل المخزون:**\n\n✅ **المخزون صحي!** جميع المنتجات فوق الحد الأدنى\n\n💡 **رؤى:**\n✅ المخزون صحي - لا توجد منتجات بمخزون منخفض\n",
+      "context": {},
+      "type": "conversation"
     }
   ],
   "metadata": {

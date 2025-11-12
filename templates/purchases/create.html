@@ -1,11 +1,14 @@
 {% extends 'base.html' %}
 {% block title %}شركة أزاد للأنظمة الذكية - إنشاء فاتورة شراء جديدة{% endblock %}
 {% block page_title %}
-<div class="d-flex justify-content-between align-items-center">
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
   <div>
     <h1 class="mb-0"><i class="fas fa-file-invoice-dollar mr-2"></i>فاتورة شراء جديدة</h1>
   </div>
   <div class="purchase-header-actions">
+    <a href="{{ url_for('owner.dashboard') }}" class="purchase-header-link purchase-header-link--owner">
+      <i class="fas fa-tachometer-alt mr-2"></i>لوحة المالك
+    </a>
     <a href="{{ url_for('purchases.index') }}" class="purchase-header-link purchase-header-link--primary">
       <i class="fas fa-arrow-right mr-2"></i>العودة للمشتريات
     </a>
@@ -19,12 +22,13 @@
 {% block extra_css %}
 <style>
 .purchase-create-form .form-control,
-.purchase-create-form .form-select {
-  min-height: 48px;
-  height: auto;
-  padding: 0.65rem 0.85rem;
-  font-size: 1rem;
-  line-height: 1.5;
+.purchase-create-form textarea.form-control,
+.purchase-create-form select.form-control {
+  min-height: 56px;
+  height: auto !important;
+  padding: 0.95rem 1.35rem;
+  font-size: 0.95rem;
+  line-height: 1.7;
   text-align: center;
 }
 
@@ -34,8 +38,26 @@
   opacity: 0.85;
 }
 
+.purchase-create-form select.form-control {
+  text-align-last: center;
+  padding-inline-start: 2.2rem;
+  padding-inline-end: 2.2rem;
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23647894' d='M6 8a1 1 0 0 1-.707-.293l-5-5a1 1 0 0 1 1.414-1.414L6 5.586 10.293 1.293a1 1 0 0 1 1.414 1.414l-5 5A1 1 0 0 1 6 8'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: left 0.8rem center;
+  background-size: 12px;
+}
+
+.purchase-create-form select.form-control option {
+  text-align: center;
+  padding: 0.75rem 1rem;
+}
+
 .purchase-create-form .input-group-text {
-  min-height: 48px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -43,8 +65,8 @@
 }
 
 .purchase-create-form .select2-container--default .select2-selection--single {
-  height: 48px;
-  min-height: 48px;
+  height: 56px;
+  min-height: 56px;
   border-radius: 12px;
   border: 2px solid #e0e0e0;
   display: flex;
@@ -125,6 +147,17 @@
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.65);
 }
 
+.purchase-header-link--owner {
+  color: #0d9488 !important;
+  background: rgba(13, 148, 136, 0.12);
+  border: 2px solid rgba(13, 148, 136, 0.3);
+  box-shadow: 0 6px 18px rgba(13, 148, 136, 0.22);
+}
+</style>
+<style>
+.purchase-header-actions .purchase-header-link + .purchase-header-link {
+  margin-left: 0.65rem;
+}
 </style>
 {% endblock %}
 

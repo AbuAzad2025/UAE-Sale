@@ -126,9 +126,9 @@
       <form method="POST" action="{{ url_for('auth.login') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         
-        <div class="input-group mb-3">
+        <div class="input-group mb-3 auth-input-group">
           <label class="sr-only" for="username">{{ t('Username') }}</label>
-          <input type="text" id="username" name="username" class="form-control" placeholder="{{ t('Username') }}" required autofocus autocomplete="username">
+          <input type="text" id="username" name="username" class="form-control auth-input" placeholder="{{ t('Username') }}" required autofocus autocomplete="username">
           <div class="input-group-append">
             <div class="input-group-text">
               <span class="fas fa-user"></span>
@@ -136,9 +136,9 @@
           </div>
         </div>
 
-        <div class="input-group mb-3">
+        <div class="input-group mb-3 auth-input-group">
           <label class="sr-only" for="password">{{ t('Password') }}</label>
-          <input type="password" name="password" id="password" class="form-control" placeholder="{{ t('Password') }}" required autocomplete="current-password">
+          <input type="password" name="password" id="password" class="form-control auth-input" placeholder="{{ t('Password') }}" required autocomplete="current-password">
           <div class="input-group-append">
             <div class="input-group-text">
               <span class="fas fa-lock"></span>
@@ -172,9 +172,29 @@
     </div>
   </div>
 </div>
-
 <script src="{{ url_for('static', filename='adminlte/plugins/jquery/jquery.min.js') }}"></script>
 <script src="{{ url_for('static', filename='adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ url_for('static', filename='adminlte/js/adminlte.min.js') }}"></script>
+<style>
+  .auth-input-group .form-control {
+    min-height: 56px;
+    height: auto !important;
+    padding: 0.95rem 1.35rem;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    text-align: center;
+  }
+
+  .auth-input-group .form-control::placeholder {
+    text-align: center;
+    color: #64748b;
+    opacity: 0.85;
+  }
+
+  .auth-input-group .form-control:focus {
+    box-shadow: none;
+    border-color: #667eea;
+  }
+</style>
 </body>
 </html>

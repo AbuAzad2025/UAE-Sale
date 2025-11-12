@@ -9,28 +9,28 @@
   --color-text-muted: #4b5563;
   --color-text-soft: #64748b;
 
-  --color-primary: #0b5ed7;
-  --color-primary-strong: #0949a3;
+  --color-primary: #2563eb;
+  --color-primary-strong: #1d4ed8;
   --color-on-primary: #ffffff;
 
-  --color-secondary: #5b21b6;
-  --color-secondary-strong: #4c1d95;
+  --color-secondary: #475569;
+  --color-secondary-strong: #334155;
   --color-on-secondary: #ffffff;
 
-  --color-success: #146c43;
-  --color-success-strong: #0f5132;
+  --color-success: #16a34a;
+  --color-success-strong: #15803d;
   --color-on-success: #ffffff;
 
-  --color-danger: #c62828;
-  --color-danger-strong: #9b1c1c;
+  --color-danger: #dc2626;
+  --color-danger-strong: #b91c1c;
   --color-on-danger: #ffffff;
 
-  --color-warning: #d97706;
-  --color-warning-strong: #b45309;
+  --color-warning: #f97316;
+  --color-warning-strong: #ea580c;
   --color-on-warning: #111827;
 
-  --color-info: #0369a1;
-  --color-info-strong: #02567f;
+  --color-info: #0ea5e9;
+  --color-info-strong: #0284c7;
   --color-on-info: #ffffff;
 
   --color-light: #e5e9f2;
@@ -41,7 +41,7 @@
   --color-dark-strong: #0b1220;
   --color-on-dark: #f8fafc;
 
-  --color-focus-ring: rgba(11, 94, 215, 0.35);
+  --color-focus-ring: rgba(37, 99, 235, 0.35);
   --color-input-bg: #ffffff;
 
   /* Map legacy variables to the accessible palette */
@@ -60,14 +60,14 @@
   --sidebar-link-hover-bg: rgba(255, 255, 255, 0.25);
   --sidebar-link-active-border: rgba(255, 255, 255, 0.45);
   --sidebar-link-focus-border: #38bdf8;
-  --sidebar-bg: linear-gradient(180deg, #1b2b4b 0%, #111d33 100%);
-  --sidebar-brand-bg: linear-gradient(135deg, #0b5ed7 0%, #5b21b6 100%);
+  --sidebar-bg: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  --sidebar-brand-bg: linear-gradient(135deg, #2563eb 0%, #475569 100%);
 
   --content-bg: var(--color-surface);
   --content-text: var(--color-text-strong);
   --content-text-muted: var(--color-text-muted);
 
-  --card-header-bg: linear-gradient(135deg, #0b5ed7 0%, #5b21b6 100%);
+  --card-header-bg: linear-gradient(135deg, #2563eb 0%, #475569 100%);
   --card-header-text: #ffffff;
 
   --footer-bg: #eef2f8;

@@ -4121,5 +4121,45 @@
       "subtype": "expense_management"
     },
     "success": true
+  },
+  {
+    "timestamp": "2025-11-12T22:16:37.909658",
+    "question": "كيفك",
+    "response": "",
+    "user_feedback": null,
+    "context": {
+      "user_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-12T22:16:45.764426",
+    "question": "أخبرني عن كمبيوترات السيارات",
+    "response": "",
+    "user_feedback": null,
+    "context": {
+      "user_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-13T01:24:27.799228",
+    "question": "تحسين ذاتي",
+    "response": "",
+    "user_feedback": null,
+    "context": {
+      "user_id": 1
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2025-11-13T01:24:36.478233",
+    "question": "حالة الشبكات العصبية",
+    "response": "📦 **تحليل المخزون:**\n\n✅ **المخزون صحي!** جميع المنتجات فوق الحد الأدنى\n\n💡 **رؤى:**\n✅ المخزون صحي - لا توجد منتجات بمخزون منخفض\n",
+    "user_feedback": null,
+    "context": {
+      "user_id": 1
+    },
+    "success": true
   }
 ]

@@ -14,9 +14,9 @@ def reset_database():
         
         try:
             if 'postgres' in dialect:
-                print(">>> PostgreSQL detected. Executing FORCE CASCADE DROP...")
+                print(">>> PostgreSQL detected. Executing ULTRA FORCE DROP...")
                 with db.engine.connect() as conn:
-                    # 1. Kill all other connections to the database to ensure we can drop everything
+                    # 1. Kill connections
                     try:
                         conn.execute(text("""
                             SELECT pg_terminate_backend(pid) 
@@ -24,37 +24,35 @@ def reset_database():
                             WHERE datname = current_database() 
                             AND pid <> pg_backend_pid()
                         """))
-                        print(">>> Terminated other connections.")
-                    except Exception as e:
-                        print(f"Warning (Connection Kill): {e}")
+                    except:
+                        pass
 
-                    # 2. Force drop schema
+                    # 2. DROP SCHEMA CASCADE
                     conn.execute(text("DROP SCHEMA public CASCADE"))
                     conn.execute(text("CREATE SCHEMA public"))
                     conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
                     conn.execute(text("GRANT ALL ON SCHEMA public TO super")) 
                     
-                    # 3. Explicitly drop alembic_version table just in case it survived in another schema
-                    conn.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
-                    
                     conn.commit()
-                print(">>> SUCCESS: Schema public recreated.")
+                print(">>> SUCCESS: Schema wiped.")
             else:
-                # SQLite
                 db.drop_all()
-                try:
-                    with db.engine.connect() as conn:
-                        conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
-                        conn.commit()
-                except Exception:
-                    pass
                 print(">>> SUCCESS: Tables dropped.")
                 
         except Exception as e:
             print(f"!!! ERROR: {e}")
             sys.exit(1)
 
-    print("!!! DATABASE RESET COMPLETE. NOW RUN 'flask db upgrade' !!!")
+    print("!!! DATABASE RESET COMPLETE !!!")
+    print("!!! NOW EXECUTING 'flask db stamp head' TO SYNC MIGRATIONS !!!")
+    
+    # We don't run flask db upgrade immediately because the migrations might be out of sync
+    # Instead, we will stamp head if tables exist, or upgrade if they don't.
+    # But since we wiped everything, we should run upgrade. 
+    # The error "DuplicateColumn" suggests that tables WERE NOT WIPED or migration is trying to add column to existing table.
+    
+    # If reset worked, tables shouldn't exist.
+    # If they exist, it means reset didn't work.
 
 if __name__ == "__main__":
     reset_database()

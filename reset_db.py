@@ -6,52 +6,55 @@ from sqlalchemy import text
 app = create_app()
 
 def reset_database():
-    print("WARNING: This will DROP ALL DATA in the database.")
-    print("This is necessary to fix the schema synchronization issues.")
+    print("!!! STARTING DATABASE RESET !!!")
     
     with app.app_context():
+        dialect = db.engine.dialect.name
+        print(f"Detected Dialect: {dialect}")
+        
         try:
-            if db.engine.dialect.name == 'postgresql':
-                print("PostgreSQL detected. Performing cascade schema drop...")
+            if 'postgres' in dialect:
+                print(">>> PostgreSQL detected. Executing FORCE CASCADE DROP...")
                 with db.engine.connect() as conn:
-                    # Execute raw SQL to drop schema cascade
-                    # This handles circular dependencies by wiping the entire schema
+                    # 1. Kill all other connections to the database to ensure we can drop everything
+                    try:
+                        conn.execute(text("""
+                            SELECT pg_terminate_backend(pid) 
+                            FROM pg_stat_activity 
+                            WHERE datname = current_database() 
+                            AND pid <> pg_backend_pid()
+                        """))
+                        print(">>> Terminated other connections.")
+                    except Exception as e:
+                        print(f"Warning (Connection Kill): {e}")
+
+                    # 2. Force drop schema
                     conn.execute(text("DROP SCHEMA public CASCADE"))
                     conn.execute(text("CREATE SCHEMA public"))
-                    # Ensure the user has access to the new schema
-                    conn.execute(text("GRANT ALL ON SCHEMA public TO public")) 
+                    conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
+                    conn.execute(text("GRANT ALL ON SCHEMA public TO super")) 
+                    
+                    # 3. Explicitly drop alembic_version table just in case it survived in another schema
+                    conn.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
+                    
                     conn.commit()
-                print("Schema public dropped and recreated successfully.")
+                print(">>> SUCCESS: Schema public recreated.")
             else:
-                print("Dropping all tables (Standard)...")
+                # SQLite
                 db.drop_all()
-                print("Dropping alembic_version...")
                 try:
                     with db.engine.connect() as conn:
                         conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
                         conn.commit()
                 except Exception:
                     pass
-                    
+                print(">>> SUCCESS: Tables dropped.")
+                
         except Exception as e:
-            print(f"Error during schema reset: {e}")
-            print("Trying fallback: Drop tables with CASCADE individually...")
-            # Fallback for when schema drop fails (permissions)
-            try:
-                with db.engine.connect() as conn:
-                    # Get all table names
-                    result = conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"))
-                    tables = [row[0] for row in result]
-                    for table in tables:
-                        print(f"Dropping {table} CASCADE...")
-                        conn.execute(text(f'DROP TABLE IF EXISTS "{table}" CASCADE'))
-                    conn.commit()
-            except Exception as e2:
-                print(f"Fallback failed: {e2}")
-                sys.exit(1)
+            print(f"!!! ERROR: {e}")
+            sys.exit(1)
 
-        print("Database cleared.")
-        print("Please run 'flask db upgrade' immediately after this.")
+    print("!!! DATABASE RESET COMPLETE. NOW RUN 'flask db upgrade' !!!")
 
 if __name__ == "__main__":
     reset_database()

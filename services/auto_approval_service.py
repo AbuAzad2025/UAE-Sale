@@ -167,7 +167,7 @@ class AutoApprovalService:
         }
 
 
-def schedule_auto_approval():
+def schedule_auto_approval(app):
     """جدولة القبول التلقائي كل ساعة"""
     import threading
     import time
@@ -175,18 +175,15 @@ def schedule_auto_approval():
     def approval_task():
         while True:
             try:
-                # الانتظار ساعة واحدة
-                time.sleep(3600)  # 3600 ثانية = 1 ساعة
-                
-                # تشغيل القبول التلقائي
-                from app import create_app
-                app = create_app()
                 with app.app_context():
                     result = AutoApprovalService.run_auto_approval()
                     logger.info(f'✅ Auto-approval completed: {result}')
                     
             except Exception as e:
                 logger.error(f'❌ Error in auto-approval task: {str(e)}')
+            finally:
+                # الانتظار ساعة واحدة قبل التشغيل التالي
+                time.sleep(3600)  # 3600 ثانية = 1 ساعة
     
     # بدء المهمة في خلفية منفصلة
     thread = threading.Thread(target=approval_task, daemon=True)

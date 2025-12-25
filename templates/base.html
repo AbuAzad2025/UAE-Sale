@@ -373,7 +373,7 @@
           </li>
           {% endif %}
           
-          {% if current_user.has_permission('manage_purchases') %}
+          {% if current_user.has_permission('manage_suppliers') %}
           <li class="nav-item has-treeview {% if request.endpoint and 'suppliers' in request.endpoint %}menu-open{% endif %}">
             <a href="#" class="nav-link {% if request.endpoint and 'suppliers' in request.endpoint %}active{% endif %}">
               <i class="nav-icon fas fa-truck"></i>
@@ -393,6 +393,32 @@
                 <a href="{{ url_for('suppliers.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
                   <p>قائمة الموردين</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% endif %}
+          
+          {% if current_user.has_permission('manage_users') %}
+          <li class="nav-item has-treeview {% if request.endpoint and 'users' in request.endpoint %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and 'users' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-users-cog"></i>
+              <p>
+                المستخدمين
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('users.create') }}" class="nav-link">
+                  <i class="fas fa-user-plus nav-icon text-success"></i>
+                  <p>مستخدم جديد</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('users.index') }}" class="nav-link">
+                  <i class="fas fa-users nav-icon"></i>
+                  <p>قائمة المستخدمين</p>
                 </a>
               </li>
             </ul>
@@ -710,6 +736,7 @@
 <script defer src="{{ url_for('static', filename='js/keyboard-shortcuts.js') }}"></script>
 <script defer src="{{ url_for('static', filename='js/dark-mode.js') }}"></script>
 <script defer src="{{ url_for('static', filename='js/performance.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/smart-print.js') }}"></script>
 {% block extra_js %}{% endblock %}
 
 <script>

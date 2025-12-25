@@ -103,7 +103,7 @@ def add_customs_tax():
 @permission_required('admin')
 def expense_categories():
     """إدارة فئات المصروفات المتقدمة"""
-    categories = ExpenseCategory.query.filter_by(is_active=True).order_by(ExpenseCategory.code).all()
+    categories = ExpenseCategory.query.filter_by(is_active=True).order_by(ExpenseCategory.name).all()
     return render_template('ledger/advanced/expense_categories.html', categories=categories)
 
 @advanced_ledger_bp.route('/expense-categories/add', methods=['GET', 'POST'])
@@ -111,7 +111,7 @@ def expense_categories():
 @permission_required('admin')
 def add_expense_category():
     """إضافة فئة مصروفات جديدة"""
-    parent_categories = ExpenseCategory.query.filter_by(parent_id=None, is_active=True).all()
+    parent_categories = ExpenseCategory.query.filter_by(is_active=True).all()
     accounts = GLAccount.query.filter_by(is_active=True, is_header=False).order_by(GLAccount.code).all()
     
     if request.method == 'POST':
@@ -126,17 +126,11 @@ def add_expense_category():
             
             parent_id = request.form.get('parent_id', type=int) if request.form.get('parent_id') else None
             
+            account = GLAccount.query.get(gl_account_id)
             category = ExpenseCategory(
-                code=request.form.get('code'),
                 name=request.form.get('name'),
                 name_ar=request.form.get('name_ar'),
-                parent_id=parent_id,
-                gl_account_id=gl_account_id,
-                is_deductible=bool(request.form.get('is_deductible')),
-                max_deduction_rate=Decimal(request.form.get('max_deduction_rate', 1.0)),
-                requires_approval=bool(request.form.get('requires_approval')),
-                approval_limit=Decimal(request.form.get('approval_limit', 0)),
-                description=request.form.get('description')
+                gl_account_code=account.code if account else None
             )
             
             db.session.add(category)

@@ -4,12 +4,10 @@ from flask import request, abort
 from functools import wraps
 
 
-# IP Whitelisting للمالك
 OWNER_ALLOWED_IPS = [
     '127.0.0.1',
     'localhost',
     '::1',
-    # أضف IPs المالك هنا
 ]
 
 def owner_ip_check(f):
@@ -21,7 +19,6 @@ def owner_ip_check(f):
         if current_user.is_authenticated and current_user.is_owner:
             client_ip = request.remote_addr
             
-            # تخطي في Development
             from flask import current_app
             if current_app.debug:
                 return f(*args, **kwargs)
@@ -39,7 +36,6 @@ def sanitize_sql_like(text):
     if not text:
         return ''
     
-    # escape الأحرف الخاصة في SQL LIKE
     text = str(text).replace('\\', '\\\\')
     text = text.replace('%', '\\%')
     text = text.replace('_', '\\_')

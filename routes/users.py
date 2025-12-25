@@ -10,8 +10,11 @@ users_bp = Blueprint('users', __name__, url_prefix='/users')
 
 @users_bp.route('/')
 @login_required
-@admin_required
 def index():
+    if not current_user.has_permission('manage_users'):
+        flash('⛔ ليس لديك صلاحية لإدارة المستخدمين.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     search = request.args.get('search', '', type=str)
@@ -41,9 +44,11 @@ def index():
 
 @users_bp.route('/create', methods=['GET', 'POST'])
 @login_required
-@admin_required
 def create():
-    roles = Role.query.filter_by(is_active=True).all()
+    if not current_user.has_permission('manage_users'):
+        abort(403)
+
+    roles = Role.query.filter_by(is_active=True).filter(Role.slug != 'owner').all()
     default_form = {'is_active': '1'}
     
     if request.method == 'POST':
@@ -96,8 +101,10 @@ def create():
 
 @users_bp.route('/<int:id>')
 @login_required
-@admin_required
 def view(id):
+    if not current_user.has_permission('manage_users'):
+        abort(403)
+
     user = User.query.filter_by(id=id, is_owner=False).first_or_404()
     return render_template('users/view.html', user=user)
 
@@ -131,7 +138,7 @@ def edit(id):
             db.session.rollback()
             flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
-    roles = Role.query.filter_by(is_active=True).all()
+    roles = Role.query.filter_by(is_active=True).filter(Role.slug != 'owner').all()
     return render_template('users/edit.html', user=user, roles=roles)
 
 
@@ -156,10 +163,12 @@ def toggle_active(id):
 @users_bp.route('/<int:id>/delete', methods=['POST'])
 @login_required
 def delete(id):
-    if not current_user.is_owner:
-        flash('👑 فقط المالك يمكنه حذف المستخدمين.\n💡 اتصل بمالك النظام لتنفيذ هذه العملية.', 'danger')
+    # Check permission instead of is_owner
+    if not current_user.has_permission('manage_users'):
+        flash('⛔ ليس لديك صلاحية لحذف المستخدمين.', 'danger')
         return redirect(url_for('users.index'))
     
+    # Ensure target is NOT owner (double check, though filter handles it)
     user = User.query.filter_by(id=id, is_owner=False).first_or_404()
     
     if user.id == current_user.id:

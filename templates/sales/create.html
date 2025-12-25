@@ -385,7 +385,7 @@ function validateForm() {
   const lineCount = parseInt($('#line_count').val()) || 0;
   
   if (lineCount === 0) {
-    alert('⚠️ يجب إضافة منتج واحد على الأقل للفاتورة!\n\nاضغط "➕ إضافة صف" واختر منتجاً.');
+    alert('يجب إضافة منتج واحد على الأقل للفاتورة.\n\nاضغط "إضافة صف" واختر منتجاً.');
     return false;
   }
   
@@ -400,7 +400,7 @@ function validateForm() {
   }
   
   if (!hasProduct) {
-    alert('⚠️ يجب اختيار منتج واحد على الأقل!\n\nاختر منتجاً من القائمة المنسدلة.');
+    alert('يجب اختيار منتج واحد على الأقل.\n\nاختر منتجاً من القائمة المنسدلة.');
     return false;
   } 
   return true;

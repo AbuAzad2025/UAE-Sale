@@ -11,9 +11,7 @@ from logging.handlers import RotatingFileHandler
 
 
 def _ensure_utf8_stream(stream):
-    """
-    ضمان أن المجرى (stdout / stderr) يستخدم UTF-8 لتفادي أخطاء الترميز في Windows.
-    """
+    """تغليف المجرى لضمان UTF-8"""
     if hasattr(stream, "reconfigure"):
         try:
             stream.reconfigure(encoding="utf-8", errors="replace")
@@ -30,20 +28,14 @@ def _ensure_utf8_stream(stream):
 
 def setup_enhanced_logging(app):
     """إعداد نظام تسجيل محسّن"""
-    
-    # إنشاء مجلد logs إن لم يكن موجوداً
+
     logs_dir = 'logs'
     if not os.path.exists(logs_dir):
         os.makedirs(logs_dir)
-    
-    # =====================================
-    # File Handlers
-    # =====================================
-    
-    # 1. General Application Log (Rotating)
+
     app_handler = RotatingFileHandler(
         os.path.join(logs_dir, 'app.log'),
-        maxBytes=10 * 1024 * 1024,  # 10MB
+        maxBytes=10 * 1024 * 1024,
         backupCount=10,
         encoding='utf-8'
     )
@@ -53,10 +45,9 @@ def setup_enhanced_logging(app):
         datefmt='%Y-%m-%d %H:%M:%S'
     ))
     
-    # 2. Error Log (Errors only)
     error_handler = RotatingFileHandler(
         os.path.join(logs_dir, 'errors.log'),
-        maxBytes=10 * 1024 * 1024,  # 10MB
+        maxBytes=10 * 1024 * 1024,
         backupCount=5,
         encoding='utf-8'
     )
@@ -69,10 +60,9 @@ def setup_enhanced_logging(app):
         datefmt='%Y-%m-%d %H:%M:%S'
     ))
     
-    # 3. Security Log (مستوى أعلى من الأمان)
     security_handler = RotatingFileHandler(
         os.path.join(logs_dir, 'security.log'),
-        maxBytes=5 * 1024 * 1024,  # 5MB
+        maxBytes=5 * 1024 * 1024,
         backupCount=10,
         encoding='utf-8'
     )
@@ -84,10 +74,9 @@ def setup_enhanced_logging(app):
         datefmt='%Y-%m-%d %H:%M:%S'
     ))
     
-    # 4. Performance Log (للاستعلامات البطيئة)
     perf_handler = RotatingFileHandler(
         os.path.join(logs_dir, 'performance.log'),
-        maxBytes=5 * 1024 * 1024,  # 5MB
+        maxBytes=5 * 1024 * 1024,
         backupCount=5,
         encoding='utf-8'
     )
@@ -97,22 +86,13 @@ def setup_enhanced_logging(app):
         datefmt='%Y-%m-%d %H:%M:%S'
     ))
     
-    # =====================================
-    # إضافة Handlers للـ App Logger
-    # =====================================
     app.logger.addHandler(app_handler)
     app.logger.addHandler(error_handler)
-    
-    # مستوى التسجيل
     app.logger.setLevel(logging.INFO if not app.debug else logging.DEBUG)
-    
-    # =====================================
-    # Console Handler (للتطوير)
-    # =====================================
+
     utf8_stdout = _ensure_utf8_stream(sys.stdout)
     utf8_stderr = _ensure_utf8_stream(sys.stderr)
 
-    # إزالة أي معالجات بث سابقة لتجنب التكرار
     for handler in list(app.logger.handlers):
         if isinstance(handler, logging.StreamHandler) and handler.stream in (sys.stdout, sys.stderr):
             app.logger.removeHandler(handler)
@@ -184,7 +164,7 @@ class PerformanceLogger:
     @staticmethod
     def log_slow_query(query, duration):
         """تسجيل استعلام بطيء"""
-        if duration > 1.0:  # أكثر من ثانية
+        if duration > 1.0:
             logging.warning(f'استعلام بطيء ({duration:.2f}s): {query}')
     
     @staticmethod

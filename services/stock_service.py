@@ -33,13 +33,49 @@ class StockService:
     
     @staticmethod
     def adjust_stock(product_id, quantity, notes=None, warehouse_id=None):
-        return StockService.create_movement(
+        movement = StockService.create_movement(
             product_id=product_id,
             quantity=Decimal(str(quantity)),
             movement_type='adjustment',
             notes=notes,
             warehouse_id=warehouse_id
         )
+        
+        # GL Integration for Adjustment
+        try:
+            from services.gl_service import GLService
+            product = Product.query.get(product_id)
+            if product and product.cost_price:
+                cost_value = abs(Decimal(str(quantity))) * Decimal(str(product.cost_price))
+                
+                if cost_value > 0:
+                    lines = []
+                    if Decimal(str(quantity)) < 0:
+                        # Loss (Decrease in Stock)
+                        # Debit Expense (Inventory Adjustment), Credit Inventory
+                        lines = [
+                            {'account': '5150', 'debit': cost_value, 'credit': 0, 'description': f'Inventory Adjustment (Loss) - {product.name}'},
+                            {'account': '1140', 'debit': 0, 'credit': cost_value, 'description': f'Stock Decrease - {product.name}'}
+                        ]
+                    else:
+                        # Gain (Increase in Stock)
+                        # Debit Inventory, Credit Expense (Contra) or Revenue
+                        # Using 5150 as Credit (reducing expense)
+                        lines = [
+                            {'account': '1140', 'debit': cost_value, 'credit': 0, 'description': f'Stock Increase - {product.name}'},
+                            {'account': '5150', 'debit': 0, 'credit': cost_value, 'description': f'Inventory Adjustment (Gain) - {product.name}'}
+                        ]
+                    
+                    GLService.post_entry(
+                        lines=lines,
+                        description=f'Stock Adjustment - {product.name}',
+                        reference_type='stock_adjustment',
+                        reference_id=movement.id
+                    )
+        except Exception as e:
+            current_app.logger.error(f"Failed to post GL entry for stock adjustment: {e}")
+            
+        return movement
     
     @staticmethod
     def create_movement(product_id, quantity, movement_type, reference_type=None, reference_id=None, notes=None, warehouse_id=None):
@@ -137,7 +173,12 @@ class StockService:
             
             product = Product.query.get(line.product_id)
             if product:
-                product.cost_price = line.unit_cost
+                # Update cost price in base currency (AED)
+                # Ensure we use Decimal for precision
+                unit_cost_decimal = Decimal(str(line.unit_cost))
+                exchange_rate_decimal = Decimal(str(purchase.exchange_rate))
+                cost_in_aed = unit_cost_decimal * exchange_rate_decimal
+                product.cost_price = cost_in_aed
     
     @staticmethod
     def reverse_sale(sale):

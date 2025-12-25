@@ -47,7 +47,6 @@ class RedisCache:
     def delete_pattern(pattern):
         """Delete all keys matching pattern"""
         try:
-            # Note: This requires redis backend
             if hasattr(cache.cache, '_client'):
                 redis_client = cache.cache._client
                 keys = redis_client.keys(f"{current_app.config['CACHE_KEY_PREFIX']}:{pattern}")
@@ -110,24 +109,19 @@ def cached(timeout=300, key_prefix='view'):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Generate cache key
             cache_key = f"{key_prefix}:{f.__name__}"
             
-            # Add args/kwargs to key if present
             if args or kwargs:
                 key_suffix = str(args) + str(sorted(kwargs.items()))
                 cache_key += f":{hash(key_suffix)}"
             
-            # Try to get from cache
             result = RedisCache.get(cache_key)
             
             if result is not None:
                 return result
             
-            # Execute function
             result = f(*args, **kwargs)
             
-            # Store in cache
             RedisCache.set(cache_key, result, timeout=timeout)
             
             return result
@@ -188,13 +182,11 @@ def rate_limit_check(identifier, limit=60, window=60):
         current = RedisCache.increment(key)
         
         if current == 1:
-            # First request, set expiry
             cache.cache._client.expire(key, window)
         
         remaining = max(0, limit - current)
         allowed = current <= limit
         
-        # Get TTL for reset time
         ttl = cache.cache._client.ttl(key)
         
         return allowed, remaining, ttl
@@ -203,7 +195,6 @@ def rate_limit_check(identifier, limit=60, window=60):
         return True, limit, window
 
 
-# Predefined cache helpers for common operations
 
 def cache_customer_balance(customer_id, balance, timeout=300):
     """Cache customer balance"""

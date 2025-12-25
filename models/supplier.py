@@ -97,15 +97,21 @@ class Supplier(db.Model):
     
     def update_statistics(self):
         """تحديث إحصائيات المورد"""
+        from models import Payment
+        
         confirmed_purchases = self.purchases.filter_by(status='confirmed').all()
         
         self.total_purchases_aed = sum(
             p.amount_aed or Decimal('0') for p in confirmed_purchases
         )
         
-        self.total_paid_aed = sum(
-            p.paid_amount_aed or Decimal('0') for p in confirmed_purchases
-        )
+        # Calculate total paid from Payment table
+        total_paid = db.session.query(db.func.sum(Payment.amount_aed)).filter(
+            Payment.supplier_id == self.id,
+            Payment.payment_confirmed == True
+        ).scalar()
+        
+        self.total_paid_aed = total_paid or Decimal('0')
         
         if confirmed_purchases:
             self.last_purchase_date = max(p.purchase_date for p in confirmed_purchases)

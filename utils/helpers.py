@@ -118,11 +118,9 @@ def save_uploaded_file(file, upload_folder='uploads', allowed_extensions=None):
     if not file or not file.filename:
         return None
     
-    # فحص نوع الملف
     if not allowed_file(file.filename, allowed_extensions):
         raise ValueError('نوع الملف غير مسموح')
     
-    # فحص حجم الملف (5MB max)
     MAX_FILE_SIZE = 5 * 1024 * 1024
     file.seek(0, os.SEEK_END)
     file_length = file.tell()
@@ -131,11 +129,9 @@ def save_uploaded_file(file, upload_folder='uploads', allowed_extensions=None):
     if file_length > MAX_FILE_SIZE:
         raise ValueError('حجم الملف أكبر من المسموح (5MB)')
     
-    # فحص محتوى الملف (magic bytes)
     file_header = file.read(512)
     file.seek(0)
     
-    # فحص أنه ليس ملف تنفيذي
     if file_header.startswith(b'MZ') or file_header.startswith(b'\x7fELF'):
         raise ValueError('ملفات تنفيذية غير مسموحة')
     
@@ -149,7 +145,6 @@ def save_uploaded_file(file, upload_folder='uploads', allowed_extensions=None):
     filepath = os.path.join(full_upload_folder, unique_filename)
     file.save(filepath)
     
-    # تسجيل
     current_app.logger.info(f'File uploaded: {unique_filename} ({file_length} bytes)')
     
     return os.path.join(upload_folder, unique_filename).replace('\\', '/')

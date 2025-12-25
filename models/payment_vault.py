@@ -74,7 +74,7 @@ class PaymentVault(db.Model):
     
     def set_vault_password(self, password):
         """تعيين كلمة مرور الخزينة"""
-        self.vault_password_hash = generate_password_hash(password)
+        self.vault_password_hash = generate_password_hash(password, method='pbkdf2:sha256')
     
     def check_vault_password(self, password):
         """التحقق من كلمة مرور الخزينة"""

@@ -140,10 +140,10 @@ class PaymentService:
             
             try:
                 GLService.ensure_core_accounts()
-                payment_account = '1000' if receipt.payment_method == 'cash' else '1010'
+                payment_account = '1110' if receipt.payment_method == 'cash' else '1120'
                 lines = [
-                    {'account': payment_account, 'debit': receipt.amount_aed, 'description': f'قبض من {customer.name}'},
-                    {'account': '1100', 'credit': receipt.amount_aed, 'description': f'سند قبض {receipt.receipt_number}'}
+                    {'account': payment_account, 'debit': receipt.amount, 'description': f'قبض من {customer.name}'},
+                    {'account': '1130', 'credit': receipt.amount, 'description': f'سند قبض {receipt.receipt_number}'}
                 ]
                 GLService.post_entry(lines, description=f'Receipt {receipt.receipt_number}', reference_type='Receipt', reference_id=receipt.id, currency=receipt.currency, exchange_rate=receipt.exchange_rate)
             except Exception as e:

@@ -5,6 +5,8 @@ from models import GLAccount, GLJournalEntry, GLJournalLine
 from utils.helpers import generate_number
 
 
+_JE_SEQ = {}
+
 class GLService:
     @staticmethod
     def ensure_core_accounts():
@@ -57,6 +59,7 @@ class GLService:
             # === المصروفات Expenses ===
             ('5000', 'تكلفة المبيعات', 'Cost of Sales', 'expense', None, True, 0),
             ('5100', 'تكلفة البضاعة المباعة', 'Cost of Goods Sold', 'expense', '5000', False, 1),
+            ('5150', 'تعديلات المخزون', 'Inventory Adjustments', 'expense', '5000', False, 1),
             ('5200', 'الخصومات الممنوحة', 'Discounts Given', 'expense', '5000', False, 1),
             ('5300', 'مصروفات الشحن', 'Shipping Expense', 'expense', '5000', False, 1),
             
@@ -135,7 +138,21 @@ class GLService:
             raise ValueError(f"Journal entry is not balanced: Debit={total_debit}, Credit={total_credit}")
         
         # Generate entry number
-        entry_number = generate_number('JE', GLJournalEntry, 'entry_number')
+        def _unique_entry_number():
+            y = datetime.now().strftime('%Y')
+            from models import GLJournalEntry as _JE
+            latest = db.session.query(_JE).filter(_JE.entry_number.like(f'JE-{y}-%')).order_by(_JE.entry_number.desc()).first()
+            last_db = 0
+            if latest:
+                try:
+                    last_db = int(latest.entry_number.split('-')[-1])
+                except Exception:
+                    last_db = 0
+            last_mem = _JE_SEQ.get(y, last_db)
+            next_num = max(last_db, last_mem) + 1
+            _JE_SEQ[y] = next_num
+            return f'JE-{y}-{next_num:04d}'
+        entry_number = _unique_entry_number()
         
         # Create entry
         GLService.ensure_core_accounts()
@@ -171,7 +188,21 @@ class GLService:
 
     @staticmethod
     def post_entry(lines, description='', reference_type=None, reference_id=None, currency='AED', exchange_rate=1):
-        entry_number = generate_number('JE', GLJournalEntry, 'entry_number')
+        def _unique_entry_number():
+            y = datetime.now().strftime('%Y')
+            from models import GLJournalEntry as _JE
+            latest = db.session.query(_JE).filter(_JE.entry_number.like(f'JE-{y}-%')).order_by(_JE.entry_number.desc()).first()
+            last_db = 0
+            if latest:
+                try:
+                    last_db = int(latest.entry_number.split('-')[-1])
+                except Exception:
+                    last_db = 0
+            last_mem = _JE_SEQ.get(y, last_db)
+            next_num = max(last_db, last_mem) + 1
+            _JE_SEQ[y] = next_num
+            return f'JE-{y}-{next_num:04d}'
+        entry_number = _unique_entry_number()
         entry = GLJournalEntry(
             entry_number=entry_number,
             entry_date=datetime.now(timezone.utc),
@@ -182,6 +213,7 @@ class GLService:
             exchange_rate=Decimal(str(exchange_rate))
         )
         db.session.add(entry)
+        db.session.flush()
         total_debit = Decimal('0')
         total_credit = Decimal('0')
         for ln in lines:
@@ -216,7 +248,21 @@ class GLService:
         """إنشاء قيد يدوي"""
         from flask_login import current_user
         
-        entry_number = generate_number('JE', GLJournalEntry, 'entry_number')
+        def _unique_entry_number():
+            y = datetime.now().strftime('%Y')
+            from models import GLJournalEntry as _JE
+            latest = db.session.query(_JE).filter(_JE.entry_number.like(f'JE-{y}-%')).order_by(_JE.entry_number.desc()).first()
+            last_db = 0
+            if latest:
+                try:
+                    last_db = int(latest.entry_number.split('-')[-1])
+                except Exception:
+                    last_db = 0
+            last_mem = _JE_SEQ.get(y, last_db)
+            next_num = max(last_db, last_mem) + 1
+            _JE_SEQ[y] = next_num
+            return f'JE-{y}-{next_num:04d}'
+        entry_number = _unique_entry_number()
         
         total_debit = Decimal('0')
         total_credit = Decimal('0')

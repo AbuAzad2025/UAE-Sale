@@ -36,7 +36,6 @@ class PerformanceMonitor:
                 'ip': request.remote_addr
             }
             
-            # Log slow requests
             if elapsed > 1.0:
                 current_app.logger.warning(f"SLOW REQUEST: {json.dumps(log_data)}")
             elif elapsed > 0.5:
@@ -55,7 +54,6 @@ class PerformanceMonitor:
                 result = f(*args, **kwargs)
                 duration = time.time() - start
                 
-                # Log performance
                 current_app.logger.info(
                     f"ENDPOINT {f.__name__}: {round(duration * 1000, 2)}ms"
                 )
@@ -104,7 +102,6 @@ class ErrorLogger:
             f"ERROR: {json.dumps(error_data, indent=2)}"
         )
         
-        # Store in database for analysis
         try:
             from models.audit import AuditLog
             audit = AuditLog(
@@ -131,11 +128,8 @@ class MetricsCollector:
             'tags': tags or {}
         }
         
-        # Log metric
         current_app.logger.info(f"METRIC: {json.dumps(metric_data)}")
         
-        # Can be extended to send to external monitoring services
-        # like Prometheus, DataDog, etc.
     
     @staticmethod
     def record_sale(amount, currency):
@@ -228,12 +222,10 @@ class HealthCheck:
 def setup_advanced_logging(app):
     """Setup advanced logging configuration"""
     
-    # Create logs directory
     import os
     logs_dir = os.path.join(app.root_path, 'logs')
     os.makedirs(logs_dir, exist_ok=True)
     
-    # Performance log
     perf_handler = logging.FileHandler(
         os.path.join(logs_dir, 'performance.log')
     )
@@ -243,7 +235,6 @@ def setup_advanced_logging(app):
     )
     perf_handler.setFormatter(perf_formatter)
     
-    # Error log
     error_handler = logging.FileHandler(
         os.path.join(logs_dir, 'errors.log')
     )
@@ -253,11 +244,9 @@ def setup_advanced_logging(app):
     )
     error_handler.setFormatter(error_formatter)
     
-    # Add handlers
     app.logger.addHandler(perf_handler)
     app.logger.addHandler(error_handler)
     
-    # Request/Response monitoring
     @app.before_request
     def before_request():
         PerformanceMonitor.log_request()
@@ -266,7 +255,6 @@ def setup_advanced_logging(app):
     def after_request(response):
         return PerformanceMonitor.log_response(response)
     
-    # Health check endpoint
     @app.route('/health')
     def health_check():
         from flask import jsonify
@@ -274,7 +262,6 @@ def setup_advanced_logging(app):
         status_code = 200 if health['status'] == 'healthy' else 503
         return jsonify(health), status_code
     
-    # Metrics endpoint (owner only)
     @app.route('/metrics')
     def metrics():
         from flask import jsonify
@@ -283,7 +270,6 @@ def setup_advanced_logging(app):
         if not current_user.is_authenticated or not current_user.is_owner:
             return jsonify({'error': 'Unauthorized'}), 403
         
-        # Collect metrics
         metrics_data = {
             'timestamp': datetime.now(timezone.utc).isoformat(),
             'health': HealthCheck.get_health_status(),

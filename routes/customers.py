@@ -5,6 +5,8 @@ from models import Customer, Sale
 from utils.decorators import permission_required
 from utils.helpers import create_audit_log
 from services.payment_service import PaymentService
+from decimal import Decimal
+from datetime import datetime
 
 customers_bp = Blueprint('customers', __name__, url_prefix='/customers')
 
@@ -166,6 +168,7 @@ def statement(id):
     
     date_from = request.args.get('date_from', type=str)
     date_to = request.args.get('date_to', type=str)
+    transaction_type = request.args.get('transaction_type', 'all')
     
     from sqlalchemy import func
     from models import Payment
@@ -183,42 +186,162 @@ def statement(id):
     
     sales = sales_query.order_by(Sale.sale_date).all()
     payments = payments_query.order_by(Payment.payment_date).all()
-    
+
     transactions = []
-    
+
     for sale in sales:
+        sale_lines_data = []
+        for idx, line in enumerate(sale.lines, start=1):
+            quantity = Decimal(str(line.quantity or 0))
+            unit_price = Decimal(str(line.unit_price or 0))
+            discount_percent = Decimal(str(line.discount_percent or 0))
+            gross_amount = (quantity * unit_price)
+            discount_value = (gross_amount * discount_percent / Decimal('100')) if discount_percent else Decimal('0')
+            sale_lines_data.append({
+                'index': idx,
+                'product_name': line.product.get_display_name('ar') if line.product else 'بند غير معرف',
+                'product_sku': line.product.sku if line.product and line.product.sku else None,
+                'unit': line.product.unit if line.product and hasattr(line.product, 'unit') else None,
+                'quantity': float(quantity),
+                'unit_price': float(unit_price),
+                'discount_percent': float(discount_percent),
+                'discount_value': float(discount_value),
+                'gross_amount': float(gross_amount),
+                'line_total': float(line.line_total or 0),
+                'notes': line.notes or ''
+            })
+
+        sale_payments = sale.payments.order_by(Payment.payment_date.asc()).all()
+        sale_payments_data = []
+        last_payment_date = None
+
+        for payment in sale_payments:
+            if last_payment_date is None or payment.payment_date > last_payment_date:
+                last_payment_date = payment.payment_date
+
+            cheque = payment.cheque if hasattr(payment, 'cheque') else None
+            sale_payments_data.append({
+                'id': payment.id,
+                'payment_number': payment.payment_number,
+                'payment_date': payment.payment_date,
+                'amount_aed': float(payment.amount_aed or 0),
+                'amount_original': float(payment.amount or 0),
+                'currency': payment.currency or 'AED',
+                'exchange_rate': float(payment.exchange_rate or 1),
+                'reference_number': payment.reference_number or '-',
+                'payment_method': payment.payment_method,
+                'payment_method_display': payment.get_method_display('ar') if hasattr(payment, 'get_method_display') else payment.payment_method,
+                'status_ar': payment.status_ar if hasattr(payment, 'status_ar') else ('مؤكدة ✅' if payment.payment_confirmed else 'معلقة ⏳'),
+                'payment_confirmed': payment.payment_confirmed,
+                'user': payment.user.get_display_name('ar') if payment.user and hasattr(payment.user, 'get_display_name') else (payment.user.full_name if payment.user else None),
+                'notes': payment.notes or '',
+                'direction': payment.direction,
+                'cheque_number': cheque.cheque_number if cheque else payment.cheque_number,
+                'cheque_bank': cheque.bank_name if cheque else payment.bank_name,
+                'cheque_due_date': cheque.due_date if cheque else None
+            })
+
+        sale_data = {
+            'id': sale.id,
+            'number': sale.sale_number,
+            'date': sale.sale_date,
+            'status': sale.payment_status,
+            'subtotal': float(sale.subtotal or 0),
+            'discount_amount': float(sale.discount_amount or 0),
+            'shipping_cost': float(sale.shipping_cost or 0),
+            'tax_rate': float(sale.tax_rate or 0),
+            'tax_amount': float(sale.tax_amount or 0),
+            'total_amount': float(sale.total_amount or sale.amount_aed or 0),
+            'amount_aed': float(sale.amount_aed or 0),
+            'paid_amount': float(sale.paid_amount_aed or 0),
+            'balance_due': float(sale.balance_due or 0),
+            'currency': sale.currency or 'AED',
+            'exchange_rate': float(sale.exchange_rate or 1),
+            'seller': sale.seller.get_display_name('ar') if sale.seller and hasattr(sale.seller, 'get_display_name') else (sale.seller.full_name if sale.seller else None),
+            'notes': sale.notes or '',
+            'lines': sale_lines_data,
+            'payments': sale_payments_data,
+            'last_payment_date': last_payment_date
+        }
+
         transactions.append({
             'date': sale.sale_date,
             'type': 'sale',
             'reference': sale.sale_number,
-            'debit': float(sale.amount_aed),
+            'debit': float(sale.amount_aed or 0),
             'credit': 0,
             'balance': 0,
-            'description': f'فاتورة بيع'
+            'description': 'فاتورة بيع',
+            'currency': sale.currency or 'AED',
+            'exchange_rate': float(sale.exchange_rate or 1),
+            'paid_amount': float(sale.paid_amount_aed or 0),
+            'balance_due': float(sale.balance_due or 0),
+            'status': sale.payment_status,
+            'sale': sale_data
         })
-    
+
     for payment in payments:
+        credit_amount = float(payment.amount_aed or 0) if payment.direction == 'incoming' else 0.0
+        debit_amount = float(payment.amount_aed or 0) if payment.direction != 'incoming' else 0.0
+
+        cheque = payment.cheque if hasattr(payment, 'cheque') else None
+
         transactions.append({
             'date': payment.payment_date,
             'type': 'payment',
-            'reference': payment.reference_number or f'دفع #{payment.id}',
-            'debit': 0,
-            'credit': float(payment.amount_aed),
+            'reference': payment.reference_number or payment.payment_number or f'دفع #{payment.id}',
+            'debit': debit_amount,
+            'credit': credit_amount,
             'balance': 0,
-            'description': f'دفع - {payment.payment_method}'
+            'description': f'دفعة - {payment.get_method_display("ar") if hasattr(payment, "get_method_display") else payment.payment_method}',
+            'currency': payment.currency or 'AED',
+            'exchange_rate': float(payment.exchange_rate or 1),
+            'paid_amount': credit_amount,
+            'balance_due': 0,
+            'status': payment.status_ar if hasattr(payment, 'status_ar') else ('مؤكدة ✅' if payment.payment_confirmed else 'معلقة ⏳'),
+            'payment': {
+                'id': payment.id,
+                'payment_number': payment.payment_number,
+                'payment_date': payment.payment_date,
+                'amount_aed': float(payment.amount_aed or 0),
+                'amount_original': float(payment.amount or 0),
+                'currency': payment.currency or 'AED',
+                'exchange_rate': float(payment.exchange_rate or 1),
+                'payment_method': payment.payment_method,
+                'payment_method_display': payment.get_method_display('ar') if hasattr(payment, 'get_method_display') else payment.payment_method,
+                'reference_number': payment.reference_number or '-',
+                'direction': payment.direction,
+                'payment_confirmed': payment.payment_confirmed,
+                'status_ar': payment.status_ar if hasattr(payment, 'status_ar') else ('مؤكدة ✅' if payment.payment_confirmed else 'معلقة ⏳'),
+                'user': payment.user.get_display_name('ar') if payment.user and hasattr(payment.user, 'get_display_name') else (payment.user.full_name if payment.user else None),
+                'notes': payment.notes or '',
+                'cheque_number': cheque.cheque_number if cheque else payment.cheque_number,
+                'cheque_bank': cheque.bank_name if cheque else payment.bank_name,
+                'cheque_due_date': cheque.due_date if cheque else payment.cheque_date
+            }
         })
-    
-    transactions.sort(key=lambda x: x['date'])
-    
+
+    transactions.sort(key=lambda x: (x['date'] or datetime.min))
+
+    if transaction_type in {'sale', 'payment'}:
+        transactions = [trans for trans in transactions if trans['type'] == transaction_type]
+
     running_balance = 0
     for trans in transactions:
         running_balance += trans['debit'] - trans['credit']
         trans['balance'] = running_balance
-    
-    return render_template('customers/statement.html',
-                         customer=customer,
-                         transactions=transactions,
-                         final_balance=running_balance)
+
+    return render_template(
+        'customers/statement.html',
+        customer=customer,
+        transactions=transactions,
+        final_balance=running_balance,
+        filters={
+            'date_from': date_from or '',
+            'date_to': date_to or '',
+            'transaction_type': transaction_type
+        }
+    )
 
 
 @customers_bp.route('/api/search')

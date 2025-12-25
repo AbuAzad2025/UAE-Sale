@@ -41,7 +41,7 @@ class BackupOptimizer:
     def cleanup_old_backups(backup_dir: str, keep_count: int = 10):
         try:
             backup_files = sorted(
-                Path(backup_dir).glob('*.db*'),
+                list(Path(backup_dir).glob('*.sql*')) + list(Path(backup_dir).glob('*.dump*')),
                 key=os.path.getmtime,
                 reverse=True
             )
@@ -65,26 +65,19 @@ class BackupOptimizer:
     @staticmethod
     def verify_backup(backup_path: str) -> bool:
         try:
-            import sqlite3
-            
+            import gzip
+            def check_sql_dump(content: bytes) -> bool:
+                text = content.decode('utf-8', errors='ignore')
+                markers = ['PostgreSQL', 'SET ', 'CREATE TABLE', 'COPY ', 'INSERT INTO']
+                return any(m in text for m in markers)
             if backup_path.endswith('.gz'):
-                import gzip
                 with gzip.open(backup_path, 'rb') as f:
                     data = f.read()
-                
-                if data[:16] == b'SQLite format 3\x00':
-                    return True
+                return check_sql_dump(data)
             else:
-                conn = sqlite3.connect(backup_path)
-                cursor = conn.cursor()
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-                tables = cursor.fetchall()
-                conn.close()
-                
-                return len(tables) > 0
-            
-            return False
-        
+                with open(backup_path, 'rb') as f:
+                    data = f.read()
+                return check_sql_dump(data)
         except Exception as e:
             logger.error(f"❌ Verification failed: {e}")
             return False
@@ -93,7 +86,7 @@ class BackupOptimizer:
     def get_backup_info(backup_dir: str) -> dict:
         try:
             backups = []
-            for backup_file in Path(backup_dir).glob('*.db*'):
+            for backup_file in Path(backup_dir).glob('*.sql*'):
                 stat = os.stat(backup_file)
                 backups.append({
                     'filename': backup_file.name,

@@ -183,6 +183,8 @@ class SaleService:
                     sale=sale,
                     amount=payment_data['amount'],
                     payment_method=payment_data['payment_method'],
+                    currency=payment_data.get('currency', 'AED'),
+                    exchange_rate=payment_data.get('exchange_rate', 1.0),
                     reference_number=payment_data.get('reference_number'),
                     cheque_number=payment_data.get('cheque_number'),
                     cheque_date=payment_data.get('cheque_date'),
@@ -210,28 +212,28 @@ class SaleService:
                 # Prepare GL lines with proper decimal precision
                 lines = [
                     {
-                        'account': '1100', 
-                        'debit': sale.amount_aed, 
+                        'account': '1130',
+                        'debit': sale.amount_aed,
                         'description': f'فاتورة {sale.sale_number}'
                     },
                     {
-                        'account': '4000', 
+                        'account': '4100',
                         'credit': ((sale.subtotal - sale.discount_amount) * exchange_rate).quantize(
                             Decimal('0.001'), rounding=ROUND_HALF_UP
-                        ), 
-                        'description': 'إيراد المبيعات'
+                        ),
+                        'description': 'إيرادات المبيعات'
                     },
                 ]
                 
                 if cogs_total_aed > Decimal('0'):
                     lines.append({
-                        'account': '5000', 
-                        'debit': cogs_total_aed, 
-                        'description': 'تكلفة المبيعات'
+                        'account': '5000',
+                        'debit': cogs_total_aed,
+                        'description': 'تكلفة البضاعة المباعة'
                     })
                     lines.append({
-                        'account': '1200', 
-                        'credit': cogs_total_aed, 
+                        'account': '1140',
+                        'credit': cogs_total_aed,
                         'description': 'خصم من المخزون'
                     })
                 
@@ -240,8 +242,8 @@ class SaleService:
                         Decimal('0.001'), rounding=ROUND_HALF_UP
                     )
                     lines.append({
-                        'account': '4100', 
-                        'credit': shipping_aed, 
+                        'account': '4300',
+                        'credit': shipping_aed,
                         'description': 'إيرادات الشحن'
                     })
                 
@@ -250,9 +252,9 @@ class SaleService:
                         Decimal('0.001'), rounding=ROUND_HALF_UP
                     )
                     lines.append({
-                        'account': '5200', 
-                        'debit': discount_aed, 
-                        'description': 'خصومات مبيعات'
+                        'account': '5200',
+                        'debit': discount_aed,
+                        'description': 'خصومات ممنوحة'
                     })
                 
                 if sale.tax_amount > Decimal('0'):
@@ -260,9 +262,9 @@ class SaleService:
                         Decimal('0.001'), rounding=ROUND_HALF_UP
                     )
                     lines.append({
-                        'account': '2100', 
-                        'credit': tax_aed, 
-                        'description': 'ضريبة مبيعات مستحقة'
+                        'account': '2130',
+                        'credit': tax_aed,
+                        'description': 'ضرائب مستحقة'
                     })
                 
                 GLService.post_entry(
@@ -288,8 +290,9 @@ class SaleService:
             raise
     
     @staticmethod
-    def create_payment_for_sale(sale, amount, payment_method, reference_number=None, 
-                                cheque_number=None, cheque_date=None, bank_name=None, notes=None):
+    def create_payment_for_sale(sale, amount, payment_method, currency='AED', exchange_rate=1.0, 
+                                reference_number=None, cheque_number=None, cheque_date=None, 
+                                bank_name=None, notes=None):
         """
         Create a payment for a sale with proper validations
         Uses Decimal for accurate financial calculations
@@ -325,8 +328,8 @@ class SaleService:
         
         payment_number = generate_number('PAY', Payment, 'payment_number')
         
-        # Calculate AED amount with proper rounding
-        exchange_rate_decimal = Decimal(str(sale.exchange_rate))
+        # Calculate AED amount with proper rounding using PROVIDED exchange rate
+        exchange_rate_decimal = Decimal(str(exchange_rate))
         amount_aed = (amount_decimal * exchange_rate_decimal).quantize(
             Decimal('0.001'), rounding=ROUND_HALF_UP
         )
@@ -337,7 +340,7 @@ class SaleService:
             sale_id=sale.id,
             customer_id=sale.customer_id,
             amount=amount_decimal,
-            currency=sale.currency,
+            currency=currency,
             exchange_rate=exchange_rate_decimal,
             amount_aed=amount_aed,
             payment_method=payment_method,
@@ -361,7 +364,7 @@ class SaleService:
                 cheque_type='incoming',
                 customer_id=sale.customer_id,
                 amount=amount_decimal,
-                currency=sale.currency,
+                currency=currency,
                 exchange_rate=exchange_rate_decimal,
                 amount_aed=amount_aed,
                 issue_date=sale.sale_date.date(),  # تاريخ الإصدار = تاريخ الفاتورة
@@ -375,6 +378,45 @@ class SaleService:
             
             # ربط الشيك بالدفعة
             payment.cheque_id = cheque.id
+
+        # GL Integration for Payment
+        try:
+            GLService.ensure_core_accounts()
+            
+            # Debit: Cash/Bank (Asset)
+            # Credit: Account Receivable (Asset - Reducing it)
+            
+            debit_account = '1110' # Cash default
+            if payment_method == 'bank_transfer':
+                debit_account = '1120' # Bank
+            elif payment_method == 'cheque':
+                debit_account = '1150' # Cheques under collection (Notes Receivable)
+            elif payment_method == 'card':
+                debit_account = '1120' # Bank (usually settles to bank)
+            
+            lines = [
+                {
+                    'account': debit_account, 
+                    'debit': amount_decimal, 
+                    'description': f'Payment for Sale {sale.sale_number} ({payment_method})'
+                },
+                {
+                    'account': '1130', # Accounts Receivable
+                    'credit': amount_decimal, 
+                    'description': f'Payment Received {payment.payment_number}'
+                }
+            ]
+            
+            GLService.post_entry(
+                lines, 
+                description=f'Payment {payment.payment_number}', 
+                reference_type='Payment', 
+                reference_id=payment.id, 
+                currency=currency, 
+                exchange_rate=exchange_rate_decimal
+            )
+        except Exception as e:
+            current_app.logger.warning(f'GL posting failed for payment: {e}')
         
         return payment
     

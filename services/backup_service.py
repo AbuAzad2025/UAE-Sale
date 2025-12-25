@@ -52,32 +52,32 @@ class BackupService:
         try:
             cls.initialize()
             
-            # مسار قاعدة البيانات
-            db_path = 'instance/app.db'
-            
-            if not os.path.exists(db_path):
-                logger.error(f"Database not found: {db_path}")
+            from extensions import db
+            db_url = str(db.engine.url)
+            if 'postgresql' not in db_url:
+                logger.error("Only PostgreSQL backups are supported")
                 return None
             
             # إنشاء اسم الملف
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             prefix = cls.MANUAL_PREFIX if manual else cls.BACKUP_PREFIX
-            backup_name = f"{prefix}{timestamp}.db"
+            backup_name = f"{prefix}{timestamp}.sql"
             
             if compress:
                 backup_name += '.gz'
             
             backup_path = os.path.join(cls.BACKUP_DIR, backup_name)
             
-            # نسخ الملف
+            import subprocess
+            pg_dump = os.environ.get('PG_DUMP_PATH', 'pg_dump')
+            cmd = [pg_dump, '--dbname', db_url, '--file', backup_path]
             if compress:
-                # نسخ مع ضغط
-                with open(db_path, 'rb') as f_in:
-                    with gzip.open(backup_path, 'wb') as f_out:
-                        shutil.copyfileobj(f_in, f_out)
-            else:
-                # نسخ مباشر
-                shutil.copy2(db_path, backup_path)
+                cmd.extend(['--compress', '9'])
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            except Exception as e:
+                logger.error(f"pg_dump failed: {e}")
+                return None
             
             # حساب الحجم
             file_size = os.path.getsize(backup_path)
@@ -131,24 +131,29 @@ class BackupService:
     
     @classmethod
     def _cleanup_old_backups(cls):
-        """حذف النسخ القديمة (الاحتفاظ بآخر 5 فقط)"""
         try:
+            settings_path = 'instance/backup_settings.json'
+            keep_count = cls.MAX_BACKUPS
+            try:
+                if os.path.exists(settings_path):
+                    with open(settings_path, 'r', encoding='utf-8') as f:
+                        s = json.load(f)
+                        keep_count = int(s.get('keep_count', keep_count))
+            except:
+                pass
+            
             backups = cls.list_backups(auto_only=True)
             
-            if len(backups) > cls.MAX_BACKUPS:
-                # ترتيب حسب التاريخ (الأقدم أولاً)
+            if len(backups) > keep_count:
                 backups_sorted = sorted(backups, key=lambda x: x['timestamp'])
                 
-                # حذف الزائد
-                to_delete = backups_sorted[:len(backups) - cls.MAX_BACKUPS]
+                to_delete = backups_sorted[:len(backups) - keep_count]
                 
                 for backup in to_delete:
                     try:
-                        # حذف الملف
                         if os.path.exists(backup['path']):
                             os.remove(backup['path'])
                         
-                        # حذف الـ metadata
                         meta_path = backup['path'] + '.meta.json'
                         if os.path.exists(meta_path):
                             os.remove(meta_path)
@@ -157,53 +162,41 @@ class BackupService:
                     except Exception as e:
                         logger.warning(f"Failed to delete backup {backup['filename']}: {e}")
                 
-                logger.info(f"Cleanup complete. Kept last {cls.MAX_BACKUPS} backups")
+                logger.info(f"Cleanup complete. Kept last {keep_count} backups")
         
         except Exception as e:
             logger.error(f"Cleanup failed: {e}")
     
     @classmethod
     def list_backups(cls, auto_only: bool = False, manual_only: bool = False) -> List[Dict]:
-        """
-        قائمة النسخ الاحتياطية
-        
-        Args:
-            auto_only: النسخ التلقائية فقط
-            manual_only: النسخ اليدوية فقط
-        
-        Returns:
-            قائمة بمعلومات النسخ
-        """
         try:
             cls.initialize()
             
             backups = []
             backup_dir = Path(cls.BACKUP_DIR)
             
-            # البحث عن ملفات .db و .db.gz
-            for backup_file in backup_dir.glob('*backup_*.db*'):
-                # تجاهل ملفات metadata
+            for backup_file in backup_dir.glob('*backup_*.sql*'):
                 if '.meta.json' in backup_file.name:
                     continue
-                
-                # تحميل metadata إذا وجد
                 meta_path = str(backup_file) + '.meta.json'
                 if os.path.exists(meta_path):
                     with open(meta_path, 'r', encoding='utf-8') as f:
                         metadata = json.load(f)
                 else:
-                    # إنشاء metadata أساسي
+                    name = backup_file.name
+                    base = name[:-3] if name.endswith('.gz') else name
+                    base = base[:-4] if base.endswith('.sql') else base
+                    ts = base.replace(cls.BACKUP_PREFIX, '').replace(cls.MANUAL_PREFIX, '')
                     metadata = {
                         'filename': backup_file.name,
                         'path': str(backup_file),
                         'size': os.path.getsize(backup_file),
                         'size_mb': round(os.path.getsize(backup_file) / (1024 * 1024), 2),
-                        'timestamp': backup_file.stem.split('_')[-2] + '_' + backup_file.stem.split('_')[-1],
+                        'timestamp': ts,
                         'manual': cls.MANUAL_PREFIX in backup_file.name,
                         'compressed': backup_file.suffix == '.gz',
                     }
                 
-                # فلترة حسب النوع
                 if auto_only and metadata.get('manual', False):
                     continue
                 if manual_only and not metadata.get('manual', False):
@@ -211,7 +204,6 @@ class BackupService:
                 
                 backups.append(metadata)
             
-            # ترتيب حسب التاريخ (الأحدث أولاً)
             backups.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
             
             return backups
@@ -239,7 +231,11 @@ class BackupService:
                 return False
             
             # مسار قاعدة البيانات الحالية
-            db_path = 'instance/app.db'
+            from extensions import db
+            db_url = str(db.engine.url)
+            if 'postgresql' not in db_url:
+                logger.error("Only PostgreSQL restore is supported")
+                return False
             
             # إنشاء نسخة احتياطية من الوضع الحالي قبل الاستعادة
             current_backup = cls.create_backup(
@@ -251,12 +247,7 @@ class BackupService:
                 logger.warning("⚠️ Could not create pre-restore backup")
             
             # فك الضغط إذا لزم الأمر
-            if backup_path.endswith('.gz'):
-                with gzip.open(backup_path, 'rb') as f_in:
-                    with open(db_path, 'wb') as f_out:
-                        shutil.copyfileobj(f_in, f_out)
-            else:
-                shutil.copy2(backup_path, db_path)
+            return False
             
             logger.info(f"Database restored from: {backup_filename}")
             return True
@@ -377,7 +368,10 @@ class BackupService:
             نجح أم فشل
         """
         try:
-            import sqlite3
+            from extensions import db
+            if 'postgresql' in str(db.engine.url):
+                logger.error("Custom table restore is not supported for PostgreSQL. Use pg_restore with filters.")
+                return False
             import tempfile
             
             backup_path = os.path.join(cls.BACKUP_DIR, backup_filename)
@@ -386,8 +380,7 @@ class BackupService:
                 logger.error(f"Backup file not found: {backup_filename}")
                 return False
             
-            # مسار قاعدة البيانات الحالية
-            db_path = 'instance/app.db'
+            # PostgreSQL only - no SQLite paths
             
             # إنشاء نسخة احتياطية من الوضع الحالي
             current_backup = cls.create_backup(
@@ -410,54 +403,7 @@ class BackupService:
                     with open(backup_path, 'rb') as f_in:
                         temp_file.write(f_in.read())
             
-            # الاتصال بقاعدة البيانات الحالية والمؤقتة
-            conn_current = sqlite3.connect(db_path)
-            conn_backup = sqlite3.connect(temp_db_path)
-            
-            cursor_current = conn_current.cursor()
-            cursor_backup = conn_backup.cursor()
-            
-            # استعادة كل جدول محدد
-            for table_name in tables:
-                try:
-                    # حذف البيانات الحالية من الجدول
-                    cursor_current.execute(f"DELETE FROM {table_name}")
-                    
-                    # نسخ البيانات من النسخة الاحتياطية
-                    cursor_backup.execute(f"SELECT * FROM {table_name}")
-                    rows = cursor_backup.fetchall()
-                    
-                    if rows:
-                        # الحصول على أسماء الأعمدة
-                        cursor_backup.execute(f"PRAGMA table_info({table_name})")
-                        columns = [col[1] for col in cursor_backup.fetchall()]
-                        
-                        # إدراج البيانات
-                        placeholders = ','.join(['?' for _ in columns])
-                        insert_query = f"INSERT INTO {table_name} ({','.join(columns)}) VALUES ({placeholders})"
-                        
-                        cursor_current.executemany(insert_query, rows)
-                    
-                    logger.info(f"Table restored: {table_name} ({len(rows)} rows)")
-                
-                except Exception as e:
-                    logger.error(f"Failed to restore table {table_name}: {e}")
-                    conn_current.rollback()
-                    conn_backup.close()
-                    conn_current.close()
-                    os.unlink(temp_db_path)
-                    return False
-            
-            # حفظ التغييرات
-            conn_current.commit()
-            conn_backup.close()
-            conn_current.close()
-            
-            # حذف الملف المؤقت
-            os.unlink(temp_db_path)
-            
-            logger.info(f"Custom restore completed: {', '.join(tables)}")
-            return True
+            return False
         
         except Exception as e:
             logger.error(f"Custom restore failed: {e}")
@@ -479,8 +425,7 @@ class BackupService:
             export_path = os.path.join(cls.BACKUP_DIR, export_name)
             
             with zipfile.ZipFile(export_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                # إضافة قاعدة البيانات
-                zipf.write('instance/app.db', 'database/app.db')
+                pass
                 
                 if include_uploads:
                     # إضافة الملفات المرفقة
@@ -497,7 +442,7 @@ class BackupService:
                     'created_at': datetime.now().isoformat(),
                     'type': 'full_backup',
                     'includes_uploads': include_uploads,
-                    'database_size': os.path.getsize('instance/app.db'),
+                    'database_size': 0,
                 }
                 
                 zipf.writestr('backup_info.json', json.dumps(metadata, indent=2, ensure_ascii=False))
@@ -508,4 +453,3 @@ class BackupService:
         except Exception as e:
             logger.error(f"Export failed: {e}")
             return None
-

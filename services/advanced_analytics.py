@@ -16,20 +16,26 @@ class AdvancedFinancialAnalytics:
         if not date_to:
             date_to = date.today()
         
-        # حساب الأصول المتداولة
-        current_assets = AdvancedFinancialAnalytics._calculate_account_type_balance('asset', date_to)
+        # حساب الأصول المتداولة (يبدأ الكود بـ 11)
+        current_assets = AdvancedFinancialAnalytics._calculate_balance_by_prefix('11', date_to)
         
-        # حساب الخصوم المتداولة
-        current_liabilities = AdvancedFinancialAnalytics._calculate_account_type_balance('liability', date_to)
+        # حساب إجمالي الأصول (يبدأ الكود بـ 1)
+        total_assets = AdvancedFinancialAnalytics._calculate_balance_by_prefix('1', date_to)
         
-        # حساب حقوق الملكية
-        equity = AdvancedFinancialAnalytics._calculate_account_type_balance('equity', date_to)
+        # حساب الخصوم المتداولة (يبدأ الكود بـ 21)
+        current_liabilities = AdvancedFinancialAnalytics._calculate_balance_by_prefix('21', date_to)
         
-        # حساب الإيرادات
-        revenue = AdvancedFinancialAnalytics._calculate_account_type_balance('revenue', date_from, date_to)
+        # حساب إجمالي الخصوم (يبدأ الكود بـ 2)
+        total_liabilities = AdvancedFinancialAnalytics._calculate_balance_by_prefix('2', date_to)
         
-        # حساب المصروفات
-        expenses = AdvancedFinancialAnalytics._calculate_account_type_balance('expense', date_from, date_to)
+        # حساب حقوق الملكية (يبدأ الكود بـ 3)
+        equity = AdvancedFinancialAnalytics._calculate_balance_by_prefix('3', date_to)
+        
+        # حساب الإيرادات (يبدأ الكود بـ 4)
+        revenue = AdvancedFinancialAnalytics._calculate_balance_by_prefix('4', date_from, date_to, is_pl=True)
+        
+        # حساب المصروفات (يبدأ الكود بـ 5 أو 6)
+        expenses = AdvancedFinancialAnalytics._calculate_balance_by_prefix(['5', '6'], date_from, date_to, is_pl=True)
         
         # صافي الربح
         net_profit = revenue - expenses
@@ -47,27 +53,29 @@ class AdvancedFinancialAnalytics:
             'profitability': {
                 'gross_profit_margin': float((net_profit / revenue) * 100) if revenue > 0 else 0,
                 'net_profit_margin': float((net_profit / revenue) * 100) if revenue > 0 else 0,
-                'return_on_assets': float((net_profit / current_assets) * 100) if current_assets > 0 else 0,
+                'return_on_assets': float((net_profit / total_assets) * 100) if total_assets > 0 else 0,
                 'return_on_equity': float((net_profit / equity) * 100) if equity > 0 else 0
             },
             
             # نسب الكفاءة
             'efficiency': {
-                'asset_turnover': float(revenue / current_assets) if current_assets > 0 else 0,
+                'asset_turnover': float(revenue / total_assets) if total_assets > 0 else 0,
                 'expense_ratio': float((expenses / revenue) * 100) if revenue > 0 else 0
             },
             
             # نسب المديونية
             'leverage': {
-                'debt_to_equity': float(current_liabilities / equity) if equity > 0 else 0,
-                'debt_to_assets': float(current_liabilities / current_assets) if current_assets > 0 else 0,
-                'equity_multiplier': float(current_assets / equity) if equity > 0 else 0
+                'debt_to_equity': float(total_liabilities / equity) if equity > 0 else 0,
+                'debt_to_assets': float(total_liabilities / total_assets) if total_assets > 0 else 0,
+                'equity_multiplier': float(total_assets / equity) if equity > 0 else 0
             },
             
             # البيانات الأساسية
             'base_data': {
                 'current_assets': float(current_assets),
+                'total_assets': float(total_assets),
                 'current_liabilities': float(current_liabilities),
+                'total_liabilities': float(total_liabilities),
                 'equity': float(equity),
                 'revenue': float(revenue),
                 'expenses': float(expenses),
@@ -78,10 +86,77 @@ class AdvancedFinancialAnalytics:
         return ratios
     
     @staticmethod
+    def _calculate_balance_by_prefix(prefix, date_from=None, date_to=None, is_pl=False):
+        """
+        حساب رصيد الحسابات التي تبدأ برمز معين
+        
+        Args:
+            prefix (str|list): رمز بداية الحساب أو قائمة رموز
+            date_from (date): تاريخ البدء (اختياري)
+            date_to (date): تاريخ الانتهاء (مطلوب للميزانية العمومية)
+            is_pl (bool): هل هو حساب قائمة دخل؟ (يؤثر على طريقة حساب الرصيد التراكمي)
+        """
+        query = GLAccount.query.filter(GLAccount.is_active == True, GLAccount.is_header == False)
+        
+        if isinstance(prefix, list):
+            from sqlalchemy import or_
+            conditions = [GLAccount.code.startswith(p) for p in prefix]
+            query = query.filter(or_(*conditions))
+        else:
+            query = query.filter(GLAccount.code.startswith(prefix))
+            
+        accounts = query.all()
+        total = Decimal(0)
+        
+        # تحديد تواريخ الفلترة
+        filter_start = date_from if is_pl else None
+        filter_end = date_to
+        
+        # Ensure filter_end includes the full day if it's a date object
+        if filter_end and isinstance(filter_end, date) and not isinstance(filter_end, datetime):
+             filter_end = datetime.combine(filter_end, datetime.max.time())
+        
+        for account in accounts:
+            lines_query = GLJournalLine.query.join(GLJournalEntry).filter(
+                GLJournalLine.account_id == account.id,
+                GLJournalEntry.is_posted == True
+            )
+            
+            if filter_start:
+                lines_query = lines_query.filter(GLJournalEntry.entry_date >= filter_start)
+            
+            if filter_end:
+                lines_query = lines_query.filter(GLJournalEntry.entry_date <= filter_end)
+                
+            lines = lines_query.all()
+            
+            for line in lines:
+                # amount_aed represents (Debit - Credit) in AED
+                # Asset/Expense: Normal Balance is Debit (+)
+                # Liability/Equity/Revenue: Normal Balance is Credit (-)
+                
+                val = line.amount_aed
+                
+                if account.type in ['asset', 'expense']:
+                    total += val
+                else:
+                    # For credit-normal accounts, a positive amount_aed (Debit > Credit) reduces the balance
+                    # A negative amount_aed (Credit > Debit) increases the balance (absolute value)
+                    # So we subtract val:
+                    # If Credit=100, Debit=0 -> amount_aed = -100 -> total -= (-100) -> total += 100 (Correct)
+                    total -= val
+                    
+        return total
+
+    @staticmethod
     def _calculate_account_type_balance(account_type, date_from=None, date_to=None):
         """حساب رصيد نوع حساب معين"""
         accounts = GLAccount.query.filter_by(type=account_type, is_active=True, is_header=False).all()
         total = Decimal(0)
+        
+        # Ensure date_to includes the full day if it's a date object
+        if date_to and isinstance(date_to, date) and not isinstance(date_to, datetime):
+             date_to = datetime.combine(date_to, datetime.max.time())
         
         for account in accounts:
             if date_from and date_to:
@@ -95,9 +170,9 @@ class AdvancedFinancialAnalytics:
                 
                 for line in lines:
                     if account_type in ['asset', 'expense']:
-                        total += line.debit - line.credit
+                        total += line.amount_aed
                     else:
-                        total += line.credit - line.debit
+                        total -= line.amount_aed
             else:
                 # الرصيد الكامل
                 balance = account.get_balance()

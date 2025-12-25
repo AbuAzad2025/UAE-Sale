@@ -99,9 +99,9 @@ class Payment(db.Model):
     def status_ar(self):
         """حالة الدفعة بالعربي"""
         if self.payment_confirmed:
-            return 'مؤكدة ✅'
+            return 'مؤكدة'
         else:
-            return 'معلقة ⏳' if not self.rejection_reason else 'مرفوضة ❌'
+            return 'معلقة' if not self.rejection_reason else 'مرفوضة'
     
     @property
     def direction_ar(self):
@@ -208,9 +208,9 @@ class Receipt(db.Model):
     def status_ar(self):
         """حالة السند بالعربي"""
         if self.payment_confirmed:
-            return 'مؤكد ✅'
+            return 'مؤكد'
         else:
-            return 'معلق ⏳' if not self.rejection_reason else 'مرفوض ❌'
+            return 'معلق' if not self.rejection_reason else 'مرفوض'
     
     @property
     def source_type_ar(self):

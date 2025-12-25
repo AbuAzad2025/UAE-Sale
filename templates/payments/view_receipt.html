@@ -106,12 +106,18 @@
             </tr>
           </thead>
           <tbody>
-            {% for allocation in receipt.allocations %}
-            <tr>
-              <td><a href="{{ url_for('sales.view', id=allocation.sale.id) }}">{{ allocation.sale.sale_number }}</a></td>
-              <td>{{ "{:,.2f}".format(allocation.amount_allocated) }} {{ receipt.currency }}</td>
-            </tr>
-            {% endfor %}
+            {% if not is_payment and receipt.allocations %}
+              {% for allocation in receipt.allocations %}
+              <tr>
+                <td><a href="{{ url_for('sales.view', id=allocation.sale.id) }}">{{ allocation.sale.sale_number }}</a></td>
+                <td>{{ "{:,.2f}".format(allocation.amount_allocated) }} {{ receipt.currency }}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="2" class="text-center text-muted">لا توجد تخصيصات</td>
+              </tr>
+            {% endif %}
           </tbody>
         </table>
       </div>

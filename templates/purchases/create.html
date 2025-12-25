@@ -681,9 +681,9 @@ function forceCalculate() {
   $('#summary_total').text(total.toFixed(2) + ' AED');  
   // إظهار رسالة للمستخدم
   if (subtotal > 0) {
-    alert(`✅ تم الحساب بنجاح!\nالمجموع الفرعي: ${subtotal.toFixed(2)} AED\nالإجمالي: ${total.toFixed(2)} AED`);
+    alert(`تم الحساب بنجاح.\nالمجموع الفرعي: ${subtotal.toFixed(2)} AED\nالإجمالي: ${total.toFixed(2)} AED`);
   } else {
-    alert('⚠️ لم يتم العثور على بيانات للحساب!');
+    alert('لم يتم العثور على بيانات للحساب.');
   }
 }
 
@@ -700,11 +700,11 @@ $('#currency').on('change', function() {
         if (data.rate) {
           $('#exchange_rate').val(data.rate.toFixed(6));
         } else {
-          toastr.warning('⚠️ يرجى إدخال سعر الصرف يدوياً');
+          toastr.warning('يرجى إدخال سعر الصرف يدوياً');
         }
       },
       error: function() {
-        toastr.warning('⚠️ يرجى إدخال سعر الصرف يدوياً');
+        toastr.warning('يرجى إدخال سعر الصرف يدوياً');
       }
     });
   } else {
@@ -755,14 +755,14 @@ $(document).ready(function() {
     const lineCount = $('.product-line').length;    
     if (lineCount === 0) {
       e.preventDefault();
-      toastr.error('❌ يجب إضافة منتج واحد على الأقل');
+      toastr.error('يجب إضافة منتج واحد على الأقل');
       return false;
     }
     
     // التحقق من اختيار المورد
     if (!$('#supplier_id').val()) {
       e.preventDefault();
-      toastr.error('❌ يجب اختيار المورد');
+      toastr.error('يجب اختيار المورد');
       return false;
     }
     

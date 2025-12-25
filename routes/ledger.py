@@ -208,6 +208,29 @@ def balance_sheet():
         if balance != 0:
             equity[acc.name] = float(balance)
             total_equity += balance
+
+    # Calculate Net Profit (Revenue - Expenses) for Equity Section
+    revenue_accounts = GLAccount.query.filter(GLAccount.code.like('4%')).all()
+    expense_accounts = GLAccount.query.filter(GLAccount.code.like('5%')).all()
+    expense_accounts += GLAccount.query.filter(GLAccount.code.like('6%')).all()
+
+    total_revenue_period = Decimal('0')
+    for acc in revenue_accounts:
+        credit = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
+        debit = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
+        total_revenue_period += (credit - debit)
+
+    total_expense_period = Decimal('0')
+    for acc in expense_accounts:
+        debit = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
+        credit = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
+        total_expense_period += (debit - credit)
+
+    net_profit_period = total_revenue_period - total_expense_period
+
+    if net_profit_period != 0:
+        equity['Net Profit (Current Period)'] = float(net_profit_period)
+        total_equity += net_profit_period
     
     return render_template('ledger/balance_sheet.html',
                          assets=assets,

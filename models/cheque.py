@@ -167,12 +167,13 @@ class Cheque(db.Model):
                     'description': f'إصدار شيك لمورد - رقم {self.cheque_bank_number}'
                 }]
                 
-                GLService.post_entry(
+                entry = GLService.post_entry(
                     lines=lines,
                     description=f'إصدار شيك صادر رقم {self.cheque_bank_number}',
                     reference_type='cheque_issue',
                     reference_id=self.id
                 )
+                self.gl_journal_entry_id = entry.id
             except Exception as e:
                 from app import app
                 app.logger.error(f'Failed to create GL entry for cheque issue {self.id}: {e}')
@@ -419,8 +420,8 @@ class Cheque(db.Model):
         statuses = {
             'pending': 'معلق (استُلم)',
             'deposited': 'مودع في البنك',
-            'cleared': 'مصروف ✅',
-            'bounced': 'مرتد ❌',
+            'cleared': 'مصروف',
+            'bounced': 'مرتد',
             'cancelled': 'ملغي',
             'under_collection': 'تحت التحصيل'
         }

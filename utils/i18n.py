@@ -21,7 +21,6 @@ def get_current_language():
     try:
         return session.get('language', 'ar')
     except RuntimeError:
-        # Outside request context
         return 'ar'
 
 
@@ -30,9 +29,7 @@ def is_rtl():
     return get_current_language() == 'ar'
 
 
-# قاموس الترجمات السريعة
 TRANSLATIONS = {
-    # Common
     'Save': {'ar': 'حفظ', 'en': 'Save'},
     'Cancel': {'ar': 'إلغاء', 'en': 'Cancel'},
     'Delete': {'ar': 'حذف', 'en': 'Delete'},
@@ -50,7 +47,6 @@ TRANSLATIONS = {
     'Yes': {'ar': 'نعم', 'en': 'Yes'},
     'No': {'ar': 'لا', 'en': 'No'},
     
-    # Navigation
     'Dashboard': {'ar': 'لوحة التحكم', 'en': 'Dashboard'},
     'Sales': {'ar': 'المبيعات', 'en': 'Sales'},
     'Purchases': {'ar': 'المشتريات', 'en': 'Purchases'},
@@ -64,7 +60,6 @@ TRANSLATIONS = {
     'Ledger': {'ar': 'دفتر الأستاذ', 'en': 'Ledger'},
     'Settings': {'ar': 'الإعدادات', 'en': 'Settings'},
     
-    # Auth
     'Login': {'ar': 'تسجيل الدخول', 'en': 'Login'},
     'Sign In': {'ar': 'دخول', 'en': 'Sign In'},
     'Sign in to start your session': {'ar': 'تسجيل الدخول للنظام', 'en': 'Sign in to start your session'},
@@ -73,7 +68,6 @@ TRANSLATIONS = {
     'Remember Me': {'ar': 'تذكرني', 'en': 'Remember Me'},
     'Logout': {'ar': 'تسجيل خروج', 'en': 'Logout'},
     
-    # Forms
     'Name': {'ar': 'الاسم', 'en': 'Name'},
     'Email': {'ar': 'البريد الإلكتروني', 'en': 'Email'},
     'Phone': {'ar': 'الهاتف', 'en': 'Phone'},
@@ -89,7 +83,6 @@ TRANSLATIONS = {
     'Tax': {'ar': 'الضريبة', 'en': 'Tax'},
     'Grand Total': {'ar': 'الإجمالي النهائي', 'en': 'Grand Total'},
     
-    # Messages
     'Success': {'ar': 'نجح', 'en': 'Success'},
     'Error': {'ar': 'خطأ', 'en': 'Error'},
     'Warning': {'ar': 'تحذير', 'en': 'Warning'},
@@ -100,7 +93,6 @@ TRANSLATIONS = {
     'Are you sure?': {'ar': 'هل أنت متأكد؟', 'en': 'Are you sure?'},
     'This action cannot be undone': {'ar': 'لا يمكن التراجع عن هذا الإجراء', 'en': 'This action cannot be undone'},
     
-    # Extended - 100+ more translations
     'Add': {'ar': 'إضافة', 'en': 'Add'},
     'New': {'ar': 'جديد', 'en': 'New'},
     'Details': {'ar': 'تفاصيل', 'en': 'Details'},
@@ -133,7 +125,6 @@ TRANSLATIONS = {
     'List': {'ar': 'قائمة', 'en': 'List'},
     'Loading': {'ar': 'جاري التحميل', 'en': 'Loading'},
     
-    # User Guide specific
     'Features': {'ar': 'المميزات', 'en': 'Features'},
     'Products Management': {'ar': 'إدارة المنتجات', 'en': 'Products Management'},
     'Sales Management': {'ar': 'إدارة المبيعات', 'en': 'Sales Management'},
@@ -151,14 +142,11 @@ def t(key, **kwargs):
     """
     lang = get_current_language()
     
-    # البحث في القاموس
     if key in TRANSLATIONS:
         text = TRANSLATIONS[key].get(lang, key)
     else:
-        # إذا لم يوجد، نرجع المفتاح نفسه
         text = key
     
-    # استبدال المتغيرات
     if kwargs:
         text = text.format(**kwargs)
     

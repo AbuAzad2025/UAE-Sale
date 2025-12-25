@@ -66,8 +66,8 @@ def receipts():
     payments_query = payments_query.filter(Payment.id.notin_(archived_payments_select))
     
     if current_user.is_seller():
-        receipts_query = receipts_query.filter_by(user_id=current_user.id)
-        payments_query = payments_query.filter_by(user_id=current_user.id)
+        receipts_query = receipts_query.filter(Receipt.user_id == current_user.id)
+        payments_query = payments_query.filter(Payment.user_id == current_user.id)
     
     # جمع النتائج
     all_receipts = receipts_query.all()
@@ -163,7 +163,13 @@ def print_payment(id):
     """طباعة سند صرف - يستخدم نفس قالب طباعة سندات القبض"""
     from models import Payment
     payment = Payment.query.get_or_404(id)
-    return render_template('payments/print_receipt.html', receipt=payment, is_payment=True)
+    from flask import current_app
+    company = {
+        'name_ar': current_app.config.get('COMPANY_NAME_AR'),
+        'address': current_app.config.get('COMPANY_ADDRESS'),
+        'phone': current_app.config.get('COMPANY_PHONE'),
+    }
+    return render_template('payments/print_receipt.html', receipt=payment, is_payment=True, company=company, printed_at=datetime.now())
 
 
 @payments_bp.route('/payments/<int:id>/archive', methods=['POST'])
@@ -226,7 +232,7 @@ def create_from_sale(sale_id):
             user_exchange_rate = request.form.get('exchange_rate', type=float)
             payment_method_value = (request.form.get('payment_method') or '').strip()
             if not payment_method_value:
-                flash('⚠️ يرجى اختيار طريقة الدفع.', 'warning')
+                flash('يرجى اختيار طريقة الدفع.', 'warning')
                 exchange_rates = CurrencyService.get_all_rates('AED')
                 suggested_amount = sale.balance_due
                 return render_template('payments/create_receipt.html',
@@ -268,7 +274,7 @@ def create_from_sale(sale_id):
             return redirect(url_for('payments.view_receipt', id=receipt.id))
         
         except Exception as e:
-            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            flash(f'حدث خطأ: {str(e)}\nتحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     # استخدام القالب الموحد مع بيانات إضافية
     customers = [sale.customer]  # العميل من الفاتورة
@@ -301,7 +307,7 @@ def create_receipt():
         try:
             customer_id = request.form.get('customer_id', type=int)
             if not customer_id:
-                flash('⚠️ يرجى اختيار الزبون.', 'warning')
+                flash('يرجى اختيار الزبون.', 'warning')
                 customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
                 exchange_rates = CurrencyService.get_all_rates('AED')
                 return render_template('payments/create_receipt.html',
@@ -318,7 +324,7 @@ def create_receipt():
             user_exchange_rate = request.form.get('exchange_rate', type=float)
             payment_method_value = (request.form.get('payment_method') or '').strip()
             if not payment_method_value:
-                flash('⚠️ يرجى اختيار طريقة الدفع.', 'warning')
+                flash('يرجى اختيار طريقة الدفع.', 'warning')
                 customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
                 exchange_rates = CurrencyService.get_all_rates('AED')
                 return render_template('payments/create_receipt.html',
@@ -364,7 +370,7 @@ def create_receipt():
             return redirect(url_for('payments.view_receipt', id=receipt.id))
         
         except Exception as e:
-            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            flash(f'حدث خطأ: {str(e)}\nتحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
     customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
     exchange_rates = CurrencyService.get_all_rates('AED')
@@ -382,8 +388,8 @@ def create_receipt():
 def view_receipt(id):
     receipt = Receipt.query.get_or_404(id)
     
-    if current_user.is_seller() and receipt.user_id != current_user.id:
-        flash('🚫 ليس لديك صلاحية لعرض هذا السند', 'danger')
+    if current_user.is_seller() and not current_user.is_owner and receipt.user_id != current_user.id:
+        flash('ليس لديك صلاحية لعرض هذا السند', 'danger')
         return redirect(url_for('payments.receipts'))
     
     return render_template('payments/view_receipt.html', receipt=receipt)
@@ -395,8 +401,8 @@ def view_receipt(id):
 def print_receipt(id):
     receipt = Receipt.query.get_or_404(id)
     
-    if current_user.is_seller() and receipt.user_id != current_user.id:
-        flash('🚫 ليس لديك صلاحية لطباعة هذا السند', 'danger')
+    if current_user.is_seller() and not current_user.is_owner and receipt.user_id != current_user.id:
+        flash('ليس لديك صلاحية لطباعة هذا السند', 'danger')
         return redirect(url_for('payments.receipts'))
     
     # Get invoice settings
@@ -408,10 +414,22 @@ def print_receipt(id):
     
     # التحقق من وجود القالب، وإلا استخدام القالب الافتراضي
     try:
-        return render_template(template_path, receipt=receipt, settings=settings)
+        from flask import current_app
+        company = {
+            'name_ar': current_app.config.get('COMPANY_NAME_AR'),
+            'address': current_app.config.get('COMPANY_ADDRESS'),
+            'phone': current_app.config.get('COMPANY_PHONE'),
+        }
+        return render_template(template_path, receipt=receipt, settings=settings, company=company, printed_at=datetime.now())
     except:
         # إذا لم يوجد القالب، استخدام modern كافتراضي
-        return render_template('receipts/modern.html', receipt=receipt, settings=settings)
+        from flask import current_app
+        company = {
+            'name_ar': current_app.config.get('COMPANY_NAME_AR'),
+            'address': current_app.config.get('COMPANY_ADDRESS'),
+            'phone': current_app.config.get('COMPANY_PHONE'),
+        }
+        return render_template('receipts/modern.html', receipt=receipt, settings=settings, company=company, printed_at=datetime.now())
 
 
 @payments_bp.route('/archived')
@@ -555,7 +573,7 @@ def delete_receipt(id):
     
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ فشل الحذف: {str(e)}', 'danger')
+        flash(f'فشل الحذف: {str(e)}', 'danger')
         return redirect(url_for('payments.view_receipt', id=id))
 
 
@@ -587,7 +605,7 @@ def create_payment(purchase_id):
             amount = request.form.get('amount', type=float)
             payment_method_value = (request.form.get('payment_method') or '').strip()
             if not payment_method_value:
-                flash('⚠️ يرجى اختيار طريقة الدفع.', 'warning')
+                flash('يرجى اختيار طريقة الدفع.', 'warning')
                 return render_template('payments/create_receipt.html',
                                      purchase=purchase,
                                      supplier=supplier,
@@ -598,8 +616,18 @@ def create_payment(purchase_id):
             exchange_rate = request.form.get('exchange_rate', type=float, default=1.0)
             currency = request.form.get('currency', default='AED')
             
+            reference_number = request.form.get('reference_number')
+            cheque_number = request.form.get('cheque_number')
+            cheque_date = request.form.get('cheque_date') or None
+            bank_name = request.form.get('bank_name')
+            # حقول خاصة بطرق دفع معينة
+            bank_name_transfer = request.form.get('bank_name_transfer')
+            reference_number_transfer = request.form.get('reference_number_transfer')
+            card_last4 = request.form.get('card_last4')
+            reference_number_card = request.form.get('reference_number_card')
+            
             if amount <= 0 or amount > balance:
-                flash('⚠️ المبلغ غير صحيح.\n💡 تحقق من الصيغة الصحيحة وحاول مرة أخرى.', 'danger')
+                flash('المبلغ غير صحيح.\nتحقق من الصيغة الصحيحة وحاول مرة أخرى.', 'danger')
                 return redirect(url_for('payments.create_payment', purchase_id=purchase_id))
             
             # تحويل إلى Decimal للحسابات الدقيقة
@@ -624,7 +652,68 @@ def create_payment(purchase_id):
                 payment_type='supplier_payment'
             )
             
+            # تعيين حقول المرجع/البنك حسب الطريقة
+            if payment_method_value == 'bank_transfer':
+                payment.bank_name = bank_name_transfer or bank_name
+                payment.reference_number = reference_number_transfer or reference_number
+            elif payment_method_value == 'card':
+                payment.reference_number = reference_number_card or reference_number
+                if card_last4:
+                    payment.notes = f'{payment.notes or ""} بطاقة آخر 4: {card_last4}'.strip()
+            elif payment_method_value == 'e_wallet':
+                from flask import request as _req
+                ref_ew = _req.form.get('reference_number_ewallet')
+                payment.reference_number = ref_ew or reference_number
+            else:
+                payment.reference_number = reference_number
+                payment.bank_name = bank_name
+            
             db.session.add(payment)
+            db.session.flush()
+            
+            # إنشاء سجل الشيك وربطه إذا كانت طريقة الدفع شيك
+            if payment_method_value == 'cheque' and cheque_number:
+                from models import Cheque
+                cheque = Cheque(
+                    cheque_number=cheque_number,
+                    cheque_bank_number=cheque_number,
+                    cheque_type='outgoing',
+                    supplier_id=purchase.supplier_id,
+                    amount=amount_decimal,
+                    currency=currency,
+                    exchange_rate=exchange_rate_decimal,
+                    amount_aed=amount_aed,
+                    issue_date=datetime.utcnow().date(),
+                    due_date=cheque_date if cheque_date else None,
+                    bank_name=bank_name,
+                    status='pending',
+                    notes=notes
+                )
+                db.session.add(cheque)
+                db.session.flush()
+                payment.cheque_id = cheque.id
+                payment.payment_confirmed = False
+            
+            # قيد محاسبي لسند الصرف
+            try:
+                from services.gl_service import GLService
+                GLService.ensure_core_accounts()
+                cash_or_bank = '1110' if payment_method_value == 'cash' else '1120'
+                lines = [
+                    {'account': '2110', 'debit': payment.amount_aed, 'description': f'سداد للمورد {payment.supplier_name}'},
+                    {'account': cash_or_bank, 'credit': payment.amount_aed, 'description': f'سند صرف {payment.payment_number}'}
+                ]
+                GLService.post_entry(
+                    lines,
+                    description=f'Payment {payment.payment_number}',
+                    reference_type='Payment',
+                    reference_id=payment.id,
+                    currency=payment.currency,
+                    exchange_rate=payment.exchange_rate
+                )
+            except Exception as e:
+                pass
+            
             db.session.commit()
             
             flash('تم إنشاء سند الصرف بنجاح', 'success')
@@ -632,7 +721,7 @@ def create_payment(purchase_id):
             
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ حدث خطأ: {str(e)}', 'danger')
+            flash(f'حدث خطأ: {str(e)}', 'danger')
     
     # استخدام نفس القالب الموحد لسندات القبض/الصرف
     return render_template('payments/create_receipt.html',

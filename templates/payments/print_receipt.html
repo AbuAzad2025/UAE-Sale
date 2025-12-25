@@ -36,7 +36,7 @@
     
     <div class="info-row">
       <div><span class="info-label">العميل:</span> {{ receipt.customer.name if receipt.customer else 'عميل نقدي' }}</div>
-      <div><span class="info-label">الدافع:</span> {{ receipt.received_by.full_name if receipt.received_by else 'موظف' }}</div>
+      <div><span class="info-label">الدافع:</span> {{ receipt.user.full_name if receipt.user else 'موظف' }}</div>
     </div>
     
     <table>
@@ -80,7 +80,7 @@
     
     <div class="footer">
       <p>شكراً لتعاملكم معنا</p>
-      <p style="font-size: 0.9em; color: #666;">تم الطباعة: {{ now().strftime('%Y-%m-%d %H:%M') }}</p>
+      <p style="font-size: 0.9em; color: #666;">تم الطباعة: {{ printed_at.strftime('%Y-%m-%d %H:%M') }}</p>
     </div>
   </div>
   

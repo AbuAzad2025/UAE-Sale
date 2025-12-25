@@ -289,20 +289,24 @@ class NOWPaymentsService:
             if not payment_id:
                 return False
             
-            # البحث عن التبرع في قاعدة البيانات
-            donation = Donation.query.filter_by(payment_id=payment_id).first()
+            donation = Donation.query.filter(
+                db.or_(
+                    Donation.transaction_hash == payment_id,
+                    Donation.gateway_transaction_id == payment_id
+                )
+            ).first()
             
             if not donation:
                 return False
             
             # تحديث حالة التبرع
             if status == 'finished':
-                donation.payment_status = 'completed'
+                donation.status = 'completed'
                 donation.completed_at = datetime.utcnow()
             elif status == 'failed':
-                donation.payment_status = 'failed'
+                donation.status = 'failed'
             elif status == 'refunded':
-                donation.payment_status = 'refunded'
+                donation.status = 'refunded'
             
             db.session.commit()
             return True

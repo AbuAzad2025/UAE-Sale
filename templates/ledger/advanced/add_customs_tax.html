@@ -20,14 +20,14 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>كود الضريبة *</label>
-                  <input type="text" name="code" class="form-control" required value="{{ form_data.get('code', '') }}">
+                  <label>الاسم (EN) *</label>
+                  <input type="text" name="name" class="form-control" required value="{{ form_data.get('name', '') }}">
                 </div>
               </div>
               
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>اسم الضريبة *</label>
+                  <label>الاسم (AR) *</label>
                   <input type="text" name="name_ar" class="form-control" required value="{{ form_data.get('name_ar', '') }}">
                 </div>
               </div>
@@ -65,6 +65,29 @@
                     </option>
                     {% endfor %}
                   </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-4">
+                <div class="form-group">
+                  <div class="form-check mt-4">
+                    <input type="checkbox" name="is_percentage" id="is_percentage" class="form-check-input" {% if form_data.get('is_percentage') %}checked{% endif %}>
+                    <label class="form-check-label" for="is_percentage">احتساب كنسبة مئوية</label>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label>ساري من *</label>
+                  <input type="date" name="effective_from" class="form-control" required value="{{ form_data.get('effective_from', '') }}">
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label>ساري إلى</label>
+                  <input type="date" name="effective_to" class="form-control" value="{{ form_data.get('effective_to', '') }}">
                 </div>
               </div>
             </div>

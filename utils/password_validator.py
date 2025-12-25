@@ -9,7 +9,6 @@ from typing import Tuple, List
 class PasswordValidator:
     """مدقق كلمات المرور"""
     
-    # المتطلبات الافتراضية
     MIN_LENGTH = 10
     REQUIRE_UPPERCASE = True
     REQUIRE_LOWERCASE = True
@@ -34,29 +33,23 @@ class PasswordValidator:
         if not password:
             return False, ['كلمة المرور مطلوبة']
         
-        # الطول الأدنى
         if len(password) < cls.MIN_LENGTH:
             errors.append(f'يجب أن تكون كلمة المرور {cls.MIN_LENGTH} أحرف على الأقل')
         
-        # حرف كبير
         if cls.REQUIRE_UPPERCASE and not re.search(r'[A-Z]', password):
             errors.append('يجب أن تحتوي على حرف كبير واحد على الأقل (A-Z)')
         
-        # حرف صغير
         if cls.REQUIRE_LOWERCASE and not re.search(r'[a-z]', password):
             errors.append('يجب أن تحتوي على حرف صغير واحد على الأقل (a-z)')
         
-        # رقم
         if cls.REQUIRE_DIGIT and not re.search(r'\d', password):
             errors.append('يجب أن تحتوي على رقم واحد على الأقل (0-9)')
         
-        # رمز خاص
         if cls.REQUIRE_SPECIAL:
             special_pattern = f'[{re.escape(cls.SPECIAL_CHARS)}]'
             if not re.search(special_pattern, password):
                 errors.append(f'يجب أن تحتوي على رمز خاص واحد على الأقل ({cls.SPECIAL_CHARS[:10]}...)')
         
-        # كلمات شائعة يجب تجنبها
         common_passwords = [
             'password', '123456', '12345678', 'qwerty', 'admin',
             'admin123', 'password123', '12341234', 'test', 'user'
@@ -65,7 +58,6 @@ class PasswordValidator:
         if password.lower() in common_passwords:
             errors.append('كلمة المرور شائعة جداً، اختر كلمة أكثر تعقيداً')
         
-        # التحقق من التسلسلات
         sequences = ['123', '234', '345', 'abc', 'bcd', 'qwe', 'wer']
         for seq in sequences:
             if seq in password.lower():
@@ -87,11 +79,9 @@ class PasswordValidator:
         
         score = 0
         
-        # الطول (max 40 points)
         length_score = min(len(password) * 3, 40)
         score += length_score
         
-        # تنوع الأحرف (max 60 points)
         if re.search(r'[A-Z]', password):
             score += 15
         if re.search(r'[a-z]', password):
@@ -101,7 +91,6 @@ class PasswordValidator:
         if re.search(f'[{re.escape(cls.SPECIAL_CHARS)}]', password):
             score += 15
         
-        # خصم للتكرار
         if len(set(password)) < len(password) * 0.7:
             score -= 10
         
@@ -140,14 +129,12 @@ class PasswordValidator:
         import secrets
         import string
         
-        # توليد كلمة مرور عشوائية قوية
         length = 12
         chars = string.ascii_letters + string.digits + '!@#$%^&*'
         
         while True:
             password = ''.join(secrets.choice(chars) for _ in range(length))
             
-            # التأكد من استيفاء المتطلبات
             is_valid, _ = cls.validate(password)
             if is_valid:
                 return password
@@ -167,12 +154,10 @@ def validate_password_with_helpful_message(password: str) -> Tuple[bool, str]:
         label, color = PasswordValidator.get_strength_label(score)
         return True, f'✅ كلمة مرور {label} ({score}/100)'
     else:
-        # دمج الأخطاء في رسالة واحدة
         message = '⚠️ كلمة المرور لا تستوفي المتطلبات:\n'
         for i, error in enumerate(errors, 1):
             message += f'{i}. {error}\n'
         
-        # إضافة اقتراح
         suggestion = PasswordValidator.generate_suggestion()
         message += f'\n💡 اقتراح: {suggestion}'
         

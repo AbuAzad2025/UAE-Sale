@@ -47,7 +47,7 @@
         </dl>
 
         <h5 class="mt-4">{{ t('Products') }}</h5>
-        {% set totals = namespace(gross=0, discount=0) %}
+        
         <table class="table table-bordered">
           <thead>
             <tr>
@@ -60,10 +60,7 @@
           </thead>
           <tbody>
             {% for line in purchase.lines %}
-            {% set line_gross = (line.quantity or 0) * (line.unit_cost or 0) %}
-            {% set line_discount_value = line_gross * ((line.discount_percent or 0) / 100) %}
-            {% set totals.gross = totals.gross + line_gross %}
-            {% set totals.discount = totals.discount + line_discount_value %}
+            
             <tr>
               <td>{{ line.product.name if line.product else '-' }}</td>
               <td>{{ line.quantity }}</td>
@@ -86,10 +83,10 @@
       <div class="card-body">
         <dl class="row">
           <dt class="col-6">المجموع قبل الخصم:</dt>
-          <dd class="col-6 text-left">{{ "{:,.2f}".format(totals.gross) }}</dd>
+          <dd class="col-6 text-left">{{ "{:,.2f}".format((purchase.subtotal or 0) + (purchase.discount_amount or 0)) }}</dd>
           
           <dt class="col-6">الخصم:</dt>
-          <dd class="col-6 text-left text-danger">{{ "{:,.2f}".format(totals.discount + (purchase.discount_amount or 0)) }}</dd>
+          <dd class="col-6 text-left text-danger">{{ "{:,.2f}".format(purchase.discount_amount or 0) }}</dd>
           
           <dt class="col-6">المجموع بعد الخصم:</dt>
           <dd class="col-6 text-left">{{ "{:,.2f}".format(purchase.subtotal) }}</dd>

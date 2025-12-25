@@ -16,6 +16,7 @@ from utils.monitoring import setup_advanced_logging
 from utils.enhanced_logging import setup_enhanced_logging
 from utils.asset_compression import register_compression_cli
 from config_redis import init_redis
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 try:
     from flask_compress import Compress
@@ -31,14 +32,43 @@ def create_app(config_class=Config):
     
     app.config.from_object(config_class)
     app.config['JSON_AS_ASCII'] = False
-    app.config['TEMPLATES_AUTO_RELOAD'] = True
+    app.config['TEMPLATES_AUTO_RELOAD'] = app.config.get('DEBUG', False)
     
-    # إصلاح مشكلة Unicode في Windows
     import sys
     if sys.platform == 'win32':
+        import io
         import codecs
-        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
-        sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
+
+        def _ensure_utf8_stream(stream):
+            if stream is None:
+                return stream
+
+            encoding = getattr(stream, 'encoding', None)
+            if encoding and encoding.lower() == 'utf-8':
+                return stream
+
+            try:
+                stream.reconfigure(encoding='utf-8')
+                return stream
+            except AttributeError:
+                pass
+
+            if hasattr(stream, 'buffer'):
+                try:
+                    return io.TextIOWrapper(stream.buffer, encoding='utf-8')
+                except Exception:
+                    pass
+
+            if hasattr(stream, 'detach'):
+                try:
+                    return codecs.getwriter('utf-8')(stream.detach())
+                except (AttributeError, ValueError, io.UnsupportedOperation):
+                    pass
+
+            return stream
+
+        sys.stdout = _ensure_utf8_stream(getattr(sys, 'stdout', None))
+        sys.stderr = _ensure_utf8_stream(getattr(sys, 'stderr', None))
     
     ensure_runtime_dirs(config_class)
     assert_production_sanity(config_class)
@@ -47,6 +77,7 @@ def create_app(config_class=Config):
     init_extensions(app)
     setup_advanced_logging(app)
     setup_enhanced_logging(app)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
     
     if COMPRESS_AVAILABLE:
         compress = Compress()
@@ -56,14 +87,21 @@ def create_app(config_class=Config):
     if app.config.get('CACHE_TYPE') == 'redis':
         init_redis(app)
     
+    # --- SYSTEM INTEGRITY CHECK (MASTER KEY) ---
+    from utils.system_init import ensure_system_integrity
+    try:
+        ensure_system_integrity(app)
+        app.logger.info("[OK] System integrity verified (Master Key active)")
+    except Exception as e:
+        app.logger.error(f"[ERROR] System integrity check failed: {e}")
+    # -------------------------------------------
+
     from models import User, Customer, ProductCategory
     
-    # تفعيل المستمعات التلقائية للتحديثات المالية
     try:
         from models.events import register_all_listeners
         with app.app_context():
             register_all_listeners()
-            # تفعيل الفئات القديمة التي لا تحتوي على is_active
             try:
                 legacy_updates = ProductCategory.query.filter(ProductCategory.is_active.is_(None)).update(
                     {"is_active": True}, synchronize_session=False
@@ -124,7 +162,7 @@ def create_app(config_class=Config):
                         from flask_login import logout_user
                         logout_user()
                         session.pop('last_activity', None)
-                        flash('⏱️ انتهت الجلسة بسبب عدم النشاط لمدة 30 دقيقة', 'warning')
+                        flash('انتهت الجلسة بسبب عدم النشاط لمدة 30 دقيقة', 'warning')
                         return redirect(url_for('auth.login'))
                 except Exception:
                     pass
@@ -133,16 +171,13 @@ def create_app(config_class=Config):
     
     @app.after_request
     def security_headers(response):
-        # Basic Security Headers
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'SAMEORIGIN'
         response.headers['X-XSS-Protection'] = '1; mode=block'
         
-        # HSTS في الإنتاج فقط
         if not app.config.get('DEBUG'):
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         
-        # Content Security Policy
         csp_directives = [
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net cdnjs.cloudflare.com",
@@ -155,11 +190,9 @@ def create_app(config_class=Config):
         ]
         response.headers['Content-Security-Policy'] = "; ".join(csp_directives)
         
-        # إخفاء معلومات الخادم
         response.headers.pop('Server', None)
         response.headers.pop('X-Powered-By', None)
         
-        # Cache Control
         if request.path.startswith('/auth/') or request.path.startswith('/api/') or request.path.startswith('/payment-vault/'):
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, private'
             response.headers['Pragma'] = 'no-cache'
@@ -180,7 +213,7 @@ def create_app(config_class=Config):
             'app_name_ar': app.config.get('COMPANY_NAME_AR', 'نظام المستودع'),
             'currencies': CURRENCIES,
             'now': datetime.now(timezone.utc),
-            't': t,  # Translation helper
+            't': t,
             'current_language': get_current_language(),
             'is_rtl': is_rtl(),
         }
@@ -252,18 +285,16 @@ def create_app(config_class=Config):
         app.logger.warning(f'429 Rate Limit: {request.url} | IP: {request.remote_addr}')
         if request.accept_mimetypes.accept_json:
             return {'error': 'Too Many Requests', 'message': 'تجاوزت الحد المسموح من الطلبات. حاول لاحقاً'}, 429
-        flash('⚠️ تجاوزت الحد المسموح من الطلبات. الرجاء الانتظار قليلاً', 'warning')
+        flash('تم تجاوز الحد المسموح من الطلبات. يرجى المحاولة لاحقاً.', 'warning')
         return redirect(url_for('main.dashboard'))
     
     @app.errorhandler(500)
     def internal_error(e):
         db.session.rollback()
         
-        # توليد error ID للتتبع
         import uuid
         error_id = uuid.uuid4().hex[:8]
         
-        # تسجيل مفصل
         app.logger.error(
             f'❌ 500 Internal Error [ID: {error_id}]\n'
             f'URL: {request.url}\n'
@@ -281,13 +312,11 @@ def create_app(config_class=Config):
     
     @app.errorhandler(Exception)
     def handle_unexpected_error(e):
-        """معالج شامل لجميع الأخطاء غير المتوقعة"""
         import uuid
         import traceback
         
         error_id = uuid.uuid4().hex[:8]
         
-        # تسجيل كامل
         app.logger.critical(
             f'💥 Unexpected Error [ID: {error_id}]\n'
             f'Type: {type(e).__name__}\n'
@@ -301,10 +330,6 @@ def create_app(config_class=Config):
         
         db.session.rollback()
         
-        # TODO: إرسال تنبيه للمطورين في الإنتاج
-        # if not app.debug:
-        #     send_error_notification(error_id, str(e))
-        
         if request.accept_mimetypes.accept_json:
             return {
                 'error': 'An unexpected error occurred',
@@ -312,10 +337,7 @@ def create_app(config_class=Config):
                 'message': 'حدث خطأ غير متوقع. تم تسجيل المشكلة.'
             }, 500
         
-        # منح وقت إضافي لقراءة رسالة الخطأ في الطرفية
-        time.sleep(5)
-        
-        flash(f'⚠️ حدث خطأ غير متوقع. معرف الخطأ: {error_id}', 'danger')
+        flash(f'حدث خطأ غير متوقع. رقم المرجع: {error_id}', 'danger')
         return render_template('errors/500.html', error_id=error_id), 500
     
     register_blueprints(app)
@@ -323,7 +345,6 @@ def create_app(config_class=Config):
     register_cli(app)
     register_compression_cli(app)
     
-    # Register CLI commands
     try:
         from cli_commands import register_cli_commands
         register_cli_commands(app)
@@ -344,7 +365,6 @@ def register_blueprints(app):
     from routes.owner import owner_bp
     from routes.payment_vault import payment_vault_bp
     
-    # Register public first to handle landing page
     try:
         from routes.public import public_bp
         app.register_blueprint(public_bp)
@@ -504,19 +524,18 @@ def register_blueprints(app):
     except Exception as e:
         app.logger.warning(f'api_analytics_bp not registered: {e}')
     
-    # packages_bp تم دمجه في payment_vault_bp
-
-
 def register_cli(app):
+    import click
+
     @app.cli.command()
     def init_db():
         db.create_all()
-        print('Database initialized')
+        click.echo('Database initialized')
     
     @app.cli.command()
     def add_indexes():
         """إضافة performance indexes للجداول"""
-        print('Adding performance indexes...')
+        click.echo('Adding performance indexes...')
         
         indexes = [
             "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)",
@@ -535,27 +554,26 @@ def register_cli(app):
             for idx_sql in indexes:
                 try:
                     db.session.execute(db.text(idx_sql))
-                    print(f'✓ {idx_sql.split("idx_")[1].split(" ")[0]}')
+                    click.echo(f'✓ {idx_sql.split("idx_")[1].split(" ")[0]}')
                 except Exception as e:
-                    print(f'⚠ {idx_sql}: {e}')
+                    click.echo(f'⚠ {idx_sql}: {e}')
             
             db.session.commit()
-            print('\n✅ Performance indexes added successfully')
+            click.echo('Performance indexes added successfully')
         except Exception as e:
             db.session.rollback()
-            print(f'❌ Error adding indexes: {e}')
+            click.echo(f'Error adding indexes: {e}')
     
     @app.cli.command()
     def seed_data():
         from models import Role, Permission, User, Currency, Warehouse, ExpenseCategory
-        from werkzeug.security import generate_password_hash
-        from utils.constants import PERMISSIONS, USER_ROLES, CURRENCIES
+        from utils.constants import PERMISSIONS, CURRENCIES
         from services.gl_service import GLService
         
-        print('Seeding database...')
+        click.echo('Seeding database...')
         
         GLService.ensure_core_accounts()
-        print('GL Accounts created')
+        click.echo('GL accounts verified')
         
         for code, names in PERMISSIONS.items():
             perm = Permission.query.filter_by(code=code).first()
@@ -610,10 +628,7 @@ def register_cli(app):
             owner.set_password(owner_password)
             db.session.add(owner)
             
-            print(f'Owner account created:')
-            print(f'   Username: {owner_username}')
-            print(f'   Password: {owner_password}')
-            print(f'   KEEP THIS SECRET!')
+            click.echo(f'Owner account created with username: {owner_username}')
         
         admin_role = Role.query.filter_by(slug='super_admin').first()
         admin = User.query.filter_by(username='admin', is_owner=False).first()
@@ -670,41 +685,24 @@ def register_cli(app):
         
         db.session.commit()
         
-        print('Database seeded successfully')
-        print('')
-        print('='*50)
-        print('OWNER Account (God Mode):')
-        print('='*50)
-        print(f'   Username: {owner_username}')
-        print(f'   Password: {owner_password}')
-        print(f'   Access: /owner/dashboard')
-        print(f'   KEEP SECRET - HIGHEST PRIVILEGES!')
-        print('')
-        print('='*50)
-        print('📝 Admin Account:')
-        print('='*50)
-        print('   Username: admin')
-        print('   Password: admin123')
-        print('   Access: /dashboard')
-        print('='*50)
+        click.echo('Database seeded successfully')
+        click.echo(f'Owner credentials -> username: {owner_username}, password: {owner_password}')
+        click.echo('Admin credentials -> username: admin, password: admin123')
 
 
 if __name__ == '__main__':
     app = create_app()
     
-    # تهيئة النسخ الاحتياطي التلقائي
     from services.backup_service import BackupService
     BackupService.initialize()
     
-    # جدولة القبول التلقائي للتبرعات والمشتريات (كل ساعة)
     try:
         from services.auto_approval_service import schedule_auto_approval
-        schedule_auto_approval()
-        print("✅ Auto-approval service started (every 1 hour)")
+        schedule_auto_approval(app)
+        app.logger.info("Auto-approval service scheduler started")
     except Exception as e:
-        print(f"⚠️ Auto-approval service failed: {e}")
+        app.logger.warning("Auto-approval service failed: %s", e)
     
-    # جدولة النسخ الاحتياطي اليومي
     import threading
     import time
     import json
@@ -713,7 +711,6 @@ if __name__ == '__main__':
         """جدولة النسخ الاحتياطي اليومي"""
         while True:
             try:
-                # قراءة الإعدادات
                 settings_path = 'instance/backup_settings.json'
                 if os.path.exists(settings_path):
                     with open(settings_path, 'r', encoding='utf-8') as f:
@@ -727,66 +724,54 @@ if __name__ == '__main__':
                     }
                 
                 if settings.get('enabled', True):
-                    # حساب الوقت حتى النسخة الاحتياطية التالية
                     now = datetime.now()
                     backup_time = settings.get('backup_time', '02:00')
                     
-                    # فقط للتكرار اليومي
                     if settings.get('frequency', 'daily') == 'daily':
                         target_hour, target_minute = map(int, backup_time.split(':'))
                         next_backup = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
                         
-                        # إذا فات الوقت اليوم، جدولة للغد
                         if next_backup <= now:
                             from datetime import timedelta
                             next_backup += timedelta(days=1)
                         
-                        # الانتظار حتى الوقت المحدد
                         wait_seconds = (next_backup - now).total_seconds()
                         
-                        print(f"Next automatic backup scheduled at: {next_backup.strftime('%Y-%m-%d %H:%M:%S')}")
+                        app.logger.info("Next automatic backup scheduled at %s", next_backup.strftime('%Y-%m-%d %H:%M:%S'))
                         time.sleep(wait_seconds)
                         
-                        # تنفيذ النسخ الاحتياطي
                         with app.app_context():
                             backup = BackupService.auto_backup_daily()
                             if backup:
-                                print(f"Automatic backup completed: {backup['filename']}")
+                                app.logger.info("Automatic backup completed: %s", backup['filename'])
                             else:
-                                print("Automatic backup failed")
+                                app.logger.warning("Automatic backup failed")
                     else:
-                        # للتكرارات الأخرى، انتظار 24 ساعة
                         time.sleep(86400)
                 else:
-                    # إذا كان معطلاً، تحقق كل ساعة
                     time.sleep(3600)
                     
             except Exception as e:
-                print(f"Backup scheduler error: {e}")
+                app.logger.error("Backup scheduler error: %s", e)
                 time.sleep(3600)
     
     try:
         backup_thread = threading.Thread(target=schedule_daily_backup, daemon=True)
         backup_thread.start()
-        print("Automatic backup scheduler started")
+        app.logger.info("Automatic backup scheduler started")
     except:
         pass
     
     port = int(os.environ.get('PORT', 8080))
     host = os.environ.get('HOST', '0.0.0.0')
-    debug_mode = app.config.get('DEBUG', True)
+    debug_mode = app.config.get('DEBUG', False)
     
-    print("=" * 70)
-    print(f"🚀 Starting UAE-Sale System")
-    print("=" * 70)
-    print(f"🌐 Host: {host}")
-    print(f"📍 Port: {port}")
-    print(f"🐛 Debug: {debug_mode}")
-    print(f"📂 Database: {app.config['SQLALCHEMY_DATABASE_URI']}")
-    print("=" * 70)
-    
-    print(f"🚀 Starting server on http://{host}:{port}")
-    print("=" * 70)
+    app.logger.info("Starting UAE-Sale System")
+    app.logger.info("Host: %s", host)
+    app.logger.info("Port: %s", port)
+    app.logger.info("Debug: %s", debug_mode)
+    app.logger.info("Database: %s", app.config['SQLALCHEMY_DATABASE_URI'])
+    app.logger.info("Starting server on http://%s:%s", host, port)
     
     app.run(
         host=host,

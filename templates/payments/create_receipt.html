@@ -118,7 +118,13 @@
           </div>
           <div class="col-md-3">
             <strong>المتبقي:</strong><br>
-            <span class="text-danger">{{ "{:,.2f}".format(purchase.total_amount - (purchase.paid_amount_aed or 0)) }} AED</span>
+            <span class="text-danger">
+              {% if suggested_amount is not none %}
+                {{ "{:,.2f}".format(suggested_amount) }} AED
+              {% else %}
+                {{ "{:,.2f}".format(purchase.total_amount) }} AED
+              {% endif %}
+            </span>
           </div>
         </div>
       </div>
@@ -238,6 +244,7 @@
               <option value="bank_transfer" {% if selected_payment_method == 'bank_transfer' %}selected{% endif %}>تحويل بنكي</option>
               <option value="cheque" {% if selected_payment_method == 'cheque' %}selected{% endif %}>شيك</option>
               <option value="card" {% if selected_payment_method == 'card' %}selected{% endif %}>بطاقة ائتمان</option>
+              <option value="e_wallet" {% if selected_payment_method == 'e_wallet' %}selected{% endif %}>محفظة إلكترونية</option>
             </select>
           </div>
         </div>
@@ -372,7 +379,7 @@
         </div>
         <div class="col-6 text-right">
           <button type="submit" class="btn btn-success">
-            <i class="fas fa-save"></i> حفظ سند القبض
+            <i class="fas fa-save"></i> {% if is_payment %}حفظ سند الصرف{% else %}حفظ سند القبض{% endif %}
           </button>
         </div>
       </div>

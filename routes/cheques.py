@@ -183,6 +183,16 @@ def create():
             db.session.add(cheque)
             db.session.commit()
             
+            # إنشاء القيد المحاسبي الأولي
+            try:
+                if cheque.cheque_type == 'incoming':
+                    cheque.receive_cheque()
+                elif cheque.cheque_type == 'outgoing':
+                    cheque.issue_cheque()
+                db.session.commit()
+            except Exception as e:
+                current_app.logger.error(f"Failed to create initial GL entry for cheque {cheque.id}: {e}")
+            
             create_audit_log('create', 'cheques', cheque.id)
             
             flash(f'✅ تم إضافة الشيك {cheque.cheque_bank_number} بنجاح', 'success')

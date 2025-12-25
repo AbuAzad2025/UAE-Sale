@@ -12,8 +12,10 @@ from services.nowpayments_service import NOWPaymentsService
 from utils.helpers import create_audit_log
 import secrets
 import string
+import logging
 
 payment_vault_bp = Blueprint('payment_vault', __name__, url_prefix='/payment-vault')
+logger = logging.getLogger(__name__)
 
 
 @payment_vault_bp.route('/')
@@ -1375,6 +1377,8 @@ def nowpayments_webhook():
         # التحقق من التوقيع
         vault = PaymentVault.query.first()
         if vault and vault.nowpayments_ipn_secret:
+            if not signature:
+                return jsonify({'error': 'Missing signature'}), 400
             if not WebhookService.verify_nowpayments_signature(
                 payload,
                 signature,

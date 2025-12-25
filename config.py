@@ -1,19 +1,13 @@
-# config.py - Application Configuration
-# Warehouse & Sales Management System - Simplified
-# Location: /garage_simple/config.py
-
 import os
 import secrets
 import logging
 from datetime import timedelta
 from dotenv import load_dotenv
 
-# Base directories
 basedir = os.path.abspath(os.path.dirname(__file__))
 instance_dir = os.path.join(basedir, "instance")
 os.makedirs(instance_dir, exist_ok=True)
 
-# Load environment variables
 load_dotenv(os.path.join(basedir, ".env"))
 
 
@@ -42,15 +36,12 @@ def _float(env_name: str, default: float) -> float:
 class Config:
     """Application Configuration"""
     
-    # ===== Flask Core =====
     FLASK_APP = os.environ.get("FLASK_APP", "app:create_app")
-    APP_ENV = os.environ.get("APP_ENV", os.environ.get("FLASK_ENV", "development"))
-    DEBUG = _bool(os.environ.get("DEBUG"), True)
+    APP_ENV = os.environ.get("APP_ENV", os.environ.get("FLASK_ENV", "production"))
+    DEBUG = _bool(os.environ.get("DEBUG"), False)
     
-    # Secret Key - persistent in development, required in production
     SECRET_KEY = os.environ.get("SECRET_KEY")
     if not SECRET_KEY:
-        # In development: persist a secret key under instance/secret_key to avoid regenerating every run
         secret_file = os.path.join(instance_dir, "secret_key")
         if os.path.exists(secret_file):
             try:
@@ -64,28 +55,24 @@ class Config:
                 with open(secret_file, "w", encoding="utf-8") as f:
                     f.write(SECRET_KEY)
             except Exception:
-                # Fallback - ephemeral
                 pass
-        # Log as info in non-production
         logging.info("[Dev] SECRET_KEY loaded/generated for development (set SECRET_KEY env in production)")
     
-    # Server
     HOST = os.environ.get("HOST", "0.0.0.0")
     PORT = _int("PORT", 8080)
     
-    # CSRF Exemptions
     WTF_CSRF_EXEMPT_LIST = [
         '/sales/api/calculate-totals',
         '/purchases/api/calculate-totals',
         '/ledger/api/calculate-journal-balance'
     ]
     
-    # ===== Database =====
-    _db_uri = os.environ.get("DATABASE_URL") or f"sqlite:///{os.path.join(instance_dir, 'app.db')}"
+    _db_uri = os.environ.get("DATABASE_URL") or "postgresql+psycopg2://postgres:123@localhost:5432/garage_simple"
     
-    # Fix PostgreSQL URI
     if _db_uri.startswith("postgres://"):
-        _db_uri = _db_uri.replace("postgres://", "postgresql://", 1)
+        _db_uri = _db_uri.replace("postgres://", "postgresql+psycopg2://", 1)
+    if _db_uri.startswith("postgresql://"):
+        _db_uri = _db_uri.replace("postgresql://", "postgresql+psycopg2://", 1)
     
     SQLALCHEMY_DATABASE_URI = _db_uri
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -96,96 +83,77 @@ class Config:
         "max_overflow": 20,
     }
     
-    # SQLite specific
-    if _db_uri.startswith("sqlite"):
-        SQLALCHEMY_ENGINE_OPTIONS["connect_args"] = {"timeout": 30}
+    if _db_uri.startswith("postgresql"):
+        SQLALCHEMY_ENGINE_OPTIONS["connect_args"] = {"options": "-c statement_timeout=5000"}
     
-    SQLALCHEMY_ECHO = False  # Set True for SQL debugging
+    SQLALCHEMY_ECHO = False
     
-    # ===== JSON =====
-    JSON_AS_ASCII = False  # Support Arabic characters
+    JSON_AS_ASCII = False
     JSON_SORT_KEYS = False
     
-    # ===== Compression =====
     COMPRESS_MIMETYPES = [
         'text/html', 'text/css', 'text/xml', 'text/plain',
         'application/json', 'application/javascript',
         'application/xml', 'application/xhtml+xml'
     ]
-    COMPRESS_LEVEL = 6  # 1-9, default 6
-    COMPRESS_MIN_SIZE = 500  # Only compress responses >= 500 bytes
+    COMPRESS_LEVEL = 6
+    COMPRESS_MIN_SIZE = 500
     COMPRESS_ALGORITHM = 'gzip'
     
-    # ===== Session & Cookies =====
     SESSION_COOKIE_NAME = "garage_session"
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
-    SESSION_COOKIE_SECURE = not DEBUG  # True in production
+    SESSION_COOKIE_SECURE = not DEBUG
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_DURATION = timedelta(days=_int("REMEMBER_DAYS", 14))
     PERMANENT_SESSION_LIFETIME = timedelta(hours=_int("SESSION_HOURS", 12))
     
-    # ===== Security =====
-    # File Upload
-    MAX_CONTENT_LENGTH = _int("MAX_CONTENT_LENGTH_MB", 16) * 1024 * 1024  # 16MB
+    MAX_CONTENT_LENGTH = _int("MAX_CONTENT_LENGTH_MB", 16) * 1024 * 1024
     ALLOWED_UPLOAD_EXTENSIONS = {
         'images': {'.jpg', '.jpeg', '.png', '.gif', '.webp'},
         'documents': {'.pdf', '.xlsx', '.xls', '.csv'},
     }
     
-    # Login Security
     MAX_LOGIN_ATTEMPTS = _int("MAX_LOGIN_ATTEMPTS", 5)
-    LOGIN_BLOCK_DURATION = _int("LOGIN_BLOCK_DURATION_MINUTES", 15) * 60  # seconds
+    LOGIN_BLOCK_DURATION = _int("LOGIN_BLOCK_DURATION_MINUTES", 15) * 60
     
-    # CSRF Protection
     WTF_CSRF_ENABLED = _bool(os.environ.get("WTF_CSRF_ENABLED"), True)
-    WTF_CSRF_TIME_LIMIT = None  # No expiration
+    WTF_CSRF_TIME_LIMIT = None
     
-    # CORS
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:5000,http://127.0.0.1:5000").split(",")
     CORS_SUPPORTS_CREDENTIALS = True
     
-    # Rate Limiting
     RATELIMIT_DEFAULT = "10000 per day;1000 per hour"
     RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
     RATELIMIT_LOGIN = "1000 per hour;100 per minute"
     RATELIMIT_API = "600 per hour;10 per second"
     
-    # ===== Redis & Caching =====
     REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-    CACHE_TYPE = os.environ.get("CACHE_TYPE", "redis")  # Enabled by default!
+    CACHE_TYPE = os.environ.get("CACHE_TYPE", "redis")
     CACHE_REDIS_URL = os.environ.get("CACHE_REDIS_URL", REDIS_URL)
-    CACHE_DEFAULT_TIMEOUT = _int("CACHE_DEFAULT_TIMEOUT", 300)  # 5 minutes
+    CACHE_DEFAULT_TIMEOUT = _int("CACHE_DEFAULT_TIMEOUT", 300)
     CACHE_KEY_PREFIX = "garage_simple"
     
-    # ===== Celery (Background Tasks) =====
     CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", REDIS_URL)
     CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", REDIS_URL)
     
-    # ===== Currency API =====
-    # Default Currency (Base)
     DEFAULT_CURRENCY = os.environ.get("DEFAULT_CURRENCY", "AED")
     
-    # Currency Exchange API
     CURRENCY_API_PROVIDER = os.environ.get("CURRENCY_API_PROVIDER", "exchangerate-api")
     CURRENCY_API_KEY = os.environ.get("CURRENCY_API_KEY", "")
     CURRENCY_API_URL = os.environ.get("CURRENCY_API_URL", "https://v6.exchangerate-api.com/v6/{api_key}/latest/{base}")
     
-    # Real Fallback APIs - Free, No Key Required, Real-time Rates
     CURRENCY_API_FALLBACKS = [
-        "https://api.exchangerate-api.com/v4/latest/{base}",     # Free, Real-time
-        "https://open.er-api.com/v6/latest/{base}",              # Free, Real-time
-        "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{base_lower}.json",  # Free, Daily
-        "https://api.freecurrencyapi.com/v1/latest?base_currency={base}",  # Free with limits
+        "https://api.exchangerate-api.com/v4/latest/{base}",
+        "https://open.er-api.com/v6/latest/{base}",
+        "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{base_lower}.json",
+        "https://api.freecurrencyapi.com/v1/latest?base_currency={base}",
     ]
     
-    # Cache exchange rates (in seconds)
-    CURRENCY_CACHE_TIMEOUT = _int("CURRENCY_CACHE_TIMEOUT", 3600)  # 1 hour
+    CURRENCY_CACHE_TIMEOUT = _int("CURRENCY_CACHE_TIMEOUT", 3600)
     
-    # Request timeout for API calls
-    CURRENCY_API_TIMEOUT = _int("CURRENCY_API_TIMEOUT", 5)  # 5 seconds
+    CURRENCY_API_TIMEOUT = _int("CURRENCY_API_TIMEOUT", 5)
     
-    # ===== Company Information =====
     COMPANY_NAME = os.environ.get("COMPANY_NAME", "Azad Smart Systems")
     COMPANY_NAME_AR = os.environ.get("COMPANY_NAME_AR", "شركة أزاد للأنظمة الذكية")
     COMPANY_ADDRESS = os.environ.get("COMPANY_ADDRESS", "فلسطين - رام الله | Palestine - Ramallah")
@@ -197,7 +165,6 @@ class Config:
     COMPANY_TAX_NUMBER = os.environ.get("COMPANY_TAX_NUMBER", "")
     COMPANY_LOGO = os.environ.get("COMPANY_LOGO", "img/azad_logo.png")
     
-    # ===== Developer Information =====
     DEVELOPER_NAME = os.environ.get("DEVELOPER_NAME", "م. أحمد غنام | Eng. Ahmad Ghannam")
     DEVELOPER_CREDIT = "تطوير وبرمجة: م. أحمد غنام | Developed by Eng. Ahmad Ghannam - Azad Systems"
     DEVELOPER_WEBSITE = os.environ.get("DEVELOPER_WEBSITE", "https://azadsystems.com")
@@ -222,31 +189,25 @@ class Config:
     
     ALLOW_CARD_DECRYPTION = _bool(os.environ.get("ALLOW_CARD_DECRYPTION"), False)
     
-    # ===== Application Settings =====
     APP_VERSION = os.environ.get("APP_VERSION", "1.0.0")
     ITEMS_PER_PAGE = _int("ITEMS_PER_PAGE", 20)
     
-    # Default Product Image
     DEFAULT_PRODUCT_IMAGE = "img/product-placeholder.png"
     
-    # ===== Backup Settings =====
     BACKUP_DIR = os.path.join(instance_dir, "backups")
     os.makedirs(BACKUP_DIR, exist_ok=True)
     BACKUP_KEEP_LAST = _int("BACKUP_KEEP_LAST", 10)
-    BACKUP_SCHEDULE = "0 2 * * *"  # Daily at 2 AM (cron format)
+    BACKUP_SCHEDULE = "0 2 * * *"
     
-    # ===== Logging =====
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
     LOG_FILE = os.path.join(instance_dir, "app.log")
-    LOG_MAX_BYTES = _int("LOG_MAX_BYTES", 10485760)  # 10MB
+    LOG_MAX_BYTES = _int("LOG_MAX_BYTES", 10485760)
     LOG_BACKUP_COUNT = _int("LOG_BACKUP_COUNT", 5)
     
-    # ===== Pagination =====
     PRODUCTS_PER_PAGE = _int("PRODUCTS_PER_PAGE", 20)
     SALES_PER_PAGE = _int("SALES_PER_PAGE", 20)
     CUSTOMERS_PER_PAGE = _int("CUSTOMERS_PER_PAGE", 20)
     
-    # ===== Email (Optional) =====
     MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
     MAIL_PORT = _int("MAIL_PORT", 587)
     MAIL_USE_TLS = _bool(os.environ.get("MAIL_USE_TLS"), True)
@@ -254,12 +215,11 @@ class Config:
     MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "")
     MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", COMPANY_EMAIL)
     
-    # ===== NOWPayments Integration =====
-    NOWPAYMENTS_API_KEY = os.environ.get("NOWPAYMENTS_API_KEY", "REDACTED-API-KEY")
-    NOWPAYMENTS_IPN_SECRET = os.environ.get("NOWPAYMENTS_IPN_SECRET", "REDACTED-IPN-SECRET")
+    NOWPAYMENTS_API_KEY = os.environ.get("NOWPAYMENTS_API_KEY", "")
+    NOWPAYMENTS_IPN_SECRET = os.environ.get("NOWPAYMENTS_IPN_SECRET", "")
     BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000")
+    PREFERRED_URL_SCHEME = os.environ.get("PREFERRED_URL_SCHEME", "https")
     
-    # ===== WhatsApp (Optional) =====
     WHATSAPP_ENABLED = _bool(os.environ.get("WHATSAPP_ENABLED"), False)
     WHATSAPP_API_KEY = os.environ.get("WHATSAPP_API_KEY", "")
     WHATSAPP_PHONE_NUMBER = os.environ.get("WHATSAPP_PHONE_NUMBER", "")
@@ -295,18 +255,22 @@ def assert_production_sanity(cfg=None) -> None:
     if not is_prod:
         return
     
-    # Check SECRET_KEY
     if not os.environ.get("SECRET_KEY"):
-        logging.error("SECRET_KEY must be set in production!")
+        raise RuntimeError("SECRET_KEY must be set in production!")
     
-    # Check Database
+    if not os.environ.get("CARD_ENCRYPTION_KEY"):
+        raise RuntimeError("CARD_ENCRYPTION_KEY must be set in production!")
+    
     db_uri = cfg.SQLALCHEMY_DATABASE_URI
     if db_uri.startswith("sqlite"):
-        logging.warning("SQLite in production is not recommended!")
+        raise RuntimeError("SQLite is not allowed in production. Use PostgreSQL/MySQL.")
     
-    # Check Session Cookie
     if not cfg.SESSION_COOKIE_SECURE:
-        logging.warning("SESSION_COOKIE_SECURE should be True in production!")
+        raise RuntimeError("SESSION_COOKIE_SECURE must be True in production!")
+    
+    base_url = getattr(cfg, "BASE_URL", "")
+    if base_url and not base_url.startswith("https://"):
+        raise RuntimeError("BASE_URL must use https in production!")
     
     logging.info("Production configuration check complete")
 

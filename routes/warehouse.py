@@ -113,7 +113,8 @@ def create_warehouse():
     from models import User
     
     parent_warehouses = Warehouse.query.filter_by(is_active=True, parent_id=None).all()
-    users = User.query.filter_by(is_active=True).all()
+    # Filter out owner to hide them from selection
+    users = User.query.filter_by(is_active=True, is_owner=False).all()
     
     if request.method == 'POST':
         try:

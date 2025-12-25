@@ -38,6 +38,77 @@
   background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
   transition: width 0.3s ease;
 }
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact !important;
+    font-size: 11pt;
+    direction: rtl;
+  }
+
+  .main-sidebar,
+  .main-header,
+  .main-footer,
+  .content-header,
+  .btn,
+  .card-header,
+  .card-footer,
+  .btn-group,
+  .dataTables_filter,
+  .dataTables_length,
+  .dataTables_info,
+  .dataTables_paginate,
+  .dt-buttons,
+  .pulse,
+  .small-box {
+    display: none !important;
+  }
+
+  .content-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .table-responsive {
+    overflow: visible !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  table th,
+  table td {
+    border: 1px solid #dee2e6 !important;
+    padding: 6px 8px !important;
+    text-align: center !important;
+  }
+
+  table thead th {
+    background: #007A3D !important;
+    color: #fff !important;
+  }
+
+  table tbody tr:nth-child(even) {
+    background: #f8f9fa !important;
+  }
+
+  .payment-progress,
+  .payment-progress-bar {
+    display: none !important;
+  }
+}
 </style>
 {% endblock %}
 
@@ -49,6 +120,9 @@
         <i class="fas fa-list mr-2"></i>سجل المبيعات
       </h3>
       <div class="btn-group">
+        <button type="button" class="btn btn-sm btn-outline-info" id="printSalesBtn">
+          <i class="fas fa-print mr-1"></i>طباعة
+        </button>
         <button type="button" class="btn btn-sm btn-outline-primary active" id="filterAll">
           <i class="fas fa-list mr-1"></i>الكل
         </button>
@@ -179,100 +253,87 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-  const table = $('#salesTable').DataTable({
-    language: { url: "{{ url_for('static', filename='datatables/Arabic.json') }}" },
-    order: [[2, 'desc']],
-    pageLength: 25,
-    responsive: true,
-    dom: 'Bfrtip',
-    buttons: [
-      {
-        extend: 'excel', 
-        text: '<i class="fas fa-file-excel mr-1"></i> Excel', 
-        className: 'btn-sm btn-success',
-        attr: {
-          style: 'color: #ffffff !important;'
-        }
-      },
-      {
-        extend: 'pdf', 
-        text: '<i class="fas fa-file-pdf mr-1"></i> PDF', 
-        className: 'btn-sm btn-danger',
-        attr: {
-          style: 'color: #ffffff !important;'
-        }
-      },
-      {
-        extend: 'print', 
-        text: '<i class="fas fa-print mr-1"></i> طباعة', 
-        className: 'btn-sm btn-info',
-        attr: {
-          style: 'color: #ffffff !important;'
-        }
-      }
-    ],
-    footerCallback: function() {
-      const api = this.api();
-      
-      // Calculate totals
-      const total = api.column(3, {page:'current'}).data().reduce(function(a, b) {
-        const val = parseFloat(b.replace(/[^\d.-]/g, ''));
-        return a + (isNaN(val) ? 0 : val);
-      }, 0);
-      
-      const paid = api.column(4, {page:'current'}).data().reduce(function(a, b) {
-        const val = parseFloat(b.match(/[\d.]+/)?.[0]);
-        return a + (isNaN(val) ? 0 : val);
-      }, 0);
-      
-      // Update footer
-      UI.toast(`إجمالي الصفحة: ${total.toFixed(2)} | مدفوع: ${paid.toFixed(2)}`, 'info', 2000);
-    }
-  });
+  const $tableEl = $('#salesTable');
+  const printOptions = {
+    title: 'سجل المبيعات',
+    headerColor: '#007A3D'
+  };
 
-  // Filter by payment status
-  $('#filterAll').click(function() {
+  let table;
+  if ($.fn.DataTable.isDataTable($tableEl)) {
+    table = $tableEl.DataTable();
+  } else {
+    table = $tableEl.DataTable({
+      language: { url: "{{ url_for('static', filename='datatables/Arabic.json') }}" },
+      order: [[2, 'desc']],
+      pageLength: 25,
+      responsive: true,
+      dom: 'Bfrtip',
+      buttons: SmartPrint.buildButtons(printOptions),
+      footerCallback: function() {
+        const api = this.api();
+
+        const total = api.column(3, { page: 'current' }).data().reduce(function(a, b) {
+          const val = parseFloat(b.replace(/[^\d.-]/g, ''));
+          return a + (isNaN(val) ? 0 : val);
+        }, 0);
+
+        const paid = api.column(4, { page: 'current' }).data().reduce(function(a, b) {
+          const val = parseFloat((b.match(/[\d.]+/) || [0])[0]);
+          return a + (isNaN(val) ? 0 : val);
+        }, 0);
+
+        UI.toast(`إجمالي الصفحة: ${total.toFixed(2)} | مدفوع: ${paid.toFixed(2)}`, 'info', 2000);
+      }
+    });
+  }
+
+  if (!$tableEl.data('smartPrintInit')) {
+    SmartPrint.attachTrigger(table, '#printSalesBtn', printOptions);
+    $tableEl.data('smartPrintInit', true);
+  }
+
+  $('#filterAll').off('click.smartPrint').on('click.smartPrint', function() {
     table.search('').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
 
-  $('#filterPaid').click(function() {
+  $('#filterPaid').off('click.smartPrint').on('click.smartPrint', function() {
     table.column(6).search('مدفوع').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
 
-  $('#filterPartial').click(function() {
+  $('#filterPartial').off('click.smartPrint').on('click.smartPrint', function() {
     table.column(6).search('جزئي').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
 
-  $('#filterUnpaid').click(function() {
+  $('#filterUnpaid').off('click.smartPrint').on('click.smartPrint', function() {
     table.column(6).search('آجل').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
-  
-  // أرشفة فاتورة
-  $(document).on('click', '.archive-sale-btn', function(e) {
+
+  $(document).off('click.smartPrint', '.archive-sale-btn').on('click.smartPrint', '.archive-sale-btn', function(e) {
     e.preventDefault();
     e.stopPropagation();
-    
-    var id = $(this).data('id');
-    var csrfToken = $('meta[name="csrf-token"]').attr('content');
-    
+
+    const id = $(this).data('id');
+    const csrfToken = $('meta[name="csrf-token"]').attr('content');
+
     $.ajax({
-      url: '/sales/' + id + '/archive',
+      url: `/sales/${id}/archive`,
       type: 'POST',
       headers: {
         'X-CSRFToken': csrfToken
       },
-      success: function(response) {
+      success: function() {
         location.reload();
       },
-      error: function(xhr) {
+      error: function() {
         location.reload();
       }
     });

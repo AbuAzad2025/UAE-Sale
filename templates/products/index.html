@@ -39,6 +39,70 @@
 .stock-good {
   background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
 }
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact !important;
+    font-size: 11pt;
+    direction: rtl;
+  }
+
+  .main-sidebar,
+  .main-header,
+  .main-footer,
+  .content-header,
+  .btn,
+  .card-header,
+  .card-footer,
+  .btn-group,
+  .dataTables_filter,
+  .dataTables_length,
+  .dataTables_paginate,
+  .dataTables_info,
+  .dt-buttons {
+    display: none !important;
+  }
+
+  .content-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .table-responsive {
+    overflow: visible !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  table th,
+  table td {
+    border: 1px solid #dee2e6 !important;
+    padding: 6px 8px !important;
+    text-align: center !important;
+  }
+
+  table thead th {
+    background: #007A3D !important;
+    color: #fff !important;
+  }
+
+  table tbody tr:nth-child(even) {
+    background: #f8f9fa !important;
+  }
+}
 </style>
 {% endblock %}
 
@@ -50,6 +114,9 @@
         <i class="fas fa-list mr-2"></i>كتالوج المنتجات
       </h3>
       <div class="btn-group">
+        <button type="button" class="btn btn-sm btn-outline-info" id="printProductsBtn">
+          <i class="fas fa-print mr-1"></i>طباعة
+        </button>
         <button type="button" class="btn btn-sm btn-outline-success active" id="filterAll">
           <i class="fas fa-boxes mr-1"></i>الكل
         </button>
@@ -64,7 +131,7 @@
   </div>
   <div class="card-body">
     <div class="table-responsive">
-      <table id="productsTable" class="table table-hover">
+      <table id="productsTable" class="table table-hover table-bordered">
         <thead style="background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%); color: white;">
           <tr>
             <th><i class="fas fa-image mr-2"></i>صورة</th>
@@ -222,27 +289,39 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-  const table = $('#productsTable').DataTable({
-    language: { url: "{{ url_for('static', filename='datatables/Arabic.json') }}" },
-    pageLength: 25,
-    order: [[5, 'asc']],  // Sort by stock (low first)
-    responsive: true,
-    dom: 'Bfrtip',
-    buttons: [
-      {extend: 'excel', text: '<i class="fas fa-file-excel mr-1"></i> Excel', className: 'btn-sm btn-success'},
-      {extend: 'pdf', text: '<i class="fas fa-file-pdf mr-1"></i> PDF', className: 'btn-sm btn-danger'},
-      {extend: 'print', text: '<i class="fas fa-print mr-1"></i> طباعة', className: 'btn-sm btn-info'}
-    ]
-  });
+  const $tableEl = $('#productsTable');
+  const printOptions = {
+    title: 'كتالوج المنتجات',
+    headerColor: '#007A3D'
+  };
+
+  let table;
+  if ($.fn.DataTable.isDataTable($tableEl)) {
+    table = $tableEl.DataTable();
+  } else {
+    table = $tableEl.DataTable({
+      language: { url: "{{ url_for('static', filename='datatables/Arabic.json') }}" },
+      pageLength: 25,
+      order: [[5, 'asc']],  // Sort by stock (low first)
+      responsive: true,
+      dom: 'Bfrtip',
+      buttons: SmartPrint.buildButtons(printOptions)
+    });
+  }
+
+  if (!$tableEl.data('smartPrintInit')) {
+    SmartPrint.attachTrigger(table, '#printProductsBtn', printOptions);
+    $tableEl.data('smartPrintInit', true);
+  }
 
   // Smart filtering
-  $('#filterAll').click(function() {
+  $('#filterAll').off('click.smartPrint').on('click.smartPrint', function() {
     table.search('').column(5).search('').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
 
-  $('#filterLow').click(function() {
+  $('#filterLow').off('click.smartPrint').on('click.smartPrint', function() {
     $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
       const stock = parseFloat(data[5].match(/\d+/)?.[0] || 0);
       const row = table.row(dataIndex).node();
@@ -255,8 +334,8 @@ $(document).ready(function() {
     $(this).addClass('active');
   });
 
-  $('#filterOut').click(function() {
-    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+  $('#filterOut').off('click.smartPrint').on('click.smartPrint', function() {
+    $.fn.dataTable.ext.search.push(function(settings, data) {
       return data[5].includes('نفذ');
     });
     table.draw();

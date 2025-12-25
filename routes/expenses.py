@@ -1,12 +1,13 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
 from flask_login import login_required, current_user
 from extensions import db, limiter
-from models import Expense, ExpenseCategory
+from models import Expense, ExpenseCategory, Cheque
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
 from utils.decorators import admin_required
 from utils.helpers import create_audit_log, generate_number
 from decimal import Decimal
+from datetime import datetime
 
 expenses_bp = Blueprint('expenses', __name__, url_prefix='/expenses')
 
@@ -88,13 +89,45 @@ def create():
             db.session.add(expense)
             db.session.flush()
             
+            # Handle Cheque Creation
+            cheque = None
+            if expense.payment_method == 'cheque':
+                cheque_date_str = request.form.get('cheque_date')
+                cheque_date_val = datetime.strptime(cheque_date_str, '%Y-%m-%d').date() if cheque_date_str else datetime.now().date()
+                
+                cheque = Cheque(
+                    cheque_number=expense.cheque_number or f'CHQ-{expense.expense_number}',
+                    cheque_bank_number=expense.cheque_number or f'CHQ-{expense.expense_number}',
+                    cheque_type='outgoing',
+                    bank_name=expense.bank_name or 'Unknown',
+                    amount=expense.amount,
+                    currency=expense.currency,
+                    exchange_rate=expense.exchange_rate,
+                    amount_aed=expense.amount_aed,
+                    issue_date=datetime.now().date(),
+                    due_date=cheque_date_val,
+                    status='pending',
+                    payee_name=expense.supplier_name or 'Expense Payment',
+                    expense_id=expense.id,
+                    notes=expense.notes,
+                    user_id=current_user.id
+                )
+                db.session.add(cheque)
+                db.session.flush()
+            
             try:
                 GLService.ensure_core_accounts()
                 
                 category = expense.category
-                expense_account = category.gl_account_code if category and category.gl_account_code else '6000'
+                expense_account = category.gl_account_code if category and category.gl_account_code else '6990'
                 
-                payment_account = '1000' if expense.payment_method == 'cash' else '1010'
+                # Determine Payment Account
+                if expense.payment_method == 'cash':
+                    payment_account = '1110'
+                elif expense.payment_method == 'cheque':
+                    payment_account = '2110'  # Accounts Payable (cleared by Cheque Issue)
+                else:
+                    payment_account = '1120'
                 
                 lines = [
                     {'account': expense_account, 'debit': expense.amount_aed, 'description': expense.description},
@@ -109,6 +142,11 @@ def create():
                     currency=expense.currency,
                     exchange_rate=expense.exchange_rate
                 )
+                
+                # If Cheque, issue it (GL: Debit 2110, Credit 2120)
+                if cheque:
+                    cheque.issue_cheque()
+                    
             except Exception as e:
                 current_app.logger.warning(f'GL posting failed: {e}')
             
@@ -144,7 +182,13 @@ def view(id):
 @admin_required
 def print_expense(id):
     expense = Expense.query.get_or_404(id)
-    return render_template('expenses/print.html', expense=expense)
+    from flask import current_app
+    company = {
+        'name_ar': current_app.config.get('COMPANY_NAME_AR'),
+        'address': current_app.config.get('COMPANY_ADDRESS'),
+        'phone': current_app.config.get('COMPANY_PHONE'),
+    }
+    return render_template('expenses/print.html', expense=expense, company=company)
 
 
 @expenses_bp.route('/<int:id>/edit', methods=['GET', 'POST'])

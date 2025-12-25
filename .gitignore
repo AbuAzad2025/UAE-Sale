@@ -59,7 +59,7 @@ instance/backups/
 # Secret keys
 instance/secret_key
 
-# Migrations (optional - uncomment if you want to exclude)
+# Migrations
 # migrations/
 
 # Cache

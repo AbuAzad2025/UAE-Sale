@@ -158,20 +158,20 @@ def create():
                 return redirect(url_for('purchases.create'))
             
             # حساب الإجماليات يدوياً من البيانات المحفوظة
-            subtotal = 0
+            subtotal = Decimal('0')
             current_app.logger.info(f"Starting calculation for {line_count} lines")
             
             for i in range(line_count):
                 product_id = request.form.get(f'lines[{i}][product_id]', type=int)
-                quantity = request.form.get(f'lines[{i}][quantity]', type=float)
-                unit_cost = request.form.get(f'lines[{i}][unit_cost]', type=float)
-                discount_percent = request.form.get(f'lines[{i}][discount_percent]', type=float, default=0)
+                quantity = Decimal(str(request.form.get(f'lines[{i}][quantity]', type=float, default=0)))
+                unit_cost = Decimal(str(request.form.get(f'lines[{i}][unit_cost]', type=float, default=0)))
+                discount_percent = Decimal(str(request.form.get(f'lines[{i}][discount_percent]', type=float, default=0)))
                 
                 current_app.logger.info(f"Line {i}: product_id={product_id}, qty={quantity}, cost={unit_cost}, discount={discount_percent}")
                 
-                if product_id and quantity and quantity > 0 and unit_cost:
+                if product_id and quantity > 0 and unit_cost:
                     line_subtotal = quantity * unit_cost
-                    line_discount = line_subtotal * (discount_percent / 100)
+                    line_discount = line_subtotal * (discount_percent / Decimal('100'))
                     line_total = line_subtotal - line_discount
                     subtotal += line_total
                     current_app.logger.info(f"Line {i} calculated: {line_subtotal} - {line_discount} = {line_total}")
@@ -181,10 +181,9 @@ def create():
             current_app.logger.info(f"Final subtotal: {subtotal}")
             
             purchase.subtotal = subtotal
-            purchase.tax_amount = subtotal * (purchase.tax_rate / 100)
+            purchase.tax_amount = subtotal * (Decimal(str(purchase.tax_rate)) / Decimal('100'))
             purchase.total_amount = subtotal + purchase.tax_amount
-            from decimal import Decimal
-            purchase.amount_aed = Decimal(str(purchase.total_amount)) * purchase.exchange_rate
+            purchase.amount_aed = purchase.total_amount * purchase.exchange_rate
             
             current_app.logger.info(f"Final totals: subtotal={purchase.subtotal}, tax={purchase.tax_amount}, total={purchase.total_amount}, aed={purchase.amount_aed}")
             
@@ -196,8 +195,8 @@ def create():
             try:
                 GLService.ensure_core_accounts()
                 lines = [
-                    {'account': '1200', 'debit': purchase.amount_aed, 'description': f'شراء بضاعة {purchase.purchase_number}'},
-                    {'account': '2000', 'credit': purchase.amount_aed, 'description': f'مورد: {purchase.supplier_name}'}
+                    {'account': '1140', 'debit': purchase.total_amount, 'description': f'شراء بضاعة {purchase.purchase_number}'},
+                    {'account': '2110', 'credit': purchase.total_amount, 'description': f'ذمم دائنة - مورد: {purchase.supplier_name}'}
                 ]
                 GLService.post_entry(
                     lines, 
@@ -256,7 +255,13 @@ def view(id):
 @admin_required
 def print_purchase(id):
     purchase = Purchase.query.get_or_404(id)
-    return render_template('purchases/print.html', purchase=purchase)
+    from flask import current_app
+    company = {
+        'name_ar': current_app.config.get('COMPANY_NAME_AR'),
+        'address': current_app.config.get('COMPANY_ADDRESS'),
+        'phone': current_app.config.get('COMPANY_PHONE'),
+    }
+    return render_template('purchases/print.html', purchase=purchase, company=company)
 
 
 @purchases_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
@@ -267,7 +272,7 @@ def edit(id):
     purchase = Purchase.query.get_or_404(id)
     
     # منع التعديل للفواتير المدفوعة
-    if purchase.paid_amount > 0:
+    if purchase.get_paid_amount() > 0:
         flash('⚠️ لا يمكن تعديل فاتورة شراء تم الدفع عليها.\n💡 للحفاظ على السجلات المحاسبية.', 'danger')
         return redirect(url_for('purchases.view', id=id))
     
@@ -296,7 +301,7 @@ def delete(id):
     """حذف (أرشفة) فاتورة شراء - فقط الفواتير غير المدفوعة"""
     purchase = Purchase.query.get_or_404(id)
     
-    if purchase.paid_amount > 0:
+    if purchase.get_paid_amount() > 0:
         flash('⚠️ لا يمكن حذف فاتورة شراء مدفوعة.\n💡 قم بإلغائها أولاً أو إرجاع المدفوعات.', 'danger')
         return redirect(url_for('purchases.view', id=id))
     

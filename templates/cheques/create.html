@@ -311,16 +311,16 @@ $(function() {
         if (data && data.rate) {
           $('input[name="exchange_rate"]').val(parseFloat(data.rate).toFixed(6));
         } else if (window.toastr) {
-          toastr.warning('⚠️ تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+          toastr.warning('تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
         } else {
-          alert('⚠️ تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+          alert('تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
         }
       },
       error: function() {
         if (window.toastr) {
-          toastr.warning('⚠️ تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+          toastr.warning('تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
         } else {
-          alert('⚠️ تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+          alert('تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
         }
       }
     });

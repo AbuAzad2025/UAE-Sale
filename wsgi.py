@@ -1,35 +1,17 @@
-# WSGI Configuration for PythonAnywhere
-# Path on PythonAnywhere: /var/www/uaesale-azad_pythonanywhere_com_wsgi.py
-
 import sys
 import os
-from pathlib import Path
 
-# Add your project directory to the sys.path
-project_home = '/home/Azad/UAE-Sale'
+# أضف مسار المشروع إلى مسار بايثون
+project_home = '/home/username/mysite'
 if project_home not in sys.path:
-    sys.path.insert(0, project_home)
+    sys.path = [project_home] + sys.path
 
-# Set environment to production
-os.environ['FLASK_ENV'] = 'production'
-os.environ['APP_ENV'] = 'production'
-os.environ['DEBUG'] = 'False'
+# تعيين متغيرات البيئة (يمكنك أيضاً تعيينها في لوحة تحكم PythonAnywhere)
+# os.environ['FLASK_APP'] = 'app.py'
+# os.environ['FLASK_ENV'] = 'production'
 
-# Load environment variables from .env file
-from dotenv import load_dotenv
-dotenv_path = os.path.join(project_home, '.env')
-if os.path.exists(dotenv_path):
-    load_dotenv(dotenv_path)
-
-# Import your Flask app
+# استيراد التطبيق
 from app import create_app
 
-# Create the application instance
+# إنشاء التطبيق
 application = create_app()
-
-# This is required by PythonAnywhere
-app = application
-
-if __name__ == '__main__':
-    application.run()
-

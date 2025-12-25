@@ -11,11 +11,11 @@ class ChequeAccountingIntegration:
     # حسابات الشيكات الافتراضية
     CHEQUE_ACCOUNTS = {
         'incoming_under_collection': '1150',  # شيكات تحت التحصيل
-        'outgoing_deferred': '2140',          # شيكات مؤجلة الدفع
+        'outgoing_deferred': '2120',          # شيكات مؤجلة الدفع
         'bank_account': '1120',               # حساب البنك
         'cash_account': '1110',              # صندوق
         'accounts_receivable': '1130',        # الذمم المدينة
-        'accounts_payable': '2130',           # الذمم الدائنة
+        'accounts_payable': '2110',           # الذمم الدائنة
         'exchange_gain': '4200',             # أرباح الصرف
         'exchange_loss': '5200',             # خسائر الصرف
     }

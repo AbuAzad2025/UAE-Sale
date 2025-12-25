@@ -243,21 +243,20 @@ def products_low_stock():
     """API للمنتجات قليلة المخزون"""
     try:
         from models import Product
-        
         low_stock_products = Product.query.filter(
-            Product.current_stock <= Product.min_stock,
+            Product.current_stock <= Product.min_stock_alert,
             Product.is_active == True
         ).order_by(Product.current_stock).all()
-        
+
         products_data = []
         for product in low_stock_products:
             products_data.append({
                 'id': product.id,
                 'name': product.name,
-                'code': product.code,
+                'sku': product.sku,
                 'current_stock': float(product.current_stock),
-                'min_stock': float(product.min_stock),
-                'needed': float(product.min_stock - product.current_stock)
+                'min_stock_alert': float(product.min_stock_alert or 0),
+                'needed': float((product.min_stock_alert or 0) - (product.current_stock or 0))
             })
         
         return jsonify({
@@ -271,4 +270,10 @@ def products_low_stock():
             'success': False,
             'error': str(e)
         }), 500
+
+@api_bp.route('/echo', methods=['PUT', 'PATCH', 'DELETE'])
+@login_required
+def echo():
+    payload = request.get_json(silent=True) or {}
+    return jsonify({'success': True, 'data': payload}), 200
 

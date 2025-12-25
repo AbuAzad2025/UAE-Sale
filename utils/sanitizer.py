@@ -10,7 +10,6 @@ import bleach
 class InputSanitizer:
     """منظف المدخلات ضد XSS"""
     
-    # HTML tags المسموحة للمحتوى الغني
     ALLOWED_TAGS = ['b', 'i', 'u', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li']
     ALLOWED_ATTRS = {}
     
@@ -21,7 +20,6 @@ class InputSanitizer:
             return ''
         
         if allow_tags:
-            # استخدام bleach للحفاظ على بعض HTML
             return bleach.clean(
                 text,
                 tags=InputSanitizer.ALLOWED_TAGS,
@@ -29,7 +27,6 @@ class InputSanitizer:
                 strip=True
             )
         else:
-            # escape كامل
             return escape(text)
     
     @staticmethod
@@ -38,16 +35,12 @@ class InputSanitizer:
         if not text:
             return ''
         
-        # إزالة HTML tags
         text = re.sub(r'<[^>]+>', '', str(text))
         
-        # escape
         text = escape(text)
         
-        # trim
         text = text.strip()
         
-        # max length
         if max_length and len(text) > max_length:
             text = text[:max_length]
         
@@ -61,7 +54,6 @@ class InputSanitizer:
         
         email = str(email).strip().lower()
         
-        # regex check
         email_regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
         if not re.match(email_regex, email):
             return None
@@ -74,7 +66,6 @@ class InputSanitizer:
         if not phone:
             return None
         
-        # إزالة كل شيء ما عدا الأرقام والرموز
         phone = re.sub(r'[^\d\+\-\s\(\)]', '', str(phone))
         
         return phone.strip()
@@ -104,7 +95,6 @@ class InputSanitizer:
         if not text:
             return ''
         
-        # إزالة أحرف خطرة
         dangerous_chars = [';', '--', '/*', '*/', 'xp_', 'sp_', 'exec', 'execute']
         
         text = str(text)

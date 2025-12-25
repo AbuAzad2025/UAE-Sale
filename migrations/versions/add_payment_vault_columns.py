@@ -22,8 +22,8 @@ def upgrade():
     
     # التحقق من وجود الجدول أولاً
     conn = op.get_bind()
-    result = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='payment_vault'"))
-    if not result.fetchone():
+    inspector = sa.inspect(conn)
+    if 'payment_vault' not in inspector.get_table_names(schema='public'):
         # إنشاء الجدول إذا لم يكن موجوداً
         op.create_table('payment_vault',
             sa.Column('id', sa.Integer(), nullable=False),

@@ -68,7 +68,7 @@
                 <th>الكود</th>
                 <th>الكمية المتاحة</th>
                 <th>الحد الأدنى</th>
-                <th>سعر الشراء</th>
+                <th>سعر التكلفة</th>
                 <th>سعر البيع</th>
                 <th>القيمة الإجمالية</th>
                 <th>الحالة</th>
@@ -78,16 +78,16 @@
               {% for product in products %}
               <tr>
                 <td>{{ product.name }}</td>
-                <td>{{ product.code }}</td>
+                <td>{{ product.sku }}</td>
                 <td>{{ product.current_stock }}</td>
-                <td>{{ product.min_stock }}</td>
-                <td>{{ product.purchase_price }}</td>
-                <td>{{ product.sale_price }}</td>
-                <td>{{ (product.current_stock * product.purchase_price)|round(2) }}</td>
+                <td>{{ product.min_stock_alert }}</td>
+                <td>{{ product.cost_price }}</td>
+                <td>{{ product.regular_price }}</td>
+                <td>{{ (product.current_stock * product.cost_price)|round(2) }}</td>
                 <td>
                   {% if product.current_stock == 0 %}
                     <span class="badge badge-danger">نفذ</span>
-                  {% elif product.current_stock <= product.min_stock %}
+                  {% elif product.current_stock <= product.min_stock_alert %}
                     <span class="badge badge-warning">ناقص</span>
                   {% else %}
                     <span class="badge badge-success">متوفر</span>

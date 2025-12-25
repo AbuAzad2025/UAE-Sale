@@ -2,6 +2,7 @@ from flask import Flask
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_login import current_user
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ def init_socketio(app: Flask):
             logger.info(f"User {current_user.id} disconnected")
     
     @socketio.on('ping')
-    def handle_ping():
+    def handle_ping(data=None):
         emit('pong', {'timestamp': datetime.now().isoformat()})
     
     logger.info("[OK] WebSocket initialized")
@@ -42,12 +43,12 @@ def init_socketio(app: Flask):
 
 def broadcast_sale_created(sale_data):
     if socketio:
-        socketio.emit('sale_created', sale_data, broadcast=True)
+        socketio.emit('sale_created', sale_data)
 
 
 def broadcast_payment_received(payment_data):
     if socketio:
-        socketio.emit('payment_received', payment_data, broadcast=True)
+        socketio.emit('payment_received', payment_data)
 
 
 def notify_user(user_id, message, notification_type='info'):
@@ -60,5 +61,5 @@ def notify_user(user_id, message, notification_type='info'):
 
 def broadcast_stock_alert(product_data):
     if socketio:
-        socketio.emit('stock_alert', product_data, broadcast=True)
+        socketio.emit('stock_alert', product_data)
 

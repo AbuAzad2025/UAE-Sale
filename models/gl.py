@@ -43,17 +43,16 @@ class GLAccount(db.Model):
         return types.get(self.type, self.type)
     
     def get_balance(self):
-        """حساب رصيد الحساب"""
+        """حساب رصيد الحساب بالعملة المحلية (AED)"""
         from sqlalchemy import func
         from models import GLJournalLine
         
-        debit_sum = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=self.id).scalar() or 0
-        credit_sum = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=self.id).scalar() or 0
+        balance_sum = db.session.query(func.sum(GLJournalLine.amount_aed)).filter_by(account_id=self.id).scalar() or 0
         
         if self.type in ['asset', 'expense']:
-            return debit_sum - credit_sum
+            return balance_sum
         else:  # liability, equity, revenue
-            return credit_sum - debit_sum
+            return -balance_sum
     
     def get_children_recursive(self):
         """الحصول على جميع الحسابات الفرعية بشكل متكرر"""
@@ -118,8 +117,19 @@ class GLJournalEntry(db.Model):
         from utils.helpers import generate_number
         
         # إنشاء قيد معكوس
+        from utils.helpers import generate_number
+        y = datetime.now().strftime('%Y')
+        from models import GLJournalEntry as _JE
+        latest = db.session.query(_JE).filter(_JE.entry_number.like(f'JE-{y}-%')).order_by(_JE.entry_number.desc()).first()
+        last_db = 0
+        if latest:
+            try:
+                last_db = int(latest.entry_number.split('-')[-1])
+            except Exception:
+                last_db = 0
+        next_num = last_db + 1
         reversed_entry = GLJournalEntry(
-            entry_number=generate_number('JE', GLJournalEntry, 'entry_number'),
+            entry_number=f'JE-{y}-{next_num:04d}',
             entry_date=datetime.now(timezone.utc),
             description=description or f'عكس قيد: {self.description}',
             reference_type=self.reference_type,
@@ -127,8 +137,8 @@ class GLJournalEntry(db.Model):
             entry_type='reversing',
             currency=self.currency,
             exchange_rate=self.exchange_rate,
-            total_debit=self.total_credit,  # عكس
-            total_credit=self.total_debit,  # عكس
+            total_debit=self.total_credit,
+            total_credit=self.total_debit,
             reversed_entry_id=self.id
         )
         db.session.add(reversed_entry)

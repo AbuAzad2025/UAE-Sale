@@ -193,15 +193,14 @@ def system_stats():
     db_stats = {}
     
     try:
-        result = db.session.execute(text("SELECT name, sql FROM sqlite_master WHERE type='table'"))
+        result = db.session.execute(text("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname='public'"))
         tables = result.fetchall()
         
-        for table in tables:
-            table_name = table[0]
-            if not table_name.startswith('sqlite_'):
-                count_result = db.session.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
-                count = count_result.scalar()
-                db_stats[table_name] = count
+        for row in tables:
+            table_name = row[0]
+            count_result = db.session.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
+            count = count_result.scalar()
+            db_stats[table_name] = count
     
     except Exception as e:
         flash(f'❌ خطأ في جلب الإحصائيات: {str(e)}\n💡 حاول تحديث الصفحة.', 'danger')
@@ -405,7 +404,7 @@ def edit_user(user_id):
             # تغيير كلمة المرور إن وجدت
             new_password = request.form.get('new_password', '').strip()
             if new_password:
-                user.password_hash = generate_password_hash(new_password)
+                user.password_hash = generate_password_hash(new_password, method='pbkdf2:sha256')
             
             user.updated_by = current_user.id
             
@@ -1177,9 +1176,12 @@ def export_database():
         if export_format == 'sql':
             filename = f'db_export_{timestamp}.sql'
             filepath = os.path.join(backup_dir, filename)
-            
-            db_path = 'instance/app.db'
-            os.system(f'sqlite3 {db_path} .dump > {filepath}')
+            from extensions import db
+            db_url = str(db.engine.url)
+            import subprocess
+            pg_dump = os.environ.get('PG_DUMP_PATH', 'pg_dump')
+            cmd = [pg_dump, '--dbname', db_url, '--file', filepath]
+            subprocess.run(cmd, check=True)
             
             flash(f'✅ تم التصدير: {filename}', 'success')
         
@@ -1190,15 +1192,14 @@ def export_database():
             export_data = {}
             inspector = inspect(db.engine)
             
-            for table_name in inspector.get_table_names():
-                if not table_name.startswith('sqlite_'):
-                    result = db.session.execute(text(f"SELECT * FROM {table_name}"))
-                    rows = result.fetchall()
-                    columns = result.keys()
-                    
-                    export_data[table_name] = [
-                        dict(zip(columns, row)) for row in rows
-                    ]
+            for table_name in inspector.get_table_names(schema='public'):
+                result = db.session.execute(text(f"SELECT * FROM {table_name}"))
+                rows = result.fetchall()
+                columns = result.keys()
+                
+                export_data[table_name] = [
+                    dict(zip(columns, row)) for row in rows
+                ]
             
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(export_data, f, ensure_ascii=False, indent=2, default=str)
@@ -1235,19 +1236,18 @@ def convert_database():
                 inspector = inspect(db.engine)
                 
                 for table_name in inspector.get_table_names():
-                    if not table_name.startswith('sqlite_'):
-                        result = db.session.execute(text(f"SELECT * FROM {table_name}"))
-                        rows = result.fetchall()
-                        columns = result.keys()
+                    result = db.session.execute(text(f"SELECT * FROM {table_name}"))
+                    rows = result.fetchall()
+                    columns = result.keys()
+                    
+                    if rows:
+                        placeholders = ', '.join([f':{col}' for col in columns])
+                        insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
                         
-                        if rows:
-                            placeholders = ', '.join([f':{col}' for col in columns])
-                            insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
-                            
-                            with target_engine.connect() as conn:
-                                for row in rows:
-                                    conn.execute(text(insert_sql), dict(zip(columns, row)))
-                                conn.commit()
+                        with target_engine.connect() as conn:
+                            for row in rows:
+                                conn.execute(text(insert_sql), dict(zip(columns, row)))
+                            conn.commit()
                 
                 flash('✅ تم التحويل إلى PostgreSQL بنجاح!', 'success')
             
@@ -1318,7 +1318,7 @@ def reports():
         return redirect(url_for('main.dashboard'))
     
     # إحصائيات عامة
-    from models import User, Customer, Product, Sale, Receipt, PaymentVault, PaymentTransaction
+    from models import User, Customer, Product, Sale, Receipt, PaymentVault, Donation, Payment
     
     vault = PaymentVault.query.first()
     stats = {
@@ -1328,8 +1328,8 @@ def reports():
         'total_sales': Sale.query.count(),
         'total_invoices': Sale.query.filter(Sale.payment_status == 'paid').count(),
         'total_receipts': Receipt.query.count(),
-        'total_donations': PaymentTransaction.query.filter_by(transaction_type='donation').count(),
-        'total_payments': PaymentTransaction.query.filter_by(transaction_type='payment').count(),
+        'total_donations': Donation.query.filter_by(transaction_type='donation').count(),
+        'total_payments': Payment.query.count(),
         'vault_status': vault.is_locked if vault else True
     }
     
@@ -1713,8 +1713,9 @@ def system_health():
             disk = type('obj', (object,), {'total': 0, 'used': 0, 'free': 0, 'percent': 0})()
         
         try:
-            db_size = os.path.getsize('instance/app.db') if os.path.exists('instance/app.db') else 0
-            db_size_mb = db_size / (1024 * 1024)
+            size_result = db.session.execute(text("SELECT pg_database_size(current_database())"))
+            db_size_bytes = size_result.scalar() or 0
+            db_size_mb = db_size_bytes / (1024 * 1024)
         except:
             db_size_mb = 0
         
@@ -2220,16 +2221,14 @@ def notification_templates():
 @owner_required
 def database_optimize():
     try:
-        conn = db.engine.raw_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('VACUUM')
-        cursor.execute('ANALYZE')
-        
-        conn.commit()
-        cursor.close()
-        
-        flash('✅ تم تحسين قاعدة البيانات بنجاح', 'success')
+        from utils.database_optimizer import DatabaseOptimizer
+        vacuum_result = DatabaseOptimizer.vacuum_postgres()
+        analyze_result = DatabaseOptimizer.analyze_tables()
+        if vacuum_result.get('success') and analyze_result.get('success'):
+            flash('✅ تم تحسين قاعدة البيانات وتحليل الجداول بنجاح', 'success')
+        else:
+            msg = vacuum_result.get('error') or analyze_result.get('error') or 'عملية التحسين لم تكتمل'
+            flash(f'⚠️ تحذير: {msg}', 'warning')
     except Exception as e:
         flash(f'❌ خطأ في التحسين: {str(e)}', 'danger')
     

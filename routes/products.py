@@ -67,7 +67,6 @@ def create():
     
     # تعيين choices للتصنيفات
     categories = ProductCategory.query.filter_by(is_active=True).all()
-    current_app.logger.debug(f"Product categories for form: {[ (c.id, c.name, c.is_active) for c in categories ]}")
     form.category_id.choices = [(0, 'بلا')] + [(c.id, c.name) for c in categories]
     preselected_warehouse_id = request.args.get('warehouse_id', type=int)
     

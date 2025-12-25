@@ -111,6 +111,7 @@ def low_stock_products():
 def revenue_trend():
     from models import Sale
     from sqlalchemy import func
+    from extensions import db
     
     days = request.args.get('days', 30, type=int)
     since = datetime.now() - timedelta(days=days)

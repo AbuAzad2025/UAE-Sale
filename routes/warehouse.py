@@ -105,6 +105,35 @@ def out_of_stock():
     return render_template('warehouse/out_of_stock.html', products=products)
 
 
+@warehouse_bp.route('/<int:id>')
+@login_required
+@permission_required('manage_warehouse')
+def view_warehouse(id):
+    warehouse = Warehouse.query.get_or_404(id)
+    
+    # Calculate stock for this warehouse from movements
+    stock_query = db.session.query(
+        StockMovement.product_id,
+        db.func.sum(StockMovement.quantity).label('total_quantity')
+    ).filter_by(warehouse_id=id).group_by(StockMovement.product_id).all()
+    
+    warehouse_stock = []
+    for product_id, quantity in stock_query:
+        # Convert quantity to float for comparison and display, handling None
+        qty = float(quantity) if quantity is not None else 0.0
+        if qty != 0:
+            product = Product.query.get(product_id)
+            if product:
+                warehouse_stock.append({
+                    'product': product,
+                    'quantity': qty
+                })
+    
+    return render_template('warehouse/view_warehouse.html', 
+                         warehouse=warehouse, 
+                         stock=warehouse_stock)
+
+
 @warehouse_bp.route('/create', methods=['GET', 'POST'])
 @warehouse_bp.route('/create-warehouse', methods=['GET', 'POST'])
 @login_required

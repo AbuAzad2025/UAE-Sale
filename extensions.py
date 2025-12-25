@@ -13,6 +13,22 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_mail import Mail
 from flask_babel import Babel
+import pickle
+
+# Monkey patch cachelib.serializers.BaseSerializer.dumps to fix UnboundLocalError
+try:
+    from cachelib.serializers import BaseSerializer
+    
+    def patched_dumps(self, value, protocol=pickle.HIGHEST_PROTOCOL):
+        try:
+            return pickle.dumps(value, protocol)
+        except (pickle.PickleError, pickle.PicklingError) as e:
+            self._warn(e)
+            return None
+            
+    BaseSerializer.dumps = patched_dumps
+except ImportError:
+    pass
 
 try:
     from flask_compress import Compress

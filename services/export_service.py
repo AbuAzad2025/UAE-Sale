@@ -3,7 +3,7 @@ Export Service - خدمة التصدير
 تصدير التقارير إلى PDF, Excel, CSV
 """
 from datetime import datetime, timezone
-from io import BytesIO
+from io import BytesIO, StringIO
 import csv
 import logging
 
@@ -26,16 +26,21 @@ class ExportService:
         Returns:
             BytesIO: ملف CSV
         """
-        output = BytesIO()
-        
-        # Write UTF-8 BOM for Excel compatibility
-        output.write('\ufeff'.encode('utf-8'))
-        
-        writer = csv.writer(output)
+        # Create a string buffer for CSV writing
+        str_output = StringIO()
+        writer = csv.writer(str_output)
         writer.writerow(headers)
         
         for row in data:
             writer.writerow(row)
+            
+        # Get the string content
+        csv_content = str_output.getvalue()
+        
+        # Create bytes buffer with BOM for Excel compatibility
+        output = BytesIO()
+        output.write(b'\xef\xbb\xbf')
+        output.write(csv_content.encode('utf-8'))
         
         output.seek(0)
         return output

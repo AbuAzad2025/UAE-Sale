@@ -2448,7 +2448,7 @@ def product_performance():
     products_perf = db.session.query(
         Product.id,
         Product.name,
-        Product.code,
+        Product.sku,
         func.sum(SaleLine.quantity).label('total_sold'),
         func.sum(SaleLine.line_total).label('total_revenue'),
         func.count(Sale.id).label('transactions')
@@ -2466,7 +2466,7 @@ def product_performance():
         
         performance_data.append({
             'name': p.name,
-            'code': p.code,
+            'code': p.sku,
             'sold': float(p.total_sold),
             'revenue': float(p.total_revenue),
             'transactions': p.transactions,

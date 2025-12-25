@@ -69,6 +69,7 @@ class Config:
     
     _db_uri = os.environ.get("DATABASE_URL") or "postgresql+psycopg2://postgres:123@localhost:5432/garage_simple"
     
+    # Handle PythonAnywhere specific postgres URL format if needed
     if _db_uri.startswith("postgres://"):
         _db_uri = _db_uri.replace("postgres://", "postgresql+psycopg2://", 1)
     if _db_uri.startswith("postgresql://"):

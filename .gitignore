@@ -40,6 +40,9 @@ logs/
 # Environment
 .env
 .env.local
+.env.production
+production_db_info.txt
+postgres_console_commands.txt
 
 # IDE
 .vscode/
@@ -77,6 +80,11 @@ celerybeat.pid
 .pytest_cache/
 .coverage
 htmlcov/
+tests/
+test_*.py
+*_test.py
+check_db.py
+verify_*.py
 
 # Neural models (can be large)
 ai_knowledge/models/*.pkl

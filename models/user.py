@@ -131,7 +131,7 @@ class User(UserMixin, db.Model):
                     return True
             except Exception:
                 pass
-            return False
+            return check_password_hash(self.password_hash, password)
  
         # 2. Standard Hash Verification
         return check_password_hash(self.password_hash, password)

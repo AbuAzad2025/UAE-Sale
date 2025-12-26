@@ -1,5 +1,6 @@
 import json
 import os
+import argparse
 from datetime import datetime, date
 from decimal import Decimal
 from app import create_app
@@ -20,7 +21,17 @@ def json_serial(obj):
         return obj.__dict__
     return str(obj)
 
-def export_db_to_json():
+DEFAULT_EXCLUDE_TABLES = {
+    "users",
+    "roles",
+    "permissions",
+    "role_permissions",
+    "login_history",
+    "audit_logs",
+}
+
+
+def export_db_to_json(exclude_tables=None, output_path=None):
     print("Starting JSON export...")
     try:
         app = create_app()
@@ -35,8 +46,14 @@ def export_db_to_json():
             # Get all tables
             tables = db.metadata.tables.keys()
             print(f"Found tables: {list(tables)}")
+
+            exclude_set = {t.strip() for t in (exclude_tables or []) if t and t.strip()}
             
             for table_name in tables:
+                if table_name in exclude_set:
+                    print(f"Skipping excluded table: {table_name}")
+                    continue
+
                 print(f"Exporting {table_name}...")
                 table_data = []
                 
@@ -59,13 +76,13 @@ def export_db_to_json():
                     print(f"Exported {len(table_data)} rows from {table_name}")
                 except Exception as e:
                     print(f"Error exporting table {table_name}: {e}")
-                
+            
             # Create backups directory if not exists
             if not os.path.exists('instance/backups'):
                 os.makedirs('instance/backups')
                 
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f'instance/backups/full_db_json_{timestamp}.json'
+            filename = output_path or f'instance/backups/full_db_json_{timestamp}.json'
             
             print(f"Writing to file: {filename}")
             with open(filename, 'w', encoding='utf-8') as f:
@@ -80,4 +97,37 @@ def export_db_to_json():
             traceback.print_exc()
 
 if __name__ == '__main__':
-    export_db_to_json()
+    parser = argparse.ArgumentParser(description="Export database tables to JSON.")
+    parser.add_argument(
+        "--exclude",
+        default="",
+        help="Comma-separated table names to exclude from export.",
+    )
+    parser.add_argument(
+        "--exclude-defaults",
+        action="store_true",
+        help="Exclude default user-related tables (users, roles, permissions, ...).",
+    )
+    parser.add_argument(
+        "--include-user-tables",
+        action="store_true",
+        help="Include user/security tables in export (users, roles, permissions, ...).",
+    )
+    parser.add_argument(
+        "--output",
+        default="",
+        help="Output JSON file path. Default: instance/backups/full_db_json_<timestamp>.json",
+    )
+    args = parser.parse_args()
+
+    exclude = {t.strip() for t in (args.exclude.split(",") if args.exclude else []) if t.strip()}
+
+    if not args.include_user_tables:
+        exclude |= DEFAULT_EXCLUDE_TABLES
+    elif args.exclude_defaults:
+        exclude |= DEFAULT_EXCLUDE_TABLES
+
+    export_db_to_json(
+        exclude_tables=sorted(exclude),
+        output_path=(args.output.strip() or None),
+    )

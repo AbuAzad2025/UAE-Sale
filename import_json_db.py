@@ -1,8 +1,8 @@
 import json
 import os
 import sys
+import argparse
 from datetime import datetime
-from decimal import Decimal
 from sqlalchemy import text, MetaData
 from app import create_app
 from extensions import db
@@ -34,7 +34,53 @@ def parse_value(value, column_type):
                 
     return value
 
-def import_db_from_json(json_file_path):
+USER_ID_COLUMN_NAMES = {
+    "user_id",
+    "seller_id",
+    "manager_id",
+    "created_by",
+    "updated_by",
+    "approved_by",
+    "reversed_by",
+    "archived_by",
+}
+
+
+def _detect_owner_user_id():
+    from models.user import User
+
+    owner_user = User.query.filter_by(is_owner=True).order_by(User.id.asc()).first()
+    if owner_user:
+        return owner_user.id
+
+    any_user = User.query.order_by(User.id.asc()).first()
+    if any_user:
+        return any_user.id
+
+    return None
+
+
+def _column_targets_users(column):
+    try:
+        return any(getattr(fk.column.table, "name", None) == "users" for fk in column.foreign_keys)
+    except Exception:
+        return False
+
+
+def _should_map_user_reference(col_name, column):
+    if _column_targets_users(column):
+        return True
+
+    if col_name not in USER_ID_COLUMN_NAMES:
+        return False
+
+    try:
+        return column.type.python_type is int
+    except Exception:
+        return False
+
+
+def import_db_from_json(json_file_path, owner_user_id=None):
     print(f"Starting JSON import from: {json_file_path}")
     
     if not os.path.exists(json_file_path):
@@ -52,6 +98,11 @@ def import_db_from_json(json_file_path):
     
     with app.app_context():
         try:
+            if owner_user_id is None:
+                owner_user_id = _detect_owner_user_id()
+            if owner_user_id is None:
+                raise RuntimeError("No users found in target DB to map user references.")
+
             # Detect DB type
             dialect = db.engine.dialect.name
             print(f"Database dialect: {dialect}")
@@ -103,8 +154,17 @@ def import_db_from_json(json_file_path):
                     clean_row = {}
                     for col_name, val in row.items():
                         if col_name in table.columns:
-                            # Basic type inference/conversion could go here if needed
-                            clean_row[col_name] = parse_value(val, table.columns[col_name].type)
+                            column = table.columns[col_name]
+                            parsed_val = parse_value(val, column.type)
+
+                            if _should_map_user_reference(col_name, column):
+                                if parsed_val is None:
+                                    if not column.nullable:
+                                        parsed_val = owner_user_id
+                                else:
+                                    parsed_val = owner_user_id
+
+                            clean_row[col_name] = parsed_val
                     prepared_rows.append(clean_row)
                 
                 # Bulk insert
@@ -146,7 +206,14 @@ def import_db_from_json(json_file_path):
             pass
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: python import_json_db.py <path_to_json_file>")
-    else:
-        import_db_from_json(sys.argv[1])
+    parser = argparse.ArgumentParser(description="Import database tables from JSON.")
+    parser.add_argument("json_path", help="Path to JSON file exported from the database.")
+    parser.add_argument(
+        "--owner-user-id",
+        type=int,
+        default=0,
+        help="Target production owner user id to map all user references to. Default: auto-detect.",
+    )
+    args = parser.parse_args()
+
+    import_db_from_json(args.json_path, owner_user_id=(args.owner_user_id or None))

@@ -12,7 +12,7 @@ from models import (
 from models.login_history import LoginHistory
 from models.security_alert import SecurityAlert
 from models.api_key import APIKey
-from utils.decorators import owner_required
+from utils.decorators import owner_required, permission_required
 from sqlalchemy import text, inspect
 import json
 import os
@@ -785,19 +785,24 @@ def update_integration(service):
     except Exception as e:
         db.session.rollback()
         flash(f'❌ خطأ في حفظ الإعدادات: {str(e)}', 'danger')
-        logger.error(f"Error saving integration {service}: {e}")
+        current_app.logger.error(f"Error saving integration {service}: {e}")
     
     return redirect(url_for('owner.integrations'))
 
 
 @owner_bp.route('/backup-now', methods=['POST'])
 @login_required
-@owner_required
+@permission_required('manage_backups')
 def backup_now():
     """نسخة احتياطية يدوية فورية"""
     from services.backup_service import BackupService
     
-    description = request.form.get('description', 'Manual backup by owner')
+    payload = request.get_json(silent=True) if request.is_json else None
+    description = (
+        (payload or {}).get('description')
+        or request.form.get('description')
+        or f'Manual backup by {getattr(current_user, "username", "user")}'
+    )
     
     backup = BackupService.create_backup(
         manual=True,
@@ -805,17 +810,25 @@ def backup_now():
         description=description
     )
     
-    if backup:
-        flash(f'✅ تم إنشاء نسخة احتياطية: {backup["filename"]} ({backup["size_mb"]} MB)', 'success')
+    if request.is_json:
+        if backup:
+            return jsonify({
+                'success': True,
+                'filename': backup.get('filename'),
+                'size_mb': backup.get('size_mb'),
+            })
+        return jsonify({'success': False, 'message': 'فشل إنشاء النسخة الاحتياطية'}), 400
     else:
-        flash('❌ فشل إنشاء النسخة الاحتياطية', 'danger')
-    
-    return redirect(request.referrer or url_for('owner.dashboard'))
+        if backup:
+            flash(f'✅ تم إنشاء نسخة احتياطية: {backup["filename"]} ({backup["size_mb"]} MB)', 'success')
+        else:
+            flash('❌ فشل إنشاء النسخة الاحتياطية', 'danger')
+        return redirect(request.referrer or url_for('owner.dashboard'))
 
 
 @owner_bp.route('/backups/list')
 @login_required
-@owner_required  
+@permission_required('manage_backups')
 def list_backups():
     """قائمة النسخ الاحتياطية"""
     from services.backup_service import BackupService
@@ -1262,7 +1275,7 @@ def convert_database():
 
 @owner_bp.route('/scheduled-backups', methods=['GET', 'POST'])
 @login_required
-@owner_required
+@permission_required('manage_backups')
 def scheduled_backups():
     """النسخ الاحتياطي المجدول"""
     from services.backup_service import BackupService
@@ -2237,7 +2250,7 @@ def database_optimize():
 
 @owner_bp.route('/verify-backups')
 @login_required
-@owner_required
+@permission_required('manage_backups')
 def verify_backups():
     try:
         from services.backup_service import BackupService

@@ -1,7 +1,8 @@
 """
 API Documentation using OpenAPI/Swagger
 """
-from flask import Blueprint, jsonify, render_template_string
+from flask import Blueprint, jsonify, render_template_string, current_app
+import copy
 
 api_docs_bp = Blueprint('api_docs', __name__, url_prefix='/api-docs')
 
@@ -15,7 +16,7 @@ OPENAPI_SPEC = {
         "version": "2.0.0",
         "contact": {
             "name": "Azad Smart Systems",
-            "email": "info@azadsystems.com",
+            "email": "rafideen.ahmadghannam@gmail.com",
             "url": "https://azadsystems.com"
         },
         "license": {
@@ -208,7 +209,11 @@ OPENAPI_SPEC = {
 @api_docs_bp.route('/openapi.json')
 def openapi_spec():
     """Return OpenAPI specification as JSON"""
-    return jsonify(OPENAPI_SPEC)
+    spec = copy.deepcopy(OPENAPI_SPEC)
+    spec["info"]["contact"]["name"] = current_app.config.get("COMPANY_NAME", spec["info"]["contact"].get("name"))
+    spec["info"]["contact"]["email"] = current_app.config.get("COMPANY_EMAIL", spec["info"]["contact"].get("email"))
+    spec["info"]["contact"]["url"] = current_app.config.get("COMPANY_WEBSITE", spec["info"]["contact"].get("url"))
+    return jsonify(spec)
 
 
 @api_docs_bp.route('/')

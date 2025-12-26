@@ -224,7 +224,7 @@
           <div class="company-name">{{ settings.company_name_ar if settings and settings.company_name_ar else (config.COMPANY_NAME_AR if config else 'شركة أزاد') }}</div>
           <div class="company-details">
             {{ settings.address_ar if settings and settings.address_ar else (config.COMPANY_ADDRESS if config else 'أبو ظبي - الإمارات العربية المتحدة') }}<br>
-            📞 {{ settings.phone_1 if settings and settings.phone_1 else '+970592800646' }} | 📧 {{ settings.email if settings and settings.email else 'rafideen.ahmadghannam@gmail.com' }}<br>
+            📞 {{ settings.phone_1 if settings and settings.phone_1 else '+970592800646' }} | 📧 {{ settings.email if settings and settings.email else config.COMPANY_EMAIL }}<br>
             {% if settings and settings.website and settings.website != 'None' %}🌐 {{ settings.website }}{% endif %}
           </div>
         </div>

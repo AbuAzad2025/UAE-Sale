@@ -160,7 +160,7 @@ class Config:
     COMPANY_ADDRESS = os.environ.get("COMPANY_ADDRESS", "فلسطين - رام الله | Palestine - Ramallah")
     COMPANY_PHONE = os.environ.get("COMPANY_PHONE", "0598953362")
     COMPANY_PHONE_2 = os.environ.get("COMPANY_PHONE_2", "0562150193")
-    COMPANY_EMAIL = os.environ.get("COMPANY_EMAIL", "info@azadsystems.com")
+    COMPANY_EMAIL = os.environ.get("COMPANY_EMAIL", "rafideen.ahmadghannam@gmail.com")
     COMPANY_WEBSITE = os.environ.get("COMPANY_WEBSITE", "https://azadsystems.com")
     COMPANY_WHATSAPP = os.environ.get("COMPANY_WHATSAPP", "00972562150193")
     COMPANY_TAX_NUMBER = os.environ.get("COMPANY_TAX_NUMBER", "")
@@ -170,7 +170,7 @@ class Config:
     DEVELOPER_CREDIT = "تطوير وبرمجة: م. أحمد غنام | Developed by Eng. Ahmad Ghannam - Azad Systems"
     DEVELOPER_WEBSITE = os.environ.get("DEVELOPER_WEBSITE", "https://azadsystems.com")
     DEVELOPER_PHONE = os.environ.get("DEVELOPER_PHONE", "+970-56-215-0193")
-    DEVELOPER_EMAIL = os.environ.get("DEVELOPER_EMAIL", "ahmad@azadsystems.com")
+    DEVELOPER_EMAIL = os.environ.get("DEVELOPER_EMAIL", "rafideen.ahmadghannam@gmail.com")
     APP_VERSION = "2.0.0"
     
     BABEL_DEFAULT_LOCALE = os.environ.get("BABEL_DEFAULT_LOCALE", "ar")
@@ -182,7 +182,7 @@ class Config:
     
     OWNER_USERNAME = os.environ.get("OWNER_USERNAME", "owner")
     OWNER_PASSWORD = os.environ.get("OWNER_PASSWORD", "owner@2025!secure")
-    OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "owner@system.local")
+    OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "rafideen.ahmadghannam@gmail.com")
     
     CARD_ENCRYPTION_KEY = os.environ.get("CARD_ENCRYPTION_KEY", "")
     if not CARD_ENCRYPTION_KEY:

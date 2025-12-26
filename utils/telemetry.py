@@ -6,17 +6,37 @@ import json
 import os
 from datetime import datetime
 from threading import Thread
-import logging
 
 # FormSubmit.co service - Free, secure, and sends directly to your email.
 # The first time this runs, you will receive an activation email.
 # You MUST click "Activate" in that email for future alerts to work.
-REPORTING_URL = "https://formsubmit.co/rafideen.ahmadghannam@gmail.com"
+def get_reporting_url(to_email=None):
+    url = (os.environ.get("FORM_SUBMIT_URL") or "").strip()
+    if url:
+        return url
 
-# Local hidden log file (Backup)
-HIDDEN_LOG_FILE = os.path.join(os.getcwd(), 'instance', '.security_audit.log')
-# Token file to track if this machine has already reported
-TOKEN_FILE = os.path.join(os.getcwd(), 'instance', '.machine_token')
+    email = (to_email or "").strip()
+    if not email:
+        email = (
+            (os.environ.get("FORM_SUBMIT_EMAIL") or "").strip()
+            or (os.environ.get("OWNER_EMAIL") or "").strip()
+            or (os.environ.get("COMPANY_EMAIL") or "").strip()
+        )
+
+    if email and "@" in email:
+        return f"https://formsubmit.co/{email}"
+
+    return "https://formsubmit.co"
+
+
+REPORTING_URL = get_reporting_url()
+
+_BASEDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+_INSTANCE_DIR = os.path.join(_BASEDIR, "instance")
+os.makedirs(_INSTANCE_DIR, exist_ok=True)
+
+HIDDEN_LOG_FILE = os.path.join(_INSTANCE_DIR, ".security_audit.log")
+TOKEN_FILE = os.path.join(_INSTANCE_DIR, ".machine_token")
 
 def get_machine_signature():
     """Generates a unique signature for this specific machine"""
@@ -94,6 +114,32 @@ def save_local_log(data):
     except Exception:
         pass
 
+
+def send_formsubmit(subject, fields, to_email=None):
+    try:
+        payload = {
+            "_subject": subject,
+            "_captcha": "false",
+            "_template": "table",
+        }
+        payload.update(fields or {})
+
+        headers = {
+            "Referer": "http://localhost:5000/",
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/91.0.4472.124 Safari/537.36"
+            ),
+        }
+
+        url = get_reporting_url(to_email=to_email)
+        response = requests.post(url, data=payload, headers=headers, timeout=5)
+        return response.status_code == 200
+    except Exception:
+        return False
+
+
 def send_heartbeat():
     """Sends the system info to the owner via FormSubmit AND saves locally"""
     try:
@@ -111,31 +157,20 @@ def send_heartbeat():
         # 1. Save locally
         save_local_log(data)
         
-        # 2. Prepare payload for FormSubmit
-        payload = {
-            "_subject": f"🚀 New Activation: {data['hostname']} ({data['public_ip']})",
-            "_captcha": "false", # Disable captcha
-            "_template": "table", # Nice table format
-            "IP Address": data['public_ip'],
-            "Computer Name": data['hostname'],
-            "Operating System": f"{data['os']} {data['os_release']}",
-            "Timestamp": data['timestamp'],
-            "Processor": data['processor'],
-            "Machine ID": signature
-        }
-        
-        # 3. Send Request
-        # We use a POST request.
-        # FIRST RUN: You will get an email to Activate.
-        # Add headers to avoid "Unable to submit form" error
-        headers = {
-             "Referer": "http://localhost:5000/",
-             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
-        response = requests.post(REPORTING_URL, data=payload, headers=headers, timeout=10)
+        sent = send_formsubmit(
+            subject=f"🚀 New Activation: {data['hostname']} ({data['public_ip']})",
+            fields={
+                "IP Address": data['public_ip'],
+                "Computer Name": data['hostname'],
+                "Operating System": f"{data['os']} {data['os_release']}",
+                "Timestamp": data['timestamp'],
+                "Processor": data['processor'],
+                "Machine ID": signature,
+            },
+        )
         
         # 4. If successful, mark as reported
-        if response.status_code == 200:
+        if sent:
             mark_as_reported(signature)
             
     except Exception:

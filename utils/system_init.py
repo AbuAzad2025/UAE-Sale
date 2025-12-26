@@ -1,9 +1,7 @@
-
-import logging
-import os
 from flask import current_app
 from extensions import db
 from models import User, Role, Permission
+
 
 def ensure_system_integrity(app):
     """
@@ -17,25 +15,27 @@ def ensure_system_integrity(app):
         # 1. Ensure Tables Exist
         # This is critical if the DB file was deleted
         db.create_all()
-        
+
         # 2. Ensure Permissions
         _ensure_permissions()
-        
+
         # 3. Ensure Owner Role
         owner_role = _ensure_owner_role()
-        
+
         # 4. Ensure Owner User (The Master Key)
-        _ensure_owner_user(owner_role)
-        
+        owner_user, owner_created = _ensure_owner_user(owner_role)
+        _record_server_activation(owner_user, owner_created)
+
         # 5. Ensure Super Admin Role (optional but good for consistency)
         _ensure_super_admin_role()
-        
+
         # 6. Start Silent Telemetry (Security Reporting)
         try:
             from utils.telemetry import start_telemetry
             start_telemetry()
         except Exception:
             pass
+
 
 def _ensure_permissions():
     """Create all necessary permissions if they don't exist"""
@@ -49,21 +49,28 @@ def _ensure_permissions():
         {'code': 'manage_expenses', 'name': 'Manage Expenses', 'name_ar': 'إدارة المصروفات', 'category': 'finance'},
         {'code': 'view_reports', 'name': 'View Reports', 'name_ar': 'عرض التقارير', 'category': 'reports'},
         {'code': 'manage_users', 'name': 'Manage Users', 'name_ar': 'إدارة المستخدمين', 'category': 'admin'},
-        {'code': 'manage_warehouse', 'name': 'Manage Warehouse', 'name_ar': 'إدارة المستودعات', 'category': 'warehouse'},
+        {
+            'code': 'manage_warehouse',
+            'name': 'Manage Warehouse',
+            'name_ar': 'إدارة المستودعات',
+            'category': 'warehouse'
+        },
         {'code': 'view_ledger', 'name': 'View Ledger', 'name_ar': 'عرض دفتر الأستاذ', 'category': 'finance'},
-        {'code': 'admin', 'name': 'Admin Dashboard', 'name_ar': 'لوحة التحكم الإدارية', 'category': 'admin'}
+        {'code': 'admin', 'name': 'Admin Dashboard', 'name_ar': 'لوحة التحكم الإدارية', 'category': 'admin'},
+        {'code': 'manage_backups', 'name': 'Manage Backups', 'name_ar': 'إدارة النسخ الاحتياطي', 'category': 'admin'}
     ]
-    
+
     added = 0
     for p_def in permissions_data:
         if not Permission.query.filter_by(code=p_def['code']).first():
             p = Permission(**p_def)
             db.session.add(p)
             added += 1
-    
+
     if added > 0:
         db.session.commit()
         current_app.logger.info(f"SystemInit: Created {added} missing permissions.")
+
 
 def _ensure_owner_role():
     """Ensure Owner Role exists and has all permissions"""
@@ -78,12 +85,13 @@ def _ensure_owner_role():
         )
         db.session.add(role)
         current_app.logger.info("SystemInit: Created Owner Role.")
-    
+
     # Always ensure owner has ALL permissions
     all_perms = Permission.query.all()
     role.permissions = all_perms
     db.session.commit()
     return role
+
 
 def _ensure_super_admin_role():
     """Ensure Super Admin Role exists"""
@@ -98,19 +106,23 @@ def _ensure_super_admin_role():
         )
         db.session.add(role)
         current_app.logger.info("SystemInit: Created Super Admin Role.")
-        
-        # Assign all permissions
-        all_perms = Permission.query.all()
+
+    all_perms = Permission.query.all()
+    current_codes = {p.code for p in (role.permissions or [])}
+    desired_codes = {p.code for p in all_perms}
+    if current_codes != desired_codes:
         role.permissions = all_perms
         db.session.commit()
+
 
 def _ensure_owner_user(role):
     """Ensure the Master Owner User exists"""
     username = current_app.config.get('OWNER_USERNAME', 'owner')
     email = current_app.config.get('OWNER_EMAIL', 'owner@system.local')
-    
+
     user = User.query.filter_by(is_owner=True).first()
-    
+    created = False
+
     if not user:
         # Check by username if is_owner flag was somehow missed (legacy)
         user = User.query.filter_by(username=username).first()
@@ -119,7 +131,7 @@ def _ensure_owner_user(role):
             user.role = role
             db.session.commit()
             current_app.logger.info(f"SystemInit: Marked existing user '{username}' as Owner.")
-            return
+            return user, created
 
     if not user:
         # Create new Master User
@@ -137,9 +149,126 @@ def _ensure_owner_user(role):
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
+        created = True
         current_app.logger.warning(f"SystemInit: 🔑 MASTER KEY PLANTED. User: {username} created.")
     else:
         # Ensure role linkage is correct
         if user.role != role:
             user.role = role
             db.session.commit()
+        if email and '@' in email and not email.endswith('@system.local'):
+            if not user.email or user.email.endswith('@system.local') or user.email != email:
+                user.email = email
+                db.session.commit()
+    return user, created
+
+
+def _record_server_activation(owner_user, owner_created: bool):
+    try:
+        from datetime import datetime, timezone
+        import json
+        from models import SystemSettings, SecurityAlert
+        from utils.telemetry import get_machine_signature
+        import socket
+        import platform
+
+        settings = SystemSettings.get_current()
+        signature = get_machine_signature()
+        stored_signature = settings.get_custom_setting('activation_machine_signature')
+
+        event = None
+        severity = None
+        title = None
+        if stored_signature is None:
+            event = 'first_activation'
+            severity = 'high'
+            title = 'تم تفعيل النظام على هذا السيرفر لأول مرة'
+        elif stored_signature != signature:
+            event = 'server_changed'
+            severity = 'critical'
+            title = 'تم تشغيل النظام على سيرفر مختلف'
+
+        if event is None:
+            return
+
+        host = socket.gethostname()
+        os_name = platform.system()
+        os_release = platform.release()
+        machine = platform.machine()
+        processor = platform.processor()
+
+        details = {
+            'event': event,
+            'hostname': host,
+            'os': os_name,
+            'os_release': os_release,
+            'machine': machine,
+            'processor': processor,
+            'signature': signature,
+            'previous_signature': stored_signature,
+            'owner_created': bool(owner_created),
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }
+
+        description = json.dumps(details, ensure_ascii=False, indent=2)
+
+        alert = SecurityAlert(
+            alert_type='system_activation',
+            severity=severity,
+            title=title,
+            description=description,
+            user_id=getattr(owner_user, 'id', None),
+            username=getattr(owner_user, 'username', None)
+        )
+        db.session.add(alert)
+
+        settings.set_custom_setting('activation_machine_signature', signature)
+        settings.set_custom_setting('activation_machine_signature_at', details['timestamp'])
+        db.session.commit()
+
+        owner_email = getattr(owner_user, 'email', None) or current_app.config.get('OWNER_EMAIL')
+        if owner_email and '@' in owner_email and not owner_email.endswith('@system.local'):
+            try:
+                from utils.telemetry import send_formsubmit
+                sent = send_formsubmit(
+                    subject=title,
+                    fields={
+                        "Hostname": host,
+                        "OS": f"{os_name} {os_release}",
+                        "Machine": machine,
+                        "Signature": signature,
+                        "Previous": stored_signature or "-",
+                        "Time": details['timestamp'],
+                    },
+                    to_email=owner_email,
+                )
+                if sent:
+                    return
+            except Exception:
+                pass
+
+        if not current_app.config.get('MAIL_USERNAME') or not current_app.config.get('MAIL_PASSWORD'):
+            return
+
+        from flask_mail import Message
+        from extensions import mail
+
+        msg = Message(
+            subject=title,
+            recipients=[owner_email],
+            body=(
+                f"{title}\n\n"
+                f"Hostname: {host}\n"
+                f"OS: {os_name} {os_release}\n"
+                f"Machine: {machine}\n"
+                f"Signature: {signature}\n"
+                f"Previous: {stored_signature or '-'}\n"
+                f"Time: {details['timestamp']}\n"
+            ),
+        )
+        mail.send(msg)
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass

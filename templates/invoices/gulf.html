@@ -246,7 +246,7 @@
       <div class="company-info">
         <div>{{ settings.address_ar if settings and settings.address_ar else (config.COMPANY_ADDRESS if config else 'أبو ظبي - الإمارات العربية المتحدة') }}</div>
         <div>📞 {{ settings.phone_1 if settings and settings.phone_1 else '+970592800646' }} {% if settings and settings.phone_2 and settings.phone_2 != 'None' %}| {{ settings.phone_2 }}{% endif %}</div>
-        <div>📧 {{ settings.email if settings and settings.email else 'rafideen.ahmadghannam@gmail.com' }} {% if settings and settings.website and settings.website != 'None' %}| 🌐 {{ settings.website }}{% endif %}</div>
+        <div>📧 {{ settings.email if settings and settings.email else config.COMPANY_EMAIL }} {% if settings and settings.website and settings.website != 'None' %}| 🌐 {{ settings.website }}{% endif %}</div>
         {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div style="margin-top: 5px;">الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
       </div>
     </div>

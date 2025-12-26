@@ -93,6 +93,26 @@ def import_db_from_json(json_file_path, owner_user_id=None):
     except Exception as e:
         print(f"Error reading JSON file: {e}")
         return
+    
+    if not isinstance(data, dict) or not data:
+        print("Error: JSON file is empty or invalid (expected object with tables). Aborting.")
+        return
+
+    safe_tables = [
+        "products",
+        "product_categories",
+        "customers",
+        "suppliers",
+        "sales",
+        "purchases",
+        "payments",
+        "expenses",
+        "warehouses",
+    ]
+    safe_counts = {t: len(data.get(t, []) or []) for t in safe_tables}
+    total_rows = sum(len(rows) for rows in data.values() if isinstance(rows, list))
+    print(f"JSON summary: tables={len(data)} total_rows={total_rows}")
+    print("Key tables rows: " + ", ".join(f"{k}={v}" for k, v in safe_counts.items()))
 
     app = create_app()
     
@@ -108,7 +128,7 @@ def import_db_from_json(json_file_path, owner_user_id=None):
             print(f"Database dialect: {dialect}")
             
             connection = db.session.connection()
-            
+
             # 1. Disable Constraints
             print("Disabling constraints...")
             if 'postgresql' in dialect:
@@ -119,6 +139,12 @@ def import_db_from_json(json_file_path, owner_user_id=None):
             # 2. Import Data
             meta = MetaData()
             meta.reflect(bind=db.engine)
+
+            if total_rows == 0 or all(v == 0 for v in safe_counts.values()):
+                raise RuntimeError(
+                    "Refusing to truncate/import because JSON looks empty for business tables. "
+                    "Export from the real local database and try again."
+                )
             
             # We iterate over tables in the JSON
             # Ideally we should clear existing data first to avoid conflicts, 

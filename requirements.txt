@@ -59,9 +59,16 @@ Pillow==11.3.0
 # Server
 gunicorn==21.2.0
 
+# HTML Parsing (AI / scraping helpers)
+beautifulsoup4==4.12.3
+
+# GraphQL
+graphene==3.3
+
 # Monitoring
 sentry-sdk==1.40.6
 prometheus-flask-exporter==0.23.2
+psutil==5.9.8
 
 # Misc
 packaging==23.2

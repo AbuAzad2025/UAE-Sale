@@ -191,7 +191,6 @@
         </span>
       </li>
       
-      {% if ai_enabled %}
       <!-- AI Assistant -->
       <li class="nav-item">
         <a href="{{ url_for('ai.assistant_page') }}" class="nav-link" title="المساعد الذكي">
@@ -199,7 +198,6 @@
           <span class="d-none d-md-inline">المساعد</span>
         </a>
       </li>
-      {% endif %}
       
       <!-- Sidebar Direction Toggle -->
       <li class="nav-item">
@@ -647,14 +645,12 @@
               <p>لوحة المالك</p>
             </a>
           </li>
-          {% if ai_enabled %}
           <li class="nav-item">
             <a href="{{ url_for('ai.config') }}" class="nav-link">
               <i class="nav-icon fas fa-key text-info"></i>
               <p>مفاتيح AI (Groq)</p>
             </a>
           </li>
-          {% endif %}
           {% endif %}
         </ul>
       </nav>

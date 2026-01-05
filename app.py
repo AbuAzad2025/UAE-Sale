@@ -92,6 +92,27 @@ def create_app(config_class=Config):
         import traceback
         traceback.print_exc()
         _ai_enabled = False
+        
+        # Fallback Blueprint to prevent url_for BuildError
+        # This ensures the dashboard doesn't crash even if AI modules are missing
+        from flask import Blueprint, render_template, flash, redirect, url_for
+        ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
+        
+        @ai_bp.route('/assistant')
+        @login_required
+        def assistant_page():
+            flash(f"AI Module failed to load on server start. Please check logs. Error: {str(e)}", "error")
+            return redirect(url_for('main.dashboard'))
+
+        @ai_bp.route('/config')
+        @login_required
+        def config():
+            flash(f"AI Module failed to load on server start. Please check logs. Error: {str(e)}", "error")
+            return redirect(url_for('main.dashboard'))
+            
+        @ai_bp.route('/chat', methods=['POST'])
+        def chat():
+            return {"error": "AI Module Unavailable"}, 503
     from routes.users import users_bp
     from routes.cheques import cheques_bp
     from routes.returns import returns_bp
@@ -124,8 +145,8 @@ def create_app(config_class=Config):
     # app.register_blueprint(notifications_bp)
     app.register_blueprint(warehouse_bp)
     app.register_blueprint(language_bp)
-    if _ai_enabled:
-        app.register_blueprint(ai_bp)
+    # Always register AI bp (either real or fallback)
+    app.register_blueprint(ai_bp)
     app.register_blueprint(users_bp)
     app.register_blueprint(cheques_bp)
     app.register_blueprint(returns_bp)

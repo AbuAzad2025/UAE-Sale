@@ -87,7 +87,10 @@ def create_app(config_class=Config):
     try:
         from routes.ai import ai_bp
         _ai_enabled = True
-    except Exception:
+    except Exception as e:
+        print(f"AI Blueprint Import Error: {e}")
+        import traceback
+        traceback.print_exc()
         _ai_enabled = False
     from routes.users import users_bp
     from routes.cheques import cheques_bp
@@ -163,7 +166,8 @@ def create_app(config_class=Config):
             'get_currency_symbol': get_currency_symbol,
             'company_name': app.config.get('COMPANY_NAME', 'Garage Manager'),
             'current_year': datetime.now().year,
-            'now': datetime.now()
+            'now': datetime.now(),
+            'ai_enabled': 'ai' in app.blueprints
         }
         
     @app.before_request

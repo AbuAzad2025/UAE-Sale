@@ -191,6 +191,7 @@
         </span>
       </li>
       
+      {% if ai_enabled %}
       <!-- AI Assistant -->
       <li class="nav-item">
         <a href="{{ url_for('ai.assistant_page') }}" class="nav-link" title="المساعد الذكي">
@@ -198,6 +199,7 @@
           <span class="d-none d-md-inline">المساعد</span>
         </a>
       </li>
+      {% endif %}
       
       <!-- Sidebar Direction Toggle -->
       <li class="nav-item">

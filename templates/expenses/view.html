@@ -107,6 +107,12 @@
                                    class="btn btn-info mb-2">
                                     <i class="fas fa-print"></i> طباعة
                                 </a>
+                                <form action="{{ url_for('expenses.delete', id=expense.id) }}" method="POST" class="w-100" onsubmit="return confirm('هل أنت متأكد من حذف هذا المصروف؟\n\nملاحظة: إذا كان المصروف مرتبطاً بشيكات مصروفة أو مودعة، سيتم أرشفته بدلاً من حذفه نهائياً.');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-danger mb-2 w-100">
+                                        <i class="fas fa-trash"></i> حذف المصروف
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </div>

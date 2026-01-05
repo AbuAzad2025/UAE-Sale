@@ -8,6 +8,23 @@
     <a href="{{ url_for('payments.print_receipt', id=receipt.id) }}" class="btn btn-secondary" target="_blank">
       <i class="fas fa-print mr-2"></i>طباعة
     </a>
+    
+    {% if is_payment %}
+    <form action="{{ url_for('payments.delete_payment', id=receipt.id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف سند الصرف هذا؟\n\nتنبيه: سيتم أرشفة السند إذا كان مرتبطاً بشيكات، أو حذفه نهائياً إذا كان غير مرتبط.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-danger">
+        <i class="fas fa-trash mr-2"></i>حذف
+      </button>
+    </form>
+    {% else %}
+    <form action="{{ url_for('payments.delete_receipt', id=receipt.id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف سند القبض هذا؟\n\nتنبيه: سيتم أرشفة السند إذا كان له تخصيصات أو مرتبط بشيكات، أو حذفه نهائياً إذا كان غير مرتبط.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-danger">
+        <i class="fas fa-trash mr-2"></i>حذف
+      </button>
+    </form>
+    {% endif %}
+
     <a href="{{ url_for('payments.receipts') }}" class="btn btn-info">
       <i class="fas fa-arrow-right mr-2"></i>العودة
     </a>

@@ -59,8 +59,8 @@
                                 <a href="{{ url_for('expenses.view', id=expense.id) }}" class="btn btn-info" title="عرض">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <button type="button" class="btn btn-warning archive-expense-btn" data-id="{{ expense.id }}" title="أرشفة">
-                                    <i class="fas fa-archive"></i>
+                                <button type="button" class="btn btn-danger delete-expense-btn" data-id="{{ expense.id }}" title="حذف">
+                                    <i class="fas fa-trash"></i>
                                 </button>
                             </div>
                         </td>
@@ -105,28 +105,6 @@
     }
 
     SmartPrint.attachTrigger(dataTable, printButtonSelector, options);
-
-    $(document).off('click.expensesArchive', '.archive-expense-btn').on('click.expensesArchive', '.archive-expense-btn', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const id = $(this).data('id');
-      const csrfToken = $('meta[name="csrf-token"]').attr('content');
-
-      $.ajax({
-        url: `/expenses/${id}/archive`,
-        type: 'POST',
-        headers: {
-          'X-CSRFToken': csrfToken
-        },
-        success: function() {
-          location.reload();
-        },
-        error: function() {
-          location.reload();
-        }
-      });
-    });
   }
 
   $(document).ready(initExpensesPrint);

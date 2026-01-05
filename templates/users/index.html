@@ -46,12 +46,11 @@
               <i class="fas fa-edit"></i>
             </a>
             {% if current_user.is_owner and user.id != current_user.id %}
-            <form method="POST" action="{{ url_for('users.delete', id=user.id) }}" style="display: inline;" onsubmit="return confirm('هل أنت متأكد من حذف المستخدم {{ user.username }}؟\n\nملاحظة: سيتم تعطيله فقط إذا كان لديه عمليات مسجلة.');">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-sm btn-danger" title="حذف (المالك فقط)">
-                <i class="fas fa-trash"></i>
-              </button>
-            </form>
+            <button type="button" class="btn btn-sm btn-danger" 
+                    onclick="deleteItem('users', {{ user.id }}, '{{ user.username }}')" 
+                    title="حذف (المالك فقط)">
+              <i class="fas fa-trash"></i>
+            </button>
             {% endif %}
           </td>
         </tr>

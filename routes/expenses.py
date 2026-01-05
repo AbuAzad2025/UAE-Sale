@@ -240,30 +240,65 @@ def edit(id):
 @login_required
 @admin_required
 def delete(id):
-    """حذف (إلغاء) المصروف"""
+    """حذف (أرشفة) المصروف"""
+    from models import Cheque, GLJournalEntry
+    from services.archive_service import ArchiveService
+    
     expense = Expense.query.get_or_404(id)
     
+    # التحقق من الارتباطات
+    has_links = False
+    
+    # 1. التحقق من الشيكات
+    cheque = Cheque.query.filter_by(expense_id=expense.id).first()
+    if cheque and cheque.status in ['cleared', 'deposited', 'bounced', 'cancelled']:
+        has_links = True
+        
     try:
-        # إلغاء المصروف (تغيير الحالة)
-        expense.status = 'cancelled'
-        db.session.commit()
-        
-        # عكس القيد المحاسبي (إذا كان موجود)
-        try:
-            from models import GLEntry
-            gl_entry = GLEntry.query.filter_by(
-                reference_type='Expense',
-                reference_id=expense.id
-            ).first()
+        if has_links:
+            # أرشفة (Soft Delete)
+            # عكس القيد المحاسبي للحفاظ على السجل
+            try:
+                GLService.reverse_entry(
+                    reference_type='Expense',
+                    reference_id=expense.id,
+                    description=f'Reverse Expense {expense.expense_number}'
+                )
+            except Exception as e:
+                current_app.logger.warning(f'GL reversal warning: {e}')
+                
+            archive_service = ArchiveService()
+            archive_service.archive_record('expenses', expense, reason='تم أرشفة المصروف لوجود ارتباطات', commit=False)
             
-            if gl_entry:
-                GLService.reverse_entry(gl_entry.id, f'عكس مصروف محذوف {expense.expense_number}')
-        except Exception as e:
-            current_app.logger.warning(f'GL reversal failed: {e}')
-        
-        create_audit_log('delete', 'expenses', id)
-        
-        flash(f'✅ تم إلغاء المصروف "{expense.expense_number}" بنجاح!', 'success')
+            if cheque:
+                 archive_service.archive_record('cheques', cheque, reason='تم أرشفة الشيك لارتباطه بمصروف مؤرشف', commit=False)
+            
+            create_audit_log('archive', 'expenses', id)
+            db.session.commit()
+            flash(f'✅ تم أرشفة المصروف "{expense.expense_number}" (لوجود ارتباطات)', 'warning')
+            
+        else:
+            # حذف نهائي (Hard Delete)
+            # 1. حذف القيود المحاسبية للمصروف
+            GLJournalEntry.query.filter_by(reference_type='Expense', reference_id=expense.id).delete()
+            
+            # 2. حذف الشيك إذا كان معلقاً (وحذف قيوده إن وجدت)
+            if cheque:
+                # حذف قيود الشيك (نظرياً الشيك المعلق ليس له قيود، لكن للاحتياط)
+                ref_types = ['cheque_receive', 'cheque_issue', 'cheque_cancel', 'cheque_clear', 'cheque_bounce', 'Cheque']
+                GLJournalEntry.query.filter(
+                    GLJournalEntry.reference_type.in_(ref_types),
+                    GLJournalEntry.reference_id == cheque.id
+                ).delete(synchronize_session=False)
+                
+                db.session.delete(cheque)
+                
+            # 3. حذف المصروف
+            db.session.delete(expense)
+            create_audit_log('delete', 'expenses', id)
+            db.session.commit()
+            flash(f'✅ تم حذف المصروف "{expense.expense_number}" نهائياً', 'success')
+            
         return redirect(url_for('expenses.index'))
     
     except Exception as e:

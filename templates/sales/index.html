@@ -235,9 +235,10 @@
                   <i class="fas fa-credit-card"></i>
                 </a>
                 {% endif %}
-                <button type="button" class="btn btn-warning archive-sale-btn" 
-                        data-id="{{ sale.id }}" title="أرشفة">
-                  <i class="fas fa-archive"></i>
+                <button type="button" class="btn btn-danger" 
+                        onclick="deleteItem('sales', {{ sale.id }}, '{{ sale.sale_number }}')" 
+                        title="حذف">
+                  <i class="fas fa-trash"></i>
                 </button>
               </div>
             </td>
@@ -315,28 +316,6 @@ $(document).ready(function() {
     table.column(6).search('آجل').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
-  });
-
-  $(document).off('click.smartPrint', '.archive-sale-btn').on('click.smartPrint', '.archive-sale-btn', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const id = $(this).data('id');
-    const csrfToken = $('meta[name="csrf-token"]').attr('content');
-
-    $.ajax({
-      url: `/sales/${id}/archive`,
-      type: 'POST',
-      headers: {
-        'X-CSRFToken': csrfToken
-      },
-      success: function() {
-        location.reload();
-      },
-      error: function() {
-        location.reload();
-      }
-    });
   });
 });
 </script>

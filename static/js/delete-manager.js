@@ -12,15 +12,17 @@
   window.deleteItem = function(itemType, itemId, itemName, redirectUrl) {
     // رسائل مخصصة حسب نوع العنصر
     const messages = {
-      'customers': { title: 'حذف زبون', text: 'سيتم إلغاء تفعيل الزبون وليس حذفه نهائياً', url: `/customers/${itemId}/delete` },
-      'suppliers': { title: 'حذف مورد', text: 'سيتم إلغاء تفعيل المورد وليس حذفه نهائياً', url: `/suppliers/${itemId}/delete` },
-      'products': { title: 'حذف منتج', text: 'سيتم إلغاء تفعيل المنتج وليس حذفه نهائياً', url: `/products/${itemId}/delete` },
-      'sales': { title: 'إلغاء فاتورة', text: 'سيتم إلغاء الفاتورة والحفاظ على السجلات المالية', url: `/sales/${itemId}/cancel` },
-      'purchases': { title: 'حذف فاتورة شراء', text: 'سيتم أرشفة الفاتورة والحفاظ على السجلات المالية', url: `/purchases/${itemId}/delete` },
-      'receipts': { title: 'حذف سند قبض', text: 'سيتم إلغاء السند والحفاظ على السجلات المالية', url: `/payments/receipts/${itemId}/delete` },
-      'expenses': { title: 'حذف مصروف', text: 'سيتم إلغاء المصروف والحفاظ على السجلات المالية', url: `/expenses/${itemId}/delete` },
-      'cheques': { title: 'أرشفة شيك', text: 'سيتم أرشفة الشيك والحفاظ على السجلات', url: `/cheques/${itemId}/delete` },
-      'users': { title: 'حذف مستخدم', text: 'سيتم إلغاء تفعيل المستخدم وليس حذفه نهائياً', url: `/owner/users/${itemId}/delete` }
+      'customers': { title: 'حذف زبون', text: 'تنبيه: سيتم أرشفة الزبون إذا كان له سجلات مالية، أو حذفه نهائياً إذا كان جديداً.', url: `/customers/${itemId}/delete` },
+      'suppliers': { title: 'حذف مورد', text: 'تنبيه: سيتم أرشفة المورد إذا كان له سجلات مالية، أو حذفه نهائياً إذا كان جديداً.', url: `/suppliers/${itemId}/delete` },
+      'products': { title: 'حذف منتج', text: 'تنبيه: سيتم أرشفة المنتج إذا كان مرتبطاً بعمليات بيع/شراء، أو حذفه نهائياً إذا كان غير مرتبط.', url: `/products/${itemId}/delete` },
+      'sales': { title: 'حذف فاتورة مبيعات', text: 'تنبيه: سيتم أرشفة الفاتورة إذا كان لها ارتباطات مالية (دفعات/شيكات)، أو حذفها نهائياً إذا كانت غير مرتبطة.', url: `/sales/${itemId}/delete` },
+      'purchases': { title: 'حذف فاتورة شراء', text: 'تنبيه: سيتم أرشفة الفاتورة إذا كان لها ارتباطات مالية، أو حذفها نهائياً إذا كانت غير مرتبطة.', url: `/purchases/${itemId}/delete` },
+      'receipts': { title: 'حذف سند قبض', text: 'تنبيه: سيتم أرشفة السند إذا كان مرتبطاً بشيكات، أو حذفه نهائياً إذا كان غير مرتبط.', url: `/payments/receipts/${itemId}/delete` },
+      'payments': { title: 'حذف سند صرف', text: 'تنبيه: سيتم أرشفة السند إذا كان مرتبطاً بعمليات أخرى، أو حذفه نهائياً إذا كان غير مرتبط.', url: `/payments/payments/${itemId}/delete` },
+      'expenses': { title: 'حذف مصروف', text: 'تنبيه: سيتم أرشفة المصروف وعكس القيد المحاسبي.', url: `/expenses/${itemId}/delete` },
+      'cheques': { title: 'حذف شيك', text: 'تنبيه: سيتم أرشفة الشيك إذا كان مرتبطاً بسندات، أو حذفه نهائياً إذا كان غير مرتبط.', url: `/cheques/${itemId}/delete` },
+      'users': { title: 'حذف مستخدم', text: 'سيتم إلغاء تفعيل المستخدم وليس حذفه نهائياً', url: `/users/${itemId}/delete` },
+      'warehouses': { title: 'حذف مستودع', text: 'تنبيه: سيتم أرشفة المستودع إذا كان يحتوي على حركات مخزنية، أو حذفه نهائياً إذا كان فارغاً.', url: `/warehouse/${itemId}/delete` }
     };
     
     const msg = messages[itemType] || { title: 'حذف', text: 'هل أنت متأكد من الحذف؟', url: `/${itemType}/${itemId}/delete` };

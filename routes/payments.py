@@ -758,14 +758,23 @@ def restore_receipt(id):
 @login_required
 @permission_required('manage_payments')
 def delete_receipt(id):
-    """حذف (إلغاء) سند قبض"""
+    """حذف أو أرشفة سند قبض"""
+    from models import Receipt, Cheque
+    from services.archive_service import ArchiveService
+    
     receipt = Receipt.query.get_or_404(id)
     
+    # التحقق من الارتباطات
+    has_links = False
+    if receipt.allocations:
+        has_links = True
+    if receipt.cheque_id:
+        has_links = True
+    if receipt.cheques:  # التحقق من الشيكات المرتبطة
+        has_links = True
+    
     try:
-        # إلغاء السند (تغيير الحالة)
-        receipt.status = 'cancelled'
-        
-        # إعادة المبالغ المخصصة للفواتير
+        # 1. عكس التخصيصات (إعادة الرصيد للفاتورة)
         if receipt.allocations:
             from models import Sale
             for allocation in receipt.allocations:
@@ -774,32 +783,118 @@ def delete_receipt(id):
                     sale.paid_amount -= allocation.allocated_amount
                     sale.balance_due = sale.total_amount - sale.paid_amount
                     sale.update_payment_status()
-        
-        db.session.commit()
-        
-        # عكس القيد المحاسبي
-        try:
-            from models import GLEntry
-            gl_entry = GLEntry.query.filter_by(
-                reference_type='Receipt',
-                reference_id=receipt.id
-            ).first()
-            
-            if gl_entry:
+
+        # 2. القرار: أرشفة أو حذف
+        if has_links:
+            # عكس القيد المحاسبي (للحفاظ على السجل)
+            try:
                 from services.gl_service import GLService
-                GLService.reverse_entry(gl_entry.id, f'عكس سند قبض محذوف {receipt.receipt_number}')
-        except Exception as e:
-            current_app.logger.warning(f'GL reversal failed: {e}')
-        
-        create_audit_log('delete', 'receipts', id)
-        
-        flash(f'تم إلغاء سند القبض "{receipt.receipt_number}" بنجاح', 'success')
+                GLService.reverse_entry(
+                    reference_type='Receipt',
+                    reference_id=receipt.id,
+                    description=f'Reverse Receipt {receipt.receipt_number}'
+                )
+            except Exception as e:
+                current_app.logger.warning(f'GL reversal warning: {e}')
+
+            # أرشفة (Soft Delete)
+            archive_service = ArchiveService()
+            archive_service.archive_record('receipts', receipt, reason='تم أرشفة السند لوجود ارتباطات', commit=False)
+            
+            # أرشفة الشيكات المرتبطة
+            for cheque in receipt.cheques:
+                archive_service.archive_record('cheques', cheque, reason='تم أرشفة الشيك لارتباطه بسند مؤرشف', commit=False)
+            
+            create_audit_log('archive', 'receipts', id)
+            db.session.commit()
+            flash(f'تم أرشفة سند القبض "{receipt.receipt_number}" (لوجود حركات مرتبطة)', 'warning')
+        else:
+            # حذف القيود المحاسبية المرتبطة (تنظيف شامل)
+            from models import GLJournalEntry
+            GLJournalEntry.query.filter_by(reference_type='Receipt', reference_id=receipt.id).delete()
+
+            # حذف نهائي (Hard Delete)
+            # حذف الشيكات المرتبطة أولاً لتجنب خطأ المفتاح الأجنبي
+            for cheque in receipt.cheques:
+                db.session.delete(cheque)
+                
+            db.session.delete(receipt)
+            create_audit_log('delete', 'receipts', id)
+            db.session.commit()
+            flash(f'تم حذف سند القبض "{receipt.receipt_number}" نهائياً', 'success')
+            
         return redirect(url_for('payments.receipts'))
     
     except Exception as e:
         db.session.rollback()
         flash(f'فشل الحذف: {str(e)}', 'danger')
         return redirect(url_for('payments.view_receipt', id=id))
+
+
+@payments_bp.route('/payments/<int:id>/delete', methods=['POST'])
+@login_required
+@permission_required('manage_payments')
+def delete_payment(id):
+    """حذف أو أرشفة سند صرف"""
+    from models import Payment, Cheque
+    from services.archive_service import ArchiveService
+
+    payment = Payment.query.get_or_404(id)
+    
+    # التحقق من الارتباطات
+    has_links = False
+    if payment.cheque_id:
+        has_links = True
+    if payment.cheques:  # التحقق من الشيكات المرتبطة
+        has_links = True
+    # يمكن إضافة شروط أخرى للارتباط هنا
+    
+    try:
+        # 1. القرار: أرشفة أو حذف
+        if has_links:
+            # عكس القيد المحاسبي
+            try:
+                from services.gl_service import GLService
+                GLService.reverse_entry(
+                    reference_type='Payment',
+                    reference_id=payment.id,
+                    description=f'Reverse Payment {payment.payment_number}'
+                )
+            except Exception as e:
+                current_app.logger.warning(f"GL Reversal warning: {e}")
+
+            # أرشفة
+            archive_service = ArchiveService()
+            archive_service.archive_record('payments', payment, reason='تم أرشفة السند لوجود ارتباطات', commit=False)
+            
+            # أرشفة الشيكات المرتبطة
+            for cheque in payment.cheques:
+                archive_service.archive_record('cheques', cheque, reason='تم أرشفة الشيك لارتباطه بسند مؤرشف', commit=False)
+
+            create_audit_log('archive', 'payments', id)
+            db.session.commit()
+            flash(f'تم أرشفة سند الصرف "{payment.payment_number}" (لوجود حركات مرتبطة)', 'warning')
+        else:
+            # حذف القيود المحاسبية المرتبطة
+            from models import GLJournalEntry
+            GLJournalEntry.query.filter_by(reference_type='Payment', reference_id=payment.id).delete()
+
+            # حذف نهائي
+            # حذف الشيكات المرتبطة أولاً
+            for cheque in payment.cheques:
+                db.session.delete(cheque)
+
+            db.session.delete(payment)
+            create_audit_log('delete', 'payments', id)
+            db.session.commit()
+            flash(f'تم حذف سند الصرف "{payment.payment_number}" نهائياً', 'success')
+            
+        return redirect(url_for('payments.receipts'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'فشل الحذف: {str(e)}', 'danger')
+        return redirect(url_for('payments.view_payment', id=id))
 
 
 @payments_bp.route('/create_payment/<int:purchase_id>', methods=['GET', 'POST'])

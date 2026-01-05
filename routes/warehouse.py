@@ -232,6 +232,38 @@ def list_warehouses():
     return render_template('warehouse/list_warehouses.html', warehouses=warehouses)
 
 
+@warehouse_bp.route('/<int:id>/delete', methods=['POST'])
+@login_required
+@permission_required('admin')
+def delete_warehouse(id):
+    """حذف مستودع"""
+    warehouse = Warehouse.query.get_or_404(id)
+    
+    # Check if main warehouse
+    if warehouse.is_main:
+        flash('لا يمكن حذف المستودع الرئيسي', 'danger')
+        return redirect(url_for('warehouse.list_warehouses'))
+        
+    try:
+        # Check for stock
+        has_stock = StockMovement.query.filter_by(warehouse_id=id).first()
+        if has_stock:
+            # Soft delete
+            warehouse.is_active = False
+            db.session.commit()
+            flash(f'تم إلغاء تفعيل المستودع "{warehouse.name}" لوجود حركات مخزنية مرتبطة به', 'warning')
+        else:
+            db.session.delete(warehouse)
+            db.session.commit()
+            flash(f'تم حذف المستودع "{warehouse.name}" بنجاح', 'success')
+            
+    except Exception as e:
+        db.session.rollback()
+        flash(f'فشل الحذف: {str(e)}', 'danger')
+        
+    return redirect(url_for('warehouse.list_warehouses'))
+
+
 @warehouse_bp.route('/add-stock/<int:product_id>', methods=['POST'])
 @login_required
 @permission_required('manage_warehouse')

@@ -1,5 +1,10 @@
 {% extends 'base.html' %}
 {% block title %}شركة أزاد للأنظمة الذكية - الشيكات الواردة{% endblock %}
+
+{% block extra_js %}
+<script>
+</script>
+{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
@@ -161,6 +166,11 @@
               <i class="fas fa-edit"></i>
             </a>
             {% endif %}
+            <button type="button" class="btn btn-sm btn-danger" 
+                    onclick="deleteItem('cheques', {{ cheque.id }}, '{{ cheque.cheque_bank_number }}')" 
+                    title="حذف">
+              <i class="fas fa-trash"></i>
+            </button>
           </td>
         </tr>
         {% else %}

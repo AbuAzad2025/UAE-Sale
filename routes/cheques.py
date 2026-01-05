@@ -426,15 +426,47 @@ def delete(id):
     """حذف (أرشفة) الشيك"""
     cheque = Cheque.query.get_or_404(id)
     
+    # التحقق من الارتباطات
+    has_links = False
+    
+    # 1. حالة الشيك (إذا لم يكن معلقاً، فهو جزء من التاريخ)
+    if cheque.status in ['cleared', 'deposited', 'bounced', 'cancelled', 'under_collection']:
+        has_links = True
+        
+    # 2. ارتباطات بكيانات أخرى
+    if cheque.receipt_id or cheque.payment_id or cheque.sale_id or cheque.purchase_id or cheque.expense_id:
+        has_links = True
+        
     try:
-        reason = request.form.get('delete_reason', 'حذف من قبل المستخدم')
-        
-        cheque.archive(reason)
-        db.session.commit()
-        
-        create_audit_log('archive', 'cheques', id)
-        
-        flash(f'✅ تم أرشفة الشيك {cheque.cheque_bank_number}', 'success')
+        if has_links:
+            # أرشفة (Soft Delete)
+            reason = request.form.get('delete_reason', 'أرشفة بسبب وجود ارتباطات')
+            
+            # عكس القيد المحاسبي إذا كان نشطاً (يتم داخل دالة archive)
+            cheque.archive(reason)
+            db.session.commit()
+            
+            create_audit_log('archive', 'cheques', id)
+            flash(f'✅ تم أرشفة الشيك {cheque.cheque_bank_number} (لوجود ارتباطات)', 'warning')
+            
+        else:
+            # حذف نهائي (Hard Delete)
+            # حذف القيود المحاسبية المرتبطة
+            from models import GLJournalEntry
+            
+            ref_types = ['cheque_receive', 'cheque_issue', 'cheque_cancel', 'cheque_clear', 'cheque_bounce', 'Cheque']
+            GLJournalEntry.query.filter(
+                GLJournalEntry.reference_type.in_(ref_types),
+                GLJournalEntry.reference_id == cheque.id
+            ).delete(synchronize_session=False)
+            
+            # حذف الشيك
+            db.session.delete(cheque)
+            db.session.commit()
+            
+            create_audit_log('delete', 'cheques', id)
+            flash(f'✅ تم حذف الشيك {cheque.cheque_bank_number} نهائياً', 'success')
+            
         return redirect(url_for('cheques.index'))
     
     except Exception as e:

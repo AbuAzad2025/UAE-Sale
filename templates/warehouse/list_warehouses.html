@@ -2,6 +2,9 @@
 
 {% block title %}شركة أزاد للأنظمة الذكية - قائمة المستودعات وإدارتها{% endblock %}
 
+{% block extra_js %}
+{% endblock %}
+
 {% block content %}
 <div class="content-header">
   <div class="container-fluid">
@@ -113,6 +116,9 @@
               <a href="{{ url_for('warehouse.movements', warehouse=warehouse.id) }}" class="btn btn-outline-secondary btn-sm">
                 <i class="fas fa-exchange-alt"></i> الحركات
               </a>
+              <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteItem('warehouses', {{ warehouse.id }}, '{{ warehouse.name }}')">
+                <i class="fas fa-trash"></i> حذف
+              </button>
             </div>
           </div>
         </div>

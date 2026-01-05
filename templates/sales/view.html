@@ -15,6 +15,10 @@
     <a href="{{ url_for('sales.index') }}" class="btn btn-info btn-lg">
       <i class="fas fa-arrow-right mr-2"></i>العودة للقائمة
     </a>
+    <button type="button" class="btn btn-danger btn-lg" 
+            onclick="deleteItem('sales', {{ sale.id }}, '{{ sale.sale_number }}')">
+      <i class="fas fa-trash mr-2"></i>حذف
+    </button>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary btn-lg">
       <i class="fas fa-home mr-2"></i>الرئيسية
     </a>
@@ -358,6 +362,15 @@
           <form id="cancelForm" action="{{ url_for('sales.cancel', id=sale.id) }}" method="POST" style="display:none;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           </form>
+          {% if current_user.is_owner %}
+          <hr>
+          <!-- Delete Button -->
+          <button type="button" class="btn btn-outline-danger w-100" onclick="confirmDelete()">
+            <i class="fas fa-trash-alt mr-2"></i>حذف الفاتورة
+          </button>
+          <form id="deleteForm" action="{{ url_for('sales.delete', id=sale.id) }}" method="POST" style="display:none;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          </form>
           {% endif %}
         </div>
       </div>
@@ -369,6 +382,12 @@
 function confirmCancel() {
   if (confirm('هل أنت متأكد من إلغاء هذه الفاتورة؟\nلا يمكن التراجع عن هذا الإجراء.')) {
     document.getElementById('cancelForm').submit();
+  }
+}
+
+function confirmDelete() {
+  if (confirm('هل أنت متأكد من حذف هذه الفاتورة؟\n\nتنبيه: سيتم أرشفة الفاتورة إذا كان لها ارتباطات مالية (دفعات/شيكات)، أو حذفها نهائياً إذا كانت غير مرتبطة.')) {
+    document.getElementById('deleteForm').submit();
   }
 }
 </script>

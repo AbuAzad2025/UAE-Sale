@@ -345,6 +345,75 @@ def archived():
     return render_template('sales/archived.html', sales=archived_items)
 
 
+@sales_bp.route('/<int:id>/delete', methods=['POST'])
+@login_required
+@permission_required('manage_sales')
+def delete(id):
+    """حذف (أرشفة) فاتورة مبيعات"""
+    from services.archive_service import ArchiveService
+    from models import Payment, Cheque, GLJournalEntry
+    from services.gl_service import GLService
+    
+    sale = Sale.query.get_or_404(id)
+    
+    # التحقق من الارتباطات
+    has_links = False
+    
+    # 1. التحقق من المدفوعات (Payments)
+    linked_payments = Payment.query.filter_by(sale_id=sale.id).count()
+    if linked_payments > 0:
+        has_links = True
+        
+    # 2. التحقق من الشيكات (Cheques)
+    linked_cheques = Cheque.query.filter_by(sale_id=sale.id).count()
+    if linked_cheques > 0:
+        has_links = True
+
+    try:
+        if has_links:
+            # أرشفة (Soft Delete)
+            # عكس القيد المحاسبي
+            if sale.status != 'cancelled':
+                try:
+                    GLService.reverse_entry(
+                        reference_type='Sale',
+                        reference_id=sale.id,
+                        description=f'Reverse Sale {sale.sale_number} (Archived)'
+                    )
+                except Exception as e:
+                    current_app.logger.error(f'Failed to reverse GL entry for archived sale {sale.id}: {e}')
+
+            archive_service = ArchiveService()
+            archive_service.archive_record('sales', sale, reason='تم أرشفة الفاتورة لوجود ارتباطات مالية', commit=False)
+            
+            # يمكن أرشفة المدفوعات والشيكات المرتبطة أيضاً إذا لزم الأمر، ولكن سنكتفي بأرشفة الفاتورة حالياً
+            # أو يمكن تركها كما هي ولكن الفاتورة ستختفي من القائمة النشطة
+            
+            create_audit_log('archive', 'sales', id)
+            db.session.commit()
+            flash(f'✅ تم أرشفة الفاتورة "{sale.sale_number}" (لوجود ارتباطات مالية)', 'warning')
+        else:
+            # حذف نهائي (Hard Delete)
+            # 1. حذف البنود (SaleLines) - يتم تلقائياً عادةً عبر cascade ولكن للأمان
+            SaleLine.query.filter_by(sale_id=sale.id).delete()
+            
+            # 2. حذف القيود المحاسبية
+            GLJournalEntry.query.filter_by(reference_type='Sale', reference_id=sale.id).delete()
+            
+            # 3. حذف الفاتورة
+            db.session.delete(sale)
+            create_audit_log('delete', 'sales', id)
+            db.session.commit()
+            flash(f'✅ تم حذف الفاتورة "{sale.sale_number}" نهائياً', 'success')
+            
+        return redirect(url_for('sales.index'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ خطأ في الحذف: {str(e)}', 'danger')
+        return redirect(url_for('sales.index'))
+
+
 @sales_bp.route('/<int:id>/archive', methods=['POST'])
 @login_required
 @permission_required('manage_sales')

@@ -23,6 +23,10 @@
     <a href="{{ url_for('suppliers.statement', id=supplier.id) }}" class="btn btn-success">
       <i class="fas fa-file-invoice mr-1"></i>كشف الحساب
     </a>
+    <button type="button" class="btn btn-danger" 
+            onclick="deleteItem('suppliers', {{ supplier.id }}, '{{ supplier.name }}', '{{ url_for('suppliers.index') }}')">
+      <i class="fas fa-trash mr-1"></i>حذف
+    </button>
     <a href="{{ url_for('suppliers.index') }}" class="btn btn-secondary">
       <i class="fas fa-arrow-right mr-2"></i>العودة للقائمة
     </a>

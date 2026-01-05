@@ -310,41 +310,62 @@ def edit(id):
 @login_required
 @admin_required
 def delete(id):
-    """حذف (أرشفة) فاتورة شراء - فقط الفواتير غير المدفوعة"""
+    """حذف (أرشفة) فاتورة شراء"""
+    from services.archive_service import ArchiveService
+    from models import Payment, Cheque, GLJournalEntry, PurchaseLine
+    from services.gl_service import GLService
+    
     purchase = Purchase.query.get_or_404(id)
     
-    if purchase.get_paid_amount() > 0:
-        flash('⚠️ لا يمكن حذف فاتورة شراء مدفوعة.\n💡 قم بإلغائها أولاً أو إرجاع المدفوعات.', 'danger')
-        return redirect(url_for('purchases.view', id=id))
+    # التحقق من الارتباطات
+    has_links = False
     
+    # 1. التحقق من المدفوعات (Payments - outgoing linked to this purchase)
+    # ملاحظة: المدفوعات للموردين قد لا تكون مرتبطة مباشرة بحقل purchase_id في جدول payments القديم،
+    # ولكن إذا كان هناك حقل purchase_id أو عبر supplier_id وتاريخ متزامن، 
+    # لكن سنفترض وجود علاقة أو استخدام get_paid_amount() كمؤشر
+    if purchase.get_paid_amount() > 0:
+        has_links = True
+        
+    # 2. التحقق من الشيكات (Cheques)
+    linked_cheques = Cheque.query.filter_by(purchase_id=purchase.id).count()
+    if linked_cheques > 0:
+        has_links = True
+
     try:
-        # أرشفة بدلاً من الحذف
-        from models import ArchivedRecord
-        archived = ArchivedRecord(
-            table_name='purchases',
-            record_id=id,
-            reason=request.form.get('reason', 'حذف من قبل المستخدم'),
-            archived_by=current_user.id
-        )
-        db.session.add(archived)
-        db.session.commit()
-        
-        create_audit_log('archive', 'purchases', id)
-        
-        # عكس القيد المحاسبي
-        try:
-            from services.gl_service import GLService
-            GLService.reverse_entry(
-                reference_type='Purchase',
-                reference_id=id,
-                description=f'Reverse Purchase {purchase.purchase_number}'
-            )
-        except Exception as e:
-            current_app.logger.error(f'Failed to reverse GL entry for purchase {id}: {e}')
-            # لا نوقف العملية ولكن نسجل الخطأ - أو يمكن إيقافها حسب السياسة
-            # هنا سنكمل لأن الأرشفة تمت
-        
-        flash('✅ تم أرشفة فاتورة الشراء بنجاح!', 'success')
+        if has_links:
+            # أرشفة (Soft Delete)
+            # عكس القيد المحاسبي
+            if purchase.status != 'cancelled':
+                try:
+                    GLService.reverse_entry(
+                        reference_type='Purchase',
+                        reference_id=purchase.id,
+                        description=f'Reverse Purchase {purchase.purchase_number} (Archived)'
+                    )
+                except Exception as e:
+                    current_app.logger.error(f'Failed to reverse GL entry for archived purchase {purchase.id}: {e}')
+
+            archive_service = ArchiveService()
+            archive_service.archive_record('purchases', purchase, reason='تم أرشفة الفاتورة لوجود مدفوعات أو شيكات', commit=False)
+            
+            create_audit_log('archive', 'purchases', id)
+            db.session.commit()
+            flash(f'✅ تم أرشفة فاتورة الشراء "{purchase.purchase_number}" (لوجود ارتباطات مالية)', 'warning')
+        else:
+            # حذف نهائي (Hard Delete)
+            # 1. حذف البنود (PurchaseLines)
+            PurchaseLine.query.filter_by(purchase_id=purchase.id).delete()
+            
+            # 2. حذف القيود المحاسبية
+            GLJournalEntry.query.filter_by(reference_type='Purchase', reference_id=purchase.id).delete()
+            
+            # 3. حذف الفاتورة
+            db.session.delete(purchase)
+            create_audit_log('delete', 'purchases', id)
+            db.session.commit()
+            flash(f'✅ تم حذف فاتورة الشراء "{purchase.purchase_number}" نهائياً', 'success')
+            
         return redirect(url_for('purchases.index'))
     
     except Exception as e:

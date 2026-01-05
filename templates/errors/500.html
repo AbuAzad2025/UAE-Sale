@@ -13,6 +13,12 @@
           <p class="text-muted mb-4">
             يرجى المحاولة لاحقاً. إذا استمرت المشكلة اتصل بالدعم.
           </p>
+          {% if error %}
+          <div class="alert alert-danger text-left" dir="ltr" style="max-height: 200px; overflow: auto;">
+            <strong>Error Details:</strong><br>
+            {{ error }}
+          </div>
+          {% endif %}
           {% if error_id %}
           <p class="text-muted mb-4">رقم المرجع: {{ error_id }}</p>
           {% endif %}

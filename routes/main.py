@@ -136,3 +136,9 @@ def dashboard():
     
     return render_template('dashboard.html', stats=stats)
 
+    except Exception as e:
+        current_app.logger.error(f"Dashboard Error: {e}")
+        # In production, show a friendly error or partial dashboard
+        # For now, we return a simple error page to debug
+        return render_template('errors/500.html', error=e), 500
+

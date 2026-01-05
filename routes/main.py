@@ -16,7 +16,6 @@ def index():
     return redirect(url_for('main.dashboard'))
 
 
-
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
@@ -142,4 +141,3 @@ def dashboard():
         # In production, show a friendly error or partial dashboard
         # For now, we return a simple error page to debug
         return render_template('errors/500.html', error=e), 500
-

@@ -147,13 +147,14 @@ def delete(id):
     try:
         # Check for related records preventing deletion
         sales_count = Sale.query.filter_by(customer_id=id).count()
-        from models import Payment
+        from models import Payment, Receipt
         payments_count = Payment.query.filter_by(customer_id=id).count()
+        receipts_count = Receipt.query.filter_by(customer_id=id).count()
         
-        if sales_count > 0 or payments_count > 0:
+        if sales_count > 0 or payments_count > 0 or receipts_count > 0:
             customer.is_active = False
             db.session.commit()
-            flash(f'⚠️ تم إلغاء تفعيل العميل "{customer.name}" بدلاً من حذفه لوجود ({sales_count} فاتورة، {payments_count} دفعة) مرتبطة به.', 'warning')
+            flash(f'⚠️ تم إلغاء تفعيل العميل "{customer.name}" بدلاً من حذفه لوجود ({sales_count} فاتورة، {payments_count} دفعة، {receipts_count} سند قبض) مرتبطة به.', 'warning')
         else:
             db.session.delete(customer)
             db.session.commit()
@@ -165,9 +166,13 @@ def delete(id):
         db.session.rollback()
         # Fallback to soft delete if hard delete fails (e.g. other constraints)
         try:
-            customer.is_active = False
-            db.session.commit()
-            flash(f'⚠️ تعذر الحذف النهائي للعميل "{customer.name}" بسبب ارتباطات في قاعدة البيانات. تم إلغاء تفعيله بدلاً من ذلك.', 'warning')
+            # Re-fetch customer to ensure it's attached to the new session transaction
+            customer = Customer.query.get(id)
+            if customer:
+                customer.is_active = False
+                db.session.add(customer)
+                db.session.commit()
+                flash(f'⚠️ تعذر الحذف النهائي للعميل "{customer.name}" بسبب ارتباطات في قاعدة البيانات. تم إلغاء تفعيله بدلاً من ذلك.', 'warning')
         except Exception as inner_e:
             flash(f'❌ حدث خطأ أثناء حذف العميل: {str(e)}', 'danger')
             current_app.logger.error(f"Error deleting customer {id}: {e}")

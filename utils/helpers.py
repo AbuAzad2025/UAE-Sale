@@ -82,6 +82,44 @@ def format_currency_display(amount, currency='AED', lang='ar'):
         return str(amount)
 
 
+def format_currency(amount, currency='AED', lang='ar'):
+    """Alias for format_currency_display to maintain backward compatibility"""
+    return format_currency_display(amount, currency, lang)
+
+
+def timeago(date):
+    """Calculate time ago string"""
+    if not date:
+        return ''
+    
+    try:
+        now = datetime.now(timezone.utc)
+        if date.tzinfo is None:
+            # Assume naive datetime is UTC or handle accordingly
+            # For simplicity, let's assume it's system local time, but comparing with UTC is tricky.
+            # Let's try to make it aware or just use now() naive if date is naive.
+            if date.year < 1970: # Handle invalid dates
+                return ''
+            date = date.replace(tzinfo=timezone.utc)
+            
+        diff = now - date
+        seconds = diff.total_seconds()
+        
+        if seconds < 60:
+            return 'منذ لحظات'
+        elif seconds < 3600:
+            return f'منذ {int(seconds // 60)} دقيقة'
+        elif seconds < 86400:
+            return f'منذ {int(seconds // 3600)} ساعة'
+        elif seconds < 604800:
+            return f'منذ {int(seconds // 86400)} يوم'
+        else:
+            return date.strftime('%Y-%m-%d')
+            
+    except Exception:
+        return str(date)
+
+
 def create_audit_log(action, table_name=None, record_id=None, changes=None):
     from models import AuditLog
     from flask_login import current_user
@@ -107,7 +145,14 @@ def allowed_file(filename, allowed_extensions=None):
         return False
     
     if allowed_extensions is None:
-        allowed_extensions = current_app.config.get('ALLOWED_UPLOAD_EXTENSIONS', {}).get('all', set())
+        config_extensions = current_app.config.get('ALLOWED_UPLOAD_EXTENSIONS', {})
+        if 'all' in config_extensions:
+            allowed_extensions = config_extensions['all']
+        else:
+            allowed_extensions = set()
+            for ext_set in config_extensions.values():
+                if isinstance(ext_set, set):
+                    allowed_extensions.update(ext_set)
     
     return '.' in filename and \
            '.' + filename.rsplit('.', 1)[1].lower() in allowed_extensions
@@ -119,7 +164,7 @@ def save_uploaded_file(file, upload_folder='uploads', allowed_extensions=None):
         return None
     
     if not allowed_file(file.filename, allowed_extensions):
-        raise ValueError('نوع الملف غير مسموح')
+        raise ValueError('File type not allowed')
     
     MAX_FILE_SIZE = 5 * 1024 * 1024
     file.seek(0, os.SEEK_END)
@@ -127,13 +172,13 @@ def save_uploaded_file(file, upload_folder='uploads', allowed_extensions=None):
     file.seek(0)
     
     if file_length > MAX_FILE_SIZE:
-        raise ValueError('حجم الملف أكبر من المسموح (5MB)')
+        raise ValueError('File size exceeds limit (5MB)')
     
     file_header = file.read(512)
     file.seek(0)
     
     if file_header.startswith(b'MZ') or file_header.startswith(b'\x7fELF'):
-        raise ValueError('ملفات تنفيذية غير مسموحة')
+        raise ValueError('Executable files are not allowed')
     
     filename = secure_filename(file.filename)
     name, ext = os.path.splitext(filename)

@@ -276,11 +276,13 @@
         </div>
 
         <!-- إلغاء -->
+        <hr>
+        {% endif %}
+
+        {% if cheque.status not in ['cleared', 'cancelled'] %}
         <button type="button" class="btn btn-secondary btn-block mb-2" onclick="cancelCheque()">
           <i class="fas fa-ban mr-2"></i>إلغاء الشيك
         </button>
-
-        <hr>
         {% endif %}
 
         <!-- حذف -->

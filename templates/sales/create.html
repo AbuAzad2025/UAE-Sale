@@ -275,7 +275,7 @@
             <h5 class="mb-2">{{ t('Final Total') }}</h5>
             <h2 id="total" class="mb-0" style="font-size: 36px; font-weight: 700;">0.00</h2>
             <small style="opacity: 0.9; font-size: 1.1rem;">
-              <i class="fas fa-coins"></i> درهم إماراتي (AED)
+              <i class="fas fa-coins"></i> <span id="total_currency_label">درهم إماراتي (AED)</span>
             </small>
           </div>
 
@@ -346,9 +346,8 @@
 <script>
 $(document).ready(function() {
   // تهيئة حقول الدفع الديناميكية
-  if (window.PaymentFieldsManager) {
-    PaymentFieldsManager.initSelector('#payment_method', '#payment_fields_container', 'payment');
-  }
+  // تتم إدارة الحقول عبر sales-enhanced.js باستخدام API موحدة
+  // لا حاجة لتهيئة PaymentFieldsManager هنا
   
   // Initialize customer select - الفلتر الذكي سيعمل تلقائياً
   // لكن نحتفظ بالكود القديم كـ fallback

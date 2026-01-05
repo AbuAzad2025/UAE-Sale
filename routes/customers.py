@@ -317,7 +317,8 @@ def statement(id):
                 'notes': payment.notes or '',
                 'cheque_number': cheque.cheque_number if cheque else payment.cheque_number,
                 'cheque_bank': cheque.bank_name if cheque else payment.bank_name,
-                'cheque_due_date': cheque.due_date if cheque else payment.cheque_date
+                'cheque_due_date': cheque.due_date if cheque else payment.cheque_date,
+                'cheque_clearance_date': cheque.clearance_date if cheque else None
             }
         })
 

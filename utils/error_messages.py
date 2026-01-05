@@ -17,7 +17,7 @@ class ErrorMessages:
         from datetime import datetime
         year = datetime.now().year
         return (f'اسم المستخدم "{username}" موجود مسبقاً.\n'
-                f'جرب أحد هذه البدائل:\n'
+                'جرب أحد هذه البدائل:\n'
                 f'   • {username}_{year}\n'
                 f'   • {username}_admin\n'
                 f'   • {username}123')
@@ -26,8 +26,8 @@ class ErrorMessages:
     def weak_password(errors):
         hints = '\n   • '.join(errors)
         return (f'كلمة المرور لا تستوفي المتطلبات:\n   • {hints}\n\n'
-                f'مثال على كلمة مرور قوية: Ahmed@2024!\n'
-                f'استخدم مزيجاً من الحروف الكبيرة والصغيرة والأرقام والرموز')
+                'مثال على كلمة مرور قوية: Ahmed@2024!\n'
+                'استخدم مزيجاً من الحروف الكبيرة والصغيرة والأرقام والرموز')
     
     @staticmethod
     def password_mismatch():
@@ -61,7 +61,7 @@ class ErrorMessages:
     @staticmethod
     def customer_has_transactions(name):
         return (f'لا يمكن حذف العميل "{name}" لأن لديه معاملات مسجلة.\n'
-                f'سيتم إلغاء تفعيله بدلاً من حذفه للحفاظ على السجلات.')
+                'سيتم إلغاء تفعيله بدلاً من حذفه للحفاظ على السجلات.')
     
     
     @staticmethod
@@ -80,7 +80,7 @@ class ErrorMessages:
     def product_low_stock(name, current, min_required):
         return (f'المنتج "{name}" مخزونه منخفض.\n'
                 f'المتوفر: {current} | الحد الأدنى: {min_required}\n'
-                f'ينصح بطلب كمية جديدة من المورد.')
+                'ينصح بطلب كمية جديدة من المورد.')
     
     @staticmethod
     def product_out_of_stock(name):
@@ -99,7 +99,7 @@ class ErrorMessages:
     def sale_insufficient_stock(product_name, available, requested):
         return (f'كمية غير كافية للمنتج "{product_name}".\n'
                 f'المتوفر: {available} | المطلوب: {requested}\n'
-                f'قلل الكمية أو اطلب مخزوناً جديداً.')
+                'قلل الكمية أو اطلب مخزوناً جديداً.')
     
     @staticmethod
     def sale_invalid_quantity():
@@ -157,14 +157,14 @@ class ErrorMessages:
     @staticmethod
     def file_type_not_allowed(allowed_types):
         types_str = ', '.join(allowed_types)
-        return (f'نوع الملف غير مسموح.\n'
+        return ('نوع الملف غير مسموح.\n'
                 f'الأنواع المسموحة: {types_str}')
     
     @staticmethod
     def file_too_large(max_size_mb=5):
-        return (f'حجم الملف كبير جداً.\n'
+        return ('حجم الملف كبير جداً.\n'
                 f'الحد الأقصى: {max_size_mb}MB\n'
-                f'قم بضغط الملف أو اختر ملفاً أصغر.')
+                'قم بضغط الملف أو اختر ملفاً أصغر.')
     
     @staticmethod
     def file_upload_failed(error):
@@ -173,9 +173,9 @@ class ErrorMessages:
     
     @staticmethod
     def database_error(error):
-        return (f'خطأ في قاعدة البيانات.\n'
+        return ('خطأ في قاعدة البيانات.\n'
                 f'السبب: {error}\n'
-                f'إذا استمرت المشكلة، اتصل بالدعم الفني.')
+                'إذا استمرت المشكلة، اتصل بالدعم الفني.')
     
     @staticmethod
     def record_not_found(entity_type):
@@ -191,7 +191,7 @@ class ErrorMessages:
     @staticmethod
     def duplicate_entry(field, value):
         return (f'القيمة "{value}" موجودة مسبقاً في حقل "{field}".\n'
-                f'كل قيمة يجب أن تكون فريدة. جرب قيمة مختلفة.')
+                'كل قيمة يجب أن تكون فريدة. جرب قيمة مختلفة.')
     
     
     @staticmethod
@@ -229,9 +229,9 @@ class ErrorMessages:
     
     @staticmethod
     def backup_failed(reason):
-        return (f'فشل إنشاء النسخة الاحتياطية.\n'
+        return ('فشل إنشاء النسخة الاحتياطية.\n'
                 f'السبب: {reason}\n'
-                f'تأكد من مساحة القرص وصلاحيات الكتابة.')
+                'تأكد من مساحة القرص وصلاحيات الكتابة.')
     
     
     @staticmethod

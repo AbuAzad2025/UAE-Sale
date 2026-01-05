@@ -192,22 +192,34 @@ def create():
             StockService.process_purchase_lines(purchase, warehouse_id_val)
             
             # القيود المحاسبية
-            try:
-                GLService.ensure_core_accounts()
-                lines = [
-                    {'account': '1140', 'debit': purchase.total_amount, 'description': f'شراء بضاعة {purchase.purchase_number}'},
-                    {'account': '2110', 'credit': purchase.total_amount, 'description': f'ذمم دائنة - مورد: {purchase.supplier_name}'}
-                ]
-                GLService.post_entry(
-                    lines, 
-                    description=f'Purchase {purchase.purchase_number}', 
-                    reference_type='Purchase', 
-                    reference_id=purchase.id, 
-                    currency=purchase.currency, 
-                    exchange_rate=purchase.exchange_rate
-                )
-            except Exception as e:
-                current_app.logger.warning(f'GL posting failed: {e}')
+            GLService.ensure_core_accounts()
+            
+            # إعداد قيود اليومية مع فصل الضريبة
+            lines = [
+                # مدين: المخزون (بالمبلغ قبل الضريبة)
+                {'account': '1140', 'debit': purchase.subtotal, 'description': f'شراء بضاعة {purchase.purchase_number}'},
+                # دائن: المورد (بالمبلغ الإجمالي)
+                {'account': '2110', 'credit': purchase.total_amount, 'description': f'ذمم دائنة - مورد: {purchase.supplier_name}'}
+            ]
+            
+            # إذا وجدت ضريبة، تضاف كمدين (ضريبة مدخلات / قابلة للاسترداد)
+            if purchase.tax_amount > 0:
+                # نستخدم حساب الضرائب المستحقة (2130) كحساب وسيط (مدين = لنا، دائن = علينا)
+                # أو يمكن استخدام حساب أصول منفصل "ضريبة القيمة المضافة على المدخلات" إذا وجد
+                lines.append({
+                    'account': '2130', 
+                    'debit': purchase.tax_amount, 
+                    'description': f'ضريبة القيمة المضافة (شراء) {purchase.purchase_number}'
+                })
+
+            GLService.post_entry(
+                lines, 
+                description=f'Purchase {purchase.purchase_number}', 
+                reference_type='Purchase', 
+                reference_id=purchase.id, 
+                currency=purchase.currency, 
+                exchange_rate=purchase.exchange_rate
+            )
             
             # تحديث إحصائيات المورد
             if supplier:
@@ -318,6 +330,19 @@ def delete(id):
         db.session.commit()
         
         create_audit_log('archive', 'purchases', id)
+        
+        # عكس القيد المحاسبي
+        try:
+            from services.gl_service import GLService
+            GLService.reverse_entry(
+                reference_type='Purchase',
+                reference_id=id,
+                description=f'Reverse Purchase {purchase.purchase_number}'
+            )
+        except Exception as e:
+            current_app.logger.error(f'Failed to reverse GL entry for purchase {id}: {e}')
+            # لا نوقف العملية ولكن نسجل الخطأ - أو يمكن إيقافها حسب السياسة
+            # هنا سنكمل لأن الأرشفة تمت
         
         flash('✅ تم أرشفة فاتورة الشراء بنجاح!', 'success')
         return redirect(url_for('purchases.index'))

@@ -112,7 +112,27 @@ class PaymentService:
                 
                 # ربط الشيك بالسند
                 receipt.cheque_id = cheque.id
+                
+                # استخدام منطق الشيك المحاسبي (شيكات تحت التحصيل -> ذمم مدينة)
+                cheque.receive_cheque()
             
+            else:
+                # GL Entry for Standard Receipt (Cash/Bank)
+                try:
+                    GLService.ensure_core_accounts()
+                    payment_account = GLService.get_payment_debit_account(receipt.payment_method)
+                    credit_account = GLService.get_customer_credit_account(customer)
+
+                    # Create GL entries
+                    lines = [
+                        {'account': payment_account, 'debit': receipt.amount, 'description': f'قبض من {customer.name}'},
+                        {'account': credit_account, 'credit': receipt.amount, 'description': f'سند قبض {receipt.receipt_number}'}
+                    ]
+                    GLService.post_entry(lines, description=f'Receipt {receipt.receipt_number}', reference_type='Receipt', reference_id=receipt.id, currency=receipt.currency, exchange_rate=receipt.exchange_rate)
+                except Exception as e:
+                    current_app.logger.warning(f'GL posting failed: {e}')
+            
+            # Allocation Logic (Restored)
             if allocate_to_sales:
                 remaining_amount = Decimal(str(amount))
                 
@@ -137,17 +157,6 @@ class PaymentService:
                         sale.payment_status = 'partial'
                     
                     remaining_amount -= allocated_amount
-            
-            try:
-                GLService.ensure_core_accounts()
-                payment_account = '1110' if receipt.payment_method == 'cash' else '1120'
-                lines = [
-                    {'account': payment_account, 'debit': receipt.amount, 'description': f'قبض من {customer.name}'},
-                    {'account': '1130', 'credit': receipt.amount, 'description': f'سند قبض {receipt.receipt_number}'}
-                ]
-                GLService.post_entry(lines, description=f'Receipt {receipt.receipt_number}', reference_type='Receipt', reference_id=receipt.id, currency=receipt.currency, exchange_rate=receipt.exchange_rate)
-            except Exception as e:
-                current_app.logger.warning(f'GL posting failed: {e}')
             
             db.session.commit()
             

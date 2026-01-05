@@ -284,8 +284,8 @@ $(function () {
 });
 
 // إدارة حقول الدفع الديناميكية
-if (typeof PaymentFieldsManager !== 'undefined') {
-  const paymentManager = new PaymentFieldsManager('paymentFieldsContainer', 'payment_method');
+if (window.PaymentFieldsManager) {
+  PaymentFieldsManager.initSelector('#payment_method', '#paymentFieldsContainer');
 }
 
 // حفظ فئة المصروفات الجديدة

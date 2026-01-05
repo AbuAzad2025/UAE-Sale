@@ -59,9 +59,7 @@ def cache_result(timeout=300):
 
 def optimize_query(query):
     """تحسين الاستعلام"""
-    return query.options(
-        db.joinedload('*')
-    )
+    return query
 
 
 def batch_commit(items, batch_size=100):

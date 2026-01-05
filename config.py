@@ -59,7 +59,7 @@ class Config:
         logging.info("[Dev] SECRET_KEY loaded/generated for development (set SECRET_KEY env in production)")
     
     HOST = os.environ.get("HOST", "0.0.0.0")
-    PORT = _int("PORT", 8080)
+    PORT = _int("PORT", 5000)
     
     WTF_CSRF_EXEMPT_LIST = [
         '/sales/api/calculate-totals',

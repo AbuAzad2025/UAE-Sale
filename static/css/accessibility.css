@@ -379,21 +379,21 @@ button:focus-visible {
 }
 
 /* Form controls */
-input,
+input:not([type="checkbox"]):not([type="radio"]),
 select,
 textarea,
 .form-control,
 .custom-select {
   font-size: 0.95rem !important;
   font-weight: 500 !important;
-  line-height: 1.45 !important;
-  min-height: 2.45rem !important;
+  line-height: 1.6 !important;
+  min-height: 3rem !important;
+  height: auto !important;
   color: var(--color-text-regular) !important;
   background-color: var(--color-input-bg) !important;
   border: 1.5px solid var(--color-border) !important;
   border-radius: 0.6rem !important;
-  padding-right: 0.85rem !important;
-  padding-left: 0.85rem !important;
+  padding: 0.6rem 1rem !important;
   box-shadow: none !important;
 }
 
@@ -409,8 +409,11 @@ select:focus {
 
 .warehouse-select {
   font-size: 0.95rem !important;
-  padding-right: 1rem !important;
-  padding-left: 1rem !important;
+  padding: 0.75rem 1rem !important;
+  height: auto !important;
+  min-height: 48px !important;
+  line-height: 1.5 !important;
+  background-position: left 0.75rem center !important;
 }
 
 .warehouse-select option {
@@ -453,15 +456,16 @@ label {
 /* Select2 overrides */
 .select2-container--default .select2-selection--single,
 .select2-container--default .select2-selection--multiple {
-  min-height: 2.6rem !important;
+  min-height: 3rem !important;
   border-color: var(--color-border) !important;
   border-radius: 0.6rem !important;
   background-color: var(--color-input-bg) !important;
+  padding: 0.4rem 0 !important;
 }
 
 .select2-container--default .select2-selection__rendered {
   color: var(--color-text-regular) !important;
-  line-height: 2.3rem !important;
+  line-height: 2rem !important;
   font-size: 0.95rem !important;
   font-weight: 500 !important;
 }

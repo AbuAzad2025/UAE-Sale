@@ -144,7 +144,7 @@
         <div class="col-md-4">
           <div class="form-group">
             <label><i class="fas fa-dollar-sign"></i> العملة:</label>
-            <select name="currency" class="form-control">
+            <select name="currency" id="currency" class="form-control">
               <option value="AED" selected>AED - درهم إماراتي</option>
               <option value="USD">USD - دولار أمريكي</option>
               <option value="EUR">EUR - يورو</option>
@@ -346,11 +346,18 @@ $(function() {
     $('input[name="due_date"]').val(dueDate.toISOString().split('T')[0]);
   });
   
-  // إذا كان هناك تاريخ مُدخل مسبقاً فحدّث تاريخ الاستحقاق
-  const initialIssueDate = $('input[name="issue_date"]').val();
-  if (initialIssueDate) {
-    $('input[name="issue_date"]').trigger('change');
-  }
+  // ضبط تاريخ الإصدار افتراضياً إلى اليوم إذا كان فارغاً، ثم حدّث الاستحقاق
+  (function ensureIssueDateDefault() {
+    const $issue = $('input[name="issue_date"]');
+    if (!$issue.val()) {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      $issue.val(`${yyyy}-${mm}-${dd}`);
+    }
+    $issue.trigger('change');
+  })();
 });
 </script>
 {% endblock %}

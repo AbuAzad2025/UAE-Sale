@@ -34,6 +34,7 @@ class GLService:
             ('2000', 'الخصوم', 'Liabilities', 'liability', None, True, 0),
             ('2100', 'الخصوم المتداولة', 'Current Liabilities', 'liability', '2000', True, 1),
             ('2110', 'الذمم الدائنة', 'Accounts Payable', 'liability', '2100', False, 2),
+            ('2115', 'ذمم التجار', 'Merchants Payable', 'liability', '2100', False, 2),
             ('2120', 'شيكات مؤجلة الدفع', 'Deferred Cheques Payable', 'liability', '2100', False, 2),
             ('2130', 'ضرائب مستحقة', 'Taxes Payable', 'liability', '2100', False, 2),
             ('2140', 'رواتب مستحقة', 'Salaries Payable', 'liability', '2100', False, 2),
@@ -46,6 +47,7 @@ class GLService:
             ('3100', 'رأس المال', 'Capital', 'equity', '3000', False, 1),
             ('3200', 'الأرباح المحتجزة', 'Retained Earnings', 'equity', '3000', False, 1),
             ('3300', 'جاري المالك', 'Owner Draw', 'equity', '3000', False, 1),
+            ('3350', 'جاري الشركاء', 'Partners Current Account', 'equity', '3000', False, 1),
             ('3400', 'أرباح السنة الحالية', 'Current Year Profit', 'equity', '3000', False, 1),
             
             # === الإيرادات Revenues ===
@@ -109,6 +111,26 @@ class GLService:
         
         if created_any:
             db.session.flush()
+    
+    @staticmethod
+    def get_payment_debit_account(method):
+        m = (method or '').strip()
+        if m == 'cash':
+            return '1110'
+        if m in ('bank_transfer', 'card'):
+            return '1120'
+        if m == 'cheque':
+            return '1150'
+        return '1110'
+    
+    @staticmethod
+    def get_customer_credit_account(customer):
+        code = '1130'
+        if customer and getattr(customer, 'customer_type', None) == 'partner':
+            code = '3350'
+        elif customer and getattr(customer, 'customer_type', None) == 'merchant':
+            code = '2115'
+        return code
     
     @staticmethod
     def create_journal_entry(entry_type, description, lines, reference_type=None, reference_id=None):

@@ -78,8 +78,8 @@ class SaleService:
                 customer_id=customer.id,
                 seller_id=seller.id,
                 warehouse_id=warehouse_id,  # ← المستودع المحدد
-                currency='AED',  # Always AED for invoice
-                exchange_rate=Decimal('1'),  # Always 1 for AED
+                currency=currency,
+                exchange_rate=exchange_rate,
                 discount_amount=discount_decimal,
                 shipping_cost=shipping_decimal,
                 tax_rate=tax_rate_decimal,
@@ -156,8 +156,8 @@ class SaleService:
                     raise ValueError('مبلغ الدفع لا يمكن أن يكون سالب')
                 
                 # Store payment in AED
-                sale.paid_amount = paid_amount_aed
-                sale.paid_amount_aed = paid_amount_aed
+                sale.paid_amount = paid_amount  # في عملة الفاتورة
+                sale.paid_amount_aed = paid_amount_aed  # محول للدرهم
                 
                 # Handle overpayment (credit to customer)
                 if paid_amount_aed > sale.total_amount:
@@ -196,87 +196,96 @@ class SaleService:
             customer.update_classification()
             
             # Post to General Ledger with proper decimal precision
-            try:
-                GLService.ensure_core_accounts()
-                
-                # Calculate COGS with proper decimal precision
-                cogs_total = sum(
-                    (Decimal(str(line.cost_price)) * Decimal(str(line.quantity)) 
-                     for line in sale.lines), 
-                    Decimal('0')
-                )
-                cogs_total_aed = (cogs_total * exchange_rate).quantize(
-                    Decimal('0.001'), rounding=ROUND_HALF_UP
-                )
-                
-                # Prepare GL lines with proper decimal precision
-                lines = [
+            GLService.ensure_core_accounts()
+            
+            # Calculate COGS with proper decimal precision
+            cogs_total = sum(
+                (Decimal(str(line.cost_price)) * Decimal(str(line.quantity)) 
+                    for line in sale.lines), 
+                Decimal('0')
+            )
+            cogs_total_aed = (cogs_total * exchange_rate).quantize(
+                Decimal('0.001'), rounding=ROUND_HALF_UP
+            )
+            
+            # Determine AR Account based on Customer Type
+            ar_account = '1130' # Default Accounts Receivable
+            if customer.customer_type == 'partner':
+                ar_account = '3350' # Partner Current Account
+            elif customer.customer_type == 'merchant':
+                ar_account = '2115' # Merchants Payable
+
+            # Prepare GL lines with proper decimal precision
+            # AR and Revenue should be in Transaction Currency (Foreign)
+            # GLService.post_entry will handle conversion to AED
+            
+            lines = [
+                {
+                    'account': ar_account,
+                    'debit': sale.total_amount, # Use Foreign Amount
+                    'description': f'فاتورة {sale.sale_number}'
+                },
+                {
+                    'account': '4100',
+                    'credit': sale.subtotal, # Use Foreign Amount (Gross Revenue)
+                    'description': 'إيرادات المبيعات'
+                },
+            ]
+            
+            if sale.shipping_cost > Decimal('0'):
+                lines.append({
+                    'account': '4300',
+                    'credit': sale.shipping_cost, # Use Foreign Amount
+                    'description': 'إيرادات الشحن'
+                })
+            
+            if sale.discount_amount > Decimal('0'):
+                lines.append({
+                    'account': '5200',
+                    'debit': sale.discount_amount, # Use Foreign Amount
+                    'description': 'خصومات ممنوحة'
+                })
+            
+            if sale.tax_amount > Decimal('0'):
+                lines.append({
+                    'account': '2130',
+                    'credit': sale.tax_amount, # Use Foreign Amount
+                    'description': 'ضرائب مستحقة'
+                })
+            
+            # Post Sales Revenue Entry (in Transaction Currency)
+            GLService.post_entry(
+                lines, 
+                description=f'Sale {sale.sale_number}', 
+                reference_type='Sale', 
+                reference_id=sale.id, 
+                currency=sale.currency, 
+                exchange_rate=sale.exchange_rate
+            )
+            
+            # COGS Entry (Always in Base Currency AED)
+            if cogs_total_aed > Decimal('0'):
+                cogs_lines = [
                     {
-                        'account': '1130',
-                        'debit': sale.amount_aed,
-                        'description': f'فاتورة {sale.sale_number}'
-                    },
-                    {
-                        'account': '4100',
-                        'credit': ((sale.subtotal - sale.discount_amount) * exchange_rate).quantize(
-                            Decimal('0.001'), rounding=ROUND_HALF_UP
-                        ),
-                        'description': 'إيرادات المبيعات'
-                    },
-                ]
-                
-                if cogs_total_aed > Decimal('0'):
-                    lines.append({
                         'account': '5000',
                         'debit': cogs_total_aed,
                         'description': 'تكلفة البضاعة المباعة'
-                    })
-                    lines.append({
+                    },
+                    {
                         'account': '1140',
                         'credit': cogs_total_aed,
                         'description': 'خصم من المخزون'
-                    })
-                
-                if sale.shipping_cost > Decimal('0'):
-                    shipping_aed = (sale.shipping_cost * exchange_rate).quantize(
-                        Decimal('0.001'), rounding=ROUND_HALF_UP
-                    )
-                    lines.append({
-                        'account': '4300',
-                        'credit': shipping_aed,
-                        'description': 'إيرادات الشحن'
-                    })
-                
-                if sale.discount_amount > Decimal('0'):
-                    discount_aed = (sale.discount_amount * exchange_rate).quantize(
-                        Decimal('0.001'), rounding=ROUND_HALF_UP
-                    )
-                    lines.append({
-                        'account': '5200',
-                        'debit': discount_aed,
-                        'description': 'خصومات ممنوحة'
-                    })
-                
-                if sale.tax_amount > Decimal('0'):
-                    tax_aed = (sale.tax_amount * exchange_rate).quantize(
-                        Decimal('0.001'), rounding=ROUND_HALF_UP
-                    )
-                    lines.append({
-                        'account': '2130',
-                        'credit': tax_aed,
-                        'description': 'ضرائب مستحقة'
-                    })
+                    }
+                ]
                 
                 GLService.post_entry(
-                    lines, 
-                    description=f'Sale {sale.sale_number}', 
-                    reference_type='Sale', 
-                    reference_id=sale.id, 
-                    currency=sale.currency, 
-                    exchange_rate=sale.exchange_rate
+                    cogs_lines,
+                    description=f'COGS - Sale {sale.sale_number}',
+                    reference_type='Sale',
+                    reference_id=sale.id,
+                    currency='AED',
+                    exchange_rate=1.0
                 )
-            except Exception as e:
-                current_app.logger.warning(f'GL posting failed: {e}')
 
             db.session.commit()
             
@@ -386,14 +395,11 @@ class SaleService:
             # Debit: Cash/Bank (Asset)
             # Credit: Account Receivable (Asset - Reducing it)
             
-            debit_account = '1110' # Cash default
-            if payment_method == 'bank_transfer':
-                debit_account = '1120' # Bank
-            elif payment_method == 'cheque':
-                debit_account = '1150' # Cheques under collection (Notes Receivable)
-            elif payment_method == 'card':
-                debit_account = '1120' # Bank (usually settles to bank)
+            debit_account = GLService.get_payment_debit_account(payment_method)
             
+            # Determine Credit Account (AR)
+            credit_account = GLService.get_customer_credit_account(sale.customer)
+
             lines = [
                 {
                     'account': debit_account, 
@@ -401,7 +407,7 @@ class SaleService:
                     'description': f'Payment for Sale {sale.sale_number} ({payment_method})'
                 },
                 {
-                    'account': '1130', # Accounts Receivable
+                    'account': credit_account, # Accounts Receivable
                     'credit': amount_decimal, 
                     'description': f'Payment Received {payment.payment_number}'
                 }
@@ -429,6 +435,16 @@ class SaleService:
         
         StockService.reverse_sale(sale)
         
+        # Reverse GL Entry for Sale (Revenue & AR)
+        try:
+            GLService.reverse_entry(
+                reference_type='Sale',
+                reference_id=sale.id,
+                description=f'Reverse Sale {sale.sale_number} (Cancelled)'
+            )
+        except Exception as e:
+            current_app.logger.error(f'Failed to reverse GL entry for cancelled sale {sale.id}: {e}')
+            
         db.session.commit()
         
         current_app.logger.info(f'Sale cancelled: {sale.sale_number}')

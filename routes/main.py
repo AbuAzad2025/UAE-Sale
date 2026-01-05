@@ -1,13 +1,20 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from flask import Blueprint, render_template, current_app
+from flask import Blueprint, render_template, current_app, redirect, url_for
 from flask_login import login_required, current_user
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 from extensions import db
 from models import Sale, Customer, Product, Payment, Receipt, GLAccount, GLJournalLine
 from services.stock_service import StockService
 
 main_bp = Blueprint('main', __name__)
+
+
+@main_bp.route('/')
+def index():
+    return redirect(url_for('main.dashboard'))
+
 
 
 @main_bp.route('/dashboard')
@@ -96,8 +103,8 @@ def dashboard():
     
     # Optimized query with eager loading (N+1 problem fix)
     recent_sales = Sale.query.options(
-        db.joinedload(Sale.customer),
-        db.joinedload(Sale.seller)
+        joinedload(Sale.customer),
+        joinedload(Sale.seller)
     ).filter_by(
         status='confirmed'
     ).order_by(Sale.sale_date.desc()).limit(10).all()

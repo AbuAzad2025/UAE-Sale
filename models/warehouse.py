@@ -31,7 +31,7 @@ class StockMovement(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id', ondelete='CASCADE'), nullable=False, index=True)
     warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), nullable=False)
     
     movement_type = db.Column(db.String(20), nullable=False, index=True)

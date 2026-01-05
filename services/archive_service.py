@@ -8,7 +8,7 @@ from models import ArchivedRecord
 class ArchiveService:
     
     @staticmethod
-    def archive_record(table_name, record, reason=None):
+    def archive_record(table_name, record, reason=None, commit=True):
         try:
             if hasattr(record, 'to_dict'):
                 data = record.to_dict()
@@ -24,14 +24,19 @@ class ArchiveService:
             )
             
             db.session.add(archived)
-            db.session.commit()
             
-            current_app.logger.info(f'Archived: {table_name} #{record.id}')
+            if commit:
+                db.session.commit()
+                current_app.logger.info(f'Archived: {table_name} #{record.id}')
+            else:
+                db.session.flush()
+                current_app.logger.info(f'Archived (Pending Commit): {table_name} #{record.id}')
             
             return archived
         
         except Exception as e:
-            db.session.rollback()
+            if commit:
+                db.session.rollback()
             current_app.logger.error(f'Archive failed: {e}')
             raise
     

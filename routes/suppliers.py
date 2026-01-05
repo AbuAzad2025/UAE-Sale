@@ -5,7 +5,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from extensions import db, limiter
-from models import Supplier, Purchase
+from models import Supplier, Purchase, Payment
 from utils.decorators import admin_required
 from utils.helpers import create_audit_log
 from sqlalchemy import func, desc
@@ -234,9 +234,12 @@ def statement(id):
         Purchase.purchase_date.desc()
     ).all()
     
+    payments = Payment.query.filter_by(supplier_id=id).order_by(Payment.payment_date.desc()).all()
+    
     return render_template('suppliers/statement.html',
                          supplier=supplier,
-                         purchases=purchases)
+                         purchases=purchases,
+                         payments=payments)
 
 
 @suppliers_bp.route('/api/search')

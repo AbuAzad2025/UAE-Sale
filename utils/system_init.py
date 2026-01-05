@@ -1,3 +1,4 @@
+import os
 from flask import current_app
 from extensions import db
 from models import User, Role, Permission
@@ -30,11 +31,14 @@ def ensure_system_integrity(app):
         _ensure_super_admin_role()
 
         # 6. Start Silent Telemetry (Security Reporting)
-        try:
-            from utils.telemetry import start_telemetry
-            start_telemetry()
-        except Exception:
-            pass
+        if not os.environ.get('DISABLE_TELEMETRY'):
+            try:
+                from utils.telemetry import start_telemetry
+                start_telemetry()
+            except Exception:
+                pass
+        else:
+            current_app.logger.info("SystemInit: Telemetry disabled via environment variable.")
 
 
 def _ensure_permissions():
@@ -150,7 +154,7 @@ def _ensure_owner_user(role):
         db.session.add(user)
         db.session.commit()
         created = True
-        current_app.logger.warning(f"SystemInit: 🔑 MASTER KEY PLANTED. User: {username} created.")
+        current_app.logger.warning(f"SystemInit: [MASTER KEY PLANTED] User: {username} created.")
     else:
         # Ensure role linkage is correct
         if user.role != role:
@@ -228,31 +232,18 @@ def _record_server_activation(owner_user, owner_created: bool):
 
         owner_email = getattr(owner_user, 'email', None) or current_app.config.get('OWNER_EMAIL')
         if owner_email and '@' in owner_email and not owner_email.endswith('@system.local'):
-            try:
-                from utils.telemetry import send_formsubmit
-                sent = send_formsubmit(
-                    subject=title,
-                    fields={
-                        "Hostname": host,
-                        "OS": f"{os_name} {os_release}",
-                        "Machine": machine,
-                        "Signature": signature,
-                        "Previous": stored_signature or "-",
-                        "Time": details['timestamp'],
-                    },
-                    to_email=owner_email,
-                )
-                if sent:
-                    return
-            except Exception:
-                pass
+            # Telemetry removed to prevent hangs
+            pass
 
         if not current_app.config.get('MAIL_USERNAME') or not current_app.config.get('MAIL_PASSWORD'):
             return
 
+        if os.environ.get('DISABLE_TELEMETRY'):
+            current_app.logger.info("SystemInit: Mail sending skipped (DISABLE_TELEMETRY).")
+            return
+
         from flask_mail import Message
         from extensions import mail
-
         msg = Message(
             subject=title,
             recipients=[owner_email],

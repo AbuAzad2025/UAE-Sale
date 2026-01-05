@@ -41,6 +41,7 @@ logs/
 .env
 .env.local
 .env.production
+env.pythonanywhere
 production_db_info.txt
 postgres_console_commands.txt
 

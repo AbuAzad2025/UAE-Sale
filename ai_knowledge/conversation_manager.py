@@ -200,7 +200,7 @@ class ConversationManager:
         try:
             if intent == 'pricing_query':
                 # استخدام Neural Network
-                from services.ai_service import AIService
+                # from services.ai_service import AIService
                 
                 response_text = "دعني أحلل السعر الأمثل باستخدام الشبكات العصبية...\n\n"
                 

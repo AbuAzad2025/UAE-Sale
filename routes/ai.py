@@ -2476,7 +2476,7 @@ def _process_user_action(message, user):
 5. ارفع الملف من خلال الزر "رفع منتجات من Excel"
 
 💡 **أو اذهب مباشرة إلى:**
-http://localhost:8080/ai/assistant
+http://localhost:5000/ai/assistant
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
         

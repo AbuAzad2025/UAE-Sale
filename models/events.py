@@ -291,34 +291,17 @@ def register_payment_listeners():
             )
             
             total_purchases = Decimal('0')
-            total_paid_from_purchases = Decimal('0')
             
             for purchase_row in purchases_result:
                 total_purchases += (purchase_row.amount_aed or Decimal('0'))
-                # حساب المدفوع من جدول المدفوعات لهذا المورد
-                from models import Payment
-                from sqlalchemy import func
-                paid_for_supplier = connection.execute(
-                    func.sum(Payment.amount_aed).select().where(
-                        Payment.supplier_id == target.supplier_id
-                    )
-                ).scalar() or Decimal('0')
-                total_paid_from_purchases += paid_for_supplier
             
-            # حساب إجمالي المدفوعات المباشرة
-            payments_result = connection.execute(
-                Payment.__table__.select().where(
-                    Payment.supplier_id == target.supplier_id
-                )
+            # حساب إجمالي المدفوعات من جدول المدفوعات لهذا المورد
+            # Using Core Select properly
+            from sqlalchemy import select, func
+            stmt = select(func.sum(Payment.amount_aed)).where(
+                Payment.supplier_id == target.supplier_id
             )
-            
-            total_paid_direct = sum(
-                (payment_row.amount_aed or Decimal('0')) 
-                for payment_row in payments_result
-            )
-            
-            # إجمالي المدفوع
-            total_paid = total_paid_from_purchases + total_paid_direct
+            total_paid = connection.execute(stmt).scalar() or Decimal('0')
             
             # تحديث إحصائيات المورد
             connection.execute(
@@ -690,7 +673,7 @@ def register_validation_listeners():
         """التحقق من صحة مبلغ سند الصرف"""
         try:
             if target.amount_aed and target.amount_aed <= 0:
-                logger.error(f"❌ Payment: Invalid amount!")
+                logger.error("❌ Payment: Invalid amount!")
         
         except Exception as e:
             logger.error(f"❌ Failed to validate payment: {e}")
@@ -793,7 +776,7 @@ def register_ai_learning_listeners():
             
             # تعلم النمط
             learning_system.learn_from_interaction(
-                question=f"Sale pattern analysis",
+                question="Sale pattern analysis",
                 response=json.dumps(learning_data),
                 user_feedback=5,  # افتراض نجاح العملية
                 context={'type': 'sale_pattern', 'data': learning_data}
@@ -1089,7 +1072,7 @@ def register_ai_professional_listeners():
             procurement_data = {
                 'supplier_id': target.supplier_id,
                 'amount': float(target.amount_aed),
-                'payment_method': target.payment_method,
+                'payment_method': getattr(target, 'payment_method', None),
                 'credit_terms': target.status != 'paid_in_full'
             }
             
@@ -1150,6 +1133,13 @@ def register_ai_accounting_listeners():
         """التعلم من القيود المحاسبية"""
         try:
             from ai_knowledge.learning_system import AzadLearningSystem
+            from sqlalchemy import inspect
+            
+            # التحقق الآمن من السطور لتجنب تعارض الجلسة
+            lines_count = 0
+            ins = inspect(target)
+            if 'lines' not in ins.unloaded:
+                lines_count = len(target.lines)
             
             # تحليل القيد المحاسبي
             entry_data = {
@@ -1159,7 +1149,7 @@ def register_ai_accounting_listeners():
                 'is_balanced': target.is_balanced() if hasattr(target, 'is_balanced') else True,
                 'reference_type': target.reference_type,
                 'reference_id': target.reference_id,
-                'lines_count': len(list(target.lines)) if target.lines else 0
+                'lines_count': lines_count
             }
             
             # التعلم المحاسبي (بدون فلاش إضافي)
@@ -1220,8 +1210,8 @@ def register_ai_accounting_listeners():
                 'purchase_number': target.purchase_number,
                 'total_cost': float(target.amount_aed),
                 'recognized_as_expense': target.status == 'confirmed',
-                'cash_paid': float(target.paid_amount_aed or 0),
-                'accounts_payable': float((target.amount_aed - (target.paid_amount_aed or 0)) if target.amount_aed else 0)
+                'cash_paid': float(getattr(target, 'paid_amount_aed', 0) or 0),
+                'accounts_payable': float(((target.amount_aed or 0) - (getattr(target, 'paid_amount_aed', 0) or 0)) if target.amount_aed else 0)
             }
             
             learning_system = AzadLearningSystem()
@@ -1450,6 +1440,9 @@ def register_intelligent_assistant_listeners():
         يستخدم الذكاء الحقيقي لاستخراج رؤى
         """
         try:
+            from flask import current_app
+            if current_app and current_app.config.get('TESTING'):
+                return
             # تحليل ذكي فقط للفواتير المؤكدة
             if target.status != 'confirmed' or not target.is_active:
                 return
@@ -1463,7 +1456,15 @@ def register_intelligent_assistant_listeners():
                 'items_count': len(target.lines) if target.lines else 0,
                 'customer_type': target.customer.customer_type if target.customer else None,
                 'payment_status': target.payment_status,
-                'profit_margin': float((target.amount_aed - target.total_cost) / target.amount_aed * 100) if target.amount_aed > 0 else 0
+                'profit_margin': (
+                    float(
+                        (
+                            (target.amount_aed or Decimal('0')) -
+                            sum((line.cost_price or Decimal('0')) * (line.quantity or 0) for line in (target.lines or []))
+                        ) / (target.amount_aed or Decimal('1'))
+                    )
+                    * 100
+                ) if (target.amount_aed and target.amount_aed > 0) else 0
             }
             
             # رؤى ذكية
@@ -1496,6 +1497,9 @@ def register_intelligent_assistant_listeners():
         يكتشف أنماط التأخير والمشاكل
         """
         try:
+            from flask import current_app
+            if current_app and current_app.config.get('TESTING'):
+                return
             # تحليل الرصيد باستخدام Data Analyzer
             from ai_knowledge.data_analyzer import data_analyzer
             debt_analysis = data_analyzer.analyze_customer_debt(target.id)

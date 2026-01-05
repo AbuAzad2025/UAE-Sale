@@ -676,15 +676,40 @@ function forceCalculate() {
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
   
-  $('#summary_subtotal').text(subtotal.toFixed(2) + ' AED');
-  $('#summary_tax').text(taxAmount.toFixed(2) + ' AED');
-  $('#summary_total').text(total.toFixed(2) + ' AED');  
+  const currency = $('#currency').val();
+  $('#summary_subtotal').text(subtotal.toFixed(2) + ' ' + currency);
+  $('#summary_tax').text(taxAmount.toFixed(2) + ' ' + currency);
+  $('#summary_total').text(total.toFixed(2) + ' ' + currency);  
   // إظهار رسالة للمستخدم
   if (subtotal > 0) {
-    alert(`تم الحساب بنجاح.\nالمجموع الفرعي: ${subtotal.toFixed(2)} AED\nالإجمالي: ${total.toFixed(2)} AED`);
+    alert(`تم الحساب بنجاح.\nالمجموع الفرعي: ${subtotal.toFixed(2)} ${currency}\nالإجمالي: ${total.toFixed(2)} ${currency}`);
   } else {
     alert('لم يتم العثور على بيانات للحساب.');
   }
+}
+
+// =====================================
+// تحديث أسعار التكلفة عند تغيير العملة
+// =====================================
+function updateLineCosts() {
+    const currency = $('#currency').val();
+    const rate = parseFloat($('#exchange_rate').val()) || 1;
+    
+    $('.line-cost').each(function() {
+        const baseCost = parseFloat($(this).data('base-cost'));
+        if (!isNaN(baseCost)) {
+            let finalCost = baseCost;
+            if (currency !== 'AED' && rate > 0) {
+                finalCost = baseCost / rate;
+            }
+            $(this).val(finalCost.toFixed(2));
+            
+            // Recalculate line total
+            const lineId = $(this).data('line');
+            calculateLineTotal(lineId);
+        }
+    });
+    calculateTotals();
 }
 
 // =====================================
@@ -699,6 +724,7 @@ $('#currency').on('change', function() {
       success: function(data) {
         if (data.rate) {
           $('#exchange_rate').val(data.rate.toFixed(6));
+          updateLineCosts();
         } else {
           toastr.warning('يرجى إدخال سعر الصرف يدوياً');
         }
@@ -709,7 +735,12 @@ $('#currency').on('change', function() {
     });
   } else {
     $('#exchange_rate').val('1.000000');
+    updateLineCosts();
   }
+});
+
+$('#exchange_rate').on('input change', function() {
+    updateLineCosts();
 });
 
 // =====================================

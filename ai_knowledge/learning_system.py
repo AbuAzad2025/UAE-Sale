@@ -30,7 +30,12 @@ class AzadLearningSystem:
         if os.path.exists(self.knowledge_file):
             try:
                 with open(self.knowledge_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    from collections import defaultdict
+                    exp = data.get('expertise_areas', {})
+                    if not isinstance(exp, defaultdict):
+                        data['expertise_areas'] = defaultdict(int, exp)
+                    return data
             except:
                 pass
         return {
@@ -206,8 +211,14 @@ class AzadLearningSystem:
         """حفظ البيانات"""
         try:
             # حفظ المعرفة المكتسبة
+            to_save = dict(self.learned_knowledge)
+            ea = self.learned_knowledge.get('expertise_areas', {})
+            try:
+                to_save['expertise_areas'] = dict(ea)
+            except:
+                to_save['expertise_areas'] = {}
             with open(self.knowledge_file, 'w', encoding='utf-8') as f:
-                json.dump(self.learned_knowledge, f, ensure_ascii=False, indent=2)
+                json.dump(to_save, f, ensure_ascii=False, indent=2)
             
             # حفظ التفاعلات (آخر 1000 تفاعل)
             recent_interactions = self.interactions[-1000:]

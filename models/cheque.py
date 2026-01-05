@@ -6,6 +6,7 @@
 from datetime import datetime, timezone, timedelta
 from extensions import db
 from decimal import Decimal
+from flask import current_app
 
 
 class Cheque(db.Model):
@@ -126,18 +127,21 @@ class Cheque(db.Model):
         if self.cheque_type == 'incoming':
             from services.gl_service import GLService
             try:
-                # قيد استلام الشيك: نقل من الذمم المدينة إلى شيكات تحت التحصيل
-                lines = [{
-                    'account': '1150',  # شيكات تحت التحصيل
-                    'debit': self.amount_aed,
-                    'credit': 0,
-                    'description': f'استلام شيك رقم {self.cheque_bank_number}'
-                }, {
-                    'account': '1130',  # الذمم المدينة
-                    'debit': 0,
-                    'credit': self.amount_aed,
-                    'description': f'استلام شيك من عميل - رقم {self.cheque_bank_number}'
-                }]
+                credit_account = GLService.get_customer_credit_account(self.customer) if self.customer_id else '1130'
+                lines = [
+                    {
+                        'account': '1150',
+                        'debit': self.amount_aed,
+                        'credit': 0,
+                        'description': f'استلام شيك رقم {self.cheque_bank_number}'
+                    },
+                    {
+                        'account': credit_account,
+                        'debit': 0,
+                        'credit': self.amount_aed,
+                        'description': f'استلام شيك من عميل - رقم {self.cheque_bank_number}'
+                    }
+                ]
                 
                 GLService.post_entry(
                     lines=lines,
@@ -146,26 +150,33 @@ class Cheque(db.Model):
                     reference_id=self.id
                 )
             except Exception as e:
-                from app import app
-                app.logger.error(f'Failed to create GL entry for cheque receipt {self.id}: {e}')
+                current_app.logger.error(f'Failed to create GL entry for cheque receipt {self.id}: {e}')
     
     def issue_cheque(self):
         """تسجيل إصدار الشيك الصادر"""
         if self.cheque_type == 'outgoing':
             from services.gl_service import GLService
             try:
-                # قيد إصدار الشيك: نقل من الذمم الدائنة إلى شيكات مؤجلة الدفع
-                lines = [{
-                    'account': '2110',  # الذمم الدائنة
-                    'debit': self.amount_aed,
-                    'credit': 0,
-                    'description': f'إصدار شيك رقم {self.cheque_bank_number}'
-                }, {
-                    'account': '2120',  # شيكات مؤجلة الدفع
-                    'debit': 0,
-                    'credit': self.amount_aed,
-                    'description': f'إصدار شيك لمورد - رقم {self.cheque_bank_number}'
-                }]
+                if self.supplier_id:
+                    debit_account = '2110'
+                elif self.customer_id:
+                    debit_account = GLService.get_customer_credit_account(self.customer)
+                else:
+                    debit_account = '2110'
+                lines = [
+                    {
+                        'account': debit_account,
+                        'debit': self.amount_aed,
+                        'credit': 0,
+                        'description': f'إصدار شيك رقم {self.cheque_bank_number}'
+                    },
+                    {
+                        'account': '2120',
+                        'debit': 0,
+                        'credit': self.amount_aed,
+                        'description': f'إصدار شيك - رقم {self.cheque_bank_number}'
+                    }
+                ]
                 
                 entry = GLService.post_entry(
                     lines=lines,
@@ -175,8 +186,7 @@ class Cheque(db.Model):
                 )
                 self.gl_journal_entry_id = entry.id
             except Exception as e:
-                from app import app
-                app.logger.error(f'Failed to create GL entry for cheque issue {self.id}: {e}')
+                current_app.logger.error(f'Failed to create GL entry for cheque issue {self.id}: {e}')
     
     def deposit_cheque(self, deposit_date=None):
         """إيداع الشيك في البنك"""
@@ -309,15 +319,14 @@ class Cheque(db.Model):
             
             GLService.post_entry(
                 lines=lines,
-                description=f'صرف شيك {self.cheque_type_ar} رقم {self.cheque_bank_number}',
+                description=f'صرف شيك {self.type_ar} رقم {self.cheque_bank_number}',
                 reference_type='cheque_clear',
                 reference_id=self.id
             )
         
         except Exception as e:
             # لا نوقف العملية إذا فشل القيد المحاسبي
-            from app import app
-            app.logger.error(f'Failed to create GL entry for cheque {self.id}: {e}')
+            current_app.logger.error(f'Failed to create GL entry for cheque {self.id}: {e}')
     
     def bounce_cheque(self, reason):
         """رفض الشيك من البنك - إرجاع الدين"""
@@ -350,9 +359,9 @@ class Cheque(db.Model):
             lines = []
             
             if self.cheque_type == 'incoming':
-                # شيك وارد مرتد - إرجاع الدين للعميل
+                ar_account = GLService.get_customer_credit_account(self.customer) if self.customer_id else '1130'
                 lines.append({
-                    'account': '1130',  # الذمم المدينة
+                    'account': ar_account,
                     'debit': self.amount_aed,
                     'credit': 0,
                     'description': f'ارتداد شيك رقم {self.cheque_bank_number} - إرجاع الدين'
@@ -365,15 +374,20 @@ class Cheque(db.Model):
                 })
             
             elif self.cheque_type == 'outgoing':
-                # شيك صادر مرتد - إرجاع الالتزام
                 lines.append({
                     'account': '2120',  # شيكات مؤجلة الدفع
                     'debit': self.amount_aed,
                     'credit': 0,
                     'description': f'ارتداد شيك صادر رقم {self.cheque_bank_number}'
                 })
+                if self.supplier_id:
+                    credit_account = '2110'
+                elif self.customer_id:
+                    credit_account = GLService.get_customer_credit_account(self.customer)
+                else:
+                    credit_account = '2110'
                 lines.append({
-                    'account': '2110',  # الذمم الدائنة
+                    'account': credit_account,
                     'debit': 0,
                     'credit': self.amount_aed,
                     'description': f'ارتداد شيك رقم {self.cheque_bank_number} - إرجاع الالتزام'
@@ -387,17 +401,85 @@ class Cheque(db.Model):
             )
         
         except Exception as e:
-            from app import app
-            app.logger.error(f'Failed to create GL entry for bounced cheque {self.id}: {e}')
+            current_app.logger.error(f'Failed to create GL entry for bounced cheque {self.id}: {e}')
     
     def cancel_cheque(self, reason=None):
-        """إلغاء الشيك"""
+        """إلغاء الشيك - عكس القيود المحاسبية"""
+        if self.status == 'cancelled':
+            return
+
         self.status = 'cancelled'
         if reason:
             self.notes = (self.notes or '') + f'\nسبب الإلغاء: {reason}'
-    
+        
+        # عكس القيد المحاسبي للإلغاء
+        self._create_cancel_journal_entry()
+
+    def _create_cancel_journal_entry(self):
+        """إنشاء قيد عكسي عند إلغاء الشيك"""
+        from services.gl_service import GLService
+        try:
+            # إذا لم يكن للشيك قيد سابق (مثلاً جديد)، لا داعي للعكس
+            # ولكن للضمان، نعكس بناءً على النوع والحالة السابقة
+            # ملاحظة: الحالة تغيرت بالفعل إلى cancelled، لذا نعتمد على النوع
+            
+            lines = []
+            if self.cheque_type == 'incoming':
+                ar_account = GLService.get_customer_credit_account(self.customer) if self.customer_id else '1130'
+                lines = [
+                    {
+                        'account': ar_account,
+                        'debit': self.amount_aed,
+                        'credit': 0,
+                        'description': f'إلغاء شيك وارد رقم {self.cheque_bank_number}'
+                    },
+                    {
+                        'account': '1150',
+                        'debit': 0,
+                        'credit': self.amount_aed,
+                        'description': f'إلغاء شيك رقم {self.cheque_bank_number}'
+                    }
+                ]
+            
+            elif self.cheque_type == 'outgoing':
+                if self.supplier_id:
+                    credit_account = '2110'
+                elif self.customer_id:
+                    credit_account = GLService.get_customer_credit_account(self.customer)
+                else:
+                    credit_account = '2110'
+                lines = [
+                    {
+                        'account': '2120',
+                        'debit': self.amount_aed,
+                        'credit': 0,
+                        'description': f'إلغاء شيك صادر رقم {self.cheque_bank_number}'
+                    },
+                    {
+                        'account': credit_account,
+                        'debit': 0,
+                        'credit': self.amount_aed,
+                        'description': f'إلغاء شيك رقم {self.cheque_bank_number}'
+                    }
+                ]
+
+            if lines:
+                GLService.post_entry(
+                    lines=lines,
+                    description=f'إلغاء شيك {self.type_ar} رقم {self.cheque_bank_number}',
+                    reference_type='cheque_cancel',
+                    reference_id=self.id
+                )
+        except Exception as e:
+            current_app.logger.error(f'Failed to create GL entry for cancelled cheque {self.id}: {e}')
+
     def archive(self, reason=None):
-        """أرشفة الشيك"""
+        """أرشفة الشيك - مع عكس القيد إذا كان نشطاً"""
+        # إذا كان الشيك نشطاً (معلق/مودع/تحت التحصيل) يجب عكس تأثيره المالي قبل الأرشفة
+        if self.is_active and self.status in ['pending', 'deposited', 'under_collection']:
+             # نعتبر الأرشفة للشيك النشط بمثابة إلغاء محاسبي
+             self._create_cancel_journal_entry()
+
         self.is_active = False
         self.archived_at = datetime.now(timezone.utc)
         if reason:

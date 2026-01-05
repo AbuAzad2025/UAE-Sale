@@ -566,7 +566,22 @@
                   <p>الذمم المدينة</p>
                 </a>
               </li>
+              <li class="nav-item">
+                <a href="{{ url_for('reports.partners') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>تقرير الشركاء والتجار</p>
+                </a>
+              </li>
             </ul>
+          </li>
+          {% endif %}
+
+          {% if current_user.has_permission('manage_backups') %}
+          <li class="nav-item {% if request.endpoint and request.endpoint in ['owner.list_backups', 'owner.scheduled_backups'] %}menu-open{% endif %}">
+            <a href="{{ url_for('owner.list_backups') }}" class="nav-link {% if request.endpoint and request.endpoint in ['owner.list_backups', 'owner.scheduled_backups'] %}active{% endif %}">
+              <i class="nav-icon fas fa-database"></i>
+              <p>النسخ الاحتياطية</p>
+            </a>
           </li>
           {% endif %}
 

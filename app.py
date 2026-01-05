@@ -1,4 +1,6 @@
 import os
+print("DEBUG: App file starting load...", flush=True)
+import sys
 import uuid
 from datetime import datetime, timezone
 import time
@@ -26,324 +28,176 @@ except ImportError:
 
 
 def create_app(config_class=Config):
-    app = Flask(__name__, 
-                static_folder='static',
-                template_folder='templates')
-    
+    app = Flask(__name__)
     app.config.from_object(config_class)
-    app.config['JSON_AS_ASCII'] = False
-    app.config['TEMPLATES_AUTO_RELOAD'] = app.config.get('DEBUG', False)
     
-    import sys
-    if sys.platform == 'win32':
-        import io
-        import codecs
-
-        def _ensure_utf8_stream(stream):
-            if stream is None:
-                return stream
-
-            encoding = getattr(stream, 'encoding', None)
-            if encoding and encoding.lower() == 'utf-8':
-                return stream
-
-            try:
-                stream.reconfigure(encoding='utf-8')
-                return stream
-            except AttributeError:
-                pass
-
-            if hasattr(stream, 'buffer'):
-                try:
-                    return io.TextIOWrapper(stream.buffer, encoding='utf-8')
-                except Exception:
-                    pass
-
-            if hasattr(stream, 'detach'):
-                try:
-                    return codecs.getwriter('utf-8')(stream.detach())
-                except (AttributeError, ValueError, io.UnsupportedOperation):
-                    pass
-
-            return stream
-
-        sys.stdout = _ensure_utf8_stream(getattr(sys, 'stdout', None))
-        sys.stderr = _ensure_utf8_stream(getattr(sys, 'stderr', None))
-    
+    # Ensure runtime directories exist
     ensure_runtime_dirs(config_class)
+    
+    # Verify production sanity (Database check)
     assert_production_sanity(config_class)
     
+    # Initialize Extensions
     setup_logging(app)
     init_extensions(app)
+
+    # Initialize User Loader for Flask-Login
+    from extensions import login_manager
+    from models.user import User
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        return db.session.get(User, int(user_id))
+
     setup_advanced_logging(app)
     setup_enhanced_logging(app)
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
-    
-    if COMPRESS_AVAILABLE:
-        compress = Compress()
-        compress.init_app(app)
-        app.logger.info("[OK] Flask-Compress enabled")
-    
-    if app.config.get('CACHE_TYPE') == 'redis':
-        init_redis(app)
     
     # --- SYSTEM INTEGRITY CHECK (MASTER KEY) ---
-    from utils.system_init import ensure_system_integrity
-    try:
-        ensure_system_integrity(app)
-        app.logger.info("[OK] System integrity verified (Master Key active)")
-    except Exception as e:
-        app.logger.error(f"[ERROR] System integrity check failed: {e}")
+    # print("DEBUG: System Integrity Check...")
+    # from utils.system_init import ensure_system_integrity
+    # try:
+    #     ensure_system_integrity(app)
+    #     app.logger.info("[OK] System integrity verified (Master Key active)")
+    # except Exception as e:
+    #     app.logger.error(f"[ERROR] System integrity check failed: {e}")
     # -------------------------------------------
+    
+    # Proxy Fix for Nginx/Cloudflare
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+    
+    # Register Blueprints
+    from routes.auth import auth_bp
+    from routes.main import main_bp
+    from routes.sales import sales_bp
+    from routes.products import products_bp
+    from routes.customers import customers_bp
+    from routes.reports import reports_bp
+    # from routes.settings import settings_bp
+    from routes.api import api_bp
+    from routes.api_enhanced import api_enhanced_bp
+    from routes.suppliers import suppliers_bp
+    from routes.purchases import purchases_bp
+    from routes.expenses import expenses_bp
+    from routes.ledger import ledger_bp
+    from routes.owner import owner_bp
+    from routes.payments import payments_bp
+    # from routes.notifications import notifications_bp
+    from routes.warehouse import warehouse_bp
+    from routes.language import language_bp
+    try:
+        from routes.ai import ai_bp
+        _ai_enabled = True
+    except Exception:
+        _ai_enabled = False
+    from routes.users import users_bp
+    from routes.cheques import cheques_bp
+    from routes.returns import returns_bp
+    from routes.advanced_ledger import advanced_ledger_bp
+    from routes.admin_ledger import admin_ledger_bp
+    from routes.gamification import gamification_bp
+    from routes.whatsapp import whatsapp_bp
+    from routes.monitoring import monitoring_bp
+    from routes.public import public_bp
+    from routes.payment_vault import payment_vault_bp
+    from routes.api_analytics import api_analytics_bp
+    from routes.api_docs import api_docs_bp
+    from routes.graphql import graphql_bp
+    
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(main_bp)
+    app.register_blueprint(sales_bp)
+    app.register_blueprint(products_bp)
+    app.register_blueprint(customers_bp)
+    app.register_blueprint(reports_bp)
+    # app.register_blueprint(settings_bp)
+    app.register_blueprint(api_bp)
+    app.register_blueprint(api_enhanced_bp)
+    app.register_blueprint(suppliers_bp)
+    app.register_blueprint(purchases_bp)
+    app.register_blueprint(expenses_bp)
+    app.register_blueprint(ledger_bp)
+    app.register_blueprint(owner_bp)
+    app.register_blueprint(payments_bp)
+    # app.register_blueprint(notifications_bp)
+    app.register_blueprint(warehouse_bp)
+    app.register_blueprint(language_bp)
+    if _ai_enabled:
+        app.register_blueprint(ai_bp)
+    app.register_blueprint(users_bp)
+    app.register_blueprint(cheques_bp)
+    app.register_blueprint(returns_bp)
+    app.register_blueprint(advanced_ledger_bp)
+    app.register_blueprint(admin_ledger_bp)
+    app.register_blueprint(gamification_bp)
+    app.register_blueprint(whatsapp_bp)
+    app.register_blueprint(monitoring_bp)
+    app.register_blueprint(public_bp)
+    app.register_blueprint(payment_vault_bp)
+    app.register_blueprint(api_analytics_bp)
+    app.register_blueprint(api_docs_bp)
+    app.register_blueprint(graphql_bp)
+    
+    # Error Handlers
+    # from utils.error_handlers import register_error_handlers
+    # register_error_handlers(app)
+    
+    # Context Processors
+    @app.context_processor
+    def utility_processor():
+        from utils.helpers import format_currency, timeago
+        from utils.constants import CURRENCIES
+        from utils.i18n import t, is_rtl, get_current_language
+        
+        def get_currency_symbol(code):
+            for c_code, data in CURRENCIES:
+                if c_code == code:
+                    return data.get('symbol', code)
+            return code
+            
+        return {
+            'format_currency': format_currency,
+            'timeago': timeago,
+            't': t,
+            'is_rtl': is_rtl,
+            'get_current_language': get_current_language,
+            'get_currency_symbol': get_currency_symbol,
+            'company_name': app.config.get('COMPANY_NAME', 'Garage Manager'),
+            'current_year': datetime.now().year,
+            'now': datetime.now()
+        }
+        
+    @app.before_request
+    def before_request():
+        g.request_start_time = time.time()
+        g.request_id = str(uuid.uuid4())
+        
+        # Determine language (placeholder)
+        g.lang_code = 'ar'
+        g.rtl = True
+        
+    # Security Headers
+    @app.after_request
+    def add_security_headers(response):
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        return response
 
+    # Models Import (to ensure they are known to SQLAlchemy)
     from models import User, Customer, ProductCategory
     
+    # Initialize Listeners
     try:
         from models.events import register_all_listeners
         with app.app_context():
             register_all_listeners()
-            try:
-                legacy_updates = ProductCategory.query.filter(ProductCategory.is_active.is_(None)).update(
-                    {"is_active": True}, synchronize_session=False
-                )
-                if legacy_updates:
-                    db.session.commit()
-                    app.logger.info(f"[OK] Activated {legacy_updates} legacy product categories")
-            except Exception as legacy_error:
-                db.session.rollback()
-                app.logger.warning(f"Failed to activate legacy product categories: {legacy_error}")
-
-            app.logger.info("[OK] Event listeners activated")
-    except Exception as e:
-        app.logger.warning(f"Failed to register event listeners: {e}")
+    except ImportError:
+        app.logger.warning("Event listeners not available")
     
-    @login_manager.user_loader
-    def load_user(user_id):
-        return db.session.get(User, int(user_id))
-    
-    login_manager.login_view = 'auth.login'
-    login_manager.login_message = 'الرجاء تسجيل الدخول للوصول لهذه الصفحة'
-    login_manager.login_message_category = 'warning'
-    
-    @app.before_request
-    def attach_request_id():
-        g.request_id = request.headers.get('X-Request-Id') or uuid.uuid4().hex
-    
-    @app.after_request
-    def add_request_id_header(response):
-        if hasattr(g, 'request_id'):
-            response.headers['X-Request-Id'] = g.request_id
-        return response
-    
-    @app.before_request
-    def update_last_seen():
-        if current_user.is_authenticated:
-            try:
-                if not current_user.last_seen or \
-                   (datetime.now(timezone.utc) - current_user.last_seen).total_seconds() > 300:
-                    current_user.last_seen = datetime.now(timezone.utc)
-                    db.session.commit()
-            except Exception:
-                db.session.rollback()
-    
-    @app.before_request
-    def check_session_timeout():
-        """التحقق من انتهاء الجلسة بسبب عدم النشاط"""
-        if current_user.is_authenticated and request.endpoint not in ['auth.login', 'auth.logout', 'static']:
-            from flask import session
-            last_activity = session.get('last_activity')
-            
-            if last_activity:
-                try:
-                    last_time = datetime.fromisoformat(last_activity)
-                    inactive_duration = (datetime.now() - last_time).total_seconds()
-                    
-                    if inactive_duration > 1800:
-                        from flask_login import logout_user
-                        logout_user()
-                        session.pop('last_activity', None)
-                        flash('انتهت الجلسة بسبب عدم النشاط لمدة 30 دقيقة', 'warning')
-                        return redirect(url_for('auth.login'))
-                except Exception:
-                    pass
-            
-            session['last_activity'] = datetime.now().isoformat()
-    
-    @app.after_request
-    def security_headers(response):
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-        response.headers['X-XSS-Protection'] = '1; mode=block'
-        
-        if not app.config.get('DEBUG'):
-            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-        
-        csp_directives = [
-            "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net cdnjs.cloudflare.com",
-            "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com fonts.googleapis.com",
-            "img-src 'self' data: https: upload.wikimedia.org",
-            "media-src 'self' data:",
-            "font-src 'self' fonts.gstatic.com cdnjs.cloudflare.com",
-            "connect-src 'self'",
-            "frame-ancestors 'self'",
-        ]
-        response.headers['Content-Security-Policy'] = "; ".join(csp_directives)
-        
-        response.headers.pop('Server', None)
-        response.headers.pop('X-Powered-By', None)
-        
-        if request.path.startswith('/auth/') or request.path.startswith('/api/') or request.path.startswith('/payment-vault/'):
-            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, private'
-            response.headers['Pragma'] = 'no-cache'
-            response.headers['Expires'] = '0'
-        elif request.path.startswith('/static/'):
-            response.cache_control.max_age = 31536000
-            response.cache_control.public = True
-        
-        return response
-    
-    @app.context_processor
-    def inject_globals():
-        from utils.constants import CURRENCIES
-        from utils.i18n import t, get_current_language, is_rtl
-        
-        return {
-            'app_name': app.config.get('COMPANY_NAME', 'Warehouse Manager'),
-            'app_name_ar': app.config.get('COMPANY_NAME_AR', 'نظام المستودع'),
-            'currencies': CURRENCIES,
-            'now': datetime.now(timezone.utc),
-            't': t,
-            'current_language': get_current_language(),
-            'is_rtl': is_rtl(),
-        }
-    
-    @app.context_processor
-    def inject_permissions():
-        def has_permission(permission_code):
-            if not current_user.is_authenticated:
-                return False
-            return current_user.has_permission(permission_code)
-        
-        def can_see_costs():
-            if not current_user.is_authenticated:
-                return False
-            return current_user.can_see_costs()
-        
-        return {
-            'has_permission': has_permission,
-            'can_see_costs': can_see_costs,
-        }
-    
-    @app.template_filter('currency')
-    def currency_filter(amount, currency='AED', lang='ar'):
-        from utils.helpers import format_currency_display
-        return format_currency_display(amount, currency, lang)
-    
-    @app.template_filter('number')
-    def number_filter(value, decimals=2):
-        try:
-            if value is None:
-                return '0.00'
-            d = Decimal(str(value))
-            return f'{d:,.{decimals}f}'
-        except Exception:
-            return str(value)
-    
-    @app.template_filter('date_format')
-    def date_format_filter(value, format='%Y-%m-%d'):
-        if not value:
-            return ''
-        if isinstance(value, str):
-            return value
-        return value.strftime(format)
-    
-    @app.template_filter('datetime_format')
-    def datetime_format_filter(value, format='%Y-%m-%d %H:%M'):
-        if not value:
-            return ''
-        if isinstance(value, str):
-            return value
-        return value.strftime(format)
-    
-    @app.errorhandler(403)
-    def forbidden(e):
-        app.logger.warning(f'403 Forbidden: {request.url} | User: {current_user.username if current_user.is_authenticated else "Anonymous"}')
-        if request.accept_mimetypes.accept_json:
-            return {'error': 'Forbidden', 'message': 'ليس لديك صلاحية للوصول'}, 403
-        return render_template('errors/403.html'), 403
-    
-    @app.errorhandler(404)
-    def not_found(e):
-        app.logger.info(f'404 Not Found: {request.url}')
-        if request.accept_mimetypes.accept_json:
-            return {'error': 'Not Found', 'message': 'الصفحة غير موجودة'}, 404
-        return render_template('errors/404.html'), 404
-    
-    @app.errorhandler(429)
-    def rate_limit_exceeded(e):
-        app.logger.warning(f'429 Rate Limit: {request.url} | IP: {request.remote_addr}')
-        if request.accept_mimetypes.accept_json:
-            return {'error': 'Too Many Requests', 'message': 'تجاوزت الحد المسموح من الطلبات. حاول لاحقاً'}, 429
-        flash('تم تجاوز الحد المسموح من الطلبات. يرجى المحاولة لاحقاً.', 'warning')
-        return redirect(url_for('main.dashboard'))
-    
-    @app.errorhandler(500)
-    def internal_error(e):
-        db.session.rollback()
-        
-        import uuid
-        error_id = uuid.uuid4().hex[:8]
-        
-        app.logger.error(
-            f'❌ 500 Internal Error [ID: {error_id}]\n'
-            f'URL: {request.url}\n'
-            f'Method: {request.method}\n'
-            f'User: {current_user.username if current_user.is_authenticated else "Anonymous"}\n'
-            f'IP: {request.remote_addr}\n'
-            f'Error: {str(e)}',
-            exc_info=True
-        )
-        
-        if request.accept_mimetypes.accept_json:
-            return {'error': 'Internal Server Error', 'error_id': error_id}, 500
-        
-        return render_template('errors/500.html', error_id=error_id), 500
-    
-    @app.errorhandler(Exception)
-    def handle_unexpected_error(e):
-        import uuid
-        import traceback
-        
-        error_id = uuid.uuid4().hex[:8]
-        
-        app.logger.critical(
-            f'💥 Unexpected Error [ID: {error_id}]\n'
-            f'Type: {type(e).__name__}\n'
-            f'URL: {request.url}\n'
-            f'Method: {request.method}\n'
-            f'User: {current_user.username if current_user.is_authenticated else "Anonymous"}\n'
-            f'IP: {request.remote_addr}\n'
-            f'Traceback:\n{traceback.format_exc()}',
-            exc_info=True
-        )
-        
-        db.session.rollback()
-        
-        if request.accept_mimetypes.accept_json:
-            return {
-                'error': 'An unexpected error occurred',
-                'error_id': error_id,
-                'message': 'حدث خطأ غير متوقع. تم تسجيل المشكلة.'
-            }, 500
-        
-        flash(f'حدث خطأ غير متوقع. رقم المرجع: {error_id}', 'danger')
-        return render_template('errors/500.html', error_id=error_id), 500
-    
-    register_blueprints(app)
-    
-    register_cli(app)
-    register_compression_cli(app)
+    # Register CLI Commands
+    # from cli_commands import register_cli
+    # register_cli(app)
+    # register_compression_cli(app)
     
     try:
         from cli_commands import register_cli_commands
@@ -359,339 +213,14 @@ def create_app(config_class=Config):
     return app
 
 
-def register_blueprints(app):
-    from routes.auth import auth_bp
-    from routes.main import main_bp
-    from routes.owner import owner_bp
-    from routes.payment_vault import payment_vault_bp
-    
-    try:
-        from routes.public import public_bp
-        app.register_blueprint(public_bp)
-    except Exception as e:
-        app.logger.warning(f'public_bp not registered: {e}')
-    
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(main_bp)
-    app.register_blueprint(owner_bp)
-    
-    try:
-        from routes.customers import customers_bp
-        app.register_blueprint(customers_bp)
-    except Exception as e:
-        app.logger.warning(f'customers_bp not registered: {e}')
-    
-    try:
-        from routes.suppliers import suppliers_bp
-        app.register_blueprint(suppliers_bp)
-    except Exception as e:
-        app.logger.warning(f'suppliers_bp not registered: {e}')
-    
-    try:
-        from routes.products import products_bp
-        app.register_blueprint(products_bp)
-    except Exception as e:
-        app.logger.warning(f'products_bp not registered: {e}')
-    
-    try:
-        from routes.sales import sales_bp
-        app.register_blueprint(sales_bp)
-    except Exception as e:
-        app.logger.warning(f'sales_bp not registered: {e}')
-    
-    try:
-        from routes.purchases import purchases_bp
-        app.register_blueprint(purchases_bp)
-    except Exception as e:
-        app.logger.warning(f'purchases_bp not registered: {e}')
-    
-    try:
-        from routes.payments import payments_bp
-        app.register_blueprint(payments_bp)
-    except Exception as e:
-        app.logger.warning(f'payments_bp not registered: {e}')
-    
-    try:
-        app.register_blueprint(payment_vault_bp)
-    except Exception as e:
-        app.logger.warning(f'payment_vault_bp not registered: {e}')
-    
-    try:
-        from routes.warehouse import warehouse_bp
-        app.register_blueprint(warehouse_bp)
-    except Exception as e:
-        app.logger.warning(f'warehouse_bp not registered: {e}')
-    
-    try:
-        from routes.reports import reports_bp
-        app.register_blueprint(reports_bp)
-    except Exception as e:
-        app.logger.warning(f'reports_bp not registered: {e}')
-    
-    try:
-        from routes.api import api_bp
-        app.register_blueprint(api_bp)
-    except Exception as e:
-        app.logger.warning(f'api_bp not registered: {e}')
-    
-    try:
-        from routes.ai import ai_bp
-        app.register_blueprint(ai_bp)
-    except Exception as e:
-        app.logger.warning(f'ai_bp not registered: {e}')
-    
-    try:
-        from routes.language import language_bp
-        app.register_blueprint(language_bp)
-    except Exception as e:
-        app.logger.warning(f'language_bp not registered: {e}')
-    
-    try:
-        from routes.users import users_bp
-        app.register_blueprint(users_bp)
-    except Exception as e:
-        app.logger.warning(f'users_bp not registered: {e}')
-    
-    try:
-        from routes.expenses import expenses_bp
-        app.register_blueprint(expenses_bp)
-    except Exception as e:
-        app.logger.warning(f'expenses_bp not registered: {e}')
-    
-    try:
-        from routes.cheques import cheques_bp
-        app.register_blueprint(cheques_bp)
-    except Exception as e:
-        app.logger.warning(f'cheques_bp not registered: {e}')
-    
-    try:
-        from routes.ledger import ledger_bp
-        app.register_blueprint(ledger_bp)
-    except Exception as e:
-        app.logger.warning(f'ledger_bp not registered: {e}')
-    
-    try:
-        from routes.advanced_ledger import advanced_ledger_bp
-        app.register_blueprint(advanced_ledger_bp)
-    except Exception as e:
-        app.logger.warning(f'advanced_ledger_bp not registered: {e}')
-    
-    try:
-        from routes.admin_ledger import admin_ledger_bp
-        app.register_blueprint(admin_ledger_bp)
-    except Exception as e:
-        app.logger.warning(f'admin_ledger_bp not registered: {e}')
-    
-    try:
-        from routes.api_docs import api_docs_bp
-        app.register_blueprint(api_docs_bp)
-    except Exception as e:
-        app.logger.warning(f'api_docs_bp not registered: {e}')
-    
-    try:
-        from routes.monitoring import monitoring_bp
-        app.register_blueprint(monitoring_bp)
-    except Exception as e:
-        app.logger.warning(f'monitoring_bp not registered: {e}')
-    
-    try:
-        from routes.graphql import graphql_bp
-        app.register_blueprint(graphql_bp)
-    except Exception as e:
-        app.logger.warning(f'graphql_bp not registered: {e}')
-    
-    try:
-        from routes.gamification import gamification_bp
-        app.register_blueprint(gamification_bp)
-    except Exception as e:
-        app.logger.warning(f'gamification_bp not registered: {e}')
-    
-    try:
-        from routes.whatsapp import whatsapp_bp
-        app.register_blueprint(whatsapp_bp)
-    except Exception as e:
-        app.logger.warning(f'whatsapp_bp not registered: {e}')
-    
-    try:
-        from routes.api_enhanced import api_enhanced_bp
-        app.register_blueprint(api_enhanced_bp)
-    except Exception as e:
-        app.logger.warning(f'api_enhanced_bp not registered: {e}')
-    
-    try:
-        from routes.api_analytics import api_analytics_bp
-        app.register_blueprint(api_analytics_bp)
-    except Exception as e:
-        app.logger.warning(f'api_analytics_bp not registered: {e}')
-    
-def register_cli(app):
-    import click
-
-    @app.cli.command()
-    def init_db():
-        db.create_all()
-        click.echo('Database initialized')
-    
-    @app.cli.command()
-    def add_indexes():
-        """إضافة performance indexes للجداول"""
-        click.echo('Adding performance indexes...')
-        
-        indexes = [
-            "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)",
-            "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)",
-            "CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active)",
-            "CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)",
-            "CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone)",
-            "CREATE INDEX IF NOT EXISTS idx_products_name ON products(name)",
-            "CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku)",
-            "CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(sale_date)",
-            "CREATE INDEX IF NOT EXISTS idx_sales_customer_id ON sales(customer_id)",
-            "CREATE INDEX IF NOT EXISTS idx_sales_status ON sales(status)"
-        ]
-        
-        try:
-            for idx_sql in indexes:
-                try:
-                    db.session.execute(db.text(idx_sql))
-                    click.echo(f'✓ {idx_sql.split("idx_")[1].split(" ")[0]}')
-                except Exception as e:
-                    click.echo(f'⚠ {idx_sql}: {e}')
-            
-            db.session.commit()
-            click.echo('Performance indexes added successfully')
-        except Exception as e:
-            db.session.rollback()
-            click.echo(f'Error adding indexes: {e}')
-    
-    @app.cli.command()
-    def seed_data():
-        from models import Role, Permission, User, Currency, Warehouse, ExpenseCategory
-        from utils.constants import PERMISSIONS, CURRENCIES
-        from services.gl_service import GLService
-        
-        click.echo('Seeding database...')
-        
-        GLService.ensure_core_accounts()
-        click.echo('GL accounts verified')
-        
-        for code, names in PERMISSIONS.items():
-            perm = Permission.query.filter_by(code=code).first()
-            if not perm:
-                perm = Permission(
-                    code=code,
-                    name=names['en'],
-                    name_ar=names['ar']
-                )
-                db.session.add(perm)
-        
-        db.session.commit()
-        
-        all_permissions = Permission.query.all()
-        manager_permissions = [p for p in all_permissions if p.code != 'manage_users' and p.code != 'manage_settings']
-        seller_permissions = [p for p in all_permissions if p.code in ['manage_sales', 'manage_payments']]
-        
-        roles_data = [
-            ('super_admin', 'Super Admin', 'سوبر أدمن', all_permissions),
-            ('manager', 'Manager', 'مدير', manager_permissions),
-            ('seller', 'Seller', 'بائع', seller_permissions),
-        ]
-        
-        for slug, name, name_ar, perms in roles_data:
-            role = Role.query.filter_by(slug=slug).first()
-            if not role:
-                role = Role(slug=slug, name=name, name_ar=name_ar)
-                role.permissions = perms
-                db.session.add(role)
-        
-        db.session.commit()
-        
-        owner_username = app.config.get('OWNER_USERNAME', 'owner')
-        owner_password = app.config.get('OWNER_PASSWORD', 'owner@2025!secure')
-        owner_email = app.config.get('OWNER_EMAIL', 'owner@system.local')
-        
-        owner = User.query.filter_by(is_owner=True).first()
-        
-        if not owner:
-            admin_role = Role.query.filter_by(slug='super_admin').first()
-            
-            owner = User(
-                username=owner_username,
-                email=owner_email,
-                full_name='System Owner',
-                full_name_ar='مالك النظام',
-                role_id=admin_role.id,
-                is_owner=True,
-                is_active=True,
-                email_verified=True
-            )
-            owner.set_password(owner_password)
-            db.session.add(owner)
-            
-            click.echo(f'Owner account created with username: {owner_username}')
-        
-        admin_role = Role.query.filter_by(slug='super_admin').first()
-        admin = User.query.filter_by(username='admin', is_owner=False).first()
-        
-        if not admin:
-            admin = User(
-                username='admin',
-                email='admin@example.com',
-                full_name='System Administrator',
-                full_name_ar='مدير النظام',
-                role_id=admin_role.id,
-                is_active=True
-            )
-            admin.set_password('admin123')
-            db.session.add(admin)
-        
-        for code, data in CURRENCIES:
-            currency = Currency.query.filter_by(code=code).first()
-            if not currency:
-                currency = Currency(
-                    code=code,
-                    name=data['en'],
-                    name_ar=data['ar'],
-                    symbol=data.get('symbol', code),
-                    is_base=(code == 'AED')
-                )
-                db.session.add(currency)
-        
-        warehouse = Warehouse.query.first()
-        if not warehouse:
-            warehouse = Warehouse(
-                name='Main Warehouse',
-                name_ar='المستودع الرئيسي',
-                is_main=True,
-                is_active=True
-            )
-            db.session.add(warehouse)
-        
-        expense_categories = [
-            ('رواتب', 'Salaries', '6100'),
-            ('إيجار', 'Rent', '6200'),
-            ('كهرباء وماء', 'Utilities', '6300'),
-            ('صيانة', 'Maintenance', '6400'),
-            ('تسويق', 'Marketing', '6500'),
-            ('مواصلات', 'Transportation', '6600'),
-            ('أخرى', 'Other', '6000'),
-        ]
-        
-        for name_ar, name, gl_code in expense_categories:
-            cat = ExpenseCategory.query.filter_by(name=name).first()
-            if not cat:
-                cat = ExpenseCategory(name=name, name_ar=name_ar, gl_account_code=gl_code)
-                db.session.add(cat)
-        
-        db.session.commit()
-        
-        click.echo('Database seeded successfully')
-        click.echo(f'Owner credentials -> username: {owner_username}, password: {owner_password}')
-        click.echo('Admin credentials -> username: admin, password: admin123')
-
-
 if __name__ == '__main__':
-    app = create_app()
+    print("DEBUG: Entering main block...", flush=True)
+    try:
+        app = create_app()
+        print("DEBUG: App created successfully", flush=True)
+    except Exception as e:
+        print(f"DEBUG: Failed to create app: {e}", flush=True)
+        raise e
     
     from services.backup_service import BackupService
     BackupService.initialize()
@@ -762,9 +291,9 @@ if __name__ == '__main__':
     except:
         pass
     
-    port = int(os.environ.get('PORT', 8080))
+    port = int(os.environ.get('PORT', 5000))
     host = os.environ.get('HOST', '0.0.0.0')
-    debug_mode = app.config.get('DEBUG', False)
+    debug_mode = True  # Force debug in dev environment
     
     app.logger.info("Starting UAE-Sale System")
     app.logger.info("Host: %s", host)

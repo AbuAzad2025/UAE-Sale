@@ -150,8 +150,8 @@ def create():
                 seller=current_user,
                 lines_data=lines_data,
                 warehouse_id=warehouse_id,  # ← تمرير المستودع
-                currency='AED',  # Invoice always in AED
-                user_exchange_rate=1.0,  # Always 1 for AED
+                currency=currency,
+                user_exchange_rate=user_exchange_rate,
                 discount_amount=discount_amount,
                 shipping_cost=shipping_cost,
                 tax_rate=tax_rate,
@@ -355,6 +355,18 @@ def archive(id):
     sale = Sale.query.get_or_404(id)
     
     try:
+        # عكس القيد المحاسبي قبل الأرشفة (إذا لم تكن ملغاة)
+        if sale.status != 'cancelled':
+            from services.gl_service import GLService
+            try:
+                GLService.reverse_entry(
+                    reference_type='Sale',
+                    reference_id=sale.id,
+                    description=f'Reverse Sale {sale.sale_number} (Archived)'
+                )
+            except Exception as e:
+                current_app.logger.error(f'Failed to reverse GL entry for archived sale {sale.id}: {e}')
+
         archive_service = ArchiveService()
         archive_service.archive_record('sales', sale, reason='تم أرشفة فاتورة المبيعات')
         create_audit_log('archive', 'sales', sale.id)

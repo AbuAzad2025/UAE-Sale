@@ -144,6 +144,11 @@
               <span class="fas fa-lock"></span>
             </div>
           </div>
+          <div class="input-group-append">
+            <button type="button" class="input-group-text btn btn-link text-secondary" id="togglePassword" aria-label="{{ t('Show/Hide password') }}" style="text-decoration: none;">
+              <i class="fas fa-eye" aria-hidden="true"></i>
+            </button>
+          </div>
         </div>
 
         <div class="row">
@@ -175,6 +180,24 @@
 <script src="{{ url_for('static', filename='adminlte/plugins/jquery/jquery.min.js') }}"></script>
 <script src="{{ url_for('static', filename='adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ url_for('static', filename='adminlte/js/adminlte.min.js') }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var pwd = document.getElementById('password');
+    var toggle = document.getElementById('togglePassword');
+    if (pwd && toggle) {
+      toggle.addEventListener('click', function () {
+        var isText = pwd.type === 'text';
+        pwd.type = isText ? 'password' : 'text';
+        var icon = toggle.querySelector('i');
+        if (icon) {
+          icon.classList.toggle('fa-eye');
+          icon.classList.toggle('fa-eye-slash');
+        }
+        toggle.setAttribute('aria-pressed', (!isText).toString());
+      });
+    }
+  });
+</script>
 <style>
   .auth-input-group .form-control {
     min-height: 56px;

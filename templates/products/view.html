@@ -69,15 +69,43 @@
           
           <dt class="col-sm-4">الفئة:</dt>
           <dd class="col-sm-8">{{ product.category.name if product.category else '-' }}</dd>
+
+          <dt class="col-sm-4">التاجر المالك:</dt>
+          <dd class="col-sm-8 text-primary">{{ product.merchant_customer.name if product.merchant_customer else '-' }}</dd>
+
+          {% if product.partner_shares %}
+          <dt class="col-sm-4">الشركاء:</dt>
+          <dd class="col-sm-8">
+            <ul class="list-unstyled mb-0">
+              {% for share in product.partner_shares %}
+              <li><i class="fas fa-user-tag text-info"></i> {{ share.partner_customer.name }} ({{ share.percentage }}%)</li>
+              {% endfor %}
+            </ul>
+          </dd>
+          {% endif %}
           
           <dt class="col-sm-4">سعر التكلفة:</dt>
           <dd class="col-sm-8">{{ "{:,.2f}".format(product.cost_price or 0) }} AED</dd>
           
-          <dt class="col-sm-4">سعر التاجر:</dt>
-          <dd class="col-sm-8">{{ "{:,.2f}".format(product.merchant_price or 0) }} AED</dd>
+          <dt class="col-sm-4">خصم التاجر:</dt>
+          <dd class="col-sm-8">
+            {% if product.merchant_price %}
+              {{ product.merchant_price }}% 
+              <span class="text-muted">({{ "{:,.2f}".format(product.regular_price * (1 - product.merchant_price/100)) }} AED)</span>
+            {% else %}
+              -
+            {% endif %}
+          </dd>
           
-          <dt class="col-sm-4">سعر الشريك:</dt>
-          <dd class="col-sm-8">{{ "{:,.2f}".format(product.partner_price or 0) }} AED</dd>
+          <dt class="col-sm-4">خصم الشريك:</dt>
+          <dd class="col-sm-8">
+            {% if product.partner_price %}
+              {{ product.partner_price }}%
+              <span class="text-muted">({{ "{:,.2f}".format(product.regular_price * (1 - product.partner_price/100)) }} AED)</span>
+            {% else %}
+              -
+            {% endif %}
+          </dd>
           
           <dt class="col-sm-4">الكفالة:</dt>
           <dd class="col-sm-8">{{ product.warranty_period or 0 }} {{ product.warranty_unit or 'شهر' }}</dd>
@@ -118,13 +146,21 @@
             {% for movement in product.stock_movements[:10] %}
             <tr>
               <td>
-                {% if movement.movement_type == 'in' %}
+                {% if movement.movement_type in ['in', 'purchase'] %}
                 <span class="badge badge-success">إدخال</span>
-                {% else %}
+                {% elif movement.movement_type in ['out', 'sale'] %}
                 <span class="badge badge-danger">إخراج</span>
+                {% elif movement.movement_type == 'adjustment' %}
+                    {% if movement.quantity > 0 %}
+                    <span class="badge badge-info">تعديل (إضافة)</span>
+                    {% else %}
+                    <span class="badge badge-warning">تعديل (خصم)</span>
+                    {% endif %}
+                {% else %}
+                <span class="badge badge-secondary">{{ movement.movement_type }}</span>
                 {% endif %}
               </td>
-              <td>{{ movement.quantity }}</td>
+              <td dir="ltr" class="text-left">{{ movement.quantity }}</td>
               <td>{{ movement.created_at.strftime('%Y-%m-%d') }}</td>
               <td>{{ movement.reference or '-' }}</td>
             </tr>

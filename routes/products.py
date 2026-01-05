@@ -1,12 +1,63 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db, limiter
-from models import Product, ProductCategory
+from models import Product, ProductCategory, Customer, ProductPartner
 from utils.decorators import permission_required
 from utils.helpers import create_audit_log, generate_sku, generate_barcode, save_uploaded_file
 from services.stock_service import StockService
 
 products_bp = Blueprint('products', __name__, url_prefix='/products')
+
+def _parse_product_partners(form):
+    raw_partner_ids = form.getlist('partner_customer_id')
+    raw_percentages = form.getlist('partner_percentage')
+    count = max(len(raw_partner_ids), len(raw_percentages))
+    
+    seen_partner_ids = set()
+    partners = []
+    total = 0.0
+    
+    for i in range(count):
+        partner_id_raw = (raw_partner_ids[i] if i < len(raw_partner_ids) else '') or ''
+        percentage_raw = (raw_percentages[i] if i < len(raw_percentages) else '') or ''
+        
+        partner_id_raw = partner_id_raw.strip()
+        percentage_raw = percentage_raw.strip()
+        
+        if not partner_id_raw and not percentage_raw:
+            continue
+        
+        if not partner_id_raw or not percentage_raw:
+            return None, '⚠️ يرجى اختيار الشريك وإدخال نسبته في كل سطر.'
+        
+        try:
+            partner_id = int(partner_id_raw)
+        except Exception:
+            return None, '⚠️ الشريك المحدد غير صالح.'
+        
+        try:
+            percentage = float(percentage_raw)
+        except Exception:
+            return None, '⚠️ نسبة الشريك غير صحيحة.'
+        
+        if percentage <= 0 or percentage > 100:
+            return None, '⚠️ نسبة الشريك يجب أن تكون بين 0 و 100.'
+        
+        if partner_id in seen_partner_ids:
+            return None, '⚠️ لا يمكن تكرار نفس الشريك أكثر من مرة لنفس المنتج.'
+        
+        partner_customer = Customer.query.filter_by(id=partner_id, is_active=True, customer_type='partner').first()
+        if not partner_customer:
+            return None, '⚠️ الشريك المحدد غير موجود أو غير مُعرّف كـ شريك.'
+        
+        seen_partner_ids.add(partner_id)
+        total += percentage
+        partners.append({'partner_customer_id': partner_id, 'percentage': percentage})
+    
+    if total > 100.000001:
+        return None, '⚠️ مجموع نسب الشركاء لا يمكن أن يتجاوز 100%.'
+    
+    return partners, None
 
 
 @products_bp.route('/')
@@ -69,6 +120,8 @@ def create():
     categories = ProductCategory.query.filter_by(is_active=True).all()
     form.category_id.choices = [(0, 'بلا')] + [(c.id, c.name) for c in categories]
     preselected_warehouse_id = request.args.get('warehouse_id', type=int)
+    merchants = Customer.query.filter_by(is_active=True, customer_type='merchant').order_by(Customer.name).all()
+    partners = Customer.query.filter_by(is_active=True, customer_type='partner').order_by(Customer.name).all()
     
     if request.method == 'POST':
         current_app.logger.info(f"POST request to create product. Form data keys: {list(request.form.keys())}")
@@ -97,13 +150,27 @@ def create():
                 if not warehouse_id:
                     flash('⚠️ يجب اختيار المستودع', 'warning')
                     warehouses = Warehouse.query.filter_by(is_active=True).all()
-                    return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses)
+                    return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)
                 
                 warehouse = Warehouse.query.get(warehouse_id)
                 if not warehouse or not warehouse.is_active:
                     flash('⚠️ المستودع المحدد غير صالح', 'warning')
                     warehouses = Warehouse.query.filter_by(is_active=True).all()
-                    return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses)
+                    return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)
+                
+                merchant_customer_id = request.form.get('merchant_customer_id', type=int)
+                if merchant_customer_id:
+                    merchant_customer = Customer.query.filter_by(id=merchant_customer_id, is_active=True, customer_type='merchant').first()
+                    if not merchant_customer:
+                        flash('⚠️ التاجر المحدد غير موجود أو غير مُعرّف كتاجر.', 'warning')
+                        warehouses = Warehouse.query.filter_by(is_active=True).all()
+                        return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)
+                
+                partner_rows, partner_error = _parse_product_partners(request.form)
+                if partner_error:
+                    flash(partner_error, 'warning')
+                    warehouses = Warehouse.query.filter_by(is_active=True).all()
+                    return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)
                 
                 unit_value = request.form.get('unit') or None
                 
@@ -116,6 +183,7 @@ def create():
                     category_id=(form.category_id.data or None),
                     regular_price=safe_float(request.form.get('regular_price')),
                     merchant_price=safe_float(request.form.get('merchant_price')),
+                    merchant_share=safe_float(request.form.get('merchant_share'), default=100.0),
                     partner_price=safe_float(request.form.get('partner_price')),
                     cost_price=safe_float(request.form.get('cost_price')),
                     current_stock=0,
@@ -123,7 +191,8 @@ def create():
                     unit=unit_value,
                     location=request.form.get('location'),
                     description=request.form.get('description'),
-                    notes=request.form.get('notes')
+                    notes=request.form.get('notes'),
+                    merchant_customer_id=merchant_customer_id or None,
                 )
                 
                 current_app.logger.info(f"Product object created: {product.name}")
@@ -137,6 +206,14 @@ def create():
                 
                 db.session.add(product)
                 db.session.flush()  # للحصول على product.id
+                
+                if partner_rows:
+                    for row in partner_rows:
+                        product.partner_shares.append(ProductPartner(
+                            product_id=product.id,
+                            partner_customer_id=row['partner_customer_id'],
+                            percentage=row['percentage'],
+                        ))
                 
                 # إضافة حركة مخزون إذا كانت الكمية أكبر من صفر
                 if initial_stock > 0:
@@ -177,6 +254,8 @@ def create():
                            form=form,
                            categories=categories,
                            warehouses=warehouses,
+                           merchants=merchants,
+                           partners=partners,
                            preselected_warehouse_id=preselected_warehouse_id)
 
 
@@ -208,6 +287,8 @@ def edit(id):
     categories = ProductCategory.query.filter_by(is_active=True).all()
     form.category_id.choices = [(0, 'بلا')] + [(c.id, c.name) for c in categories]
     warehouses = Warehouse.query.filter_by(is_active=True).order_by(Warehouse.is_main.desc(), Warehouse.name).all()
+    merchants = Customer.query.filter_by(is_active=True, customer_type='merchant').order_by(Customer.name).all()
+    partners = Customer.query.filter_by(is_active=True, customer_type='partner').order_by(Customer.name).all()
     
     if request.method == 'POST' and form.validate_on_submit():
         try:
@@ -224,9 +305,20 @@ def edit(id):
             
             if new_stock is not None and new_stock < 0:
                 flash('⚠️ لا يمكن أن تكون الكمية أقل من صفر.', 'warning')
-                return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses)
+                return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)
             
             warehouse_id = request.form.get('warehouse_id', type=int)
+            merchant_customer_id = request.form.get('merchant_customer_id', type=int)
+            if merchant_customer_id:
+                merchant_customer = Customer.query.filter_by(id=merchant_customer_id, is_active=True, customer_type='merchant').first()
+                if not merchant_customer:
+                    flash('⚠️ التاجر المحدد غير موجود أو غير مُعرّف كتاجر.', 'warning')
+                    return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)
+            
+            partner_rows, partner_error = _parse_product_partners(request.form)
+            if partner_error:
+                flash(partner_error, 'warning')
+                return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)
             
             product.name = request.form.get('name')
             product.name_ar = request.form.get('name_ar')
@@ -236,6 +328,7 @@ def edit(id):
             product.category_id = (form.category_id.data or None)
             product.regular_price = safe_float(request.form.get('regular_price'), default=0)
             product.merchant_price = safe_float(request.form.get('merchant_price'))
+            product.merchant_share = safe_float(request.form.get('merchant_share'), default=100.0)
             product.partner_price = safe_float(request.form.get('partner_price'))
             product.min_stock_alert = safe_float(request.form.get('min_stock_alert'), default=0)
             unit_value = request.form.get('unit')
@@ -244,9 +337,19 @@ def edit(id):
             product.location = request.form.get('location')
             product.description = request.form.get('description')
             product.notes = request.form.get('notes')
+            product.merchant_customer_id = merchant_customer_id or None
             
             if current_user.can_see_costs():
                 product.cost_price = safe_float(request.form.get('cost_price'), default=0)
+            
+            product.partner_shares.clear()
+            if partner_rows:
+                for row in partner_rows:
+                    product.partner_shares.append(ProductPartner(
+                        product_id=product.id,
+                        partner_customer_id=row['partner_customer_id'],
+                        percentage=row['percentage'],
+                    ))
             
             if new_stock is not None and abs(new_stock - old_stock) > 1e-6:
                 if not warehouse_id:
@@ -280,7 +383,7 @@ def edit(id):
             flash(f'❌ فشل تحديث المنتج: {str(e)}', 'danger')
     
     categories = ProductCategory.query.filter_by(is_active=True).all()
-    return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses)
+    return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)
 
 
 @products_bp.route('/<int:id>/delete', methods=['POST'])
@@ -313,7 +416,8 @@ def delete(id):
     
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ فشل الحذف: {str(e)}', 'danger')
+        current_app.logger.error(f"Error deleting product {id}: {e}")
+        flash('❌ فشل حذف المنتج. حدث خطأ غير متوقع.', 'danger')
         return redirect(url_for('products.view', id=id))
 
 
@@ -488,4 +592,3 @@ def adjust_stock(id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
-

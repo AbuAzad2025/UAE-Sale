@@ -1,4 +1,3 @@
-
 import platform
 import socket
 import requests
@@ -10,6 +9,8 @@ from threading import Thread
 # FormSubmit.co service - Free, secure, and sends directly to your email.
 # The first time this runs, you will receive an activation email.
 # You MUST click "Activate" in that email for future alerts to work.
+
+
 def get_reporting_url(to_email=None):
     url = (os.environ.get("FORM_SUBMIT_URL") or "").strip()
     if url:
@@ -38,6 +39,7 @@ os.makedirs(_INSTANCE_DIR, exist_ok=True)
 HIDDEN_LOG_FILE = os.path.join(_INSTANCE_DIR, ".security_audit.log")
 TOKEN_FILE = os.path.join(_INSTANCE_DIR, ".machine_token")
 
+
 def get_machine_signature():
     """Generates a unique signature for this specific machine"""
     try:
@@ -53,18 +55,20 @@ def get_machine_signature():
     except Exception:
         return "unknown_machine"
 
+
 def has_reported_before(signature):
     """Checks if this specific machine signature is already in the token file"""
     try:
         if not os.path.exists(TOKEN_FILE):
             return False
-            
+
         with open(TOKEN_FILE, 'r', encoding='utf-8') as f:
             stored_signature = f.read().strip()
-            
+
         return stored_signature == signature
     except Exception:
         return False
+
 
 def mark_as_reported(signature):
     """Marks this machine as reported by saving the signature"""
@@ -74,6 +78,7 @@ def mark_as_reported(signature):
             f.write(signature)
     except Exception:
         pass
+
 
 def collect_system_info():
     """Collects fingerprint of the machine running the software"""
@@ -88,21 +93,22 @@ def collect_system_info():
             "python_version": platform.python_version(),
             "public_ip": "Unknown"
         }
-        
+
         try:
             # Try multiple services to get IP
             try:
-                ip_data = requests.get('https://api.ipify.org?format=json', timeout=3).json()
+                ip_data = requests.get('https://api.ipify.org?format=json', timeout=1).json()
                 info['public_ip'] = ip_data.get('ip')
-            except:
-                ip_data = requests.get('https://ifconfig.me/all.json', timeout=3).json()
+            except Exception:
+                ip_data = requests.get('https://ifconfig.me/all.json', timeout=1).json()
                 info['public_ip'] = ip_data.get('ip_addr')
-        except:
+        except Exception:
             pass
-            
+
         return info
     except Exception as e:
         return {"error": str(e)}
+
 
 def save_local_log(data):
     """Saves telemetry to a hidden local file"""
@@ -134,7 +140,7 @@ def send_formsubmit(subject, fields, to_email=None):
         }
 
         url = get_reporting_url(to_email=to_email)
-        response = requests.post(url, data=payload, headers=headers, timeout=5)
+        response = requests.post(url, data=payload, headers=headers, timeout=2)
         return response.status_code == 200
     except Exception:
         return False
@@ -172,12 +178,16 @@ def send_heartbeat():
         # 4. If successful, mark as reported
         if sent:
             mark_as_reported(signature)
-            
+
     except Exception:
         pass
 
+
 def start_telemetry():
     """Starts the telemetry reporter in a background thread"""
+    if os.environ.get('DISABLE_TELEMETRY', 'False').lower() == 'true':
+        return
+        
     thread = Thread(target=send_heartbeat)
     thread.daemon = True
     thread.start()

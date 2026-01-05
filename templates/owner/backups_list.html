@@ -265,11 +265,18 @@
                     title="استعادة كاملة لقاعدة البيانات">
               <i class="fas fa-undo mr-1"></i> استعادة كاملة
             </button>
+            {% if backup.filename.endswith('.dump') %}
             <button type="button" class="btn btn-sm btn-outline-warning" 
                     onclick="customRestore('{{ backup.filename }}')"
                     title="اختيار جداول محددة للاستعادة">
               <i class="fas fa-list-check mr-1"></i> استعادة مخصصة
             </button>
+            {% else %}
+            <button type="button" class="btn btn-sm btn-outline-secondary" disabled
+                    title="الاستعادة المخصصة تتطلب نسخة بصيغة .dump">
+              <i class="fas fa-list-check mr-1"></i> استعادة مخصصة
+            </button>
+            {% endif %}
           </div>
           {% endif %}
 
@@ -580,15 +587,51 @@ function verifyBackup(filename) {
     allowOutsideClick: false
   });
   
-  // TODO: إضافة endpoint للتحقق
-  setTimeout(() => {
-    Swal.fire({
-      title: 'نجح التحقق!',
-      text: 'النسخة الاحتياطية سليمة وجاهزة للاستخدام',
-      icon: 'success',
-      confirmButtonText: 'حسناً'
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  const urlTemplate = '{{ url_for("owner.verify_backup", filename="__FILENAME__") }}';
+  const url = urlTemplate.replace('__FILENAME__', encodeURIComponent(filename));
+
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': csrfToken,
+      'Accept': 'application/json'
+    }
+  })
+    .then(async (res) => {
+      let payload = {};
+      try { payload = await res.json(); } catch (e) { payload = {}; }
+      return { ok: res.ok, status: res.status, payload };
+    })
+    .then(({ ok, status, payload }) => {
+      if (!ok) {
+        const msg = (payload && payload.message) ? payload.message : `HTTP ${status}`;
+        throw new Error(msg);
+      }
+      if (payload && payload.verified) {
+        Swal.fire({
+          title: 'نجح التحقق!',
+          text: 'النسخة الاحتياطية سليمة وجاهزة للاستخدام',
+          icon: 'success',
+          confirmButtonText: 'حسناً'
+        });
+      } else {
+        Swal.fire({
+          title: 'فشل التحقق!',
+          text: 'النسخة الاحتياطية تالفة أو غير صالحة',
+          icon: 'error',
+          confirmButtonText: 'حسناً'
+        });
+      }
+    })
+    .catch((err) => {
+      Swal.fire({
+        title: 'خطأ!',
+        text: err && err.message ? err.message : 'تعذر التحقق من النسخة الاحتياطية',
+        icon: 'error',
+        confirmButtonText: 'حسناً'
+      });
     });
-  }, 1500);
 }
 </script>
 {% endblock %}

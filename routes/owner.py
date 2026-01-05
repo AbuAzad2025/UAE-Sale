@@ -843,6 +843,24 @@ def list_backups():
                          now=datetime.now())
 
 
+@owner_bp.route('/backups/verify/<filename>', methods=['POST'])
+@login_required
+@permission_required('manage_backups')
+def verify_backup(filename):
+    """التحقق من سلامة نسخة احتياطية"""
+    from services.backup_service import BackupService
+    import os
+
+    backup_path = os.path.join(BackupService.BACKUP_DIR, filename)
+    if not os.path.exists(backup_path):
+        return jsonify({'success': False, 'message': 'Backup not found'}), 404
+
+    is_valid = BackupService.verify_backup(filename)
+    if is_valid:
+        return jsonify({'success': True, 'verified': True, 'message': 'Backup verified'})
+    return jsonify({'success': True, 'verified': False, 'message': 'Backup corrupted or invalid'})
+
+
 @owner_bp.route('/backups/restore/<filename>', methods=['POST'])
 @login_required
 @owner_required
@@ -901,6 +919,10 @@ def restore_backup(filename):
 def custom_restore_backup(filename):
     """استعادة مخصصة - جداول محددة فقط"""
     from services.backup_service import BackupService
+    
+    if not str(filename or '').endswith('.dump'):
+        flash('❌ الاستعادة المخصصة تتطلب نسخة بصيغة .dump', 'danger')
+        return redirect(url_for('owner.list_backups'))
     
     # التحقق من الصلاحيات
     if not current_user.is_owner:
@@ -982,17 +1004,12 @@ def delete_backup(filename):
 
 @owner_bp.route('/backups/download/<filename>')
 @login_required
-@owner_required
+@permission_required('manage_backups')
 def download_backup(filename):
     """تحميل نسخة احتياطية"""
     from services.backup_service import BackupService
     from flask import send_file
     import os
-    
-    # التحقق من الصلاحيات
-    if not current_user.is_owner:
-        flash('❌ غير مصرح - التحميل للمالك فقط!', 'danger')
-        return redirect(url_for('main.dashboard'))
     
     # التحقق من أن النسخة موجودة
     backup_path = os.path.join(BackupService.BACKUP_DIR, filename)
@@ -1002,12 +1019,12 @@ def download_backup(filename):
         return redirect(url_for('owner.list_backups'))
     
     try:
-        # إرسال الملف للتحميل
+        mimetype = 'application/gzip' if filename.endswith('.gz') else 'application/octet-stream'
         return send_file(
             backup_path,
             as_attachment=True,
             download_name=filename,
-            mimetype='application/gzip'
+            mimetype=mimetype
         )
     except Exception as e:
         flash(f'❌ فشل التحميل: {str(e)}', 'danger')
@@ -1237,38 +1254,38 @@ def convert_database():
             flash('⚠️ يرجى اختيار قاعدة البيانات المستهدفة.', 'warning')
             return render_template('owner/convert_database.html')
         
-        if target_db == 'postgresql':
-            flash('🔄 جاري التحويل إلى PostgreSQL...', 'info')
-            
-            try:
-                new_uri = request.form.get('postgresql_uri')
-                
-                from sqlalchemy import create_engine
-                target_engine = create_engine(new_uri)
-                
-                inspector = inspect(db.engine)
-                
-                for table_name in inspector.get_table_names():
-                    result = db.session.execute(text(f"SELECT * FROM {table_name}"))
-                    rows = result.fetchall()
-                    columns = result.keys()
-                    
-                    if rows:
-                        placeholders = ', '.join([f':{col}' for col in columns])
-                        insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
-                        
-                        with target_engine.connect() as conn:
-                            for row in rows:
-                                conn.execute(text(insert_sql), dict(zip(columns, row)))
-                            conn.commit()
-                
-                flash('✅ تم التحويل إلى PostgreSQL بنجاح!', 'success')
-            
-            except Exception as e:
-                flash(f'❌ خطأ في التحويل: {str(e)}', 'danger')
+        if target_db != 'postgresql':
+            flash('❌ هذا النظام يدعم PostgreSQL فقط.', 'danger')
+            return render_template('owner/convert_database.html')
         
-        elif target_db == 'mysql':
-            flash('MySQL conversion will be available soon', 'info')
+        flash('🔄 جاري التحويل إلى PostgreSQL...', 'info')
+        
+        try:
+            new_uri = request.form.get('postgresql_uri')
+            
+            from sqlalchemy import create_engine
+            target_engine = create_engine(new_uri)
+            
+            inspector = inspect(db.engine)
+            
+            for table_name in inspector.get_table_names():
+                result = db.session.execute(text(f"SELECT * FROM {table_name}"))
+                rows = result.fetchall()
+                columns = result.keys()
+                
+                if rows:
+                    placeholders = ', '.join([f':{col}' for col in columns])
+                    insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
+                    
+                    with target_engine.connect() as conn:
+                        for row in rows:
+                            conn.execute(text(insert_sql), dict(zip(columns, row)))
+                        conn.commit()
+            
+            flash('✅ تم التحويل إلى PostgreSQL بنجاح!', 'success')
+        
+        except Exception as e:
+            flash(f'❌ خطأ في التحويل: {str(e)}', 'danger')
     
     return render_template('owner/convert_database.html')
 
@@ -1288,30 +1305,13 @@ def scheduled_backups():
             'backup_time': request.form.get('backup_time', '02:00'),
             'keep_count': int(request.form.get('keep_count', 5)),
         }
-        
-        # حفظ في ملف JSON
-        import json
-        settings_path = 'instance/backup_settings.json'
-        with open(settings_path, 'w', encoding='utf-8') as f:
-            json.dump(settings, f, indent=2)
+        BackupService.save_schedule_settings(settings)
         
         flash('✅ تم حفظ إعدادات النسخ الاحتياطي', 'success')
         return redirect(url_for('owner.scheduled_backups'))
     
     # قراءة الإعدادات الحالية
-    import json
-    import os
-    settings_path = 'instance/backup_settings.json'
-    if os.path.exists(settings_path):
-        with open(settings_path, 'r', encoding='utf-8') as f:
-            settings = json.load(f)
-    else:
-        settings = {
-            'enabled': True,
-            'frequency': 'daily',
-            'backup_time': '02:00',
-            'keep_count': 5,
-        }
+    settings = BackupService.get_schedule_settings()
     
     # قائمة النسخ التلقائية
     backups = BackupService.list_backups(auto_only=True)
@@ -2259,7 +2259,7 @@ def verify_backups():
         
         verified = []
         for backup in backups:
-            file_path = os.path.join('instance/backups', backup['filename'])
+            file_path = backup.get('path') or os.path.join(BackupService.BACKUP_DIR, backup.get('filename', ''))
             
             is_valid = os.path.exists(file_path) and os.path.getsize(file_path) > 1000
             

@@ -78,28 +78,42 @@ class Sale(db.Model):
             Decimal('0.01'), rounding=ROUND_HALF_UP
         )
         
-        # Calculate total amount with proper rounding (always in AED)
+        # Calculate total amount with proper rounding
         self.total_amount = (taxable_amount + self.tax_amount).quantize(
             Decimal('0.001'), rounding=ROUND_HALF_UP
         )
         
-        # Invoice is always in AED, so amount_aed = total_amount
-        self.amount_aed = self.total_amount
+        # Calculate amount in AED (Base Currency)
+        if self.currency == 'AED':
+            self.amount_aed = self.total_amount
+        else:
+            self.amount_aed = (self.total_amount * exchange_rate_decimal).quantize(
+                Decimal('0.001'), rounding=ROUND_HALF_UP
+            )
         
-        # Calculate paid amount in AED
-        paid_decimal = Decimal(str(self.paid_amount)) if self.paid_amount else Decimal('0')
-        # Paid amount is already in AED (or will be converted in payment)
-        self.paid_amount_aed = paid_decimal
+        # Calculate paid amount AED based on transaction currency
+        paid_foreign = Decimal(str(self.paid_amount)) if self.paid_amount else Decimal('0')
+        if self.currency == 'AED':
+            self.paid_amount_aed = paid_foreign
+        else:
+            self.paid_amount_aed = (paid_foreign * exchange_rate_decimal).quantize(
+                Decimal('0.001'), rounding=ROUND_HALF_UP
+            )
         
-        # Calculate balance due (in AED)
-        self.balance_due = (self.total_amount - paid_decimal).quantize(
-            Decimal('0.001'), rounding=ROUND_HALF_UP
-        )
+        # Calculate balance consistently
+        if self.currency == 'AED':
+            self.balance_due = (self.total_amount - self.paid_amount_aed).quantize(
+                Decimal('0.001'), rounding=ROUND_HALF_UP
+            )
+        else:
+            self.balance_due = (self.amount_aed - self.paid_amount_aed).quantize(
+                Decimal('0.001'), rounding=ROUND_HALF_UP
+            )
         
         # Update payment status
         if self.balance_due <= Decimal('0'):
             self.payment_status = 'paid'
-        elif paid_decimal > Decimal('0'):
+        elif self.paid_amount_aed > Decimal('0'):
             self.payment_status = 'partial'
         else:
             self.payment_status = 'unpaid'
@@ -109,31 +123,40 @@ class Sale(db.Model):
         Recalculate payment status based on CONFIRMED payments only
         المعالجة المحاسبية الدقيقة: الشيكات المعلقة لا تُحسب!
         """
-        # Calculate total paid from CONFIRMED payments only
+        # Calculate total paid from CONFIRMED payments only (AED)
         # الشيكات المعلقة (pending) لا تُحسب في المبلغ المدفوع الفعلي
-        total_confirmed_paid = Decimal('0')
+        total_confirmed_paid_aed = Decimal('0')
         for p in self.payments:
             # التحقق من وجود payment_confirmed (للتوافق مع البيانات القديمة)
             is_confirmed = getattr(p, 'payment_confirmed', True)
             if is_confirmed:
-                total_confirmed_paid += Decimal(str(p.amount_aed))
+                total_confirmed_paid_aed += Decimal(str(p.amount_aed))
         
-        # Update paid amount (confirmed only)
-        self.paid_amount = total_confirmed_paid
-        self.paid_amount_aed = total_confirmed_paid
+        # Update paid amounts (confirmed only)
+        self.paid_amount_aed = total_confirmed_paid_aed
+        try:
+            ex = Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal('1')
+            if self.currency == 'AED':
+                self.paid_amount = total_confirmed_paid_aed
+            else:
+                self.paid_amount = (total_confirmed_paid_aed / ex).quantize(
+                    Decimal('0.001'), rounding=ROUND_HALF_UP
+                )
+        except Exception:
+            self.paid_amount = self.paid_amount or Decimal('0')
         
-        # Calculate balance
-        total = Decimal(str(self.total_amount))
-        self.balance_due = (total - total_confirmed_paid).quantize(
+        # Calculate balance consistently
+        total_aed = Decimal(str(self.amount_aed))
+        self.balance_due = (total_aed - total_confirmed_paid_aed).quantize(
             Decimal('0.001'), rounding=ROUND_HALF_UP
         )
         
         # Update payment status
         # ملاحظة: الشيكات المعلقة لا تُغير حالة الدفع إلى "مدفوع"
-        if self.balance_due <= Decimal('0.01'):  # Allow small rounding differences
+        if self.balance_due <= Decimal('0.01'):
             self.payment_status = 'paid'
             self.balance_due = Decimal('0')
-        elif total_confirmed_paid > Decimal('0'):
+        elif total_confirmed_paid_aed > Decimal('0'):
             self.payment_status = 'partial'
         else:
             # حتى لو كان هناك شيكات معلقة، الحالة تبقى "غير مدفوع"

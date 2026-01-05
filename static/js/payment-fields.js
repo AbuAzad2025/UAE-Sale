@@ -204,7 +204,7 @@
   // =====================================
   // إنشاء حقول ديناميكية
   // =====================================
-  function renderPaymentFields(method, containerSelector, fieldPrefix = 'payment') {
+  function renderPaymentFields(method, containerSelector, fieldPrefix = '') {
     const $container = $(containerSelector);
     $container.empty();
     
@@ -236,7 +236,7 @@
     `;
     
     fields.forEach(field => {
-      const fieldName = `${fieldPrefix}_${field.name}`;
+      const fieldName = fieldPrefix ? `${fieldPrefix}_${field.name}` : field.name;
       const requiredAttr = field.required ? 'required' : '';
       const requiredLabel = field.required ? '<span class="text-danger">*</span>' : '';
       
@@ -279,7 +279,7 @@
   // =====================================
   // جمع بيانات الحقول
   // =====================================
-  function collectPaymentData(method, containerSelector, fieldPrefix = 'payment') {
+  function collectPaymentData(method, containerSelector, fieldPrefix = '') {
     if (!method || !PAYMENT_METHODS[method]) {
       return {};
     }
@@ -288,7 +288,7 @@
     const fields = PAYMENT_METHODS[method].fields;
     
     fields.forEach(field => {
-      const fieldName = `${fieldPrefix}_${field.name}`;
+      const fieldName = fieldPrefix ? `${fieldPrefix}_${field.name}` : field.name;
       const $field = $(`[name="${fieldName}"]`);
       if ($field.length) {
         data[field.name] = $field.val();
@@ -301,7 +301,7 @@
   // =====================================
   // تعبئة الحقول من البيانات
   // =====================================
-  function populatePaymentFields(method, data, containerSelector, fieldPrefix = 'payment') {
+  function populatePaymentFields(method, data, containerSelector, fieldPrefix = '') {
     if (!method || !data || !PAYMENT_METHODS[method]) {
       return;
     }
@@ -309,7 +309,7 @@
     const fields = PAYMENT_METHODS[method].fields;
     
     fields.forEach(field => {
-      const fieldName = `${fieldPrefix}_${field.name}`;
+      const fieldName = fieldPrefix ? `${fieldPrefix}_${field.name}` : field.name;
       const $field = $(`[name="${fieldName}"]`);
       if ($field.length && data[field.name]) {
         $field.val(data[field.name]);
@@ -327,7 +327,7 @@
     populate: populatePaymentFields,
     
     // تهيئة تلقائية لعنصر select
-    initSelector: function(selectSelector, containerSelector, fieldPrefix = 'payment') {
+    initSelector: function(selectSelector, containerSelector, fieldPrefix = '') {
       const $select = $(selectSelector);
       const $container = $(containerSelector);
       

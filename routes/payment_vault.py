@@ -91,7 +91,7 @@ def unlock_vault():
             PaymentLog.log_action(
                 vault_id=vault.id,
                 action='vault_unlock_failed',
-                description=f'محاولة فتح فاشلة - كلمة مرور خاطئة',
+                description='محاولة فتح فاشلة - كلمة مرور خاطئة',
                 level='warning',
                 ip_address=request.remote_addr,
                 user_agent=request.headers.get('User-Agent')
@@ -193,6 +193,28 @@ def settings():
         return redirect(url_for('payment_vault.unlock_vault'))
     
     if request.method == 'POST':
+        def _as_float(value, default):
+            try:
+                if value is None:
+                    return float(default)
+                s = str(value).strip()
+                if s == "":
+                    return float(default)
+                return float(s)
+            except Exception:
+                return float(default)
+
+        def _as_int(value, default):
+            try:
+                if value is None:
+                    return int(default)
+                s = str(value).strip()
+                if s == "":
+                    return int(default)
+                return int(s)
+            except Exception:
+                return int(default)
+
         # تحديث إعدادات الدفع - Crypto
         vault.nowpayments_api_key = request.form.get('nowpayments_api_key', vault.nowpayments_api_key)
         vault.nowpayments_ipn_secret = request.form.get('nowpayments_ipn_secret', vault.nowpayments_ipn_secret)
@@ -222,14 +244,14 @@ def settings():
         vault.stripe_webhook_secret = request.form.get('stripe_webhook_secret', vault.stripe_webhook_secret)
         
         # تحديث حدود الدفع
-        vault.min_donation_amount = float(request.form.get('min_donation_amount', vault.min_donation_amount))
-        vault.max_donation_amount = float(request.form.get('max_donation_amount', vault.max_donation_amount))
-        vault.daily_limit = float(request.form.get('daily_limit', vault.daily_limit))
+        vault.min_donation_amount = _as_float(request.form.get('min_donation_amount'), vault.min_donation_amount)
+        vault.max_donation_amount = _as_float(request.form.get('max_donation_amount'), vault.max_donation_amount)
+        vault.daily_limit = _as_float(request.form.get('daily_limit'), vault.daily_limit)
         
         # تحديث إعدادات الأمان
         vault.require_2fa = bool(request.form.get('require_2fa'))
-        vault.auto_lock_minutes = int(request.form.get('auto_lock_minutes', vault.auto_lock_minutes))
-        vault.max_failed_attempts = int(request.form.get('max_failed_attempts', vault.max_failed_attempts))
+        vault.auto_lock_minutes = _as_int(request.form.get('auto_lock_minutes'), vault.auto_lock_minutes)
+        vault.max_failed_attempts = _as_int(request.form.get('max_failed_attempts'), vault.max_failed_attempts)
         
         vault.updated_at = datetime.utcnow()
         db.session.commit()
@@ -346,14 +368,36 @@ def edit_package(package_id):
     
     if request.method == 'POST':
         try:
+            def _as_float(value, default):
+                try:
+                    if value is None:
+                        return float(default)
+                    s = str(value).strip()
+                    if s == "":
+                        return float(default)
+                    return float(s)
+                except Exception:
+                    return float(default)
+
+            def _as_int(value, default):
+                try:
+                    if value is None:
+                        return int(default)
+                    s = str(value).strip()
+                    if s == "":
+                        return int(default)
+                    return int(s)
+                except Exception:
+                    return int(default)
+
             package.name_ar = request.form.get('name_ar', package.name_ar).strip()
             package.name_en = request.form.get('name_en', package.name_en).strip()
             package.description_ar = request.form.get('description_ar', package.description_ar or '').strip()
             package.description_en = request.form.get('description_en', package.description_en or '').strip()
-            package.price = float(request.form.get('price', package.price))
-            package.max_users = int(request.form.get('max_users', package.max_users or 1))
-            package.max_branches = int(request.form.get('max_branches', package.max_branches or 1))
-            package.support_duration_months = int(request.form.get('support_duration_months', package.support_duration_months))
+            package.price = _as_float(request.form.get('price'), package.price)
+            package.max_users = _as_int(request.form.get('max_users'), package.max_users or 1)
+            package.max_branches = _as_int(request.form.get('max_branches'), package.max_branches or 1)
+            package.support_duration_months = _as_int(request.form.get('support_duration_months'), package.support_duration_months)
             package.is_active = request.form.get('is_active') == 'on'
             package.is_featured = request.form.get('is_featured') == 'on'
             package.badge_text = request.form.get('badge_text', package.badge_text or '').strip()

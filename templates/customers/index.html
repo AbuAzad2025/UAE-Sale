@@ -145,12 +145,10 @@
                    class="btn btn-success" title="كشف حساب" style="color: #ffffff !important;">
                   <i class="fas fa-file-invoice" style="color: #ffffff !important;"></i>
                 </a>
-                {% if balance > 0 %}
-                <a href="{{ url_for('payments.create_receipt', customer_id=customer.id) }}" 
-                   class="btn btn-primary" title="دفع">
+                <a href="{{ url_for('payments.create_voucher', party_type='customer', party_id=customer.id) }}" 
+                   class="btn btn-primary" title="قبض / دفع">
                   <i class="fas fa-money-bill-wave"></i>
                 </a>
-                {% endif %}
                 <a href="{{ url_for('sales.create', customer_id=customer.id) }}" 
                    class="btn btn-success" title="بيع" style="color: #ffffff !important;">
                   <i class="fas fa-shopping-cart" style="color: #ffffff !important;"></i>

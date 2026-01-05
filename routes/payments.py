@@ -1,11 +1,11 @@
 from datetime import datetime
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import select
 
 from extensions import db
-from models import Receipt, Customer, InvoiceSettings
+from models import Receipt, Customer, InvoiceSettings, Supplier
 from services.payment_service import PaymentService
 from services.currency_service import CurrencyService
 from utils.decorators import permission_required
@@ -184,10 +184,27 @@ def archive_payment(id):
     
     try:
         archive_service = ArchiveService()
-        archive_service.archive_record('payments', payment, reason='تم أرشفة سند الصرف')
+        
+        # 1. Archive the record (No commit yet)
+        archive_service.archive_record('payments', payment, reason='تم أرشفة سند الصرف', commit=False)
         create_audit_log('archive', 'payments', payment.id)
+        
+        # 2. Reverse GL Entry (Must succeed)
+        from services.gl_service import GLService
+        GLService.reverse_entry(
+            reference_type='Payment',
+            reference_id=id,
+            description=f'Reverse Payment {payment.payment_number}'
+        )
+        
+        # 3. Commit all
+        db.session.commit()
+        
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f'Failed to archive payment {id}: {e}')
+        flash(f'فشلت الأرشفة: {str(e)}', 'danger')
+        return redirect(url_for('payments.receipts'))
     
     return redirect(url_for('payments.receipts'))
 
@@ -289,97 +306,305 @@ def create_from_sale(sale_id):
                          sale=sale)  # تمرير بيانات الفاتورة
 
 
+@payments_bp.route('/voucher/create', methods=['GET'])
+@login_required
+@permission_required('manage_payments')
+def create_voucher():
+    """عرض صفحة إنشاء سند مالي موحد (قبض/صرف)"""
+    import json
+    from models import Supplier
+    
+    # تحضير البيانات لـ JS
+    customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
+    suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+    
+    customers_data = [{
+        'id': c.id,
+        'name': c.name,
+        'type': c.customer_type
+    } for c in customers]
+    
+    suppliers_data = [{
+        'id': s.id,
+        'name': s.name
+    } for s in suppliers]
+    
+    return render_template('payments/voucher.html',
+                         customers_json=json.dumps(customers_data),
+                         suppliers_json=json.dumps(suppliers_data),
+                         today_date=datetime.now().date().isoformat())
+
+
+@payments_bp.route('/voucher/submit', methods=['POST'])
+@login_required
+@permission_required('manage_payments')
+def create_voucher_submit():
+    """معالجة حفظ السند المالي الموحد"""
+    try:
+        direction = request.form.get('direction') # incoming, outgoing
+        party_type = request.form.get('party_type') # customer, supplier
+        party_id = request.form.get('party_id', type=int)
+        amount = request.form.get('amount', type=float)
+        payment_method = request.form.get('payment_method')
+        date_str = request.form.get('date')
+        notes = request.form.get('notes')
+        
+        # العملة وسعر الصرف (افتراضي: AED بمعدل 1)
+        currency = request.form.get('currency', 'AED')
+        user_exchange_rate = request.form.get('exchange_rate', type=float, default=1.0)
+        
+        # بيانات الشيك
+        cheque_number = request.form.get('cheque_number')
+        cheque_date = request.form.get('cheque_date')
+        bank_name = request.form.get('bank_name')
+
+        if not party_id or not amount:
+            flash('يرجى تعبئة جميع الحقول الإلزامية', 'warning')
+            return redirect(url_for('payments.create_voucher'))
+
+        # 1. معالجة سند القبض (Receipt) - وارد
+        if direction == 'incoming':
+            if party_type == 'customer':
+                # سند قبض من عميل (المنطق الحالي)
+                receipt_data = {
+                    'customer_id': party_id,
+                    'amount': amount,
+                    'currency': currency,
+                    'user_exchange_rate': user_exchange_rate,
+                    'payment_method': payment_method,
+                    'notes': notes,
+                    'cheque_number': cheque_number if payment_method == 'cheque' else None,
+                    'cheque_date': cheque_date if payment_method == 'cheque' else None,
+                    'bank_name': bank_name if payment_method == 'cheque' else None,
+                }
+                receipt = PaymentService.create_receipt(receipt_data)
+                flash(f'تم إنشاء سند القبض رقم {receipt.receipt_number} بنجاح', 'success')
+                return redirect(url_for('payments.receipts'))
+            
+            elif party_type == 'supplier':
+                # سند قبض من مورد (مرتجع مشتريات أو تسوية)
+                # نحتاج منطق جديد أو استخدام Payment بـ direction='incoming'
+                # حالياً Payment يدعم direction='incoming' حسب الموديل
+                
+                from models import Payment
+                from utils.helpers import generate_number
+                from decimal import Decimal
+                
+                exchange_rate = CurrencyService.get_exchange_rate(currency, 'AED', user_rate=user_exchange_rate)
+                amount_decimal = Decimal(str(amount))
+                amount_aed = amount_decimal * exchange_rate
+                
+                supplier = Supplier.query.get(party_id)
+                payment = Payment(
+                    payment_number=generate_number('PAY', Payment, 'payment_number'), # ربما نحتاج تسلسل منفصل؟
+                    payment_type='refund', # استرداد
+                    direction='incoming',
+                    supplier_id=supplier.id,
+                    supplier_name=supplier.name,
+                    amount=amount_decimal,
+                    currency=currency,
+                    exchange_rate=exchange_rate,
+                    amount_aed=amount_aed,
+                    payment_method=payment_method,
+                    notes=notes,
+                    cheque_number=cheque_number if payment_method == 'cheque' else None,
+                    cheque_date=cheque_date if payment_method == 'cheque' else None,
+                    bank_name=bank_name if payment_method == 'cheque' else None,
+                    user_id=current_user.id
+                )
+                db.session.add(payment)
+                db.session.commit()
+                flash('تم إنشاء سند قبض من مورد بنجاح', 'success')
+                return redirect(url_for('payments.receipts'))
+
+        # 2. معالجة سند الصرف (Payment) - صادر
+        elif direction == 'outgoing':
+            from models import Payment
+            from utils.helpers import generate_number
+            from decimal import Decimal
+            
+            exchange_rate = CurrencyService.get_exchange_rate(currency, 'AED', user_rate=user_exchange_rate)
+            amount_decimal = Decimal(str(amount))
+            amount_aed = amount_decimal * exchange_rate
+            
+            if party_type == 'supplier':
+                # دفع لمورد (المنطق المعتاد)
+                supplier = Supplier.query.get(party_id)
+                payment = Payment(
+                    payment_number=generate_number('PAY', Payment, 'payment_number'),
+                    payment_type='bill_payment',
+                    direction='outgoing',
+                    supplier_id=supplier.id,
+                    supplier_name=supplier.name,
+                    amount=amount_decimal,
+                    currency=currency,
+                    exchange_rate=exchange_rate,
+                    amount_aed=amount_aed,
+                    payment_method=payment_method,
+                    notes=notes,
+                    cheque_number=cheque_number if payment_method == 'cheque' else None,
+                    cheque_date=cheque_date if payment_method == 'cheque' else None,
+                    bank_name=bank_name if payment_method == 'cheque' else None,
+                    user_id=current_user.id
+                )
+                db.session.add(payment)
+                db.session.flush() # Flush to get ID
+
+                # معالجة خاصة للشيكات (إنشاء سجل شيك + قيد محاسبي خاص)
+                if payment_method == 'cheque' and cheque_number:
+                    from models import Cheque
+                    cheque = Cheque(
+                        cheque_number=cheque_number,
+                        cheque_bank_number=cheque_number,
+                        cheque_type='outgoing',
+                        supplier_id=supplier.id,
+                        payment_id=payment.id,
+                        amount=payment.amount,
+                        currency=payment.currency,
+                        exchange_rate=payment.exchange_rate,
+                        amount_aed=payment.amount_aed,
+                        issue_date=datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else datetime.now().date(),
+                        due_date=datetime.strptime(cheque_date, '%Y-%m-%d').date() if cheque_date else datetime.now().date(),
+                        bank_name=bank_name,
+                        payee_name=supplier.name,
+                        status='pending',
+                        notes=notes,
+                        user_id=current_user.id
+                    )
+                    db.session.add(cheque)
+                    db.session.flush()
+                    
+                    # استخدام منطق الشيك المحاسبي (ذمم دائنة -> شيكات مؤجلة)
+                    cheque.issue_cheque()
+                    
+                else:
+                    # GL Entry for Standard Payment (Cash/Bank)
+                    try:
+                        from services.gl_service import GLService
+                        GLService.ensure_core_accounts()
+                        
+                        # Credit: Cash/Bank
+                        credit_account = '1110' # Cash
+                        if payment_method == 'bank_transfer' or payment_method == 'card':
+                            credit_account = '1120' # Bank
+
+                        lines = [
+                            {'account': '2110', 'debit': payment.amount, 'description': f'سداد للمورد {payment.supplier_name}'},
+                            {'account': credit_account, 'credit': payment.amount, 'description': f'سند صرف {payment.payment_number}'}
+                        ]
+                        GLService.post_entry(
+                            lines,
+                            description=f'Payment {payment.payment_number}',
+                            reference_type='Payment',
+                            reference_id=payment.id,
+                            currency=currency,
+                            exchange_rate=exchange_rate
+                        )
+                    except Exception as e:
+                        current_app.logger.error(f"GL Posting failed for supplier payment: {e}")
+
+                db.session.commit()
+                flash('تم إنشاء سند صرف لمورد بنجاح', 'success')
+                return redirect(url_for('payments.receipts'))
+            
+            elif party_type == 'customer':
+                # دفع لعميل (استرداد أو تسوية أو سحب شريك)
+                # Payment model has customer_id field
+                customer = Customer.query.get(party_id)
+                payment = Payment(
+                    payment_number=generate_number('PAY', Payment, 'payment_number'),
+                    payment_type='refund',
+                    direction='outgoing',
+                    customer_id=customer.id,
+                    amount=amount_decimal,
+                    currency=currency,
+                    exchange_rate=exchange_rate,
+                    amount_aed=amount_aed,
+                    payment_method=payment_method,
+                    notes=notes,
+                    cheque_number=cheque_number if payment_method == 'cheque' else None,
+                    cheque_date=cheque_date if payment_method == 'cheque' else None,
+                    bank_name=bank_name if payment_method == 'cheque' else None,
+                    user_id=current_user.id
+                )
+                db.session.add(payment)
+                db.session.flush() # Flush to get ID
+
+                # معالجة خاصة للشيكات (إنشاء سجل شيك + قيد محاسبي خاص)
+                if payment_method == 'cheque' and cheque_number:
+                    from models import Cheque
+                    cheque = Cheque(
+                        cheque_number=cheque_number,
+                        cheque_bank_number=cheque_number,
+                        cheque_type='outgoing',
+                        customer_id=customer.id,
+                        payment_id=payment.id,
+                        amount=payment.amount,
+                        currency=payment.currency,
+                        exchange_rate=payment.exchange_rate,
+                        amount_aed=payment.amount_aed,
+                        issue_date=datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else datetime.now().date(),
+                        due_date=datetime.strptime(cheque_date, '%Y-%m-%d').date() if cheque_date else datetime.now().date(),
+                        bank_name=bank_name,
+                        payee_name=customer.name,
+                        status='pending',
+                        notes=notes,
+                        user_id=current_user.id
+                    )
+                    db.session.add(cheque)
+                    db.session.flush()
+                    
+                    # استخدام منطق الشيك المحاسبي المركزي
+                    try:
+                        cheque.issue_cheque()
+                    except Exception as e:
+                        current_app.logger.error(f"Cheque issue accounting failed: {e}")
+
+                else:
+                    # GL Entry for Customer/Partner/Merchant Payment (Non-Cheque)
+                    try:
+                        from services.gl_service import GLService
+                        GLService.ensure_core_accounts()
+                        
+                        credit_account = GLService.get_payment_debit_account(payment_method)
+                        
+                        # Debit Account based on Customer Type
+                        debit_account = GLService.get_customer_credit_account(customer)
+                        
+                        lines = [
+                            {'account': debit_account, 'debit': payment.amount, 'description': f'سداد/سحب {customer.name}'},
+                            {'account': credit_account, 'credit': payment.amount, 'description': f'سند صرف {payment.payment_number}'}
+                        ]
+                        GLService.post_entry(
+                            lines,
+                            description=f'Payment {payment.payment_number}',
+                            reference_type='Payment',
+                            reference_id=payment.id,
+                            currency=currency,
+                            exchange_rate=exchange_rate
+                        )
+                    except Exception as e:
+                        current_app.logger.error(f"GL Posting failed for customer payment: {e}")
+
+                db.session.commit()
+                flash('تم إنشاء سند صرف لعميل/شريك بنجاح', 'success')
+                return redirect(url_for('payments.receipts'))
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Voucher creation error: {e}")
+        flash(f'حدث خطأ أثناء حفظ السند: {str(e)}', 'danger')
+        return redirect(url_for('payments.create_voucher'))
+
+    return redirect(url_for('payments.receipts'))
+
+
 @payments_bp.route('/receipts/create', methods=['GET', 'POST'])
 @login_required
 @permission_required('manage_payments')
 def create_receipt():
-    preselected_customer = None
-    suggested_amount = None
-    customer_id_param = request.args.get('customer_id', type=int)
-    
-    if customer_id_param:
-        preselected_customer = Customer.query.get(customer_id_param)
-        # حساب المبلغ المقترح (إجمالي الديون)
-        if preselected_customer and preselected_customer.balance < 0:
-            suggested_amount = abs(preselected_customer.balance)
-    
-    if request.method == 'POST':
-        try:
-            customer_id = request.form.get('customer_id', type=int)
-            if not customer_id:
-                flash('يرجى اختيار الزبون.', 'warning')
-                customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
-                exchange_rates = CurrencyService.get_all_rates('AED')
-                return render_template('payments/create_receipt.html',
-                                     customers=customers,
-                                     preselected_customer=preselected_customer,
-                                     suggested_amount=suggested_amount,
-                                     exchange_rates=exchange_rates,
-                                     form_data=request.form)
-            
-            customer = Customer.query.get_or_404(customer_id)
-            
-            amount = request.form.get('amount', type=float)
-            currency = request.form.get('currency', 'AED')
-            user_exchange_rate = request.form.get('exchange_rate', type=float)
-            payment_method_value = (request.form.get('payment_method') or '').strip()
-            if not payment_method_value:
-                flash('يرجى اختيار طريقة الدفع.', 'warning')
-                customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
-                exchange_rates = CurrencyService.get_all_rates('AED')
-                return render_template('payments/create_receipt.html',
-                                     customers=customers,
-                                     preselected_customer=preselected_customer,
-                                     suggested_amount=suggested_amount,
-                                     exchange_rates=exchange_rates,
-                                     form_data=request.form)
-            
-            reference_number = request.form.get('reference_number')
-            cheque_number = request.form.get('cheque_number')
-            cheque_date = request.form.get('cheque_date') or None
-            bank_name = request.form.get('bank_name')
-            notes = request.form.get('notes')
-            
-            allocate_to_sales = {}
-            unpaid_sales = PaymentService.get_unpaid_sales(customer)
-            
-            for sale in unpaid_sales:
-                allocated = request.form.get(f'allocate[{sale.id}]', type=float, default=0)
-                if allocated > 0:
-                    allocate_to_sales[sale.id] = allocated
-            
-            receipt_data = {
-                'customer_id': customer.id,
-                'amount': amount,
-                'currency': currency,
-                'user_exchange_rate': user_exchange_rate,
-                'payment_method': payment_method_value,
-                'reference_number': reference_number,
-                'cheque_number': cheque_number,
-                'cheque_date': cheque_date,
-                'bank_name': bank_name,
-                'notes': notes,
-                'allocate_to_sales': allocate_to_sales if allocate_to_sales else None
-            }
-            
-            receipt = PaymentService.create_receipt(receipt_data)
-            
-            create_audit_log('create', 'receipts', receipt.id)
-            
-            flash('تم إنشاء سند القبض بنجاح', 'success')
-            return redirect(url_for('payments.view_receipt', id=receipt.id))
-        
-        except Exception as e:
-            flash(f'حدث خطأ: {str(e)}\nتحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
-    
-    customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
-    exchange_rates = CurrencyService.get_all_rates('AED')
-    
-    return render_template('payments/create_receipt.html',
-                         customers=customers,
-                         preselected_customer=preselected_customer,
-                         suggested_amount=suggested_amount,
-                         exchange_rates=exchange_rates)
+    # Redirect legacy route to new unified voucher
+    return redirect(url_for('payments.create_voucher'))
 
 
 @payments_bp.route('/receipts/<int:id>')

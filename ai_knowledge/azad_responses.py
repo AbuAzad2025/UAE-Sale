@@ -39,6 +39,10 @@ class AzadResponses:
     """ردود أزاد الذكية"""
     
     @staticmethod
+    def get_error_response():
+        return "عذراً، حدث خطأ. يرجى المحاولة مرة أخرى."
+    
+    @staticmethod
     def smart_response(message, context=None):
         """🧠 رد أزاد الذكي الخارق مع التعلم الذاتي والشخصية المرحة + فهم دلالي"""
         from services.ai_service import AIService
@@ -71,7 +75,7 @@ class AzadResponses:
 **💡 لإضافة مفتاح Groq:**
 📍 القائمة → **OWNER MODE** → **مفاتيح AI (Groq)** 🔑
 
-أو: http://localhost:8080/ai/config"""
+أو: http://localhost:5000/ai/config"""
         
         # هل أنت محلي/جروك؟ | حالة النظام | وضع AI
         elif any(kw in msg_lower for kw in ['محلي', 'جروك', 'groq', 'openai', 'local', 'cloud', 'حالة', 'status', 'وضع', 'mode', 'مصدر', 'source']):

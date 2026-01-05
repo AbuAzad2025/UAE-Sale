@@ -5,7 +5,7 @@ from .user import User, Role, Permission
 from .customer import Customer
 from .supplier import Supplier
 from .cheque import Cheque
-from .product import Product, ProductCategory
+from .product import Product, ProductCategory, ProductPartner
 from .warehouse import Warehouse, StockMovement
 from .sale import Sale, SaleLine
 from .purchase import Purchase, PurchaseLine
@@ -39,7 +39,7 @@ __all__ = [
     'Customer',
     'Supplier',
     'Cheque',
-    'Product', 'ProductCategory',
+    'Product', 'ProductCategory', 'ProductPartner',
     'Warehouse', 'StockMovement',
     'Sale', 'SaleLine',
     'Purchase', 'PurchaseLine',

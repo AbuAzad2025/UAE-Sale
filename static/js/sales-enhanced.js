@@ -215,7 +215,19 @@ function loadProductPrice(index) {
             customer_id: customerId 
         },
         success: function(data) {
-            $(`#price_${index}`).val(data.price.toFixed(2));
+            // Store base price in AED
+            $(`#price_${index}`).data('base-price', data.price);
+            
+            // Calculate price based on current currency
+            const rate = parseFloat($('#exchange_rate').val()) || 1;
+            const currency = $('#currency').val();
+            
+            let finalPrice = data.price;
+            if (currency !== 'AED' && rate > 0) {
+                finalPrice = data.price / rate;
+            }
+            
+            $(`#price_${index}`).val(finalPrice.toFixed(2));
             
             if (data.current_stock !== undefined) {
                 $(`#stock_${index}`).text(data.current_stock + ' ' + (data.unit || ''));
@@ -240,6 +252,38 @@ function loadProductPrice(index) {
             azad.showError('فشل تحميل السعر');
         }
     });
+}
+
+/**
+ * Update all line prices based on exchange rate
+ */
+function updateLinePrices() {
+    const rate = parseFloat($('#exchange_rate').val()) || 1;
+    const currency = $('#currency').val();
+    
+    $('.product-line').each(function() {
+        const index = $(this).find('.product-select').data('index');
+        const $priceInput = $(`#price_${index}`);
+        const basePrice = parseFloat($priceInput.data('base-price'));
+        
+        if (!isNaN(basePrice)) {
+            let finalPrice = basePrice;
+            if (currency !== 'AED' && rate > 0) {
+                finalPrice = basePrice / rate;
+            }
+            $priceInput.val(finalPrice.toFixed(2));
+        }
+    });
+    
+    updateCurrencyLabels();
+    calculateTotals();
+}
+
+function updateCurrencyLabels() {
+    const currency = $('#currency').val();
+    $('#discount_currency').text(currency);
+    $('#shipping_currency').text(currency);
+    $('#total_currency_label').text(currency);
 }
 
 /**
@@ -385,6 +429,7 @@ $('#currency').on('change', function() {
                 const examplePayment = 100;
                 const exampleAED = (examplePayment * data.rate).toFixed(2);
                 azad.showSuccess(`✅ سعر الصرف: 1 ${currency} = ${data.rate.toFixed(3)} AED\n\n💡 التوضيح:\n• الفاتورة: بالدرهم (AED)\n• المدفوع: بالـ ${currency}\n• مثال: ${examplePayment} ${currency} = ${exampleAED} AED`);
+                updateLinePrices();
             } else if (data.manual_input_required) {
                 serverExchangeRate = null;
                 $rateInput.val('');
@@ -448,6 +493,8 @@ $('#exchange_rate').on('change', function() {
         $('#saleForm').find('input[name="exchange_rate_manual"]').remove();
         $('#saleForm').append(`<input type="hidden" name="exchange_rate_manual" value="true">`);
     }
+    
+    updateLinePrices();
 });
 
 /**

@@ -34,9 +34,10 @@
           <th>كود الحساب</th>
           <th>اسم الحساب</th>
           <th>النوع</th>
-          <th class="text-danger">مدين</th>
-          <th class="text-success">دائن</th>
-          <th>{{ t('Balance') }}</th>
+          <th class="text-danger">حركة مدينة</th>
+          <th class="text-success">حركة دائنة</th>
+          <th class="text-danger">رصيد مدين</th>
+          <th class="text-success">رصيد دائن</th>
         </tr>
       </thead>
       <tbody>
@@ -53,20 +54,32 @@
           </td>
           <td class="text-danger">{{ "{:,.2f}".format(item.debit) }}</td>
           <td class="text-success">{{ "{:,.2f}".format(item.credit) }}</td>
-          <td><strong>{{ "{:,.2f}".format(item.balance) }}</strong></td>
+          <td class="text-danger font-weight-bold">{{ "{:,.2f}".format(item.debit_balance) }}</td>
+          <td class="text-success font-weight-bold">{{ "{:,.2f}".format(item.credit_balance) }}</td>
         </tr>
         {% endfor %}
       </tbody>
       <tfoot class="bg-light">
         <tr style="font-weight: 700; font-size: 16px;">
           <td colspan="3" class="text-center">{{ t('Total') }}</td>
-          <td class="text-danger">{{ "{:,.2f}".format(total_debit) }} AED</td>
-          <td class="text-success">{{ "{:,.2f}".format(total_credit) }} AED</td>
-          <td>
-            {% if is_balanced %}
-            <span class="text-success">متوازن ✓</span>
+          <td class="text-danger">{{ "{:,.2f}".format(total_debit) }}</td>
+          <td class="text-success">{{ "{:,.2f}".format(total_credit) }}</td>
+          <td class="text-danger">{{ "{:,.2f}".format(total_debit_balance) }}</td>
+          <td class="text-success">{{ "{:,.2f}".format(total_credit_balance) }}</td>
+        </tr>
+        <tr>
+          <td colspan="7" class="text-center">
+            {% if is_balanced and is_net_balanced %}
+            <span class="badge badge-success p-2" style="font-size: 1rem;"><i class="fas fa-check-circle"></i> الميزان متطابق (حركات وأرصدة)</span>
             {% else %}
-            <span class="text-danger">فرق: {{ "{:,.2f}".format((total_debit - total_credit)|abs) }}</span>
+            <div class="d-flex justify-content-center gap-3">
+              {% if not is_balanced %}
+              <span class="badge badge-danger p-2 mx-1"><i class="fas fa-times-circle"></i> فرق الحركات: {{ "{:,.2f}".format((total_debit - total_credit)|abs) }}</span>
+              {% endif %}
+              {% if not is_net_balanced %}
+              <span class="badge badge-danger p-2 mx-1"><i class="fas fa-times-circle"></i> فرق الأرصدة: {{ "{:,.2f}".format((total_debit_balance - total_credit_balance)|abs) }}</span>
+              {% endif %}
+            </div>
             {% endif %}
           </td>
         </tr>

@@ -78,6 +78,8 @@ def trial_balance():
     trial_data = []
     total_debit = Decimal('0')
     total_credit = Decimal('0')
+    total_debit_balance = Decimal('0')
+    total_credit_balance = Decimal('0')
     
     for account in accounts:
         debit_sum = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=account.id).scalar() or Decimal('0')
@@ -86,23 +88,34 @@ def trial_balance():
         balance = debit_sum - credit_sum
         
         if balance != 0 or debit_sum != 0 or credit_sum != 0:
+            debit_bal = balance if balance > 0 else Decimal('0')
+            credit_bal = abs(balance) if balance < 0 else Decimal('0')
+            
             trial_data.append({
                 'account': account,
                 'debit': float(debit_sum),
                 'credit': float(credit_sum),
-                'balance': float(balance)
+                'balance': float(balance),
+                'debit_balance': float(debit_bal),
+                'credit_balance': float(credit_bal)
             })
             
             total_debit += debit_sum
             total_credit += credit_sum
+            total_debit_balance += debit_bal
+            total_credit_balance += credit_bal
     
     is_balanced = (total_debit == total_credit)
+    is_net_balanced = (total_debit_balance == total_credit_balance)
     
     return render_template('ledger/trial_balance.html',
                          trial_data=trial_data,
                          total_debit=float(total_debit),
                          total_credit=float(total_credit),
-                         is_balanced=is_balanced)
+                         total_debit_balance=float(total_debit_balance),
+                         total_credit_balance=float(total_credit_balance),
+                         is_balanced=is_balanced,
+                         is_net_balanced=is_net_balanced)
 
 
 @ledger_bp.route('/journal-entries')
@@ -137,11 +150,22 @@ def income_statement():
     total_revenue = Decimal('0')
     
     for acc in revenue_accounts:
-        credit = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
-        debit = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
+        query_credit = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=acc.id).join(GLJournalEntry)
+        query_debit = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=acc.id).join(GLJournalEntry)
+        
+        if date_from:
+            query_credit = query_credit.filter(func.date(GLJournalEntry.entry_date) >= date_from)
+            query_debit = query_debit.filter(func.date(GLJournalEntry.entry_date) >= date_from)
+            
+        if date_to:
+            query_credit = query_credit.filter(func.date(GLJournalEntry.entry_date) <= date_to)
+            query_debit = query_debit.filter(func.date(GLJournalEntry.entry_date) <= date_to)
+            
+        credit = query_credit.scalar() or Decimal('0')
+        debit = query_debit.scalar() or Decimal('0')
         balance = credit - debit
         
-        if balance > 0:
+        if balance != 0:
             revenues[acc.name] = float(balance)
             total_revenue += balance
     
@@ -149,11 +173,22 @@ def income_statement():
     total_expense = Decimal('0')
     
     for acc in expense_accounts:
-        debit = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
-        credit = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
+        query_debit = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=acc.id).join(GLJournalEntry)
+        query_credit = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=acc.id).join(GLJournalEntry)
+        
+        if date_from:
+            query_debit = query_debit.filter(func.date(GLJournalEntry.entry_date) >= date_from)
+            query_credit = query_credit.filter(func.date(GLJournalEntry.entry_date) >= date_from)
+            
+        if date_to:
+            query_debit = query_debit.filter(func.date(GLJournalEntry.entry_date) <= date_to)
+            query_credit = query_credit.filter(func.date(GLJournalEntry.entry_date) <= date_to)
+            
+        debit = query_debit.scalar() or Decimal('0')
+        credit = query_credit.scalar() or Decimal('0')
         balance = debit - credit
         
-        if balance > 0:
+        if balance != 0:
             expenses[acc.name] = float(balance)
             total_expense += balance
     
@@ -229,7 +264,7 @@ def balance_sheet():
     net_profit_period = total_revenue_period - total_expense_period
 
     if net_profit_period != 0:
-        equity['Net Profit (Current Period)'] = float(net_profit_period)
+        equity['الأرباح المبقاة (صافي الربح التراكمي)'] = float(net_profit_period)
         total_equity += net_profit_period
     
     return render_template('ledger/balance_sheet.html',

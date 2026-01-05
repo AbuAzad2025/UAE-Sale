@@ -67,6 +67,14 @@ def create():
             
             amount = Decimal(str(request.form.get('amount')))
             
+            cheque_date_str = request.form.get('cheque_date')
+            cheque_date_obj = None
+            if cheque_date_str:
+                try:
+                    cheque_date_obj = datetime.strptime(cheque_date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    pass
+
             expense = Expense(
                 expense_number=expense_number,
                 category_id=request.form.get('category_id', type=int),
@@ -79,7 +87,7 @@ def create():
                 payment_method=request.form.get('payment_method'),
                 reference_number=request.form.get('reference_number'),
                 cheque_number=request.form.get('cheque_number'),
-                cheque_date=request.form.get('cheque_date') or None,
+                cheque_date=cheque_date_obj,
                 bank_name=request.form.get('bank_name'),
                 supplier_name=request.form.get('supplier_name'),
                 notes=request.form.get('notes'),
@@ -130,8 +138,8 @@ def create():
                     payment_account = '1120'
                 
                 lines = [
-                    {'account': expense_account, 'debit': expense.amount_aed, 'description': expense.description},
-                    {'account': payment_account, 'credit': expense.amount_aed, 'description': f'دفع {expense.payment_method}'}
+                    {'account': expense_account, 'debit': expense.amount, 'description': expense.description},
+                    {'account': payment_account, 'credit': expense.amount, 'description': f'دفع {expense.payment_method}'}
                 ]
                 
                 GLService.post_entry(

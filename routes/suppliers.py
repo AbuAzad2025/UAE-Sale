@@ -210,15 +210,30 @@ def delete(id):
     supplier = Supplier.query.get_or_404(id)
     
     try:
-        supplier.is_active = False
-        db.session.commit()
+        # Check for related records preventing deletion
+        purchases_count = Purchase.query.filter_by(supplier_id=id).count()
+        payments_count = Payment.query.filter_by(supplier_id=id).count()
         
+        if purchases_count > 0 or payments_count > 0:
+            supplier.is_active = False
+            db.session.commit()
+            flash(f'⚠️ تم إلغاء تفعيل المورد "{supplier.name}" بدلاً من حذفه لوجود ({purchases_count} فاتورة شراء، {payments_count} دفعة) مرتبطة به.', 'warning')
+        else:
+            db.session.delete(supplier)
+            db.session.commit()
+            flash(f'✅ تم حذف المورد "{supplier.name}" نهائياً!', 'success')
+            
         create_audit_log('delete', 'suppliers', supplier.id)
         
-        flash(f'✅ تم إلغاء تفعيل المورد "{supplier.name}"!\n💡 يمكنك إعادة تفعيله لاحقاً إذا لزم الأمر.', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        # Fallback to soft delete if hard delete fails
+        try:
+            supplier.is_active = False
+            db.session.commit()
+            flash(f'⚠️ تعذر الحذف النهائي للمورد "{supplier.name}" بسبب ارتباطات في قاعدة البيانات. تم إلغاء تفعيله بدلاً من ذلك.', 'warning')
+        except Exception as inner_e:
+            flash(f'❌ حدث خطأ أثناء حذف المورد: {str(e)}', 'danger')
     
     return redirect(url_for('suppliers.index'))
 

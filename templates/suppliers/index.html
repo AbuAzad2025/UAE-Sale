@@ -260,6 +260,12 @@
                    class="btn btn-success" title="كشف الحساب">
                   <i class="fas fa-file-invoice"></i>
                 </a>
+                <form action="{{ url_for('suppliers.delete', id=supplier.id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذا المورد؟\nسيتم أرشفته إذا كان لديه معاملات سابقة.');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                  <button type="submit" class="btn btn-danger" title="حذف">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </form>
               </div>
             </td>
           </tr>

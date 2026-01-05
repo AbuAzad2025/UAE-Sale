@@ -966,12 +966,17 @@ def custom_restore_backup(filename):
         return redirect(url_for('owner.list_backups'))
 
 
-@owner_bp.route('/backups/delete/<filename>', methods=['POST'])
+@owner_bp.route('/backups/delete', methods=['POST'])
 @login_required
 @owner_required
-def delete_backup(filename):
+def delete_backup():
     """حذف نسخة احتياطية - يدوية فقط"""
     from services.backup_service import BackupService
+    
+    filename = request.form.get('filename')
+    if not filename:
+        flash('❌ اسم الملف مطلوب!', 'danger')
+        return redirect(url_for('owner.list_backups'))
     
     # التحقق من الصلاحيات
     if not current_user.is_owner:

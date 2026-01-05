@@ -447,9 +447,23 @@
                   <p>قائمة السندات</p>
                 </a>
               </li>
+            </ul>
+          </li>
+          {% endif %}
+          
+          {% if current_user.has_permission('manage_payments') %}
+          <li class="nav-item has-treeview {% if request.endpoint and 'cheques' in request.endpoint %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and 'cheques' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-money-check-alt"></i>
+              <p>
+                إدارة الشيكات
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
               <li class="nav-item">
                 <a href="{{ url_for('cheques.index') }}" class="nav-link">
-                  <i class="fas fa-money-check nav-icon text-info"></i>
+                  <i class="fas fa-list nav-icon text-info"></i>
                   <p>الشيكات</p>
                 </a>
               </li>
@@ -460,15 +474,6 @@
                 </a>
               </li>
             </ul>
-          </li>
-          {% endif %}
-          
-          {% if current_user.has_permission('manage_payments') %}
-          <li class="nav-item {% if request.endpoint and 'cheques' in request.endpoint %}menu-open{% endif %}">
-            <a href="{{ url_for('cheques.index') }}" class="nav-link {% if request.endpoint and 'cheques' in request.endpoint %}active{% endif %}">
-              <i class="nav-icon fas fa-money-check text-success"></i>
-              <p>إدارة الشيكات</p>
-            </a>
           </li>
           {% endif %}
           

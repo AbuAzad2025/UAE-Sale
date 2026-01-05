@@ -258,7 +258,7 @@
     
     setTimeout(() => {
       $notification.alert('close');
-    }, 3000);
+    }, 10000);
   }
 
   function debounce(func, wait) {

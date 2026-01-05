@@ -202,7 +202,7 @@ class NotificationManager {
             type = 'info',
             title = '',
             message = '',
-            duration = 4000,
+            duration = 10000,
             sound = true,
             vibrate = true
         } = options;
@@ -270,7 +270,7 @@ class NotificationManager {
     }
 
     error(message, title = 'خطأ!') {
-        return this.show({ type: 'error', title, message });
+        return this.show({ type: 'error', title, message, duration: 20000 });
     }
 
     warning(message, title = 'تحذير!') {

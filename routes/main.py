@@ -31,11 +31,21 @@ def dashboard():
     total_products = Product.query.filter_by(is_active=True).count()
     stats['products_count'] = total_products
     
-    low_stock = StockService.get_low_stock_products(limit=10)
+    low_stock = []
+    try:
+        low_stock = StockService.get_low_stock_products(limit=10)
+    except Exception as e:
+        current_app.logger.error(f"Failed to fetch low stock products: {e}")
+
     stats['low_stock_count'] = len(low_stock)
     stats['low_stock_products'] = low_stock
     
-    out_of_stock = StockService.get_out_of_stock_products()
+    out_of_stock = []
+    try:
+        out_of_stock = StockService.get_out_of_stock_products()
+    except Exception as e:
+        current_app.logger.error(f"Failed to fetch out of stock products: {e}")
+        
     stats['out_of_stock_count'] = len(out_of_stock)
     
     today_sales = db.session.query(

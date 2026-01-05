@@ -213,9 +213,11 @@ class StockService:
     
     @staticmethod
     def get_low_stock_products(limit=None):
+        from sqlalchemy import func
+        # Handle NULL values safely using coalesce
         query = Product.query.filter(
             Product.is_active == True,
-            Product.current_stock <= Product.min_stock_alert
+            func.coalesce(Product.current_stock, 0) <= func.coalesce(Product.min_stock_alert, 0)
         ).order_by(Product.current_stock.asc())
         
         if limit:

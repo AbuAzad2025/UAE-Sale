@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import time
 from decimal import Decimal
 from flask import Flask, render_template, request, g, redirect, url_for, flash
-from flask_login import current_user
+from flask_login import current_user, login_required
 from werkzeug.routing import BuildError
 
 from config import Config, ensure_runtime_dirs, assert_production_sanity

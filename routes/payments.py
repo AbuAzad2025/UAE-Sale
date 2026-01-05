@@ -766,7 +766,7 @@ def delete_receipt(id):
     
     # التحقق من الارتباطات
     has_links = False
-    if receipt.allocations:
+    if receipt.source_type == 'sale' and receipt.source_id:
         has_links = True
     if receipt.cheque_id:
         has_links = True
@@ -775,14 +775,28 @@ def delete_receipt(id):
     
     try:
         # 1. عكس التخصيصات (إعادة الرصيد للفاتورة)
-        if receipt.allocations:
+        if receipt.source_type == 'sale' and receipt.source_id:
             from models import Sale
-            for allocation in receipt.allocations:
-                sale = Sale.query.get(allocation.sale_id)
-                if sale:
-                    sale.paid_amount -= allocation.allocated_amount
-                    sale.balance_due = sale.total_amount - sale.paid_amount
-                    sale.update_payment_status()
+            sale = Sale.query.get(receipt.source_id)
+            if sale:
+                sale.paid_amount -= receipt.amount
+                sale.paid_amount_aed -= receipt.amount_aed
+                
+                # منع القيم السالبة
+                if sale.paid_amount < 0: sale.paid_amount = 0
+                if sale.paid_amount_aed < 0: sale.paid_amount_aed = 0
+                
+                # تحديث الرصيد المتبقي
+                sale.balance_due = sale.total_amount - sale.paid_amount
+                
+                # تحديث حالة الدفع
+                if sale.balance_due <= 0:
+                    sale.payment_status = 'paid'
+                    sale.balance_due = 0
+                elif sale.paid_amount > 0:
+                    sale.payment_status = 'partial'
+                else:
+                    sale.payment_status = 'unpaid'
 
         # 2. القرار: أرشفة أو حذف
         if has_links:

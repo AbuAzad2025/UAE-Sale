@@ -113,6 +113,35 @@ def create_app(config_class=Config):
         @ai_bp.route('/chat', methods=['POST'])
         def chat():
             return {"error": "AI Module Unavailable"}, 503
+
+        # Fallback for all other potential AI routes found in routes/ai.py
+        # This prevents 404 or BuildError if referenced elsewhere dynamically
+        @ai_bp.route('/recommend-price', methods=['POST'])
+        def recommend_price(): return {"error": "AI Module Unavailable"}, 503
+
+        @ai_bp.route('/check-stock', methods=['POST'])
+        def check_stock(): return {"error": "AI Module Unavailable"}, 503
+
+        @ai_bp.route('/analyze-customer/<int:customer_id>', methods=['GET'])
+        def analyze_customer(customer_id): return {"error": "AI Module Unavailable"}, 503
+
+        @ai_bp.route('/exchange-rate/<currency>', methods=['GET'])
+        def exchange_rate(currency): return {"error": "AI Module Unavailable"}, 503
+        
+        @ai_bp.route('/search-market-price/<int:product_id>', methods=['GET'])
+        def search_market_price(product_id): return {"error": "AI Module Unavailable"}, 503
+        
+        @ai_bp.route('/find-compatible/<int:product_id>', methods=['GET'])
+        def find_compatible(product_id): return {"error": "AI Module Unavailable"}, 503
+        
+        @ai_bp.route('/upload-excel', methods=['POST'])
+        def upload_excel(): return {"error": "AI Module Unavailable"}, 503
+
+        # Catch-all for any other AI route to avoid crashes
+        @ai_bp.route('/<path:path>')
+        def catch_all(path):
+            flash(f"AI Feature '{path}' is currently unavailable due to system initialization error.", "warning")
+            return redirect(url_for('main.dashboard'))
     from routes.users import users_bp
     from routes.cheques import cheques_bp
     from routes.returns import returns_bp

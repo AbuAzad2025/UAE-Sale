@@ -225,8 +225,9 @@ class StockService:
     
     @staticmethod
     def get_out_of_stock_products():
+        from sqlalchemy import func
         return Product.query.filter(
             Product.is_active == True,
-            Product.current_stock <= 0
+            func.coalesce(Product.current_stock, 0) <= 0
         ).all()
 

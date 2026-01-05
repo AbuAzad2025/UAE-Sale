@@ -19,6 +19,7 @@ def index():
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
+    # Dashboard route with error handling
     try:
         today = datetime.now(timezone.utc).date()
         month_start = today.replace(day=1)

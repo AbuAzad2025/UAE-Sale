@@ -41,8 +41,17 @@ class IntelligentAssistant:
         self._data_analyzer = None
         self._memory_system = None
         self._context_engine = None
+        self._quick_learner = None
         
         logger.info("🧠 Intelligent Assistant initialized")
+
+    @property
+    def quick_learner(self):
+        """المتعلم السريع"""
+        if self._quick_learner is None:
+            from .quick_learner import quick_learner
+            self._quick_learner = quick_learner
+        return self._quick_learner
     
     @property
     def neural_engine(self):
@@ -97,6 +106,17 @@ class IntelligentAssistant:
             رد ديناميكي مبني على فهم حقيقي
         """
         try:
+            # ========== المرحلة 0: المعرفة السريعة (Quick Knowledge) ==========
+            quick_answer = self.quick_learner.get_answer(message)
+            if quick_answer:
+                return {
+                    'success': True,
+                    'response': f"{quick_answer}\n\n<sub>⚡ معلومة سريعة</sub>",
+                    'intent': 'quick_answer',
+                    'confidence': 1.0,
+                    'method': 'quick_learner'
+                }
+
             # ========== المرحلة 1: فهم النية والسياق ==========
             understanding = self._understand_message(message, user_id, context)
             
@@ -379,7 +399,41 @@ class IntelligentAssistant:
             response_parts = []
             
             # المقدمة الديناميكية
-            if intent == 'sales_analysis':
+            if intent == 'greeting':
+                import random
+                greetings = [
+                    "يا هلا! 🌹 أنا أزاد، مساعدك الذكي. آمرني؟",
+                    "هلا والله! جاهز للمساعدة في أي وقت 💪",
+                    "وعليكم السلام! كيف أقدر أساعدك اليوم في الكراج؟ 🚗",
+                    "أهلاً بك! معك أزاد، المحاسب والمهندس والمدير المالي 😉"
+                ]
+                response_parts.append(random.choice(greetings))
+
+            elif intent == 'who_are_you':
+                response_parts.append("🤖 **أنا أزاد (AZAD)**\n")
+                response_parts.append("مساعد ذكي متطور تم تطويري خصيصاً لإدارة الكراجات والمحاسبة.")
+                response_parts.append("\n💪 **قدراتي:**")
+                response_parts.append("• 💰 **محاسب:** فواتير، سندات، ضرائب")
+                response_parts.append("• 🔧 **مهندس:** معلومات قطع غيار، صيانة")
+                response_parts.append("• 📈 **محلل:** تقارير مبيعات، أرباح")
+                response_parts.append("• 🧠 **ذكي:** أتعلم منك كل يوم!")
+
+            elif intent == 'praise':
+                import random
+                thanks = [
+                    "تسلم! هذا واجبي 🌹",
+                    "كفوك الطيب! حاضرين للطيبين 💪",
+                    "شكراً لك! شهادة أعتز فيها 🌟",
+                    "الله يعافيك! نحن بالخدمة دائماً"
+                ]
+                response_parts.append(random.choice(thanks))
+
+            elif intent == 'complaint':
+                response_parts.append("😔 **حقك علي!**\n")
+                response_parts.append("أنا آسف إذا قصرت. أنا ما زلت أتعلم وأتطور.")
+                response_parts.append("ممكن تشرح لي أكثر شو المشكلة عشان ما أكررها؟ 🙏")
+
+            elif intent == 'sales_analysis':
                 response_parts.append("📊 **تحليل المبيعات الحقيقي:**\n")
                 
                 if 'recent_sales' in data:

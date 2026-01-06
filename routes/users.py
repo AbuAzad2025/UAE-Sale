@@ -8,6 +8,24 @@ from utils.helpers import create_audit_log
 users_bp = Blueprint('users', __name__, url_prefix='/users')
 
 
+def _role_level(slug):
+    return {
+        'seller': 10,
+        'manager': 20,
+        'super_admin': 90,
+        'developer': 95,
+        'owner': 100
+    }.get(slug, 0)
+
+
+def _current_user_level():
+    if getattr(current_user, 'is_owner', False):
+        return 100
+    role = getattr(current_user, 'role', None)
+    slug = getattr(role, 'slug', None) if role else None
+    return _role_level(slug)
+
+
 @users_bp.route('/')
 @login_required
 def index():
@@ -48,7 +66,9 @@ def create():
     if not current_user.has_permission('manage_users'):
         abort(403)
 
-    roles = Role.query.filter_by(is_active=True).filter(Role.slug != 'owner').all()
+    current_level = _current_user_level()
+    roles = Role.query.filter_by(is_active=True).all()
+    roles = [r for r in roles if _role_level(getattr(r, 'slug', None)) <= current_level]
     default_form = {'is_active': '1'}
     
     if request.method == 'POST':
@@ -138,7 +158,9 @@ def edit(id):
             db.session.rollback()
             flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
     
-    roles = Role.query.filter_by(is_active=True).filter(Role.slug != 'owner').all()
+    current_level = _current_user_level()
+    roles = Role.query.filter_by(is_active=True).all()
+    roles = [r for r in roles if _role_level(getattr(r, 'slug', None)) <= current_level]
     return render_template('users/edit.html', user=user, roles=roles)
 
 

@@ -686,6 +686,7 @@ h1, h2, h3, h4, h5, h6 {
   background-color: var(--primary-color) !important;
   border-color: var(--primary-color) !important;
   color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
 }
 
 .btn-primary:not(:disabled):not(.disabled):hover,
@@ -712,6 +713,7 @@ h1, h2, h3, h4, h5, h6 {
   background-color: var(--success-color) !important;
   border-color: var(--success-color) !important;
   color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
 }
 
 .btn-success:not(:disabled):not(.disabled):hover,
@@ -751,6 +753,7 @@ h1, h2, h3, h4, h5, h6 {
   background-color: var(--info-color) !important;
   border-color: var(--info-color) !important;
   color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
 }
 
 .btn-info:not(:disabled):not(.disabled):hover,
@@ -758,6 +761,112 @@ h1, h2, h3, h4, h5, h6 {
   background-color: var(--info-hover) !important;
   border-color: var(--info-hover) !important;
   color: #ffffff !important;
+}
+
+.btn i,
+.btn svg,
+.btn .fa,
+.btn .fas,
+.btn .far,
+.btn span {
+  color: inherit !important;
+  fill: currentColor !important;
+}
+
+.btn-primary:disabled,
+.btn-primary.disabled {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  color: #ffffff !important;
+  opacity: 0.85 !important;
+}
+
+.btn-secondary:disabled,
+.btn-secondary.disabled {
+  background-color: var(--secondary-color) !important;
+  border-color: var(--secondary-color) !important;
+  color: #ffffff !important;
+  opacity: 0.85 !important;
+}
+
+.btn-success:disabled,
+.btn-success.disabled {
+  background-color: var(--success-color) !important;
+  border-color: var(--success-color) !important;
+  color: #ffffff !important;
+  opacity: 0.85 !important;
+}
+
+.btn-danger:disabled,
+.btn-danger.disabled {
+  background-color: var(--danger-color) !important;
+  border-color: var(--danger-color) !important;
+  color: #ffffff !important;
+  opacity: 0.85 !important;
+}
+
+.btn-warning:disabled,
+.btn-warning.disabled {
+  background-color: var(--warning-color) !important;
+  border-color: var(--warning-color) !important;
+  color: #1f2933 !important;
+  opacity: 0.85 !important;
+}
+
+.btn-info:disabled,
+.btn-info.disabled {
+  background-color: var(--info-color) !important;
+  border-color: var(--info-color) !important;
+  color: #ffffff !important;
+  opacity: 0.85 !important;
+}
+
+.btn-outline-primary:disabled,
+.btn-outline-primary.disabled {
+  background: #ffffff !important;
+  color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  opacity: 0.7 !important;
+}
+
+.btn-outline-secondary:disabled,
+.btn-outline-secondary.disabled {
+  background: #ffffff !important;
+  color: var(--secondary-color) !important;
+  border-color: var(--secondary-color) !important;
+  opacity: 0.7 !important;
+}
+
+.btn-outline-success:disabled,
+.btn-outline-success.disabled {
+  background: #ffffff !important;
+  color: var(--success-color) !important;
+  border-color: var(--success-color) !important;
+  opacity: 0.7 !important;
+}
+
+.btn-outline-danger:disabled,
+.btn-outline-danger.disabled {
+  background: #ffffff !important;
+  color: var(--danger-color) !important;
+  border-color: var(--danger-color) !important;
+  opacity: 0.7 !important;
+}
+
+.btn-outline-warning:disabled,
+.btn-outline-warning.disabled {
+  background: #ffffff !important;
+  color: var(--warning-color) !important;
+  border-color: var(--warning-color) !important;
+  opacity: 0.7 !important;
+}
+
+.btn-outline-info:disabled,
+.btn-outline-info.disabled {
+  background: #ffffff !important;
+  color: var(--info-color) !important;
+  border-color: var(--info-color) !important;
+  opacity: 0.7 !important;
 }
 
 /* تحسين أزرار Dashboard */
@@ -871,11 +980,11 @@ a[href*="/reports/sales"]:hover {
   color: #ffffff !important;
 }
 
-/* تحسين أزرار "عرض الكل" */
-a[href*="/sales/"],
-a[href*="/customers/"],
-a[href*="/products/"],
-a[href*="/reports/receivables"] {
+/* تحسين روابط "عرض الكل" فقط - لا تطبق على الأزرار */
+a[href*="/sales/"]:not(.btn):not(.nav-link),
+a[href*="/customers/"]:not(.btn):not(.nav-link),
+a[href*="/products/"]:not(.btn):not(.nav-link),
+a[href*="/reports/receivables"]:not(.btn):not(.nav-link) {
   background: linear-gradient(135deg, #2d5016 0%, #4a7c59 100%) !important;
   border: 2px solid #32cd32 !important;
   color: #ffffff !important;
@@ -885,14 +994,23 @@ a[href*="/reports/receivables"] {
   transition: all 0.3s ease;
 }
 
-a[href*="/sales/"]:hover,
-a[href*="/customers/"]:hover,
-a[href*="/products/"]:hover,
-a[href*="/reports/receivables"]:hover {
+a[href*="/sales/"]:not(.btn):not(.nav-link):hover,
+a[href*="/customers/"]:not(.btn):not(.nav-link):hover,
+a[href*="/products/"]:not(.btn):not(.nav-link):hover,
+a[href*="/reports/receivables"]:not(.btn):not(.nav-link):hover {
   background: linear-gradient(135deg, #4a7c59 0%, #2d5016 100%) !important;
   transform: translateY(-1px);
   box-shadow: 0 0 20px rgba(50, 205, 50, 0.6);
   color: #ffffff !important;
+}
+
+/* تأكيد أولوية زر إنشاء فاتورة جديدة على قواعد "عرض الكل" */
+a[href*="/sales/create"],
+a[href*="/sales/create"] * {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
+  border-color: #00bfff !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
 }
 
 .btn-outline-primary {
@@ -1002,6 +1120,23 @@ a[href*="/reports/receivables"]:hover {
 .btn-outline-secondary:hover {
   background: #6c757d !important;
   color: #ffffff !important;
+}
+
+/* High-contrast header buttons inside Content Header */
+.content-header .btn {
+  text-shadow: none !important;
+}
+.content-header .btn i,
+.content-header .btn span {
+  color: inherit !important;
+}
+.content-header .btn-secondary,
+.content-header .btn-outline-secondary {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%) !important;
+  border-color: #3498db !important;
+  box-shadow: 0 0 10px rgba(52, 152, 219, 0.3) !important;
 }
 
 /* تحسين الروابط */

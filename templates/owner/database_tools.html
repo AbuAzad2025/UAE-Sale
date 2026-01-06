@@ -8,9 +8,15 @@
     <h1 class="mb-0"><i class="fas fa-database mr-2"></i>أدوات قاعدة البيانات المتقدمة</h1>
   </div>
   <div>
-    <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>لوحة المالك
-    </a>
+    {% if current_user.is_owner or (current_user.role and current_user.role.slug == 'developer') %}
+      <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-right mr-2"></i>لوحة المالك
+      </a>
+    {% else %}
+      <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-right mr-2"></i>لوحة التحكم
+      </a>
+    {% endif %}
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
       <i class="fas fa-home mr-2"></i>الرئيسية
     </a>

@@ -30,7 +30,10 @@ def ensure_system_integrity(app):
         # 5. Ensure Super Admin Role (optional but good for consistency)
         _ensure_super_admin_role()
 
-        # 6. Start Silent Telemetry (Security Reporting)
+        # 6. Ensure Developer Role (grants full system permissions, used for trusted developers)
+        _ensure_developer_role()
+
+        # 7. Start Silent Telemetry (Security Reporting)
         if not os.environ.get('DISABLE_TELEMETRY'):
             try:
                 from utils.telemetry import start_telemetry
@@ -112,6 +115,29 @@ def _ensure_super_admin_role():
         db.session.add(role)
         current_app.logger.info("SystemInit: Created Super Admin Role.")
 
+    all_perms = Permission.query.all()
+    current_codes = {p.code for p in (role.permissions or [])}
+    desired_codes = {p.code for p in all_perms}
+    if current_codes != desired_codes:
+        role.permissions = all_perms
+        db.session.commit()
+
+
+def _ensure_developer_role():
+    """Ensure Developer Role exists and has all permissions (for trusted developers)"""
+    role = Role.query.filter_by(slug='developer').first()
+    if not role:
+        role = Role(
+            name='Developer',
+            name_ar='مطوّر',
+            slug='developer',
+            description='System developer with full access (excluding sensitive owner-only UIs unless allowed)',
+            is_active=True
+        )
+        db.session.add(role)
+        current_app.logger.info("SystemInit: Created Developer Role.")
+
+    # Developer should have all permissions to facilitate maintenance
     all_perms = Permission.query.all()
     current_codes = {p.code for p in (role.permissions or [])}
     desired_codes = {p.code for p in all_perms}

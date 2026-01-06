@@ -22,6 +22,23 @@ from datetime import datetime as dt
 owner_bp = Blueprint('owner', __name__, url_prefix='/owner')
 
 
+def _role_level(slug):
+    return {
+        'seller': 10,
+        'manager': 20,
+        'super_admin': 90,
+        'developer': 95,
+        'owner': 100
+    }.get(slug, 0)
+
+
+def _current_user_level():
+    if getattr(current_user, 'is_owner', False):
+        return 100
+    role = getattr(current_user, 'role', None)
+    slug = getattr(role, 'slug', None) if role else None
+    return _role_level(slug)
+
 @owner_bp.route('/dashboard')
 @login_required
 @owner_required
@@ -312,7 +329,9 @@ def create_user():
     from werkzeug.security import generate_password_hash
     from utils.password_validator import PasswordValidator
     
-    roles = Role.query.all()
+    current_level = _current_user_level()
+    roles = Role.query.filter_by(is_active=True).all()
+    roles = [r for r in roles if _role_level(getattr(r, 'slug', None)) <= current_level]
     default_form = {'is_active': 'on'}
     
     if request.method == 'POST':
@@ -419,7 +438,9 @@ def edit_user(user_id):
             db.session.rollback()
             flash(f'خطأ في تحديث المستخدم: {str(e)}', 'error')
     
-    roles = Role.query.all()
+    current_level = _current_user_level()
+    roles = Role.query.filter_by(is_active=True).all()
+    roles = [r for r in roles if _role_level(getattr(r, 'slug', None)) <= current_level]
     return render_template('owner/edit_user.html', user=user, roles=roles)
 
 

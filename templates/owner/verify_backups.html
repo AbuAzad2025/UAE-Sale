@@ -3,9 +3,15 @@
 {% block content %}
 <div class="container-fluid">
   <div class="mb-3">
-    <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right"></i> رجوع للوحة المالك
-    </a>
+    {% if current_user.is_owner or (current_user.role and current_user.role.slug == 'developer') %}
+      <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-right"></i> رجوع للوحة المالك
+      </a>
+    {% else %}
+      <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-right"></i> رجوع للوحة التحكم
+      </a>
+    {% endif %}
     <a href="{{ url_for('owner.list_backups') }}" class="btn btn-info">
       <i class="fas fa-archive"></i> النسخ الاحتياطية
     </a>

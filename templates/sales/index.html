@@ -7,8 +7,8 @@
     <p class="text-muted">جميع فواتير البيع والمعاملات المالية</p>
   </div>
   <div>
-    <a href="{{ url_for('sales.create') }}" class="btn btn-primary btn-lg pulse">
-      <i class="fas fa-plus-circle mr-2"></i>فاتورة جديدة
+    <a href="{{ url_for('sales.create') }}" class="btn btn-primary btn-lg pulse text-white" style="color:#ffffff !important;">
+      <i class="fas fa-plus-circle mr-2" style="color:#ffffff !important"></i>فاتورة جديدة
     </a>
     <a href="{{ url_for('sales.archived') }}" class="btn btn-warning btn-lg">
       <i class="fas fa-archive mr-2"></i>الأرشيف
@@ -37,6 +37,28 @@
   height: 100%;
   background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
   transition: width 0.3s ease;
+}
+
+a.btn[href*="/sales/create"] {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
+  border-color: #00bfff !important;
+  color: #ffffff !important;
+}
+
+a.btn[href*="/sales/create"] i,
+a.btn[href*="/sales/create"] span {
+  color: #ffffff !important;
+}
+
+a.btn.btn-warning,
+.btn.btn-warning {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+a.btn.btn-warning i,
+a.btn.btn-warning span {
+  color: #111827 !important;
 }
 
 @media print {

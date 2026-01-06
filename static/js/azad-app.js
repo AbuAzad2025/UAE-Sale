@@ -11,6 +11,10 @@ $(document).ready(function() {
     if (typeof initAutoSave === 'function') initAutoSave();
     if (typeof initProgressIndicators === 'function') initProgressIndicators();
     if (typeof initSmartDefaults === 'function') initSmartDefaults();
+
+    // Ensure loading overlay never sticks on navigation or page restore
+    $(window).on('load pageshow', function() { hideLoading(); });
+    $(document).on('ajaxStop', function() { hideLoading(); });
 });
 
 /**
@@ -98,6 +102,12 @@ function initializeFormValidation() {
     $('form').on('submit', function(e) {
         const form = $(this);
         
+        // If another handler already prevented default, ensure no overlay
+        if (typeof e.isDefaultPrevented === 'function' && e.isDefaultPrevented()) {
+            hideLoading();
+            return false;
+        }
+        
         // Check required fields
         let isValid = true;
         form.find('[required]').each(function() {
@@ -113,11 +123,14 @@ function initializeFormValidation() {
         
         if (!isValid) {
             e.preventDefault();
+            hideLoading();
             return false;
         }
         
         // Show loading
         showLoading();
+        // Fallback: hide loading after 12s if navigation didn't happen
+        setTimeout(hideLoading, 12000);
     });
 }
 
@@ -180,8 +193,8 @@ function showAlert(message, type = 'info') {
     const html = `
         <div class="alert alert-${type} alert-dismissible fade show" role="alert" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 10000; min-width: 300px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
             ${message}
-            <button type="button" class="close" data-dismiss="alert">
-                <span>&times;</span>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
             </button>
         </div>
     `;

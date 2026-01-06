@@ -812,7 +812,8 @@ class AIService:
         
         # ========== المرحلة 2: التعاون مع Groq ==========
         api_key = AIService.get_api_key()
-        use_groq = api_key and not force_local and len(message) > 10
+        # السماح بالرسائل القصيرة للوصول لـ Groq إذا كان مفعلاً
+        use_groq = api_key and not force_local and len(message.strip()) >= 2
         
         if use_groq:
             try:

@@ -33,7 +33,6 @@ class AzadLearningSystem:
             try:
                 with open(self.knowledge_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    from collections import defaultdict
                     exp = data.get('expertise_areas', {})
                     if not isinstance(exp, defaultdict):
                         data['expertise_areas'] = defaultdict(int, exp)

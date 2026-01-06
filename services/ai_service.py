@@ -260,6 +260,10 @@ class AIService:
     @staticmethod
     def get_api_key():
         """الحصول على مفتاح API - يدعم Groq, OpenAI, Gemini"""
+        # Reload env to catch manual updates
+        from dotenv import load_dotenv
+        load_dotenv(override=True)
+        
         return (
             os.environ.get('GROQ_API_KEY') or 
             os.environ.get('GEMINI_API_KEY') or 
@@ -274,6 +278,10 @@ class AIService:
     @staticmethod
     def get_provider():
         """معرفة المزود النشط"""
+        # Reload env to catch manual updates
+        from dotenv import load_dotenv
+        load_dotenv(override=True)
+        
         if os.environ.get('GROQ_API_KEY'):
             return 'groq'
         elif os.environ.get('GEMINI_API_KEY'):

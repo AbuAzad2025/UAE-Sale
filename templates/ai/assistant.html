@@ -11,11 +11,11 @@
   </div>
   <div class="d-flex align-items-center">
     <div class="btn-group mr-3" role="group">
-      <button type="button" class="btn" id="ai-mode-local" onclick="switchAIMode('local')" style="background: #6c757d; color: white; border: none; padding: 8px 20px; font-weight: 500;">
-        <i class="fas fa-microchip"></i> محلي
+      <button type="button" class="btn btn-secondary" id="ai-mode-local" onclick="switchAIMode('local')">
+        <i class="fas fa-microchip ml-1"></i> محلي
       </button>
-      <button type="button" class="btn" id="ai-mode-groq" onclick="switchAIMode('groq')" style="background: #20c997; color: white; border: none; padding: 8px 20px; font-weight: 500;">
-        <i class="fas fa-cloud"></i> Groq
+      <button type="button" class="btn btn-info" id="ai-mode-groq" onclick="switchAIMode('groq')">
+        <i class="fas fa-cloud ml-1"></i> Groq
       </button>
     </div>
     <span class="badge {% if ai_enabled %}badge-success{% else %}badge-primary{% endif %} badge-lg px-4 py-2" style="font-size: 1.1rem;" id="ai-status-badge">

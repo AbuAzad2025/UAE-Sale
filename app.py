@@ -88,7 +88,8 @@ def create_app(config_class=Config):
         from routes.ai import ai_bp
         _ai_enabled = True
     except Exception as e:
-        print(f"AI Blueprint Import Error: {e}")
+        ai_import_error = str(e)
+        print(f"AI Blueprint Import Error: {ai_import_error}")
         import traceback
         traceback.print_exc()
         _ai_enabled = False
@@ -101,13 +102,13 @@ def create_app(config_class=Config):
         @ai_bp.route('/assistant')
         @login_required
         def assistant_page():
-            flash(f"AI Module failed to load on server start. Please check logs. Error: {str(e)}", "error")
+            flash(f"AI Module failed to load on server start. Please check logs. Error: {ai_import_error}", "error")
             return redirect(url_for('main.dashboard'))
 
         @ai_bp.route('/config')
         @login_required
         def config():
-            flash(f"AI Module failed to load on server start. Please check logs. Error: {str(e)}", "error")
+            flash(f"AI Module failed to load on server start. Please check logs. Error: {ai_import_error}", "error")
             return redirect(url_for('main.dashboard'))
             
         @ai_bp.route('/chat', methods=['POST'])
@@ -294,7 +295,10 @@ if __name__ == '__main__':
         """جدولة النسخ الاحتياطي اليومي"""
         while True:
             try:
-                settings_path = 'instance/backup_settings.json'
+                # Use absolute path for settings
+                basedir = os.path.abspath(os.path.dirname(__file__))
+                settings_path = os.path.join(basedir, 'instance', 'backup_settings.json')
+                
                 if os.path.exists(settings_path):
                     with open(settings_path, 'r', encoding='utf-8') as f:
                         settings = json.load(f)

@@ -12,6 +12,7 @@
 
 import logging
 import re
+import os
 from typing import Dict, List
 from datetime import datetime
 import base64
@@ -122,6 +123,13 @@ class VisionProcessor:
             }
         """
         try:
+            # التأكد من المسار المطلق
+            if not os.path.isabs(image_path):
+                image_path = os.path.abspath(image_path)
+                
+            if not os.path.exists(image_path):
+                return {'error': 'Image file not found'}
+
             from PIL import Image
             
             image = Image.open(image_path)

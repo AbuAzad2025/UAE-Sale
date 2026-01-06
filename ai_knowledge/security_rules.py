@@ -4,7 +4,6 @@
 """
 
 from flask_login import current_user
-from models import User
 
 
 class SecurityRules:
@@ -12,12 +11,9 @@ class SecurityRules:
     
     @staticmethod
     def is_owner():
-        """فحص إذا كان المستخدم مالك"""
         if not current_user or not current_user.is_authenticated:
             return False
-        
-        # فحص إذا كان المالك (admin أو owner)
-        return current_user.role and current_user.role.name in ['admin', 'owner']
+        return bool(getattr(current_user, 'is_owner', False))
     
     @staticmethod
     def can_access_sensitive_info():
@@ -68,27 +64,19 @@ class SecurityRules:
         if not current_user or not current_user.is_authenticated:
             return False, "يجب تسجيل الدخول أولاً"
         
-        # المالك لديه جميع الصلاحيات
         if SecurityRules.is_owner():
             return True, "صلاحيات كاملة"
-        
-        # فحص الصلاحيات حسب الدور
-        if current_user.role:
-            role_permissions = {
-                'admin': ['view_all', 'edit_all', 'delete_all'],
-                'manager': ['view_all', 'edit_limited'],
-                'user': ['view_limited', 'edit_own'],
-                'viewer': ['view_limited']
-            }
-            
-            user_permissions = role_permissions.get(current_user.role.name, [])
-            
-            if action in user_permissions:
-                return True, "صلاحية ممنوحة"
-            else:
-                return False, "ليس لديك صلاحية لهذا الإجراء"
-        
-        return False, "دور غير محدد"
+        role = getattr(current_user, 'role', None)
+        slug = getattr(role, 'slug', None) if role else None
+        role_permissions = {
+            'super_admin': ['view_all', 'edit_all', 'delete_all'],
+            'manager': ['view_all', 'edit_limited'],
+            'seller': ['view_limited', 'edit_own'],
+        }
+        user_permissions = role_permissions.get(slug, [])
+        if action in user_permissions:
+            return True, "صلاحية ممنوحة"
+        return False, "ليس لديك صلاحية لهذا الإجراء"
     
     @staticmethod
     def sanitize_input(text):

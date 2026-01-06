@@ -528,10 +528,20 @@ class BackupService:
             backup_path = os.path.join(cls.BACKUP_DIR, backup_filename)
             meta_path = backup_path + '.meta.json'
             
+            # Log paths for debugging
+            logger.info(f"Attempting to delete backup: {backup_path}")
+            
             if os.path.exists(backup_path):
                 os.remove(backup_path)
+                logger.info(f"Deleted backup file: {backup_path}")
+            else:
+                logger.warning(f"Backup file not found: {backup_path}")
+                
             if os.path.exists(meta_path):
                 os.remove(meta_path)
+                logger.info(f"Deleted metadata file: {meta_path}")
+                
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to delete backup {backup_filename}: {e}")
             return False

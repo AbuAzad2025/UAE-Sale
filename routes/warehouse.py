@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import Product, StockMovement, Warehouse
 from services.stock_service import StockService
-from utils.decorators import permission_required
+from utils.decorators import permission_required, admin_required
 from decimal import Decimal
 
 warehouse_bp = Blueprint('warehouse', __name__, url_prefix='/warehouse')
@@ -137,7 +137,7 @@ def view_warehouse(id):
 @warehouse_bp.route('/create', methods=['GET', 'POST'])
 @warehouse_bp.route('/create-warehouse', methods=['GET', 'POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def create_warehouse():
     from models import User
     
@@ -234,7 +234,7 @@ def list_warehouses():
 
 @warehouse_bp.route('/<int:id>/delete', methods=['POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def delete_warehouse(id):
     """حذف مستودع"""
     warehouse = Warehouse.query.get_or_404(id)

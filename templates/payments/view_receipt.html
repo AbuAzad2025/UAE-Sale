@@ -123,16 +123,15 @@
             </tr>
           </thead>
           <tbody>
-            {% if not is_payment and receipt.allocations %}
-              {% for allocation in receipt.allocations %}
+            {% set source_info = receipt.get_source_info() if not is_payment else None %}
+            {% if source_info %}
               <tr>
-                <td><a href="{{ url_for('sales.view', id=allocation.sale.id) }}">{{ allocation.sale.sale_number }}</a></td>
-                <td>{{ "{:,.2f}".format(allocation.amount_allocated) }} {{ receipt.currency }}</td>
+                <td>{{ source_info.type }} #{{ source_info.number }} ({{ source_info.date }})</td>
+                <td>{{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }}</td>
               </tr>
-              {% endfor %}
             {% else %}
               <tr>
-                <td colspan="2" class="text-center text-muted">لا توجد تخصيصات</td>
+                <td colspan="2" class="text-center text-muted">لا توجد تخصيصات (دفعة عامة)</td>
               </tr>
             {% endif %}
           </tbody>

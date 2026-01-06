@@ -55,7 +55,8 @@ class AzadNeuralEngine:
     """
     
     def __init__(self):
-        self.models_dir = 'ai_knowledge/neural_models'
+        from ai_knowledge import get_knowledge_path
+        self.models_dir = get_knowledge_path('neural_models')
         self.ensure_models_dir()
         
         # النماذج العصبية

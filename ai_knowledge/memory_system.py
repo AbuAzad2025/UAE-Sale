@@ -31,7 +31,8 @@ class LongTermMemory:
     """
     
     def __init__(self):
-        self.memory_dir = 'ai_knowledge/memory'
+        from ai_knowledge import get_knowledge_path
+        self.memory_dir = get_knowledge_path('memory')
         self.ensure_memory_dir()
         
         # أنواع الذاكرة

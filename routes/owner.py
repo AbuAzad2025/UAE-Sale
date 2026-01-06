@@ -287,14 +287,16 @@ def users_list():
     users = User.query.order_by(User.created_at.desc()).all()
     
     # إحصائيات
+    from models import Role
+    from sqlalchemy.orm import joinedload
     stats = {
         'total': User.query.count(),
         'active': User.query.filter_by(is_active=True).count(),
         'inactive': User.query.filter_by(is_active=False).count(),
         'owners': User.query.filter_by(is_owner=True).count(),
-        'admins': User.query.filter(User.role_id == 1).count(),
-        'managers': User.query.filter(User.role_id == 2).count(),
-        'sellers': User.query.filter(User.role_id == 3).count(),
+        'admins': db.session.query(User).join(Role).filter(Role.slug == 'super_admin').count(),
+        'managers': db.session.query(User).join(Role).filter(Role.slug == 'manager').count(),
+        'sellers': db.session.query(User).join(Role).filter(Role.slug == 'seller').count(),
     }
     
     return render_template('owner/users_list.html', users=users, stats=stats)
@@ -983,10 +985,8 @@ def delete_backup():
         flash('❌ غير مصرح - الحذف للمالك فقط!', 'danger')
         return redirect(url_for('owner.list_backups'))
     
-    # منع حذف النسخ التلقائية (أمان)
-    if BackupService.BACKUP_PREFIX in filename:
-        flash('❌ لا يمكن حذف النسخ التلقائية! النسخ التلقائية محمية ويتم حذفها تلقائياً عند تجاوز الحد الأقصى.', 'warning')
-        return redirect(url_for('owner.list_backups'))
+    # تم إزالة حماية النسخ التلقائية للسماح للمالك بحذفها
+    # if BackupService.BACKUP_PREFIX in filename: ...
     
     # التحقق من أن النسخة موجودة
     backups = BackupService.list_backups()
@@ -1700,6 +1700,14 @@ def preview_receipt(template):
             SampleAllocation('S-2025-0001', '800.00'),
             SampleAllocation('S-2025-0002', '700.00')
         ]
+        
+        def get_source_info(self):
+            return {
+                'type': 'فاتورة',
+                'number': 'S-2025-0001',
+                'date': datetime.now().strftime('%Y-%m-%d'),
+                'id': 1
+            }
     
     return render_template(f'receipts/{template}.html',
                          receipt=SampleReceipt(),

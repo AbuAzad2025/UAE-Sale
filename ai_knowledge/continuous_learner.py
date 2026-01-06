@@ -32,7 +32,8 @@ class ContinuousLearner:
     """
     
     def __init__(self):
-        self.knowledge_dir = 'ai_knowledge/learned_knowledge'
+        from ai_knowledge import get_knowledge_path
+        self.knowledge_dir = get_knowledge_path('learned_knowledge')
         self.ensure_knowledge_dir()
         
         # إعدادات الطلبات

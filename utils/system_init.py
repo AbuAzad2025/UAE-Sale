@@ -60,6 +60,7 @@ def _ensure_permissions():
             'category': 'warehouse'
         },
         {'code': 'view_ledger', 'name': 'View Ledger', 'name_ar': 'عرض دفتر الأستاذ', 'category': 'finance'},
+        {'code': 'manage_ledger', 'name': 'Manage Ledger', 'name_ar': 'إدارة دفتر الأستاذ', 'category': 'finance'},
         {'code': 'admin', 'name': 'Admin Dashboard', 'name_ar': 'لوحة التحكم الإدارية', 'category': 'admin'},
         {'code': 'manage_backups', 'name': 'Manage Backups', 'name_ar': 'إدارة النسخ الاحتياطي', 'category': 'admin'}
     ]

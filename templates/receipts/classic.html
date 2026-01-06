@@ -282,15 +282,14 @@
       {% endif %}
     </div>
 
-    {% if receipt.allocations %}
+    {% set source_info = receipt.get_source_info() %}
+    {% if source_info %}
     <div class="allocations">
-      <h4>تخصيص المبلغ</h4>
-      {% for allocation in receipt.allocations %}
+      <h4>تفاصيل الفاتورة</h4>
       <div class="allocation-row">
-        <div><strong>{{ allocation.sale.sale_number }}</strong> - {{ allocation.sale.sale_date.strftime('%Y-%m-%d') }}</div>
-        <div style="font-weight: 700;">{{ "{:,.2f}".format(allocation.amount_allocated) }} AED</div>
+        <div><strong>{{ source_info.number }}</strong> - {{ source_info.date }}</div>
+        <div style="font-weight: 700;">{{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }}</div>
       </div>
-      {% endfor %}
     </div>
     {% endif %}
 

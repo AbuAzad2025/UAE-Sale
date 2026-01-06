@@ -14,9 +14,10 @@ class AzadSelfImprovement:
     """نظام التحسين الذاتي لأزاد"""
     
     def __init__(self):
-        self.improvement_file = 'ai_knowledge/self_improvement.json'
-        self.performance_file = 'ai_knowledge/performance_metrics.json'
-        self.goals_file = 'ai_knowledge/improvement_goals.json'
+        from ai_knowledge import get_knowledge_path
+        self.improvement_file = get_knowledge_path('self_improvement.json')
+        self.performance_file = get_knowledge_path('performance_metrics.json')
+        self.goals_file = get_knowledge_path('improvement_goals.json')
         
         # تحميل البيانات
         self.improvement_data = self._load_improvement_data()

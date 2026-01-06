@@ -532,7 +532,7 @@ def aging_analysis():
 
 @ledger_bp.route('/admin-dashboard')
 @login_required
-@permission_required('admin')
+@admin_required
 def admin_dashboard():
     """لوحة تحكم شاملة لدفتر الأستاذ"""
     
@@ -587,7 +587,7 @@ def admin_dashboard():
 
 @ledger_bp.route('/admin-accounts')
 @login_required
-@permission_required('admin')
+@admin_required
 def admin_accounts():
     """إدارة الحسابات المحاسبية"""
     accounts = GLAccount.query.order_by(GLAccount.code).all()
@@ -595,7 +595,7 @@ def admin_accounts():
 
 @ledger_bp.route('/admin-accounts/add', methods=['GET', 'POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def admin_add_account():
     """إضافة حساب محاسبي جديد"""
     if request.method == 'POST':
@@ -650,7 +650,7 @@ def admin_add_account():
 
 @ledger_bp.route('/admin-vaults')
 @login_required
-@permission_required('admin')
+@admin_required
 def admin_vaults():
     """إدارة الصناديق والمحافظ"""
     vaults = PaymentVault.query.all()
@@ -658,7 +658,7 @@ def admin_vaults():
 
 @ledger_bp.route('/admin-journals')
 @login_required
-@permission_required('admin')
+@admin_required
 def admin_journals():
     """إدارة القيود المحاسبية"""
     page = request.args.get('page', 1, type=int)
@@ -672,14 +672,14 @@ def admin_journals():
 
 @ledger_bp.route('/admin-reports')
 @login_required
-@permission_required('admin')
+@admin_required
 def admin_reports():
     """التقارير المالية المتقدمة"""
     return render_template('admin/ledger/reports.html')
 
 @ledger_bp.route('/admin-trial-balance')
 @login_required
-@permission_required('admin')
+@admin_required
 def admin_trial_balance():
     """ميزان المراجعة"""
     date_from = request.args.get('date_from', date.today().strftime('%Y-%m-%d'))
@@ -718,7 +718,7 @@ def admin_trial_balance():
 
 @ledger_bp.route('/admin-balance-sheet')
 @login_required
-@permission_required('admin')
+@admin_required
 def admin_balance_sheet():
     """الميزانية العمومية"""
     as_of_date = request.args.get('as_of_date', date.today().strftime('%Y-%m-%d'))
@@ -751,7 +751,7 @@ def admin_balance_sheet():
 
 @ledger_bp.route('/admin-income-statement')
 @login_required
-@permission_required('admin')
+@admin_required
 def admin_income_statement():
     """قائمة الدخل"""
     date_from = request.args.get('date_from', (date.today() - timedelta(days=30)).strftime('%Y-%m-%d'))
@@ -785,7 +785,7 @@ def admin_income_statement():
 
 @ledger_bp.route('/admin-settings')
 @login_required
-@permission_required('admin')
+@admin_required
 def admin_settings():
     """إعدادات النظام المحاسبي"""
     return render_template('admin/ledger/settings.html')

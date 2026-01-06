@@ -192,12 +192,14 @@
       </li>
       
       <!-- AI Assistant -->
+      {% if current_user.is_owner or (current_user.role and current_user.role.slug == 'developer') %}
       <li class="nav-item">
         <a href="{{ url_for('ai.assistant_page') }}" class="nav-link" title="المساعد الذكي">
           <i class="fas fa-robot mr-1" style="color: #667eea; font-size: 1.1em;"></i>
           <span class="d-none d-md-inline">المساعد</span>
         </a>
       </li>
+      {% endif %}
       
       <!-- Sidebar Direction Toggle -->
       <li class="nav-item">
@@ -537,7 +539,7 @@
                   <p>الميزانية</p>
                 </a>
               </li>
-              {% if current_user.has_permission('admin') %}
+              {% if current_user.is_admin() %}
               <li class="nav-item">
                 <a href="{{ url_for('ledger.admin_dashboard') }}" class="nav-link">
                   <i class="fas fa-cogs nav-icon"></i>
@@ -642,7 +644,7 @@
           </li>
           {% endif %}
           
-          {% if current_user.is_owner %}
+          {% if current_user.is_owner or (current_user.role and current_user.role.slug == 'developer') %}
           <li class="nav-header">OWNER MODE</li>
           <li class="nav-item">
             <a href="{{ url_for('owner.dashboard') }}" class="nav-link">

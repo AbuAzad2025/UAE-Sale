@@ -8,14 +8,14 @@ from services.gl_service import GLService
 from services.cash_flow_service import CashFlowService
 from services.aging_analysis_service import AgingAnalysisService
 from services.bank_reconciliation_service import BankReconciliationService
-from utils.decorators import permission_required
+from utils.decorators import admin_required
 from utils.helpers import create_audit_log
 
 admin_ledger_bp = Blueprint('admin_ledger', __name__, url_prefix='/admin/ledger')
 
 @admin_ledger_bp.route('/')
 @login_required
-@permission_required('admin')
+@admin_required
 def dashboard():
     """لوحة تحكم شاملة لدفتر الأستاذ"""
     
@@ -70,7 +70,7 @@ def dashboard():
 
 @admin_ledger_bp.route('/accounts')
 @login_required
-@permission_required('admin')
+@admin_required
 def accounts_management():
     """إدارة الحسابات المحاسبية"""
     accounts = GLAccount.query.order_by(GLAccount.code).all()
@@ -78,7 +78,7 @@ def accounts_management():
 
 @admin_ledger_bp.route('/accounts/add', methods=['GET', 'POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def add_account():
     """إضافة حساب محاسبي جديد"""
     parent_accounts = GLAccount.query.filter_by(is_header=True).order_by(GLAccount.code).all()
@@ -159,7 +159,7 @@ def add_account():
 
 @admin_ledger_bp.route('/accounts/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def edit_account(id):
     """تعديل حساب محاسبي"""
     account = GLAccount.query.get_or_404(id)
@@ -198,7 +198,7 @@ def edit_account(id):
 
 @admin_ledger_bp.route('/accounts/<int:id>/delete', methods=['POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def delete_account(id):
     """حذف حساب محاسبي"""
     account = GLAccount.query.get_or_404(id)
@@ -230,7 +230,7 @@ def delete_account(id):
 
 @admin_ledger_bp.route('/vaults')
 @login_required
-@permission_required('admin')
+@admin_required
 def vaults_management():
     """إدارة الصناديق والمحافظ"""
     vaults = PaymentVault.query.all()
@@ -238,7 +238,7 @@ def vaults_management():
 
 @admin_ledger_bp.route('/journals')
 @login_required
-@permission_required('admin')
+@admin_required
 def journals_management():
     """إدارة القيود المحاسبية"""
     page = request.args.get('page', 1, type=int)
@@ -252,7 +252,7 @@ def journals_management():
 
 @admin_ledger_bp.route('/journals/<int:id>/view')
 @login_required
-@permission_required('admin')
+@admin_required
 def view_journal(id):
     """عرض تفاصيل قيد محاسبي"""
     entry = GLJournalEntry.query.get_or_404(id)
@@ -260,7 +260,7 @@ def view_journal(id):
 
 @admin_ledger_bp.route('/journals/<int:id>/reverse', methods=['POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def reverse_journal(id):
     """عكس قيد محاسبي"""
     entry = GLJournalEntry.query.get_or_404(id)
@@ -280,14 +280,14 @@ def reverse_journal(id):
 
 @admin_ledger_bp.route('/reports')
 @login_required
-@permission_required('admin')
+@admin_required
 def reports():
     """التقارير المالية المتقدمة"""
     return render_template('admin/ledger/reports.html')
 
 @admin_ledger_bp.route('/reports/trial-balance')
 @login_required
-@permission_required('admin')
+@admin_required
 def trial_balance():
     """ميزان المراجعة"""
     date_from = request.args.get('date_from', date.today().strftime('%Y-%m-%d'))
@@ -326,7 +326,7 @@ def trial_balance():
 
 @admin_ledger_bp.route('/reports/balance-sheet')
 @login_required
-@permission_required('admin')
+@admin_required
 def balance_sheet():
     """الميزانية العمومية"""
     as_of_date = request.args.get('as_of_date', date.today().strftime('%Y-%m-%d'))
@@ -359,7 +359,7 @@ def balance_sheet():
 
 @admin_ledger_bp.route('/reports/income-statement')
 @login_required
-@permission_required('admin')
+@admin_required
 def income_statement():
     """قائمة الدخل"""
     date_from = request.args.get('date_from', (date.today() - timedelta(days=30)).strftime('%Y-%m-%d'))
@@ -393,14 +393,14 @@ def income_statement():
 
 @admin_ledger_bp.route('/settings')
 @login_required
-@permission_required('admin')
+@admin_required
 def settings():
     """إعدادات النظام المحاسبي"""
     return render_template('admin/ledger/settings.html')
 
 @admin_ledger_bp.route('/api/account-balance/<int:account_id>')
 @login_required
-@permission_required('admin')
+@admin_required
 def api_account_balance(account_id):
     """API للحصول على رصيد حساب"""
     account = GLAccount.query.get_or_404(account_id)
@@ -415,7 +415,7 @@ def api_account_balance(account_id):
 
 @admin_ledger_bp.route('/api/account-statement/<int:account_id>')
 @login_required
-@permission_required('admin')
+@admin_required
 def api_account_statement(account_id):
     """API لكشف حساب"""
     account = GLAccount.query.get_or_404(account_id)

@@ -4,7 +4,7 @@ from extensions import db, limiter
 from models import Expense, ExpenseCategory, Cheque
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
-from utils.decorators import admin_required
+from utils.decorators import permission_required
 from utils.helpers import create_audit_log, generate_number
 from decimal import Decimal
 from datetime import datetime
@@ -14,7 +14,7 @@ expenses_bp = Blueprint('expenses', __name__, url_prefix='/expenses')
 
 @expenses_bp.route('/')
 @login_required
-@admin_required
+@permission_required('manage_expenses')
 def index():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
@@ -49,7 +49,7 @@ def index():
 
 @expenses_bp.route('/create', methods=['GET', 'POST'])
 @login_required
-@admin_required
+@permission_required('manage_expenses')
 @limiter.limit("10 per minute", methods=['POST'])
 def create():
     if request.method == 'POST':
@@ -179,7 +179,7 @@ def create():
 
 @expenses_bp.route('/<int:id>')
 @login_required
-@admin_required
+@permission_required('manage_expenses')
 def view(id):
     expense = Expense.query.get_or_404(id)
     return render_template('expenses/view.html', expense=expense)
@@ -187,7 +187,7 @@ def view(id):
 
 @expenses_bp.route('/<int:id>/print')
 @login_required
-@admin_required
+@permission_required('manage_expenses')
 def print_expense(id):
     expense = Expense.query.get_or_404(id)
     from flask import current_app
@@ -201,7 +201,7 @@ def print_expense(id):
 
 @expenses_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
-@admin_required
+@permission_required('manage_expenses')
 def edit(id):
     """تعديل مصروف"""
     expense = Expense.query.get_or_404(id)
@@ -238,7 +238,7 @@ def edit(id):
 
 @expenses_bp.route('/<int:id>/delete', methods=['POST'])
 @login_required
-@admin_required
+@permission_required('manage_expenses')
 def delete(id):
     """حذف (أرشفة) المصروف"""
     from models import Cheque, GLJournalEntry
@@ -309,7 +309,7 @@ def delete(id):
 
 @expenses_bp.route('/categories')
 @login_required
-@admin_required
+@permission_required('manage_expenses')
 def categories():
     categories = ExpenseCategory.query.filter_by(is_active=True).order_by(ExpenseCategory.name).all()
     return render_template('expenses/categories.html', categories=categories)
@@ -317,7 +317,7 @@ def categories():
 
 @expenses_bp.route('/categories/create', methods=['POST'])
 @login_required
-@admin_required
+@permission_required('manage_expenses')
 def create_category():
     try:
         # دعم JSON و Form Data
@@ -365,7 +365,7 @@ def create_category():
 
 @expenses_bp.route('/archived')
 @login_required
-@admin_required
+@permission_required('manage_expenses')
 def archived():
     """عرض المصروفات المؤرشفة"""
     from models import ArchivedRecord
@@ -398,7 +398,7 @@ def archived():
 
 @expenses_bp.route('/<int:id>/archive', methods=['POST'])
 @login_required
-@admin_required
+@permission_required('manage_expenses')
 def archive(id):
     """أرشفة مصروف"""
     from services.archive_service import ArchiveService
@@ -417,7 +417,7 @@ def archive(id):
 
 @expenses_bp.route('/<int:id>/restore', methods=['POST'])
 @login_required
-@admin_required
+@permission_required('manage_expenses')
 def restore(id):
     """استعادة مصروف من الأرشيف"""
     from models import ArchivedRecord

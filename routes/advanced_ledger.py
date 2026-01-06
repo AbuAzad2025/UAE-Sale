@@ -11,7 +11,7 @@ from services.advanced_journal_manager import AdvancedJournalEntryManager
 from services.cheque_accounting_integration import ChequeAccountingIntegration
 from services.real_time_listeners import accounting_event_stream
 from services.advanced_analytics import AdvancedFinancialAnalytics
-from utils.decorators import permission_required
+from utils.decorators import permission_required, admin_required
 from utils.helpers import create_audit_log
 
 advanced_ledger_bp = Blueprint('advanced_ledger', __name__, url_prefix='/ledger/advanced')
@@ -47,7 +47,7 @@ def professional_printing():
 
 @advanced_ledger_bp.route('/customs-taxes')
 @login_required
-@permission_required('admin')
+@admin_required
 def customs_taxes():
     """إدارة الجمارك والضرائب"""
     taxes = CustomsTax.query.filter_by(is_active=True).order_by(CustomsTax.name_ar).all()
@@ -55,7 +55,7 @@ def customs_taxes():
 
 @advanced_ledger_bp.route('/customs-taxes/add', methods=['GET', 'POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def add_customs_tax():
     """إضافة ضريبة أو جمرك جديد"""
     accounts = GLAccount.query.filter_by(is_active=True, is_header=False).order_by(GLAccount.code).all()
@@ -100,7 +100,7 @@ def add_customs_tax():
 
 @advanced_ledger_bp.route('/expense-categories')
 @login_required
-@permission_required('admin')
+@admin_required
 def expense_categories():
     """إدارة فئات المصروفات المتقدمة"""
     categories = ExpenseCategory.query.filter_by(is_active=True).order_by(ExpenseCategory.name).all()
@@ -108,7 +108,7 @@ def expense_categories():
 
 @advanced_ledger_bp.route('/expense-categories/add', methods=['GET', 'POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def add_expense_category():
     """إضافة فئة مصروفات جديدة"""
     parent_categories = ExpenseCategory.query.filter_by(is_active=True).all()
@@ -168,7 +168,7 @@ def advanced_expenses():
 
 @advanced_ledger_bp.route('/advanced-expenses/add', methods=['GET', 'POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def add_advanced_expense():
     """إضافة مصروف متقدم جديد"""
     if request.method == 'POST':
@@ -224,7 +224,7 @@ def add_advanced_expense():
 
 @advanced_ledger_bp.route('/journal-management')
 @login_required
-@permission_required('admin')
+@admin_required
 def journal_management():
     """إدارة القيود المحاسبية المتقدمة"""
     page = request.args.get('page', 1, type=int)
@@ -238,7 +238,7 @@ def journal_management():
 
 @advanced_ledger_bp.route('/journal-management/<int:entry_id>/reverse', methods=['POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def reverse_journal_entry(entry_id):
     """عكس قيد محاسبي"""
     try:
@@ -260,7 +260,7 @@ def reverse_journal_entry(entry_id):
 
 @advanced_ledger_bp.route('/journal-management/<int:entry_id>/delete', methods=['POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def delete_journal_entry(entry_id):
     """حذف قيد محاسبي"""
     try:
@@ -281,7 +281,7 @@ def delete_journal_entry(entry_id):
 
 @advanced_ledger_bp.route('/journal-management/<int:entry_id>/approve', methods=['POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def approve_journal_entry(entry_id):
     """الموافقة على قيد محاسبي"""
     try:
@@ -322,7 +322,7 @@ def cheque_integration():
 
 @advanced_ledger_bp.route('/cheque-integration/<int:cheque_id>/receive', methods=['POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def receive_cheque(cheque_id):
     """تسجيل استلام شيك"""
     try:
@@ -340,7 +340,7 @@ def receive_cheque(cheque_id):
 
 @advanced_ledger_bp.route('/cheque-integration/<int:cheque_id>/clear', methods=['POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def clear_cheque(cheque_id):
     """تسجيل صرف شيك"""
     try:
@@ -363,7 +363,7 @@ def clear_cheque(cheque_id):
 
 @advanced_ledger_bp.route('/real-time-events')
 @login_required
-@permission_required('admin')
+@admin_required
 def real_time_events():
     """مستمعات الأحداث اللحظية"""
     # الحصول على الأحداث الأخيرة
@@ -380,7 +380,7 @@ def real_time_events():
 
 @advanced_ledger_bp.route('/api/events/stream')
 @login_required
-@permission_required('admin')
+@admin_required
 def events_stream_api():
     """API لتيار الأحداث"""
     event_type = request.args.get('type')
@@ -451,7 +451,7 @@ def professional_reports():
 
 @advanced_ledger_bp.route('/advanced-analytics')
 @login_required
-@permission_required('admin')
+@admin_required
 def advanced_analytics():
     """نظام التحليل المالي المتقدم"""
     # الحصول على جميع البيانات التحليلية
@@ -501,7 +501,7 @@ def api_trend_analysis():
 
 @advanced_ledger_bp.route('/api/forecasting')
 @login_required
-@permission_required('admin')
+@admin_required
 def api_forecasting():
     """API للتوقعات المالية"""
     months_ahead = int(request.args.get('months', 6))

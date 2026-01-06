@@ -16,8 +16,9 @@ class KnowledgeExpander:
     """موسع المعرفة لأزاد"""
     
     def __init__(self):
-        self.knowledge_dir = 'ai_knowledge/expanded_knowledge'
-        self.sources_file = 'ai_knowledge/knowledge_sources.json'
+        from ai_knowledge import get_knowledge_path
+        self.knowledge_dir = get_knowledge_path('expanded_knowledge')
+        self.sources_file = get_knowledge_path('knowledge_sources.json')
         
         # إنشاء المجلد إذا لم يكن موجوداً
         os.makedirs(self.knowledge_dir, exist_ok=True)

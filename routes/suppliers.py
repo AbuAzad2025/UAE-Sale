@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Supplier, Purchase, Payment
-from utils.decorators import admin_required
+from utils.decorators import permission_required, admin_required
 from utils.helpers import create_audit_log
 from sqlalchemy import func, desc
 
@@ -15,7 +15,7 @@ suppliers_bp = Blueprint('suppliers', __name__, url_prefix='/suppliers')
 
 @suppliers_bp.route('/')
 @login_required
-@admin_required
+@permission_required('manage_suppliers')
 def index():
     """قائمة الموردين"""
     page = request.args.get('page', 1, type=int)
@@ -63,7 +63,7 @@ def index():
 
 @suppliers_bp.route('/create', methods=['GET', 'POST'])
 @login_required
-@admin_required
+@permission_required('manage_suppliers')
 @limiter.limit("10 per minute", methods=['POST'])
 def create():
     """إضافة مورد جديد"""
@@ -128,7 +128,7 @@ def create():
 
 @suppliers_bp.route('/<int:id>')
 @login_required
-@admin_required
+@permission_required('manage_suppliers')
 def view(id):
     """عرض تفاصيل المورد"""
     supplier = Supplier.query.get_or_404(id)
@@ -157,7 +157,7 @@ def view(id):
 
 @suppliers_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
-@admin_required
+@permission_required('manage_suppliers')
 def edit(id):
     """تعديل المورد"""
     supplier = Supplier.query.get_or_404(id)
@@ -204,7 +204,7 @@ def edit(id):
 
 @suppliers_bp.route('/<int:id>/delete', methods=['POST'])
 @login_required
-@admin_required
+@permission_required('manage_suppliers')
 def delete(id):
     """حذف (إلغاء تفعيل) المورد"""
     supplier = Supplier.query.get_or_404(id)

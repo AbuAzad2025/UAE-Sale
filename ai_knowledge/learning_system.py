@@ -14,10 +14,12 @@ class AzadLearningSystem:
     """نظام التعلم الذاتي لأزاد"""
     
     def __init__(self):
-        self.knowledge_file = 'ai_knowledge/learned_knowledge.json'
-        self.interactions_file = 'ai_knowledge/interactions_log.json'
-        self.patterns_file = 'ai_knowledge/patterns.pkl'
-        self.feedback_file = 'ai_knowledge/feedback_log.json'
+        from ai_knowledge import get_knowledge_path
+        
+        self.knowledge_file = get_knowledge_path('learned_knowledge.json')
+        self.interactions_file = get_knowledge_path('interactions_log.json')
+        self.patterns_file = get_knowledge_path('patterns.pkl')
+        self.feedback_file = get_knowledge_path('feedback_log.json')
         
         # تحميل المعرفة المكتسبة
         self.learned_knowledge = self._load_learned_knowledge()

@@ -280,22 +280,16 @@
           </div>
           {% endif %}
 
-          <!-- زر الحذف (للنسخ اليدوية فقط) -->
-          {% if backup.manual %}
+          <!-- زر الحذف -->
           <form method="POST" action="{{ url_for('owner.delete_backup') }}" 
                 style="display: inline-block;"
-                onsubmit="return confirm('⚠️ هل أنت متأكد من حذف النسخة الاحتياطية؟\n\n📁 {{ backup.filename }}\n\n⚠️ لا يمكن التراجع عن هذا الإجراء!');">
+                onsubmit="return confirm('⚠️ هل أنت متأكد من حذف النسخة الاحتياطية؟\n\n📁 {{ backup.filename }}\n\n{% if not backup.manual %}⚠️ تنبيه: هذه نسخة تلقائية.\n{% endif %}⚠️ لا يمكن التراجع عن هذا الإجراء!');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="filename" value="{{ backup.filename }}">
             <button type="submit" class="btn btn-sm btn-danger" title="حذف النسخة نهائياً">
               <i class="fas fa-trash mr-1"></i> حذف
             </button>
           </form>
-          {% else %}
-          <span class="badge badge-secondary" title="النسخ التلقائية محمية من الحذف اليدوي">
-            <i class="fas fa-shield-alt"></i> محمية
-          </span>
-          {% endif %}
 
           <!-- زر التحميل -->
           <a href="{{ url_for('owner.download_backup', filename=backup.filename) }}" 

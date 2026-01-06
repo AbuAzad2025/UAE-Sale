@@ -19,7 +19,7 @@ from ai_knowledge.document_generator import document_generator
 from ai_knowledge.advanced_laws import advanced_laws
 from ai_knowledge.automotive_ecu_knowledge import get_automotive_ecu_knowledge
 from ai_knowledge.external_learning import get_external_learning, LEARNING_SOURCES_CATALOG
-from utils.decorators import permission_required
+from utils.decorators import permission_required, owner_required, admin_required
 from datetime import datetime, timezone
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
@@ -67,8 +67,9 @@ def train_local_ai(action, data, result):
         # حفظ للتدريب المستقبلي
         import json
         import os
+        from ai_knowledge import get_knowledge_path
         
-        training_file = 'ai_knowledge/local_training.json'
+        training_file = get_knowledge_path('local_training.json')
         if os.path.exists(training_file):
             with open(training_file, 'r', encoding='utf-8') as f:
                 training_history = json.load(f)
@@ -2887,19 +2888,25 @@ http://localhost:5000/ai/assistant
 
 @ai_bp.route('/assistant', methods=['GET'])
 @login_required
+@owner_required
 def assistant_page():
     """صفحة المساعد الذكي"""
-    from models import Warehouse
-    warehouses = Warehouse.query.all()
-    return render_template('ai/assistant.html',
-                         ai_enabled=AIService.is_enabled(),
-                         warehouses=warehouses,
-                         current_user=current_user)
+    try:
+        from models import Warehouse
+        warehouses = Warehouse.query.all()
+        return render_template('ai/assistant.html',
+                             ai_enabled=AIService.is_enabled(),
+                             warehouses=warehouses,
+                             current_user=current_user)
+    except Exception as e:
+        import traceback
+        return f"Error: {str(e)}\n\n{traceback.format_exc()}", 500
 
 
 @ai_bp.route('/config', methods=['GET', 'POST'])
 @csrf.exempt
 @login_required
+@owner_required
 def config():
     """إعدادات AI - تحديث المفاتيح يومياً"""
     if request.method == 'POST':
@@ -2911,8 +2918,9 @@ def config():
         
         try:
             from pathlib import Path
+            base_env_path = Path(__file__).resolve().parent.parent / '.env'
             
-            env_file = Path('.env')
+            env_file = base_env_path
             
             if env_file.exists():
                 with open(env_file, 'r', encoding='utf-8') as f:
@@ -3298,7 +3306,7 @@ def learning_status():
 
 @ai_bp.route('/learning/evolve', methods=['POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def evolve_knowledge():
     """تطوير المعرفة تلقائياً"""
     try:
@@ -3334,7 +3342,7 @@ def improvement_status():
 
 @ai_bp.route('/improvement/auto-improve', methods=['POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def auto_improve():
     """التحسين التلقائي"""
     try:
@@ -3370,7 +3378,7 @@ def improvement_progress():
 
 @ai_bp.route('/improvement/set-goal', methods=['POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def set_improvement_goal():
     """تعيين هدف تحسين"""
     try:
@@ -3414,7 +3422,7 @@ def global_insights():
 
 @ai_bp.route('/global/expertise-update')
 @login_required
-@permission_required('admin')
+@admin_required
 def update_global_expertise():
     """تحديث الخبرة العالمية"""
     try:
@@ -3462,7 +3470,7 @@ def performance_analysis():
 
 @ai_bp.route('/system/customer-balance/<customer_name>')
 @login_required
-@permission_required('view_customers')
+@permission_required('manage_customers')
 def get_customer_balance(customer_name):
     """جلب رصيد العميل بدقة"""
     try:
@@ -3477,7 +3485,7 @@ def get_customer_balance(customer_name):
 
 @ai_bp.route('/system/customer-debt/<int:customer_id>')
 @login_required
-@permission_required('view_customers')
+@permission_required('manage_customers')
 def analyze_customer_debt(customer_id):
     """تحليل ديون العميل بالتفصيل"""
     try:
@@ -3492,7 +3500,7 @@ def analyze_customer_debt(customer_id):
 
 @ai_bp.route('/system/product-stock/<product_name>')
 @login_required
-@permission_required('view_products')
+@permission_required('manage_products')
 def get_product_stock(product_name):
     """جلب مخزون المنتج بدقة"""
     try:
@@ -3541,7 +3549,7 @@ def search_system_data(search_term):
 
 @ai_bp.route('/system/add-customer', methods=['POST'])
 @login_required
-@permission_required('add_customers')
+@permission_required('manage_customers')
 def add_customer():
     """إضافة عميل جديد"""
     try:
@@ -3604,7 +3612,7 @@ def get_financial_ratios():
 
 @ai_bp.route('/knowledge/add-website', methods=['POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def add_knowledge_website():
     """إضافة موقع ويب للمعرفة"""
     try:
@@ -3630,7 +3638,7 @@ def add_knowledge_website():
 
 @ai_bp.route('/knowledge/add-document', methods=['POST'])
 @login_required
-@permission_required('admin')
+@admin_required
 def add_knowledge_document():
     """إضافة مستند للمعرفة"""
     try:

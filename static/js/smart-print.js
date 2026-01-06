@@ -10,12 +10,13 @@
     $.fn.dataTable.ext.buttons.print &&
     typeof $.fn.dataTable.ext.buttons.print.action === 'function';
 
+  let defaultPrintAction = null;
+
   if (!hasPrintExtension) {
     console.warn('SmartPrint: DataTables Buttons with print extension is required.');
-    return;
+  } else {
+    defaultPrintAction = $.fn.dataTable.ext.buttons.print.action;
   }
-
-  const defaultPrintAction = $.fn.dataTable.ext.buttons.print.action;
   let modalInitialized = false;
   const triggerRegistry = new WeakMap();
   const state = {
@@ -231,6 +232,155 @@
     return null;
   }
 
+  // Fallback print function when DataTables print extension is missing
+  function fallbackPrint(table, config) {
+    const dt = table;
+    let data = { header: [], body: [], footer: [] };
+    let info = { title: '', messageTop: '', messageBottom: '' };
+
+    try {
+        if (dt.buttons && typeof dt.buttons.exportData === 'function') {
+            data = dt.buttons.exportData(config.exportOptions);
+            info = dt.buttons.exportInfo(config);
+        } else {
+            // Manual extraction from DOM if Buttons extension is missing
+            console.log('SmartPrint: Extracting data from DOM (Buttons extension missing)');
+            
+            // Extract Header
+            $(dt.table().header()).find('tr').each(function() {
+                let row = [];
+                $(this).find('th, td').each(function() {
+                    row.push($(this).text().trim());
+                });
+                // Only take the last header row if multiple exist (common in DT)
+                data.header = row; 
+            });
+
+            // Extract Body (using current page or all pages based on config?)
+            // If we want all data, we might need to use dt.rows().data()
+            // config.exportOptions usually specifies modifier: { page: 'all' }
+            
+            let modifier = (config.exportOptions && config.exportOptions.modifier) || { page: 'all' };
+            let rows = dt.rows(modifier).nodes();
+            
+            if (rows.length === 0) {
+                 // Try getting data directly if nodes are not rendered
+                 let rawData = dt.rows(modifier).data();
+                 for (let i = 0; i < rawData.length; i++) {
+                     let rowData = [];
+                     // This is tricky because data might be objects or arrays
+                     // Simplified assumption: array or object values
+                     let item = rawData[i];
+                     if (Array.isArray(item)) {
+                         rowData = item;
+                     } else if (typeof item === 'object') {
+                         rowData = Object.values(item);
+                     }
+                     data.body.push(rowData);
+                 }
+            } else {
+                $(rows).each(function() {
+                    let row = [];
+                    $(this).find('td').each(function() {
+                        row.push($(this).text().trim());
+                    });
+                    data.body.push(row);
+                });
+            }
+
+            // Extract Footer
+            $(dt.table().footer()).find('tr').each(function() {
+                 let row = [];
+                $(this).find('th, td').each(function() {
+                    row.push($(this).text().trim());
+                });
+                data.footer = row;
+            });
+            
+            info.title = config.title || document.title;
+        }
+    } catch (e) {
+        console.error('SmartPrint: Data extraction failed', e);
+        alert('حدث خطأ أثناء تحضير البيانات للطباعة.');
+        return;
+    }
+
+    const opts = config.smartPrintOptions || {};
+
+    let html = '<table class="table table-striped table-bordered">';
+
+    // Header
+    if (config.header) {
+      html += '<thead><tr>';
+      for (let i = 0; i < data.header.length; i++) {
+        html += '<th>' + data.header[i] + '</th>';
+      }
+      html += '</tr></thead>';
+    }
+
+    // Body
+    html += '<tbody>';
+    for (let i = 0; i < data.body.length; i++) {
+      html += 'tr';
+      for (let j = 0; j < data.body[i].length; j++) {
+        html += '<td>' + data.body[i][j] + '</td>';
+      }
+      html += '</tr>';
+    }
+    html += '</tbody>';
+
+    // Footer
+    if (config.footer && data.footer) {
+      html += '<tfoot><tr>';
+      for (let i = 0; i < data.footer.length; i++) {
+        html += '<th>' + data.footer[i] + '</th>';
+      }
+      html += '</tr></tfoot>';
+    }
+    html += '</table>';
+
+    // Create a new window for printing
+    const win = window.open('', '');
+    if (!win) {
+      alert('يرجى السماح بالنوافذ المنبثقة لطباعة التقرير.');
+      return;
+    }
+
+    const title = opts.title || config.title || document.title;
+    
+    win.document.write('<!DOCTYPE html><html dir="rtl"><head><title>' + title + '</title>');
+    win.document.write('<style>');
+    win.document.write('body { font-family: "Tajawal", sans-serif; direction: rtl; padding: 20px; }');
+    win.document.write('table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }');
+    win.document.write('th, td { border: 1px solid #dee2e6; padding: 0.75rem; text-align: right; }');
+    win.document.write('th { background-color: #f8f9fa; font-weight: bold; }');
+    win.document.write('.print-header { text-align: center; margin-bottom: 20px; }');
+    win.document.write('.print-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }');
+    win.document.write('@media print { body { -webkit-print-color-adjust: exact; } }');
+    win.document.write('</style>');
+    win.document.write('</head><body>');
+    
+    win.document.write('<div class="print-header">');
+    if (info.title) win.document.write('<h1 class="print-title">' + info.title + '</h1>');
+    if (info.messageTop) win.document.write('<div class="message-top">' + info.messageTop + '</div>');
+    win.document.write('</div>');
+    
+    win.document.write(html);
+    
+    if (info.messageBottom) win.document.write('<div class="message-bottom" style="margin-top: 20px;">' + info.messageBottom + '</div>');
+    
+    win.document.write('</body></html>');
+    
+    win.document.close();
+    
+    // Wait for content to load then print
+    setTimeout(function() {
+      win.focus();
+      win.print();
+      win.close();
+    }, 500);
+  }
+
   function handleConfirm() {
     if (!state.table || !state.buttonApi) {
       return;
@@ -259,7 +409,17 @@
 
     $('#smartPrintModal').modal('hide');
 
-    defaultPrintAction.call(state.buttonApi, new $.Event('smart-print'), state.table, buttonNode, originalConfig);
+    if (defaultPrintAction) {
+      try {
+        defaultPrintAction.call(state.buttonApi, new $.Event('smart-print'), state.table, buttonNode, originalConfig);
+      } catch (e) {
+        console.warn('SmartPrint: Standard print failed, trying fallback.', e);
+        fallbackPrint(state.table, originalConfig);
+      }
+    } else {
+      console.log('SmartPrint: Using fallback print.');
+      fallbackPrint(state.table, originalConfig);
+    }
   }
 
   function applyPrintStyles(win, options) {

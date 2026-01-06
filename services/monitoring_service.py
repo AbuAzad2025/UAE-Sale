@@ -86,8 +86,12 @@ class MonitoringService:
     @staticmethod
     def log_performance_metric(metric_name: str, value: float, tags: Dict = None):
         try:
-            metrics_file = 'logs/performance.log'
-            os.makedirs('logs', exist_ok=True)
+            # استخدام مسار مطلق للمجلد logs
+            basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+            logs_dir = os.path.join(basedir, 'logs')
+            metrics_file = os.path.join(logs_dir, 'performance.log')
+            
+            os.makedirs(logs_dir, exist_ok=True)
             
             with open(metrics_file, 'a', encoding='utf-8') as f:
                 timestamp = datetime.now().isoformat()

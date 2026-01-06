@@ -176,9 +176,10 @@
     </div>
 
     <!-- Allocations -->
-    {% if receipt.allocations %}
+    {% set source_info = receipt.get_source_info() %}
+    {% if source_info %}
     <div style="margin: 15px 0;">
-      <strong style="font-size: 9px;">تخصيص المبلغ على الفواتير:</strong>
+      <strong style="font-size: 9px;">تفاصيل الفاتورة:</strong>
       <table style="margin-top: 8px; font-size: 8px;">
         <thead>
           <tr>
@@ -188,13 +189,11 @@
           </tr>
         </thead>
         <tbody>
-          {% for allocation in receipt.allocations %}
           <tr>
-            <td>{{ allocation.sale.sale_number }}</td>
-            <td>{{ allocation.sale.sale_date.strftime('%Y-%m-%d') }}</td>
-            <td><strong>{{ "{:,.2f}".format(allocation.amount_allocated) }} AED</strong></td>
+            <td>{{ source_info.number }}</td>
+            <td>{{ source_info.date }}</td>
+            <td><strong>{{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }}</strong></td>
           </tr>
-          {% endfor %}
         </tbody>
       </table>
     </div>

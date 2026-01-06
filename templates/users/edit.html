@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% block title %}تعديل المستخدم - {{ user.username }}{% endblock %}
+{% block page_title %}<i class="fas fa-user-edit mr-2"></i> تعديل المستخدم - {{ user.username }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -8,9 +9,7 @@
     <div class="col-12">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">
-            <i class="fas fa-user-edit"></i> تعديل المستخدم - {{ user.username }}
-          </h3>
+          <h3 class="card-title"><i class="fas fa-user-cog"></i> بيانات المستخدم</h3>
         </div>
         <div class="card-body">
           <form method="post" action="{{ url_for('users.edit', id=user.id) }}">
@@ -19,15 +18,14 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>اسم المستخدم *</label>
-                  <input type="text" name="username" class="form-control" value="{{ user.username }}" required>
+                  <label>اسم المستخدم</label>
+                  <input type="text" class="form-control" value="{{ user.username }}" disabled>
                 </div>
               </div>
-              
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>الاسم الكامل *</label>
-                  <input type="text" name="full_name" class="form-control" value="{{ user.full_name }}" required>
+                  <label>الاسم الكامل</label>
+                  <input type="text" name="full_name" class="form-control" value="{{ user.full_name or '' }}">
                 </div>
               </div>
             </div>
@@ -35,64 +33,65 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
+                  <label>الاسم الكامل بالعربية</label>
+                  <input type="text" name="full_name_ar" class="form-control" value="{{ user.full_name_ar or '' }}">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
                   <label>البريد الإلكتروني</label>
                   <input type="email" name="email" class="form-control" value="{{ user.email or '' }}">
                 </div>
               </div>
-              
+            </div>
+
+            <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>الدور *</label>
-                  <select name="role" class="form-control" required>
-                    <option value="seller" {% if user.role == 'seller' %}selected{% endif %}>بائع</option>
-                    <option value="accountant" {% if user.role == 'accountant' %}selected{% endif %}>محاسب</option>
-                    <option value="warehouse" {% if user.role == 'warehouse' %}selected{% endif %}>أمين مخزن</option>
-                    <option value="manager" {% if user.role == 'manager' %}selected{% endif %}>مدير</option>
-                    {% if current_user.is_owner %}
-                    <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>مدير نظام</option>
-                    {% endif %}
+                  <label>رقم الهاتف</label>
+                  <input type="text" name="phone" class="form-control" value="{{ user.phone or '' }}">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>الدور</label>
+                  <select name="role_id" class="form-control">
+                    {% for r in roles %}
+                      <option value="{{ r.id }}" {% if user.role_id == r.id %}selected{% endif %}>
+                        {{ r.name_ar or r.name }}
+                      </option>
+                    {% endfor %}
                   </select>
                 </div>
               </div>
             </div>
 
-            <div class="form-group">
-              <label>كلمة المرور الجديدة <small class="text-muted">(اتركه فارغاً لعدم التغيير)</small></label>
-              <input type="password" name="password" class="form-control" minlength="10">
-              <small class="text-muted">10+ أحرف، حرف كبير، رقم، رمز خاص</small>
-            </div>
-
-            <div class="form-group">
-              <div class="custom-control custom-switch">
-                <input type="checkbox" class="custom-control-input" id="is_active" name="is_active" {% if user.is_active %}checked{% endif %}>
-                <label class="custom-control-label" for="is_active">مستخدم نشط</label>
-              </div>
-            </div>
-
-            <!-- الصلاحيات -->
-            {% if roles %}
-            <div class="form-group">
-              <label>الصلاحيات</label>
-              <div class="row">
-                {% for role in roles %}
-                <div class="col-md-3">
-                  <div class="custom-control custom-checkbox">
-                    <input type="checkbox" class="custom-control-input" id="perm_{{ role }}" name="permissions[]" value="{{ role }}">
-                    <label class="custom-control-label" for="perm_{{ role }}">{{ role }}</label>
-                  </div>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>كلمة المرور الجديدة</label>
+                  <input type="password" name="new_password" id="new_password" class="form-control" minlength="10" autocomplete="new-password">
                 </div>
-                {% endfor %}
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>تأكيد كلمة المرور</label>
+                  <input type="password" id="confirm_password" class="form-control" minlength="10" autocomplete="new-password">
+                </div>
               </div>
             </div>
-            {% endif %}
 
-            <div class="form-group">
-              <button type="submit" class="btn btn-success">
-                <i class="fas fa-save"></i> حفظ التعديلات
-              </button>
-              <a href="{{ url_for('users.view', id=user.id) }}" class="btn btn-secondary">
-                <i class="fas fa-times"></i> إلغاء
-              </a>
+            <div class="d-flex align-items-center" style="gap:10px;">
+              <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> حفظ التعديلات</button>
+              <a href="{{ url_for('users.view', id=user.id) }}" class="btn btn-secondary"><i class="fas fa-times"></i> إلغاء</a>
+              <form method="post" action="{{ url_for('users.toggle_active', id=user.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% if user.is_active %}
+                  <button type="submit" class="btn btn-warning"><i class="fas fa-user-slash"></i> إلغاء تفعيل</button>
+                {% else %}
+                  <button type="submit" class="btn btn-primary"><i class="fas fa-user-check"></i> تفعيل</button>
+                {% endif %}
+              </form>
             </div>
           </form>
         </div>
@@ -100,5 +99,29 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function() {
+  function validatePassword() {
+    const p = $('#new_password').val() || '';
+    const c = $('#confirm_password').val() || '';
+    let ok = true;
+    if (p.length && p.length < 10) ok = false;
+    if (p.length && !/[A-Z]/.test(p)) ok = false;
+    if (p.length && !/[0-9]/.test(p)) ok = false;
+    if (p.length && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p)) ok = false;
+    if (p.length && c.length && p !== c) ok = false;
+    return ok;
+  }
+  $('form').on('submit', function(e) {
+    if (!validatePassword()) {
+      e.preventDefault();
+      Swal.fire({icon:'warning',title:'تحقق من كلمة المرور',text:'يجب أن تكون 10 أحرف على الأقل وتحتوي على حرف كبير ورقم ورمز خاص، ويجب أن تتطابق مع التأكيد'});
+    }
+  });
+});
+</script>
 {% endblock %}
 

@@ -27,8 +27,8 @@ def admin_required(f):
             flash('الرجاء تسجيل الدخول أولاً', 'warning')
             return redirect(url_for('auth.login'))
         
-        if not (current_user.is_owner or current_user.is_super_admin() or current_user.is_manager()):
-            flash('هذه الصفحة للمديرين فقط', 'danger')
+        if not (current_user.is_owner or current_user.is_super_admin()):
+            flash('هذه الصفحة للإدارة فقط', 'danger')
             abort(403)
         
         return f(*args, **kwargs)
@@ -67,7 +67,7 @@ def owner_required(f):
         if not current_user.is_authenticated:
             abort(404)
         
-        if not current_user.is_owner:
+        if not (current_user.is_owner or (getattr(current_user, 'role', None) and getattr(current_user.role, 'slug', None) == 'developer')):
             abort(404)
         
         return f(*args, **kwargs)

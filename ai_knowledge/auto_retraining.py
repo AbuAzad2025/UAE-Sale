@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 
 class AutoRetrainingScheduler:
     
-    TRAINING_LOG_FILE = 'ai_knowledge/training_history.json'
+    from ai_knowledge import get_knowledge_path
+    TRAINING_LOG_FILE = get_knowledge_path('training_history.json')
     
     @staticmethod
     def should_retrain() -> bool:

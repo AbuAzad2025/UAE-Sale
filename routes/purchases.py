@@ -5,7 +5,7 @@ from models import Purchase, PurchaseLine, Product, Supplier, Warehouse
 from services.stock_service import StockService
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
-from utils.decorators import admin_required
+from utils.decorators import permission_required
 from utils.helpers import create_audit_log, generate_number
 from decimal import Decimal
 
@@ -14,7 +14,7 @@ purchases_bp = Blueprint('purchases', __name__, url_prefix='/purchases')
 
 @purchases_bp.route('/')
 @login_required
-@admin_required
+@permission_required('manage_purchases')
 def index():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
@@ -46,7 +46,7 @@ def index():
 
 @purchases_bp.route('/create', methods=['GET', 'POST'])
 @login_required
-@admin_required
+@permission_required('manage_purchases')
 @limiter.limit("10 per minute", methods=['POST'])
 def create():
     warehouse_id_val = request.form.get('warehouse_id', type=int) if request.method == 'POST' else None
@@ -256,7 +256,7 @@ def create():
 
 @purchases_bp.route('/<int:id>')
 @login_required
-@admin_required
+@permission_required('manage_purchases')
 def view(id):
     purchase = Purchase.query.get_or_404(id)
     return render_template('purchases/view.html', purchase=purchase)
@@ -264,7 +264,7 @@ def view(id):
 
 @purchases_bp.route('/<int:id>/print')
 @login_required
-@admin_required
+@permission_required('manage_purchases')
 def print_purchase(id):
     purchase = Purchase.query.get_or_404(id)
     from flask import current_app
@@ -278,7 +278,7 @@ def print_purchase(id):
 
 @purchases_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
-@admin_required
+@permission_required('manage_purchases')
 def edit(id):
     """تعديل فاتورة شراء - الملاحظات والخصم فقط"""
     purchase = Purchase.query.get_or_404(id)
@@ -308,7 +308,7 @@ def edit(id):
 
 @purchases_bp.route('/<int:id>/delete', methods=['POST'])
 @login_required
-@admin_required
+@permission_required('manage_purchases')
 def delete(id):
     """حذف (أرشفة) فاتورة شراء"""
     from services.archive_service import ArchiveService

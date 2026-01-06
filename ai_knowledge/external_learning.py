@@ -281,7 +281,8 @@ class ExternalLearningSystem:
     
     def _load_learned_data(self) -> dict:
         """تحميل البيانات المتعلمة"""
-        learned_file = 'ai_knowledge/external_learned_data.json'
+        from ai_knowledge import get_knowledge_path
+        learned_file = get_knowledge_path('external_learned_data.json')
         
         if os.path.exists(learned_file):
             try:
@@ -370,7 +371,8 @@ class ExternalLearningSystem:
     
     def _save_learned_data(self):
         """حفظ البيانات المتعلمة"""
-        learned_file = 'ai_knowledge/external_learned_data.json'
+        from ai_knowledge import get_knowledge_path
+        learned_file = get_knowledge_path('external_learned_data.json')
         
         try:
             self.learned_data['metadata']['total_learned'] = (

@@ -192,8 +192,8 @@ def create_app(config_class=Config):
     app.register_blueprint(graphql_bp)
     
     # Error Handlers
-    # from utils.error_handlers import register_error_handlers
-    # register_error_handlers(app)
+    from utils.error_handlers import register_error_handlers
+    register_error_handlers(app)
     
     # Context Processors
     @app.context_processor

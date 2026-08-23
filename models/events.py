@@ -48,11 +48,16 @@ def register_all_listeners():
     register_validation_listeners()
     register_audit_listeners()
     
-    # مستمعات المساعد الذكي (AI)
-    register_ai_listeners()
-    
-    # مستمعات التدريب العصبي التلقائي
-    register_neural_training_listeners()
+    # مستمعات المساعد الذكي (AI) — تُفعّل في بيئة التطوير فقط
+    # في الإنتاج، تسبب هذه المستمعات بطء شديد عند كل عملية قاعدة بيانات
+    import os
+    app_env = os.environ.get('APP_ENV', 'production').lower()
+    if app_env in ('development', 'testing'):
+        register_ai_listeners()
+        register_neural_training_listeners()
+        logger.info("[OK] AI + Neural listeners ENABLED (non-production environment)")
+    else:
+        logger.info("[OK] AI + Neural listeners DISABLED (production environment — use services/ for AI)")
     
     # مستمعات القيود المحاسبية التلقائية
     register_automatic_gl_listeners()
@@ -116,8 +121,8 @@ def register_sale_listeners():
                 from services.monitoring_service import MonitoringService
                 MonitoringService.log_performance_metric('customer_balance_update', float(new_balance), 
                                                         {'customer_id': target.customer_id})
-            except:
-                pass
+            except Exception:
+                pass  # monitoring is non-critical
                 
         except Exception as e:
             logger.error(f"❌ Failed to auto-update customer balance: {e}")
@@ -125,8 +130,8 @@ def register_sale_listeners():
                 from services.monitoring_service import MonitoringService
                 MonitoringService.log_performance_metric('customer_balance_error', 1, 
                                                         {'error': str(e)})
-            except:
-                pass
+            except Exception:
+                pass  # monitoring is non-critical
     
     @event.listens_for(Sale, 'after_delete')
     def auto_update_customer_on_sale_delete(mapper, connection, target):
@@ -353,7 +358,7 @@ def validate_decimal_precision(value, max_digits=15, decimal_places=3):
             return False
         
         return True
-    except:
+    except Exception:
         return False
 
 

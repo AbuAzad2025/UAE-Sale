@@ -9,8 +9,8 @@ class Purchase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     purchase_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     
-    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), index=True)
-    warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), nullable=True, index=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id', ondelete='SET NULL'), nullable=True, index=True)
+    warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id', ondelete='SET NULL'), nullable=True, index=True)
     
     supplier_name = db.Column(db.String(200), nullable=False)
     supplier_phone = db.Column(db.String(20))

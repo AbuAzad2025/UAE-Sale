@@ -646,7 +646,7 @@ def print_receipt(id):
             'phone': current_app.config.get('COMPANY_PHONE'),
         }
         return render_template(template_path, receipt=receipt, settings=settings, company=company, printed_at=datetime.now())
-    except:
+    except Exception:
         # إذا لم يوجد القالب، استخدام modern كافتراضي
         from flask import current_app
         company = {

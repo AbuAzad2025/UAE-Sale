@@ -218,7 +218,7 @@ def print_invoice(id):
     # التحقق من وجود القالب، وإلا استخدام القالب الافتراضي
     try:
         return render_template(template_path, sale=sale, settings=settings, config=Config)
-    except:
+    except Exception:
         # إذا لم يوجد القالب، استخدام modern كافتراضي
         return render_template('invoices/modern.html', sale=sale, settings=settings, config=Config)
 
@@ -229,6 +229,11 @@ def print_invoice(id):
 def edit(id):
     """تعديل فاتورة - فقط الفواتير غير المدفوعة وغير الملغاة"""
     sale = Sale.query.get_or_404(id)
+    
+    # IDOR protection: sellers can only edit their own invoices
+    if current_user.is_seller() and sale.seller_id != current_user.id:
+        flash('ليس لديك صلاحية لتعديل هذه الفاتورة', 'danger')
+        return redirect(url_for('sales.index'))
     
     # منع التعديل للفواتير المدفوعة أو الملغاة
     if sale.payment_status == 'paid':
@@ -355,6 +360,11 @@ def delete(id):
     from services.gl_service import GLService
     
     sale = Sale.query.get_or_404(id)
+    
+    # IDOR protection: sellers can only delete their own invoices
+    if current_user.is_seller() and sale.seller_id != current_user.id:
+        flash('ليس لديك صلاحية لحذف هذه الفاتورة', 'danger')
+        return redirect(url_for('sales.index'))
     
     # التحقق من الارتباطات
     has_links = False

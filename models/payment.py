@@ -13,11 +13,11 @@ class Payment(db.Model):
     # اتجاه المدفوعات
     direction = db.Column(db.String(10), default='outgoing', index=True)  # incoming, outgoing
     
-    sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'), index=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), index=True)
+    sale_id = db.Column(db.Integer, db.ForeignKey('sales.id', ondelete='SET NULL'), nullable=True, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id', ondelete='SET NULL'), nullable=True, index=True)
     
     # معلومات المورد (لسندات الصرف)
-    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), index=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id', ondelete='SET NULL'), nullable=True, index=True)
     supplier_name = db.Column(db.String(200))
     
     amount = db.Column(db.Numeric(15, 3), nullable=False)

@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}أعمار الذمم الدائنة — Accounts Payable Aging{% endblock %}
+{% block page_title %}أعمار الذمم الدائنة{% endblock %}
+
+{% block content %}
+<!-- Summary boxes -->
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="info-box bg-success">
+      <span class="info-box-icon"><i class="fas fa-check-circle"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">حالي (0–30 يوم)</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(aging_buckets.current) }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="info-box bg-info">
+      <span class="info-box-icon"><i class="fas fa-clock"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">31–60 يوم</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(aging_buckets.days_31_60) }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="info-box bg-warning">
+      <span class="info-box-icon"><i class="fas fa-exclamation-triangle"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">61–90 يوم</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(aging_buckets.days_61_90) }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="info-box bg-danger">
+      <span class="info-box-icon"><i class="fas fa-times-circle"></i></span>
+      <div class="info-box-text">+90 يوم</div>
+      <div class="info-box-content">
+        <span class="info-box-number">{{ "{:,.2f}".format(aging_buckets.over_90) }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="alert alert-warning">
+      <h4 class="mb-0">
+        <i class="fas fa-calculator"></i>
+        إجمالي الذمم الدائنة: <strong>{{ "{:,.2f}".format(total_payable) }} AED</strong>
+      </h4>
+    </div>
+  </div>
+</div>
+
+<!-- Detail table -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="card-title mb-0">
+      <i class="fas fa-list mr-2"></i>تفاصيل الموردين
+    </h3>
+    <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.print()">
+      <i class="fas fa-print mr-1"></i>طباعة
+    </button>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th>المورد</th>
+          <th>الهاتف</th>
+          <th class="text-right">إجمالي المشتريات</th>
+          <th class="text-right">المدفوع</th>
+          <th class="text-right">الرصيد المستحق</th>
+          <th class="text-center">الأيام</th>
+          <th class="text-center">الفئة</th>
+          <th class="text-center">شروط الدفع</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in supplier_aging %}
+        <tr>
+          <td>
+            <strong>{{ item.supplier.name_ar or item.supplier.name }}</strong>
+          </td>
+          <td>{{ item.supplier.phone or '-' }}</td>
+          <td class="text-right">{{ "{:,.2f}".format(item.total_purchases) }}</td>
+          <td class="text-right">{{ "{:,.2f}".format(item.total_paid) }}</td>
+          <td class="text-right font-weight-bold text-danger">{{ "{:,.2f}".format(item.balance) }}</td>
+          <td class="text-center">
+            {% if item.days_old > 90 %}
+              <span class="badge badge-danger">{{ item.days_old }}</span>
+            {% elif item.days_old > 60 %}
+              <span class="badge badge-warning">{{ item.days_old }}</span>
+            {% elif item.days_old > 30 %}
+              <span class="badge badge-info">{{ item.days_old }}</span>
+            {% else %}
+              <span class="badge badge-success">{{ item.days_old }}</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if item.bucket == 'over_90' %}
+              <span class="badge badge-danger">+90 يوم</span>
+            {% elif item.bucket == 'days_61_90' %}
+              <span class="badge badge-warning">61-90</span>
+            {% elif item.bucket == 'days_31_60' %}
+              <span class="badge badge-info">31-60</span>
+            {% else %}
+              <span class="badge badge-success">0-30</span>
+            {% endif %}
+          </td>
+          <td class="text-center">{{ item.payment_terms }} يوم</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="font-weight-bold">
+          <td colspan="2">الإجمالي</td>
+          <td class="text-right">{{ "{:,.2f}".format(supplier_aging | sum(attribute='total_purchases') | default(0)) }}</td>
+          <td class="text-right">{{ "{:,.2f}".format(supplier_aging | sum(attribute='total_paid') | default(0)) }}</td>
+          <td class="text-right text-danger">{{ "{:,.2f}".format(total_payable) }}</td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+{% if not supplier_aging %}
+<div class="card">
+  <div class="card-body text-center text-muted py-5">
+    <i class="fas fa-check-circle fa-3x mb-3 text-success"></i>
+    <p>لا توجد ذمم دائنة — جميع أرصدة الموردين مسوّاة</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

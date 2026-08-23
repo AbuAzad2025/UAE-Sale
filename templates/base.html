@@ -579,6 +579,30 @@
                   <p>تقرير الشركاء والتجار</p>
                 </a>
               </li>
+              <li class="nav-item">
+                <a href="{{ url_for('reports.inventory_valuation') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>تقييم المخزون</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('reports.ap_aging') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>أعمار الذمم الدائنة</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('reports.cash_flow') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>التدفقات النقدية</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('reports.vat_report') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>تقرير VAT</p>
+                </a>
+              </li>
             </ul>
           </li>
           {% endif %}

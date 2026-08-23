@@ -756,3 +756,359 @@ def top_selling():
     
     return render_template('reports/top_selling.html', products=products)
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 2: NEW REPORTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@reports_bp.route('/inventory-valuation')
+@login_required
+@permission_required('view_reports')
+def inventory_valuation():
+    """
+    تقرير تقييم المخزون — Inventory Valuation
+    Per warehouse/category, qty × cost, totals.
+    """
+    from models import Warehouse, ProductCategory, StockMovement
+    from sqlalchemy import case
+
+    warehouse_id = request.args.get('warehouse_id', type=int)
+    category_id = request.args.get('category_id', type=int)
+
+    # Base query: active products with stock > 0
+    products_query = Product.query.filter(
+        Product.is_active == True,
+        Product.current_stock > 0
+    )
+
+    if category_id:
+        products_query = products_query.filter_by(category_id=category_id)
+
+    products = products_query.order_by(Product.name).all()
+
+    # Group by category
+    categories_data = {}
+    total_value = Decimal('0')
+    total_qty = Decimal('0')
+
+    for product in products:
+        qty = product.current_stock or Decimal('0')
+        cost = product.cost_price or Decimal('0')
+        value = qty * cost
+        total_value += value
+        total_qty += qty
+
+        cat_name = product.category.name if product.category else 'بدون فئة'
+        cat_name_ar = product.category.name_ar if product.category and product.category.name_ar else cat_name
+
+        if cat_name not in categories_data:
+            categories_data[cat_name] = {
+                'name': cat_name,
+                'name_ar': cat_name_ar,
+                'products': [],
+                'total_qty': Decimal('0'),
+                'total_value': Decimal('0'),
+                'product_count': 0,
+            }
+
+        categories_data[cat_name]['products'].append({
+            'product': product,
+            'qty': qty,
+            'cost': cost,
+            'value': value,
+        })
+        categories_data[cat_name]['total_qty'] += qty
+        categories_data[cat_name]['total_value'] += value
+        categories_data[cat_name]['product_count'] += 1
+
+    warehouses = Warehouse.query.filter_by(is_active=True).all()
+    categories = ProductCategory.query.filter_by(is_active=True).all()
+
+    return render_template('reports/inventory_valuation.html',
+                         categories_data=categories_data,
+                         warehouses=warehouses,
+                         categories_list=categories,
+                         total_value=total_value,
+                         total_qty=total_qty,
+                         total_products=products.count(),
+                         selected_warehouse=warehouse_id,
+                         selected_category=category_id)
+
+
+@reports_bp.route('/ap-aging')
+@login_required
+@permission_required('view_reports')
+def ap_aging():
+    """
+    تقرير أعمار الذمم الدائنة — Accounts Payable Aging
+    Supplier balances bucketed 0–30/31–60/61–90/90+ days.
+    """
+    from models import Supplier, Purchase, Payment
+    now = datetime.now(timezone.utc)
+
+    suppliers = Supplier.query.filter_by(is_active=True).all()
+
+    supplier_aging = []
+    total_payable = Decimal('0')
+
+    aging_buckets = {
+        'current': Decimal('0'),    # 0-30 days
+        'days_31_60': Decimal('0'), # 31-60 days
+        'days_61_90': Decimal('0'), # 61-90 days
+        'over_90': Decimal('0'),    # 90+ days
+    }
+
+    for supplier in suppliers:
+        # Get all confirmed purchases for this supplier
+        purchases = Purchase.query.filter(
+            Purchase.supplier_id == supplier.id,
+            Purchase.status == 'confirmed'
+        ).all()
+
+        # Get all confirmed outgoing payments for this supplier
+        payments = Payment.query.filter(
+            Payment.supplier_id == supplier.id,
+            Payment.direction == 'outgoing',
+            Payment.payment_confirmed == True
+        ).all()
+
+        total_purchases = sum((p.amount_aed or Decimal('0') for p in purchases), Decimal('0'))
+        total_paid = sum((p.amount_aed or Decimal('0') for p in payments), Decimal('0'))
+        balance = total_purchases - total_paid
+
+        if balance <= 0:
+            continue
+
+        # Age the balance using the oldest unpaid purchase
+        oldest_purchase_date = None
+        for p in purchases:
+            if p.purchase_date:
+                if oldest_purchase_date is None or p.purchase_date < oldest_purchase_date:
+                    oldest_purchase_date = p.purchase_date
+
+        days_old = 0
+        if oldest_purchase_date:
+            if oldest_purchase_date.tzinfo is None:
+                oldest_purchase_date = oldest_purchase_date.replace(tzinfo=timezone.utc)
+            days_old = (now - oldest_purchase_date).days
+
+        bucket = 'current'
+        if days_old > 90:
+            bucket = 'over_90'
+        elif days_old > 60:
+            bucket = 'days_61_90'
+        elif days_old > 30:
+            bucket = 'days_31_60'
+
+        aging_buckets[bucket] += balance
+        total_payable += balance
+
+        supplier_aging.append({
+            'supplier': supplier,
+            'total_purchases': total_purchases,
+            'total_paid': total_paid,
+            'balance': balance,
+            'days_old': days_old,
+            'bucket': bucket,
+            'payment_terms': supplier.payment_terms_days or 30,
+        })
+
+    # Sort by oldest first
+    supplier_aging.sort(key=lambda x: x['days_old'], reverse=True)
+
+    return render_template('reports/ap_aging.html',
+                         supplier_aging=supplier_aging,
+                         aging_buckets=aging_buckets,
+                         total_payable=total_payable)
+
+
+@reports_bp.route('/cash-flow')
+@login_required
+@permission_required('view_reports')
+def cash_flow():
+    """
+    قائمة التدفقات النقدية — Cash Flow Statement
+    Operating / Investing / Financing from GL data.
+    """
+    from models import GLAccount, GLJournalLine, GLJournalEntry
+
+    date_from = request.args.get('date_from', '', type=str)
+    date_to = request.args.get('date_to', '', type=str)
+
+    # Build base query for GL lines within date range
+    line_query = db.session.query(
+        GLJournalLine.account_id,
+        GLJournalLine.debit,
+        GLJournalLine.credit,
+        GLJournalLine.amount_aed,
+        GLJournalEntry.entry_date,
+        GLAccount.type.label('account_type'),
+        GLAccount.code.label('account_code'),
+        GLAccount.name.label('account_name'),
+        GLAccount.name_ar.label('account_name_ar'),
+    ).join(
+        GLJournalEntry, GLJournalLine.entry_id == GLJournalEntry.id
+    ).join(
+        GLAccount, GLJournalLine.account_id == GLAccount.id
+    ).filter(
+        GLJournalEntry.is_posted == True,
+        GLJournalEntry.is_reversed == False
+    )
+
+    if date_from:
+        line_query = line_query.filter(func.date(GLJournalEntry.entry_date) >= date_from)
+    if date_to:
+        line_query = line_query.filter(func.date(GLJournalEntry.entry_date) <= date_to)
+
+    lines = line_query.all()
+
+    # Classify into cash flow categories
+    # Operating: revenue (4xxx) and expense (5xxx-6xxx) accounts
+    # Investing: asset accounts (1xxx) — fixed assets, equipment
+    # Financing: liability (2xxx) and equity (3xxx) accounts
+    operating_items = {}
+    investing_items = {}
+    financing_items = {}
+
+    for line in lines:
+        code = line.account_code or ''
+        acct_type = line.account_type
+        name = line.account_name_ar or line.account_name
+        key = f"{code} - {name}"
+
+        # Net amount: debit increases assets/expenses, credit increases liabilities/equity/revenue
+        net = (line.debit or Decimal('0')) - (line.credit or Decimal('0'))
+
+        if acct_type == 'revenue':
+            # Revenue: credit is positive cash flow
+            net = -net  # Flip so credit = positive
+            operating_items[key] = operating_items.get(key, Decimal('0')) + net
+        elif acct_type == 'expense':
+            # Expenses: debit is negative cash flow
+            operating_items[key] = operating_items.get(key, Decimal('0')) + net
+        elif acct_type == 'asset' and code.startswith(('1',)):
+            # Fixed assets (investing)
+            investing_items[key] = investing_items.get(key, Decimal('0')) + net
+        elif acct_type in ('liability', 'equity'):
+            # Financing
+            financing_items[key] = financing_items.get(key, Decimal('0')) - net
+
+    operating_total = sum(operating_items.values(), Decimal('0'))
+    investing_total = sum(investing_items.values(), Decimal('0'))
+    financing_total = sum(financing_items.values(), Decimal('0'))
+    net_change = operating_total + investing_total + financing_total
+
+    return render_template('reports/cash_flow.html',
+                         operating_items=operating_items,
+                         investing_items=investing_items,
+                         financing_items=financing_items,
+                         operating_total=operating_total,
+                         investing_total=investing_total,
+                         financing_total=financing_total,
+                         net_change=net_change,
+                         date_from=date_from,
+                         date_to=date_to)
+
+
+@reports_bp.route('/vat-report')
+@login_required
+@permission_required('view_reports')
+def vat_report():
+    """
+    تقرير ضريبة القيمة المضافة — VAT Report (UAE 5%)
+    Taxable sales/purchases, output/input VAT, net payable.
+    """
+    VAT_RATE = Decimal('0.05')  # UAE 5%
+
+    date_from = request.args.get('date_from', '', type=str)
+    date_to = request.args.get('date_to', '', type=str)
+
+    # --- Taxable Sales (Output VAT) ---
+    sales_query = Sale.query.filter_by(status='confirmed')
+    if date_from:
+        sales_query = sales_query.filter(func.date(Sale.sale_date) >= date_from)
+    if date_to:
+        sales_query = sales_query.filter(func.date(Sale.sale_date) <= date_to)
+
+    sales = sales_query.all()
+
+    taxable_sales = []
+    total_taxable_sales = Decimal('0')
+    total_output_vat = Decimal('0')
+    total_exempt_sales = Decimal('0')
+
+    for sale in sales:
+        amount = sale.amount_aed or Decimal('0')
+        tax_rate = sale.tax_rate or Decimal('0')
+        tax_amount = sale.tax_amount or Decimal('0')
+
+        if tax_rate > 0:
+            taxable_sales.append({
+                'number': sale.sale_number,
+                'date': sale.sale_date,
+                'customer': sale.customer.name if sale.customer else 'عميل نقدي',
+                'amount': amount,
+                'tax_rate': tax_rate,
+                'tax_amount': tax_amount,
+            })
+            total_taxable_sales += amount
+            total_output_vat += tax_amount
+        else:
+            total_exempt_sales += amount
+
+    # --- Taxable Purchases (Input VAT) ---
+    purchases_query = Purchase.query.filter_by(status='confirmed')
+    if date_from:
+        purchases_query = purchases_query.filter(func.date(Purchase.purchase_date) >= date_from)
+    if date_to:
+        purchases_query = purchases_query.filter(func.date(Purchase.purchase_date) <= date_to)
+
+    purchases = purchases_query.all()
+
+    taxable_purchases = []
+    total_taxable_purchases = Decimal('0')
+    total_input_vat = Decimal('0')
+    total_exempt_purchases = Decimal('0')
+
+    for purchase in purchases:
+        amount = purchase.amount_aed or Decimal('0')
+        tax_rate = purchase.tax_rate or Decimal('0')
+        tax_amount = purchase.tax_amount or Decimal('0')
+
+        if tax_rate > 0:
+            taxable_purchases.append({
+                'number': purchase.purchase_number,
+                'date': purchase.purchase_date,
+                'supplier': purchase.supplier.name if purchase.supplier else purchase.supplier_name,
+                'amount': amount,
+                'tax_rate': tax_rate,
+                'tax_amount': tax_amount,
+            })
+            total_taxable_purchases += amount
+            total_input_vat += tax_amount
+        else:
+            total_exempt_purchases += amount
+
+    # Net VAT payable = Output VAT - Input VAT
+    net_vat = total_output_vat - total_input_vat
+
+    summary = {
+        'total_taxable_sales': total_taxable_sales,
+        'total_output_vat': total_output_vat,
+        'total_exempt_sales': total_exempt_sales,
+        'total_taxable_purchases': total_taxable_purchases,
+        'total_input_vat': total_input_vat,
+        'total_exempt_purchases': total_exempt_purchases,
+        'net_vat': net_vat,
+        'vat_payable': net_vat if net_vat > 0 else Decimal('0'),
+        'vat_refund': abs(net_vat) if net_vat < 0 else Decimal('0'),
+    }
+
+    return render_template('reports/vat_report.html',
+                         taxable_sales=taxable_sales,
+                         taxable_purchases=taxable_purchases,
+                         summary=summary,
+                         date_from=date_from,
+                         date_to=date_to)
+

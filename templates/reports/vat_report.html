@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% block title %}تقرير ضريبة القيمة المضافة — VAT Report{% endblock %}
+{% block page_title %}تقرير ضريبة القيمة المضافة (UAE 5%){% endblock %}
+
+{% block content %}
+<!-- Date filter -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <form method="GET" class="form-inline">
+          <div class="form-group mr-2">
+            <label class="mr-1">من تاريخ:</label>
+            <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}">
+          </div>
+          <div class="form-group mr-2">
+            <label class="mr-1">إلى تاريخ:</label>
+            <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
+          </div>
+          <button type="submit" class="btn btn-sm btn-primary">
+            <i class="fas fa-filter"></i> تصفية
+          </button>
+          <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2">
+            <i class="fas fa-print"></i> طباعة
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- VAT Summary -->
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="info-box bg-gradient-danger">
+      <span class="info-box-icon"><i class="fas fa-file-invoice"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">ضريبة المبيعات (Output VAT)</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(summary.total_output_vat) }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="info-box bg-gradient-success">
+      <span class="info-box-icon"><i class="fas fa-receipt"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">ضريبة المشتريات (Input VAT)</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(summary.total_input_vat) }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="info-box bg-gradient-warning">
+      <span class="info-box-icon"><i class="fas fa-balance-scale"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">الرصيد الضريبي</span>
+        <span class="info-box-number">
+          {% if summary.net_vat > 0 %}
+            {{ "{:,.2f}".format(summary.net_vat) }} (مستحق)
+          {% elif summary.net_vat < 0 %}
+            {{ "{:,.2f}".format(summary.vat_refund) }} (مسترد)
+          {% else %}
+            0.00
+          {% endif %}
+        </span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="info-box bg-gradient-info">
+      <span class="info-box-icon"><i class="fas fa-percent"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">النسبة</span>
+        <span class="info-box-number">5%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sales Summary -->
+<div class="row mb-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header bg-danger">
+        <h4 class="card-title text-white mb-0">
+          <i class="fas fa-shopping-cart mr-2"></i>المبيعات الخاضعة للضريبة
+        </h4>
+      </div>
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-2">
+          <span>إجمالي المبيعات الخاضعة:</span>
+          <strong>{{ "{:,.2f}".format(summary.total_taxable_sales) }} AED</strong>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span>إجمالي المبيعات المعفاة:</span>
+          <strong>{{ "{:,.2f}".format(summary.total_exempt_sales) }} AED</strong>
+        </div>
+        <hr>
+        <div class="d-flex justify-content-between">
+          <span class="font-weight-bold">ضريبة المبيعات (Output VAT):</span>
+          <strong class="text-danger">{{ "{:,.2f}".format(summary.total_output_vat) }} AED</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header bg-success">
+        <h4 class="card-title text-white mb-0">
+          <i class="fas fa-shopping-bag mr-2"></i>المشتريات الخاضعة للضريبة
+        </h4>
+      </div>
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-2">
+          <span>إجمالي المشتريات الخاضعة:</span>
+          <strong>{{ "{:,.2f}".format(summary.total_taxable_purchases) }} AED</strong>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span>إجمالي المشتريات المعفاة:</span>
+          <strong>{{ "{:,.2f}".format(summary.total_exempt_purchases) }} AED</strong>
+        </div>
+        <hr>
+        <div class="d-flex justify-content-between">
+          <span class="font-weight-bold">ضريبة المشتريات (Input VAT):</span>
+          <strong class="text-success">{{ "{:,.2f}".format(summary.total_input_vat) }} AED</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Taxable Sales Detail -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h4 class="card-title mb-0">
+      <i class="fas fa-file-invoice mr-2"></i>تفاصيل المبيعات الخاضعة للضريبة
+      <span class="badge badge-danger ml-2">{{ taxable_sales | length }}</span>
+    </h4>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-striped table-sm mb-0">
+      <thead>
+        <tr>
+          <th>رقم الفاتورة</th>
+          <th>التاريخ</th>
+          <th>العميل</th>
+          <th class="text-right">المبلغ</th>
+          <th class="text-center">نسبة الضريبة</th>
+          <th class="text-right">الضريبة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sale in taxable_sales %}
+        <tr>
+          <td>{{ sale.number }}</td>
+          <td>{{ sale.date.strftime('%Y-%m-%d') if sale.date else '-' }}</td>
+          <td>{{ sale.customer }}</td>
+          <td class="text-right">{{ "{:,.2f}".format(sale.amount) }}</td>
+          <td class="text-center">{{ sale.tax_rate }}%</td>
+          <td class="text-right font-weight-bold">{{ "{:,.2f}".format(sale.tax_amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="font-weight-bold">
+          <td colspan="3">المجموع</td>
+          <td class="text-right">{{ "{:,.2f}".format(summary.total_taxable_sales) }}</td>
+          <td></td>
+          <td class="text-right text-danger">{{ "{:,.2f}".format(summary.total_output_vat) }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- Taxable Purchases Detail -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h4 class="card-title mb-0">
+      <i class="fas fa-shopping-bag mr-2"></i>تفاصيل المشتريات الخاضعة للضريبة
+      <span class="badge badge-success ml-2">{{ taxable_purchases | length }}</span>
+    </h4>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-striped table-sm mb-0">
+      <thead>
+        <tr>
+          <th>رقم الفاتورة</th>
+          <th>التاريخ</th>
+          <th>المورد</th>
+          <th class="text-right">المبلغ</th>
+          <th class="text-center">نسبة الضريبة</th>
+          <th class="text-right">الضريبة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for purchase in taxable_purchases %}
+        <tr>
+          <td>{{ purchase.number }}</td>
+          <td>{{ purchase.date.strftime('%Y-%m-%d') if purchase.date else '-' }}</td>
+          <td>{{ purchase.supplier }}</td>
+          <td class="text-right">{{ "{:,.2f}".format(purchase.amount) }}</td>
+          <td class="text-center">{{ purchase.tax_rate }}%</td>
+          <td class="text-right font-weight-bold">{{ "{:,.2f}".format(purchase.tax_amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="font-weight-bold">
+          <td colspan="3">المجموع</td>
+          <td class="text-right">{{ "{:,.2f}".format(summary.total_taxable_purchases) }}</td>
+          <td></td>
+          <td class="text-right text-success">{{ "{:,.2f}".format(summary.total_input_vat) }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- Net VAT Calculation -->
+<div class="card">
+  <div class="card-header bg-primary">
+    <h4 class="card-title text-white mb-0">
+      <i class="fas fa-calculator mr-2"></i>حساب الرصيد الضريبي النهائي
+    </h4>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <table class="table">
+          <tr>
+            <td>ضريبة المبيعات (Output VAT)</td>
+            <td class="text-right text-danger font-weight-bold">{{ "{:,.2f}".format(summary.total_output_vat) }}</td>
+          </tr>
+          <tr>
+            <td>ضريبة المشتريات (Input VAT)</td>
+            <td class="text-right text-success font-weight-bold">({{ "{:,.2f}".format(summary.total_input_vat) }})</td>
+          </tr>
+          <tr class="font-weight-bold">
+            <td>الرصيد النهائي</td>
+            <td class="text-right {% if summary.net_vat > 0 %}text-danger{% elif summary.net_vat < 0 %}text-success{% endif %}">
+              {{ "{:,.2f}".format(summary.net_vat) }}
+            </td>
+          </tr>
+        </table>
+      </div>
+      <div class="col-md-6">
+        {% if summary.vat_payable > 0 %}
+        <div class="alert alert-danger mb-0">
+          <h5><i class="fas fa-exclamation-circle"></i> مبلغ مستحق للVERN</h5>
+          <h3>{{ "{:,.2f}".format(summary.vat_payable) }} AED</h3>
+        </div>
+        {% elif summary.vat_refund > 0 %}
+        <div class="alert alert-success mb-0">
+          <h5><i class="fas fa-check-circle"></i> مبلغ مسترد من هيئة الضرائب</h5>
+          <h3>{{ "{:,.2f}".format(summary.vat_refund) }} AED</h3>
+        </div>
+        {% else %}
+        <div class="alert alert-info mb-0">
+          <h5><i class="fas fa-info-circle"></i> لا يوجد مبلغ مستحق</h5>
+          <p>الرصيد الضريبي = صفر</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

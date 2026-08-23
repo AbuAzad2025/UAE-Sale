@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% block title %}قائمة التدفقات النقدية — Cash Flow Statement{% endblock %}
+{% block page_title %}قائمة التدفقات النقدية{% endblock %}
+
+{% block content %}
+<!-- Date filter -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <form method="GET" class="form-inline">
+          <div class="form-group mr-2">
+            <label class="mr-1">من تاريخ:</label>
+            <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}">
+          </div>
+          <div class="form-group mr-2">
+            <label class="mr-1">إلى تاريخ:</label>
+            <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
+          </div>
+          <button type="submit" class="btn btn-sm btn-primary">
+            <i class="fas fa-filter"></i> تصفية
+          </button>
+          <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2">
+            <i class="fas fa-print"></i> طباعة
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Net Change Summary -->
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="info-box {% if operating_total >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+      <span class="info-box-icon"><i class="fas fa-store"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">الأنشطة التشغيلية</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(operating_total) }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="info-box {% if investing_total >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+      <span class="info-box-icon"><i class="fas fa-industry"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">الأنشطة الاستثمارية</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(investing_total) }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="info-box {% if financing_total >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+      <span class="info-box-icon"><i class="fas fa-university"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">الأنشطة التمويلية</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(financing_total) }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="info-box bg-primary">
+      <span class="info-box-icon"><i class="fas fa-chart-line"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">صافي التدفق النقدي</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(net_change) }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <!-- Operating Activities -->
+    <h4 class="text-success mb-3">
+      <i class="fas fa-store mr-2"></i>الأنشطة التشغيلية
+    </h4>
+    {% if operating_items %}
+    <table class="table table-sm table-bordered mb-4">
+      <thead>
+        <tr>
+          <th>الحساب</th>
+          <th class="text-right">المبلغ (AED)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for name, amount in operating_items.items() %}
+        <tr>
+          <td>{{ name }}</td>
+          <td class="text-right {% if amount > 0 %}text-success{% elif amount < 0 %}text-danger{% endif %}">
+            {{ "{:,.2f}".format(amount) }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="font-weight-bold">
+          <td>صافي الأنشطة التشغيلية</td>
+          <td class="text-right {% if operating_total > 0 %}text-success{% elif operating_total < 0 %}text-danger{% endif %}">
+            {{ "{:,.2f}".format(operating_total) }}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+    {% else %}
+    <p class="text-muted mb-4">لا توجد حركات تشغيلية في الفترة المحددة</p>
+    {% endif %}
+
+    <!-- Investing Activities -->
+    <h4 class="text-info mb-3">
+      <i class="fas fa-industry mr-2"></i>الأنشطة الاستثمارية
+    </h4>
+    {% if investing_items %}
+    <table class="table table-sm table-bordered mb-4">
+      <thead>
+        <tr>
+          <th>الحساب</th>
+          <th class="text-right">المبلغ (AED)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for name, amount in investing_items.items() %}
+        <tr>
+          <td>{{ name }}</td>
+          <td class="text-right {% if amount > 0 %}text-success{% elif amount < 0 %}text-danger{% endif %}">
+            {{ "{:,.2f}".format(amount) }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="font-weight-bold">
+          <td>صافي الأنشطة الاستثمارية</td>
+          <td class="text-right {% if investing_total > 0 %}text-success{% elif investing_total < 0 %}text-danger{% endif %}">
+            {{ "{:,.2f}".format(investing_total) }}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+    {% else %}
+    <p class="text-muted mb-4">لا توجد حركات استثمارية في الفترة المحددة</p>
+    {% endif %}
+
+    <!-- Financing Activities -->
+    <h4 class="text-warning mb-3">
+      <i class="fas fa-university mr-2"></i>الأنشطة التمويلية
+    </h4>
+    {% if financing_items %}
+    <table class="table table-sm table-bordered mb-4">
+      <thead>
+        <tr>
+          <th>الحساب</th>
+          <th class="text-right">المبلغ (AED)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for name, amount in financing_items.items() %}
+        <tr>
+          <td>{{ name }}</td>
+          <td class="text-right {% if amount > 0 %}text-success{% elif amount < 0 %}text-danger{% endif %}">
+            {{ "{:,.2f}".format(amount) }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="font-weight-bold">
+          <td>صافي الأنشطة التمويلية</td>
+          <td class="text-right {% if financing_total > 0 %}text-success{% elif financing_total < 0 %}text-danger{% endif %}">
+            {{ "{:,.2f}".format(financing_total) }}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+    {% else %}
+    <p class="text-muted mb-4">لا توجد حركات تمويلية في الفترة المحددة</p>
+    {% endif %}
+
+    <!-- Net Summary -->
+    <div class="card bg-light">
+      <div class="card-body">
+        <h4 class="mb-0">
+          <i class="fas fa-calculator mr-2"></i>
+          صافي التدفق النقدي:
+          <span class="{% if net_change > 0 %}text-success{% elif net_change < 0 %}text-danger{% endif %} font-weight-bold">
+            {{ "{:,.2f}".format(net_change) }} AED
+          </span>
+        </h4>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

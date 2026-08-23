@@ -1,0 +1,31 @@
+[run]
+source = .
+omit =
+    tests/*
+    migrations/*
+    venv/*
+    .venv/*
+    env/*
+    node_modules/*
+    instance/*
+    static/*
+    ai_knowledge/models/*
+    scripts/*
+    *.pyc
+    __pycache__/*
+
+[report]
+show_missing = True
+precision = 2
+fail_under = 0
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if __name__ == .__main__
+    raise NotImplementedError
+    pass
+    except ImportError
+    except Exception
+
+[html]
+directory = htmlcov

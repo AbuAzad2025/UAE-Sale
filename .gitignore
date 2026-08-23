@@ -80,9 +80,6 @@ celerybeat.pid
 .pytest_cache/
 .coverage
 htmlcov/
-tests/
-test_*.py
-*_test.py
 check_db.py
 verify_*.py
 

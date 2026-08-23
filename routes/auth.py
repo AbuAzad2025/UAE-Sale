@@ -19,7 +19,6 @@ def support():
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
-@limiter.limit("20 per hour; 5 per minute")
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))

@@ -77,14 +77,16 @@ class Config:
     
     SQLALCHEMY_DATABASE_URI = _db_uri
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Engine options — pool_size only for PostgreSQL (SQLite doesn't support it)
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
         "pool_recycle": 1800,
-        "pool_size": 10,
-        "max_overflow": 20,
     }
     
     if _db_uri.startswith("postgresql"):
+        SQLALCHEMY_ENGINE_OPTIONS["pool_size"] = 10
+        SQLALCHEMY_ENGINE_OPTIONS["max_overflow"] = 20
         SQLALCHEMY_ENGINE_OPTIONS["connect_args"] = {"options": "-c statement_timeout=5000"}
     
     SQLALCHEMY_ECHO = False
@@ -124,6 +126,7 @@ class Config:
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:5000,http://127.0.0.1:5000").split(",")
     CORS_SUPPORTS_CREDENTIALS = True
     
+    RATELIMIT_ENABLED = _bool(os.environ.get("RATELIMIT_ENABLED"), True)
     RATELIMIT_DEFAULT = "10000 per day;1000 per hour"
     RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
     RATELIMIT_LOGIN = "1000 per hour;100 per minute"

@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db, csrf, limiter
-from models import Sale, Customer, Product, InvoiceSettings
+from models import Sale, SaleLine, Customer, Product, InvoiceSettings
 from services.sale_service import SaleService
 from services.currency_service import CurrencyService
 from utils.decorators import permission_required

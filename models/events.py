@@ -23,6 +23,7 @@ from decimal import Decimal
 from datetime import datetime, timezone, timedelta
 import logging
 import json
+from models import StockMovement
 
 logger = logging.getLogger(__name__)
 

@@ -37,6 +37,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from collections import defaultdict
 from typing import Dict, List, Optional, Tuple
+from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
 

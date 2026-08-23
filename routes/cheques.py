@@ -3,7 +3,7 @@
 إدارة الشيكات الواردة والصادرة
 """
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Cheque, Customer, Supplier, Sale, Receipt, Expense

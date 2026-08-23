@@ -23,33 +23,59 @@ from sqlalchemy import func, or_, and_, desc
 from sqlalchemy.orm import joinedload
 from extensions import db
 
-# التكامل الكامل مع جميع وحدات AI
-# from ai_knowledge.azad_responses import AzadResponses
-# from ai_knowledge.learning_system import AzadLearningSystem
-# from ai_knowledge.context_engine import ContextEngine
-# from ai_knowledge.analytics_predictions import SalesAnalytics, InventoryAnalytics, ProfitAnalytics
-# from ai_knowledge.data_analyzer import DataAnalyzer
-# from ai_knowledge.azad_personality import AzadPersonality
-# from ai_knowledge.system_integration import SystemIntegrator
-# from ai_knowledge.knowledge_expansion import KnowledgeExpander
-# from ai_knowledge.self_improvement import AzadSelfImprovement
-# from ai_knowledge.document_generator import DocumentGenerator
-# from ai_knowledge.global_knowledge import GlobalKnowledgeConnector
-# from ai_knowledge.dialects import DialectManager
-# from ai_knowledge.security_rules import SecurityRules
-# from ai_knowledge.beginners_mode import BeginnersGuide
-# from ai_knowledge.neural_engine import AzadNeuralEngine, get_neural_engine
-# from ai_knowledge.reasoning_engine import ReasoningEngine, get_reasoning_engine
-# from ai_knowledge.memory_system import LongTermMemory, get_memory_system
-# from ai_knowledge.code_generator import CodeGenerator, get_code_generator
-# from ai_knowledge.multi_agent_system import MultiAgentCoordinator, get_agent_coordinator
-# from ai_knowledge.self_reflection import SelfReflectionEngine, get_reflection_engine
-# from ai_knowledge.conversation_manager import ConversationManager, get_conversation_manager
-# from ai_knowledge.vision_processor import VisionProcessor, get_vision_processor
-# from ai_knowledge.master_brain import MasterBrain, get_master_brain, ask_azad, quick_calc, explain_concept
-# from ai_knowledge.transformers_brain import TransformersBrain, get_transformers_brain
-# from ai_knowledge.automotive_ecu_knowledge import get_automotive_ecu_knowledge
-# from ai_knowledge.external_learning import get_external_learning
+import logging
+logger = logging.getLogger(__name__)
+
+# AI Knowledge module imports (lazy — may fail gracefully at runtime)
+try:
+    from ai_knowledge.analytics_predictions import SalesAnalytics, InventoryAnalytics, ProfitAnalytics
+except ImportError:
+    SalesAnalytics = InventoryAnalytics = ProfitAnalytics = None
+
+try:
+    from ai_knowledge.data_analyzer import DataAnalyzer
+except ImportError:
+    DataAnalyzer = None
+
+try:
+    from ai_knowledge.system_integration import SystemIntegrator
+except ImportError:
+    SystemIntegrator = None
+
+try:
+    from ai_knowledge.knowledge_expansion import KnowledgeExpander
+except ImportError:
+    KnowledgeExpander = None
+
+try:
+    from ai_knowledge.self_improvement import AzadSelfImprovement
+except ImportError:
+    AzadSelfImprovement = None
+
+try:
+    from ai_knowledge.document_generator import DocumentGenerator
+except ImportError:
+    DocumentGenerator = None
+
+try:
+    from ai_knowledge.global_knowledge import GlobalKnowledgeConnector
+except ImportError:
+    GlobalKnowledgeConnector = None
+
+try:
+    from ai_knowledge.beginners_mode import BeginnersGuide
+except ImportError:
+    BeginnersGuide = None
+
+try:
+    from ai_knowledge.automotive_ecu_knowledge import get_automotive_ecu_knowledge
+except ImportError:
+    get_automotive_ecu_knowledge = None
+
+try:
+    from ai_knowledge.external_learning import get_external_learning
+except ImportError:
+    get_external_learning = None
 
 # قواعد المعرفة المتخصصة
 from ai_knowledge import (
@@ -463,7 +489,7 @@ class AIService:
             if not customer:
                 return None
             
-            return _perform_analysis(customer)
+            return AIService._perform_analysis(customer)
         
         return _cached_analysis(customer_id)
     

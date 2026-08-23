@@ -33,6 +33,7 @@ from .advanced_accounting import CustomsTax, AdvancedExpense, TaxCalculationRule
 from .login_history import LoginHistory
 from .security_alert import SecurityAlert
 from .api_key import APIKey
+from .approval_workflow import ApprovalWorkflow, ApprovalRequest, ApprovalLevel
 
 __all__ = [
     'User', 'Role', 'Permission',
@@ -64,6 +65,7 @@ __all__ = [
     'CostCenter',
     'FixedAsset', 'DepreciationSchedule',
     'CustomsTax', 'AdvancedExpense', 'TaxCalculationRule',
-    'LoginHistory', 'SecurityAlert', 'APIKey',
+    'LoginHistory', 'SecurityAlert',    'APIKey',
+    'ApprovalWorkflow', 'ApprovalRequest', 'ApprovalLevel',
 ]
 

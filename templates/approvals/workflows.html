@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}إدارة سير عمل الموافقة{% endblock %}
+{% block page_title %}إدارة سير عمل الموافقة{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="card-title mb-0">
+      <i class="fas fa-cogs mr-2"></i>▆ Hydraulic Approval Chains
+    </h3>
+    <a href="{{ url_for('approvals.new_workflow') }}" class="btn btn-primary btn-sm">
+      <i class="fas fa-plus mr-1"></i>إضافة سير عمل
+    </a>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th>الاسم</th>
+          <th>النوع</th>
+          <th>الحد الأدنى</th>
+          <th>الحد الأقصى</th>
+          <th>المستويات</th>
+          <th>الحالة</th>
+          <th>إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for wf in workflows %}
+        <tr>
+          <td><strong>{{ wf.name_ar or wf.name }}</strong></td>
+          <td>
+            {% if wf.entity_type == 'sale' %}<span class="badge badge-primary">مبيعات</span>
+            {% elif wf.entity_type == 'payment' %}<span class="badge badge-success">مدفوعات</span>
+            {% elif wf.entity_type == 'purchase' %}<span class="badge badge-info">مشتريات</span>
+            {% endif %}
+          </td>
+          <td class="text-right">{{ "{:,.0f}".format(wf.min_amount) }}</td>
+          <td class="text-right">{{ "{:,.0f}".format(wf.max_amount) if wf.max_amount else '∞' }}</td>
+          <td class="text-center">{{ wf.levels_required }}</td>
+          <td>
+            {% if wf.is_active %}
+              <span class="badge badge-success">مفعّل</span>
+            {% else %}
+              <span class="badge badge-secondary">معطّل</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('approvals.edit_workflow', wf_id=wf.id) }}" class="btn btn-sm btn-outline-primary">
+              <i class="fas fa-edit"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if not workflows %}
+<div class="card">
+  <div class="card-body text-center text-muted py-5">
+    <i class="fas fa-cogs fa-3x mb-3"></i>
+    <p>لا توجد خطوط عمل موافقة — أضف سير عمل جديد للبدء</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

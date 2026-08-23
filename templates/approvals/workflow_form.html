@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'تعديل' if workflow else 'إضافة' }} سير عمل{% endblock %}
+{% block page_title %}{{ 'تعديل' if workflow else 'إضافة' }} سير عمل موافقة{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title mb-0">
+          <i class="fas fa-cogs mr-2"></i>بيانات سير العمل
+        </h3>
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="form-group">
+            <label>الاسم <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" value="{{ workflow.name if workflow else '' }}" required>
+          </div>
+          <div class="form-group">
+            <label>الاسم بالعربي</label>
+            <input type="text" name="name_ar" class="form-control" value="{{ workflow.name_ar if workflow and workflow.name_ar else '' }}" dir="rtl">
+          </div>
+          <div class="form-group">
+            <label>الوصف</label>
+            <textarea name="description" class="form-control" rows="2">{{ workflow.description if workflow and workflow.description else '' }}</textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-md-4">
+              <label>نوع الكيان <span class="text-danger">*</span></label>
+              <select name="entity_type" class="form-control" required>
+                <option value="sale" {% if workflow and workflow.entity_type == 'sale' %}selected{% endif %}>مبيعات</option>
+                <option value="payment" {% if workflow and workflow.entity_type == 'payment' %}selected{% endif %}>مدفوعات</option>
+                <option value="purchase" {% if workflow and workflow.entity_type == 'purchase' %}selected{% endif %}>مشتريات</option>
+              </select>
+            </div>
+            <div class="form-group col-md-4">
+              <label>الحد الأدنى للمبلغ (AED)</label>
+              <input type="number" name="min_amount" class="form-control" step="0.01" value="{{ workflow.min_amount if workflow else 0 }}">
+            </div>
+            <div class="form-group col-md-4">
+              <label>الحد الأقصى (اتركه فارغاً للاختيار)</label>
+              <input type="number" name="max_amount" class="form-control" step="0.01" value="{{ workflow.max_amount if workflow and workflow.max_amount else '' }}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>عدد المستويات المطلوبة</label>
+            <select name="levels_required" class="form-control">
+              <option value="1" {% if workflow and workflow.levels_required == 1 %}selected{% endif %}>مستوى واحد (مدير)</option>
+              <option value="2" {% if workflow and workflow.levels_required == 2 %}selected{% endif %}>مستويان (مدير + مالك)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <div class="custom-control custom-switch">
+              <input type="checkbox" name="is_active" class="custom-control-input" id="isActive" {% if not workflow or workflow.is_active %}checked{% endif %}>
+              <label class="custom-control-label" for="isActive">مفعّل</label>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save mr-1"></i>{{ 'حفظ التعديلات' if workflow else 'إنشاء' }}
+          </button>
+          <a href="{{ url_for('approvals.manage_workflows') }}" class="btn btn-secondary">إلغاء</a>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card bg-light">
+      <div class="card-body">
+        <h5><i class="fas fa-info-circle mr-1"></i>شرح</h5>
+        <ul class="mb-0">
+          <li><strong>المستوى 1 (مدير):</strong> يوافق أي مدير أو أعلى</li>
+          <li><strong>المستوى 2 (مالك):</strong> يتطلب موافقة المالك بعد المدير</li>
+          <li><strong>الحد الأدنى:</strong> المبلغ الأدنى الذي يفعّل سير العمل</li>
+          <li><strong>الحد الأقصى:</strong> أعلى مبلغ (اتركه فارغاً لعدم التقييد)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

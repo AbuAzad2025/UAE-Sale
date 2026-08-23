@@ -42,7 +42,16 @@ def seller_or_above(f):
             flash('الرجاء تسجيل الدخول أولاً', 'warning')
             return redirect(url_for('auth.login'))
         
-        return f(*args, **kwargs)
+        # Owner and super_admin always pass
+        if current_user.is_owner or current_user.is_super_admin():
+            return f(*args, **kwargs)
+        
+        # Manager and seller roles are allowed
+        if current_user.is_manager() or current_user.is_seller():
+            return f(*args, **kwargs)
+        
+        flash('ليس لديك صلاحية للوصول لهذه الصفحة', 'danger')
+        abort(403)
     return decorated_function
 
 

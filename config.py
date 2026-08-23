@@ -181,7 +181,13 @@ class Config:
     }
     
     OWNER_USERNAME = os.environ.get("OWNER_USERNAME", "owner")
-    OWNER_PASSWORD = os.environ.get("OWNER_PASSWORD", "owner@2025!secure")
+    OWNER_PASSWORD = os.environ.get("OWNER_PASSWORD")
+    if not OWNER_PASSWORD:
+        import warnings
+        warnings.warn(
+            "OWNER_PASSWORD environment variable is not set! "
+            "The owner account cannot be created without a secure password."
+        )
     OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "rafideen.ahmadghannam@gmail.com")
     
     CARD_ENCRYPTION_KEY = os.environ.get("CARD_ENCRYPTION_KEY", "")

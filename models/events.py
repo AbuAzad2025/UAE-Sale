@@ -681,11 +681,16 @@ def register_validation_listeners():
     
     @event.listens_for(Product, 'before_update')
     def validate_product_stock(mapper, connection, target):
-        """التحقق من المخزون السالب"""
+        """التحقق من المخزون السالب — يمنع حفظ مخزون سالب"""
         try:
-            if target.current_stock and target.current_stock < 0:
-                logger.warning(f"⚠️ Product {target.name}: Negative stock detected ({target.current_stock})")
-                # يمكن إرسال تنبيه هنا
+            if target.current_stock is not None and target.current_stock < 0:
+                logger.error(
+                    f"❌ BLOCKED: Product {target.name} ({target.id}): "
+                    f"Negative stock ({target.current_stock}) is not allowed. "
+                    f"Setting to 0."
+                )
+                # Prevent negative stock — clamp to zero
+                target.current_stock = 0
         
         except Exception as e:
             logger.error(f"❌ Failed to validate product stock: {e}")

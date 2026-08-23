@@ -138,20 +138,15 @@ def dashboard():
         return render_template('dashboard.html', stats=stats)
 
     except Exception as e:
-        current_app.logger.error(f"Dashboard Error: {e}")
-        # Return error directly to avoid template rendering issues (Double Fault)
-        import traceback
-        tb = traceback.format_exc()
-        return f"""
+        current_app.logger.error(f"Dashboard Error: {e}", exc_info=True)
+        # Show safe error page — never leak stack traces to users
+        return """
         <html>
-            <head><title>Dashboard Error</title></head>
-            <body style="font-family: monospace; padding: 20px;">
-                <h1 style="color: red;">Dashboard Error</h1>
-                <h3>Exception: {str(e)}</h3>
-                <pre style="background: #f0f0f0; padding: 15px; border: 1px solid #ccc;">{tb}</pre>
-                <hr>
-                <p>This is a raw error page to diagnose why the standard error page failed.</p>
-                <a href="/">Go Home</a>
+            <head><title>خطأ في لوحة التحكم</title></head>
+            <body style="font-family: sans-serif; padding: 40px; text-align: center; direction: rtl;">
+                <h1 style="color: #dc3545;">⚠️ خطأ في لوحة التحكم</h1>
+                <p>حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى أو الاتصال بالمدير.</p>
+                <a href="/" style="color: #007bff;">العودة للرئيسية</a>
             </body>
         </html>
         """, 500

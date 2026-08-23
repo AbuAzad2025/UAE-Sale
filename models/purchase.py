@@ -51,14 +51,22 @@ class Purchase(db.Model):
         return f'<Purchase {self.purchase_number}>'
     
     def get_paid_amount(self):
-        """حساب المبلغ المدفوع من جدول المدفوعات"""
+        """حساب المبلغ المدفوع لهذا المشتري تحديداً"""
         from models import Payment
         from sqlalchemy import func
         from decimal import Decimal
         
+        # Sum payments linked to this specific purchase via reference
         paid = db.session.query(func.sum(Payment.amount_aed)).filter(
-            Payment.supplier_id == self.supplier_id
+            Payment.reference_type == 'purchase',
+            Payment.reference_id == self.id
         ).scalar()
+        
+        # Fallback: sum all payments to this supplier if no reference-based payments found
+        if not paid:
+            paid = db.session.query(func.sum(Payment.amount_aed)).filter(
+                Payment.supplier_id == self.supplier_id
+            ).scalar()
         
         return Decimal(str(paid)) if paid else Decimal('0')
     

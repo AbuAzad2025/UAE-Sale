@@ -159,23 +159,7 @@ jobs:
   # ── Python tests (placeholder — enable when tests/ is added) ──
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    # Skip until tests/ directory exists in the repository
-    if: false
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: azad_test
-          POSTGRES_PASSWORD: azad_test
-          POSTGRES_DB: azad_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -188,20 +172,28 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pytest pytest-cov
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-xdist
 
       - name: Run tests
         env:
-          DATABASE_URL: postgresql://azad_test:azad_test@localhost:5432/azad_test
+          DATABASE_URL: sqlite:///:memory:
           SECRET_KEY: test-secret-key-not-for-production
           OWNER_PASSWORD: TestOwner@1234567890123456!
           APP_ENV: testing
           DEBUG: "true"
+          WTF_CSRF_ENABLED: "false"
+          RATELIMIT_ENABLED: "false"
+          CACHE_TYPE: simple
         run: |
-          # Warm up: ensure DB schema exists
-          python -c "from app import create_app; from extensions import db; app = create_app(); ctx = app.app_context(); ctx.push(); db.create_all(); ctx.pop()" || true
-          # Run tests
           pytest tests/ -v --tb=short --cov=. --cov-config=.coveragerc --cov-report=term --cov-report=xml:coverage.xml
+
+      - name: Upload coverage to Codecov (optional)
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
 
       - name: Upload coverage to Codecov (optional)
         if: always()

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from flask import Blueprint, render_template, request, jsonify
+from io import BytesIO
+from flask import Blueprint, render_template, request, jsonify, make_response, send_file
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from extensions import db
@@ -1111,4 +1112,279 @@ def vat_report():
                          summary=summary,
                          date_from=date_from,
                          date_to=date_to)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 3: EXPORT ENDPOINTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _send_export(export_func, filename, format_type):
+    """Helper: generate export and return as downloadable file."""
+    from services.export_service import ExportService
+    output = export_func()
+    mime = {
+        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'pdf': 'application/pdf',
+        'csv': 'text/csv; charset=utf-8',
+    }.get(format_type, 'application/octet-stream')
+    response = make_response(output.getvalue())
+    response.headers['Content-Type'] = mime
+    response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@reports_bp.route('/inventory-valuation/export')
+@login_required
+@permission_required('view_reports')
+def export_inventory_valuation():
+    from services.export_service import ExportService
+    from models import ProductCategory
+    fmt = request.args.get('format', 'xlsx')
+
+    products = Product.query.filter(Product.is_active == True, Product.current_stock > 0).order_by(Product.name).all()
+    headers = ['المنتج', 'الكود', 'الفئة', 'الكمية', 'سعر التكلفة', 'القيمة']
+    rows = []
+    total_value = Decimal('0')
+    total_qty = Decimal('0')
+    for p in products:
+        qty = p.current_stock or Decimal('0')
+        cost = p.cost_price or Decimal('0')
+        val = qty * cost
+        total_value += val
+        total_qty += qty
+        rows.append([p.name, p.sku or p.part_number or '',
+                     p.category.name if p.category else '',
+                     float(qty), float(cost), float(val)])
+    summary = {'إجمالي الكمية': float(total_qty), 'إجمالي القيمة': float(total_value)}
+
+    def build():
+        if fmt == 'pdf':
+            return ExportService.export_to_pdf('تقييم المخزون — Inventory Valuation',
+                                               headers, rows, summary=summary)
+        elif fmt == 'csv':
+            all_rows = rows + [[ '', '', 'المجموع', float(total_qty), '', float(total_value)]]
+            return ExportService.export_to_csv(all_rows, headers, 'inventory_valuation.csv')
+        return ExportService.export_to_excel('تقييم المخزون — Inventory Valuation',
+                                             headers, rows, summary=summary)
+
+    ext = {'xlsx': 'xlsx', 'pdf': 'pdf', 'csv': 'csv'}.get(fmt, 'xlsx')
+    return _send_export(build, f'inventory_valuation.{ext}', ext)
+
+
+@reports_bp.route('/ap-aging/export')
+@login_required
+@permission_required('view_reports')
+def export_ap_aging():
+    from services.export_service import ExportService
+    from models import Supplier, Purchase, Payment
+    from datetime import timezone as tz
+    fmt = request.args.get('format', 'xlsx')
+    now = datetime.now(tz)
+
+    suppliers = Supplier.query.filter_by(is_active=True).all()
+    headers = ['المورد', 'إجمالي المشتريات', 'المدفوع', 'الرصيد المستحق', 'الأيام', 'شروط الدفع']
+    rows = []
+    total_payable = Decimal('0')
+    for supplier in suppliers:
+        purchases = Purchase.query.filter(Purchase.supplier_id == supplier.id, Purchase.status == 'confirmed').all()
+        payments = Payment.query.filter(Payment.supplier_id == supplier.id, Payment.direction == 'outgoing', Payment.payment_confirmed == True).all()
+        total_purchases = sum((p.amount_aed or Decimal('0') for p in purchases), Decimal('0'))
+        total_paid = sum((p.amount_aed or Decimal('0') for p in payments), Decimal('0'))
+        balance = total_purchases - total_paid
+        if balance <= 0:
+            continue
+        oldest = min((p.purchase_date for p in purchases if p.purchase_date), default=None)
+        days_old = (now - oldest.replace(tzinfo=tz.utc)).days if oldest else 0
+        total_payable += balance
+        rows.append([supplier.name, float(total_purchases), float(total_paid),
+                     float(balance), days_old, supplier.payment_terms_days or 30])
+    summary = {'إجمالي الذمم الدائنة': float(total_payable)}
+
+    def build():
+        if fmt == 'pdf':
+            return ExportService.export_to_pdf('أعمار الذمم الدائنة — AP Aging',
+                                               headers, rows, summary=summary)
+        elif fmt == 'csv':
+            return ExportService.export_to_csv(rows, headers, 'ap_aging.csv')
+        return ExportService.export_to_excel('أعمار الذمم الدائنة — AP Aging',
+                                             headers, rows, summary=summary)
+
+    ext = {'xlsx': 'xlsx', 'pdf': 'pdf', 'csv': 'csv'}.get(fmt, 'xlsx')
+    return _send_export(build, f'ap_aging.{ext}', ext)
+
+
+@reports_bp.route('/cash-flow/export')
+@login_required
+@permission_required('view_reports')
+def export_cash_flow():
+    from services.export_service import ExportService
+    from models import GLAccount, GLJournalLine, GLJournalEntry
+    from sqlalchemy import func as sa_func
+    fmt = request.args.get('format', 'xlsx')
+    date_from = request.args.get('date_from', '', type=str)
+    date_to = request.args.get('date_to', '', type=str)
+
+    line_query = db.session.query(
+        GLAccount.type.label('account_type'),
+        GLAccount.code.label('account_code'),
+        GLAccount.name.label('account_name'),
+        GLAccount.name_ar.label('account_name_ar'),
+        sa_func.sum(GLJournalLine.debit).label('debit'),
+        sa_func.sum(GLJournalLine.credit).label('credit'),
+    ).join(
+        GLJournalEntry, GLJournalLine.entry_id == GLJournalEntry.id
+    ).join(
+        GLAccount, GLJournalLine.account_id == GLAccount.id
+    ).filter(GLJournalEntry.is_posted == True, GLJournalEntry.is_reversed == False)
+
+    if date_from:
+        line_query = line_query.filter(sa_func.date(GLJournalEntry.entry_date) >= date_from)
+    if date_to:
+        line_query = line_query.filter(sa_func.date(GLJournalEntry.entry_date) <= date_to)
+
+    lines = line_query.group_by(GLAccount.type, GLAccount.code, GLAccount.name, GLAccount.name_ar).all()
+    headers = ['القسم', 'الحساب', 'المدين', 'الدائن', 'صافي']
+    rows = []
+    operating = investing = financing = Decimal('0')
+    for line in lines:
+        net = (line.debit or Decimal('0')) - (line.credit or Decimal('0'))
+        cat = 'تشغيلي' if line.account_type == 'revenue' else (
+              'استثماري' if line.account_type == 'asset' else 'تمويلي')
+        if line.account_type == 'revenue':
+            net = -net
+            operating += net
+        elif line.account_type == 'expense':
+            operating += net
+        elif line.account_type == 'asset':
+            investing += net
+        else:
+            financing -= net
+        rows.append([cat, f"{line.account_code} - {line.account_name_ar or line.account_name}",
+                     float(line.debit or 0), float(line.credit or 0), float(net)])
+    summary = {'تشغيلي': float(operating), 'استثماري': float(investing),
+               'تمويلي': float(financing), 'الصافي': float(operating + investing + financing)}
+
+    def build():
+        if fmt == 'pdf':
+            return ExportService.export_to_pdf('قائمة التدفقات النقدية — Cash Flow',
+                                               headers, rows, summary=summary)
+        elif fmt == 'csv':
+            return ExportService.export_to_csv(rows, headers, 'cash_flow.csv')
+        return ExportService.export_to_excel('قائمة التدفقات النقدية — Cash Flow',
+                                             headers, rows, summary=summary)
+
+    ext = {'xlsx': 'xlsx', 'pdf': 'pdf', 'csv': 'csv'}.get(fmt, 'xlsx')
+    return _send_export(build, f'cash_flow.{ext}', ext)
+
+
+@reports_bp.route('/vat-report/export')
+@login_required
+@permission_required('view_reports')
+def export_vat_report():
+    from services.export_service import ExportService
+    from models import Sale, Purchase
+    fmt = request.args.get('format', 'xlsx')
+    date_from = request.args.get('date_from', '', type=str)
+    date_to = request.args.get('date_to', '', type=str)
+
+    # Sales
+    sq = Sale.query.filter_by(status='confirmed')
+    if date_from: sq = sq.filter(func.date(Sale.sale_date) >= date_from)
+    if date_to: sq = sq.filter(func.date(Sale.sale_date) <= date_to)
+    sales = sq.all()
+    sales_headers = ['رقم الفاتورة', 'التاريخ', 'العميل', 'المبلغ', 'نسبة الضريبة', 'الضريبة']
+    sales_rows = []
+    total_output = Decimal('0')
+    for s in sales:
+        tr = s.tax_rate or Decimal('0')
+        ta = s.tax_amount or Decimal('0')
+        if tr > 0:
+            sales_rows.append([s.sale_number, s.sale_date.strftime('%Y-%m-%d') if s.sale_date else '',
+                               s.customer.name if s.customer else 'عميل نقدي',
+                               float(s.amount_aed or 0), f'{tr}%', float(ta)])
+            total_output += ta
+
+    # Purchases
+    pq = Purchase.query.filter_by(status='confirmed')
+    if date_from: pq = pq.filter(func.date(Purchase.purchase_date) >= date_from)
+    if date_to: pq = pq.filter(func.date(Purchase.purchase_date) <= date_to)
+    purchases = pq.all()
+    purchase_headers = ['رقم الفاتورة', 'التاريخ', 'المورد', 'المبلغ', 'نسبة الضريبة', 'الضريبة']
+    purchase_rows = []
+    total_input = Decimal('0')
+    for p in purchases:
+        tr = p.tax_rate or Decimal('0')
+        ta = p.tax_amount or Decimal('0')
+        if tr > 0:
+            purchase_rows.append([p.purchase_number, p.purchase_date.strftime('%Y-%m-%d') if p.purchase_date else '',
+                                  p.supplier.name if p.supplier else p.supplier_name,
+                                  float(p.amount_aed or 0), f'{tr}%', float(ta)])
+            total_input += ta
+
+    net_vat = total_output - total_input
+
+    def build_xlsx():
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+        wb = Workbook()
+        # Sales sheet
+        ws = wb.active
+        ws.title = 'المبيعات الخاضعة'
+        ws.sheet_view.rightToLeft = True
+        hf = Font(bold=True, color='FFFFFF', size=11)
+        hfill = PatternFill(start_color='C0392B', end_color='C0392B', fill_type='solid')
+        for ci, h in enumerate(sales_headers, 1):
+            c = ws.cell(row=1, column=ci, value=h)
+            c.font = hf; c.fill = hfill
+        for ri, row in enumerate(sales_rows, 2):
+            for ci, val in enumerate(row, 1):
+                ws.cell(row=ri, column=ci, value=val)
+        ws.cell(row=len(sales_rows) + 2, column=3, value='المجموع').font = Font(bold=True)
+        ws.cell(row=len(sales_rows) + 2, column=6, value=float(total_output)).font = Font(bold=True)
+
+        # Purchases sheet
+        ws2 = wb.create_sheet('المشتريات الخاضعة')
+        ws2.sheet_view.rightToLeft = True
+        hfill2 = PatternFill(start_color='27AE60', end_color='27AE60', fill_type='solid')
+        for ci, h in enumerate(purchase_headers, 1):
+            c = ws2.cell(row=1, column=ci, value=h)
+            c.font = hf; c.fill = hfill2
+        for ri, row in enumerate(purchase_rows, 2):
+            for ci, val in enumerate(row, 1):
+                ws2.cell(row=ri, column=ci, value=val)
+        ws2.cell(row=len(purchase_rows) + 2, column=3, value='المجموع').font = Font(bold=True)
+        ws2.cell(row=len(purchase_rows) + 2, column=6, value=float(total_input)).font = Font(bold=True)
+
+        # Summary sheet
+        ws3 = wb.create_sheet('الملخص')
+        ws3.sheet_view.rightToLeft = True
+        ws3.cell(row=1, column=1, value='ضريبة المبيعات (Output VAT)').font = Font(bold=True)
+        ws3.cell(row=1, column=2, value=float(total_output))
+        ws3.cell(row=2, column=1, value='ضريبة المشتريات (Input VAT)').font = Font(bold=True)
+        ws3.cell(row=2, column=2, value=float(total_input))
+        ws3.cell(row=3, column=1, value='الرصيد النهائي').font = Font(bold=True, size=12)
+        ws3.cell(row=3, column=2, value=float(net_vat)).font = Font(bold=True, size=12)
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        return output
+
+    def build():
+        if fmt == 'pdf':
+            # Combine both into one PDF
+            all_rows = [['── المبيعات ──', '', '', '', '', '']] + sales_rows + \
+                       [['', '', '', '', '', '']] + \
+                       [['── المشتريات ──', '', '', '', '', '']] + purchase_rows
+            summary = {'Output VAT': float(total_output), 'Input VAT': float(total_input),
+                       'Net VAT': float(net_vat)}
+            return ExportService.export_to_pdf('تقرير VAT — UAE 5%',
+                                               sales_headers, all_rows, summary=summary)
+        elif fmt == 'csv':
+            combined = sales_rows + purchase_rows
+            return ExportService.export_to_csv(combined, sales_headers, 'vat_report.csv')
+        return build_xlsx()
+
+    ext = {'xlsx': 'xlsx', 'pdf': 'pdf', 'csv': 'csv'}.get(fmt, 'xlsx')
+    return _send_export(build, f'vat_report.{ext}', ext)
 

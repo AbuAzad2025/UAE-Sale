@@ -5,6 +5,11 @@ from extensions import db
 class Payment(db.Model):
     __tablename__ = 'payments'
     
+    __table_args__ = (
+        db.CheckConstraint('amount > 0', name='ck_payment_amount_positive'),
+        db.CheckConstraint('amount_aed > 0', name='ck_payment_amount_aed_positive'),
+    )
+    
     id = db.Column(db.Integer, primary_key=True)
     payment_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     
@@ -129,6 +134,11 @@ class Payment(db.Model):
 
 class Receipt(db.Model):
     __tablename__ = 'receipts'
+    
+    __table_args__ = (
+        db.CheckConstraint('amount > 0', name='ck_receipt_amount_positive'),
+        db.CheckConstraint('amount_aed > 0', name='ck_receipt_amount_aed_positive'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     receipt_number = db.Column(db.String(50), unique=True, nullable=False, index=True)

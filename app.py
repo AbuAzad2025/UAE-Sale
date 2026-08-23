@@ -346,12 +346,13 @@ if __name__ == '__main__':
         backup_thread = threading.Thread(target=schedule_daily_backup, daemon=True)
         backup_thread.start()
         app.logger.info("Automatic backup scheduler started")
-    except:
-        pass
+    except Exception as e:
+        import logging
+        logging.warning(f"Backup scheduler failed to start: {e}")
     
     port = int(os.environ.get('PORT', 5000))
     host = os.environ.get('HOST', '0.0.0.0')
-    debug_mode = True  # Force debug in dev environment
+    debug_mode = os.environ.get('DEBUG', 'false').lower() in ('true', '1', 'yes')
     
     app.logger.info("Starting UAE-Sale System")
     app.logger.info("Host: %s", host)

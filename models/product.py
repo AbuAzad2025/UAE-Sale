@@ -51,6 +51,9 @@ class Product(db.Model):
     __table_args__ = (
         db.Index('idx_product_active_stock', 'is_active', 'current_stock'),
         db.Index('idx_product_category_active', 'category_id', 'is_active'),
+        db.CheckConstraint('current_stock >= 0', name='ck_product_stock_non_negative'),
+        db.CheckConstraint('regular_price >= 0', name='ck_product_price_non_negative'),
+        db.CheckConstraint('cost_price >= 0', name='ck_product_cost_non_negative'),
     )
     
     id = db.Column(db.Integer, primary_key=True)

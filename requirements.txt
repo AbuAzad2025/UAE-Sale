@@ -67,7 +67,7 @@ beautifulsoup4==4.12.3
 graphene==3.3
 
 # Monitoring
-sentry-sdk==1.40.6
+sentry-sdk[flask]>=2.0.0
 prometheus-flask-exporter==0.23.2
 psutil==5.9.8
 

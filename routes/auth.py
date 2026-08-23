@@ -19,7 +19,7 @@ def support():
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
-@limiter.limit("100 per hour; 50 per minute")
+@limiter.limit("20 per hour; 5 per minute")
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
@@ -140,28 +140,34 @@ def create_payment():
                 'error': 'بيانات غير صحيحة'
             }), 400
         
-        amount = float(data.get('amount', 0))
-        crypto_currency = data.get('crypto_currency', 'btc')
-        customer_email = data.get('customer_email') or data.get('email', '')
-        description = data.get('description', '')
-        
-        # معلومات المشترية
-        transaction_type = data.get('type', 'donation')  # purchase or donation
-        package = data.get('package', '')
-        customer_name = data.get('customer_name', '')
-        customer_phone = data.get('customer_phone', '')
-        
-        # معلومات التبرع
-        donor_name = data.get('donor_name', '')
-        donor_email = data.get('donor_email', '')
-        donor_message = data.get('donor_message', '')
-        
-        # التحقق من الحد الأدنى
-        if amount < 1:
+        # Input validation
+        try:
+            amount = float(data.get('amount', 0))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Invalid amount'}), 400
+
+        # Sanitize string inputs (max lengths)
+        crypto_currency = str(data.get('crypto_currency', 'btc'))[:10]
+        customer_email = str(data.get('customer_email') or data.get('email', ''))[:200]
+        description = str(data.get('description', ''))[:500]
+        transaction_type = str(data.get('type', 'donation'))[:20]
+        package = str(data.get('package', ''))[:100]
+        customer_name = str(data.get('customer_name', ''))[:200]
+        customer_phone = str(data.get('customer_phone', ''))[:30]
+        donor_name = str(data.get('donor_name', ''))[:200]
+        donor_email = str(data.get('donor_email', ''))[:200]
+        donor_message = str(data.get('donor_message', ''))[:1000]
+
+        # Validate amount range
+        if amount < 1 or amount > 100000:
             return jsonify({
                 'success': False,
-                'error': 'الحد الأدنى للتبرع هو $1'
+                'error': 'Amount must be between $1 and $100,000'
             }), 400
+
+        # Validate transaction type
+        if transaction_type not in ('donation', 'purchase'):
+            transaction_type = 'donation'
         
         # إنشاء الدفعة
         nowpayments = NOWPaymentsService()

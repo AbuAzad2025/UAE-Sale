@@ -10,6 +10,9 @@ class Sale(db.Model):
         db.Index('idx_sale_customer_date', 'customer_id', 'sale_date'),
         db.Index('idx_sale_status_date', 'status', 'sale_date'),
         db.Index('idx_sale_payment_status', 'payment_status', 'customer_id'),
+        db.CheckConstraint('total_amount >= 0', name='ck_sale_total_non_negative'),
+        db.CheckConstraint('paid_amount_aed >= 0', name='ck_sale_paid_non_negative'),
+        db.CheckConstraint('balance_due >= 0', name='ck_sale_balance_non_negative'),
     )
     
     id = db.Column(db.Integer, primary_key=True)
@@ -213,6 +216,13 @@ class Sale(db.Model):
 
 class SaleLine(db.Model):
     __tablename__ = 'sale_lines'
+    
+    __table_args__ = (
+        db.CheckConstraint('quantity > 0', name='ck_saleline_qty_positive'),
+        db.CheckConstraint('unit_price >= 0', name='ck_saleline_price_non_negative'),
+        db.CheckConstraint('line_total >= 0', name='ck_saleline_total_non_negative'),
+        db.CheckConstraint('discount_percent >= 0 AND discount_percent <= 100', name='ck_saleline_discount_range'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'), nullable=False, index=True)

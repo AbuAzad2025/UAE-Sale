@@ -6,6 +6,11 @@ from extensions import db
 class Purchase(db.Model):
     __tablename__ = 'purchases'
     
+    __table_args__ = (
+        db.CheckConstraint('total_amount >= 0', name='ck_purchase_total_non_negative'),
+        db.CheckConstraint('amount_aed >= 0', name='ck_purchase_amount_non_negative'),
+    )
+    
     id = db.Column(db.Integer, primary_key=True)
     purchase_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     
@@ -119,6 +124,12 @@ class Purchase(db.Model):
 
 class PurchaseLine(db.Model):
     __tablename__ = 'purchase_lines'
+    
+    __table_args__ = (
+        db.CheckConstraint('quantity > 0', name='ck_purchaseline_qty_positive'),
+        db.CheckConstraint('unit_cost >= 0', name='ck_purchaseline_cost_non_negative'),
+        db.CheckConstraint('line_total >= 0', name='ck_purchaseline_total_non_negative'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     purchase_id = db.Column(db.Integer, db.ForeignKey('purchases.id'), nullable=False, index=True)

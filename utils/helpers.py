@@ -7,22 +7,40 @@ from flask import current_app, request
 from extensions import db
 
 
-def generate_number(prefix, model, field_name='sale_number', date_format='%Y'):
+def generate_number(prefix, model, field_name='sale_number', date_format='%Y', max_retries=5):
+    """Generate a unique sequential number with retry on collision."""
+    import time
     year = datetime.now().strftime(date_format)
     
-    latest = db.session.query(model).filter(
-        getattr(model, field_name).like(f'{prefix}-{year}-%')
-    ).order_by(
-        getattr(model, field_name).desc()
-    ).first()
+    for attempt in range(max_retries):
+        latest = db.session.query(model).filter(
+            getattr(model, field_name).like(f'{prefix}-{year}-%')
+        ).order_by(
+            getattr(model, field_name).desc()
+        ).first()
+        
+        if latest:
+            last_number = getattr(latest, field_name).split('-')[-1]
+            next_number = int(last_number) + 1
+        else:
+            next_number = 1
+        
+        candidate = f'{prefix}-{year}-{next_number:04d}'
+        
+        # Check for collision
+        existing = db.session.query(model).filter(
+            getattr(model, field_name) == candidate
+        ).first()
+        
+        if not existing:
+            return candidate
+        
+        # Collision — wait briefly and retry
+        time.sleep(0.01 * (attempt + 1))
     
-    if latest:
-        last_number = getattr(latest, field_name).split('-')[-1]
-        next_number = int(last_number) + 1
-    else:
-        next_number = 1
-    
-    return f'{prefix}-{year}-{next_number:04d}'
+    # Fallback: use UUID suffix
+    import uuid
+    return f'{prefix}-{year}-{uuid.uuid4().hex[:8].upper()}'
 
 
 def get_next_number(prefix, model_class, number_field='number'):

@@ -60,10 +60,10 @@ class TestGenerateNumberConcurrency:
     def test_no_duplicate_numbers_multithreaded(self, app, db):
         """Multiple threads generate unique numbers without collision.
 
-        Each thread gets its own app context and session.
-        On SQLite, concurrent writes may fail for some threads — that's
-        acceptable; the critical assertion is that NO TWO ROWS share the
-        same sale_number.
+        Each thread runs in its own app context + session.
+        SQLite has limited concurrency so some threads may fail with
+        OperationalError — that's acceptable. The critical assertion
+        is that NO TWO ROWS share the same sale_number.
         """
         from models import Sale
         from utils.helpers import generate_number
@@ -75,6 +75,8 @@ class TestGenerateNumberConcurrency:
         def worker():
             try:
                 with app.app_context():
+                    from extensions import db as _db
+                    _db.session.rollback()  # clean slate
                     num = generate_number('S', Sale, 'sale_number')
                     sale = Sale(
                         sale_number=num,
@@ -88,15 +90,13 @@ class TestGenerateNumberConcurrency:
                         status='confirmed',
                         is_active=True,
                     )
-                    db.session.add(sale)
-                    db.session.commit()
+                    _db.session.add(sale)
+                    _db.session.commit()
                     with lock:
                         generated.append(num)
             except Exception as e:
-                # SQLite may throw OperationalError on concurrent writes;
-                # the important thing is the number itself was unique.
                 with lock:
-                    errors.append(str(e))
+                    errors.append(str(e)[:80])
 
         threads = [threading.Thread(target=worker) for _ in range(5)]
         for t in threads:
@@ -109,7 +109,7 @@ class TestGenerateNumberConcurrency:
 
         # All generated numbers must be unique
         assert len(set(generated)) == len(generated), \
-            f'Duplicates found: {[n for n in generated if generated.count(n) > 1]}'
+            f'Duplicates in memory: {[n for n in generated if generated.count(n) > 1]}'
 
         # No two rows in the database share the same sale_number
         from sqlalchemy import text

@@ -73,20 +73,31 @@ def install_tenant_filter_events():
         if tenant_id is None:
             return query  # No tenant set — no filtering
 
+        # Skip DDL, system, and subqueries
+        try:
+            col_descs = query.column_descriptions
+            if not col_descs:
+                return query
+        except Exception:
+            return query  # Can't introspect — skip filtering
+
         # Check if the primary entity is tenant-scoped
         try:
-            for desc in query.column_descriptions:
-                entity = desc.get('entity')
-                if entity is not None and hasattr(entity, '__tablename__'):
-                    if entity.__tablename__ in _tenant_scoped_tables:
-                        # Check if filter already applied to avoid duplicates
-                        if not getattr(query, '_tenant_filter_applied', False):
-                            # Only apply to the primary entity
-                            if desc.get('name') == 'entity' or desc == query.column_descriptions[0]:
-                                query = query.filter(entity.tenant_id == tenant_id)
-                                query._tenant_filter_applied = True
-                                break
-        except (AttributeError, IndexError, TypeError):
+            primary = col_descs[0]
+            entity = primary.get('entity')
+            if entity is None:
+                return query
+
+            tablename = getattr(entity, '__tablename__', None)
+            if tablename is None:
+                return query
+
+            if tablename in _tenant_scoped_tables:
+                # Only filter the primary entity
+                if not getattr(query, '_tenant_filter_applied', False):
+                    query = query.filter(entity.tenant_id == tenant_id)
+                    query._tenant_filter_applied = True
+        except (AttributeError, IndexError, TypeError, KeyError):
             pass
 
         return query

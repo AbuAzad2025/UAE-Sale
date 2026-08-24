@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}أمر شراء جديد{% endblock %}
+{% block page_title %}<i class="fas fa-plus mr-2"></i>أمر شراء جديد{% endblock %}
+{% block content %}
+<form method="POST">
+  <div class="card"><div class="card-header"><h5 class="mb-0">بيانات أمر الشراء</h5></div><div class="card-body">
+    <div class="row">
+      <div class="col-md-4"><div class="form-group"><label>المورد <span class="text-danger">*</span></label><select name="supplier_id" class="form-control" required><option value="">— اختر —</option>{% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-4"><div class="form-group"><label>المستودع <span class="text-danger">*</span></label><select name="warehouse_id" class="form-control" required><option value="">— اختر —</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-4"><div class="form-group"><label>التسليم المتوقع</label><input type="date" name="expected_delivery" class="form-control"></div></div>
+      <div class="col-md-3"><div class="form-group"><label>الضريبة %</label><input type="number" name="tax_rate" class="form-control" value="5" step="0.01"></div></div>
+    </div>
+  </div></div>
+  <div class="card"><div class="card-header"><h5 class="mb-0">المنتجات</h5></div><div class="card-body">
+    <table class="table" id="lines-table"><thead><tr><th>#</th><th>المنتج</th><th>الكمية</th><th>التكلفة</th><th></th></tr></thead><tbody></tbody></table>
+    <button type="button" class="btn btn-success btn-sm" onclick="addLine()"><i class="fas fa-plus mr-1"></i>إضافة صف</button>
+  </div></div>
+  <div class="card"><div class="card-body">
+    <div class="form-group"><label>ملاحظات</label><textarea name="notes" class="form-control" rows="2"></textarea></div>
+    <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save mr-2"></i>إنشاء أمر الشراء</button>
+    <a href="{{ url_for('erp_modules.purchase_orders') }}" class="btn btn-secondary btn-lg">إلغاء</a>
+  </div></div>
+</form>
+<script>
+var lineIndex=0;var products=[{% for p in products %}{id:{{p.id}},name:'{{p.name}}',cost:{{p.cost_price|float}}}{% if not loop.last %},{% endif %}{% endfor %}];
+function addLine(){var r='<tr><td>'+(lineIndex+1)+'</td><td><select name="lines['+lineIndex+'][product_id]" class="form-control" onchange="setCost(this,'+lineIndex+')"><option value="">— اختر —</option>'+products.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>'}).join('')+'</select></td><td><input type="number" name="lines['+lineIndex+'][quantity]" class="form-control" step="0.01" required></td><td><input type="number" name="lines['+lineIndex+'][unit_cost]" class="form-control cost-input" step="0.01"></td><td><button type="button" class="btn btn-danger btn-sm" onclick="$(this).closest(\'tr\').remove()"><i class="fas fa-trash"></i></button></td></tr>';$('#lines-table tbody').append(r);lineIndex++}
+function setCost(sel,idx){var pid=$(sel).val();var p=products.find(function(x){return x.id==pid});if(p){$('input[name="lines['+idx+'][unit_cost]"]').val(p.cost)}}
+addLine();
+</script>
+{% endblock %}

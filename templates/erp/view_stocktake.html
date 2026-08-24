@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}جرد {{ stocktake.stocktake_number }}{% endblock %}
+{% block page_title %}<i class="fas fa-clipboard-check mr-2"></i>جرد: {{ stocktake.stocktake_number }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between">
+    <h5>{{ stocktake.warehouse.name if stocktake.warehouse else '' }} - {{ stocktake.stocktake_date.strftime('%Y-%m-%d') }}</h5>
+    <span class="badge badge-lg badge-{{ 'success' if stocktake.status=='approved' else ('info' if stocktake.status=='completed' else 'warning') }}">{{ stocktake.status_ar }}</span>
+  </div>
+  <div class="card-body">
+    {% if stocktake.status == 'in_progress' %}
+    <form method="POST" action="{{ url_for('erp_modules.update_stocktake_count', id=stocktake.id) }}">
+      <table class="table table-bordered">
+        <thead><tr><th>المنتج</th><th>الكمية بالنظام</th><th>العدد الفعلي</th><th>الفرق</th></tr></thead>
+        <tbody>
+        {% for item in stocktake.items %}
+        <tr>
+          <td>{{ item.product.name if item.product else '-' }}</td>
+          <td>{{ item.system_quantity }}</td>
+          <td><input type="number" name="counted_{{ item.id }}" class="form-control" step="0.01" value="{{ item.counted_quantity or item.system_quantity }}"></td>
+          <td id="var_{{ item.id }}">—</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>حفظ نتائج الجرد</button>
+    </form>
+    {% elif stocktake.status == 'completed' %}
+    <table class="table table-bordered">
+      <thead><tr><th>المنتج</th><th>النظام</th><th>الفعلي</th><th>الفرق</th></tr></thead>
+      <tbody>
+      {% for item in stocktake.items %}
+      <tr><td>{{ item.product.name if item.product else '-' }}</td><td>{{ item.system_quantity }}</td><td>{{ item.counted_quantity or '-' }}</td><td><span class="badge badge-{{ 'success' if item.variance == 0 else 'danger' }}">{{ item.variance }}</span></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <form method="POST" action="{{ url_for('erp_modules.approve_stocktake', id=stocktake.id) }}">
+      <button type="submit" class="btn btn-success" onclick="return confirm('اعتماد الجرد وتحديث المخزون؟')"><i class="fas fa-check mr-2"></i>اعتماد الجرد</button>
+    </form>
+    {% else %}
+    <p class="text-success"><i class="fas fa-check-circle mr-2"></i>تم اعتماد هذا الجرد</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}عروض الأسعار{% endblock %}
+{% block page_title %}<i class="fas fa-file-invoice mr-2"></i>عروض الأسعار{% endblock %}
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('erp_modules.create_quotation') }}" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>عرض سعر جديد</a>
+</div>
+<div class="card"><div class="card-body">
+  <table class="table table-bordered table-striped">
+    <thead><tr><th>الرقم</th><th>العميل</th><th>التاريخ</th><th>الصلاحية</th><th>الإجمالي</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+    <tbody>
+    {% for q in quotations %}
+    <tr>
+      <td><strong>{{ q.quotation_number }}</strong></td>
+      <td>{{ q.customer.name if q.customer else '-' }}</td>
+      <td>{{ q.quotation_date.strftime('%Y-%m-%d') if q.quotation_date else '-' }}</td>
+      <td>{{ q.valid_until.strftime('%Y-%m-%d') if q.valid_until else '-' }}</td>
+      <td>{{ "{:,.2f}".format(q.total_amount|float) }} د.إ</td>
+      <td><span class="badge badge-{{ 'success' if q.status=='accepted' else ('danger' if q.status=='rejected' else ('info' if q.status=='sent' else 'secondary')) }}">{{ q.status_ar }}</span></td>
+      <td><a href="{{ url_for('erp_modules.view_quotation', id=q.id) }}" class="btn btn-sm btn-info"><i class="fas fa-eye"></i></a></td>
+    </tr>
+    {% else %}<tr><td colspan="7" class="text-center text-muted">لا توجد عروض أسعار</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

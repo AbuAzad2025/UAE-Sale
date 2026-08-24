@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}إنذارات التحصيل{% endblock %}
+{% block page_title %}<i class="fas fa-exclamation-triangle mr-2"></i>إنذارات التحصيل{% endblock %}
+{% block content %}
+<div class="row mb-4">
+  <div class="col-md-4"><div class="card card-danger card-outline"><div class="card-body text-center"><h3>{{ summary.count }}</h3><p class="text-muted">حسابات متأخرة</p></div></div></div>
+  <div class="col-md-4"><div class="card card-warning card-outline"><div class="card-body text-center"><h3>{{ "{:,.0f}".format(summary.total_overdue) }} د.إ</h3><p class="text-muted">إجمالي المتأخرات</p></div></div></div>
+  <div class="col-md-4"><div class="card card-primary card-outline"><div class="card-body text-center">
+    <form method="POST" action="{{ url_for('erp_modules.generate_dunning') }}"><button type="submit" class="btn btn-primary btn-lg" onclick="return confirm('فحص الحسابات المتأخرة وإنشاء إنذارات؟')"><i class="fas fa-bell mr-2"></i>فحص وتمشيل إنذارات جديدة</button></form>
+  </div></div></div>
+</div>
+<div class="card"><div class="card-body">
+  <table class="table table-bordered table-striped">
+    <thead><tr><th>الرقم</th><th>العميل</th><th>المبلغ المتأخر</th><th>أيام التأخير</th><th>المستوى</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+    <tbody>
+    {% for l in letters %}
+    <tr>
+      <td>{{ l.letter_number }}</td><td>{{ l.customer.name if l.customer else '-' }}</td>
+      <td>{{ "{:,.2f}".format(l.amount_due|float) }} د.إ</td><td>{{ l.days_overdue }}</td>
+      <td><span class="badge badge-{{ 'warning' if l.level<=2 else ('danger' if l.level==3 else 'dark') }}">المستوى {{ l.level }}</span></td>
+      <td><span class="badge badge-{{ 'success' if l.status=='sent' else 'secondary' }}">{{ l.status }}</span></td>
+      <td>{% if l.status == 'draft' %}<form method="POST" action="{{ url_for('erp_modules.send_dunning', id=l.id) }}" style="display:inline"><button class="btn btn-sm btn-info" onclick="return confirm('تسجيل الإرسال؟')"><i class="fas fa-paper-plane"></i></button></form>{% endif %}</td>
+    </tr>
+    {% else %}<tr><td colspan="7" class="text-center text-muted">لا توجد إنذارات</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

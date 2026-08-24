@@ -551,6 +551,40 @@
           </li>
           {% endif %}
           
+          {% if current_user.has_permission('manage_sales') or current_user.has_permission('manage_purchases') or current_user.has_permission('manage_warehouse') or current_user.has_permission('manage_ledger') %}
+          <li class="nav-item has-treeview {% if request.endpoint and 'erp_modules' in request.endpoint %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and 'erp_modules' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-puzzle-piece"></i>
+              <p>
+                الوحدات المتقدمة
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              {% if current_user.has_permission('manage_sales') %}
+              <li class="nav-item"><a href="{{ url_for('erp_modules.quotations') }}" class="nav-link"><i class="fas fa-file-invoice nav-icon"></i><p>عروض الأسعار</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.e_invoices') }}" class="nav-link"><i class="fas fa-file-code nav-icon"></i><p>الفواتير الإلكترونية</p></a></li>
+              {% endif %}
+              {% if current_user.has_permission('manage_purchases') %}
+              <li class="nav-item"><a href="{{ url_for('erp_modules.purchase_orders') }}" class="nav-link"><i class="fas fa-shopping-cart nav-icon"></i><p>أوامر الشراء</p></a></li>
+              {% endif %}
+              {% if current_user.has_permission('manage_warehouse') %}
+              <li class="nav-item"><a href="{{ url_for('erp_modules.stock_transfers') }}" class="nav-link"><i class="fas fa-exchange-alt nav-icon"></i><p>نقل المخزون</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.stock_takes') }}" class="nav-link"><i class="fas fa-clipboard-check nav-icon"></i><p>جرد المخزون</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.lots') }}" class="nav-link"><i class="fas fa-layer-group nav-icon"></i><p>تتبع الدفعات</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.bins') }}" class="nav-link"><i class="fas fa-th-large nav-icon"></i><p>مواقع التخزين</p></a></li>
+              {% endif %}
+              {% if current_user.has_permission('manage_payments') %}
+              <li class="nav-item"><a href="{{ url_for('erp_modules.dunning') }}" class="nav-link"><i class="fas fa-exclamation-triangle nav-icon"></i><p>إنذارات التحصيل</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.recurring_expenses') }}" class="nav-link"><i class="fas fa-redo nav-icon"></i><p>المصروفات الدورية</p></a></li>
+              {% endif %}
+              {% if current_user.has_permission('manage_ledger') %}
+              <li class="nav-item"><a href="{{ url_for('erp_modules.fiscal_periods') }}" class="nav-link"><i class="fas fa-lock nav-icon"></i><p>الفترات المالية</p></a></li>
+              {% endif %}
+            </ul>
+          </li>
+          {% endif %}
+
           {% if current_user.has_permission('manage_hr') %}
           <li class="nav-item has-treeview {% if request.endpoint and 'hr' in request.endpoint %}menu-open{% endif %}">
             <a href="#" class="nav-link {% if request.endpoint and 'hr' in request.endpoint %}active{% endif %}">

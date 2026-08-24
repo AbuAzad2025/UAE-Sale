@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}عرض أسعار {{ quotation.quotation_number }}{% endblock %}
+{% block page_title %}<i class="fas fa-file-invoice mr-2"></i>عرض أسعار: {{ quotation.quotation_number }}{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="col-lg-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between">
+        <h5>{{ quotation.customer.name if quotation.customer else '' }} - {{ quotation.quotation_number }}</h5>
+        <span class="badge badge-lg badge-{{ 'success' if quotation.status=='accepted' else ('danger' if quotation.status=='rejected' else 'info') }}">{{ quotation.status_ar }}</span>
+      </div>
+      <div class="card-body">
+        <div class="row mb-4">
+          <div class="col-md-4"><p><strong>التاريخ:</strong> {{ quotation.quotation_date.strftime('%Y-%m-%d') if quotation.quotation_date else '' }}</p><p><strong>صالح حتى:</strong> {{ quotation.valid_until.strftime('%Y-%m-%d') if quotation.valid_until else '' }}</p></div>
+          <div class="col-md-4 text-center"><h3 class="text-primary">{{ "{:,.2f}".format(quotation.total_amount|float) }} د.إ</h3></div>
+          <div class="col-md-4 text-left"><p><strong>العملة:</strong> {{ quotation.currency }}</p><p><strong>الضريبة:</strong> {{ quotation.tax_rate }}%</p></div>
+        </div>
+        <table class="table table-bordered">
+          <thead><tr><th>المنتج</th><th>الكمية</th><th>السعر</th><th>الخصم%</th><th>الإجمالي</th></tr></thead>
+          <tbody>
+          {% for line in quotation.lines %}
+          <tr><td>{{ line.product.name if line.product else '-' }}</td><td>{{ line.quantity }}</td><td>{{ "{:,.2f}".format(line.unit_price|float) }}</td><td>{{ line.discount_percent }}%</td><td>{{ "{:,.2f}".format(line.line_total|float) }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% if quotation.notes %}<p><strong>ملاحظات:</strong> {{ quotation.notes }}</p>{% endif %}
+        <hr>
+        {% if quotation.status in ('draft', 'sent') %}
+        <form method="POST" action="{{ url_for('erp_modules.update_quotation_status', id=quotation.id) }}" style="display:inline">
+          <select name="status" class="form-control d-inline-block" style="width:auto"><option value="sent">مرسلة</option><option value="accepted">مقبولة</option><option value="rejected">مرفوضة</option></select>
+          <button type="submit" class="btn btn-primary ml-2">تحديث الحالة</button>
+        </form>
+        {% endif %}
+        {% if quotation.status == 'accepted' and not quotation.converted_sale_id %}
+        <form method="POST" action="{{ url_for('erp_modules.convert_quotation', id=quotation.id) }}" style="display:inline">
+          <button type="submit" class="btn btn-success mr-2" onclick="return confirm('تحويل إلى فاتورة بيع؟')"><i class="fas fa-exchange-alt mr-1"></i>تحويل لفاتورة بيع</button>
+        </form>
+        {% endif %}
+        {% if quotation.converted_sale_id %}
+        <a href="{{ url_for('sales.view', id=quotation.converted_sale_id) }}" class="btn btn-info"><i class="fas fa-link mr-1"></i>عرض الفاتورة المرتبطة</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -38,6 +38,15 @@ from .tenant_scope import (
     TenantScopedMixin, set_current_tenant_id, get_current_tenant_id,
     clear_current_tenant_id, register_tenant_scoped, install_tenant_filter_events,
 )
+from .hr import (
+    Department, Employee, LeaveType, LeaveRequest, Payslip, PayslipLine,
+)
+from .erp_modules import (
+    Quotation, QuotationLine, PurchaseOrder, PurchaseOrderLine,
+    FiscalPeriod, StockTransfer, StockTransferLine,
+    StockTake, StockTakeItem, DunningLetter, RecurringExpense,
+    ProductLot, WarehouseBin, ProductBin, EInvoice,
+)
 
 # Register all tenant-scoped models for automatic filtering
 for _model_cls in [Sale, SaleLine, Purchase, PurchaseLine, Payment, Receipt,
@@ -76,5 +85,10 @@ __all__ = [
     'CustomsTax', 'AdvancedExpense', 'TaxCalculationRule',
     'LoginHistory', 'SecurityAlert',    'APIKey',
     'ApprovalWorkflow', 'ApprovalRequest', 'ApprovalLevel',
+    'Department', 'Employee', 'LeaveType', 'LeaveRequest', 'Payslip', 'PayslipLine',
+    'Quotation', 'QuotationLine', 'PurchaseOrder', 'PurchaseOrderLine',
+    'FiscalPeriod', 'StockTransfer', 'StockTransferLine',
+    'StockTake', 'StockTakeItem', 'DunningLetter', 'RecurringExpense',
+    'ProductLot', 'WarehouseBin', 'ProductBin', 'EInvoice',
 ]
 

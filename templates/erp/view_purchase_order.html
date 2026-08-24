@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}أمر شراء {{ order.po_number }}{% endblock %}
+{% block page_title %}<i class="fas fa-shopping-cart mr-2"></i>أمر شراء: {{ order.po_number }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between">
+    <h5>{{ order.supplier.name if order.supplier else '' }} - {{ order.po_number }}</h5>
+    <span class="badge badge-lg badge-{{ 'success' if order.status=='received' else ('warning' if order.status=='approved' else 'secondary') }}">{{ order.status_ar }}</span>
+  </div>
+  <div class="card-body">
+    <div class="row mb-3">
+      <div class="col-md-4"><p><strong>التاريخ:</strong> {{ order.po_date.strftime('%Y-%m-%d') }}</p><p><strong>التسليم المتوقع:</strong> {{ order.expected_delivery.strftime('%Y-%m-%d') if order.expected_delivery else '-' }}</p></div>
+      <div class="col-md-4 text-center"><h3>{{ "{:,.2f}".format(order.total_amount|float) }} د.إ</h3></div>
+      <div class="col-md-4"><p><strong>المستودع:</strong> {{ order.warehouse.name if order.warehouse else '-' }}</p><p><strong>طلب من:</strong> {{ order.requested_by.full_name if order.requested_by else '-' }}</p></div>
+    </div>
+    <table class="table table-bordered">
+      <thead><tr><th>المنتج</th><th>الكمية</th><th>التكلفة</th><th>الإجمالي</th><th>المستلم</th></tr></thead>
+      <tbody>
+      {% for l in order.lines %}
+      <tr><td>{{ l.product.name if l.product else '-' }}</td><td>{{ l.quantity }}</td><td>{{ "{:,.2f}".format(l.unit_cost|float) }}</td><td>{{ "{:,.2f}".format(l.line_total|float) }}</td><td>{{ l.received_quantity or 0 }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="mt-3">
+      {% if order.status == 'draft' %}
+      <form method="POST" action="{{ url_for('erp_modules.submit_purchase_order', id=order.id) }}" style="display:inline"><button type="submit" class="btn btn-info" onclick="return confirm('تقديم أمر الشراء؟')"><i class="fas fa-paper-plane mr-1"></i>تقديم</button></form>
+      {% endif %}
+      {% if order.status == 'submitted' %}
+      <form method="POST" action="{{ url_for('erp_modules.approve_purchase_order', id=order.id) }}" style="display:inline"><button type="submit" class="btn btn-success" onclick="return confirm('اعتماد أمر الشراء؟')"><i class="fas fa-check mr-1"></i>اعتماد</button></form>
+      {% endif %}
+      {% if order.status in ('approved', 'partially_received') %}
+      <form method="POST" action="{{ url_for('erp_modules.receive_purchase_order', id=order.id) }}" style="display:inline"><button type="submit" class="btn btn-primary" onclick="return confirm('استلام البضاعة وإنشاء فاتورة شراء؟')"><i class="fas fa-truck mr-1"></i>استلام البضاعة</button></form>
+      {% endif %}
+      <a href="{{ url_for('erp_modules.purchase_orders') }}" class="btn btn-secondary mr-2">العودة</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}فاتورة إلكترونية {{ einvoice.invoice_number }}{% endblock %}
+{% block page_title %}<i class="fas fa-file-code mr-2"></i>فاتورة إلكترونية: {{ einvoice.invoice_number }}{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0">بيانات الفاتورة</h5></div>
+      <div class="card-body">
+        <p><strong>رقم الفاتورة:</strong> {{ einvoice.invoice_number }}</p>
+        <p><strong>رقم FATOORA:</strong> {{ einvoice.uuid }}</p>
+        <p><strong>النوع:</strong> {{ einvoice.invoice_type }}</p>
+        <p><strong>التاريخ:</strong> {{ einvoice.invoice_date.strftime('%Y-%m-%d %H:%M') if einvoice.invoice_date else '' }}</p>
+        <p><strong>العميل:</strong> {{ einvoice.buyer_name }}</p>
+        <p><strong>رقم التسجيل الضريبي:</strong> {{ einvoice.buyer_trn or '-' }}</p>
+        <hr>
+        <p><strong>المبلغ:</strong> {{ "{:,.2f}".format(einvoice.total_amount|float) }}</p>
+        <p><strong>الضريبة (5%):</strong> {{ "{:,.2f}".format(einvoice.tax_amount|float) }}</p>
+        <p><strong>الإجمالي شامل الضريبة:</strong> {{ "{:,.2f}".format(einvoice.total_with_tax|float) }} {{ einvoice.currency }}</p>
+        <hr>
+        <p><strong>الحالة:</strong> <span class="badge badge-{{ 'success' if einvoice.status=='accepted' else 'secondary' }}">{{ einvoice.status_ar }}</span></p>
+        {% if einvoice.sale_id %}
+        <a href="{{ url_for('sales.view', id=einvoice.sale_id) }}" class="btn btn-info btn-sm"><i class="fas fa-link mr-1"></i>عرض فاتورة المبيعات</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0">JSON Payload</h5></div>
+      <div class="card-body">
+        <pre style="direction:ltr; max-height:400px; overflow:auto; background:#f4f4f4; padding:15px; border-radius:8px; font-size:12px;">{{ einvoice.json_payload or 'غير متوفر' }}</pre>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

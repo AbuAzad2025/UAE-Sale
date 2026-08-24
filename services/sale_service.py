@@ -72,7 +72,25 @@ class SaleService:
             # Validate exchange rate
             if exchange_rate <= Decimal('0'):
                 raise ValueError('سعر الصرف غير صالح')
-            
+
+            # --- Credit Limit Check ---
+            credit_limit = Decimal(str(customer.credit_limit)) if customer.credit_limit else Decimal('0')
+            if credit_limit > Decimal('0'):
+                current_balance = Decimal(str(customer.get_balance())) if customer.get_balance() else Decimal('0')
+                # We can't know total_amount yet, so estimate from lines
+                estimated_total = sum(
+                    (Decimal(str(ld.get('quantity', 0))) * Decimal(str(ld.get('unit_price', 0)))
+                     for ld in lines_data if ld.get('quantity') and ld.get('unit_price')),
+                    Decimal('0')
+                )
+                projected_balance = current_balance + estimated_total
+                if projected_balance > credit_limit:
+                    raise ValueError(
+                        f'⚠️ تجاوز حد الائتمان للعميل "{customer.name}"\n'
+                        f'💡 الحد: {credit_limit:,.2f} د.إ | الرصيد الحالي: {current_balance:,.2f} د.إ | '
+                        f'المتوقع بعد هذه الفاتورة: {projected_balance:,.2f} د.إ'
+                    )
+
             sale = Sale(
                 sale_number=sale_number,
                 customer_id=customer.id,

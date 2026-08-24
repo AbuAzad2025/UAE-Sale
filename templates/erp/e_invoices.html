@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}الفواتير الإلكترونية{% endblock %}
+{% block page_title %}<i class="fas fa-file-code mr-2"></i>الفواتير الإلكترونية (FATOORA){% endblock %}
+{% block content %}
+<div class="card"><div class="card-body">
+  <table class="table table-bordered table-striped">
+    <thead><tr><th>الرقم</th><th>الفاتورة</th><th>العميل</th><th>المبلغ</th><th>الضريبة</th><th>الإجمالي</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+    <tbody>
+    {% for e in e_invoices %}
+    <tr>
+      <td><strong>{{ e.invoice_number }}</strong></td>
+      <td>{{ e.sale.sale_number if e.sale else '-' }}</td>
+      <td>{{ e.buyer_name }}</td>
+      <td>{{ "{:,.2f}".format(e.total_amount|float) }}</td>
+      <td>{{ "{:,.2f}".format(e.tax_amount|float) }}</td>
+      <td>{{ "{:,.2f}".format(e.total_with_tax|float) }} د.إ</td>
+      <td><span class="badge badge-{{ 'success' if e.status=='accepted' else ('info' if e.status=='submitted' else 'secondary') }}">{{ e.status_ar }}</span></td>
+      <td><a href="{{ url_for('erp_modules.view_einvoice', id=e.id) }}" class="btn btn-sm btn-info"><i class="fas fa-eye"></i></a></td>
+    </tr>
+    {% else %}<tr><td colspan="8" class="text-center text-muted">لا توجد فواتير إلكترونية</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

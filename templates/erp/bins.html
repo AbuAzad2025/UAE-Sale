@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}مواقع التخزين{% endblock %}
+{% block page_title %}<i class="fas fa-th-large mr-2"></i>مواقع التخزين (Bin Tracking){% endblock %}
+{% block content %}
+<div class="mb-3">
+  <form method="POST" action="{{ url_for('erp_modules.create_bin') }}" class="d-inline">
+    <div class="row">
+      <div class="col-md-2"><select name="warehouse_id" class="form-control" required><option value="">المستودع</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div>
+      <div class="col-md-1"><input type="text" name="code" class="form-control" placeholder="كود" required></div>
+      <div class="col-md-2"><input type="text" name="name" class="form-control" placeholder="الاسم"></div>
+      <div class="col-md-1"><input type="text" name="aisle" class="form-control" placeholder="الممر"></div>
+      <div class="col-md-1"><input type="text" name="shelf" class="form-control" placeholder="الرف"></div>
+      <div class="col-md-1"><input type="text" name="position" class="form-control" placeholder="الموقع"></div>
+      <div class="col-md-1"><input type="number" name="capacity" class="form-control" placeholder="السعة" value="0"></div>
+      <div class="col-md-1"><button type="submit" class="btn btn-primary btn-block"><i class="fas fa-plus"></i></button></div>
+    </div>
+  </form>
+</div>
+<div class="card"><div class="card-body">
+  <table class="table table-bordered table-striped">
+    <thead><tr><th>المستودع</th><th>الكود</th><th>الاسم</th><th>الممر</th><th>الرف</th><th>الموقع</th><th>السعة</th><th>المخزون الحالي</th></tr></thead>
+    <tbody>
+    {% for b in bins %}
+    <tr>
+      <td>{{ b.warehouse.name if b.warehouse else '-' }}</td>
+      <td><span class="badge badge-primary">{{ b.code }}</span></td>
+      <td>{{ b.name or '-' }}</td><td>{{ b.aisle or '-' }}</td><td>{{ b.shelf or '-' }}</td><td>{{ b.position or '-' }}</td>
+      <td>{{ b.capacity }}</td><td>{{ b.current_stock }}</td>
+    </tr>
+    {% else %}<tr><td colspan="8" class="text-center text-muted">لا توجد مواقع</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

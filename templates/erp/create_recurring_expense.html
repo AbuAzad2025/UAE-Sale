@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}مصروف دوري{% endblock %}
+{% block page_title %}<i class="fas fa-plus mr-2"></i>مصروف دوري جديد{% endblock %}
+{% block content %}
+<div class="row"><div class="col-lg-8">
+<div class="card"><div class="card-body">
+  <form method="POST">
+    <div class="row">
+      <div class="col-md-6"><div class="form-group"><label>الاسم <span class="text-danger">*</span></label><input type="text" name="name" class="form-control" required placeholder="مثال: إيجار المكتب"></div></div>
+      <div class="col-md-6"><div class="form-group"><label>الفئة <span class="text-danger">*</span></label><select name="category_id" class="form-control" required><option value="">— اختر —</option>{% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-4"><div class="form-group"><label>المبلغ <span class="text-danger">*</span></label><input type="number" name="amount" class="form-control" step="0.01" required></div></div>
+      <div class="col-md-4"><div class="form-group"><label>التكرار</label><select name="frequency" class="form-control"><option value="monthly">شهري</option><option value="quarterly">ربع سنوي</option><option value="annual">سنوي</option></select></div></div>
+      <div class="col-md-4"><div class="form-group"><label>التالي تاريخ الاستحقاق <span class="text-danger">*</span></label><input type="date" name="next_due_date" class="form-control" required></div></div>
+      <div class="col-md-4"><div class="form-group"><label>طريقة الدفع</label><select name="payment_method" class="form-control"><option value="bank_transfer">تحويل بنكي</option><option value="cash">نقدي</option><option value="cheque">شيك</option></select></div></div>
+      <div class="col-md-4"><div class="form-group"><label>المورد</label><input type="text" name="supplier_name" class="form-control"></div></div>
+      <div class="col-12"><div class="form-group"><label>الوصف</label><textarea name="description" class="form-control" rows="2"></textarea></div></div>
+    </div>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>حفظ</button>
+    <a href="{{ url_for('erp_modules.recurring_expenses') }}" class="btn btn-secondary">إلغاء</a>
+  </form>
+</div></div>
+</div></div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}جرد المخزون{% endblock %}
+{% block page_title %}<i class="fas fa-clipboard-check mr-2"></i>جرد المخزون{% endblock %}
+{% block content %}
+<div class="mb-3">
+  <form method="POST" action="{{ url_for('erp_modules.create_stocktake') }}" class="d-inline">
+    <select name="warehouse_id" class="form-control d-inline-block" style="width:200px" required><option value="">— اختر المستودع —</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>بدء جرد جديد</button>
+  </form>
+</div>
+<div class="card"><div class="card-body">
+  <table class="table table-bordered table-striped">
+    <thead><tr><th>الرقم</th><th>المستودع</th><th>التاريخ</th><th>عدد البنود</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+    <tbody>
+    {% for st in stock_takes %}
+    <tr>
+      <td><strong>{{ st.stocktake_number }}</strong></td>
+      <td>{{ st.warehouse.name if st.warehouse else '-' }}</td>
+      <td>{{ st.stocktake_date.strftime('%Y-%m-%d') }}</td>
+      <td>{{ st.items|length }}</td>
+      <td><span class="badge badge-{{ 'success' if st.status=='approved' else ('info' if st.status=='completed' else 'warning') }}">{{ st.status_ar }}</span></td>
+      <td><a href="{{ url_for('erp_modules.view_stocktake', id=st.id) }}" class="btn btn-sm btn-info"><i class="fas fa-eye"></i></a></td>
+    </tr>
+    {% else %}<tr><td colspan="6" class="text-center text-muted">لا توجد جرود</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

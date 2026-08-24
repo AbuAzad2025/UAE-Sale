@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}الفترات المالية{% endblock %}
+{% block page_title %}<i class="fas fa-lock mr-2"></i>الفترات المالية{% endblock %}
+{% block content %}
+<div class="mb-3">
+  <form method="POST" action="{{ url_for('erp_modules.create_fiscal_period') }}" class="d-inline">
+    <div class="input-group" style="width:250px"><input type="number" name="year" class="form-control" placeholder="السنة" value="{{ now.year }}" required><div class="input-group-append"><button type="submit" class="btn btn-primary">إنشاء</button></div></div>
+  </form>
+</div>
+<div class="card"><div class="card-body">
+  <table class="table table-bordered table-striped">
+    <thead><tr><th>السنة</th><th>الاسم</th><th>من</th><th>إلى</th><th>الحالة</th><th>أغلقها</th></tr></thead>
+    <tbody>
+    {% for p in periods %}
+    <tr>
+      <td><strong>{{ p.year }}</strong></td><td>{{ p.name }}</td>
+      <td>{{ p.start_date.strftime('%Y-%m-%d') }}</td><td>{{ p.end_date.strftime('%Y-%m-%d') }}</td>
+      <td><span class="badge badge-{{ 'danger' if p.is_closed else 'success' }}">{{ p.status_ar }}</span></td>
+      <td>
+        {% if p.is_closed %}
+        <form method="POST" action="{{ url_for('erp_modules.reopen_fiscal_period', id=p.id) }}" style="display:inline"><button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('إعادة فتح الفترة؟')"><i class="fas fa-unlock mr-1"></i>فتح</button></form>
+        {% else %}
+        <form method="POST" action="{{ url_for('erp_modules.close_fiscal_period', id=p.id) }}" style="display:inline"><button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('إغلاق الفترة المالية؟ لن تتمكن من إضافة قيود تاريخية بعد الآن!')"><i class="fas fa-lock mr-1"></i>إغلاق</button></form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}<tr><td colspan="6" class="text-center text-muted">لا توجد فترات مالية</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

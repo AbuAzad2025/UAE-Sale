@@ -236,3 +236,44 @@ def delete(id):
         flash('❌ حدث خطأ في حذف المستخدم.', 'danger')
         return redirect(url_for('users.index'))
 
+
+@users_bp.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """Self-service password change — any authenticated user can change their own password."""
+    if request.method == 'POST':
+        current_password = request.form.get('current_password', '')
+        new_password = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        
+        # Verify current password
+        if not current_user.check_password(current_password):
+            flash('❌ كلمة المرور الحالية غير صحيحة.', 'danger')
+            return render_template('users/change_password.html')
+        
+        # Validate new password matches confirmation
+        if new_password != confirm_password:
+            flash('❌ كلمة المرور الجديدة غير متطابقة.', 'danger')
+            return render_template('users/change_password.html')
+        
+        # Enforce password strength policy
+        from utils.password_validator import PasswordValidator
+        is_valid, errors = PasswordValidator.validate(new_password)
+        if not is_valid:
+            flash(f'⚠️ كلمة المرور ضعيفة:\n' + '\n'.join(errors), 'danger')
+            return render_template('users/change_password.html')
+        
+        # Prevent reusing the current password
+        if current_user.check_password(new_password):
+            flash('❌ كلمة المرور الجديدة يجب أن تختلف عن الحالية.', 'danger')
+            return render_template('users/change_password.html')
+        
+        # Update password
+        current_user.set_password(new_password)
+        db.session.commit()
+        create_audit_log('change_password', 'users', current_user.id)
+        flash('✅ تم تغيير كلمة المرور بنجاح!', 'success')
+        return redirect(url_for('users.change_password'))
+    
+    return render_template('users/change_password.html')
+

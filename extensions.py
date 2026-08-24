@@ -122,14 +122,25 @@ def setup_logging(app):
         if hasattr(sys.stderr, 'buffer'):
             sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
+    # SECURITY: Install log sanitizer to filter sensitive data from all log output
+    try:
+        from utils.log_sanitizer import SanitizeFilter
+        _sanitize = SanitizeFilter()
+    except ImportError:
+        _sanitize = None
+
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(level)
     console_handler.addFilter(RequestIdFilter())
+    if _sanitize:
+        console_handler.addFilter(_sanitize)
     console_handler.setFormatter(ColorFormatter())
 
     error_handler = logging.StreamHandler(sys.stderr)
     error_handler.setLevel(logging.ERROR)
     error_handler.addFilter(RequestIdFilter())
+    if _sanitize:
+        error_handler.addFilter(_sanitize)
     error_handler.setFormatter(ColorFormatter())
 
     for logger in (app.logger, logging.getLogger()):

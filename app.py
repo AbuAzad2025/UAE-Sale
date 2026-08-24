@@ -240,6 +240,27 @@ def create_app(config_class=Config):
         from models import set_current_tenant_id
         from flask_login import current_user
         if current_user.is_authenticated:
+            # SECURITY: Session idle timeout — force logout after 30 minutes of inactivity
+            from flask import session
+            from datetime import datetime as _dt, timedelta as _td
+            last_activity = session.get('last_activity')
+            if last_activity:
+                try:
+                    last_seen = _dt.fromisoformat(last_activity)
+                    if _dt.now() - last_seen > _td(minutes=30):
+                        from flask_login import logout_user
+                        logout_user()
+                        session.clear()
+                        from flask import flash
+                        flash('⏰ انتهت صلاحية الجلسة بسبب عدم النشاط. يرجى تسجيل الدخول مرة أخرى.', 'warning')
+                        from flask import request as _req
+                        from werkzeug.utils import redirect as _redir
+                        return _redir(_req.url)
+                except (ValueError, TypeError):
+                    pass  # Invalid timestamp — let session continue
+            session['last_activity'] = _dt.now().isoformat()
+            session.permanent = True
+            
             # Owner sees all tenants (no filter); other users are scoped to their tenant
             if hasattr(current_user, 'is_owner') and current_user.is_owner:
                 set_current_tenant_id(None)  # Owner bypasses tenant filtering
@@ -413,7 +434,11 @@ if __name__ == '__main__':
     app.logger.info("Host: %s", host)
     app.logger.info("Port: %s", port)
     app.logger.info("Debug: %s", debug_mode)
-    app.logger.info("Database: %s", app.config['SQLALCHEMY_DATABASE_URI'])
+    # SECURITY: Redact credentials from database URI before logging
+    _db_log = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if '@' in _db_log:
+        _db_log = _db_log.split('@')[0].split('://')[0] + '://***:***@' + _db_log.split('@')[1]
+    app.logger.info("Database: %s", _db_log)
     app.logger.info("Starting server on http://%s:%s", host, port)
     
     app.run(

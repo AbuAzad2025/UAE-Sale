@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}لوحة تحكم الموارد البشرية{% endblock %}
+{% block page_title %}<i class="fas fa-users-cog mr-2"></i>لوحة تحكم الموارد البشرية{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="row mb-4">
+  <div class="col-lg-3 col-md-6">
+    <div class="card card-primary card-outline">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="mr-3">
+            <i class="fas fa-users fa-3x text-primary"></i>
+          </div>
+          <div>
+            <h3 class="mb-0">{{ stats.total_employees }}</h3>
+            <p class="mb-0 text-muted">إجمالي الموظفين</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-3 col-md-6">
+    <div class="card card-success card-outline">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="mr-3">
+            <i class="fas fa-building fa-3x text-success"></i>
+          </div>
+          <div>
+            <h3 class="mb-0">{{ stats.active_departments }}</h3>
+            <p class="mb-0 text-muted">الأقسام النشطة</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-3 col-md-6">
+    <div class="card card-warning card-outline">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="mr-3">
+            <i class="fas fa-calendar-times fa-3x text-warning"></i>
+          </div>
+          <div>
+            <h3 class="mb-0">{{ stats.pending_leaves }}</h3>
+            <p class="mb-0 text-muted">طلبات إجازة معلقة</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-3 col-md-6">
+    <div class="card card-danger card-outline">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="mr-3">
+            <i class="fas fa-passport fa-3x text-danger"></i>
+          </div>
+          <div>
+            <h3 class="mb-0">{{ stats.expiring_visas }}</h3>
+            <p class="mb-0 text-muted">تأشيرات تنتهي قريباً</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mb-4">
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-coins mr-2"></i>إجمالي الرواتب الشهرية</h5>
+      </div>
+      <div class="card-body text-center">
+        <h2 class="text-primary">{{ "{:,.0f}".format(stats.total_monthly_payroll) }} د.إ</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0"><i class="fas fa-calendar-check mr-2"></i>آخر طلبات الإجازة</h5>
+        <a href="{{ url_for('hr.leave_requests') }}" class="btn btn-sm btn-outline-primary">عرض الكل</a>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>الموظف</th><th>النوع</th><th>من</th><th>إلى</th><th>الأيام</th><th>الحالة</th></tr></thead>
+          <tbody>
+          {% for req in recent_leaves %}
+          <tr>
+            <td>{{ req.employee.user.full_name if req.employee and req.employee.user else '-' }}</td>
+            <td>{{ req.leave_type.name_ar if req.leave_type else '-' }}</td>
+            <td>{{ req.start_date.strftime('%Y-%m-%d') if req.start_date else '-' }}</td>
+            <td>{{ req.end_date.strftime('%Y-%m-%d') if req.end_date else '-' }}</td>
+            <td>{{ req.days }}</td>
+            <td><span class="badge badge-{{ req.status_badge }}">{{ req.status_ar }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center text-muted">لا توجد طلبات</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-bolt mr-2"></i>إجراءات سريعة</h5></div>
+      <div class="card-body">
+        <a href="{{ url_for('hr.create_employee') }}" class="btn btn-primary mr-2 mb-2"><i class="fas fa-user-plus mr-1"></i>إضافة موظف</a>
+        <a href="{{ url_for('hr.create_leave') }}" class="btn btn-warning mr-2 mb-2"><i class="fas fa-calendar-plus mr-1"></i>طلب إجازة</a>
+        <a href="{{ url_for('hr.generate_payroll') }}" class="btn btn-success mr-2 mb-2"><i class="fas fa-money-bill-wave mr-1"></i>إنشاء كشف رواتب</a>
+        <a href="{{ url_for('hr.departments') }}" class="btn btn-info mr-2 mb-2"><i class="fas fa-building mr-1"></i>الأقسام</a>
+        <a href="{{ url_for('hr.leave_types') }}" class="btn btn-secondary mr-2 mb-2"><i class="fas fa-list mr-1"></i>أنواع الإجازات</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

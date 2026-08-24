@@ -99,5 +99,7 @@ PERMISSIONS = {
     'manage_settings': {'ar': 'إدارة الإعدادات', 'en': 'Manage Settings'},
     'manage_currencies': {'ar': 'إدارة العملات', 'en': 'Manage Currencies'},
     'manage_archive': {'ar': 'إدارة الأرشيف', 'en': 'Manage Archive'},
+    'manage_hr': {'ar': 'إدارة الموارد البشرية', 'en': 'Manage HR'},
+    'view_hr': {'ar': 'عرض الموارد البشرية', 'en': 'View HR'},
 }
 

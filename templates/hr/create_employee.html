@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+{% block title %}إضافة موظف{% endblock %}
+{% block page_title %}<i class="fas fa-user-plus mr-2"></i>إضافة موظف جديد{% endblock %}
+
+{% block content %}
+<form method="POST">
+  <!-- Basic Info -->
+  <div class="row">
+    <div class="col-lg-12">
+      <div class="card">
+        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-user mr-2"></i>المعلومات الأساسية</h5></div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>المستخدم المرتبط <span class="text-danger">*</span></label>
+                <select name="user_id" class="form-control" required>
+                  <option value="">— اختر مستخدم —</option>
+                  {% for u in available_users %}
+                  <option value="{{ u.id }}">{{ u.full_name or u.username }} ({{ u.email }})</option>
+                  {% endfor %}
+                </select>
+                <small class="text-muted">يجب إنشاء المستخدم أولاً من قسم المستخدمين</small>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>رقم الموظف <span class="text-danger">*</span></label>
+                <input type="text" name="employee_number" class="form-control" required placeholder="EMP-001">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>تاريخ التعيين <span class="text-danger">*</span></label>
+                <input type="date" name="hire_date" class="form-control" value="{{ today }}" required>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>القسم</label>
+                <select name="department_id" class="form-control">
+                  <option value="">— بدون —</option>
+                  {% for d in departments %}
+                  <option value="{{ d.id }}">{{ d.code }} - {{ d.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>المسمى الوظيفي <span class="text-danger">*</span></label>
+                <input type="text" name="position" class="form-control" required>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>المسمى بالعربي</label>
+                <input type="text" name="position_ar" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>نوع العقد</label>
+                <select name="contract_type" class="form-control">
+                  <option value="full_time">دوام كامل</option>
+                  <option value="part_time">دوام جزئي</option>
+                  <option value="contract">عقد مؤقت</option>
+                  <option value="intern">تدريب</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Salary & Compensation -->
+  <div class="row">
+    <div class="col-lg-12">
+      <div class="card">
+        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-money-bill-wave mr-2"></i>الراتب والمزايا</h5></div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>الراتب الأساسي (د.إ) <span class="text-danger">*</span></label>
+                <input type="number" name="base_salary" class="form-control" step="0.01" required>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>بدل السكن (د.إ)</label>
+                <input type="number" name="housing_allowance" class="form-control" step="0.01" value="0">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>بدل النقل (د.إ)</label>
+                <input type="number" name="transport_allowance" class="form-control" step="0.01" value="0">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>بدل الهاتف (د.إ)</label>
+                <input type="number" name="phone_allowance" class="form-control" step="0.01" value="0">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>مزايا أخرى (د.إ)</label>
+                <input type="number" name="other_allowances" class="form-control" step="0.01" value="0">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>العملة</label>
+                <select name="salary_currency" class="form-control">
+                  <option value="AED">AED - درهم</option>
+                  <option value="USD">USD - دولار</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>دورة الدفع</label>
+                <select name="payment_frequency" class="form-control">
+                  <option value="monthly">شهري</option>
+                  <option value="bi_weekly">نصف شهري</option>
+                  <option value="weekly">أسبوعي</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Banking -->
+  <div class="row">
+    <div class="col-lg-12">
+      <div class="card">
+        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-university mr-2"></i>المعلومات المصرفية</h5></div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>البنك</label>
+                <input type="text" name="bank_name" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>رقم الحساب</label>
+                <input type="text" name="bank_account_number" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>IBAN</label>
+                <input type="text" name="iban" class="form-control" placeholder="AE...">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Personal Info -->
+  <div class="row">
+    <div class="col-lg-12">
+      <div class="card">
+        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-id-card mr-2"></i>المعلومات الشخصية</h5></div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>رقم الهوية</label>
+                <input type="text" name="national_id" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>رقم الجواز</label>
+                <input type="text" name="passport_number" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>رقم التأشيرة</label>
+                <input type="text" name="visa_number" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>انتهاء التأشيرة</label>
+                <input type="date" name="visa_expiry" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>تاريخ الميلاد</label>
+                <input type="date" name="date_of_birth" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>الجنس</label>
+                <select name="gender" class="form-control">
+                  <option value="">— اختر —</option>
+                  <option value="male">ذكر</option>
+                  <option value="female">أنثى</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>الجنسية</label>
+                <input type="text" name="nationality" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>الحالة الاجتماعية</label>
+                <select name="marital_status" class="form-control">
+                  <option value="">— اختر —</option>
+                  <option value="single">أعزب</option>
+                  <option value="married">متزوج</option>
+                  <option value="divorced">مطلق</option>
+                  <option value="widowed">أرمل</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>جهة اتصال الطوارئ</label>
+                <input type="text" name="emergency_contact_name" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>هاتف الطوارئ</label>
+                <input type="text" name="emergency_contact_phone" class="form-control">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leave & Notes -->
+  <div class="row">
+    <div class="col-lg-12">
+      <div class="card">
+        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-calendar mr-2"></i>الإجازات والملاحظات</h5></div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>إجازة سنوية (أيام)</label>
+                <input type="number" name="annual_leave_days" class="form-control" value="30">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>إجازة مرضية (أيام)</label>
+                <input type="number" name="sick_leave_days" class="form-control" value="15">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>إجازة شخصية (أيام)</label>
+                <input type="number" name="personal_leave_days" class="form-control" value="5">
+              </div>
+            </div>
+            <div class="col-md-12">
+              <div class="form-group">
+                <label>ملاحظات</label>
+                <textarea name="notes" class="form-control" rows="3"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save mr-2"></i>حفظ الموظف</button>
+          <a href="{{ url_for('hr.employees') }}" class="btn btn-secondary btn-lg">إلغاء</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

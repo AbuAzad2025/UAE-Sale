@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}أنواع الإجازات{% endblock %}
+{% block page_title %}<i class="fas fa-list mr-2"></i>أنواع الإجازات{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('hr.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-right mr-2"></i>لوحة التحكم</a>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <table class="table table-bordered table-striped">
+      <thead>
+        <tr>
+          <th>الكود</th>
+          <th>الاسم</th>
+          <th>الاسم بالعربي</th>
+          <th>الأيام الافتراضية</th>
+          <th>مدفوع</th>
+          <th>الحالة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lt in leave_types %}
+        <tr>
+          <td><span class="badge badge-primary">{{ lt.code }}</span></td>
+          <td>{{ lt.name }}</td>
+          <td>{{ lt.name_ar or '-' }}</td>
+          <td>{{ lt.default_days }} يوم</td>
+          <td>
+            {% if lt.is_paid %}
+            <span class="badge badge-success">نعم</span>
+            {% else %}
+            <span class="badge badge-secondary">لا</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if lt.is_active %}
+            <span class="badge badge-success">نشط</span>
+            {% else %}
+            <span class="badge badge-secondary">غير نشط</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

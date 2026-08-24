@@ -154,6 +154,7 @@ def create_app(config_class=Config):
     from routes.public import public_bp
     from routes.payment_vault import payment_vault_bp
     from routes.approvals import approvals_bp
+    from routes.hr import hr_bp
     from routes.api_analytics import api_analytics_bp
     from routes.api_docs import api_docs_bp
     from routes.graphql import graphql_bp
@@ -192,6 +193,7 @@ def create_app(config_class=Config):
     app.register_blueprint(api_docs_bp)
     app.register_blueprint(graphql_bp)
     app.register_blueprint(approvals_bp)
+    app.register_blueprint(hr_bp)
 
     # Error Handlers
     from utils.error_handlers import register_error_handlers

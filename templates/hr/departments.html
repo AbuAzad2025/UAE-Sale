@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}الأقسام - الموارد البشرية{% endblock %}
+{% block page_title %}<i class="fas fa-building mr-2"></i>الأقسام{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('hr.create_department') }}" class="btn btn-primary">
+    <i class="fas fa-plus mr-2"></i>إضافة قسم جديد
+  </a>
+  <a href="{{ url_for('hr.dashboard') }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-right mr-2"></i>لوحة التحكم
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <table class="table table-bordered table-striped">
+      <thead>
+        <tr>
+          <th>الكود</th>
+          <th>الاسم</th>
+          <th>الاسم بالعربي</th>
+          <th>المدير</th>
+          <th>عدد الموظفين</th>
+          <th>الميزانية</th>
+          <th>الحالة</th>
+          <th>الإجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for dept in departments %}
+        <tr>
+          <td><span class="badge badge-primary">{{ dept.code }}</span></td>
+          <td><strong>{{ dept.name }}</strong></td>
+          <td>{{ dept.name_ar or '-' }}</td>
+          <td>{{ dept.manager.full_name if dept.manager else '-' }}</td>
+          <td><span class="badge badge-info">{{ dept.employee_count }}</span></td>
+          <td>{{ "{:,.0f}".format(dept.budget_amount|float) }} د.إ</td>
+          <td>
+            {% if dept.is_active %}
+            <span class="badge badge-success">نشط</span>
+            {% else %}
+            <span class="badge badge-secondary">غير نشط</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('hr.edit_department', id=dept.id) }}" class="btn btn-sm btn-warning" title="تعديل">
+              <i class="fas fa-edit"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

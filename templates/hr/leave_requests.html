@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block title %}طلبات الإجازة{% endblock %}
+{% block page_title %}<i class="fas fa-calendar-check mr-2"></i>طلبات الإجازة{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('hr.create_leave') }}" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>طلب إجازة جديد</a>
+  <a href="{{ url_for('hr.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-right mr-2"></i>لوحة التحكم</a>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="GET" class="row">
+      <div class="col-md-3">
+        <select name="status" class="form-control">
+          <option value="">— كل الحالات —</option>
+          <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>قيد المراجعة</option>
+          <option value="approved" {% if request.args.get('status') == 'approved' %}selected{% endif %}>تمت الموافقة</option>
+          <option value="rejected" {% if request.args.get('status') == 'rejected' %}selected{% endif %}>مرفوض</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select name="employee" class="form-control">
+          <option value="">— كل الموظفين —</option>
+          {% for emp in employees %}
+          <option value="{{ emp.id }}" {% if request.args.get('employee', '', type=int) == emp.id %}selected{% endif %}>{{ emp.employee_number }} - {{ emp.user.full_name if emp.user else '' }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-search mr-1"></i>بحث</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <table class="table table-bordered table-striped">
+      <thead>
+        <tr>
+          <th>الموظف</th>
+          <th>نوع الإجازة</th>
+          <th>من</th>
+          <th>إلى</th>
+          <th>الأيام</th>
+          <th>السبب</th>
+          <th>الحالة</th>
+          <th>الإجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in requests %}
+        <tr>
+          <td>
+            <strong>{{ req.employee.user.full_name if req.employee and req.employee.user else '-' }}</strong>
+            <br><small class="text-muted">{{ req.employee.employee_number if req.employee else '' }}</small>
+          </td>
+          <td>{{ req.leave_type.name_ar if req.leave_type else '-' }}</td>
+          <td>{{ req.start_date.strftime('%Y-%m-%d') }}</td>
+          <td>{{ req.end_date.strftime('%Y-%m-%d') }}</td>
+          <td><span class="badge badge-primary">{{ req.days }}</span></td>
+          <td>{{ req.reason[:50] if req.reason else '-' }}{% if req.reason and req.reason|length > 50 %}...{% endif %}</td>
+          <td><span class="badge badge-{{ req.status_badge }}">{{ req.status_ar }}</span></td>
+          <td>
+            {% if req.status == 'pending' %}
+            <form method="POST" action="{{ url_for('hr.approve_leave', id=req.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-sm btn-success" title="موافقة" onclick="return confirm('هل تؤكد الموافقة على طلب الإجازة؟')">
+                <i class="fas fa-check"></i>
+              </button>
+            </form>
+            <form method="POST" action="{{ url_for('hr.reject_leave', id=req.id) }}" style="display:inline">
+              <input type="hidden" name="rejection_reason" value="تم الرفض من الإدارة">
+              <button type="submit" class="btn btn-sm btn-danger" title="رفض" onclick="return confirm('هل تؤكد رفض طلب الإجازة؟')">
+                <i class="fas fa-times"></i>
+              </button>
+            </form>
+            {% elif req.status == 'approved' %}
+            <form method="POST" action="{{ url_for('hr.cancel_leave', id=req.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-sm btn-secondary" title="إلغاء" onclick="return confirm('هل تؤكد إلغاء طلب الإجازة المعتمد؟')">
+                <i class="fas fa-ban"></i>
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted">لا توجد طلبات</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination.pages > 1 %}
+  <div class="card-footer">
+    <nav>
+      <ul class="pagination mb-0 justify-content-center">
+        {% if pagination.has_prev %}
+        <li class="page-item"><a class="page-link" href="?page={{ pagination.prev_num }}">السابق</a></li>
+        {% endif %}
+        {% for p in pagination.iter_pages() %}
+        <li class="page-item {% if p == pagination.page %}active{% endif %}"><a class="page-link" href="?page={{ p }}">{{ p }}</a></li>
+        {% endfor %}
+        {% if pagination.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}">التالي</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block title %}ملف الموظف - {{ employee.employee_number }}{% endblock %}
+{% block page_title %}<i class="fas fa-user mr-2"></i>ملف الموظف: {{ employee.user.full_name if employee.user else '' }}{% endblock %}
+
+{% block content %}
+<div class="row">
+  <!-- Profile Card -->
+  <div class="col-lg-4">
+    <div class="card card-primary card-outline">
+      <div class="card-body text-center">
+        <div class="profile-avatar mb-3">
+          <i class="fas fa-user-circle fa-6x text-primary"></i>
+        </div>
+        <h4>{{ employee.user.full_name if employee.user else '' }}</h4>
+        <p class="text-muted">{{ employee.user.full_name_ar if employee.user else '' }}</p>
+        <span class="badge badge-{{ 'success' if employee.employment_status == 'active' else 'warning' }} badge-lg">
+          {{ employee.employment_status }}
+        </span>
+        <hr>
+        <div class="text-right">
+          <p><strong>رقم الموظف:</strong> {{ employee.employee_number }}</p>
+          <p><strong>القسم:</strong> {{ employee.department.name if employee.department else '-' }}</p>
+          <p><strong>المسمى:</strong> {{ employee.position or '-' }}</p>
+          <p><strong>تاريخ التعيين:</strong> {{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else '-' }}</p>
+          <p><strong>سنوات الخدمة:</strong> {{ employee.years_of_service }} سنة</p>
+        </div>
+        <hr>
+        <a href="{{ url_for('hr.edit_employee', id=employee.id) }}" class="btn btn-warning btn-block">
+          <i class="fas fa-edit mr-2"></i>تعديل البيانات
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Details -->
+  <div class="col-lg-8">
+    <!-- Salary Card -->
+    <div class="card">
+      <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-money-bill-wave mr-2"></i>الراتب والمزايا</h5></div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-4 text-center p-3">
+            <h3 class="text-primary">{{ "{:,.0f}".format(employee.base_salary|float) }} د.إ</h3>
+            <p class="text-muted mb-0">الراتب الأساسي</p>
+          </div>
+          <div class="col-md-4 text-center p-3">
+            <h3 class="text-success">{{ "{:,.0f}".format(employee.total_monthly_compensation|float) }} د.إ</h3>
+            <p class="text-muted mb-0">الإجمالي الشهري</p>
+          </div>
+          <div class="col-md-4 text-center p-3">
+            <h3 class="text-info">{{ employee.payment_frequency or 'monthly' }}</h3>
+            <p class="text-muted mb-0">دورة الدفع</p>
+          </div>
+        </div>
+        <table class="table table-sm">
+          <tr><td>بدل السكن</td><td class="text-left">{{ "{:,.0f}".format(employee.housing_allowance|float) }} د.إ</td></tr>
+          <tr><td>بدل النقل</td><td class="text-left">{{ "{:,.0f}".format(employee.transport_allowance|float) }} د.إ</td></tr>
+          <tr><td>بدل الهاتف</td><td class="text-left">{{ "{:,.0f}".format(employee.phone_allowance|float) }} د.إ</td></tr>
+          <tr><td>مزايا أخرى</td><td class="text-left">{{ "{:,.0f}".format(employee.other_allowances|float) }} د.إ</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Leave Balance -->
+    <div class="card">
+      <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-calendar mr-2"></i>رصيد الإجازات</h5></div>
+      <div class="card-body">
+        <div class="row text-center">
+          <div class="col-md-4">
+            <div class="p-3 bg-light rounded">
+              <h4 class="text-success">{{ employee.annual_leave_balance or 0 }} / {{ employee.annual_leave_days or 0 }}</h4>
+              <p class="mb-0">إجازة سنوية</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="p-3 bg-light rounded">
+              <h4 class="text-warning">{{ employee.sick_leave_balance or 0 }} / {{ employee.sick_leave_days or 0 }}</h4>
+              <p class="mb-0">إجازة مرضية</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="p-3 bg-light rounded">
+              <h4 class="text-info">{{ employee.personal_leave_balance or 0 }} / {{ employee.personal_leave_days or 0 }}</h4>
+              <p class="mb-0">إجازة شخصية</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Leave Requests -->
+    <div class="card">
+      <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-calendar-check mr-2"></i>طلبات الإجازة الأخيرة</h5></div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>النوع</th><th>من</th><th>إلى</th><th>الأيام</th><th>الحالة</th></tr></thead>
+          <tbody>
+          {% for req in recent_leaves %}
+          <tr>
+            <td>{{ req.leave_type.name_ar if req.leave_type else '-' }}</td>
+            <td>{{ req.start_date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ req.end_date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ req.days }}</td>
+            <td><span class="badge badge-{{ req.status_badge }}">{{ req.status_ar }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-center text-muted">لا توجد طلبات</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent Payslips -->
+    <div class="card">
+      <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-money-check-alt mr-2"></i>كشوفات الرواتب الأخيرة</h5></div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>رقم الكشف</th><th>الفترة</th><th>الصافي</th><th>الحالة</th></tr></thead>
+          <tbody>
+          {% for ps in recent_payslips %}
+          <tr>
+            <td><a href="{{ url_for('hr.view_payslip', id=ps.id) }}">{{ ps.payslip_number }}</a></td>
+            <td>{{ ps.pay_period_start.strftime('%Y-%m') }}</td>
+            <td>{{ "{:,.2f}".format(ps.net_salary|float) }} د.إ</td>
+            <td><span class="badge badge-{{ ps.status_badge }}">{{ ps.status_ar }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted">لا توجد كشوفات</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

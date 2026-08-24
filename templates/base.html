@@ -551,6 +551,50 @@
           </li>
           {% endif %}
           
+          {% if current_user.has_permission('manage_hr') %}
+          <li class="nav-item has-treeview {% if request.endpoint and 'hr' in request.endpoint %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and 'hr' in request.endpoint %}active{% endif %}">
+              <i class="nav-icon fas fa-users-cog"></i>
+              <p>
+                الموارد البشرية
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('hr.dashboard') }}" class="nav-link">
+                  <i class="fas fa-tachometer-alt nav-icon"></i>
+                  <p>لوحة التحكم</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('hr.employees') }}" class="nav-link">
+                  <i class="fas fa-users nav-icon"></i>
+                  <p>الموظفين</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('hr.departments') }}" class="nav-link">
+                  <i class="fas fa-building nav-icon"></i>
+                  <p>الأقسام</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('hr.leave_requests') }}" class="nav-link">
+                  <i class="fas fa-calendar-check nav-icon"></i>
+                  <p>طلبات الإجازة</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('hr.payroll') }}" class="nav-link">
+                  <i class="fas fa-money-check-alt nav-icon"></i>
+                  <p>كشوفات الرواتب</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% endif %}
+
           {% if current_user.has_permission('view_reports') %}
           <li class="nav-item has-treeview {% if request.endpoint and 'reports' in request.endpoint %}menu-open{% endif %}">
             <a href="#" class="nav-link {% if request.endpoint and 'reports' in request.endpoint %}active{% endif %}">

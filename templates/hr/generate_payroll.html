@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}إنشاء كشف رواتب{% endblock %}
+{% block page_title %}<i class="fas fa-file-invoice-dollar mr-2"></i>إنشاء كشف رواتب{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header"><h5 class="card-title mb-0">بيانات فترة الراتب</h5></div>
+      <form method="POST">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>بداية الفترة <span class="text-danger">*</span></label>
+                <input type="date" name="period_start" class="form-control" required>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>نهاية الفترة <span class="text-danger">*</span></label>
+                <input type="date" name="period_end" class="form-control" required>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>تاريخ الدفع <span class="text-danger">*</span></label>
+                <input type="date" name="pay_date" class="form-control" required>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>أيام العمل في الشهر</label>
+                <input type="number" name="working_days" class="form-control" value="22">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('هل تؤكد إنشاء كشوفات الرواتب لجميع الموظفين النشطين؟')">
+            <i class="fas fa-file-invoice-dollar mr-2"></i>إنشاء كشوفات الرواتب
+          </button>
+          <a href="{{ url_for('hr.payroll') }}" class="btn btn-secondary btn-lg">إلغاء</a>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card card-warning card-outline">
+      <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-info-circle mr-2"></i>ملاحظات</h5></div>
+      <div class="card-body">
+        <ul class="mb-0" style="padding-right: 20px;">
+          <li>سيتم إنشاء كشف راتب لكل موظف نشط</li>
+          <li>الراتب يُحسب بناءً على الراتب الأساسي والمزايا</li>
+          <li>أيام العمل الافتراضية: 22 يوم (Sun-Thu)</li>
+          <li>يمكن تعديل الكشف بعد إنشائه</li>
+          <li>لا يمكن إنشاء كشف مكرر لنفس الفترة</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

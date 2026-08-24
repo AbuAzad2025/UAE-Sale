@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}تعديل قسم{% endblock %}
+{% block page_title %}<i class="fas fa-edit mr-2"></i>تعديل قسم: {{ department.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header"><h5 class="card-title mb-0">بيانات القسم</h5></div>
+      <form method="POST">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>اسم القسم <span class="text-danger">*</span></label>
+                <input type="text" name="name" class="form-control" value="{{ department.name }}" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>اسم القسم بالعربي</label>
+                <input type="text" name="name_ar" class="form-control" value="{{ department.name_ar or '' }}">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>الكود <span class="text-danger">*</span></label>
+                <input type="text" name="code" class="form-control" value="{{ department.code }}" required>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>القسم الأب</label>
+                <select name="parent_id" class="form-control">
+                  <option value="">— بدون —</option>
+                  {% for d in parent_departments %}
+                  <option value="{{ d.id }}" {% if department.parent_id == d.id %}selected{% endif %}>{{ d.code }} - {{ d.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>المدير</label>
+                <select name="manager_id" class="form-control">
+                  <option value="">— بدون —</option>
+                  {% for m in managers %}
+                  <option value="{{ m.id }}" {% if department.manager_id == m.id %}selected{% endif %}>{{ m.full_name or m.username }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>الميزانية الشهرية (د.إ)</label>
+                <input type="number" name="budget_amount" class="form-control" step="0.01" value="{{ department.budget_amount or 0 }}">
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-group">
+                <label>الوصف</label>
+                <textarea name="description" class="form-control" rows="3">{{ department.description or '' }}</textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>حفظ التعديلات</button>
+          <a href="{{ url_for('hr.departments') }}" class="btn btn-secondary">إلغاء</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

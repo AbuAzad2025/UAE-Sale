@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}الموظفين - الموارد البشرية{% endblock %}
+{% block page_title %}<i class="fas fa-users mr-2"></i>الموظفين{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col-12">
+    <a href="{{ url_for('hr.create_employee') }}" class="btn btn-primary">
+      <i class="fas fa-user-plus mr-2"></i>إضافة موظف
+    </a>
+    <a href="{{ url_for('hr.dashboard') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-right mr-2"></i>لوحة التحكم
+    </a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="GET" class="row">
+      <div class="col-md-4">
+        <input type="text" name="search" class="form-control" placeholder="بحث بالاسم أو رقم الموظف..." value="{{ request.args.get('search', '') }}">
+      </div>
+      <div class="col-md-3">
+        <select name="department" class="form-control">
+          <option value="">— كل الأقسام —</option>
+          {% for dept in departments %}
+          <option value="{{ dept.id }}" {% if request.args.get('department', '', type=int) == dept.id %}selected{% endif %}>{{ dept.code }} - {{ dept.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select name="status" class="form-control">
+          <option value="">— كل الحالات —</option>
+          <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>نشط</option>
+          <option value="on_leave" {% if request.args.get('status') == 'on_leave' %}selected{% endif %}>في إجازة</option>
+          <option value="terminated" {% if request.args.get('status') == 'terminated' %}selected{% endif %}>منتهي الخدمة</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-search mr-1"></i>بحث</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <table class="table table-bordered table-striped">
+      <thead>
+        <tr>
+          <th>رقم الموظف</th>
+          <th>الاسم</th>
+          <th>القسم</th>
+          <th>المسمى الوظيفي</th>
+          <th>تاريخ التعيين</th>
+          <th>الراتب الأساسي</th>
+          <th>الحالة</th>
+          <th>الإجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for emp in employees %}
+        <tr>
+          <td><span class="badge badge-primary">{{ emp.employee_number }}</span></td>
+          <td><strong>{{ emp.user.full_name if emp.user else '-' }}</strong><br><small class="text-muted">{{ emp.user.full_name_ar if emp.user else '' }}</small></td>
+          <td>{{ emp.department.name if emp.department else '-' }}</td>
+          <td>{{ emp.position or '-' }}</td>
+          <td>{{ emp.hire_date.strftime('%Y-%m-%d') if emp.hire_date else '-' }}</td>
+          <td>{{ "{:,.0f}".format(emp.base_salary|float) }} د.إ</td>
+          <td>
+            {% if emp.employment_status == 'active' %}
+            <span class="badge badge-success">نشط</span>
+            {% elif emp.employment_status == 'on_leave' %}
+            <span class="badge badge-warning">في إجازة</span>
+            {% elif emp.employment_status == 'terminated' %}
+            <span class="badge badge-danger">منتهي الخدمة</span>
+            {% elif emp.employment_status == 'resigned' %}
+            <span class="badge badge-secondary">مستقيل</span>
+            {% else %}
+            <span class="badge badge-secondary">{{ emp.employment_status }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('hr.view_employee', id=emp.id) }}" class="btn btn-sm btn-info" title="عرض">
+              <i class="fas fa-eye"></i>
+            </a>
+            <a href="{{ url_for('hr.edit_employee', id=emp.id) }}" class="btn btn-sm btn-warning" title="تعديل">
+              <i class="fas fa-edit"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted">لا يوجد موظفين</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination.pages > 1 %}
+  <div class="card-footer">
+    <nav>
+      <ul class="pagination mb-0 justify-content-center">
+        {% if pagination.has_prev %}
+        <li class="page-item"><a class="page-link" href="?page={{ pagination.prev_num }}">السابق</a></li>
+        {% endif %}
+        {% for p in pagination.iter_pages() %}
+        <li class="page-item {% if p == pagination.page %}active{% endif %}">
+          <a class="page-link" href="?page={{ p }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        {% if pagination.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}">التالي</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

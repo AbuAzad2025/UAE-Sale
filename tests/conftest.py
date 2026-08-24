@@ -19,7 +19,7 @@ os.environ.setdefault('DEBUG', 'true')
 os.environ.setdefault('WTF_CSRF_ENABLED', 'false')
 os.environ.setdefault('RATELIMIT_ENABLED', 'false')
 os.environ.setdefault('RATELIMIT_STORAGE_URI', 'memory://')
-os.environ.setdefault('CACHE_TYPE', 'simple')
+os.environ.setdefault('CACHE_TYPE', 'flask_caching.backends.SimpleCache')
 
 # If DATABASE_URL not set, default to SQLite for local development
 if 'DATABASE_URL' not in os.environ:

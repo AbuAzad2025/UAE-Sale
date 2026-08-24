@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 import statistics
 
+from extensions import db
+
 
 class DataAnalyzer:
     """محلل البيانات لأزاد"""

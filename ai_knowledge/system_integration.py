@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 import json
 
+from extensions import db
+
 
 class SystemIntegrator:
     """مكامل النظام لأزاد"""

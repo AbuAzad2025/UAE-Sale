@@ -42,7 +42,7 @@ class Payment(TenantScopedMixin, db.Model):
     bank_name = db.Column(db.String(100))
     
     # ربط مع نموذج الشيك (جديد - للمحاسبة الدقيقة)
-    cheque_id = db.Column(db.Integer, db.ForeignKey('cheques.id'), index=True)
+    cheque_id = db.Column(db.Integer, db.ForeignKey('cheques.id', use_alter=True), index=True)
     
     # حالة الدفعة - للشيكات فقط
     # confirmed: مؤكدة (الشيك صُرف)
@@ -170,7 +170,7 @@ class Receipt(TenantScopedMixin, db.Model):
     bank_name = db.Column(db.String(100))
     
     # ربط مع نموذج الشيك (جديد - للمحاسبة الدقيقة)
-    cheque_id = db.Column(db.Integer, db.ForeignKey('cheques.id'), index=True)
+    cheque_id = db.Column(db.Integer, db.ForeignKey('cheques.id', use_alter=True), index=True)
     
     # حالة السند - للشيكات فقط
     payment_confirmed = db.Column(db.Boolean, default=True, index=True)

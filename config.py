@@ -133,7 +133,7 @@ class Config:
     RATELIMIT_API = "600 per hour;10 per second"
     
     REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-    CACHE_TYPE = os.environ.get("CACHE_TYPE", "redis")
+    CACHE_TYPE = os.environ.get("CACHE_TYPE", "flask_caching.backends.RedisCache")
     CACHE_REDIS_URL = os.environ.get("CACHE_REDIS_URL", REDIS_URL)
     CACHE_DEFAULT_TIMEOUT = _int("CACHE_DEFAULT_TIMEOUT", 300)
     CACHE_KEY_PREFIX = "garage_simple"

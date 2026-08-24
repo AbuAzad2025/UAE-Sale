@@ -295,6 +295,7 @@ jobs:
         env:
           DATABASE_URL: "postgresql://azad_test:azad_test@localhost:5432/azad_test"
           SECRET_KEY: "test-secret-key-not-for-production"
+          OWNER_PASSWORD: "TestOwner1234567890123456"
           APP_ENV: testing
           DEBUG: "true"
         run: |

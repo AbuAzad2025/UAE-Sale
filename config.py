@@ -67,7 +67,7 @@ class Config:
         '/ledger/api/calculate-journal-balance'
     ]
     
-    _db_uri = os.environ.get("DATABASE_URL") or "postgresql+psycopg2://postgres:123@localhost:5432/garage_simple"
+    _db_uri = os.environ.get("DATABASE_URL") or "sqlite:///:memory:"
     
     # Handle PythonAnywhere specific postgres URL format if needed
     if _db_uri.startswith("postgres://"):

@@ -229,7 +229,8 @@ def system_stats():
             db_stats[table_name] = count
     
     except Exception as e:
-        flash(f'❌ خطأ في جلب الإحصائيات: {str(e)}\n💡 حاول تحديث الصفحة.', 'danger')
+        current_app.logger.error(f'System stats error: {e}')
+        flash('❌ خطأ في جلب الإحصائيات. يرجى تحديث الصفحة.', 'danger')
     
     return render_template('owner/system_stats.html', db_stats=db_stats)
 
@@ -405,7 +406,8 @@ def create_user():
         except Exception as e:
             db.session.rollback()
             from utils.error_messages import ErrorMessages
-            flash(ErrorMessages.user_update_failed(str(e)), 'error')
+            current_app.logger.error(f'User update error: {e}')
+            flash('❌ خطأ في تحديث المستخدم.', 'error')
             return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
     
     return render_template('owner/create_user.html', roles=roles, form_data=default_form)
@@ -434,6 +436,12 @@ def edit_user(user_id):
             # تغيير كلمة المرور إن وجدت
             new_password = request.form.get('new_password', '').strip()
             if new_password:
+                # SECURITY: Enforce password strength policy
+                from utils.password_validator import PasswordValidator
+                is_valid, pw_errors = PasswordValidator.validate(new_password)
+                if not is_valid:
+                    flash(f'⚠️ كلمة المرور ضعيفة:\n' + '\n'.join(pw_errors), 'danger')
+                    return redirect(url_for('owner.edit_user', user_id=user_id))
                 user.password_hash = generate_password_hash(new_password, method='pbkdf2:sha256')
             
             user.updated_by = current_user.id
@@ -445,7 +453,8 @@ def edit_user(user_id):
             
         except Exception as e:
             db.session.rollback()
-            flash(f'خطأ في تحديث المستخدم: {str(e)}', 'error')
+            current_app.logger.error(f'User edit error: {e}')
+            flash('❌ خطأ في تحديث المستخدم.', 'error')
     
     current_level = _current_user_level()
     roles = Role.query.filter_by(is_active=True).all()
@@ -510,7 +519,8 @@ def delete_user(user_id):
         flash(f'تم تعطيل المستخدم {user.username}', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'خطأ في حذف المستخدم: {str(e)}', 'error')
+        current_app.logger.error(f'User delete error: {e}')
+        flash('❌ خطأ في حذف المستخدم.', 'error')
     
     return redirect(url_for('owner.users_list'))
 
@@ -833,7 +843,8 @@ def update_integration(service):
         
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ في حفظ الإعدادات: {str(e)}', 'danger')
+        current_app.logger.error(f'Integration save error: {e}')
+        flash('❌ خطأ في حفظ الإعدادات.', 'danger')
         current_app.logger.error(f"Error saving integration {service}: {e}")
     
     return redirect(url_for('owner.integrations'))
@@ -1339,7 +1350,8 @@ def export_database():
             flash(f'✅ تم التصدير: {filename}', 'success')
     
     except Exception as e:
-        flash(f'❌ خطأ في التصدير: {str(e)}', 'danger')
+        current_app.logger.error(f'Database export error: {e}')
+        flash('❌ خطأ في تصدير قاعدة البيانات.', 'danger')
     
     return redirect(url_for('owner.database_tools'))
 
@@ -1387,7 +1399,8 @@ def convert_database():
             flash('✅ تم التحويل إلى PostgreSQL بنجاح!', 'success')
         
         except Exception as e:
-            flash(f'❌ خطأ في التحويل: {str(e)}', 'danger')
+            current_app.logger.error(f'Database convert error: {e}')
+        flash('❌ خطأ في تحويل قاعدة البيانات.', 'danger')
     
     return render_template('owner/convert_database.html')
 

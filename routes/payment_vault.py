@@ -744,15 +744,19 @@ def change_password():
 # ==================== API Routes للشراء والتبرع (متاحة للجميع) ====================
 
 @payment_vault_bp.route('/api/purchase', methods=['POST'])
-@csrf.exempt  # JSON API - نستخدم Origin checking بدلاً من CSRF
+@csrf.exempt  # JSON API - CSRF bypassed; Origin validation below
 @limiter.limit("10 per minute")
 def api_create_purchase():
     """API لإنشاء عملية شراء جديدة"""
     try:
-        # التحقق من Origin في الإنتاج
-        origin = request.headers.get('Origin', '')
         if not request.is_json:
             return jsonify({'success': False, 'error': 'Content-Type must be application/json'}), 400
+        # SECURITY: Validate Origin header to prevent cross-site JSON API abuse
+        origin = request.headers.get('Origin', '')
+        allowed_origins = current_app.config.get('CORS_ORIGINS', [])
+        referer = request.headers.get('Referer', '')
+        if origin and not any(origin.startswith(o) for o in allowed_origins):
+            return jsonify({'success': False, 'error': 'Invalid origin'}), 403
         
         data = request.get_json()
         
@@ -907,14 +911,18 @@ def api_create_purchase():
 
 
 @payment_vault_bp.route('/api/donation', methods=['POST'])
-@csrf.exempt  # JSON API - نستخدم Origin checking بدلاً من CSRF
+@csrf.exempt  # JSON API - CSRF bypassed; Origin validation below
 @limiter.limit("10 per minute")
 def api_create_donation():
     """API لإنشاء تبرع جديد"""
     try:
-        # التحقق من Origin
         if not request.is_json:
             return jsonify({'success': False, 'error': 'Content-Type must be application/json'}), 400
+        # SECURITY: Validate Origin header to prevent cross-site JSON API abuse
+        origin = request.headers.get('Origin', '')
+        allowed_origins = current_app.config.get('CORS_ORIGINS', [])
+        if origin and not any(origin.startswith(o) for o in allowed_origins):
+            return jsonify({'success': False, 'error': 'Invalid origin'}), 403
         
         data = request.get_json()
         

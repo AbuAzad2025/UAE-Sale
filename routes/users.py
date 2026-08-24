@@ -94,6 +94,16 @@ def create():
             )
             
             password = request.form.get('password')
+            
+            # SECURITY: Enforce password strength policy
+            from utils.password_validator import PasswordValidator
+            is_valid, errors = PasswordValidator.validate(password or '')
+            if not is_valid:
+                flash(f'⚠️ كلمة المرور ضعيفة:\n' + '\n'.join(errors), 'danger')
+                form_values = request.form.to_dict()
+                form_values['is_active'] = request.form.get('is_active', '1')
+                return render_template('users/create.html', roles=roles, form_data=form_values)
+            
             user.set_password(password)
             
             db.session.add(user)
@@ -108,10 +118,8 @@ def create():
         
         except Exception as e:
             db.session.rollback()
-            import traceback
-            error_details = traceback.format_exc()
-            current_app.logger.error(f'User creation error: {error_details}')
-            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            current_app.logger.error(f'User creation error: {e}')
+            flash('❌ حدث خطأ في إنشاء المستخدم. يرجى المحاولة مرة أخرى.', 'danger')
             form_values = request.form.to_dict()
             form_values['is_active'] = request.form.get('is_active', '1')
             return render_template('users/create.html', roles=roles, form_data=form_values)
@@ -145,6 +153,12 @@ def edit(id):
             
             new_password = request.form.get('new_password')
             if new_password:
+                # SECURITY: Enforce password strength policy on password changes
+                from utils.password_validator import PasswordValidator
+                is_valid, errors = PasswordValidator.validate(new_password)
+                if not is_valid:
+                    flash(f'⚠️ كلمة المرور ضعيفة:\n' + '\n'.join(errors), 'danger')
+                    return redirect(url_for('users.edit', id=user.id))
                 user.set_password(new_password)
             
             db.session.commit()
@@ -156,7 +170,8 @@ def edit(id):
         
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            current_app.logger.error(f'User edit error: {e}')
+            flash('❌ حدث خطأ في تحديث المستخدم. يرجى المحاولة مرة أخرى.', 'danger')
     
     current_level = _current_user_level()
     roles = Role.query.filter_by(is_active=True).all()
@@ -217,6 +232,7 @@ def delete(id):
     
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ في الحذف: {str(e)}\n💡 راجع البيانات المدخلة.', 'danger')
+        current_app.logger.error(f'User delete error: {e}')
+        flash('❌ حدث خطأ في حذف المستخدم.', 'danger')
         return redirect(url_for('users.index'))
 

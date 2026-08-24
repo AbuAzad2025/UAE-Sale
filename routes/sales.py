@@ -169,7 +169,8 @@ def create():
             flash(f'⚠️ {str(e)}\n💡 تحقق من الكميات المتوفرة في المخزون.', 'danger')
         except Exception as e:
             from utils.error_messages import ErrorMessages
-            flash(ErrorMessages.database_error(str(e)), 'danger')
+            current_app.logger.error(f'Sale creation error: {e}')
+            flash(ErrorMessages.database_error(), 'danger')
     
     # تحميل المستودعات للقالب
     from models import Warehouse
@@ -262,7 +263,8 @@ def edit(id):
         
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة.', 'danger')
+            current_app.logger.error(f'Sale edit error: {e}')
+            flash('❌ حدث خطأ في تحديث الفاتورة. يرجى المحاولة مرة أخرى.', 'danger')
     
     return render_template('sales/edit.html', sale=sale)
 
@@ -286,7 +288,8 @@ def cancel(id):
         flash('✅ تم إلغاء الفاتورة بنجاح!', 'success')
     
     except Exception as e:
-        flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+        current_app.logger.error(f'Sale cancel error: {e}')
+        flash('❌ حدث خطأ في إلغاء الفاتورة. يرجى المحاولة مرة أخرى.', 'danger')
     
     return redirect(url_for('sales.view', id=id))
 
@@ -420,7 +423,8 @@ def delete(id):
         
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ في الحذف: {str(e)}', 'danger')
+        current_app.logger.error(f'Sale delete error: {e}')
+        flash('❌ حدث خطأ في حذف الفاتورة.', 'danger')
         return redirect(url_for('sales.index'))
 
 

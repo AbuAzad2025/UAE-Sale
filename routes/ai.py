@@ -2904,7 +2904,6 @@ def assistant_page():
 
 
 @ai_bp.route('/config', methods=['GET', 'POST'])
-@csrf.exempt
 @login_required
 @owner_required
 def config():
@@ -2979,7 +2978,6 @@ def config():
 
 
 @ai_bp.route('/upload-excel', methods=['POST'])
-@csrf.exempt
 @login_required
 def upload_excel():
     """رفع ومعالجة ملف Excel للمنتجات - المعالج الذكي الخارق"""

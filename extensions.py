@@ -225,19 +225,13 @@ def init_extensions(app):
         else:
             limiter.default_limits = [default_limit]
     
-    @limiter.request_filter
-    def _exempt_super():
-        try:
-            from flask_login import current_user
-            if getattr(current_user, "is_authenticated", False):
-                if getattr(current_user, "is_owner", False):
-                    return True
-                role = getattr(current_user, "role", None)
-                if role and role.slug == "super_admin":
-                    return True
-        except Exception:
-            pass
+    # SECURITY: No global rate limiter bypass for any role.
+    # Per-route exemptions are applied via @limiter.exempt on specific
+    # trusted endpoints (e.g., health checks) only.
+    def _no_global_bypass():
         return False
+
+    limiter.request_filter(_no_global_bypass)
     
     if app.config.get("MAIL_USERNAME"):
         mail.init_app(app)

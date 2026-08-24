@@ -306,3 +306,8 @@ def hint(msg):
 def success(msg):
     return f'{msg}'
 
+
+def database_error():
+    """Generic database error message — never leaks internals."""
+    return 'حدث خطأ في قاعدة البيانات. تم تسجيل التفاصيل. يرجى المحاولة مرة أخرى.'
+

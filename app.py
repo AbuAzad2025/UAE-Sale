@@ -250,12 +250,33 @@ def create_app(config_class=Config):
         else:
             set_current_tenant_id(None)
         
+    # CORS initialization
+    from flask_cors import CORS
+    CORS(app, origins=app.config.get('CORS_ORIGINS', ['http://localhost:5000']),
+         supports_credentials=True, methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'])
+
     # Security Headers
     @app.after_request
     def add_security_headers(response):
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'SAMEORIGIN'
         response.headers['X-XSS-Protection'] = '1; mode=block'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=(), payment=()'
+        # CSP: restrict script/style sources to self + known CDN (AdminLTE uses jsdelivr)
+        csp_directives = [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net",
+            "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com",
+            "font-src 'self' fonts.gstatic.com cdn.jsdelivr.net",
+            "img-src 'self' data: blob:",
+            "connect-src 'self'",
+            "frame-ancestors 'self'",
+        ]
+        response.headers['Content-Security-Policy'] = '; '.join(csp_directives)
+        # HSTS: only send over HTTPS (won't affect HTTP in dev, but protects production)
+        if not app.config.get('DEBUG', False):
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         return response
 
     @app.teardown_appcontext

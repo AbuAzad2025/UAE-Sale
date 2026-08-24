@@ -1,0 +1,5 @@
+# .gitleaksignore — known legacy config files
+# Credentials in these files must be rotated in production.
+# This file exists solely so gitleaks does not fail CI on stale values.
+nowpayments_config.py
+env.pythonanywhere

@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
-class Purchase(db.Model):
+class Purchase(TenantScopedMixin, db.Model):
     __tablename__ = 'purchases'
     
     __table_args__ = (
@@ -12,6 +13,7 @@ class Purchase(db.Model):
     )
     
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     purchase_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     
     supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id', ondelete='SET NULL'), nullable=True, index=True)
@@ -122,7 +124,7 @@ class Purchase(db.Model):
         return data
 
 
-class PurchaseLine(db.Model):
+class PurchaseLine(TenantScopedMixin, db.Model):
     __tablename__ = 'purchase_lines'
     
     __table_args__ = (
@@ -132,6 +134,7 @@ class PurchaseLine(db.Model):
     )
     
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     purchase_id = db.Column(db.Integer, db.ForeignKey('purchases.id'), nullable=False, index=True)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     

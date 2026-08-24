@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
 class Warehouse(db.Model):
@@ -26,10 +27,12 @@ class Warehouse(db.Model):
         return f'<Warehouse {self.name}>'
 
 
-class StockMovement(db.Model):
+class StockMovement(TenantScopedMixin, db.Model):
     __tablename__ = 'stock_movements'
     
     id = db.Column(db.Integer, primary_key=True)
+    
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     
     product_id = db.Column(db.Integer, db.ForeignKey('products.id', ondelete='CASCADE'), nullable=False, index=True)
     warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), nullable=False)

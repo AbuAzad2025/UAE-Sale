@@ -232,6 +232,20 @@ def create_app(config_class=Config):
         g.lang_code = 'ar'
         g.rtl = True
         
+        # Multi-tenant: set current tenant from logged-in user
+        from models import set_current_tenant_id
+        from flask_login import current_user
+        if current_user.is_authenticated:
+            # Owner sees all tenants (no filter); other users are scoped to their tenant
+            if hasattr(current_user, 'is_owner') and current_user.is_owner:
+                set_current_tenant_id(None)  # Owner bypasses tenant filtering
+            elif hasattr(current_user, 'tenant_id') and current_user.tenant_id:
+                set_current_tenant_id(current_user.tenant_id)
+            else:
+                set_current_tenant_id(None)  # Default: no filtering
+        else:
+            set_current_tenant_id(None)
+        
     # Security Headers
     @app.after_request
     def add_security_headers(response):
@@ -240,9 +254,23 @@ def create_app(config_class=Config):
         response.headers['X-XSS-Protection'] = '1; mode=block'
         return response
 
+    @app.teardown_appcontext
+    def teardown_tenant(exception=None):
+        """Clear tenant context at end of request."""
+        from models import clear_current_tenant_id
+        clear_current_tenant_id()
+
     # Models Import (to ensure they are known to SQLAlchemy)
     from models import User, Customer, ProductCategory
     
+    # Initialize tenant filter events
+    try:
+        from models.tenant_scope import install_tenant_filter_events
+        install_tenant_filter_events()
+        app.logger.info('[OK] Tenant filter events installed')
+    except Exception as e:
+        app.logger.warning(f'Tenant filter events not installed: {e}')
+
     # Initialize Listeners
     try:
         from models.events import register_all_listeners

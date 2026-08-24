@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
-class Customer(db.Model):
+class Customer(TenantScopedMixin, db.Model):
     __tablename__ = 'customers'
     
     __table_args__ = (
@@ -11,6 +12,7 @@ class Customer(db.Model):
     )
     
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     name = db.Column(db.String(200), nullable=False, index=True)
     name_ar = db.Column(db.String(200))
     

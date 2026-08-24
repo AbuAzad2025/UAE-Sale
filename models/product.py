@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
 class ProductCategory(db.Model):
@@ -45,7 +46,7 @@ class ProductPartner(db.Model):
     partner_customer = db.relationship('Customer', foreign_keys=[partner_customer_id])
 
 
-class Product(db.Model):
+class Product(TenantScopedMixin, db.Model):
     __tablename__ = 'products'
     
     __table_args__ = (
@@ -57,6 +58,7 @@ class Product(db.Model):
     )
     
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     name = db.Column(db.String(200), nullable=False, index=True)
     name_ar = db.Column(db.String(200))
     commercial_name = db.Column(db.String(200))

@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
-class Payment(db.Model):
+class Payment(TenantScopedMixin, db.Model):
     __tablename__ = 'payments'
     
     __table_args__ = (
@@ -11,6 +12,7 @@ class Payment(db.Model):
     )
     
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     payment_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     
     payment_type = db.Column(db.String(20), nullable=False, index=True)
@@ -132,7 +134,7 @@ class Payment(db.Model):
         }
 
 
-class Receipt(db.Model):
+class Receipt(TenantScopedMixin, db.Model):
     __tablename__ = 'receipts'
     
     __table_args__ = (
@@ -141,6 +143,7 @@ class Receipt(db.Model):
     )
     
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     receipt_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     
     # تصنيف مصدر السند

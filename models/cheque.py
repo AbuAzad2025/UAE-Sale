@@ -7,15 +7,18 @@ from datetime import datetime, timezone, timedelta
 from extensions import db
 from decimal import Decimal
 from flask import current_app
+from models.tenant_scope import TenantScopedMixin
 
 
-class Cheque(db.Model):
+class Cheque(TenantScopedMixin, db.Model):
     """
     نموذج الشيكات - وارد وصادر
     """
     __tablename__ = 'cheques'
     
     id = db.Column(db.Integer, primary_key=True)
+    
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     
     # معلومات الشيك الأساسية
     cheque_number = db.Column(db.String(50), nullable=False, unique=True, index=True)

@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
-class Sale(db.Model):
+class Sale(TenantScopedMixin, db.Model):
     __tablename__ = 'sales'
     
     __table_args__ = (
@@ -16,6 +17,7 @@ class Sale(db.Model):
     )
     
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     sale_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id', ondelete='SET NULL'), nullable=True, index=True)
@@ -50,6 +52,7 @@ class Sale(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
+    tenant = db.relationship('Tenant', foreign_keys=[tenant_id])
     customer = db.relationship('Customer', back_populates='sales')
     seller = db.relationship('User', back_populates='sales', foreign_keys=[seller_id])
     warehouse = db.relationship('Warehouse', foreign_keys=[warehouse_id])
@@ -214,7 +217,7 @@ class Sale(db.Model):
         return data
 
 
-class SaleLine(db.Model):
+class SaleLine(TenantScopedMixin, db.Model):
     __tablename__ = 'sale_lines'
     
     __table_args__ = (
@@ -225,6 +228,7 @@ class SaleLine(db.Model):
     )
     
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'), nullable=False, index=True)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     

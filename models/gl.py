@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
 class GLAccount(db.Model):
@@ -63,10 +64,11 @@ class GLAccount(db.Model):
         return result
 
 
-class GLJournalEntry(db.Model):
+class GLJournalEntry(TenantScopedMixin, db.Model):
     __tablename__ = 'gl_journal_entries'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     entry_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     entry_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
     description = db.Column(db.String(255))

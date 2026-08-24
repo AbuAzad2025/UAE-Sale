@@ -34,6 +34,15 @@ from .login_history import LoginHistory
 from .security_alert import SecurityAlert
 from .api_key import APIKey
 from .approval_workflow import ApprovalWorkflow, ApprovalRequest, ApprovalLevel
+from .tenant_scope import (
+    TenantScopedMixin, set_current_tenant_id, get_current_tenant_id,
+    clear_current_tenant_id, register_tenant_scoped, install_tenant_filter_events,
+)
+
+# Register all tenant-scoped models for automatic filtering
+for _model_cls in [Sale, SaleLine, Purchase, PurchaseLine, Payment, Receipt,
+                   Customer, Supplier, Product, StockMovement, Cheque, GLJournalEntry]:
+    register_tenant_scoped(_model_cls)
 
 __all__ = [
     'User', 'Role', 'Permission',

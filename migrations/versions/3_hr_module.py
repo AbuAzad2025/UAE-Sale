@@ -176,12 +176,12 @@ def upgrade():
     # Seed default leave types
     op.execute("""
         INSERT INTO leave_types (name, name_ar, code, default_days, is_paid, is_active) VALUES
-        ('Annual Leave', 'إجازة سنوية', 'annual', 30, 1, 1),
-        ('Sick Leave', 'إجازة مرضية', 'sick', 15, 1, 1),
-        ('Personal Leave', 'إجازة شخصية', 'personal', 5, 1, 1),
-        ('Unpaid Leave', 'إجازة بدون راتب', 'unpaid', 0, 0, 1),
-        ('Maternity Leave', 'إجازة أمومة', 'maternity', 60, 1, 1),
-        ('Hajj Leave', 'إجازة حج', 'hajj', 30, 1, 1)
+        ('Annual Leave', 'إجازة سنوية', 'annual', 30, TRUE, TRUE),
+        ('Sick Leave', 'إجازة مرضية', 'sick', 15, TRUE, TRUE),
+        ('Personal Leave', 'إجازة شخصية', 'personal', 5, TRUE, TRUE),
+        ('Unpaid Leave', 'إجازة بدون راتب', 'unpaid', 0, FALSE, TRUE),
+        ('Maternity Leave', 'إجازة أمومة', 'maternity', 60, TRUE, TRUE),
+        ('Hajj Leave', 'إجازة حج', 'hajj', 30, TRUE, TRUE)
         ON CONFLICT (code) DO NOTHING;
     """)
 

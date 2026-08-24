@@ -125,9 +125,9 @@ jobs:
           pip install -r requirements.txt
       - name: Verify app boots
         env:
-          DATABASE_URL: postgresql://azad_test:azad_test@localhost:5432/azad_test
-          SECRET_KEY: test-secret-key-not-for-production
-          OWNER_PASSWORD: TestOwner@1234567890123456!
+          DATABASE_URL: "postgresql://azad_test:azad_test@localhost:5432/azad_test"
+          SECRET_KEY: "test-secret-key-not-for-production"
+          OWNER_PASSWORD: "TestOwner@1234567890123456!"
           APP_ENV: testing
         run: |
           python -c "from app import create_app; app = create_app()"
@@ -150,9 +150,9 @@ jobs:
           pip install pytest pytest-cov
       - name: Run unit tests
         env:
-          DATABASE_URL: sqlite:///:memory:
-          SECRET_KEY: test-secret-key-not-for-production
-          OWNER_PASSWORD: TestOwner@1234567890123456!
+          DATABASE_URL: "sqlite:///:memory:"
+          SECRET_KEY: "test-secret-key-not-for-production"
+          OWNER_PASSWORD: "TestOwner@1234567890123456!"
           APP_ENV: testing
           DEBUG: "true"
           WTF_CSRF_ENABLED: "false"
@@ -201,9 +201,9 @@ jobs:
           pip install pytest pytest-cov
       - name: Run schema migration
         env:
-          DATABASE_URL: postgresql://azad_test:azad_test@localhost:5432/azad_test
-          SECRET_KEY: test-secret-key-not-for-production
-          OWNER_PASSWORD: TestOwner@1234567890123456!
+          DATABASE_URL: "postgresql://azad_test:azad_test@localhost:5432/azad_test"
+          SECRET_KEY: "test-secret-key-not-for-production"
+          OWNER_PASSWORD: "TestOwner@1234567890123456!"
           APP_ENV: testing
           DEBUG: "true"
         run: |
@@ -211,9 +211,9 @@ jobs:
           echo "=== Schema applied ==="
       - name: Run integration tests
         env:
-          DATABASE_URL: postgresql://azad_test:azad_test@localhost:5432/azad_test
-          SECRET_KEY: test-secret-key-not-for-production
-          OWNER_PASSWORD: TestOwner@1234567890123456!
+          DATABASE_URL: "postgresql://azad_test:azad_test@localhost:5432/azad_test"
+          SECRET_KEY: "test-secret-key-not-for-production"
+          OWNER_PASSWORD: "TestOwner@1234567890123456!"
           APP_ENV: testing
           DEBUG: "true"
           WTF_CSRF_ENABLED: "false"
@@ -291,8 +291,8 @@ jobs:
           pip install -r requirements.txt
       - name: Verify migrations apply cleanly
         env:
-          DATABASE_URL: postgresql://azad_test:azad_test@localhost:5432/azad_test
-          SECRET_KEY: test-secret-key-not-for-production
+          DATABASE_URL: "postgresql://azad_test:azad_test@localhost:5432/azad_test"
+          SECRET_KEY: "test-secret-key-not-for-production"
           APP_ENV: testing
           DEBUG: "true"
         run: |

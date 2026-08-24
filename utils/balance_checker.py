@@ -68,6 +68,7 @@ def check_customer_balance(customer_id=None):
 def repair_customer_balance(customer_id=None):
     """
     Repair drifted customer balances by recalculating from sales.
+    Uses distributed lock to prevent races with live transactions.
 
     Args:
         customer_id: Specific customer to repair. If None, repairs all drifts.
@@ -75,6 +76,27 @@ def repair_customer_balance(customer_id=None):
     Returns:
         int: number of records repaired
     """
+    from extensions import db
+    from models import Customer, Sale
+
+    lock_name = f'balance_repair:{customer_id or "all"}'
+    repaired = 0
+
+    try:
+        from utils.distributed_lock import repair_distributed_lock
+        with repair_distributed_lock(lock_name, timeout=30, blocking_timeout=10):
+            repaired = _do_repair(customer_id)
+    except ImportError:
+        repaired = _do_repair(customer_id)
+    except Exception as e:
+        logger.warning(f'Distributed lock failed for {lock_name}: {e} — proceeding without lock')
+        repaired = _do_repair(customer_id)
+
+    return repaired
+
+
+def _do_repair(customer_id=None):
+    """Inner repair logic (no locking — caller is responsible)."""
     from extensions import db
     from models import Customer, Sale
 

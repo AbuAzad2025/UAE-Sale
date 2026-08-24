@@ -8,10 +8,59 @@ from extensions import db
 
 
 def generate_number(prefix, model, field_name='sale_number', date_format='%Y', max_retries=5):
-    """Generate a unique sequential number with retry on collision."""
-    import time
-    year = datetime.now().strftime(date_format)
+    """Generate a unique sequential number with distributed locking.
     
+    Uses Redis-based distributed lock to prevent duplicate numbers
+    in multi-worker deployments. Falls back to retry+UUID if Redis
+    is unavailable.
+    """
+    import time
+    import uuid
+    year = datetime.now().strftime(date_format)
+    lock_name = f'gen_number:{prefix}:{year}'
+    
+    try:
+        from utils.distributed_lock import distributed_lock
+        with distributed_lock(lock_name, timeout=10, blocking_timeout=5):
+            # Inside the lock — safe to read max and increment
+            latest = db.session.query(model).filter(
+                getattr(model, field_name).like(f'{prefix}-{year}-%')
+            ).order_by(
+                getattr(model, field_name).desc()
+            ).first()
+            
+            if latest:
+                last_number = getattr(latest, field_name).split('-')[-1]
+                next_number = int(last_number) + 1
+            else:
+                next_number = 1
+            
+            candidate = f'{prefix}-{year}-{next_number:04d}'
+            
+            # Check for collision (belt-and-suspenders)
+            existing = db.session.query(model).filter(
+                getattr(model, field_name) == candidate
+            ).first()
+            
+            if not existing:
+                return candidate
+            
+            # Collision inside the lock — very unlikely; retry once
+            next_number += 1
+            candidate = f'{prefix}-{year}-{next_number:04d}'
+            existing = db.session.query(model).filter(
+                getattr(model, field_name) == candidate
+            ).first()
+            
+            if not existing:
+                return candidate
+    except ImportError:
+        pass  # distributed_lock not available — use fallback below
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f'Distributed lock failed for {lock_name}: {e}')
+    
+    # Fallback: retry-only approach (no distributed lock)
     for attempt in range(max_retries):
         latest = db.session.query(model).filter(
             getattr(model, field_name).like(f'{prefix}-{year}-%')
@@ -27,7 +76,6 @@ def generate_number(prefix, model, field_name='sale_number', date_format='%Y', m
         
         candidate = f'{prefix}-{year}-{next_number:04d}'
         
-        # Check for collision
         existing = db.session.query(model).filter(
             getattr(model, field_name) == candidate
         ).first()
@@ -35,11 +83,9 @@ def generate_number(prefix, model, field_name='sale_number', date_format='%Y', m
         if not existing:
             return candidate
         
-        # Collision — wait briefly and retry
         time.sleep(0.01 * (attempt + 1))
     
-    # Fallback: use UUID suffix
-    import uuid
+    # Final fallback: use UUID suffix
     return f'{prefix}-{year}-{uuid.uuid4().hex[:8].upper()}'
 
 

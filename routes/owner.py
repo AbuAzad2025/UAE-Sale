@@ -422,7 +422,7 @@ def edit_user(user_id):
     from models import Role
     from werkzeug.security import generate_password_hash
     
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     
     if request.method == 'POST':
         try:
@@ -467,7 +467,7 @@ def edit_user(user_id):
 @owner_required
 def user_profile(user_id):
     """الملف الشخصي للمستخدم"""
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     
     # إحصائيات المستخدم
     from models import Sale, Payment
@@ -496,7 +496,7 @@ def user_profile(user_id):
 @owner_required
 def delete_user(user_id):
     """حذف مستخدم"""
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     
     # لا يمكن حذف المالك
     from utils.error_messages import ErrorMessages
@@ -646,7 +646,7 @@ def cards_vault():
 @login_required
 @owner_required
 def view_card(id):
-    card = CardVault.query.get_or_404(id)
+    card = db.get_or_404(CardVault, id)
     
     card_data = card.to_dict(include_sensitive=True)
     
@@ -2049,7 +2049,7 @@ def security_alerts():
 @login_required
 @owner_required
 def resolve_alert(id):
-    alert = SecurityAlert.query.get_or_404(id)
+    alert = db.get_or_404(SecurityAlert, id)
     alert.is_resolved = True
     alert.resolved_at = datetime.now(timezone.utc)
     alert.resolved_by = current_user.id
@@ -2128,7 +2128,7 @@ def api_keys():
 @login_required
 @owner_required
 def toggle_api_key(id):
-    key = APIKey.query.get_or_404(id)
+    key = db.get_or_404(APIKey, id)
     key.is_active = not key.is_active
     db.session.commit()
     
@@ -2595,7 +2595,7 @@ def product_performance():
     
     performance_data = []
     for p in products_perf:
-        product = Product.query.get(p.id)
+        product = db.session.get(Product, p.id)
         
         margin = p.total_revenue - (product.purchase_price * p.total_sold) if product.purchase_price else 0
         margin_percent = (margin / p.total_revenue * 100) if p.total_revenue > 0 else 0

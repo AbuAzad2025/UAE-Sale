@@ -21,7 +21,7 @@ class SystemIntegrator:
             
             # البحث بالاسم أو المعرف
             if customer_name_or_id.isdigit():
-                customer = Customer.query.get(int(customer_name_or_id))
+                customer = db.session.get(Customer, int(customer_name_or_id))
             else:
                 customer = Customer.query.filter(
                     Customer.name.ilike(f'%{customer_name_or_id}%')
@@ -65,7 +65,7 @@ class SystemIntegrator:
             
             # البحث بالاسم أو المعرف
             if str(supplier_name_or_id).isdigit():
-                supplier = Supplier.query.get(int(supplier_name_or_id))
+                supplier = db.session.get(Supplier, int(supplier_name_or_id))
             else:
                 supplier = Supplier.query.filter(
                     Supplier.name.ilike(f'%{supplier_name_or_id}%')
@@ -107,7 +107,7 @@ class SystemIntegrator:
         try:
             from models import Customer
             
-            customer = Customer.query.get(customer_id)
+            customer = db.session.get(Customer, customer_id)
             if not customer:
                 return {'success': False, 'error': 'العميل غير موجود'}
             

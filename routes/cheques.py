@@ -217,7 +217,7 @@ def create():
 @permission_required('manage_payments')
 def view(id):
     """عرض تفاصيل الشيك"""
-    cheque = Cheque.query.get_or_404(id)
+    cheque = db.get_or_404(Cheque, id)
     cheque.update_status_based_on_date()
     db.session.commit()
     
@@ -232,7 +232,7 @@ def view(id):
 @permission_required('manage_payments')
 def edit(id):
     """تعديل الشيك"""
-    cheque = Cheque.query.get_or_404(id)
+    cheque = db.get_or_404(Cheque, id)
     
     # لا يمكن تعديل شيك تم صرفه أو ملغي
     if cheque.status in ['cleared', 'cancelled', 'bounced']:
@@ -294,7 +294,7 @@ def edit(id):
 @permission_required('manage_payments')
 def deposit_cheque(id):
     """إيداع الشيك في البنك - الخطوة 1"""
-    cheque = Cheque.query.get_or_404(id)
+    cheque = db.get_or_404(Cheque, id)
     
     try:
         deposit_date_str = request.form.get('deposit_date')
@@ -323,7 +323,7 @@ def deposit_cheque(id):
 @permission_required('manage_payments')
 def clear_cheque(id):
     """تأكيد صرف الشيك من البنك - الخطوة 2 - المحاسبة الفعلية"""
-    cheque = Cheque.query.get_or_404(id)
+    cheque = db.get_or_404(Cheque, id)
     
     try:
         clearance_date_str = request.form.get('clearance_date')
@@ -365,7 +365,7 @@ def clear_cheque(id):
 @permission_required('manage_payments')
 def bounce_cheque(id):
     """رفض الشيك من البنك - إرجاع الدين"""
-    cheque = Cheque.query.get_or_404(id)
+    cheque = db.get_or_404(Cheque, id)
     
     try:
         reason = request.form.get('bounce_reason', 'غير محدد')
@@ -396,7 +396,7 @@ def bounce_cheque(id):
 @admin_required
 def cancel(id):
     """إلغاء الشيك"""
-    cheque = Cheque.query.get_or_404(id)
+    cheque = db.get_or_404(Cheque, id)
     
     if cheque.status == 'cleared':
         flash('⚠️ لا يمكن إلغاء شيك تم صرفه.\n💡 الشيك تم صرفه بالفعل. لا يمكن التراجع عنه.', 'danger')
@@ -424,7 +424,7 @@ def cancel(id):
 @admin_required
 def delete(id):
     """حذف (أرشفة) الشيك"""
-    cheque = Cheque.query.get_or_404(id)
+    cheque = db.get_or_404(Cheque, id)
     
     # التحقق من الارتباطات
     has_links = False
@@ -480,7 +480,7 @@ def delete(id):
 @admin_required
 def restore(id):
     """استعادة شيك من الأرشيف"""
-    cheque = Cheque.query.get_or_404(id)
+    cheque = db.get_or_404(Cheque, id)
     
     try:
         cheque.restore()

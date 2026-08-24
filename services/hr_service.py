@@ -23,7 +23,7 @@ class HRService:
 
         level = 0
         if parent_id:
-            parent = Department.query.get(parent_id)
+            parent = db.session.get(Department, parent_id)
             if not parent:
                 raise ValueError('القسم الأب غير موجود')
             level = parent.level + 1
@@ -59,7 +59,7 @@ class HRService:
 
         # Validate department
         if department_id:
-            dept = Department.query.get(department_id)
+            dept = db.session.get(Department, department_id)
             if not dept:
                 raise ValueError('القسم غير موجود')
 
@@ -138,11 +138,11 @@ class HRService:
     @staticmethod
     def request_leave(employee_id, leave_type_id, start_date, end_date, reason='', user_id=None):
         """Submit a leave request"""
-        emp = Employee.query.get_or_404(employee_id)
+        emp = db.get_or_404(Employee, employee_id)
         if emp.employment_status != 'active':
             raise ValueError('الموظف غير نشط')
 
-        lt = LeaveType.query.get_or_404(leave_type_id)
+        lt = db.get_or_404(LeaveType, leave_type_id)
 
         # Calculate working days (exclude weekends: Fri/Sat for UAE)
         days = HRService._count_working_days(start_date, end_date)
@@ -181,21 +181,21 @@ class HRService:
 
     @staticmethod
     def approve_leave(leave_id, approver_id):
-        leave = LeaveRequest.query.get_or_404(leave_id)
+        leave = db.get_or_404(LeaveRequest, leave_id)
         leave.approve(approver_id)
         db.session.commit()
         return leave
 
     @staticmethod
     def reject_leave(leave_id, approver_id, reason=''):
-        leave = LeaveRequest.query.get_or_404(leave_id)
+        leave = db.get_or_404(LeaveRequest, leave_id)
         leave.reject(approver_id, reason)
         db.session.commit()
         return leave
 
     @staticmethod
     def cancel_leave(leave_id):
-        leave = LeaveRequest.query.get_or_404(leave_id)
+        leave = db.get_or_404(LeaveRequest, leave_id)
         leave.cancel()
         db.session.commit()
         return leave
@@ -233,7 +233,7 @@ class HRService:
         adjustments: overtime_hours, overtime_rate, bonus, advance_deduction,
                      other_earnings, other_deductions, leave_days_paid, leave_days_unpaid
         """
-        emp = Employee.query.get_or_404(employee_id)
+        emp = db.get_or_404(Employee, employee_id)
         if emp.employment_status != 'active':
             raise ValueError('لا يمكن إنشاء كشف راتب لموظف غير نشط')
 

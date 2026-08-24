@@ -104,7 +104,7 @@ def _do_repair(customer_id=None):
     drifts = check_customer_balance(customer_id)
 
     for drift_info in drifts:
-        customer = Customer.query.get(drift_info['customer_id'])
+        customer = db.session.get(Customer, drift_info['customer_id'])
         if customer:
             customer.balance = Decimal(str(drift_info['calculated']))
             repaired += 1

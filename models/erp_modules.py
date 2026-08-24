@@ -580,7 +580,7 @@ class EInvoice(db.Model):
         """Generate FATOORA-compliant JSON"""
         import json
         from models import Sale, SaleLine
-        sale = Sale.query.get(self.sale_id)
+        sale = db.session.get(Sale, self.sale_id)
         lines_data = []
         if sale:
             for line in sale.lines:

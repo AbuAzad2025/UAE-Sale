@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, flash, redirect, url_for
 from flask_login import login_required
 from services.whatsapp_service import WhatsAppService
 from utils.decorators import admin_required
+from extensions import db
 
 whatsapp_bp = Blueprint('whatsapp', __name__, url_prefix='/whatsapp')
 
@@ -11,7 +12,7 @@ whatsapp_bp = Blueprint('whatsapp', __name__, url_prefix='/whatsapp')
 def send_invoice(sale_id):
     from models import Sale
     
-    sale = Sale.query.get_or_404(sale_id)
+    sale = db.get_or_404(Sale, sale_id)
     
     if not sale.customer or not sale.customer.phone:
         return jsonify({'success': False, 'error': 'Customer phone not available'})
@@ -38,7 +39,7 @@ def send_invoice(sale_id):
 def send_reminder(customer_id):
     from models import Customer
     
-    customer = Customer.query.get_or_404(customer_id)
+    customer = db.get_or_404(Customer, customer_id)
     
     if not customer.phone:
         return jsonify({'success': False, 'error': 'Customer phone not available'})

@@ -8,6 +8,7 @@ import csv
 from datetime import datetime
 from flask import make_response
 from decimal import Decimal
+from extensions import db
 
 
 class DocumentGenerator:
@@ -19,7 +20,7 @@ class DocumentGenerator:
         try:
             from models import Sale
             
-            sale = Sale.query.get(sale_id)
+            sale = db.session.get(Sale, sale_id)
             if not sale:
                 return None, "الفاتورة غير موجودة"
             
@@ -58,7 +59,7 @@ class DocumentGenerator:
         try:
             from models import Sale
             
-            sale = Sale.query.get(sale_id)
+            sale = db.session.get(Sale, sale_id)
             if not sale:
                 return None, "الفاتورة غير موجودة"
             
@@ -260,7 +261,7 @@ class DocumentGenerator:
         try:
             from models import Customer, Sale
             
-            customer = Customer.query.get(customer_id)
+            customer = db.session.get(Customer, customer_id)
             if not customer:
                 return None, "العميل غير موجود"
             

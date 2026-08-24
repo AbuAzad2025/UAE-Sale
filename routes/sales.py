@@ -69,7 +69,7 @@ def create():
     if request.method == 'POST':
         try:
             customer_id = request.form.get('customer_id', type=int)
-            customer = Customer.query.get_or_404(customer_id)
+            customer = db.get_or_404(Customer, customer_id)
             
             lines_data = []
             line_count = int(request.form.get('line_count', 0))
@@ -89,7 +89,7 @@ def create():
                     override_price = float(price_str) if price_str else None
                     
                     if product_id and quantity and quantity > 0:
-                        product = Product.query.get(product_id)
+                        product = db.session.get(Product, product_id)
                         if product:
                             lines_data.append({
                                 'product': product,
@@ -187,7 +187,7 @@ def create():
 @login_required
 @permission_required('manage_sales')
 def view(id):
-    sale = Sale.query.get_or_404(id)
+    sale = db.get_or_404(Sale, id)
     
     if current_user.is_seller() and sale.seller_id != current_user.id:
         from utils.error_messages import ErrorMessages
@@ -201,7 +201,7 @@ def view(id):
 @login_required
 @permission_required('manage_sales')
 def print_invoice(id):
-    sale = Sale.query.get_or_404(id)
+    sale = db.get_or_404(Sale, id)
     
     if current_user.is_seller() and sale.seller_id != current_user.id:
         from utils.error_messages import ErrorMessages
@@ -229,7 +229,7 @@ def print_invoice(id):
 @permission_required('manage_sales')
 def edit(id):
     """تعديل فاتورة - فقط الفواتير غير المدفوعة وغير الملغاة"""
-    sale = Sale.query.get_or_404(id)
+    sale = db.get_or_404(Sale, id)
     
     # IDOR protection: sellers can only edit their own invoices
     if current_user.is_seller() and sale.seller_id != current_user.id:
@@ -278,7 +278,7 @@ def cancel(id):
         flash(ErrorMessages.permission_denied('إلغاء الفواتير'), 'danger')
         return redirect(url_for('sales.index'))
     
-    sale = Sale.query.get_or_404(id)
+    sale = db.get_or_404(Sale, id)
     
     try:
         SaleService.cancel_sale(sale)
@@ -303,8 +303,8 @@ def api_get_price():
     if not product_id or not customer_id:
         return jsonify({'error': 'Missing parameters'}), 400
     
-    product = Product.query.get(product_id)
-    customer = Customer.query.get(customer_id)
+    product = db.session.get(Product, product_id)
+    customer = db.session.get(Customer, customer_id)
     
     if not product or not customer:
         return jsonify({'error': 'Not found'}), 404
@@ -336,7 +336,7 @@ def archived():
     for archived in archived_sales_query.all():
         data = archived.data
         # Get the actual sale to retrieve customer name
-        sale = Sale.query.get(archived.record_id)
+        sale = db.session.get(Sale, archived.record_id)
         archived_items.append({
             'id': archived.record_id,
             'sale_number': data.get('sale_number'),
@@ -362,7 +362,7 @@ def delete(id):
     from models import Payment, Cheque, GLJournalEntry
     from services.gl_service import GLService
     
-    sale = Sale.query.get_or_404(id)
+    sale = db.get_or_404(Sale, id)
     
     # IDOR protection: sellers can only delete their own invoices
     if current_user.is_seller() and sale.seller_id != current_user.id:
@@ -435,7 +435,7 @@ def archive(id):
     """أرشفة فاتورة"""
     from services.archive_service import ArchiveService
     
-    sale = Sale.query.get_or_404(id)
+    sale = db.get_or_404(Sale, id)
     
     try:
         # عكس القيد المحاسبي قبل الأرشفة (إذا لم تكن ملغاة)

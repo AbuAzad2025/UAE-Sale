@@ -23,7 +23,7 @@ class ChequeAccountingIntegration:
     @staticmethod
     def receive_cheque(cheque_id, received_by=None):
         """تسجيل استلام شيك وارد مع القيود المحاسبية"""
-        cheque = Cheque.query.get_or_404(cheque_id)
+        cheque = db.get_or_404(Cheque, cheque_id)
         
         if cheque.cheque_type != 'incoming':
             raise ValueError("هذا الشيك ليس شيك وارد")
@@ -77,7 +77,7 @@ class ChequeAccountingIntegration:
     @staticmethod
     def issue_cheque(cheque_id, issued_by=None):
         """تسجيل إصدار شيك صادر مع القيود المحاسبية"""
-        cheque = Cheque.query.get_or_404(cheque_id)
+        cheque = db.get_or_404(Cheque, cheque_id)
         
         if cheque.cheque_type != 'outgoing':
             raise ValueError("هذا الشيك ليس شيك صادر")
@@ -131,7 +131,7 @@ class ChequeAccountingIntegration:
     @staticmethod
     def clear_cheque(cheque_id, cleared_by=None, bank_charges=0, exchange_gain_loss=0):
         """تسجيل صرف شيك مع القيود المحاسبية"""
-        cheque = Cheque.query.get_or_404(cheque_id)
+        cheque = db.get_or_404(Cheque, cheque_id)
         
         if cheque.status not in ['received', 'issued']:
             raise ValueError("الشيك ليس في حالة يمكن صرفه")
@@ -256,7 +256,7 @@ class ChequeAccountingIntegration:
     @staticmethod
     def bounce_cheque(cheque_id, bounced_by=None, bounce_reason=None):
         """تسجيل ارتداد شيك مع القيود المحاسبية"""
-        cheque = Cheque.query.get_or_404(cheque_id)
+        cheque = db.get_or_404(Cheque, cheque_id)
         
         if cheque.status not in ['received', 'issued']:
             raise ValueError("الشيك ليس في حالة يمكن ارتداده")
@@ -331,7 +331,7 @@ class ChequeAccountingIntegration:
     @staticmethod
     def get_cheque_accounting_summary(cheque_id):
         """الحصول على ملخص محاسبي للشيك"""
-        cheque = Cheque.query.get_or_404(cheque_id)
+        cheque = db.get_or_404(Cheque, cheque_id)
         
         summary = {
             'cheque_info': {
@@ -348,7 +348,7 @@ class ChequeAccountingIntegration:
         
         # جمع القيود المحاسبية المرتبطة
         if cheque.gl_journal_entry_id:
-            entry = GLJournalEntry.query.get(cheque.gl_journal_entry_id)
+            entry = db.session.get(GLJournalEntry, cheque.gl_journal_entry_id)
             if entry:
                 summary['journal_entries'].append({
                     'type': 'receive' if cheque.cheque_type == 'incoming' else 'issue',
@@ -358,7 +358,7 @@ class ChequeAccountingIntegration:
                 })
         
         if cheque.gl_clearing_entry_id:
-            entry = GLJournalEntry.query.get(cheque.gl_clearing_entry_id)
+            entry = db.session.get(GLJournalEntry, cheque.gl_clearing_entry_id)
             if entry:
                 summary['journal_entries'].append({
                     'type': 'clear',
@@ -368,7 +368,7 @@ class ChequeAccountingIntegration:
                 })
         
         if cheque.gl_bounce_entry_id:
-            entry = GLJournalEntry.query.get(cheque.gl_bounce_entry_id)
+            entry = db.session.get(GLJournalEntry, cheque.gl_bounce_entry_id)
             if entry:
                 summary['journal_entries'].append({
                     'type': 'bounce',

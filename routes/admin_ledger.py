@@ -120,7 +120,7 @@ def add_account():
             # حساب المستوى
             level = 0
             if parent_id:
-                parent = GLAccount.query.get(parent_id)
+                parent = db.session.get(GLAccount, parent_id)
                 level = parent.level + 1 if parent else 0
             
             account = GLAccount(
@@ -162,7 +162,7 @@ def add_account():
 @admin_required
 def edit_account(id):
     """تعديل حساب محاسبي"""
-    account = GLAccount.query.get_or_404(id)
+    account = db.get_or_404(GLAccount, id)
     
     if request.method == 'POST':
         try:
@@ -178,7 +178,7 @@ def edit_account(id):
             
             # حساب المستوى
             if account.parent_id:
-                parent = GLAccount.query.get(account.parent_id)
+                parent = db.session.get(GLAccount, account.parent_id)
                 account.level = parent.level + 1 if parent else 0
             else:
                 account.level = 0
@@ -201,7 +201,7 @@ def edit_account(id):
 @admin_required
 def delete_account(id):
     """حذف حساب محاسبي"""
-    account = GLAccount.query.get_or_404(id)
+    account = db.get_or_404(GLAccount, id)
     
     try:
         # التحقق من وجود قيود مرتبطة
@@ -255,7 +255,7 @@ def journals_management():
 @admin_required
 def view_journal(id):
     """عرض تفاصيل قيد محاسبي"""
-    entry = GLJournalEntry.query.get_or_404(id)
+    entry = db.get_or_404(GLJournalEntry, id)
     return render_template('admin/ledger/view_journal.html', entry=entry)
 
 @admin_ledger_bp.route('/journals/<int:id>/reverse', methods=['POST'])
@@ -263,7 +263,7 @@ def view_journal(id):
 @admin_required
 def reverse_journal(id):
     """عكس قيد محاسبي"""
-    entry = GLJournalEntry.query.get_or_404(id)
+    entry = db.get_or_404(GLJournalEntry, id)
     
     try:
         reversed_entry = entry.reverse_entry()
@@ -403,7 +403,7 @@ def settings():
 @admin_required
 def api_account_balance(account_id):
     """API للحصول على رصيد حساب"""
-    account = GLAccount.query.get_or_404(account_id)
+    account = db.get_or_404(GLAccount, account_id)
     balance = account.get_balance()
     
     return jsonify({
@@ -418,7 +418,7 @@ def api_account_balance(account_id):
 @admin_required
 def api_account_statement(account_id):
     """API لكشف حساب"""
-    account = GLAccount.query.get_or_404(account_id)
+    account = db.get_or_404(GLAccount, account_id)
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
     

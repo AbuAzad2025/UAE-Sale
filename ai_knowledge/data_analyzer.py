@@ -19,7 +19,7 @@ class DataAnalyzer:
         try:
             from models import Customer, Sale
             
-            customer = Customer.query.get(customer_id)
+            customer = db.session.get(Customer, customer_id)
             if not customer:
                 return {'success': False, 'error': 'العميل غير موجود'}
             
@@ -176,7 +176,7 @@ class DataAnalyzer:
             
             if product_id:
                 # تحليل منتج محدد
-                product = Product.query.get(product_id)
+                product = db.session.get(Product, product_id)
                 if not product:
                     return {'success': False, 'error': 'المنتج غير موجود'}
                 
@@ -265,7 +265,7 @@ class DataAnalyzer:
             
             if customer_id:
                 # تحليل عميل محدد
-                customer = Customer.query.get(customer_id)
+                customer = db.session.get(Customer, customer_id)
                 if not customer:
                     return {'success': False, 'error': 'العميل غير موجود'}
                 

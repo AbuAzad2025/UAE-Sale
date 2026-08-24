@@ -364,7 +364,7 @@ def edit_package(package_id):
         flash('❌ يجب فتح الخزينة أولاً', 'warning')
         return redirect(url_for('payment_vault.unlock_vault'))
     
-    package = Package.query.get_or_404(package_id)
+    package = db.get_or_404(Package, package_id)
     
     if request.method == 'POST':
         try:
@@ -435,7 +435,7 @@ def delete_package(package_id):
     if not vault or vault.is_locked:
         return jsonify({'success': False, 'error': 'الخزينة مقفلة'}), 403
     
-    package = Package.query.get_or_404(package_id)
+    package = db.get_or_404(Package, package_id)
     
     try:
         db.session.delete(package)
@@ -576,7 +576,7 @@ def decrypt_card(card_id):
     if not vault or vault.is_locked:
         return jsonify({'success': False, 'error': 'الخزينة مقفلة'}), 403
     
-    card = CardPayment.query.get_or_404(card_id)
+    card = db.get_or_404(CardPayment, card_id)
     decrypted = card.decrypt_card_data()
     
     if decrypted:
@@ -785,7 +785,7 @@ def api_create_purchase():
         company_name = sanitize(data.get('company_name', ''), 100)
         
         # التحقق من وجود الباقة
-        package = Package.query.get(data['package_id'])
+        package = db.session.get(Package, data['package_id'])
         if not package or not package.is_active:
             return jsonify({'success': False, 'error': 'الباقة غير متاحة'}), 404
         
@@ -1084,7 +1084,7 @@ def purchase_detail(id):
     if not vault or vault.is_locked:
         return redirect(url_for('payment_vault.unlock_vault'))
     
-    purchase = PackagePurchase.query.get_or_404(id)
+    purchase = db.get_or_404(PackagePurchase, id)
     return render_template('payment_vault/purchase_detail.html', purchase=purchase)
 
 
@@ -1095,7 +1095,7 @@ def activate_purchase(id):
     if not current_user.is_owner:
         return redirect(url_for('main.dashboard'))
     
-    purchase = PackagePurchase.query.get_or_404(id)
+    purchase = db.get_or_404(PackagePurchase, id)
     
     try:
         purchase.activation_status = 'activated'
@@ -1127,7 +1127,7 @@ def api_package_stats(package_id):
     if not current_user.is_owner:
         return jsonify({'error': 'Unauthorized'}), 403
     
-    package = Package.query.get_or_404(package_id)
+    package = db.get_or_404(Package, package_id)
     purchases = PackagePurchase.query.filter_by(package_id=package_id).all()
     
     stats = {
@@ -1148,7 +1148,7 @@ def toggle_package_status(package_id):
     if not current_user.is_owner:
         return jsonify({'error': 'Unauthorized'}), 403
     
-    package = Package.query.get_or_404(package_id)
+    package = db.get_or_404(Package, package_id)
     package.is_active = not package.is_active
     
     try:
@@ -1173,7 +1173,7 @@ def donation_detail(donation_id):
         flash('❌ يجب فتح الخزينة أولاً', 'warning')
         return redirect(url_for('payment_vault.unlock_vault'))
     
-    donation = Donation.query.get_or_404(donation_id)
+    donation = db.get_or_404(Donation, donation_id)
     return render_template('payment_vault/donation_detail.html', donation=donation)
 
 
@@ -1185,7 +1185,7 @@ def approve_donation(donation_id):
         flash('❌ غير مصرح', 'danger')
         return redirect(url_for('main.dashboard'))
     
-    donation = Donation.query.get_or_404(donation_id)
+    donation = db.get_or_404(Donation, donation_id)
     
     try:
         donation.status = 'completed'
@@ -1214,7 +1214,7 @@ def reject_donation(donation_id):
         flash('❌ غير مصرح', 'danger')
         return redirect(url_for('main.dashboard'))
     
-    donation = Donation.query.get_or_404(donation_id)
+    donation = db.get_or_404(Donation, donation_id)
     
     try:
         donation.status = 'failed'

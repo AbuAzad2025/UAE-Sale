@@ -60,5 +60,5 @@ def api_create_return():
 @returns_bp.route('/view/<int:id>')
 @login_required
 def view(id):
-    product_return = ProductReturn.query.get_or_404(id)
+    product_return = db.get_or_404(ProductReturn, id)
     return render_template('returns/view.html', product_return=product_return)

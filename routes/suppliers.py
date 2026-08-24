@@ -131,7 +131,7 @@ def create():
 @permission_required('manage_suppliers')
 def view(id):
     """عرض تفاصيل المورد"""
-    supplier = Supplier.query.get_or_404(id)
+    supplier = db.get_or_404(Supplier, id)
     
     # آخر المشتريات
     recent_purchases = supplier.purchases.filter_by(status='confirmed').order_by(
@@ -160,7 +160,7 @@ def view(id):
 @permission_required('manage_suppliers')
 def edit(id):
     """تعديل المورد"""
-    supplier = Supplier.query.get_or_404(id)
+    supplier = db.get_or_404(Supplier, id)
     
     if request.method == 'POST':
         try:
@@ -207,7 +207,7 @@ def edit(id):
 @permission_required('manage_suppliers')
 def delete(id):
     """حذف (إلغاء تفعيل) المورد"""
-    supplier = Supplier.query.get_or_404(id)
+    supplier = db.get_or_404(Supplier, id)
     
     try:
         # Check for related records preventing deletion
@@ -243,7 +243,7 @@ def delete(id):
 @admin_required
 def statement(id):
     """كشف حساب المورد"""
-    supplier = Supplier.query.get_or_404(id)
+    supplier = db.get_or_404(Supplier, id)
     
     purchases = supplier.purchases.filter_by(status='confirmed').order_by(
         Purchase.purchase_date.desc()

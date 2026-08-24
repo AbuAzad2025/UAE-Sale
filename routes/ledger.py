@@ -26,7 +26,7 @@ def index():
 @login_required
 @permission_required('view_ledger')
 def account_ledger(id):
-    account = GLAccount.query.get_or_404(id)
+    account = db.get_or_404(GLAccount, id)
     
     date_from = request.args.get('date_from', type=str)
     date_to = request.args.get('date_to', type=str)
@@ -380,7 +380,7 @@ def manual_entry():
 @permission_required('view_ledger')
 def view_entry(id):
     """عرض تفاصيل القيد"""
-    entry = GLJournalEntry.query.get_or_404(id)
+    entry = db.get_or_404(GLJournalEntry, id)
     lines = entry.lines.all()
     
     return render_template('ledger/view_entry.html', entry=entry, lines=lines)
@@ -392,7 +392,7 @@ def view_entry(id):
 def reverse_entry(id):
     """عكس القيد"""
     try:
-        entry = GLJournalEntry.query.get_or_404(id)
+        entry = db.get_or_404(GLJournalEntry, id)
         
         description = request.form.get('description')
         reversed_entry = entry.reverse_entry(description)
@@ -618,7 +618,7 @@ def admin_add_account():
             # حساب المستوى
             level = 0
             if parent_id:
-                parent = GLAccount.query.get(parent_id)
+                parent = db.session.get(GLAccount, parent_id)
                 level = parent.level + 1 if parent else 0
             
             account = GLAccount(

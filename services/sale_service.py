@@ -63,7 +63,7 @@ class SaleService:
                 warehouse_id = warehouse.id
         else:
             # التحقق من صحة المستودع المحدد
-            warehouse = Warehouse.query.get(warehouse_id)
+            warehouse = db.session.get(Warehouse, warehouse_id)
             if not warehouse:
                 raise ValueError('⚠️ المستودع المحدد غير موجود.\n💡 اختر مستودع موجود من القائمة.')
             if not warehouse.is_active:

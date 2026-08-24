@@ -28,7 +28,7 @@ class ReturnService:
         """
         try:
             # 1. Validate Sale
-            sale = Sale.query.get(sale_id)
+            sale = db.session.get(Sale, sale_id)
             if not sale:
                 raise ValueError(f"Sale with ID {sale_id} not found.")
             
@@ -67,7 +67,7 @@ class ReturnService:
                 if quantity <= 0:
                     continue
                 
-                sale_line = SaleLine.query.get(sale_line_id)
+                sale_line = db.session.get(SaleLine, sale_line_id)
                 if not sale_line:
                     raise ValueError(f"Sale line {sale_line_id} not found.")
                 
@@ -122,7 +122,7 @@ class ReturnService:
                 # Prepare COGS Reversal GL Data (Credit COGS, Debit Inventory)
                 # Need Cost Price. 
                 # Ideally, we track cost at time of sale. If not available, use current cost.
-                product = Product.query.get(sale_line.product_id)
+                product = db.session.get(Product, sale_line.product_id)
                 cost_price = product.cost_price if product else Decimal('0')
                 cost_value = (quantity * cost_price).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
                 

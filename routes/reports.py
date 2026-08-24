@@ -535,7 +535,7 @@ def entity_report_fragment(type, id):
         }
         
         if type == 'supplier':
-            entity = Supplier.query.get_or_404(id)
+            entity = db.get_or_404(Supplier, id)
             context['entity'] = entity
             context['type_label'] = 'مورد'
             
@@ -584,7 +584,7 @@ def entity_report_fragment(type, id):
             } for p in payments]
             
         else: # Customer/Partner/Merchant
-            entity = Customer.query.get_or_404(id)
+            entity = db.get_or_404(Customer, id)
             context['entity'] = entity
             context['type_label'] = {
                 'partner': 'شريك',

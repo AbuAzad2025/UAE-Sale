@@ -94,7 +94,7 @@ class ApprovalService:
         If all levels are approved, the request is fully approved.
         Returns (success, message).
         """
-        request = ApprovalRequest.query.get(request_id)
+        request = db.session.get(ApprovalRequest, request_id)
         if not request:
             return False, 'طلب الموافقة غير موجود'
         if request.status != 'pending':
@@ -151,7 +151,7 @@ class ApprovalService:
     @staticmethod
     def reject(request_id, approver_id, notes=None):
         """Reject an approval request at any level."""
-        request = ApprovalRequest.query.get(request_id)
+        request = db.session.get(ApprovalRequest, request_id)
         if not request:
             return False, 'طلب الموافقة غير موجود'
         if request.status != 'pending':
@@ -188,7 +188,7 @@ class ApprovalService:
     @staticmethod
     def cancel(request_id, user_id):
         """Cancel a pending request (requester or admin only)."""
-        request = ApprovalRequest.query.get(request_id)
+        request = db.session.get(ApprovalRequest, request_id)
         if not request:
             return False, 'طلب الموافقة غير موجود'
         if request.status != 'pending':

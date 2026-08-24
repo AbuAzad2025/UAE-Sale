@@ -24,7 +24,7 @@ class BankReconciliationService:
         """
         from flask_login import current_user
         
-        bank_account = GLAccount.query.get_or_404(bank_account_id)
+        bank_account = db.get_or_404(GLAccount, bank_account_id)
         
         # حساب رصيد الدفاتر
         from services.gl_service import GLService
@@ -113,7 +113,7 @@ class BankReconciliationService:
         """
         إضافة مصروف بنكي
         """
-        reconciliation = BankReconciliation.query.get_or_404(reconciliation_id)
+        reconciliation = db.get_or_404(BankReconciliation, reconciliation_id)
         
         if reconciliation.status != 'draft':
             raise ValueError('لا يمكن تعديل مطابقة معتمدة')
@@ -138,7 +138,7 @@ class BankReconciliationService:
         """
         إضافة فائدة بنكية
         """
-        reconciliation = BankReconciliation.query.get_or_404(reconciliation_id)
+        reconciliation = db.get_or_404(BankReconciliation, reconciliation_id)
         
         if reconciliation.status != 'draft':
             raise ValueError('لا يمكن تعديل مطابقة معتمدة')
@@ -163,7 +163,7 @@ class BankReconciliationService:
         """
         إكمال المطابقة وإنشاء القيود التسوية
         """
-        reconciliation = BankReconciliation.query.get_or_404(reconciliation_id)
+        reconciliation = db.get_or_404(BankReconciliation, reconciliation_id)
         
         if reconciliation.status != 'draft':
             raise ValueError('المطابقة معتمدة مسبقاً')

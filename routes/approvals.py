@@ -38,7 +38,7 @@ def index():
 @approvals_bp.route('/<int:request_id>')
 @login_required
 def view(request_id):
-    req = ApprovalRequest.query.get_or_404(request_id)
+    req = db.get_or_404(ApprovalRequest, request_id)
     workflow = req.workflow
     levels = ApprovalLevel.query.filter_by(request_id=request_id).order_by(ApprovalLevel.level).all()
     return render_template('approvals/view.html',
@@ -114,7 +114,7 @@ def new_workflow():
 @login_required
 @permission_required('manage_settings')
 def edit_workflow(wf_id):
-    wf = ApprovalWorkflow.query.get_or_404(wf_id)
+    wf = db.get_or_404(ApprovalWorkflow, wf_id)
     if request.method == 'POST':
         wf.name = request.form.get('name', '').strip()
         wf.name_ar = request.form.get('name_ar', '').strip() or None

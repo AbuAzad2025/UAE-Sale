@@ -25,8 +25,8 @@ class QuotationService:
         from models import Customer, User, Product, Warehouse
         from services.currency_service import CurrencyService
 
-        customer = Customer.query.get_or_404(customer_id)
-        seller = User.query.get_or_404(seller_id)
+        customer = db.get_or_404(Customer, customer_id)
+        seller = db.get_or_404(User, seller_id)
 
         exchange_rate = CurrencyService.get_exchange_rate(currency, 'AED', user_rate=user_exchange_rate)
         today = date.today()
@@ -49,7 +49,7 @@ class QuotationService:
         db.session.flush()
 
         for ld in lines_data:
-            product = Product.query.get(ld['product_id'])
+            product = db.session.get(Product, ld['product_id'])
             if not product:
                 continue
             line = QuotationLine(
@@ -72,18 +72,18 @@ class QuotationService:
         from models import Sale, SaleLine
         from services.sale_service import SaleService
 
-        q = Quotation.query.get_or_404(quotation_id)
+        q = db.get_or_404(Quotation, quotation_id)
         if q.status not in ('accepted', 'sent', 'draft'):
             raise ValueError('لا يمكن تحويل فاتورة بحالة: ' + q.status_ar)
         if q.is_expired:
             raise ValueError('عرض الأسعار منتهي الصلاحية')
 
         from models import Customer, User, Product as Prod
-        customer = Customer.query.get(q.customer_id)
-        seller = User.query.get(q.seller_id)
+        customer = db.session.get(Customer, q.customer_id)
+        seller = db.session.get(User, q.seller_id)
         lines_data = []
         for l in q.lines:
-            product = Prod.query.get(l.product_id)
+            product = db.session.get(Prod, l.product_id)
             if product:
                 lines_data.append({
                     'product': product,
@@ -116,7 +116,7 @@ class PurchaseOrderService:
                   expected_delivery=None, notes=None, tax_rate=0):
         from models import Supplier, Product
 
-        supplier = Supplier.query.get_or_404(supplier_id)
+        supplier = db.get_or_404(Supplier, supplier_id)
 
         po = PurchaseOrder(
             po_number=generate_number('PO', PurchaseOrder, 'po_number'),
@@ -132,7 +132,7 @@ class PurchaseOrderService:
         db.session.flush()
 
         for ld in lines_data:
-            product = Product.query.get(ld['product_id'])
+            product = db.session.get(Product, ld['product_id'])
             if not product:
                 continue
             line = PurchaseOrderLine(
@@ -151,7 +151,7 @@ class PurchaseOrderService:
 
     @staticmethod
     def approve_po(po_id, approver_id):
-        po = PurchaseOrder.query.get_or_404(po_id)
+        po = db.get_or_404(PurchaseOrder, po_id)
         if po.status != 'submitted':
             raise ValueError('يمكن اعتماد أمر شراء في حالة "مقدمة" فقط')
         po.status = 'approved'
@@ -168,7 +168,7 @@ class PurchaseOrderService:
         from services.stock_service import StockService
         from decimal import Decimal
 
-        po = PurchaseOrder.query.get_or_404(po_id)
+        po = db.get_or_404(PurchaseOrder, po_id)
         if po.status not in ('approved', 'partially_received'):
             raise ValueError('يمكن استلام أمر شراء معتمد فقط')
 
@@ -237,7 +237,7 @@ class FiscalPeriodService:
 
     @staticmethod
     def close_period(period_id, user_id):
-        fp = FiscalPeriod.query.get_or_404(period_id)
+        fp = db.get_or_404(FiscalPeriod, period_id)
         fp.close(user_id)
         db.session.commit()
         return fp
@@ -271,8 +271,8 @@ class StockTransferService:
         if from_warehouse_id == to_warehouse_id:
             raise ValueError('لا يمكن النقل لنفس المستودع')
 
-        Warehouse.query.get_or_404(from_warehouse_id)
-        Warehouse.query.get_or_404(to_warehouse_id)
+        db.get_or_404(Warehouse, from_warehouse_id)
+        db.get_or_404(Warehouse, to_warehouse_id)
 
         transfer = StockTransfer(
             transfer_number=generate_number('TRF', StockTransfer, 'transfer_number'),
@@ -302,7 +302,7 @@ class StockTransferService:
         """Receive transfer: deduct from source, add to destination"""
         from services.stock_service import StockService
 
-        transfer = StockTransfer.query.get_or_404(transfer_id)
+        transfer = db.get_or_404(StockTransfer, transfer_id)
         if transfer.status != 'in_transit':
             raise ValueError('يمكن استلام نقل في حالة "في الطريق" فقط')
 
@@ -335,7 +335,7 @@ class StockTakeService:
         from models import Product, Warehouse
         from services.stock_service import StockService
 
-        wh = Warehouse.query.get_or_404(warehouse_id)
+        wh = db.get_or_404(Warehouse, warehouse_id)
         st = StockTake(
             stocktake_number=generate_number('STK', StockTake, 'stocktake_number'),
             warehouse_id=warehouse_id,
@@ -362,7 +362,7 @@ class StockTakeService:
 
     @staticmethod
     def complete_stocktake(stocktake_id):
-        st = StockTake.query.get_or_404(stocktake_id)
+        st = db.get_or_404(StockTake, stocktake_id)
         st.status = 'completed'
         st.completed_at = datetime.now(timezone.utc)
         for item in st.items:
@@ -375,7 +375,7 @@ class StockTakeService:
         """Apply variances to stock"""
         from services.stock_service import StockService
 
-        st = StockTake.query.get_or_404(stocktake_id)
+        st = db.get_or_404(StockTake, stocktake_id)
         if st.status != 'completed':
             raise ValueError('يجب إكمال الجرد أولاً')
 
@@ -509,8 +509,8 @@ class EInvoiceService:
     def create_einvoice(sale_id):
         from models import Sale, Customer
 
-        sale = Sale.query.get_or_404(sale_id)
-        customer = Customer.query.get(sale.customer_id)
+        sale = db.get_or_404(Sale, sale_id)
+        customer = db.session.get(Customer, sale.customer_id)
 
         einv = EInvoice(
             invoice_number=f'EI-{sale.sale_number}',

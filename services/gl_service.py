@@ -343,7 +343,7 @@ class GLService:
         """كشف حساب تفصيلي"""
         from sqlalchemy import func
         
-        account = GLAccount.query.get_or_404(account_id)
+        account = db.get_or_404(GLAccount, account_id)
         
         query = GLJournalLine.query.filter_by(account_id=account_id).join(GLJournalEntry)
         

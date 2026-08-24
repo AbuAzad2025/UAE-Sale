@@ -1,6 +1,7 @@
 from celery import Celery
 from flask import current_app
 import os
+from extensions import db
 
 
 celery = Celery(
@@ -38,7 +39,7 @@ def send_invoice_email(sale_id: int):
     
     app = create_app()
     with app.app_context():
-        sale = Sale.query.get(sale_id)
+        sale = db.session.get(Sale, sale_id)
         if sale and sale.customer and sale.customer.email:
             msg = Message(
                 subject=f'فاتورة رقم {sale.sale_number}',

@@ -152,7 +152,7 @@ def receipts():
 def view_payment(id):
     """عرض سند صرف - يستخدم نفس قالب سندات القبض"""
     from models import Payment
-    payment = Payment.query.get_or_404(id)
+    payment = db.get_or_404(Payment, id)
     return render_template('payments/view_receipt.html', receipt=payment, is_payment=True)
 
 
@@ -162,7 +162,7 @@ def view_payment(id):
 def print_payment(id):
     """طباعة سند صرف - يستخدم نفس قالب طباعة سندات القبض"""
     from models import Payment
-    payment = Payment.query.get_or_404(id)
+    payment = db.get_or_404(Payment, id)
     from flask import current_app
     company = {
         'name_ar': current_app.config.get('COMPANY_NAME_AR'),
@@ -180,7 +180,7 @@ def archive_payment(id):
     from models import Payment
     from services.archive_service import ArchiveService
     
-    payment = Payment.query.get_or_404(id)
+    payment = db.get_or_404(Payment, id)
     
     try:
         archive_service = ArchiveService()
@@ -240,7 +240,7 @@ def create_from_sale(sale_id):
     """إنشاء سند دفع من فاتورة بيع معينة"""
     from models import Sale
     
-    sale = Sale.query.get_or_404(sale_id)
+    sale = db.get_or_404(Sale, sale_id)
     
     if request.method == 'POST':
         try:
@@ -394,7 +394,7 @@ def create_voucher_submit():
                 amount_decimal = Decimal(str(amount))
                 amount_aed = amount_decimal * exchange_rate
                 
-                supplier = Supplier.query.get(party_id)
+                supplier = db.session.get(Supplier, party_id)
                 payment = Payment(
                     payment_number=generate_number('PAY', Payment, 'payment_number'), # ربما نحتاج تسلسل منفصل؟
                     payment_type='refund', # استرداد
@@ -429,7 +429,7 @@ def create_voucher_submit():
             
             if party_type == 'supplier':
                 # دفع لمورد (المنطق المعتاد)
-                supplier = Supplier.query.get(party_id)
+                supplier = db.session.get(Supplier, party_id)
                 payment = Payment(
                     payment_number=generate_number('PAY', Payment, 'payment_number'),
                     payment_type='bill_payment',
@@ -510,7 +510,7 @@ def create_voucher_submit():
             elif party_type == 'customer':
                 # دفع لعميل (استرداد أو تسوية أو سحب شريك)
                 # Payment model has customer_id field
-                customer = Customer.query.get(party_id)
+                customer = db.session.get(Customer, party_id)
                 payment = Payment(
                     payment_number=generate_number('PAY', Payment, 'payment_number'),
                     payment_type='refund',
@@ -611,7 +611,7 @@ def create_receipt():
 @login_required
 @permission_required('manage_payments')
 def view_receipt(id):
-    receipt = Receipt.query.get_or_404(id)
+    receipt = db.get_or_404(Receipt, id)
     
     if current_user.is_seller() and not current_user.is_owner and receipt.user_id != current_user.id:
         flash('ليس لديك صلاحية لعرض هذا السند', 'danger')
@@ -624,7 +624,7 @@ def view_receipt(id):
 @login_required
 @permission_required('manage_payments')
 def print_receipt(id):
-    receipt = Receipt.query.get_or_404(id)
+    receipt = db.get_or_404(Receipt, id)
     
     if current_user.is_seller() and not current_user.is_owner and receipt.user_id != current_user.id:
         flash('ليس لديك صلاحية لطباعة هذا السند', 'danger')
@@ -720,7 +720,7 @@ def archive_receipt(id):
     """أرشفة سند قبض"""
     from services.archive_service import ArchiveService
     
-    receipt = Receipt.query.get_or_404(id)
+    receipt = db.get_or_404(Receipt, id)
     
     try:
         archive_service = ArchiveService()
@@ -762,7 +762,7 @@ def delete_receipt(id):
     from models import Receipt, Cheque
     from services.archive_service import ArchiveService
     
-    receipt = Receipt.query.get_or_404(id)
+    receipt = db.get_or_404(Receipt, id)
     
     # التحقق من الارتباطات
     has_links = False
@@ -777,7 +777,7 @@ def delete_receipt(id):
         # 1. عكس التخصيصات (إعادة الرصيد للفاتورة)
         if receipt.source_type == 'sale' and receipt.source_id:
             from models import Sale
-            sale = Sale.query.get(receipt.source_id)
+            sale = db.session.get(Sale, receipt.source_id)
             if sale:
                 sale.paid_amount -= receipt.amount
                 sale.paid_amount_aed -= receipt.amount_aed
@@ -853,7 +853,7 @@ def delete_payment(id):
     from models import Payment, Cheque
     from services.archive_service import ArchiveService
 
-    payment = Payment.query.get_or_404(id)
+    payment = db.get_or_404(Payment, id)
     
     # التحقق من الارتباطات
     has_links = False
@@ -920,8 +920,8 @@ def create_payment(purchase_id):
     from utils.helpers import generate_number
     from sqlalchemy import func
     
-    purchase = Purchase.query.get_or_404(purchase_id)
-    supplier = Supplier.query.get(purchase.supplier_id) if purchase.supplier_id else None
+    purchase = db.get_or_404(Purchase, purchase_id)
+    supplier = db.session.get(Supplier, purchase.supplier_id) if purchase.supplier_id else None
     
     # حساب المبلغ المدفوع من جدول payments
     paid_amount = db.session.query(func.sum(Payment.amount_aed)).filter(
@@ -1068,7 +1068,7 @@ def create_payment(purchase_id):
 @payments_bp.route('/api/customer-balance/<int:customer_id>')
 @login_required
 def api_customer_balance(customer_id):
-    customer = Customer.query.get_or_404(customer_id)
+    customer = db.get_or_404(Customer, customer_id)
     
     balance_aed = PaymentService.get_customer_balance_aed(customer)
     unpaid_sales = PaymentService.get_unpaid_sales(customer)

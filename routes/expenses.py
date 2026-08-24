@@ -181,7 +181,7 @@ def create():
 @login_required
 @permission_required('manage_expenses')
 def view(id):
-    expense = Expense.query.get_or_404(id)
+    expense = db.get_or_404(Expense, id)
     return render_template('expenses/view.html', expense=expense)
 
 
@@ -189,7 +189,7 @@ def view(id):
 @login_required
 @permission_required('manage_expenses')
 def print_expense(id):
-    expense = Expense.query.get_or_404(id)
+    expense = db.get_or_404(Expense, id)
     from flask import current_app
     company = {
         'name_ar': current_app.config.get('COMPANY_NAME_AR'),
@@ -204,7 +204,7 @@ def print_expense(id):
 @permission_required('manage_expenses')
 def edit(id):
     """تعديل مصروف"""
-    expense = Expense.query.get_or_404(id)
+    expense = db.get_or_404(Expense, id)
     categories = ExpenseCategory.query.filter_by(is_active=True).all()
     
     if request.method == 'POST':
@@ -244,7 +244,7 @@ def delete(id):
     from models import Cheque, GLJournalEntry
     from services.archive_service import ArchiveService
     
-    expense = Expense.query.get_or_404(id)
+    expense = db.get_or_404(Expense, id)
     
     # التحقق من الارتباطات
     has_links = False
@@ -403,7 +403,7 @@ def archive(id):
     """أرشفة مصروف"""
     from services.archive_service import ArchiveService
     
-    expense = Expense.query.get_or_404(id)
+    expense = db.get_or_404(Expense, id)
     
     try:
         archive_service = ArchiveService()

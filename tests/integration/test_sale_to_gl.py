@@ -12,6 +12,7 @@ Tests the complete business cycle:
 import pytest
 from decimal import Decimal
 from datetime import datetime, timezone
+from extensions import db
 
 
 @pytest.fixture
@@ -269,7 +270,7 @@ class TestChequeLifecycle:
         assert payment.cheque_id is not None
         assert payment.payment_method == 'cheque'
 
-        cheque = Cheque.query.get(payment.cheque_id)
+        cheque = db.session.get(Cheque, payment.cheque_id)
         assert cheque is not None
         assert cheque.status == 'pending'
         assert cheque.amount_aed == Decimal('100.000')

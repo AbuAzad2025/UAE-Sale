@@ -272,7 +272,7 @@ class RealTimeAccountingListeners:
     def _update_account_balance(account_id):
         """تحديث رصيد الحساب فورياً"""
         try:
-            account = GLAccount.query.get(account_id)
+            account = db.session.get(GLAccount, account_id)
             if account:
                 # حساب الرصيد الجديد
                 new_balance = account.get_balance()

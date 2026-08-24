@@ -82,7 +82,7 @@ def create_department():
 @login_required
 @permission_required('manage_hr')
 def edit_department(id):
-    dept = Department.query.get_or_404(id)
+    dept = db.get_or_404(Department, id)
     if request.method == 'POST':
         try:
             dept.name = request.form.get('name', dept.name)
@@ -237,7 +237,7 @@ def create_employee():
 @login_required
 @permission_required('manage_hr')
 def view_employee(id):
-    emp = Employee.query.get_or_404(id)
+    emp = db.get_or_404(Employee, id)
     recent_leaves = LeaveRequest.query.filter_by(employee_id=id).order_by(
         LeaveRequest.created_at.desc()
     ).limit(5).all()
@@ -255,7 +255,7 @@ def view_employee(id):
 @login_required
 @permission_required('manage_hr')
 def edit_employee(id):
-    emp = Employee.query.get_or_404(id)
+    emp = db.get_or_404(Employee, id)
     if request.method == 'POST':
         try:
             visa_expiry = None
@@ -519,7 +519,7 @@ def generate_payroll():
 @login_required
 @permission_required('manage_hr')
 def view_payslip(id):
-    payslip = Payslip.query.get_or_404(id)
+    payslip = db.get_or_404(Payslip, id)
     return render_template('hr/view_payslip.html', payslip=payslip)
 
 
@@ -528,7 +528,7 @@ def view_payslip(id):
 @permission_required('manage_hr')
 def approve_payslip(id):
     try:
-        payslip = Payslip.query.get_or_404(id)
+        payslip = db.get_or_404(Payslip, id)
         payslip.approve(current_user.id)
         db.session.commit()
         create_audit_log('approve', 'payslips', payslip.id)
@@ -546,7 +546,7 @@ def approve_payslip(id):
 @permission_required('manage_hr')
 def mark_payslip_paid(id):
     try:
-        payslip = Payslip.query.get_or_404(id)
+        payslip = db.get_or_404(Payslip, id)
         payslip.mark_paid()
         db.session.commit()
         create_audit_log('pay', 'payslips', payslip.id)
@@ -566,7 +566,7 @@ def mark_payslip_paid(id):
 @permission_required('manage_hr')
 def api_leave_balance(id):
     """Get employee leave balance"""
-    emp = Employee.query.get_or_404(id)
+    emp = db.get_or_404(Employee, id)
     return jsonify({
         'employee_number': emp.employee_number,
         'annual': emp.annual_leave_balance,

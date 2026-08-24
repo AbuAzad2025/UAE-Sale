@@ -92,7 +92,7 @@ def create_quotation():
 @login_required
 @permission_required('manage_sales')
 def view_quotation(id):
-    q = Quotation.query.get_or_404(id)
+    q = db.get_or_404(Quotation, id)
     return render_template('erp/view_quotation.html', quotation=q)
 
 
@@ -100,7 +100,7 @@ def view_quotation(id):
 @login_required
 @permission_required('manage_sales')
 def update_quotation_status(id):
-    q = Quotation.query.get_or_404(id)
+    q = db.get_or_404(Quotation, id)
     new_status = request.form.get('status')
     if new_status in ('sent', 'accepted', 'rejected'):
         q.status = new_status
@@ -193,7 +193,7 @@ def create_purchase_order():
 @login_required
 @permission_required('manage_purchases')
 def view_purchase_order(id):
-    po = PurchaseOrder.query.get_or_404(id)
+    po = db.get_or_404(PurchaseOrder, id)
     return render_template('erp/view_purchase_order.html', order=po)
 
 
@@ -201,7 +201,7 @@ def view_purchase_order(id):
 @login_required
 @permission_required('manage_purchases')
 def submit_purchase_order(id):
-    po = PurchaseOrder.query.get_or_404(id)
+    po = db.get_or_404(PurchaseOrder, id)
     if po.status == 'draft':
         po.status = 'submitted'
         db.session.commit()
@@ -278,7 +278,7 @@ def close_fiscal_period(id):
 @admin_required
 def reopen_fiscal_period(id):
     """Reopen fiscal period — admin only (owner/super_admin)"""
-    fp = FiscalPeriod.query.get_or_404(id)
+    fp = db.get_or_404(FiscalPeriod, id)
     fp.reopen()
     db.session.commit()
     create_audit_log('reopen', 'fiscal_periods', id)
@@ -340,7 +340,7 @@ def create_stock_transfer():
 @login_required
 @permission_required('manage_warehouse')
 def send_stock_transfer(id):
-    t = StockTransfer.query.get_or_404(id)
+    t = db.get_or_404(StockTransfer, id)
     if t.status == 'pending':
         t.status = 'in_transit'
         db.session.commit()
@@ -389,7 +389,7 @@ def create_stocktake():
 @login_required
 @permission_required('manage_warehouse')
 def update_stocktake_count(id):
-    st = StockTake.query.get_or_404(id)
+    st = db.get_or_404(StockTake, id)
     for item in st.items:
         counted = request.form.get(f'counted_{item.id}', type=float)
         if counted is not None:
@@ -406,7 +406,7 @@ def update_stocktake_count(id):
 @login_required
 @permission_required('manage_warehouse')
 def view_stocktake(id):
-    st = StockTake.query.get_or_404(id)
+    st = db.get_or_404(StockTake, id)
     return render_template('erp/view_stocktake.html', stocktake=st)
 
 
@@ -451,7 +451,7 @@ def generate_dunning():
 @login_required
 @permission_required('manage_payments')
 def send_dunning(id):
-    letter = DunningLetter.query.get_or_404(id)
+    letter = db.get_or_404(DunningLetter, id)
     letter.status = 'sent'
     letter.sent_at = datetime.now(timezone.utc)
     db.session.commit()
@@ -505,7 +505,7 @@ def create_recurring_expense():
 @login_required
 @permission_required('manage_expenses')
 def toggle_recurring_expense(id):
-    re = RecurringExpense.query.get_or_404(id)
+    re = db.get_or_404(RecurringExpense, id)
     re.is_active = not re.is_active
     db.session.commit()
     flash(f'✅ تم {"تفعيل" if re.is_active else "إيقاف"} المصروف الدوري', 'success')
@@ -615,5 +615,5 @@ def generate_einvoice(sale_id):
 @login_required
 @permission_required('manage_sales')
 def view_einvoice(id):
-    einv = EInvoice.query.get_or_404(id)
+    einv = db.get_or_404(EInvoice, id)
     return render_template('erp/view_einvoice.html', einvoice=einv)

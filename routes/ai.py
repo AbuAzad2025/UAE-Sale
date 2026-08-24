@@ -222,7 +222,7 @@ def search_market_price(product_id):
     """API: البحث عن سعر القطعة في الأسواق العالمية"""
     from models import Product
     
-    product = Product.query.get_or_404(product_id)
+    product = db.get_or_404(Product, product_id)
     
     return jsonify({
         'success': True,
@@ -238,7 +238,7 @@ def find_compatible(product_id):
     """API: البحث عن السيارات المتوافقة"""
     from models import Product
     
-    product = Product.query.get_or_404(product_id)
+    product = db.get_or_404(Product, product_id)
     
     return jsonify({
         'success': True,
@@ -407,7 +407,7 @@ def _process_user_action(message, user):
                     new_balance = float(message.strip().replace('درهم', '').strip())
                     
                     from models.customer import Customer
-                    customer = Customer.query.get(data['customer_id'])
+                    customer = db.session.get(Customer, data['customer_id'])
                     customer.balance = new_balance
                     db.session.commit()
                     
@@ -1077,7 +1077,7 @@ def _process_user_action(message, user):
                     db.session.add(sale_item)
                     
                     # تحديث المخزون
-                    product = Product.query.get(data['product_id'])
+                    product = db.session.get(Product, data['product_id'])
                     product.current_stock -= data['quantity']
                     
                     db.session.commit()
@@ -1216,7 +1216,7 @@ def _process_user_action(message, user):
                     db.session.add(payment)
                     
                     # تحديث رصيد العميل
-                    customer = Customer.query.get(data['customer_id'])
+                    customer = db.session.get(Customer, data['customer_id'])
                     customer.balance -= data['amount']
                     
                     db.session.commit()
@@ -1354,7 +1354,7 @@ def _process_user_action(message, user):
                     db.session.add(payment)
                     
                     # تحديث رصيد العميل (زيادة)
-                    customer = Customer.query.get(data['customer_id'])
+                    customer = db.session.get(Customer, data['customer_id'])
                     customer.balance += data['amount']
                     
                     db.session.commit()
@@ -1777,7 +1777,7 @@ def _process_user_action(message, user):
                     )
                     db.session.add(purchase_item)
                     
-                    product = Product.query.get(data['product_id'])
+                    product = db.session.get(Product, data['product_id'])
                     product.current_stock += data['quantity']
                     
                     db.session.commit()
@@ -3027,7 +3027,7 @@ def _process_excel_intelligently(file, warehouse_id, user):
                 'error': 'لم أستطع فهم هيكل الملف. تأكد من وجود أعمدة: الاسم، رقم القطعة، السعر'
             }
         
-        warehouse = Warehouse.query.get(warehouse_id)
+        warehouse = db.session.get(Warehouse, warehouse_id)
         if not warehouse:
             return {'success': False, 'error': f'المستودع #{warehouse_id} غير موجود'}
         

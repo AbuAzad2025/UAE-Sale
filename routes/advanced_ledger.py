@@ -126,7 +126,7 @@ def add_expense_category():
             
             parent_id = request.form.get('parent_id', type=int) if request.form.get('parent_id') else None
             
-            account = GLAccount.query.get(gl_account_id)
+            account = db.session.get(GLAccount, gl_account_id)
             category = ExpenseCategory(
                 name=request.form.get('name'),
                 name_ar=request.form.get('name_ar'),

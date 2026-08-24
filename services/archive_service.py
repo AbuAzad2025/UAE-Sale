@@ -69,7 +69,7 @@ class ArchiveService:
             if not model_class:
                 raise ValueError(f'Model not found: {archived_record.table_name}')
             
-            existing = model_class.query.get(archived_record.record_id)
+            existing = db.session.get(model_class, archived_record.record_id)
             
             if existing:
                 existing.is_active = True

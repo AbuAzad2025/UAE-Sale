@@ -56,7 +56,7 @@ class Query(graphene.ObjectType):
         return [self._convert_sale_to_type(sale) for sale in sales]
     
     def resolve_sale(self, info, id):
-        sale = Sale.query.get(id)
+        sale = db.session.get(Sale, id)
         return self._convert_sale_to_type(sale) if sale else None
     
     def resolve_all_customers(self, info, limit=50):
@@ -64,7 +64,7 @@ class Query(graphene.ObjectType):
         return [self._convert_customer_to_type(customer) for customer in customers]
     
     def resolve_customer(self, info, id):
-        customer = Customer.query.get(id)
+        customer = db.session.get(Customer, id)
         return self._convert_customer_to_type(customer) if customer else None
     
     def resolve_all_products(self, info, limit=50):
@@ -72,7 +72,7 @@ class Query(graphene.ObjectType):
         return [self._convert_product_to_type(product) for product in products]
     
     def resolve_product(self, info, id):
-        product = Product.query.get(id)
+        product = db.session.get(Product, id)
         return self._convert_product_to_type(product) if product else None
     
     def _convert_sale_to_type(self, sale):

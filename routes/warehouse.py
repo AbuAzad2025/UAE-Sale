@@ -70,7 +70,7 @@ def movements():
 
     if warehouse_id:
         query = query.filter_by(warehouse_id=warehouse_id)
-        current_warehouse = Warehouse.query.get(warehouse_id)
+        current_warehouse = db.session.get(Warehouse, warehouse_id)
     else:
         current_warehouse = None
     
@@ -109,7 +109,7 @@ def out_of_stock():
 @login_required
 @permission_required('manage_warehouse')
 def view_warehouse(id):
-    warehouse = Warehouse.query.get_or_404(id)
+    warehouse = db.get_or_404(Warehouse, id)
     
     # Calculate stock for this warehouse from movements
     stock_query = db.session.query(
@@ -122,7 +122,7 @@ def view_warehouse(id):
         # Convert quantity to float for comparison and display, handling None
         qty = float(quantity) if quantity is not None else 0.0
         if qty != 0:
-            product = Product.query.get(product_id)
+            product = db.session.get(Product, product_id)
             if product:
                 warehouse_stock.append({
                     'product': product,
@@ -179,7 +179,7 @@ def create_warehouse():
                                            form_data=request.form)
             
             if parent_id:
-                parent_warehouse = Warehouse.query.get(parent_id)
+                parent_warehouse = db.session.get(Warehouse, parent_id)
                 if not parent_warehouse:
                     flash('المستودع الأب غير موجود', 'warning')
                     return render_template('warehouse/create_warehouse.html',
@@ -237,7 +237,7 @@ def list_warehouses():
 @admin_required
 def delete_warehouse(id):
     """حذف مستودع"""
-    warehouse = Warehouse.query.get_or_404(id)
+    warehouse = db.get_or_404(Warehouse, id)
     
     # Check if main warehouse
     if warehouse.is_main:
@@ -269,7 +269,7 @@ def delete_warehouse(id):
 @permission_required('manage_warehouse')
 def add_stock(product_id):
     try:
-        product = Product.query.get_or_404(product_id)
+        product = db.get_or_404(Product, product_id)
         quantity = Decimal(request.form.get('quantity', 0))
         notes = request.form.get('notes', '').strip()
         warehouse_id = request.form.get('warehouse_id', type=int)

@@ -423,8 +423,8 @@ class AIService:
         """توصية السعر الذكي حسب نوع العميل والسجل"""
         from models import Product, Customer, Sale, SaleLine
         
-        product = Product.query.get(product_id)
-        customer = Customer.query.get(customer_id)
+        product = db.session.get(Product, product_id)
+        customer = db.session.get(Customer, customer_id)
         
         if not product or not customer:
             return None
@@ -459,7 +459,7 @@ class AIService:
         """فحص المخزون وإطلاق تنبيهات"""
         from models import Product
         
-        product = Product.query.get(product_id)
+        product = db.session.get(Product, product_id)
         if not product:
             return None
         
@@ -485,7 +485,7 @@ class AIService:
         def _cached_analysis(cust_id):
             from models import Customer, Sale, Payment
             
-            customer = Customer.query.get(cust_id)
+            customer = db.session.get(Customer, cust_id)
             if not customer:
                 return None
             

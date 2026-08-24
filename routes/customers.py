@@ -90,7 +90,7 @@ def create():
 @login_required
 @permission_required('manage_customers')
 def view(id):
-    customer = Customer.query.get_or_404(id)
+    customer = db.get_or_404(Customer, id)
     
     sales = Sale.query.filter_by(customer_id=id).order_by(Sale.sale_date.desc()).limit(20).all()
     
@@ -109,7 +109,7 @@ def view(id):
 @login_required
 @permission_required('manage_customers')
 def edit(id):
-    customer = Customer.query.get_or_404(id)
+    customer = db.get_or_404(Customer, id)
     
     if request.method == 'POST':
         try:
@@ -142,7 +142,7 @@ def edit(id):
 @login_required
 @permission_required('manage_customers')
 def delete(id):
-    customer = Customer.query.get_or_404(id)
+    customer = db.get_or_404(Customer, id)
     
     try:
         # Check for related records preventing deletion
@@ -167,7 +167,7 @@ def delete(id):
         # Fallback to soft delete if hard delete fails (e.g. other constraints)
         try:
             # Re-fetch customer to ensure it's attached to the new session transaction
-            customer = Customer.query.get(id)
+            customer = db.session.get(Customer, id)
             if customer:
                 customer.is_active = False
                 db.session.add(customer)
@@ -184,7 +184,7 @@ def delete(id):
 @login_required
 @permission_required('manage_customers')
 def statement(id):
-    customer = Customer.query.get_or_404(id)
+    customer = db.get_or_404(Customer, id)
     
     date_from = request.args.get('date_from', type=str)
     date_to = request.args.get('date_to', type=str)
@@ -405,7 +405,7 @@ def api_search():
 @login_required
 def customer_balance(id):
     """Get customer balance and unpaid sales - API for payment receipts"""
-    customer = Customer.query.get_or_404(id)
+    customer = db.get_or_404(Customer, id)
     
     # Get unpaid sales
     unpaid_sales = Sale.query.filter(
@@ -432,7 +432,7 @@ def customer_balance(id):
 @login_required
 @permission_required('manage_customers')
 def customer_sales(id):
-    customer = Customer.query.get_or_404(id)
+    customer = db.get_or_404(Customer, id)
     
     sales = Sale.query.filter_by(
         customer_id=id, 

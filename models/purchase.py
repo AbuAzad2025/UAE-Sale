@@ -51,7 +51,7 @@ class Purchase(TenantScopedMixin, db.Model):
     def warehouse(self):
         if self.warehouse_id:
             from models import Warehouse
-            return Warehouse.query.get(self.warehouse_id)
+            return db.session.get(Warehouse, self.warehouse_id)
         return None
     
     def __repr__(self):

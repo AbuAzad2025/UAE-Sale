@@ -152,7 +152,7 @@ def create():
                     warehouses = Warehouse.query.filter_by(is_active=True).all()
                     return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)
                 
-                warehouse = Warehouse.query.get(warehouse_id)
+                warehouse = db.session.get(Warehouse, warehouse_id)
                 if not warehouse or not warehouse.is_active:
                     flash('⚠️ المستودع المحدد غير صالح', 'warning')
                     warehouses = Warehouse.query.filter_by(is_active=True).all()
@@ -263,7 +263,7 @@ def create():
 @login_required
 @permission_required('manage_products')
 def view(id):
-    product = Product.query.get_or_404(id)
+    product = db.get_or_404(Product, id)
     
     movements = product.stock_movements.order_by(
         db.desc('created_at')
@@ -278,7 +278,7 @@ def view(id):
 @login_required
 @permission_required('manage_products')
 def edit(id):
-    product = Product.query.get_or_404(id)
+    product = db.get_or_404(Product, id)
     from forms.product import ProductForm
     from models import Warehouse
     form = ProductForm(obj=product)
@@ -391,7 +391,7 @@ def edit(id):
 @permission_required('manage_products')
 def delete(id):
     """حذف (إلغاء تفعيل) المنتج - soft delete"""
-    product = Product.query.get_or_404(id)
+    product = db.get_or_404(Product, id)
     
     try:
         # التحقق من وجود عمليات مرتبطة
@@ -540,7 +540,7 @@ def create_category():
 @login_required
 @permission_required('manage_products')
 def adjust_stock(id):
-    product = Product.query.get_or_404(id)
+    product = db.get_or_404(Product, id)
     
     try:
         adjustment_type = request.form.get('adjustment_type')

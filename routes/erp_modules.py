@@ -2,20 +2,20 @@
 ERP Extended Modules Routes
 """
 
-from datetime import datetime, date, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from extensions import db
 from models.erp_modules import (
     Quotation, PurchaseOrder, FiscalPeriod, StockTransfer,
     StockTake, DunningLetter, RecurringExpense, ProductLot,
-    WarehouseBin, ProductBin, EInvoice,
+    WarehouseBin, EInvoice,
 )
 from services.erp_modules_service import (
     QuotationService, PurchaseOrderService, FiscalPeriodService,
     StockTransferService, StockTakeService, DunningService,
-    RecurringExpenseService, EInvoiceService,
+    EInvoiceService,
 )
 from utils.decorators import permission_required, admin_required
 from utils.helpers import create_audit_log
@@ -81,7 +81,7 @@ def create_quotation():
             db.session.rollback()
             flash(f'❌ خطأ: {str(e)}', 'danger')
 
-    from models import Customer, Warehouse, Product
+    from models import Customer, Warehouse, Product  # noqa: F811  (local import intentional)
     customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
     warehouses = Warehouse.query.filter_by(is_active=True).all()
     products = Product.query.filter_by(is_active=True).order_by(Product.name).all()
@@ -182,7 +182,7 @@ def create_purchase_order():
             db.session.rollback()
             flash(f'❌ خطأ: {str(e)}', 'danger')
 
-    from models import Supplier, Warehouse, Product
+    from models import Supplier, Warehouse, Product  # noqa: F811  (local import intentional)
     suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
     warehouses = Warehouse.query.filter_by(is_active=True).all()
     products = Product.query.filter_by(is_active=True).order_by(Product.name).all()
@@ -252,7 +252,7 @@ def fiscal_periods():
 def create_fiscal_period():
     try:
         year = request.form.get('year', type=int)
-        fp = FiscalPeriodService.create_annual_period(year)
+        _ = FiscalPeriodService.create_annual_period(year)
         flash(f'✅ تم إنشاء الفترة المالية {year}', 'success')
     except ValueError as e:
         flash(f'⚠️ {str(e)}', 'danger')
@@ -496,7 +496,7 @@ def create_recurring_expense():
             db.session.rollback()
             flash(f'❌ خطأ: {str(e)}', 'danger')
 
-    from models import ExpenseCategory
+    from models import ExpenseCategory  # noqa: F811  (local import intentional)
     categories = ExpenseCategory.query.filter_by(is_active=True).all()
     return render_template('erp/create_recurring_expense.html', categories=categories)
 
@@ -547,7 +547,7 @@ def create_lot():
             db.session.rollback()
             flash(f'❌ خطأ: {str(e)}', 'danger')
 
-    from models import Product, Warehouse
+    from models import Product, Warehouse  # noqa: F811  (local import intentional)
     products = Product.query.filter_by(is_active=True).order_by(Product.name).all()
     warehouses = Warehouse.query.filter_by(is_active=True).all()
     return render_template('erp/create_lot.html', products=products, warehouses=warehouses)

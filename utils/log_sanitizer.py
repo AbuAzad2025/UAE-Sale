@@ -30,18 +30,18 @@ REDACTED = '***REDACTED***'
 
 def sanitize_log_message(message):
     """Remove sensitive data from a log message string.
-    
+
     Args:
         message: The log message to sanitize
-        
+
     Returns:
         Sanitized message with sensitive data replaced
     """
     if not isinstance(message, str):
         return message
-    
+
     sanitized = message
-    
+
     for pattern in SENSITIVE_PATTERNS:
         if pattern.search(sanitized):
             # For connection strings, mask the password
@@ -55,16 +55,16 @@ def sanitize_log_message(message):
                         if ':' in user_pass:
                             user, _ = user_pass.split(':', 1)
                             sanitized = f'{scheme}://{user}:{REDACTED}@{host}'
-            
+
             # For key=value patterns
             sanitized = pattern.sub(lambda m: f'{m.group(0).split("=")[0].split(":")[0]}={REDACTED}', sanitized)
-    
+
     return sanitized
 
 
 class SanitizeFilter:
     """Logging filter that sanitizes sensitive data from log records."""
-    
+
     def filter(self, record):
         if isinstance(record.msg, str):
             record.msg = sanitize_log_message(record.msg)

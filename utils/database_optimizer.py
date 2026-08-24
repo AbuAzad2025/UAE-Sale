@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 class DatabaseOptimizer:
-    
+
     @staticmethod
     def vacuum_postgres():
         if 'postgresql' in str(db.engine.url):
@@ -20,7 +20,7 @@ class DatabaseOptimizer:
                 logger.error(f"❌ Database optimization failed: {e}")
                 return {'success': False, 'error': str(e)}
         return {'success': False, 'message': 'Only PostgreSQL supported'}
-    
+
     @staticmethod
     def analyze_tables():
         try:
@@ -32,7 +32,7 @@ class DatabaseOptimizer:
         except Exception as e:
             logger.error(f"❌ Table analysis failed: {e}")
             return {'success': False, 'error': str(e)}
-    
+
     @staticmethod
     def get_table_sizes():
         try:
@@ -45,28 +45,27 @@ class DatabaseOptimizer:
                     WHERE n.nspname = 'public' AND c.relkind = 'r'
                     ORDER BY c.relname
                 """))
-                
+
                 tables = []
                 for row in result:
                     tables.append({
                         'table_name': row[0],
                         'row_count': int(row[1] or 0)
                     })
-                
+
                 return {'success': True, 'tables': tables}
-            
+
             return {'success': False, 'message': 'Only PostgreSQL supported'}
-        
+
         except Exception as e:
             return {'success': False, 'error': str(e)}
-    
+
     @staticmethod
     def optimize_all():
         results = {}
-        
+
         results['vacuum'] = DatabaseOptimizer.vacuum_postgres()
         results['analyze'] = DatabaseOptimizer.analyze_tables()
         results['sizes'] = DatabaseOptimizer.get_table_sizes()
-        
-        return results
 
+        return results

@@ -18,19 +18,19 @@ class GLAccount(db.Model):
     level = db.Column(db.Integer, default=0)  # مستوى الحساب في الشجرة
     description = db.Column(db.Text)  # وصف الحساب
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), 
-                          onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
+                           onupdate=lambda: datetime.now(timezone.utc))
 
     parent = db.relationship('GLAccount', remote_side=[id], backref='children')
 
     def __repr__(self):
         return f'<GLAccount {self.code} {self.name}>'
-    
+
     @property
     def full_name(self):
         """الاسم الكامل مع الكود"""
         return f"{self.code} - {self.name_ar or self.name}"
-    
+
     @property
     def type_ar(self):
         """نوع الحساب بالعربي"""
@@ -42,19 +42,19 @@ class GLAccount(db.Model):
             'expense': 'مصروفات'
         }
         return types.get(self.type, self.type)
-    
+
     def get_balance(self):
         """حساب رصيد الحساب بالعملة المحلية (AED)"""
         from sqlalchemy import func
         from models import GLJournalLine
-        
+
         balance_sum = db.session.query(func.sum(GLJournalLine.amount_aed)).filter_by(account_id=self.id).scalar() or 0
-        
+
         if self.type in ['asset', 'expense']:
             return balance_sum
         else:  # liability, equity, revenue
             return -balance_sum
-    
+
     def get_children_recursive(self):
         """الحصول على جميع الحسابات الفرعية بشكل متكرر"""
         result = []
@@ -85,8 +85,8 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
     notes = db.Column(db.Text)  # ملاحظات إضافية
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), 
-                          onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
+                           onupdate=lambda: datetime.now(timezone.utc))
 
     lines = db.relationship('GLJournalLine', back_populates='entry', lazy='dynamic', cascade='all, delete-orphan')
     reversed_entry = db.relationship('GLJournalEntry', remote_side=[id], foreign_keys=[reversed_entry_id])
@@ -94,11 +94,11 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
 
     def __repr__(self):
         return f'<GLEntry {self.entry_number}>'
-    
+
     def is_balanced(self):
         """Check if entry is balanced"""
         return self.total_debit == self.total_credit
-    
+
     @property
     def entry_type_ar(self):
         """نوع القيد بالعربي"""
@@ -110,16 +110,14 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
             'reversing': 'قيد عكسي'
         }
         return types.get(self.entry_type, self.entry_type)
-    
+
     def reverse_entry(self, description=None):
         """عكس القيد (إنشاء قيد معاكس)"""
         if self.is_reversed:
             raise ValueError('هذا القيد تم عكسه مسبقاً')
-        
-        from utils.helpers import generate_number
-        
-        # إنشاء قيد معكوس
-        from utils.helpers import generate_number
+
+
+        # إنشاء قيد معكوس  # noqa: E303
         y = datetime.now().strftime('%Y')
         from models import GLJournalEntry as _JE
         latest = db.session.query(_JE).filter(_JE.entry_number.like(f'JE-{y}-%')).order_by(_JE.entry_number.desc()).first()
@@ -145,7 +143,7 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
         )
         db.session.add(reversed_entry)
         db.session.flush()
-        
+
         # عكس السطور
         for line in self.lines:
             reversed_line = GLJournalLine(
@@ -157,10 +155,10 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
                 amount_aed=-line.amount_aed  # عكس
             )
             db.session.add(reversed_line)
-        
+
         # تحديث القيد الأصلي
         self.is_reversed = True
-        
+
         db.session.flush()
         return reversed_entry
 
@@ -175,7 +173,7 @@ class GLJournalLine(db.Model):
     debit = db.Column(db.Numeric(18, 3), default=0)
     credit = db.Column(db.Numeric(18, 3), default=0)
     amount_aed = db.Column(db.Numeric(18, 3), default=0)
-    
+
     # مركز التكلفة (اختياري)
     cost_center_id = db.Column(db.Integer, db.ForeignKey('cost_centers.id'))
 
@@ -185,5 +183,3 @@ class GLJournalLine(db.Model):
 
     def __repr__(self):
         return f'<GLLine acc={self.account_id} d={self.debit} c={self.credit}>'
-
-

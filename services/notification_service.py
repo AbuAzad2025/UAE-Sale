@@ -3,8 +3,6 @@ Notification Service - خدمة الإشعارات
 إرسال إشعارات فورية للمستخدمين
 """
 from datetime import datetime, timezone
-from extensions import db
-from models import PaymentLog
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,15 +10,15 @@ logger = logging.getLogger(__name__)
 
 class NotificationService:
     """خدمة الإشعارات"""
-    
+
     # مخزن الإشعارات في الذاكرة (يمكن استخدام Redis للإنتاج)
     _notifications = []
-    
+
     @staticmethod
     def send_notification(title, message, notification_type='info', data=None):
         """
         إرسال إشعار
-        
+
         Args:
             title (str): عنوان الإشعار
             message (str): نص الإشعار
@@ -36,17 +34,17 @@ class NotificationService:
             'timestamp': datetime.now(timezone.utc).isoformat(),
             'read': False
         }
-        
+
         NotificationService._notifications.append(notification)
         logger.info(f'📨 Notification sent: {title} - {message}')
-        
+
         return notification
-    
+
     @staticmethod
     def get_recent_notifications(limit=10):
         """جلب آخر الإشعارات"""
         return NotificationService._notifications[-limit:]
-    
+
     @staticmethod
     def mark_as_read(notification_id):
         """تعليم الإشعار كمقروء"""
@@ -54,7 +52,7 @@ class NotificationService:
             if notif['id'] == notification_id:
                 notif['read'] = True
                 break
-    
+
     @staticmethod
     def notify_payment_received(amount, customer_name, payment_method):
         """إشعار باستلام دفعة"""
@@ -64,7 +62,7 @@ class NotificationService:
             notification_type='success',
             data={'amount': amount, 'customer': customer_name}
         )
-    
+
     @staticmethod
     def notify_security_alert(alert_type, details):
         """إشعار بتنبيه أمني"""
@@ -74,7 +72,7 @@ class NotificationService:
             notification_type='danger',
             data={'alert_type': alert_type, 'details': details}
         )
-    
+
     @staticmethod
     def notify_purchase_activated(package_name, customer_name):
         """إشعار بتفعيل باقة"""
@@ -84,7 +82,7 @@ class NotificationService:
             notification_type='info',
             data={'package': package_name, 'customer': customer_name}
         )
-    
+
     @staticmethod
     def notify_auto_approval(count, total_amount):
         """إشعار بالقبول التلقائي"""
@@ -98,23 +96,23 @@ class NotificationService:
 
 class SecurityService:
     """خدمة الأمان والتنبيهات"""
-    
+
     # قائمة سوداء للـ IPs المشبوهة
     _blacklist = set()
-    
+
     # سجل المحاولات الفاشلة
     _failed_attempts = {}
-    
+
     @staticmethod
     def detect_suspicious_activity(ip_address, user_agent, action):
         """
         كشف النشاط المشبوه
-        
+
         Args:
             ip_address (str): عنوان IP
             user_agent (str): User Agent
             action (str): الإجراء المنفذ
-        
+
         Returns:
             dict: نتيجة الفحص
         """
@@ -125,7 +123,7 @@ class SecurityService:
                 f'محاولة وصول من IP محظور: {ip_address}'
             )
             return {'suspicious': True, 'reason': 'blacklisted_ip'}
-        
+
         # فحص المحاولات الفاشلة
         if ip_address in SecurityService._failed_attempts:
             attempts = SecurityService._failed_attempts[ip_address]
@@ -136,7 +134,7 @@ class SecurityService:
                     f'تم حظر IP {ip_address} بسبب محاولات فاشلة متكررة'
                 )
                 return {'suspicious': True, 'reason': 'too_many_failed_attempts'}
-        
+
         # فحص User Agent المشبوه
         suspicious_agents = ['bot', 'crawler', 'scraper', 'scanner']
         if any(agent in user_agent.lower() for agent in suspicious_agents):
@@ -145,9 +143,9 @@ class SecurityService:
                 f'كشف user agent مشبوه: {user_agent[:100]}'
             )
             return {'suspicious': True, 'reason': 'suspicious_user_agent'}
-        
+
         return {'suspicious': False}
-    
+
     @staticmethod
     def log_failed_attempt(ip_address):
         """تسجيل محاولة فاشلة"""
@@ -157,16 +155,16 @@ class SecurityService:
                 'first_attempt': datetime.now(timezone.utc),
                 'last_attempt': None
             }
-        
+
         SecurityService._failed_attempts[ip_address]['count'] += 1
         SecurityService._failed_attempts[ip_address]['last_attempt'] = datetime.now(timezone.utc)
-    
+
     @staticmethod
     def reset_failed_attempts(ip_address):
         """إعادة تعيين المحاولات الفاشلة"""
         if ip_address in SecurityService._failed_attempts:
             del SecurityService._failed_attempts[ip_address]
-    
+
     @staticmethod
     def get_security_status():
         """الحصول على حالة الأمان"""
@@ -178,17 +176,16 @@ class SecurityService:
             ),
             'security_level': SecurityService._calculate_security_level()
         }
-    
+
     @staticmethod
     def _calculate_security_level():
         """حساب مستوى الأمان"""
         failed_count = len(SecurityService._failed_attempts)
         blacklisted = len(SecurityService._blacklist)
-        
+
         if blacklisted > 10 or failed_count > 20:
             return 'low'
         elif blacklisted > 5 or failed_count > 10:
             return 'medium'
         else:
             return 'high'
-

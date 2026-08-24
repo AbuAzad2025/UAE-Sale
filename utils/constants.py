@@ -102,4 +102,3 @@ PERMISSIONS = {
     'manage_hr': {'ar': 'إدارة الموارد البشرية', 'en': 'Manage HR'},
     'view_hr': {'ar': 'عرض الموارد البشرية', 'en': 'View HR'},
 }
-

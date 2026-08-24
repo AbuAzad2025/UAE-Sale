@@ -15,13 +15,13 @@ import math
 
 class SemanticMatcher:
     """محرك التطابق الدلالي"""
-    
+
     def __init__(self):
         """تهيئة النظام مع قاعدة النوايا"""
         self.intents_db = self._build_intents_database()
         self.vocabulary = self._build_vocabulary()
         self.idf_scores = self._calculate_idf()
-    
+
     def _build_intents_database(self) -> Dict[str, List[str]]:
         """بناء قاعدة بيانات النوايا مع أمثلة متعددة - شاملة لكل المعرفة"""
         return {
@@ -57,7 +57,7 @@ class SemanticMatcher:
                 'أضف عميل', 'إنشاء عميل جديد', 'سجل زبون', 'add customer',
                 'new customer', 'عميل جديد', 'زبون جديد'
             ],
-            
+
             # === الضرائب والجمارك ===
             'tax_info': [
                 'ضريبة القيمة المضافة', 'الضريبة في الإمارات', 'VAT', 'tax rate',
@@ -68,7 +68,7 @@ class SemanticMatcher:
                 'جمارك', 'customs', 'تخليص جمركي', 'رسوم جمركية', 'الجمارك في الإمارات',
                 'إجراءات جمركية', 'استيراد', 'تصدير', 'بضائع جمركية', 'تعريفة جمركية'
             ],
-            
+
             # === قطع الغيار والسيارات - تفصيلية ===
             'engine_parts': [
                 'البستم', 'piston', 'الشنابر', 'rings', 'عمود الكرنك', 'crankshaft',
@@ -130,7 +130,7 @@ class SemanticMatcher:
                 'Volvo', 'حفارة', 'excavator', 'لودر', 'loader', 'جريدر', 'grader',
                 'بلدوزر', 'bulldozer', 'Hitachi', 'JCB', 'قطع CAT'
             ],
-            
+
             # === السوق وخدمة العملاء ===
             'market_insights': [
                 'رؤى السوق', 'market insights', 'اتجاهات السوق', 'أسعار السوق',
@@ -152,7 +152,7 @@ class SemanticMatcher:
                 'closing sales', 'إتمام البيع', 'upselling', 'cross selling',
                 'زيادة المبيعات', 'نصائح بيع'
             ],
-            
+
             # === الشحن والجودة ===
             'shipping_laws': [
                 'قوانين الشحن', 'shipping laws', 'إجراءات الشحن', 'شحن دولي',
@@ -162,19 +162,19 @@ class SemanticMatcher:
                 'معايير الجودة', 'quality standards', 'شهادة جودة', 'ISO',
                 'مواصفات', 'specifications', 'اختبار الجودة', 'quality control'
             ],
-            
+
             # === الموردين والمشتريات ===
             'suppliers_info': [
                 'موردين', 'suppliers', 'مورد جديد', 'إضافة مورد', 'الموردين',
                 'شراء من مورد', 'عروض الموردين', 'تقييم المورد'
             ],
-            
+
             # === المصادر والمعرفة ===
             'knowledge_sources': [
                 'مصادر', 'sources', 'مصادر معلومات', 'أين أجد معلومات',
                 'مواقع مفيدة', 'كتب', 'مراجع', 'توصيات للمصادر', 'وين أتعلم'
             ],
-            
+
             # === القوانين المتقدمة (فلسطين، إسرائيل، الخليج) ===
             'palestine_tax_laws': [
                 'ضريبة فلسطين', 'قانون ضريبي فلسطيني', 'ضرائب فلسطينية',
@@ -192,7 +192,7 @@ class SemanticMatcher:
                 'تنظيمات الشحن', 'قوانين الشحن', 'إجراءات الشحن',
                 'shipping regulations', 'import regulations', 'export laws'
             ],
-            
+
             # === المعالجة المتقدمة ===
             'memory_query': [
                 'تذكر', 'remember', 'قلت لي', 'you told me', 'في محادثة سابقة',
@@ -202,7 +202,7 @@ class SemanticMatcher:
                 'ثم', 'then', 'بعدين', 'وبعد ذلك', 'after that',
                 'خطوة بخطوة', 'step by step'
             ],
-            
+
             # === التفاعل الاجتماعي والشخصية ===
             'greeting': [
                 'مرحبا', 'هلا', 'أهلا', 'السلام عليكم', 'سلام', 'هاي', 'hi', 'hello',
@@ -229,7 +229,7 @@ class SemanticMatcher:
                 'ما هو', 'what is', 'دليل', 'guide', 'how to'
             ]
         }
-    
+
     def _build_vocabulary(self) -> set:
         """بناء قاموس الكلمات"""
         vocab = set()
@@ -238,7 +238,7 @@ class SemanticMatcher:
                 words = self._tokenize(example)
                 vocab.update(words)
         return vocab
-    
+
     def _tokenize(self, text: str) -> List[str]:
         """تقسيم النص لكلمات"""
         # إزالة علامات الترقيم والتشكيل
@@ -250,25 +250,25 @@ class SemanticMatcher:
         # إزالة الكلمات القصيرة جداً
         words = [w for w in words if len(w) > 1]
         return words
-    
+
     def _calculate_tf(self, words: List[str]) -> Dict[str, float]:
         """حساب Term Frequency"""
         word_count = Counter(words)
         total_words = len(words)
         return {word: count / total_words for word, count in word_count.items()}
-    
+
     def _calculate_idf(self) -> Dict[str, float]:
         """حساب Inverse Document Frequency"""
         # عدد الوثائق (الأمثلة) الكلي
         total_docs = sum(len(examples) for examples in self.intents_db.values())
-        
+
         # حساب عدد الوثائق التي تحتوي على كل كلمة
         word_doc_count = Counter()
         for intent, examples in self.intents_db.items():
             for example in examples:
                 words = set(self._tokenize(example))
                 word_doc_count.update(words)
-        
+
         # حساب IDF
         idf = {}
         for word in self.vocabulary:
@@ -276,9 +276,9 @@ class SemanticMatcher:
                 idf[word] = math.log(total_docs / (1 + word_doc_count[word]))
             else:
                 idf[word] = 0
-        
+
         return idf
-    
+
     def _calculate_tfidf(self, words: List[str]) -> Dict[str, float]:
         """حساب TF-IDF"""
         tf = self._calculate_tf(words)
@@ -289,118 +289,118 @@ class SemanticMatcher:
             else:
                 tfidf[word] = tf[word] * 1.0  # IDF default
         return tfidf
-    
+
     def _cosine_similarity(self, vec1: Dict[str, float], vec2: Dict[str, float]) -> float:
         """حساب التشابه بين متجهين باستخدام Cosine Similarity"""
         # الكلمات المشتركة
         common_words = set(vec1.keys()) & set(vec2.keys())
-        
+
         if not common_words:
             return 0.0
-        
+
         # حساب الضرب النقطي
         dot_product = sum(vec1[word] * vec2[word] for word in common_words)
-        
+
         # حساب المقادير
         magnitude1 = math.sqrt(sum(val ** 2 for val in vec1.values()))
         magnitude2 = math.sqrt(sum(val ** 2 for val in vec2.values()))
-        
+
         if magnitude1 == 0 or magnitude2 == 0:
             return 0.0
-        
+
         return dot_product / (magnitude1 * magnitude2)
-    
+
     def find_best_intent(self, user_message: str, threshold: float = 0.3) -> Tuple[str, float, List[Tuple[str, float]]]:
         """
         إيجاد أفضل نية (intent) للرسالة
-        
+
         Args:
             user_message: رسالة المستخدم
             threshold: الحد الأدنى للثقة (0.3 = 30%)
-        
+
         Returns:
             (intent_name, confidence, all_scores)
         """
         # تحليل رسالة المستخدم
         user_words = self._tokenize(user_message)
         user_tfidf = self._calculate_tfidf(user_words)
-        
+
         # حساب التشابه مع كل نية
         intent_scores = {}
-        
+
         for intent, examples in self.intents_db.items():
             max_similarity = 0.0
-            
+
             # حساب التشابه مع كل مثال
             for example in examples:
                 example_words = self._tokenize(example)
                 example_tfidf = self._calculate_tfidf(example_words)
-                
+
                 similarity = self._cosine_similarity(user_tfidf, example_tfidf)
                 max_similarity = max(max_similarity, similarity)
-            
+
             intent_scores[intent] = max_similarity
-        
+
         # ترتيب النوايا حسب الدرجة
         sorted_intents = sorted(intent_scores.items(), key=lambda x: x[1], reverse=True)
-        
+
         # أفضل نية
         best_intent, best_score = sorted_intents[0] if sorted_intents else (None, 0.0)
-        
+
         # إذا كانت الدرجة أقل من الحد الأدنى
         if best_score < threshold:
             return None, best_score, sorted_intents
-        
+
         return best_intent, best_score, sorted_intents
-    
+
     def fuzzy_match(self, word1: str, word2: str) -> float:
         """
         مطابقة تقريبية (Fuzzy) بين كلمتين
         تستخدم Levenshtein Distance
-        
+
         Returns: نسبة التشابه (0-1)
         """
         # Levenshtein Distance بسيط
         len1, len2 = len(word1), len(word2)
-        
+
         if len1 == 0:
             return 0.0 if len2 == 0 else 0.0
-        
+
         if len2 == 0:
             return 0.0
-        
+
         # بناء مصفوفة المسافات
         matrix = [[0] * (len2 + 1) for _ in range(len1 + 1)]
-        
+
         for i in range(len1 + 1):
             matrix[i][0] = i
         for j in range(len2 + 1):
             matrix[0][j] = j
-        
+
         for i in range(1, len1 + 1):
             for j in range(1, len2 + 1):
-                if word1[i-1] == word2[j-1]:
+                if word1[i - 1] == word2[j - 1]:
                     cost = 0
                 else:
                     cost = 1
-                
+
                 matrix[i][j] = min(
-                    matrix[i-1][j] + 1,      # deletion
-                    matrix[i][j-1] + 1,      # insertion
-                    matrix[i-1][j-1] + cost  # substitution
+                    matrix[i - 1][j] + 1,      # deletion
+                    matrix[i][j - 1] + 1,      # insertion
+                    matrix[i - 1][j - 1] + cost  # substitution
                 )
-        
+
         distance = matrix[len1][len2]
         max_len = max(len1, len2)
-        
+
         # نسبة التشابه
         similarity = 1 - (distance / max_len)
         return similarity
-    
+
     def smart_match(self, user_message: str) -> Dict:
         """
         مطابقة ذكية شاملة
-        
+
         Returns:
             {
                 'intent': النية المكتشفة,
@@ -412,7 +412,7 @@ class SemanticMatcher:
         """
         # 1. محاولة Semantic Matching أولاً
         intent, confidence, all_scores = self.find_best_intent(user_message, threshold=0.3)
-        
+
         if intent and confidence > 0.5:
             return {
                 'intent': intent,
@@ -421,12 +421,12 @@ class SemanticMatcher:
                 'all_scores': all_scores[:3],
                 'suggestion': None
             }
-        
+
         # 2. محاولة Fuzzy Matching للكلمات المفتاحية
         user_words = self._tokenize(user_message)
         best_fuzzy_match = None
         best_fuzzy_score = 0.0
-        
+
         for word in user_words:
             for intent, examples in self.intents_db.items():
                 for example in examples:
@@ -436,7 +436,7 @@ class SemanticMatcher:
                         if fuzzy_score > best_fuzzy_score and fuzzy_score > 0.8:
                             best_fuzzy_score = fuzzy_score
                             best_fuzzy_match = intent
-        
+
         if best_fuzzy_match and best_fuzzy_score > 0.8:
             return {
                 'intent': best_fuzzy_match,
@@ -445,12 +445,12 @@ class SemanticMatcher:
                 'all_scores': [(best_fuzzy_match, best_fuzzy_score)],
                 'suggestion': None
             }
-        
+
         # 3. لم يتم العثور على تطابق جيد
         suggestion = None
         if all_scores and all_scores[0][1] > 0.2:
             suggestion = f"هل تقصد: {self._get_intent_arabic_name(all_scores[0][0])}؟"
-        
+
         return {
             'intent': intent if confidence > 0.2 else None,
             'confidence': confidence,
@@ -458,7 +458,7 @@ class SemanticMatcher:
             'all_scores': all_scores[:3],
             'suggestion': suggestion
         }
-    
+
     def _get_intent_arabic_name(self, intent: str) -> str:
         """تحويل اسم النية للعربية"""
         names = {
@@ -525,4 +525,3 @@ def get_confidence(message: str) -> float:
     """الحصول على مستوى الثقة"""
     result = semantic_matcher.smart_match(message)
     return result['confidence']
-

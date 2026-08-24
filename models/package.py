@@ -4,10 +4,11 @@ Package model for system packages
 from extensions import db
 from datetime import datetime
 
+
 class Package(db.Model):
     """Package model for system subscription packages"""
     __tablename__ = 'packages'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     name_ar = db.Column(db.String(100), nullable=False)  # اسم الباقة بالعربية
     name_en = db.Column(db.String(100), nullable=False)  # اسم الباقة بالإنجليزية
@@ -15,26 +16,26 @@ class Package(db.Model):
     icon = db.Column(db.String(50), default='📦')  # أيقونة الباقة
     price = db.Column(db.Float, nullable=False)  # السعر بالدولار
     currency = db.Column(db.String(10), default='USD')
-    
+
     # وصف الباقة
     description_ar = db.Column(db.Text)
     description_en = db.Column(db.Text)
-    
+
     # الميزات (JSON array)
     features = db.Column(db.JSON, default=list)  # قائمة بالميزات
-    
+
     # الإعدادات
     is_active = db.Column(db.Boolean, default=True)  # هل الباقة نشطة
     is_featured = db.Column(db.Boolean, default=False)  # باقة مميزة
     badge_text = db.Column(db.String(50))  # نص الشارة (مثل: الأكثر شعبية)
     badge_color = db.Column(db.String(20), default='primary')  # لون الشارة
-    
+
     # الترتيب والأولوية
     sort_order = db.Column(db.Integer, default=0)  # ترتيب العرض
-    
+
     # مدة الدعم الفني
     support_duration_months = db.Column(db.Integer, default=3)
-    
+
     # الصلاحيات والحدود
     max_users = db.Column(db.Integer)  # عدد المستخدمين
     max_branches = db.Column(db.Integer)  # عدد الفروع
@@ -45,14 +46,14 @@ class Package(db.Model):
     has_customization = db.Column(db.Boolean, default=False)  # تخصيص
     has_training = db.Column(db.Boolean, default=False)  # تدريب
     has_priority_support = db.Column(db.Boolean, default=False)  # دعم أولوية
-    
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     def __repr__(self):
         return f'<Package {self.name_ar}>'
-    
+
     def to_dict(self):
         """Convert package to dictionary"""
         return {
@@ -89,44 +90,44 @@ class Package(db.Model):
 class PackagePurchase(db.Model):
     """Model for package purchases"""
     __tablename__ = 'package_purchases'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     package_id = db.Column(db.Integer, db.ForeignKey('packages.id'), nullable=False)
-    
+
     # بيانات المشتري
     customer_name = db.Column(db.String(200), nullable=False)
     customer_email = db.Column(db.String(200), nullable=False)
     customer_phone = db.Column(db.String(50))
     company_name = db.Column(db.String(200))
-    
+
     # بيانات الدفع
     payment_method = db.Column(db.String(50), nullable=False)  # crypto, card, paypal, bank
     payment_status = db.Column(db.String(50), default='pending')  # pending, completed, failed, refunded
     amount_paid = db.Column(db.Float, nullable=False)
     currency = db.Column(db.String(10), default='USD')
-    
+
     # معلومات إضافية للدفع
     transaction_id = db.Column(db.String(200))
     payment_details = db.Column(db.JSON)  # تفاصيل إضافية
-    
+
     # الحالة
     activation_status = db.Column(db.String(50), default='pending')  # pending, activated, expired
     activation_date = db.Column(db.DateTime)
     expiry_date = db.Column(db.DateTime)
-    
+
     # ملاحظات
     notes = db.Column(db.Text)
-    
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # العلاقات
     package = db.relationship('Package', backref='purchases')
-    
+
     def __repr__(self):
         return f'<PackagePurchase {self.customer_email} - {self.package.name_ar if self.package else "N/A"}>'
-    
+
     def to_dict(self):
         """Convert purchase to dictionary"""
         return {
@@ -149,6 +150,3 @@ class PackagePurchase(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
-
-
-

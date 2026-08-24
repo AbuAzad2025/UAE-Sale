@@ -18,9 +18,9 @@ def index():
     search = request.args.get('search', '', type=str)
     category_id = request.args.get('category', type=int)
     stock_filter = request.args.get('stock', '', type=str)
-    
+
     query = Product.query.filter_by(is_active=True)
-    
+
     if search:
         search_filter = f'%{search}%'
         query = query.filter(
@@ -30,24 +30,24 @@ def index():
                 Product.barcode.ilike(search_filter)
             )
         )
-    
+
     if category_id:
         query = query.filter_by(category_id=category_id)
-    
+
     if stock_filter == 'low':
         query = query.filter(Product.current_stock <= Product.min_stock_alert)
     elif stock_filter == 'out':
         query = query.filter(Product.current_stock <= 0)
-    
+
     pagination = query.order_by(Product.name).paginate(
         page=page,
         per_page=per_page,
         error_out=False
     )
-    
+
     return render_template('warehouse/index.html',
-                         products=pagination.items,
-                         pagination=pagination)
+                           products=pagination.items,
+                           pagination=pagination)
 
 
 @warehouse_bp.route('/movements')
@@ -59,12 +59,12 @@ def movements():
     product_id = request.args.get('product', type=int)
     movement_type = request.args.get('type', '', type=str)
     warehouse_id = request.args.get('warehouse', type=int)
-    
+
     query = StockMovement.query
-    
+
     if product_id:
         query = query.filter_by(product_id=product_id)
-    
+
     if movement_type:
         query = query.filter_by(movement_type=movement_type)
 
@@ -73,20 +73,20 @@ def movements():
         current_warehouse = db.session.get(Warehouse, warehouse_id)
     else:
         current_warehouse = None
-    
+
     pagination = query.order_by(StockMovement.created_at.desc()).paginate(
         page=page,
         per_page=per_page,
         error_out=False
     )
-    
+
     warehouses = Warehouse.query.filter_by(is_active=True).order_by(Warehouse.name).all()
-    
+
     return render_template('warehouse/movements.html',
-                         movements=pagination.items,
-                         pagination=pagination,
-                         warehouses=warehouses,
-                         current_warehouse=current_warehouse)
+                           movements=pagination.items,
+                           pagination=pagination,
+                           warehouses=warehouses,
+                           current_warehouse=current_warehouse)
 
 
 @warehouse_bp.route('/low-stock')
@@ -110,13 +110,13 @@ def out_of_stock():
 @permission_required('manage_warehouse')
 def view_warehouse(id):
     warehouse = db.get_or_404(Warehouse, id)
-    
+
     # Calculate stock for this warehouse from movements
     stock_query = db.session.query(
         StockMovement.product_id,
         db.func.sum(StockMovement.quantity).label('total_quantity')
     ).filter_by(warehouse_id=id).group_by(StockMovement.product_id).all()
-    
+
     warehouse_stock = []
     for product_id, quantity in stock_query:
         # Convert quantity to float for comparison and display, handling None
@@ -128,23 +128,23 @@ def view_warehouse(id):
                     'product': product,
                     'quantity': qty
                 })
-    
-    return render_template('warehouse/view_warehouse.html', 
-                         warehouse=warehouse, 
-                         stock=warehouse_stock)
+
+    return render_template('warehouse/view_warehouse.html',
+                           warehouse=warehouse,
+                           stock=warehouse_stock)
 
 
 @warehouse_bp.route('/create', methods=['GET', 'POST'])
 @warehouse_bp.route('/create-warehouse', methods=['GET', 'POST'])
 @login_required
 @admin_required
-def create_warehouse():
+def create_warehouse():  # noqa: C901
     from models import User
-    
+
     parent_warehouses = Warehouse.query.filter_by(is_active=True, parent_id=None).all()
     # Filter out owner to hide them from selection
     users = User.query.filter_by(is_active=True, is_owner=False).all()
-    
+
     if request.method == 'POST':
         try:
             name = request.form.get('name', '').strip()
@@ -154,21 +154,21 @@ def create_warehouse():
             parent_id = request.form.get('parent_id', type=int) or None
             manager_id = request.form.get('manager_id', type=int) or None
             is_main = request.form.get('is_main') == 'on'
-            
+
             if not name:
                 flash('اسم المستودع مطلوب', 'warning')
                 return render_template('warehouse/create_warehouse.html',
                                        parent_warehouses=parent_warehouses,
                                        users=users,
                                        form_data=request.form)
-            
+
             if not location:
                 flash('الموقع مطلوب', 'warning')
                 return render_template('warehouse/create_warehouse.html',
                                        parent_warehouses=parent_warehouses,
                                        users=users,
                                        form_data=request.form)
-            
+
             if code:
                 existing = Warehouse.query.filter_by(code=code).first()
                 if existing:
@@ -177,7 +177,7 @@ def create_warehouse():
                                            parent_warehouses=parent_warehouses,
                                            users=users,
                                            form_data=request.form)
-            
+
             if parent_id:
                 parent_warehouse = db.session.get(Warehouse, parent_id)
                 if not parent_warehouse:
@@ -192,7 +192,7 @@ def create_warehouse():
                                            parent_warehouses=parent_warehouses,
                                            users=users,
                                            form_data=request.form)
-            
+
             warehouse = Warehouse(
                 name=name,
                 name_ar=name_ar,
@@ -203,14 +203,14 @@ def create_warehouse():
                 manager_id=manager_id,
                 is_active=True
             )
-            
+
             db.session.add(warehouse)
             db.session.commit()
-            
+
             warehouse_type = "فرعي" if parent_id else "مستقل"
             flash(f'✓ تم إنشاء المستودع {warehouse_type} "{name}" بنجاح', 'success')
             return redirect(url_for('warehouse.list_warehouses'))
-            
+
         except Exception as e:
             db.session.rollback()
             flash(f'خطأ في إنشاء المستودع: {str(e)}', 'error')
@@ -218,10 +218,10 @@ def create_warehouse():
                                    parent_warehouses=parent_warehouses,
                                    users=users,
                                    form_data=request.form)
-    
-    return render_template('warehouse/create_warehouse.html', 
-                         parent_warehouses=parent_warehouses,
-                         users=users)
+
+    return render_template('warehouse/create_warehouse.html',
+                           parent_warehouses=parent_warehouses,
+                           users=users)
 
 
 @warehouse_bp.route('/list')
@@ -238,12 +238,12 @@ def list_warehouses():
 def delete_warehouse(id):
     """حذف مستودع"""
     warehouse = db.get_or_404(Warehouse, id)
-    
+
     # Check if main warehouse
     if warehouse.is_main:
         flash('لا يمكن حذف المستودع الرئيسي', 'danger')
         return redirect(url_for('warehouse.list_warehouses'))
-        
+
     try:
         # Check for stock
         has_stock = StockMovement.query.filter_by(warehouse_id=id).first()
@@ -256,11 +256,11 @@ def delete_warehouse(id):
             db.session.delete(warehouse)
             db.session.commit()
             flash(f'تم حذف المستودع "{warehouse.name}" بنجاح', 'success')
-            
+
     except Exception as e:
         db.session.rollback()
         flash(f'فشل الحذف: {str(e)}', 'danger')
-        
+
     return redirect(url_for('warehouse.list_warehouses'))
 
 
@@ -273,13 +273,13 @@ def add_stock(product_id):
         quantity = Decimal(request.form.get('quantity', 0))
         notes = request.form.get('notes', '').strip()
         warehouse_id = request.form.get('warehouse_id', type=int)
-        
+
         if quantity <= 0:
             return jsonify({'success': False, 'message': 'الكمية يجب أن تكون أكبر من صفر'}), 400
-        
+
         # Update product stock
         product.current_stock = (product.current_stock or Decimal('0')) + quantity
-        
+
         if not warehouse_id:
             warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
             if not warehouse:
@@ -287,7 +287,7 @@ def add_stock(product_id):
             if not warehouse:
                 return jsonify({'success': False, 'message': 'لا يوجد مستودع نشط'}), 400
             warehouse_id = warehouse.id
-        
+
         movement = StockMovement(
             product_id=product_id,
             warehouse_id=warehouse_id,
@@ -296,17 +296,16 @@ def add_stock(product_id):
             user_id=current_user.id,
             notes=notes or 'إضافة كمية يدوية'
         )
-        
+
         db.session.add(movement)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': f'تم إضافة {quantity} وحدة للمنتج {product.name}',
             'new_stock': float(product.current_stock)
         })
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
-

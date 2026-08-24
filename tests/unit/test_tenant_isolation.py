@@ -263,13 +263,13 @@ class TestTenantSalesLineIsolation:
     """Prove sale lines are also scoped to tenant."""
 
     def test_tenant_a_does_not_see_tenant_b_sale_lines(self, app, db,
-                                                        login_owner,
-                                                        tenant_a, sale_a, sale_b):
+                                                       login_owner,
+                                                       tenant_a, sale_a, sale_b):
         from models import SaleLine, set_current_tenant_id
         set_current_tenant_id(tenant_a.id)
 
         lines = SaleLine.query.all()
-        line_ids = [l.id for l in lines]
+        line_ids = [ln.id for ln in lines]
 
         # Tenant A's sale line should be visible
         a_line = sale_a.lines[0]

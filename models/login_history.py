@@ -1,9 +1,10 @@
 from extensions import db
 from datetime import datetime, timezone
 
+
 class LoginHistory(db.Model):
     __tablename__ = 'login_history'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     # Allow null for user_id to track failed login attempts for non-existent users
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
@@ -17,12 +18,12 @@ class LoginHistory(db.Model):
     device_type = db.Column(db.String(50))
     browser = db.Column(db.String(100))
     location = db.Column(db.String(200))
-    
+
     user = db.relationship('User', backref='login_history')
-    
+
     def __repr__(self):
         return f'<LoginHistory {self.username} at {self.login_time}>'
-    
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -34,4 +35,3 @@ class LoginHistory(db.Model):
             'device_type': self.device_type,
             'browser': self.browser,
         }
-

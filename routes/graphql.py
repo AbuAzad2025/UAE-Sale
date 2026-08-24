@@ -1,4 +1,3 @@
-import re
 from flask import Blueprint, request, jsonify
 from flask_login import login_required
 from services.graphql_service import schema
@@ -30,36 +29,36 @@ def graphql_query():
     data = request.get_json()
     if not data:
         return jsonify({'errors': ['Invalid JSON body']}), 400
-    
+
     query = data.get('query', '')
     variables = data.get('variables')
-    
+
     if not query:
         return jsonify({'errors': ['Query is required']}), 400
-    
+
     # SECURITY: Enforce query length limit
     if len(query) > MAX_QUERY_LENGTH:
         return jsonify({'errors': [f'Query too long (max {MAX_QUERY_LENGTH} chars)']}), 400
-    
+
     # SECURITY: Enforce query depth limit to prevent DoS
     depth = _estimate_query_depth(query)
     if depth > MAX_QUERY_DEPTH:
         return jsonify({'errors': [f'Query too deep (max depth {MAX_QUERY_DEPTH}, got {depth})']}), 400
-    
+
     # SECURITY: Block introspection queries in production
     query_lower = query.lower().strip()
     if 'introspection' in query_lower or '__schema' in query_lower or '__type' in query_lower:
         return jsonify({'errors': ['Introspection is disabled']}), 403
-    
+
     result = schema.execute(query, variables=variables)
-    
+
     response = {}
     if result.data:
         response['data'] = result.data
     if result.errors:
         # SECURITY: Don't leak internal error details
         response['errors'] = ['Query execution failed' if 'internal' in str(e).lower() else str(e) for e in result.errors]
-    
+
     return jsonify(response)
 
 
@@ -87,4 +86,3 @@ def graphql_playground():
     </body>
     </html>
     '''
-

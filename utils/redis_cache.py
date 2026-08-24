@@ -1,17 +1,14 @@
 """
 Enhanced Redis Caching Utilities
 """
-import json
-import pickle
 from functools import wraps
 from flask import current_app
 from extensions import cache
-from datetime import timedelta
 
 
 class RedisCache:
     """Redis cache helper with advanced features"""
-    
+
     @staticmethod
     def get(key):
         """Get value from cache"""
@@ -20,7 +17,7 @@ class RedisCache:
         except Exception as e:
             current_app.logger.warning(f"Cache get error: {e}")
             return None
-    
+
     @staticmethod
     def set(key, value, timeout=None):
         """Set value in cache"""
@@ -32,7 +29,7 @@ class RedisCache:
         except Exception as e:
             current_app.logger.warning(f"Cache set error: {e}")
             return False
-    
+
     @staticmethod
     def delete(key):
         """Delete key from cache"""
@@ -42,7 +39,7 @@ class RedisCache:
         except Exception as e:
             current_app.logger.warning(f"Cache delete error: {e}")
             return False
-    
+
     @staticmethod
     def delete_pattern(pattern):
         """Delete all keys matching pattern"""
@@ -56,7 +53,7 @@ class RedisCache:
         except Exception as e:
             current_app.logger.warning(f"Cache delete pattern error: {e}")
         return False
-    
+
     @staticmethod
     def get_many(keys):
         """Get multiple values"""
@@ -65,7 +62,7 @@ class RedisCache:
         except Exception as e:
             current_app.logger.warning(f"Cache get_many error: {e}")
             return {}
-    
+
     @staticmethod
     def set_many(mapping, timeout=None):
         """Set multiple values"""
@@ -77,7 +74,7 @@ class RedisCache:
         except Exception as e:
             current_app.logger.warning(f"Cache set_many error: {e}")
             return False
-    
+
     @staticmethod
     def increment(key, delta=1):
         """Increment counter"""
@@ -86,7 +83,7 @@ class RedisCache:
         except Exception as e:
             current_app.logger.warning(f"Cache increment error: {e}")
             return None
-    
+
     @staticmethod
     def decrement(key, delta=1):
         """Decrement counter"""
@@ -100,7 +97,7 @@ class RedisCache:
 def cached(timeout=300, key_prefix='view'):
     """
     Decorator for caching function results
-    
+
     Usage:
         @cached(timeout=600, key_prefix='products')
         def get_products():
@@ -110,22 +107,22 @@ def cached(timeout=300, key_prefix='view'):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             cache_key = f"{key_prefix}:{f.__name__}"
-            
+
             if args or kwargs:
                 key_suffix = str(args) + str(sorted(kwargs.items()))
                 cache_key += f":{hash(key_suffix)}"
-            
+
             result = RedisCache.get(cache_key)
-            
+
             if result is not None:
                 return result
-            
+
             result = f(*args, **kwargs)
-            
+
             RedisCache.set(cache_key, result, timeout=timeout)
-            
+
             return result
-        
+
         return decorated_function
     return decorator
 
@@ -167,33 +164,32 @@ def get_cached_query(query_key):
 def rate_limit_check(identifier, limit=60, window=60):
     """
     Rate limiting using Redis
-    
+
     Args:
         identifier: User ID or IP address
         limit: Max requests
         window: Time window in seconds
-    
+
     Returns:
         (allowed, remaining, reset_time)
     """
     key = f"ratelimit:{identifier}"
-    
+
     try:
         current = RedisCache.increment(key)
-        
+
         if current == 1:
             cache.cache._client.expire(key, window)
-        
+
         remaining = max(0, limit - current)
         allowed = current <= limit
-        
+
         ttl = cache.cache._client.ttl(key)
-        
+
         return allowed, remaining, ttl
     except Exception as e:
         current_app.logger.warning(f"Rate limit error: {e}")
         return True, limit, window
-
 
 
 def cache_customer_balance(customer_id, balance, timeout=300):
@@ -242,4 +238,3 @@ def invalidate_product_cache(product_id):
     """Invalidate all product-related cache"""
     RedisCache.delete(f"product_stock:{product_id}")
     RedisCache.delete_pattern(f"*product:{product_id}*")
-

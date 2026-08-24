@@ -1,5 +1,4 @@
 from celery import Celery
-from flask import current_app
 import os
 from extensions import db
 
@@ -23,7 +22,7 @@ celery.conf.update(
 def generate_monthly_report(month: int, year: int):
     from app import create_app
     from services.report_service import ReportService
-    
+
     app = create_app()
     with app.app_context():
         report = ReportService.generate_monthly_report(month, year)
@@ -36,7 +35,7 @@ def send_invoice_email(sale_id: int):
     from models import Sale
     from flask_mail import Message
     from extensions import mail
-    
+
     app = create_app()
     with app.app_context():
         sale = db.session.get(Sale, sale_id)
@@ -55,7 +54,7 @@ def send_invoice_email(sale_id: int):
 def auto_backup_database():
     from app import create_app
     from services.backup_service import BackupService
-    
+
     app = create_app()
     with app.app_context():
         backup = BackupService.auto_backup_daily()
@@ -66,7 +65,7 @@ def auto_backup_database():
 def update_exchange_rates():
     from app import create_app
     from services.currency_service import CurrencyService
-    
+
     app = create_app()
     with app.app_context():
         result = CurrencyService.update_all_rates()
@@ -77,7 +76,7 @@ def update_exchange_rates():
 def train_neural_models():
     from app import create_app
     from ai_knowledge.neural_engine import get_neural_engine
-    
+
     app = create_app()
     with app.app_context():
         neural = get_neural_engine()
@@ -91,12 +90,12 @@ def send_payment_reminders():
     from models import Customer
     from services.whatsapp_service import WhatsAppService
     from decimal import Decimal
-    
+
     app = create_app()
     with app.app_context():
         customers = Customer.query.filter_by(is_active=True).all()
         sent = 0
-        
+
         for customer in customers:
             balance = customer.get_balance_aed()
             if balance > Decimal('1000') and customer.phone:
@@ -107,17 +106,16 @@ def send_payment_reminders():
                 )
                 if result.get('success'):
                     sent += 1
-        
+
         return {'sent': sent, 'total_checked': len(customers)}
 
 
 @celery.task
 def cleanup_old_cache():
     from extensions import cache
-    
+
     try:
         cache.clear()
         return {'success': True, 'message': 'Cache cleared'}
     except Exception as e:
         return {'success': False, 'error': str(e)}
-

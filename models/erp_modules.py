@@ -60,7 +60,7 @@ class Quotation(db.Model):
     converted_sale = db.relationship('Sale', foreign_keys=[converted_sale_id])
 
     def calculate_totals(self):
-        self.subtotal = sum((Decimal(str(l.line_total)) for l in self.lines), Decimal('0'))
+        self.subtotal = sum((Decimal(str(ln.line_total)) for ln in self.lines), Decimal('0'))
         disc = Decimal(str(self.discount_amount)) if self.discount_amount else Decimal('0')
         ship = Decimal(str(self.shipping_cost)) if self.shipping_cost else Decimal('0')
         tax_r = Decimal(str(self.tax_rate)) if self.tax_rate else Decimal('0')
@@ -154,18 +154,18 @@ class PurchaseOrder(db.Model):
     lines = db.relationship('PurchaseOrderLine', back_populates='order', cascade='all, delete-orphan')
 
     def calculate_totals(self):
-        self.subtotal = sum((Decimal(str(l.line_total)) for l in self.lines), Decimal('0'))
+        self.subtotal = sum((Decimal(str(ln.line_total)) for ln in self.lines), Decimal('0'))
         tax_r = Decimal(str(self.tax_rate)) if self.tax_rate else Decimal('0')
         self.tax_amount = (self.subtotal * (tax_r / Decimal('100'))).quantize(Decimal('0.01'), ROUND_HALF_UP)
         self.total_amount = (self.subtotal + self.tax_amount).quantize(Decimal('0.001'), ROUND_HALF_UP)
 
     @property
     def total_received(self):
-        return sum((Decimal(str(l.received_quantity or 0)) for l in self.lines), Decimal('0'))
+        return sum((Decimal(str(ln.received_quantity or 0)) for ln in self.lines), Decimal('0'))
 
     @property
     def is_fully_received(self):
-        return all((l.received_quantity or Decimal('0')) >= l.quantity for l in self.lines)
+        return all((ln.received_quantity or Decimal('0')) >= ln.quantity for ln in self.lines)
 
     @property
     def status_ar(self):
@@ -557,7 +557,7 @@ class EInvoice(db.Model):
         # Seller
         seller = SubElement(ApplicableHeaderTradeAgreement, 'SellerTradeParty')
         SubElement(seller, 'Name').text = 'Seller'
-        SubElement(seller, 'DefinedTradeContact').append(SubElement(seller.find('DefinedTradeContact') if seller.find('DefinedTradeContact') is not None else seller, 'TelephoneUniversalCommunication'))
+        SubElement(seller, 'DefinedTradeContact').append(SubElement(seller.find('DefinedTradeContact') if seller.find('DefinedTradeContact') is not None else seller, 'TelephoneUniversalCommunication'))  # noqa: E501
         seller.find('.//TelephoneUniversalCommunication') if seller.find('.//TelephoneUniversalCommunication') is not None else None
 
         # Buyer
@@ -579,7 +579,7 @@ class EInvoice(db.Model):
     def generate_json(self):
         """Generate FATOORA-compliant JSON"""
         import json
-        from models import Sale, SaleLine
+        from models import Sale
         sale = db.session.get(Sale, self.sale_id)
         lines_data = []
         if sale:

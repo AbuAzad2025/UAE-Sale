@@ -5,8 +5,6 @@ Knowledge Sources - External Resources for Continuous Learning
 
 import requests
 from datetime import datetime, timedelta
-import json
-import time
 
 # مصادر المعرفة المنظمة
 KNOWLEDGE_SOURCES = {
@@ -37,7 +35,7 @@ KNOWLEDGE_SOURCES = {
             'topics': ['gcc', 'vat', 'guide']
         }
     },
-    
+
     # 2. قطع الغيار والمعدات
     'auto_parts': {
         'rockauto': {
@@ -71,7 +69,7 @@ KNOWLEDGE_SOURCES = {
             'topics': ['heavy_equipment', 'komatsu', 'excavator']
         }
     },
-    
+
     # 3. أسعار الصرف والعملات
     'currency': {
         'exchangerate_api': {
@@ -93,7 +91,7 @@ KNOWLEDGE_SOURCES = {
             'topics': ['currency', 'forex']
         }
     },
-    
+
     # 4. المحاسبة والإدارة
     'accounting': {
         'investopedia': {
@@ -115,7 +113,7 @@ KNOWLEDGE_SOURCES = {
             'topics': ['ifrs', 'standards', 'accounting']
         }
     },
-    
+
     # 5. التجارة والاستيراد
     'trade': {
         'wto': {
@@ -137,7 +135,7 @@ KNOWLEDGE_SOURCES = {
             'topics': ['suppliers', 'wholesale']
         }
     },
-    
+
     # 6. التقنية والبرمجة
     'tech': {
         'github_flask': {
@@ -159,7 +157,7 @@ KNOWLEDGE_SOURCES = {
             'topics': ['programming', 'qa', 'solutions']
         }
     },
-    
+
     # 7. قواعد بيانات قطع الغيار
     'parts_databases': {
         'tecdoc': {
@@ -175,7 +173,7 @@ KNOWLEDGE_SOURCES = {
             'topics': ['parts', 'oem', 'numbers']
         }
     },
-    
+
     # 8. أخبار السيارات والمعدات
     'news': {
         'automotive_news': {
@@ -213,15 +211,15 @@ API_SOURCES = {
 
 class KnowledgeSourceManager:
     """مدير مصادر المعرفة"""
-    
+
     def __init__(self):
         self.cache = {}
         self.cache_duration = timedelta(hours=24)  # 24 ساعة
-    
+
     def get_sources_by_topic(self, topic):
         """الحصول على المصادر حسب الموضوع"""
         relevant_sources = []
-        
+
         for category, sources in KNOWLEDGE_SOURCES.items():
             for source_id, source_info in sources.items():
                 if topic.lower() in source_info.get('topics', []):
@@ -232,19 +230,19 @@ class KnowledgeSourceManager:
                         'category': category,
                         'type': source_info['type']
                     })
-        
+
         return relevant_sources
-    
+
     def fetch_exchange_rates(self):
         """جلب أسعار الصرف من API"""
         cache_key = 'exchange_rates'
-        
+
         # فحص الكاش
         if cache_key in self.cache:
             cached_data, cached_time = self.cache[cache_key]
             if datetime.now() - cached_time < self.cache_duration:
                 return cached_data
-        
+
         # جلب من API
         try:
             response = requests.get(
@@ -257,9 +255,9 @@ class KnowledgeSourceManager:
                 return data
         except Exception as e:
             print(f"Error fetching exchange rates: {e}")
-        
+
         return None
-    
+
     def search_part_info(self, part_number):
         """البحث عن معلومات قطعة (محاكاة)"""
         # في المستقبل: استدعاء APIs حقيقية
@@ -268,7 +266,7 @@ class KnowledgeSourceManager:
             'sources': self.get_sources_by_topic('parts'),
             'suggestion': f'ابحث عن "{part_number}" في المصادر المذكورة'
         }
-    
+
     def get_tax_resources(self, country='UAE'):
         """الحصول على مصادر ضريبية"""
         country_map = {
@@ -276,15 +274,15 @@ class KnowledgeSourceManager:
             'Saudi': 'saudi_zatca',
             'Palestine': 'palestine_tax'  # سنضيفه لاحقاً
         }
-        
+
         resources = []
         if country in country_map:
             source_id = country_map[country]
             if source_id in KNOWLEDGE_SOURCES['tax_customs']:
                 resources.append(KNOWLEDGE_SOURCES['tax_customs'][source_id])
-        
+
         return resources
-    
+
     def learn_from_source(self, source_url, topic):
         """التعلم من مصدر (مستقبلي - web scraping)"""
         # TODO: Implement web scraping with BeautifulSoup
@@ -296,7 +294,7 @@ class KnowledgeSourceManager:
             'url': source_url,
             'topic': topic
         }
-    
+
     def get_all_sources_summary(self):
         """ملخص جميع المصادر"""
         summary = {
@@ -304,7 +302,7 @@ class KnowledgeSourceManager:
             'total_sources': sum(len(sources) for sources in KNOWLEDGE_SOURCES.values()),
             'categories': {}
         }
-        
+
         for category, sources in KNOWLEDGE_SOURCES.items():
             summary['categories'][category] = {
                 'count': len(sources),
@@ -317,14 +315,14 @@ class KnowledgeSourceManager:
                     for source_id, info in sources.items()
                 ]
             }
-        
+
         return summary
-    
+
     def recommend_sources(self, user_query):
         """توصية بمصادر حسب استعلام المستخدم"""
         query_lower = user_query.lower()
         recommended = []
-        
+
         # كلمات مفتاحية للمطابقة
         keywords_map = {
             'ضريبة': 'vat',
@@ -337,13 +335,13 @@ class KnowledgeSourceManager:
             'استيراد': 'import',
             'تصدير': 'export'
         }
-        
+
         # البحث عن مطابقات
         for keyword, topic in keywords_map.items():
             if keyword in query_lower:
                 sources = self.get_sources_by_topic(topic)
                 recommended.extend(sources)
-        
+
         # إزالة التكرار
         seen = set()
         unique_sources = []
@@ -351,7 +349,7 @@ class KnowledgeSourceManager:
             if source['id'] not in seen:
                 seen.add(source['id'])
                 unique_sources.append(source)
-        
+
         return unique_sources[:5]  # أول 5
 
 
@@ -420,12 +418,11 @@ if __name__ == "__main__":
     print("🌐 مصادر المعرفة:")
     print(f"الفئات: {len(KNOWLEDGE_SOURCES)}")
     print(f"المصادر: {sum(len(s) for s in KNOWLEDGE_SOURCES.values())}")
-    
+
     # اختبار البحث
     tax_sources = knowledge_manager.get_sources_by_topic('vat')
     print(f"\nمصادر VAT: {len(tax_sources)}")
-    
+
     # اختبار التوصيات
     recommendations = knowledge_manager.recommend_sources("كم ضريبة القيمة المضافة؟")
     print(f"\nتوصيات: {len(recommendations)}")
-

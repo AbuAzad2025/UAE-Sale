@@ -3,24 +3,23 @@
 أزاد يتفاعل مباشرة مع النظام
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
-import json
 
 from extensions import db
 
 
 class SystemIntegrator:
     """مكامل النظام لأزاد"""
-    
+
     def __init__(self):
         pass
-    
+
     def get_customer_balance(self, customer_name_or_id):
         """الحصول على رصيد العميل"""
         try:
             from models import Customer, Sale
-            
+
             # البحث بالاسم أو المعرف
             if customer_name_or_id.isdigit():
                 customer = db.session.get(Customer, int(customer_name_or_id))
@@ -28,18 +27,18 @@ class SystemIntegrator:
                 customer = Customer.query.filter(
                     Customer.name.ilike(f'%{customer_name_or_id}%')
                 ).first()
-            
+
             if not customer:
                 return {
                     'success': False,
                     'error': f'العميل "{customer_name_or_id}" غير موجود'
                 }
-            
+
             # حساب الرصيد - استخدام الدالة الصحيحة
             balance_aed = customer.get_balance_aed()  # ✅ تم التحديث 2025-10-19
             total_sales = customer.sales.count()
             last_sale = customer.sales.order_by(Sale.created_at.desc()).first()
-            
+
             return {
                 'success': True,
                 'customer': {
@@ -53,18 +52,18 @@ class SystemIntegrator:
                     'email': customer.email
                 }
             }
-            
+
         except Exception as e:
             return {
                 'success': False,
                 'error': f'خطأ في جلب بيانات العميل: {str(e)}'
             }
-    
+
     def get_supplier_balance(self, supplier_name_or_id):
         """الحصول على رصيد المورد - ✅ جديد 2025-10-19"""
         try:
             from models import Supplier, Purchase
-            
+
             # البحث بالاسم أو المعرف
             if str(supplier_name_or_id).isdigit():
                 supplier = db.session.get(Supplier, int(supplier_name_or_id))
@@ -72,18 +71,18 @@ class SystemIntegrator:
                 supplier = Supplier.query.filter(
                     Supplier.name.ilike(f'%{supplier_name_or_id}%')
                 ).first()
-            
+
             if not supplier:
                 return {
                     'success': False,
                     'error': f'المورد "{supplier_name_or_id}" غير موجود'
                 }
-            
+
             # حساب الرصيد - استخدام الدالة المحدثة
             balance_aed = supplier.get_balance_aed()  # ✅ الدالة الصحيحة
             total_purchases = supplier.purchases.count()
             last_purchase = supplier.purchases.order_by(Purchase.created_at.desc()).first()
-            
+
             return {
                 'success': True,
                 'supplier': {
@@ -97,32 +96,32 @@ class SystemIntegrator:
                     'email': supplier.email
                 }
             }
-            
+
         except Exception as e:
             return {
                 'success': False,
                 'error': f'خطأ في جلب بيانات المورد: {str(e)}'
             }
-    
+
     def get_customer_sales_summary(self, customer_id):
         """ملخص مبيعات العميل"""
         try:
             from models import Customer
-            
+
             customer = db.session.get(Customer, customer_id)
             if not customer:
                 return {'success': False, 'error': 'العميل غير موجود'}
-            
+
             # إحصائيات المبيعات
             sales = customer.sales.all()
             total_sales = len(sales)
             total_amount = sum(float(sale.total_amount) for sale in sales)
             paid_amount = sum(float(sale.paid_amount) for sale in sales)
             balance_due = total_amount - paid_amount
-            
+
             # آخر 5 مبيعات
             recent_sales = sales[-5:] if sales else []
-            
+
             return {
                 'success': True,
                 'summary': {
@@ -141,19 +140,19 @@ class SystemIntegrator:
                     ]
                 }
             }
-            
+
         except Exception as e:
             return {
                 'success': False,
                 'error': f'خطأ في جلب ملخص المبيعات: {str(e)}'
             }
-    
+
     def add_customer(self, customer_data):
         """إضافة عميل جديد"""
         try:
             from models import Customer
             from extensions import db
-            
+
             # التحقق من البيانات المطلوبة
             required_fields = ['name', 'customer_type']
             for field in required_fields:
@@ -162,7 +161,7 @@ class SystemIntegrator:
                         'success': False,
                         'error': f'المجال "{field}" مطلوب'
                     }
-            
+
             # إنشاء العميل
             customer = Customer(
                 name=customer_data['name'],
@@ -172,10 +171,10 @@ class SystemIntegrator:
                 address=customer_data.get('address', ''),
                 credit_limit=customer_data.get('credit_limit', 0)
             )
-            
+
             db.session.add(customer)
             db.session.commit()
-            
+
             return {
                 'success': True,
                 'customer': {
@@ -187,31 +186,31 @@ class SystemIntegrator:
                 },
                 'message': f'تم إضافة العميل "{customer.name}" بنجاح'
             }
-            
+
         except Exception as e:
             db.session.rollback()
             return {
                 'success': False,
                 'error': f'خطأ في إضافة العميل: {str(e)}'
             }
-    
+
     def get_product_stock(self, product_name_or_sku):
         """الحصول على مخزون المنتج"""
         try:
             from models import Product
-            
+
             # البحث بالاسم أو SKU
             product = Product.query.filter(
                 (Product.name.ilike(f'%{product_name_or_sku}%')) |
                 (Product.sku.ilike(f'%{product_name_or_sku}%'))
             ).first()
-            
+
             if not product:
                 return {
                     'success': False,
                     'error': f'المنتج "{product_name_or_sku}" غير موجود'
                 }
-            
+
             return {
                 'success': True,
                 'product': {
@@ -225,28 +224,28 @@ class SystemIntegrator:
                     'status': 'منخفض' if product.current_stock <= product.min_stock_alert else 'جيد'
                 }
             }
-            
+
         except Exception as e:
             return {
                 'success': False,
                 'error': f'خطأ في جلب بيانات المنتج: {str(e)}'
             }
-    
+
     def get_system_summary(self):
         """ملخص النظام الشامل"""
         try:
             from models import Customer, Sale, Product, Payment
-            
+
             # إحصائيات العملاء
             total_customers = Customer.query.count()
             vip_customers = Customer.query.filter(Customer.customer_type == 'VIP').count()
-            
+
             # إحصائيات المبيعات
             total_sales = Sale.query.count()
             today_sales = Sale.query.filter(
                 Sale.created_at >= datetime.now().date()
             ).count()
-            
+
             # إحصائيات المنتجات
             total_products = Product.query.count()
             low_stock_products = Product.query.filter(
@@ -255,19 +254,19 @@ class SystemIntegrator:
             out_of_stock_products = Product.query.filter(
                 Product.current_stock == 0
             ).count()
-            
+
             # إحصائيات المدفوعات
             total_payments = Payment.query.count()
             today_payments = Payment.query.filter(
                 Payment.created_at >= datetime.now().date()
             ).count()
-            
+
             # آخر 5 مبيعات
             recent_sales = Sale.query.order_by(Sale.created_at.desc()).limit(5).all()
-            
+
             # آخر 5 عملاء
             recent_customers = Customer.query.order_by(Customer.created_at.desc()).limit(5).all()
-            
+
             return {
                 'success': True,
                 'summary': {
@@ -308,46 +307,46 @@ class SystemIntegrator:
                     }
                 }
             }
-            
+
         except Exception as e:
             return {
                 'success': False,
                 'error': f'خطأ في جلب ملخص النظام: {str(e)}'
             }
-    
+
     def get_financial_summary(self):
         """ملخص مالي شامل"""
         try:
             from models import Sale, Payment
             from extensions import db
-            
+
             # إجمالي المبيعات
             total_sales_amount = db.session.query(
                 db.func.sum(Sale.total_amount)
             ).scalar() or Decimal('0')
-            
+
             # إجمالي المدفوعات
             total_payments_amount = db.session.query(
                 db.func.sum(Payment.amount)
             ).scalar() or Decimal('0')
-            
+
             # إجمالي الذمم
             total_receivables = total_sales_amount - total_payments_amount
-            
+
             # مبيعات اليوم
             today_sales = db.session.query(
                 db.func.sum(Sale.total_amount)
             ).filter(
                 Sale.created_at >= datetime.now().date()
             ).scalar() or Decimal('0')
-            
+
             # مدفوعات اليوم
             today_payments = db.session.query(
                 db.func.sum(Payment.amount)
             ).filter(
                 Payment.created_at >= datetime.now().date()
             ).scalar() or Decimal('0')
-            
+
             # إحصائيات شهرية
             month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             monthly_sales = db.session.query(
@@ -355,7 +354,7 @@ class SystemIntegrator:
             ).filter(
                 Sale.created_at >= month_start
             ).scalar() or Decimal('0')
-            
+
             return {
                 'success': True,
                 'financial': {
@@ -368,30 +367,30 @@ class SystemIntegrator:
                     'currency': 'AED'
                 }
             }
-            
+
         except Exception as e:
             return {
                 'success': False,
                 'error': f'خطأ في جلب الملخص المالي: {str(e)}'
             }
-    
+
     def search_data(self, query, data_type='all'):
         """البحث في البيانات"""
         try:
             from models import Customer, Product, Sale
-            
+
             results = {
                 'customers': [],
                 'products': [],
                 'sales': []
             }
-            
+
             if data_type in ['all', 'customers']:
                 # البحث في العملاء
                 customers = Customer.query.filter(
                     Customer.name.ilike(f'%{query}%')
                 ).limit(10).all()
-                
+
                 results['customers'] = [
                     {
                         'id': c.id,
@@ -402,14 +401,14 @@ class SystemIntegrator:
                     }
                     for c in customers
                 ]
-            
+
             if data_type in ['all', 'products']:
                 # البحث في المنتجات
                 products = Product.query.filter(
                     (Product.name.ilike(f'%{query}%')) |
                     (Product.sku.ilike(f'%{query}%'))
                 ).limit(10).all()
-                
+
                 results['products'] = [
                     {
                         'id': p.id,
@@ -420,13 +419,13 @@ class SystemIntegrator:
                     }
                     for p in products
                 ]
-            
+
             if data_type in ['all', 'sales']:
                 # البحث في المبيعات
                 sales = Sale.query.join(Customer).filter(
                     Customer.name.ilike(f'%{query}%')
                 ).limit(10).all()
-                
+
                 results['sales'] = [
                     {
                         'id': s.id,
@@ -436,13 +435,13 @@ class SystemIntegrator:
                     }
                     for s in sales
                 ]
-            
+
             return {
                 'success': True,
                 'query': query,
                 'results': results
             }
-            
+
         except Exception as e:
             return {
                 'success': False,

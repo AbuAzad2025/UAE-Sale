@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import SelectField, DecimalField, TextAreaField, DateField, SubmitField
+from wtforms import SelectField, DecimalField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, Optional, NumberRange
 
 
@@ -24,4 +24,3 @@ class SaleForm(FlaskForm):
     ], validators=[Optional()])
     notes = TextAreaField('ملاحظات', validators=[Optional()])
     submit = SubmitField('حفظ الفاتورة')
-

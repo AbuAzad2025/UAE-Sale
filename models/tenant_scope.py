@@ -59,7 +59,7 @@ class TenantScopedMixin:
         set_current_tenant_id(tenant_id)
 
 
-def install_tenant_filter_events():
+def install_tenant_filter_events():  # noqa: C901
     """
     Install SQLAlchemy events to auto-filter tenant-scoped queries.
     Called once during app initialization.

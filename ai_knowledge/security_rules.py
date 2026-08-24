@@ -9,24 +9,24 @@ from flask_login import current_user
 
 class SecurityRules:
     """قواعد الأمان لأزاد"""
-    
+
     @staticmethod
     def is_owner():
         if not current_user or not current_user.is_authenticated:
             return False
         return bool(getattr(current_user, 'is_owner', False))
-    
+
     @staticmethod
     def can_access_sensitive_info():
         """فحص إمكانية الوصول للمعلومات الحساسة"""
         return SecurityRules.is_owner()
-    
+
     @staticmethod
     def filter_sensitive_data(data, user_id=None):
         """تصفية البيانات الحساسة"""
         if SecurityRules.can_access_sensitive_info():
             return data
-        
+
         # إخفاء المعلومات الحساسة
         if isinstance(data, dict):
             filtered_data = {}
@@ -44,9 +44,9 @@ class SecurityRules:
                 else:
                     filtered_data[key] = value
             return filtered_data
-        
+
         return data
-    
+
     @staticmethod
     def get_security_response(request_type):
         """الحصول على رد أمني"""
@@ -56,15 +56,15 @@ class SecurityRules:
             'unauthorized': "🚫 عذراً، ليس لديك صلاحية للوصول لهذه المعلومات! 🔐",
             'owner_only': "👑 هذه الميزة متاحة للمالك فقط! 💎"
         }
-        
+
         return responses.get(request_type, "🔒 عذراً، وصول غير مصرح به!")
-    
+
     @staticmethod
     def check_user_permissions(action):
         """فحص صلاحيات المستخدم"""
         if not current_user or not current_user.is_authenticated:
             return False, "يجب تسجيل الدخول أولاً"
-        
+
         if SecurityRules.is_owner():
             return True, "صلاحيات كاملة"
         role = getattr(current_user, 'role', None)
@@ -78,36 +78,36 @@ class SecurityRules:
         if action in user_permissions:
             return True, "صلاحية ممنوحة"
         return False, "ليس لديك صلاحية لهذا الإجراء"
-    
+
     @staticmethod
     def sanitize_input(text):
         """تنظيف المدخلات من المحتوى الضار"""
         if not text:
             return ""
-        
+
         # إزالة الأحرف الضارة
         dangerous_chars = ['<', '>', '"', "'", '&', ';', '(', ')', '|', '`', '$']
-        
+
         for char in dangerous_chars:
             text = text.replace(char, '')
-        
+
         # تحديد طول النص
         if len(text) > 1000:
             text = text[:1000] + "..."
-        
+
         return text.strip()
-    
+
     @staticmethod
     def log_security_event(event_type, details):
         """تسجيل الأحداث الأمنية"""
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         user = current_user.username if current_user and current_user.is_authenticated else 'غير مسجل'
-        
+
         log_entry = f"[{timestamp}] {event_type}: {details} - المستخدم: {user}"
-        
+
         # يمكن إضافة تسجيل في ملف أو قاعدة بيانات
         print(f"SECURITY_LOG: {log_entry}")
-    
+
     @staticmethod
     def rate_limit_check(user_id, action):
         """فحص معدل الطلبات"""

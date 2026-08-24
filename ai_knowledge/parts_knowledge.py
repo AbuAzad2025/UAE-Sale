@@ -391,23 +391,26 @@ PARTS_DATABASE = {
     'maintenance': MAINTENANCE_SCHEDULE,
 }
 
+
 def get_part_info(category):
     """الحصول على معلومات قطعة غيار"""
     return PARTS_DATABASE.get(category, "معلومات غير متوفرة")
+
 
 def search_parts(query):
     """البحث في قاعدة قطع الغيار"""
     query = query.lower()
     results = []
-    
+
     for category, content in PARTS_DATABASE.items():
         if query in content.lower():
             results.append({
                 'category': category,
                 'excerpt': content[:300] + '...'
             })
-    
+
     return results
+
 
 def get_compatible_parts(part_name, vehicle_info):
     """البحث عن قطع متوافقة"""

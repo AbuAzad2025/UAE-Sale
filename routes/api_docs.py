@@ -284,4 +284,3 @@ def redoc():
     </html>
     """
     return render_template_string(html)
-

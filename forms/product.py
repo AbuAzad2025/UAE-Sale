@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, DecimalField, SelectField, TextAreaField, FileField, SubmitField
+from wtforms import StringField, DecimalField, SelectField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, Optional, NumberRange
 
 
@@ -47,4 +47,3 @@ class ProductCategoryForm(FlaskForm):
     name_ar = StringField('الاسم بالعربي', validators=[Optional()])
     description = TextAreaField('الوصف', validators=[Optional()])
     submit = SubmitField('حفظ')
-

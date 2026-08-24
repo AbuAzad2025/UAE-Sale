@@ -89,6 +89,7 @@ USER_GUIDE = {
     ]
 }
 
+
 def get_system_guide():
     """دليل النظام"""
     return """📚 **دليل الاستخدام السريع:**

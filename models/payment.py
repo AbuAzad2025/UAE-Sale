@@ -5,45 +5,45 @@ from models.tenant_scope import TenantScopedMixin
 
 class Payment(TenantScopedMixin, db.Model):
     __tablename__ = 'payments'
-    
+
     __table_args__ = (
         db.CheckConstraint('amount > 0', name='ck_payment_amount_positive'),
         db.CheckConstraint('amount_aed > 0', name='ck_payment_amount_aed_positive'),
     )
-    
+
     id = db.Column(db.Integer, primary_key=True)
     tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     payment_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    
+
     payment_type = db.Column(db.String(20), nullable=False, index=True)
-    
+
     # اتجاه المدفوعات
     direction = db.Column(db.String(10), default='outgoing', index=True)  # incoming, outgoing
-    
+
     sale_id = db.Column(db.Integer, db.ForeignKey('sales.id', ondelete='SET NULL'), nullable=True, index=True)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id', ondelete='SET NULL'), nullable=True, index=True)
-    
+
     # معلومات المورد (لسندات الصرف)
     supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id', ondelete='SET NULL'), nullable=True, index=True)
     supplier_name = db.Column(db.String(200))
-    
+
     amount = db.Column(db.Numeric(15, 3), nullable=False)
     currency = db.Column(db.String(3), default='AED', nullable=False)
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
     amount_aed = db.Column(db.Numeric(15, 3), nullable=False)
-    
+
     payment_method = db.Column(db.String(20), nullable=False)
-    
+
     reference_number = db.Column(db.String(100))
-    
+
     # معلومات الشيك (قديمة - للتوافق)
     cheque_number = db.Column(db.String(50))
     cheque_date = db.Column(db.Date)
     bank_name = db.Column(db.String(100))
-    
+
     # ربط مع نموذج الشيك (جديد - للمحاسبة الدقيقة)
     cheque_id = db.Column(db.Integer, db.ForeignKey('cheques.id', use_alter=True), index=True)
-    
+
     # حالة الدفعة - للشيكات فقط
     # confirmed: مؤكدة (الشيك صُرف)
     # pending: معلقة (الشيك لم يُصرف بعد)
@@ -51,22 +51,22 @@ class Payment(TenantScopedMixin, db.Model):
     payment_confirmed = db.Column(db.Boolean, default=True, index=True)  # True للنقد/بطاقة، False للشيكات المعلقة
     confirmation_date = db.Column(db.DateTime)  # تاريخ التأكيد
     rejection_reason = db.Column(db.String(500))  # سبب الرفض
-    
+
     payment_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
     notes = db.Column(db.Text)
-    
+
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    
+
     sale = db.relationship('Sale', back_populates='payments')
     customer = db.relationship('Customer')
     supplier = db.relationship('Supplier', foreign_keys=[supplier_id])
     user = db.relationship('User', foreign_keys=[user_id])
     cheque = db.relationship('Cheque', backref='payment_record', foreign_keys=[cheque_id])
-    
+
     def __repr__(self):
         return f'<Payment {self.payment_number}>'
-    
+
     def get_method_display(self, lang='ar'):
         methods = {
             'cash': {'ar': 'نقدي', 'en': 'Cash'},
@@ -76,32 +76,32 @@ class Payment(TenantScopedMixin, db.Model):
             'e_wallet': {'ar': 'محفظة إلكترونية', 'en': 'E-Wallet'},
         }
         return methods.get(self.payment_method, {}).get(lang, self.payment_method)
-    
+
     def confirm_payment(self):
         """تأكيد الدفعة (بعد صرف الشيك)"""
         if not self.payment_confirmed:
             self.payment_confirmed = True
             self.confirmation_date = datetime.now(timezone.utc)
-            
+
             # تحديث حالة الفاتورة
             if self.sale:
                 self.sale.recalculate_payment_status()
-    
+
     def reject_payment(self, reason):
         """رفض الدفعة (شيك مرتد)"""
         if self.payment_confirmed:
             self.payment_confirmed = False
             self.rejection_reason = reason
-            
+
             # تحديث حالة الفاتورة
             if self.sale:
                 self.sale.recalculate_payment_status()
-    
+
     @property
     def is_pending(self):
         """هل الدفعة معلقة (شيك لم يُصرف)"""
         return not self.payment_confirmed
-    
+
     @property
     def status_ar(self):
         """حالة الدفعة بالعربي"""
@@ -109,7 +109,7 @@ class Payment(TenantScopedMixin, db.Model):
             return 'مؤكدة'
         else:
             return 'معلقة' if not self.rejection_reason else 'مرفوضة'
-    
+
     @property
     def direction_ar(self):
         """اتجاه المدفوعة بالعربي"""
@@ -118,7 +118,7 @@ class Payment(TenantScopedMixin, db.Model):
             'outgoing': 'صادر'
         }
         return directions.get(self.direction, 'غير محدد')
-    
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -136,60 +136,60 @@ class Payment(TenantScopedMixin, db.Model):
 
 class Receipt(TenantScopedMixin, db.Model):
     __tablename__ = 'receipts'
-    
+
     __table_args__ = (
         db.CheckConstraint('amount > 0', name='ck_receipt_amount_positive'),
         db.CheckConstraint('amount_aed > 0', name='ck_receipt_amount_aed_positive'),
     )
-    
+
     id = db.Column(db.Integer, primary_key=True)
     tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     receipt_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    
+
     # تصنيف مصدر السند
     source_type = db.Column(db.String(20), default='sale', index=True)  # sale, manual, refund, etc.
     source_id = db.Column(db.Integer, index=True)  # ID of the source (sale_id, etc.)
-    
+
     # اتجاه المدفوعات
     direction = db.Column(db.String(10), default='incoming', index=True)  # incoming, outgoing
-    
+
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False, index=True)
-    
+
     amount = db.Column(db.Numeric(15, 3), nullable=False)
     currency = db.Column(db.String(3), default='AED', nullable=False)
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
     amount_aed = db.Column(db.Numeric(15, 3), nullable=False)
-    
+
     payment_method = db.Column(db.String(20), nullable=False)
-    
+
     reference_number = db.Column(db.String(100))
-    
+
     # معلومات الشيك (قديمة - للتوافق)
     cheque_number = db.Column(db.String(50))
     cheque_date = db.Column(db.Date)
     bank_name = db.Column(db.String(100))
-    
+
     # ربط مع نموذج الشيك (جديد - للمحاسبة الدقيقة)
     cheque_id = db.Column(db.Integer, db.ForeignKey('cheques.id', use_alter=True), index=True)
-    
+
     # حالة السند - للشيكات فقط
     payment_confirmed = db.Column(db.Boolean, default=True, index=True)
     confirmation_date = db.Column(db.DateTime)
     rejection_reason = db.Column(db.String(500))
-    
+
     receipt_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
     notes = db.Column(db.Text)
-    
+
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    
+
     customer = db.relationship('Customer', back_populates='receipts')
     user = db.relationship('User', foreign_keys=[user_id])
     cheque = db.relationship('Cheque', backref='receipt_record', foreign_keys=[cheque_id])
-    
+
     def __repr__(self):
         return f'<Receipt {self.receipt_number}>'
-    
+
     def get_method_display(self, lang='ar'):
         methods = {
             'cash': {'ar': 'نقدي', 'en': 'Cash'},
@@ -199,24 +199,24 @@ class Receipt(TenantScopedMixin, db.Model):
             'e_wallet': {'ar': 'محفظة إلكترونية', 'en': 'E-Wallet'},
         }
         return methods.get(self.payment_method, {}).get(lang, self.payment_method)
-    
+
     def confirm_receipt(self):
         """تأكيد السند (بعد صرف الشيك)"""
         if not self.payment_confirmed:
             self.payment_confirmed = True
             self.confirmation_date = datetime.now(timezone.utc)
-    
+
     def reject_receipt(self, reason):
         """رفض السند (شيك مرتد)"""
         if self.payment_confirmed:
             self.payment_confirmed = False
             self.rejection_reason = reason
-    
+
     @property
     def is_pending(self):
         """هل السند معلق (شيك لم يُصرف)"""
         return not self.payment_confirmed
-    
+
     @property
     def status_ar(self):
         """حالة السند بالعربي"""
@@ -224,7 +224,7 @@ class Receipt(TenantScopedMixin, db.Model):
             return 'مؤكد'
         else:
             return 'معلق' if not self.rejection_reason else 'مرفوض'
-    
+
     @property
     def source_type_ar(self):
         """نوع المصدر بالعربي"""
@@ -236,7 +236,7 @@ class Receipt(TenantScopedMixin, db.Model):
             'other': 'أخرى'
         }
         return source_types.get(self.source_type, 'غير محدد')
-    
+
     @property
     def direction_ar(self):
         """اتجاه المدفوعة بالعربي"""
@@ -245,7 +245,7 @@ class Receipt(TenantScopedMixin, db.Model):
             'outgoing': 'صادر'
         }
         return directions.get(self.direction, 'غير محدد')
-    
+
     def get_source_info(self):
         """معلومات المصدر"""
         if self.source_type == 'sale' and self.source_id:
@@ -259,7 +259,7 @@ class Receipt(TenantScopedMixin, db.Model):
                     'amount': float(sale.total_amount)
                 }
         return None
-    
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -273,4 +273,3 @@ class Receipt(TenantScopedMixin, db.Model):
             'status_ar': self.status_ar,
             'cheque_id': self.cheque_id,
         }
-

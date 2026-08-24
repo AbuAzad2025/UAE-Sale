@@ -26,4 +26,3 @@ class CustomerForm(FlaskForm):
     ], default='1', coerce=int, validators=[Optional()])
     notes = TextAreaField('ملاحظات', validators=[Optional()])
     submit = SubmitField('حفظ')
-

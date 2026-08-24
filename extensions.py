@@ -1,7 +1,6 @@
 import logging
 import sys
 import os
-from datetime import datetime, timezone
 
 from flask import g, has_request_context, session
 from flask_sqlalchemy import SQLAlchemy
@@ -18,14 +17,14 @@ import pickle
 # Monkey patch cachelib.serializers.BaseSerializer.dumps to fix UnboundLocalError
 try:
     from cachelib.serializers import BaseSerializer
-    
+
     def patched_dumps(self, value, protocol=pickle.HIGHEST_PROTOCOL):
         try:
             return pickle.dumps(value, protocol)
         except (pickle.PickleError, pickle.PicklingError) as e:
             self._warn(e)
             return None
-            
+
     BaseSerializer.dumps = patched_dumps
 except ImportError:
     pass
@@ -44,19 +43,26 @@ def get_locale():
         return session.get('language', 'ar')
     return 'ar'
 
+
 try:
     from colorama import init as colorama_init, Fore, Style
     colorama_init(autoreset=True)
 except ImportError:
     class _Fore:
-        BLUE = ""; GREEN = ""; YELLOW = ""; RED = ""
+        BLUE = ""
+        GREEN = ""
+        YELLOW = ""
+        RED = ""
+
     class _Style:
-        BRIGHT = ""; RESET_ALL = ""
+        BRIGHT = ""
+        RESET_ALL = ""
     Fore, Style = _Fore(), _Style()
 
 
 class RequestIdFilter(logging.Filter):
     """Add request ID to log records"""
+
     def filter(self, record):
         if has_request_context():
             record.request_id = getattr(g, "request_id", "-")
@@ -67,7 +73,7 @@ class RequestIdFilter(logging.Filter):
 
 class ColorFormatter(logging.Formatter):
     """Colored console logging with better PowerShell support"""
-    
+
     COLORS = {
         "DEBUG":   Fore.CYAN + Style.BRIGHT,      # سماوي فاتح
         "INFO":    Fore.WHITE + Style.BRIGHT,     # أبيض فاتح
@@ -78,19 +84,19 @@ class ColorFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         use_colors = os.environ.get('FLASK_ENV', 'development') == 'development'
-        
+
         if use_colors:
             color = self.COLORS.get(record.levelname, "")
             reset = Style.RESET_ALL
         else:
             color = ""
             reset = ""
-        
+
         req_id = getattr(record, "request_id", "-")
-        
+
         timestamp = self.formatTime(record, '%Y-%m-%d %H:%M:%S')
         message = f"[{timestamp}] {color}{record.levelname:8s}{reset} [{req_id}] {record.name}: {record.getMessage()}"
-        
+
         if record.exc_info:
             message += "\n" + self.formatException(record.exc_info)
 
@@ -103,7 +109,7 @@ class ColorFormatter(logging.Formatter):
             message = message.encode(target_encoding, errors='replace').decode(target_encoding, errors='replace')
         except Exception:
             message = message.encode('ascii', 'replace').decode('ascii')
-        
+
         return message
 
 
@@ -155,6 +161,7 @@ def setup_logging(app):
 
     app.logger.info("[OK] Logging configured")
 
+
 db = SQLAlchemy(session_options={"expire_on_commit": False})
 
 migrate = Migrate()
@@ -165,7 +172,7 @@ login_manager.login_message = "الرجاء تسجيل الدخول للوصول
 login_manager.login_message_category = "warning"
 
 # Monkey-patch AnonymousUserMixin so templates can safely call has_permission()
-from flask_login import AnonymousUserMixin
+from flask_login import AnonymousUserMixin  # noqa: E402
 AnonymousUserMixin.has_permission = lambda self, code: False
 AnonymousUserMixin.is_owner = False
 AnonymousUserMixin.is_super_admin = lambda self: False
@@ -179,6 +186,7 @@ cache = Cache()
 
 mail = Mail()
 
+
 def _rate_limit_key():
     """Custom rate limit key (user or IP)"""
     try:
@@ -188,6 +196,7 @@ def _rate_limit_key():
     except Exception:
         pass
     return get_remote_address()
+
 
 limiter = Limiter(
     key_func=_rate_limit_key,
@@ -202,40 +211,40 @@ if COMPRESS_AVAILABLE:
 else:
     compress = None
 
-from sqlalchemy import event
-from sqlalchemy.engine import Engine
+from sqlalchemy import event  # noqa: E402,F401
+from sqlalchemy.engine import Engine  # noqa: E402,F401
 
 
 def init_extensions(app):
-    
+
     db.init_app(app)
     migrate.init_app(app, db)
-    
+
     if app.config.get('SQLALCHEMY_ECHO'):
         from utils.performance_tracker import log_slow_queries
         log_slow_queries(app)
-    
+
     login_manager.init_app(app)
-    
+
     csrf.init_app(app)
-    
+
     cache.init_app(app)
-    
+
     limiter.init_app(app)
-    
+
     if compress:
         compress.init_app(app)
         logging.info("[OK] Compression enabled")
     else:
         logging.warning("⚠️ Compression disabled - install Flask-Compress for better performance")
-    
+
     default_limit = app.config.get("RATELIMIT_DEFAULT")
     if default_limit:
         if isinstance(default_limit, str):
-            limiter.default_limits = [l.strip() for l in default_limit.split(";") if l.strip()]
+            limiter.default_limits = [ln.strip() for ln in default_limit.split(";") if ln.strip()]
         else:
             limiter.default_limits = [default_limit]
-    
+
     # SECURITY: No global rate limiter bypass for any role.
     # Per-route exemptions are applied via @limiter.exempt on specific
     # trusted endpoints (e.g., health checks) only.
@@ -243,13 +252,14 @@ def init_extensions(app):
         return False
 
     limiter.request_filter(_no_global_bypass)
-    
+
     if app.config.get("MAIL_USERNAME"):
         mail.init_app(app)
-    
+
     babel.init_app(app, locale_selector=get_locale)
-    
+
     app.logger.info("[OK] Extensions initialized")
+
 
 def get_or_create(session, model, defaults=None, **kwargs):
     """Get or create a database record"""

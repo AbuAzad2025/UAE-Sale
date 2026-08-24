@@ -13,11 +13,11 @@ def cached_query(timeout=300, key_prefix=None):
                 cache_key = f"{key_prefix}:{hashlib.md5(json.dumps(str(args) + str(kwargs)).encode()).hexdigest()}"
             else:
                 cache_key = f"{f.__name__}:{hashlib.md5(json.dumps(str(args) + str(kwargs)).encode()).hexdigest()}"
-            
+
             result = cache.get(cache_key)
             if result is not None:
                 return result
-            
+
             result = f(*args, **kwargs)
             try:
                 cache.set(cache_key, result, timeout=timeout)
@@ -38,4 +38,3 @@ def invalidate_cache(key_pattern):
             cache.delete(key_pattern)
     except Exception:
         pass
-

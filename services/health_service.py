@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class HealthCheckService:
     """خدمة فحص صحة النظام"""
-    
+
     @staticmethod
     def check_database():
         """فحص الاتصال بقاعدة البيانات"""
@@ -30,7 +30,7 @@ class HealthCheckService:
                 'status': 'unhealthy',
                 'message': f'Database error: {str(e)}'
             }
-    
+
     @staticmethod
     def check_nowpayments():
         """فحص تكوين NOWPayments"""
@@ -41,7 +41,7 @@ class HealthCheckService:
                     'status': 'warning',
                     'message': 'Payment vault not initialized'
                 }
-            
+
             if vault.nowpayments_api_key and vault.bitcoin_address:
                 return {
                     'status': 'healthy',
@@ -58,7 +58,7 @@ class HealthCheckService:
                 'status': 'unhealthy',
                 'message': f'Error: {str(e)}'
             }
-    
+
     @staticmethod
     def check_encryption():
         """فحص نظام التشفير"""
@@ -66,7 +66,7 @@ class HealthCheckService:
             # التحقق من إمكانية التشفير
             from werkzeug.security import generate_password_hash
             test_hash = generate_password_hash('test')
-            
+
             if test_hash:
                 return {
                     'status': 'healthy',
@@ -83,7 +83,7 @@ class HealthCheckService:
                 'status': 'unhealthy',
                 'message': f'Error: {str(e)}'
             }
-    
+
     @staticmethod
     def check_system_resources():
         """فحص موارد النظام"""
@@ -91,22 +91,22 @@ class HealthCheckService:
             cpu_percent = psutil.cpu_percent(interval=1)
             memory = psutil.virtual_memory()
             disk = psutil.disk_usage('/')
-            
+
             status = 'healthy'
             warnings = []
-            
+
             if cpu_percent > 90:
                 status = 'warning'
                 warnings.append(f'High CPU usage: {cpu_percent}%')
-            
+
             if memory.percent > 90:
                 status = 'warning'
                 warnings.append(f'High memory usage: {memory.percent}%')
-            
+
             if disk.percent > 90:
                 status = 'warning'
                 warnings.append(f'Low disk space: {disk.percent}% used')
-            
+
             return {
                 'status': status,
                 'cpu_percent': cpu_percent,
@@ -120,22 +120,22 @@ class HealthCheckService:
                 'status': 'unknown',
                 'message': f'Error: {str(e)}'
             }
-    
+
     @staticmethod
     def get_system_metrics():
         """الحصول على مقاييس النظام"""
         try:
             from models import Donation, PackagePurchase, CardPayment
-            
+
             # إحصائيات قاعدة البيانات
             total_donations = Donation.query.count()
             total_purchases = PackagePurchase.query.count()
             total_cards = CardPayment.query.count()
-            
+
             # معلومات النظام
             process = psutil.Process(os.getpid())
             memory_info = process.memory_info()
-            
+
             return {
                 'database': {
                     'total_donations': total_donations,
@@ -153,7 +153,7 @@ class HealthCheckService:
         except Exception as e:
             logger.error(f'Failed to get system metrics: {str(e)}')
             return {'error': str(e)}
-    
+
     @staticmethod
     def run_full_health_check():
         """تشغيل فحص صحة شامل"""
@@ -163,20 +163,19 @@ class HealthCheckService:
             'encryption': HealthCheckService.check_encryption(),
             'system': HealthCheckService.check_system_resources()
         }
-        
+
         # تحديد الحالة العامة
         statuses = [check['status'] for check in checks.values()]
-        
+
         if 'unhealthy' in statuses:
             overall_status = 'unhealthy'
         elif 'warning' in statuses:
             overall_status = 'warning'
         else:
             overall_status = 'healthy'
-        
+
         return {
             'overall_status': overall_status,
             'checks': checks,
             'timestamp': datetime.now(timezone.utc).isoformat()
         }
-

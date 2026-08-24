@@ -2,7 +2,7 @@
 XSS Prevention & Input Sanitization
 """
 
-from markupsafe import escape, Markup
+from markupsafe import escape
 import re
 import bleach
 
@@ -107,11 +107,11 @@ class InputSanitizer:
 def sanitize_form_data(form_data, rules=None):
     """
     تنظيف بيانات form كاملة
-    
+
     Args:
         form_data: dict من بيانات الفورم
         rules: dict من القواعد لكل حقل
-        
+
     Returns:
         cleaned_data: dict منظف
     """
@@ -134,4 +134,3 @@ def sanitize_form_data(form_data, rules=None):
             cleaned[key] = InputSanitizer.sanitize_text(value, max_len)
 
     return cleaned
-

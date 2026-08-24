@@ -46,7 +46,7 @@ TRANSLATIONS = {
     'Inactive': {'ar': 'غير نشط', 'en': 'Inactive'},
     'Yes': {'ar': 'نعم', 'en': 'Yes'},
     'No': {'ar': 'لا', 'en': 'No'},
-    
+
     'Dashboard': {'ar': 'لوحة التحكم', 'en': 'Dashboard'},
     'Sales': {'ar': 'المبيعات', 'en': 'Sales'},
     'Purchases': {'ar': 'المشتريات', 'en': 'Purchases'},
@@ -59,7 +59,7 @@ TRANSLATIONS = {
     'Reports': {'ar': 'التقارير', 'en': 'Reports'},
     'Ledger': {'ar': 'دفتر الأستاذ', 'en': 'Ledger'},
     'Settings': {'ar': 'الإعدادات', 'en': 'Settings'},
-    
+
     'Login': {'ar': 'تسجيل الدخول', 'en': 'Login'},
     'Sign In': {'ar': 'دخول', 'en': 'Sign In'},
     'Sign in to start your session': {'ar': 'تسجيل الدخول للنظام', 'en': 'Sign in to start your session'},
@@ -67,7 +67,7 @@ TRANSLATIONS = {
     'Password': {'ar': 'كلمة المرور', 'en': 'Password'},
     'Remember Me': {'ar': 'تذكرني', 'en': 'Remember Me'},
     'Logout': {'ar': 'تسجيل خروج', 'en': 'Logout'},
-    
+
     'Name': {'ar': 'الاسم', 'en': 'Name'},
     'Email': {'ar': 'البريد الإلكتروني', 'en': 'Email'},
     'Phone': {'ar': 'الهاتف', 'en': 'Phone'},
@@ -82,7 +82,7 @@ TRANSLATIONS = {
     'Discount': {'ar': 'الخصم', 'en': 'Discount'},
     'Tax': {'ar': 'الضريبة', 'en': 'Tax'},
     'Grand Total': {'ar': 'الإجمالي النهائي', 'en': 'Grand Total'},
-    
+
     'Success': {'ar': 'نجح', 'en': 'Success'},
     'Error': {'ar': 'خطأ', 'en': 'Error'},
     'Warning': {'ar': 'تحذير', 'en': 'Warning'},
@@ -92,7 +92,7 @@ TRANSLATIONS = {
     'Updated Successfully': {'ar': 'تم التحديث بنجاح', 'en': 'Updated Successfully'},
     'Are you sure?': {'ar': 'هل أنت متأكد؟', 'en': 'Are you sure?'},
     'This action cannot be undone': {'ar': 'لا يمكن التراجع عن هذا الإجراء', 'en': 'This action cannot be undone'},
-    
+
     'Add': {'ar': 'إضافة', 'en': 'Add'},
     'New': {'ar': 'جديد', 'en': 'New'},
     'Details': {'ar': 'تفاصيل', 'en': 'Details'},
@@ -124,7 +124,7 @@ TRANSLATIONS = {
     'All': {'ar': 'الكل', 'en': 'All'},
     'List': {'ar': 'قائمة', 'en': 'List'},
     'Loading': {'ar': 'جاري التحميل', 'en': 'Loading'},
-    
+
     'Features': {'ar': 'المميزات', 'en': 'Features'},
     'Products Management': {'ar': 'إدارة المنتجات', 'en': 'Products Management'},
     'Sales Management': {'ar': 'إدارة المبيعات', 'en': 'Sales Management'},
@@ -135,20 +135,19 @@ TRANSLATIONS = {
 def t(key, **kwargs):
     """
     ترجمة سريعة من القاموس
-    
+
     Usage:
         t('Save')  # → حفظ (if Arabic) or Save (if English)
         t('Hello {name}', name='Ahmad')
     """
     lang = get_current_language()
-    
+
     if key in TRANSLATIONS:
         text = TRANSLATIONS[key].get(lang, key)
     else:
         text = key
-    
+
     if kwargs:
         text = text.format(**kwargs)
-    
-    return text
 
+    return text

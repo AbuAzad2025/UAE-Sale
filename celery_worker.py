@@ -107,7 +107,7 @@ def run_security_scan(self):
         from app import create_app
         app = create_app()
         with app.app_context():
-            from models import User, LoginHistory
+            from models import LoginHistory
             from extensions import db
             from datetime import datetime, timedelta, timezone
 
@@ -117,7 +117,7 @@ def run_security_scan(self):
                 LoginHistory.user_id,
                 db.func.count().label('fail_count')
             ).filter(
-                LoginHistory.success == False,
+                LoginHistory.success is False,
                 LoginHistory.timestamp >= cutoff
             ).group_by(
                 LoginHistory.user_id

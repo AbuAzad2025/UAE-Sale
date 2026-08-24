@@ -276,18 +276,19 @@ USER_GUIDE = {
     'reporting': REPORTING_GUIDE,
 }
 
+
 def get_guide(topic):
     """الحصول على دليل معين"""
     return USER_GUIDE.get(topic, "الموضوع غير موجود")
 
+
 def get_help_for_task(task):
     """الحصول على مساعدة لمهمة محددة"""
     task = task.lower()
-    
+
     # بحث في كل الأدلة
     for guide_name, content in USER_GUIDE.items():
         if task in content.lower():
             return content
-    
-    return "لم أجد مساعدة لهذه المهمة. يمكنك سؤالي بطريقة أخرى!"
 
+    return "لم أجد مساعدة لهذه المهمة. يمكنك سؤالي بطريقة أخرى!"

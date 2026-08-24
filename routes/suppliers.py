@@ -8,7 +8,7 @@ from extensions import db, limiter
 from models import Supplier, Purchase, Payment
 from utils.decorators import permission_required, admin_required
 from utils.helpers import create_audit_log
-from sqlalchemy import func, desc
+from sqlalchemy import desc
 
 suppliers_bp = Blueprint('suppliers', __name__, url_prefix='/suppliers')
 
@@ -22,9 +22,9 @@ def index():
     per_page = request.args.get('per_page', 20, type=int)
     search = request.args.get('search', '', type=str)
     supplier_type = request.args.get('type', '', type=str)
-    
+
     query = Supplier.query.filter_by(is_active=True)
-    
+
     # البحث
     if search:
         search_filter = f'%{search}%'
@@ -36,17 +36,17 @@ def index():
                 Supplier.email.ilike(search_filter)
             )
         )
-    
+
     # الفلترة حسب النوع
     if supplier_type:
         query = query.filter_by(supplier_type=supplier_type)
-    
+
     pagination = query.order_by(Supplier.name).paginate(
         page=page,
         per_page=per_page,
         error_out=False
     )
-    
+
     # إحصائيات
     stats = {
         'total': Supplier.query.filter_by(is_active=True).count(),
@@ -54,11 +54,11 @@ def index():
         'parts': Supplier.query.filter_by(is_active=True, supplier_type='parts').count(),
         'equipment': Supplier.query.filter_by(is_active=True, supplier_type='equipment').count(),
     }
-    
+
     return render_template('suppliers/index.html',
-                         suppliers=pagination.items,
-                         pagination=pagination,
-                         stats=stats)
+                           suppliers=pagination.items,
+                           pagination=pagination,
+                           stats=stats)
 
 
 @suppliers_bp.route('/create', methods=['GET', 'POST'])
@@ -73,7 +73,7 @@ def create():
             if not supplier_type_value:
                 flash('⚠️ يرجى اختيار نوع المورد.', 'warning')
                 return render_template('suppliers/create.html')
-            
+
             rating_value = (request.form.get('rating') or '').strip()
             rating = None
             if rating_value:
@@ -82,9 +82,9 @@ def create():
                 except ValueError:
                     flash('⚠️ قيمة التقييم غير صحيحة.', 'warning')
                     return render_template('suppliers/create.html')
-            
+
             initial_balance = request.form.get('initial_balance', type=float, default=0)
-            
+
             supplier = Supplier(
                 name=request.form.get('name'),
                 name_en=request.form.get('name_en'),
@@ -110,19 +110,19 @@ def create():
                 is_verified=request.form.get('is_verified') == 'on',
                 created_by=current_user.id
             )
-            
+
             db.session.add(supplier)
             db.session.commit()
-            
+
             create_audit_log('create', 'suppliers', supplier.id)
-            
+
             flash('✅ تم إضافة المورد بنجاح!', 'success')
             return redirect(url_for('suppliers.view', id=supplier.id))
-        
+
         except Exception as e:
             db.session.rollback()
             flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
-    
+
     return render_template('suppliers/create.html')
 
 
@@ -132,12 +132,12 @@ def create():
 def view(id):
     """عرض تفاصيل المورد"""
     supplier = db.get_or_404(Supplier, id)
-    
+
     # آخر المشتريات
     recent_purchases = supplier.purchases.filter_by(status='confirmed').order_by(
         desc(Purchase.purchase_date)
     ).limit(10).all()
-    
+
     # إحصائيات
     stats = {
         'total_purchases': supplier.purchases.filter_by(status='confirmed').count(),
@@ -145,14 +145,14 @@ def view(id):
         'balance': float(supplier.get_balance_aed()),
         'avg_purchase': 0
     }
-    
+
     if stats['total_purchases'] > 0:
         stats['avg_purchase'] = stats['total_amount'] / stats['total_purchases']
-    
+
     return render_template('suppliers/view.html',
-                         supplier=supplier,
-                         recent_purchases=recent_purchases,
-                         stats=stats)
+                           supplier=supplier,
+                           recent_purchases=recent_purchases,
+                           stats=stats)
 
 
 @suppliers_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
@@ -161,7 +161,7 @@ def view(id):
 def edit(id):
     """تعديل المورد"""
     supplier = db.get_or_404(Supplier, id)
-    
+
     if request.method == 'POST':
         try:
             supplier.name = request.form.get('name')
@@ -178,7 +178,7 @@ def edit(id):
             supplier.commercial_registration = request.form.get('commercial_registration')
             supplier_type_value = (request.form.get('supplier_type') or '').strip()
             supplier.supplier_type = supplier_type_value or None
-            
+
             rating_value = (request.form.get('rating') or '').strip()
             supplier.rating = int(rating_value) if rating_value else None
             supplier.credit_limit = request.form.get('credit_limit', type=float)
@@ -187,18 +187,18 @@ def edit(id):
             supplier.notes = request.form.get('notes')
             supplier.tags = request.form.get('tags')
             supplier.is_verified = request.form.get('is_verified') == 'on'
-            
+
             db.session.commit()
-            
+
             create_audit_log('update', 'suppliers', supplier.id)
-            
+
             flash('✅ تم تحديث المورد بنجاح!', 'success')
             return redirect(url_for('suppliers.view', id=supplier.id))
-        
+
         except Exception as e:
             db.session.rollback()
             flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
-    
+
     return render_template('suppliers/edit.html', supplier=supplier)
 
 
@@ -208,23 +208,23 @@ def edit(id):
 def delete(id):
     """حذف (إلغاء تفعيل) المورد"""
     supplier = db.get_or_404(Supplier, id)
-    
+
     try:
         # Check for related records preventing deletion
         purchases_count = Purchase.query.filter_by(supplier_id=id).count()
         payments_count = Payment.query.filter_by(supplier_id=id).count()
-        
+
         if purchases_count > 0 or payments_count > 0:
             supplier.is_active = False
             db.session.commit()
-            flash(f'⚠️ تم إلغاء تفعيل المورد "{supplier.name}" بدلاً من حذفه لوجود ({purchases_count} فاتورة شراء، {payments_count} دفعة) مرتبطة به.', 'warning')
+            flash(f'⚠️ تم إلغاء تفعيل المورد "{supplier.name}" بدلاً من حذفه لوجود ({purchases_count} فاتورة شراء، {payments_count} دفعة) مرتبطة به.', 'warning')  # noqa: E501
         else:
             db.session.delete(supplier)
             db.session.commit()
             flash(f'✅ تم حذف المورد "{supplier.name}" نهائياً!', 'success')
-            
+
         create_audit_log('delete', 'suppliers', supplier.id)
-        
+
     except Exception as e:
         db.session.rollback()
         # Fallback to soft delete if hard delete fails
@@ -232,9 +232,9 @@ def delete(id):
             supplier.is_active = False
             db.session.commit()
             flash(f'⚠️ تعذر الحذف النهائي للمورد "{supplier.name}" بسبب ارتباطات في قاعدة البيانات. تم إلغاء تفعيله بدلاً من ذلك.', 'warning')
-        except Exception as inner_e:
+        except Exception:
             flash(f'❌ حدث خطأ أثناء حذف المورد: {str(e)}', 'danger')
-    
+
     return redirect(url_for('suppliers.index'))
 
 
@@ -244,17 +244,17 @@ def delete(id):
 def statement(id):
     """كشف حساب المورد"""
     supplier = db.get_or_404(Supplier, id)
-    
+
     purchases = supplier.purchases.filter_by(status='confirmed').order_by(
         Purchase.purchase_date.desc()
     ).all()
-    
+
     payments = Payment.query.filter_by(supplier_id=id).order_by(Payment.payment_date.desc()).all()
-    
+
     return render_template('suppliers/statement.html',
-                         supplier=supplier,
-                         purchases=purchases,
-                         payments=payments)
+                           supplier=supplier,
+                           purchases=purchases,
+                           payments=payments)
 
 
 @suppliers_bp.route('/api/search')
@@ -262,13 +262,13 @@ def api_search():
     """API endpoint للبحث عن الموردين"""
     try:
         query = request.args.get('q', '')
-        page = request.args.get('page', 1, type=int)
+        _ = request.args.get('page', 1, type=int)
         per_page = 20
-        
+
         # السماح بالبحث حتى بدون query (لعرض كل الموردين)
         if query and len(query) >= 1:
             suppliers = Supplier.query.filter(
-                Supplier.is_active == True,
+                Supplier.is_active is True,
                 db.or_(
                     Supplier.name.ilike(f'%{query}%'),
                     Supplier.phone.ilike(f'%{query}%'),
@@ -280,7 +280,7 @@ def api_search():
             suppliers = Supplier.query.filter_by(
                 is_active=True
             ).order_by(Supplier.name).limit(per_page).all()
-        
+
         results = [{
             'id': s.id,
             'name': s.name,
@@ -289,7 +289,7 @@ def api_search():
             'supplier_type': s.supplier_type,
             'balance': float(s.get_balance_aed())
         } for s in suppliers]
-        
+
         return jsonify(results)
     except Exception as e:
         print(f"Error in supplier search API: {e}")

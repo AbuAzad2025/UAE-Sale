@@ -59,7 +59,7 @@ def payment_fields(payment_method):
         'e_wallet': {
             'fields': [
                 {'name': 'reference_number', 'type': 'text', 'label_ar': 'رقم المعاملة', 'label_en': 'Transaction ID', 'required': True},
-                {'name': 'wallet_provider', 'type': 'select', 'label_ar': 'المحفظة', 'label_en': 'Wallet Provider', 'required': False, 
+                {'name': 'wallet_provider', 'type': 'select', 'label_ar': 'المحفظة', 'label_en': 'Wallet Provider', 'required': False,
                  'options': [
                      {'value': 'apple_pay', 'label_ar': 'Apple Pay', 'label_en': 'Apple Pay'},
                      {'value': 'google_pay', 'label_ar': 'Google Pay', 'label_en': 'Google Pay'},
@@ -71,7 +71,7 @@ def payment_fields(payment_method):
             'en_title': 'E-Wallet'
         }
     }
-    
+
     return jsonify(fields.get(payment_method, {'fields': []}))
 
 
@@ -79,7 +79,7 @@ def payment_fields(payment_method):
 @login_required
 def currency_rate(from_currency, to_currency):
     from services.currency_service import CurrencyService
-    
+
     try:
         rate = CurrencyService.get_exchange_rate(from_currency, to_currency)
         return jsonify({
@@ -106,20 +106,20 @@ def api_search():
     search_type = request.args.get('type', 'customers')
     page = request.args.get('page', 1, type=int)
     per_page = 20
-    
+
     # ========================================
     # 1. البحث عن المنتجات
     # ========================================
     if search_type == 'products':
         products = Product.query.filter(
-            Product.is_active == True,
+            Product.is_active is True,
             db.or_(
                 Product.name.ilike(f'%{query}%'),
                 Product.sku.ilike(f'%{query}%'),
                 Product.barcode.ilike(f'%{query}%')
             )
         ).limit(per_page).all()
-        
+
         results = [{
             'id': p.id,
             'text': p.name,
@@ -135,15 +135,15 @@ def api_search():
             'unit': p.unit,
             'is_low_stock': p.is_low_stock(),
         } for p in products]
-        
+
         return jsonify({'results': results, 'has_more': len(results) >= per_page})
-    
+
     # ========================================
     # 2. البحث عن الموردين
     # ========================================
     elif search_type == 'suppliers':
-        base_query = Supplier.query.filter(Supplier.is_active == True).order_by(Supplier.name)
-        
+        base_query = Supplier.query.filter(Supplier.is_active == True).order_by(Supplier.name)  # noqa: E712  (SQLAlchemy boolean filter)
+
         if query:
             base_query = base_query.filter(
                 db.or_(
@@ -153,12 +153,12 @@ def api_search():
                     Supplier.email.ilike(f'%{query}%')
                 )
             )
-        
+
         offset = (page - 1) * per_page
         suppliers = base_query.limit(per_page + 1).offset(offset).all()
         has_more = len(suppliers) > per_page
         suppliers = suppliers[:per_page]
-        
+
         results = [{
             'id': s.id,
             'text': f"{s.name} {('- ' + s.company_name) if s.company_name else ''} - {s.phone or 'لا يوجد رقم'}",
@@ -172,15 +172,15 @@ def api_search():
             'rating': s.rating,
             'is_verified': s.is_verified
         } for s in suppliers]
-        
+
         return jsonify({'results': results, 'has_more': has_more})
-    
+
     # ========================================
     # 3. البحث عن الزبائن (الافتراضي)
     # ========================================
     else:
-        base_query = Customer.query.filter(Customer.is_active == True).order_by(Customer.name)
-        
+        base_query = Customer.query.filter(Customer.is_active == True).order_by(Customer.name)  # noqa: E712  (SQLAlchemy boolean filter)
+
         if query:
             base_query = base_query.filter(
                 db.or_(
@@ -189,12 +189,12 @@ def api_search():
                     Customer.email.ilike(f'%{query}%') if Customer.email else False
                 )
             )
-        
+
         offset = (page - 1) * per_page
         customers = base_query.limit(per_page + 1).offset(offset).all()
         has_more = len(customers) > per_page
         customers = customers[:per_page]
-        
+
         results = [{
             'id': c.id,
             'text': f"{c.name} - {c.phone or 'لا يوجد رقم'}",
@@ -204,7 +204,7 @@ def api_search():
             'customer_type': c.customer_type,
             'balance_aed': float(c.get_balance_aed())
         } for c in customers]
-        
+
         return jsonify({'results': results, 'has_more': has_more})
 
 
@@ -213,27 +213,27 @@ def api_search():
 def check_username():
     """التحقق من توفر اسم المستخدم"""
     username = request.args.get('username', '').strip()
-    
+
     if not username or len(username) < 3:
         return jsonify({'available': False, 'error': 'اسم المستخدم قصير جداً'})
-    
+
     import re
     if not re.match(r'^[a-zA-Z0-9_]{3,20}$', username):
         return jsonify({'available': False, 'error': 'استخدم حروف إنجليزية وأرقام و_ فقط'})
-    
+
     existing = User.query.filter_by(username=username).first()
-    
+
     if existing:
         from datetime import datetime
         year = datetime.now().year
         suggestions = [f'{username}_{year}', f'{username}_2024', f'{username}_admin']
-        
+
         return jsonify({
             'available': False,
             'message': f'اسم المستخدم "{username}" موجود مسبقاً',
             'suggestions': suggestions
         })
-    
+
     return jsonify({'available': True, 'message': 'اسم المستخدم متاح ✓'})
 
 
@@ -245,7 +245,7 @@ def products_low_stock():
         from models import Product
         low_stock_products = Product.query.filter(
             Product.current_stock <= Product.min_stock_alert,
-            Product.is_active == True
+            Product.is_active is True
         ).order_by(Product.current_stock).all()
 
         products_data = []
@@ -258,22 +258,22 @@ def products_low_stock():
                 'min_stock_alert': float(product.min_stock_alert or 0),
                 'needed': float((product.min_stock_alert or 0) - (product.current_stock or 0))
             })
-        
+
         return jsonify({
             'success': True,
             'products': products_data,
             'count': len(products_data)
         })
-    
+
     except Exception as e:
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
 
+
 @api_bp.route('/echo', methods=['PUT', 'PATCH', 'DELETE'])
 @login_required
 def echo():
     payload = request.get_json(silent=True) or {}
     return jsonify({'success': True, 'data': payload}), 200
-

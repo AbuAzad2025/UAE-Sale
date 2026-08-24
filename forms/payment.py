@@ -25,4 +25,3 @@ class ReceiptForm(FlaskForm):
     bank_name = StringField('اسم البنك', validators=[Optional()])
     notes = TextAreaField('ملاحظات', validators=[Optional()])
     submit = SubmitField('حفظ')
-

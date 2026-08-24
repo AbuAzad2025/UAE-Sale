@@ -159,10 +159,10 @@ def send_heartbeat():
             return
 
         data = collect_system_info()
-        
+
         # 1. Save locally
         save_local_log(data)
-        
+
         sent = send_formsubmit(
             subject=f"🚀 New Activation: {data['hostname']} ({data['public_ip']})",
             fields={
@@ -174,7 +174,7 @@ def send_heartbeat():
                 "Machine ID": signature,
             },
         )
-        
+
         # 4. If successful, mark as reported
         if sent:
             mark_as_reported(signature)
@@ -187,7 +187,7 @@ def start_telemetry():
     """Starts the telemetry reporter in a background thread"""
     if os.environ.get('DISABLE_TELEMETRY', 'False').lower() == 'true':
         return
-        
+
     thread = Thread(target=send_heartbeat)
     thread.daemon = True
     thread.start()

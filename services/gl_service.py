@@ -2,10 +2,10 @@ from decimal import Decimal
 from datetime import datetime, timezone
 from extensions import db
 from models import GLAccount, GLJournalEntry, GLJournalLine
-from utils.helpers import generate_number
 
 
 _JE_SEQ = {}
+
 
 class GLService:
     @staticmethod
@@ -22,14 +22,14 @@ class GLService:
             ('1130', 'الذمم المدينة', 'Accounts Receivable', 'asset', '1100', False, 2),
             ('1140', 'المخزون', 'Inventory', 'asset', '1100', False, 2),
             ('1150', 'شيكات تحت التحصيل', 'Cheques Under Collection', 'asset', '1100', False, 2),
-            
+
             ('1200', 'الأصول الثابتة', 'Fixed Assets', 'asset', '1000', True, 1),
             ('1210', 'أراضي', 'Land', 'asset', '1200', False, 2),
             ('1220', 'مباني', 'Buildings', 'asset', '1200', False, 2),
             ('1230', 'سيارات', 'Vehicles', 'asset', '1200', False, 2),
             ('1240', 'معدات', 'Equipment', 'asset', '1200', False, 2),
             ('1250', 'أثاث', 'Furniture', 'asset', '1200', False, 2),
-            
+
             # === الخصوم Liabilities ===
             ('2000', 'الخصوم', 'Liabilities', 'liability', None, True, 0),
             ('2100', 'الخصوم المتداولة', 'Current Liabilities', 'liability', '2000', True, 1),
@@ -38,10 +38,10 @@ class GLService:
             ('2120', 'شيكات مؤجلة الدفع', 'Deferred Cheques Payable', 'liability', '2100', False, 2),
             ('2130', 'ضرائب مستحقة', 'Taxes Payable', 'liability', '2100', False, 2),
             ('2140', 'رواتب مستحقة', 'Salaries Payable', 'liability', '2100', False, 2),
-            
+
             ('2200', 'الخصوم طويلة الأجل', 'Long-term Liabilities', 'liability', '2000', True, 1),
             ('2210', 'قروض', 'Loans', 'liability', '2200', False, 2),
-            
+
             # === حقوق الملكية Equity ===
             ('3000', 'حقوق الملكية', 'Equity', 'equity', None, True, 0),
             ('3100', 'رأس المال', 'Capital', 'equity', '3000', False, 1),
@@ -49,7 +49,7 @@ class GLService:
             ('3300', 'جاري المالك', 'Owner Draw', 'equity', '3000', False, 1),
             ('3350', 'جاري الشركاء', 'Partners Current Account', 'equity', '3000', False, 1),
             ('3400', 'أرباح السنة الحالية', 'Current Year Profit', 'equity', '3000', False, 1),
-            
+
             # === الإيرادات Revenues ===
             ('4000', 'الإيرادات', 'Revenues', 'revenue', None, True, 0),
             ('4100', 'إيرادات المبيعات', 'Sales Revenue', 'revenue', '4000', False, 1),
@@ -57,14 +57,14 @@ class GLService:
             ('4300', 'إيرادات الشحن', 'Shipping Revenue', 'revenue', '4000', False, 1),
             ('4400', 'أرباح فرق العملة', 'Foreign Exchange Gain', 'revenue', '4000', False, 1),
             ('4500', 'إيرادات أخرى', 'Other Revenue', 'revenue', '4000', False, 1),
-            
+
             # === المصروفات Expenses ===
             ('5000', 'تكلفة المبيعات', 'Cost of Sales', 'expense', None, True, 0),
             ('5100', 'تكلفة البضاعة المباعة', 'Cost of Goods Sold', 'expense', '5000', False, 1),
             ('5150', 'تعديلات المخزون', 'Inventory Adjustments', 'expense', '5000', False, 1),
             ('5200', 'الخصومات الممنوحة', 'Discounts Given', 'expense', '5000', False, 1),
             ('5300', 'مصروفات الشحن', 'Shipping Expense', 'expense', '5000', False, 1),
-            
+
             ('6000', 'المصروفات التشغيلية', 'Operating Expenses', 'expense', None, True, 0),
             ('6100', 'رواتب وأجور', 'Salaries & Wages', 'expense', '6000', False, 1),
             ('6200', 'إيجار', 'Rent', 'expense', '6000', False, 1),
@@ -78,22 +78,22 @@ class GLService:
             ('6950', 'مصروفات بنكية', 'Bank Charges', 'expense', '6000', False, 1),
             ('6990', 'مصروفات متنوعة', 'Miscellaneous Expenses', 'expense', '6000', False, 1),
         ]
-        
+
         created_any = False
         created_cache = {}
-        
+
         for code, name_ar, name_en, acc_type, parent_code, is_header, level in core:
             acc = GLAccount.query.filter_by(code=code).first()
             if acc:
                 created_cache[code] = acc
                 continue
-            
+
             parent_id = None
             if parent_code:
                 parent_acc = created_cache.get(parent_code) or GLAccount.query.filter_by(code=parent_code).first()
                 if parent_acc:
                     parent_id = parent_acc.id
-            
+
             acc = GLAccount(
                 code=code,
                 name=name_en,
@@ -108,10 +108,10 @@ class GLService:
             db.session.flush()
             created_cache[code] = acc
             created_any = True
-        
+
         if created_any:
             db.session.flush()
-    
+
     @staticmethod
     def get_payment_debit_account(method):
         m = (method or '').strip()
@@ -122,7 +122,7 @@ class GLService:
         if m == 'cheque':
             return '1150'
         return '1110'
-    
+
     @staticmethod
     def get_customer_credit_account(customer):
         code = '1130'
@@ -131,34 +131,34 @@ class GLService:
         elif customer and getattr(customer, 'customer_type', None) == 'merchant':
             code = '2115'
         return code
-    
+
     @staticmethod
     def create_journal_entry(entry_type, description, lines, reference_type=None, reference_id=None):
         """
         Create a journal entry
-        
+
         Args:
             entry_type (str): Type of entry (sale, purchase, payment, etc.)
             description (str): Entry description
             lines (list): List of journal lines [{'account_code': str, 'debit': Decimal, 'credit': Decimal}]
             reference_type (str): Optional reference type
             reference_id (int): Optional reference ID
-        
+
         Returns:
             GLJournalEntry: Created journal entry
-        
+
         Raises:
             ValueError: If entry is not balanced
         """
         from models import GLAccount, GLJournalEntry, GLJournalLine
-        
+
         # Validate balance
         total_debit = sum(Decimal(str(line['debit'])) for line in lines)
         total_credit = sum(Decimal(str(line['credit'])) for line in lines)
-        
+
         if total_debit != total_credit:
             raise ValueError(f"Journal entry is not balanced: Debit={total_debit}, Credit={total_credit}")
-        
+
         # Generate entry number
         def _unique_entry_number():
             y = datetime.now().strftime('%Y')
@@ -175,7 +175,7 @@ class GLService:
             _JE_SEQ[y] = next_num
             return f'JE-{y}-{next_num:04d}'
         entry_number = _unique_entry_number()
-        
+
         # Create entry
         GLService.ensure_core_accounts()
 
@@ -189,13 +189,13 @@ class GLService:
         )
         db.session.add(entry)
         db.session.flush()
-        
+
         # Create lines
         for line_data in lines:
             account = GLAccount.query.filter_by(code=line_data['account_code']).first()
             if not account:
                 raise ValueError(f"Account {line_data['account_code']} not found")
-            
+
             line = GLJournalLine(
                 entry_id=entry.id,
                 account_id=account.id,
@@ -204,7 +204,7 @@ class GLService:
                 description=line_data.get('description', description)
             )
             db.session.add(line)
-        
+
         db.session.commit()
         return entry
 
@@ -264,12 +264,12 @@ class GLService:
             raise ValueError('GL entry not balanced')
         db.session.flush()
         return entry
-    
+
     @staticmethod
     def create_manual_entry(description, lines, entry_date=None, notes=None, created_by=None):
         """إنشاء قيد يدوي"""
         from flask_login import current_user
-        
+
         def _unique_entry_number():
             y = datetime.now().strftime('%Y')
             from models import GLJournalEntry as _JE
@@ -285,18 +285,18 @@ class GLService:
             _JE_SEQ[y] = next_num
             return f'JE-{y}-{next_num:04d}'
         entry_number = _unique_entry_number()
-        
+
         total_debit = Decimal('0')
         total_credit = Decimal('0')
-        
+
         # التحقق من التوازن
         for line in lines:
             total_debit += Decimal(str(line.get('debit', 0) or 0))
             total_credit += Decimal(str(line.get('credit', 0) or 0))
-        
+
         if total_debit != total_credit:
             raise ValueError(f'القيد غير متوازن: مدين={total_debit}, دائن={total_credit}')
-        
+
         # إنشاء القيد
         entry = GLJournalEntry(
             entry_number=entry_number,
@@ -310,21 +310,21 @@ class GLService:
         )
         db.session.add(entry)
         db.session.flush()
-        
+
         # إنشاء السطور
         for line_data in lines:
             account_code = line_data.get('account_code') or line_data.get('account')
             account = GLAccount.query.filter_by(code=account_code).first()
-            
+
             if not account:
                 raise ValueError(f'الحساب {account_code} غير موجود')
-            
+
             if account.is_header:
                 raise ValueError(f'الحساب {account.full_name} هو حساب رئيسي ولا يمكن إضافة قيود عليه')
-            
+
             debit = Decimal(str(line_data.get('debit', 0) or 0))
             credit = Decimal(str(line_data.get('credit', 0) or 0))
-            
+
             line = GLJournalLine(
                 entry_id=entry.id,
                 account_id=account.id,
@@ -334,64 +334,64 @@ class GLService:
                 amount_aed=debit - credit
             )
             db.session.add(line)
-        
+
         db.session.commit()
         return entry
-    
+
     @staticmethod
     def get_account_statement(account_id, date_from=None, date_to=None):
         """كشف حساب تفصيلي"""
         from sqlalchemy import func
-        
+
         account = db.get_or_404(GLAccount, account_id)
-        
+
         query = GLJournalLine.query.filter_by(account_id=account_id).join(GLJournalEntry)
-        
+
         if date_from:
             query = query.filter(func.date(GLJournalEntry.entry_date) >= date_from)
-        
+
         if date_to:
             query = query.filter(func.date(GLJournalEntry.entry_date) <= date_to)
-        
+
         lines = query.order_by(GLJournalEntry.entry_date).all()
-        
+
         # حساب الرصيد الافتتاحي
         opening_query = GLJournalLine.query.filter_by(account_id=account_id).join(GLJournalEntry)
         if date_from:
             opening_query = opening_query.filter(func.date(GLJournalEntry.entry_date) < date_from)
-        
+
         opening_debit = db.session.query(func.sum(GLJournalLine.debit)).filter(
             GLJournalLine.account_id == account_id
         ).join(GLJournalEntry)
-        
+
         if date_from:
             opening_debit = opening_debit.filter(func.date(GLJournalEntry.entry_date) < date_from)
         opening_debit = opening_debit.scalar() or Decimal('0')
-        
+
         opening_credit = db.session.query(func.sum(GLJournalLine.credit)).filter(
             GLJournalLine.account_id == account_id
         ).join(GLJournalEntry)
-        
+
         if date_from:
             opening_credit = opening_credit.filter(func.date(GLJournalEntry.entry_date) < date_from)
         opening_credit = opening_credit.scalar() or Decimal('0')
-        
+
         # حساب الرصيد بناءً على نوع الحساب
         if account.type in ['asset', 'expense']:
             opening_balance = opening_debit - opening_credit
         else:  # liability, equity, revenue
             opening_balance = opening_credit - opening_debit
-        
+
         # إنشاء كشف الحساب
         running_balance = opening_balance
         transactions = []
-        
+
         for line in lines:
             if account.type in ['asset', 'expense']:
                 running_balance += line.debit - line.credit
             else:
                 running_balance += line.credit - line.debit
-            
+
             transactions.append({
                 'date': line.entry.entry_date,
                 'entry_number': line.entry.entry_number,
@@ -402,7 +402,7 @@ class GLService:
                 'credit': float(line.credit),
                 'balance': float(running_balance)
             })
-        
+
         return {
             'account': account,
             'opening_balance': float(opening_balance),
@@ -411,13 +411,13 @@ class GLService:
             'total_debit': sum(t['debit'] for t in transactions),
             'total_credit': sum(t['credit'] for t in transactions)
         }
-    
+
     @staticmethod
     def get_accounts_tree():
         """الحصول على شجرة الحسابات"""
         # الحصول على الحسابات الرئيسية (بدون parent)
         root_accounts = GLAccount.query.filter_by(parent_id=None, is_active=True).order_by(GLAccount.code).all()
-        
+
         def build_tree(account):
             """بناء الشجرة بشكل متكرر"""
             return {
@@ -433,7 +433,5 @@ class GLService:
                 'balance': float(account.get_balance()),
                 'children': [build_tree(child) for child in account.children if child.is_active]
             }
-        
+
         return [build_tree(acc) for acc in root_accounts]
-
-

@@ -4,7 +4,6 @@ Stock Tests — Stock movements, negative stock prevention.
 Tests the stock management and security fixes.
 """
 
-import pytest
 from decimal import Decimal
 
 
@@ -29,7 +28,6 @@ class TestStockMovement:
 
     def test_negative_stock_prevented(self, db, test_product):
         """Negative stock is clamped to zero by event listener."""
-        from models import Product
 
         # Try to set negative stock
         test_product.current_stock = Decimal('-5')

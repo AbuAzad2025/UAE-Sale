@@ -4,12 +4,12 @@ Registers 404, 403, 405, 429, 500 error pages.
 """
 
 import logging
-from flask import render_template, request, jsonify, current_app
+from flask import render_template, request, jsonify
 
 logger = logging.getLogger(__name__)
 
 
-def register_error_handlers(app):
+def register_error_handlers(app):  # noqa: C901
     """Register custom error handlers on the Flask app."""
 
     @app.errorhandler(404)

@@ -206,17 +206,17 @@ BEGINNERS_TUTORIALS = {
 
 class BeginnersGuide:
     """دليل المبتدئين"""
-    
+
     @staticmethod
     def get_tutorial(topic):
         """الحصول على درس تعليمي"""
         return BEGINNERS_TUTORIALS.get(topic, BEGINNERS_TUTORIALS['first_time'])
-    
+
     @staticmethod
     def suggest_next_step(current_step):
         """اقتراح الخطوة التالية"""
         steps_order = ['first_time', 'create_invoice', 'add_customer', 'add_product', 'create_report']
-        
+
         try:
             current_index = steps_order.index(current_step)
             if current_index < len(steps_order) - 1:
@@ -224,14 +224,14 @@ class BeginnersGuide:
                 return BEGINNERS_TUTORIALS.get(next_step)
         except ValueError:
             pass
-        
+
         return "🎉 أحسنت! أصبحت محترفاً! الآن جرب باقي المميزات!"
-    
+
     @staticmethod
     def get_beginner_response(message, dialect='palestinian'):
         """رد مفصل للمبتدئين"""
         msg_lower = message.lower()
-        
+
         # أسئلة شائعة للمبتدئين
         if any(kw in msg_lower for kw in ['فاتورة', 'invoice', 'بيع']):
             return BEGINNERS_TUTORIALS['create_invoice']
@@ -247,4 +247,3 @@ class BeginnersGuide:
 
 # مثيل عالمي
 beginners_guide = BeginnersGuide()
-

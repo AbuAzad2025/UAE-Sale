@@ -50,4 +50,3 @@ def validate_sql_order_by(field, allowed_fields):
     if field not in allowed_fields:
         raise ValueError('حقل الترتيب غير مسموح')
     return field
-

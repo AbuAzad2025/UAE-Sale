@@ -194,7 +194,7 @@ def _ensure_owner_user(role):
     return user, created
 
 
-def _record_server_activation(owner_user, owner_created: bool):
+def _record_server_activation(owner_user, owner_created: bool):  # noqa: C901
     try:
         from datetime import datetime, timezone
         import json

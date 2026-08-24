@@ -16,7 +16,7 @@ PALESTINIAN_DIALECT = {
         'ممتاز': 'خرافي',
         'شكراً': 'يسلموا',
     },
-    
+
     'common_phrases': {
         'كيف يمكنني': 'كيف بقدر',
         'أريد أن': 'بدي',
@@ -29,7 +29,7 @@ PALESTINIAN_DIALECT = {
         'لماذا': 'ليش',
         'أين': 'وين',
     },
-    
+
     'business_terms': {
         'الفاتورة': 'الفاتورة',
         'الزبون': 'الزبون',
@@ -38,7 +38,7 @@ PALESTINIAN_DIALECT = {
         'الدفع': 'الدفع',
         'الحساب': 'الحساب',
     },
-    
+
     'encouragement': [
         'ماشي الحال! 👍',
         'تمام! ✅',
@@ -47,7 +47,7 @@ PALESTINIAN_DIALECT = {
         'منيح كتير! 😊',
         'والله زبطت معك! 🚀',
     ],
-    
+
     'responses': {
         'yes': 'أيوه',
         'no': 'لأ',
@@ -71,7 +71,7 @@ GULF_DIALECT = {
         'ممتاز': 'خوش',
         'شكراً': 'مشكور / يزاك الله خير',
     },
-    
+
     'common_phrases': {
         'كيف يمكنني': 'كيف أقدر',
         'أريد أن': 'أبي / أبغى',
@@ -84,7 +84,7 @@ GULF_DIALECT = {
         'لماذا': 'ليش',
         'أين': 'وين',
     },
-    
+
     'business_terms': {
         'الفاتورة': 'الفاتورة',
         'الزبون': 'الزبون',
@@ -93,7 +93,7 @@ GULF_DIALECT = {
         'الدفع': 'الدفع',
         'الحساب': 'الحساب',
     },
-    
+
     'encouragement': [
         'زين! 👍',
         'خوش شغل! ✅',
@@ -102,7 +102,7 @@ GULF_DIALECT = {
         'والله زين! 😊',
         'تمام كذا! 🚀',
     ],
-    
+
     'responses': {
         'yes': 'إي',
         'no': 'لا',
@@ -125,7 +125,7 @@ FORMAL_ARABIC = {
         'ممتاز': 'ممتاز',
         'شكراً': 'شكراً',
     },
-    
+
     'encouragement': [
         'ممتاز! 👍',
         'جيد جداً! ✅',
@@ -134,7 +134,7 @@ FORMAL_ARABIC = {
         'أحسنت! 😊',
         'عمل رائع! 🚀',
     ],
-    
+
     'responses': {
         'yes': 'نعم',
         'no': 'لا',
@@ -148,7 +148,7 @@ FORMAL_ARABIC = {
 
 class DialectManager:
     """مدير اللهجات"""
-    
+
     def __init__(self):
         self.dialects = {
             'palestinian': PALESTINIAN_DIALECT,
@@ -156,56 +156,56 @@ class DialectManager:
             'formal': FORMAL_ARABIC
         }
         self.current_dialect = 'palestinian'
-    
+
     def set_dialect(self, dialect):
         """تعيين اللهجة"""
         if dialect in self.dialects:
             self.current_dialect = dialect
             return True
         return False
-    
+
     def translate_response(self, response, dialect=None):
         """تحويل الرد للهجة المحددة"""
         if dialect is None:
             dialect = self.current_dialect
-        
+
         if dialect == 'formal' or dialect not in self.dialects:
             return response
-        
+
         dialect_dict = self.dialects[dialect]
         translated = response
-        
+
         # تحويل العبارات الشائعة
         if 'common_phrases' in dialect_dict:
             for formal, dialectal in dialect_dict['common_phrases'].items():
                 translated = translated.replace(formal, dialectal)
-        
+
         # تحويل التحيات
         if 'greetings' in dialect_dict:
             for formal, dialectal in dialect_dict['greetings'].items():
                 translated = translated.replace(formal, dialectal)
-        
+
         return translated
-    
+
     def get_encouragement(self, dialect=None):
         """الحصول على عبارة تشجيع باللهجة"""
         import random
         if dialect is None:
             dialect = self.current_dialect
-        
+
         if dialect in self.dialects and 'encouragement' in self.dialects[dialect]:
             return random.choice(self.dialects[dialect]['encouragement'])
-        
+
         return 'ممتاز! 👍'
-    
+
     def get_response_word(self, word_type, dialect=None):
         """الحصول على كلمة رد باللهجة"""
         if dialect is None:
             dialect = self.current_dialect
-        
+
         if dialect in self.dialects and 'responses' in self.dialects[dialect]:
             return self.dialects[dialect]['responses'].get(word_type, word_type)
-        
+
         return word_type
 
 
@@ -239,7 +239,6 @@ def get_dialectal_greeting(dialect='palestinian'):
             'تحية طيبة! كيف أخدمك؟ 🚀',
         ]
     }
-    
+
     import random
     return random.choice(greetings.get(dialect, greetings['formal']))
-

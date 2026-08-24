@@ -21,7 +21,6 @@ def check_customer_balance(customer_id=None):
     Returns:
         list of dicts with drift details
     """
-    from extensions import db
     from models import Customer, Sale
 
     drifts = []
@@ -76,8 +75,6 @@ def repair_customer_balance(customer_id=None):
     Returns:
         int: number of records repaired
     """
-    from extensions import db
-    from models import Customer, Sale
 
     lock_name = f'balance_repair:{customer_id or "all"}'
     repaired = 0
@@ -98,7 +95,7 @@ def repair_customer_balance(customer_id=None):
 def _do_repair(customer_id=None):
     """Inner repair logic (no locking — caller is responsible)."""
     from extensions import db
-    from models import Customer, Sale
+    from models import Customer
 
     repaired = 0
     drifts = check_customer_balance(customer_id)

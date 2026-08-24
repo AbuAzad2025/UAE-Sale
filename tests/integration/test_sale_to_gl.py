@@ -11,8 +11,6 @@ Tests the complete business cycle:
 
 import pytest
 from decimal import Decimal
-from datetime import datetime, timezone
-from extensions import db
 
 
 @pytest.fixture
@@ -40,9 +38,9 @@ class TestSaleToGL:
     """Test sale creation creates proper GL entries."""
 
     def test_sale_creates_gl_entries(self, client, db, login_owner, owner_user,
-                                      test_customer, test_product, warehouse, gl_accounts):
+                                     test_customer, test_product, warehouse, gl_accounts):
         """Creating a sale posts Revenue + COGS journal entries."""
-        from models import Sale, GLJournalEntry, GLJournalLine, Product
+        from models import GLJournalEntry
         from services.sale_service import SaleService
 
         initial_stock = test_product.current_stock
@@ -81,9 +79,9 @@ class TestSaleToGL:
         assert test_product.current_stock == initial_stock - Decimal('3')
 
     def test_sale_payment_creates_gl_entry(self, client, db, login_owner, owner_user,
-                                            test_customer, test_product, test_sale, warehouse, gl_accounts):
+                                           test_customer, test_product, test_sale, warehouse, gl_accounts):
         """Creating a payment for a sale posts Cash/Bank + AR journal entry."""
-        from models import Payment, GLJournalEntry
+        from models import GLJournalEntry
         from services.sale_service import SaleService
 
         sale = test_sale
@@ -114,7 +112,7 @@ class TestSaleToGL:
         assert sale.balance_due == initial_balance - Decimal('50.000')
 
     def test_full_payment_marks_sale_paid(self, client, db, login_owner, owner_user,
-                                           test_customer, test_product, test_sale, warehouse, gl_accounts):
+                                          test_customer, test_product, test_sale, warehouse, gl_accounts):
         """Full payment marks sale as paid."""
         from services.sale_service import SaleService
 
@@ -132,7 +130,7 @@ class TestSaleToGL:
         assert sale.balance_due == Decimal('0')
 
     def test_gl_entries_are_balanced(self, client, db, login_owner, owner_user,
-                                      test_customer, test_product, warehouse, gl_accounts):
+                                     test_customer, test_product, warehouse, gl_accounts):
         """All GL entries created during sale are balanced (debit == credit)."""
         from models import GLJournalEntry
         from services.sale_service import SaleService
@@ -165,7 +163,7 @@ class TestStockOnSale:
     """Test stock movements during sale lifecycle."""
 
     def test_stock_reduced_on_sale(self, client, db, login_owner, owner_user,
-                                    test_customer, test_product, warehouse, gl_accounts):
+                                   test_customer, test_product, warehouse, gl_accounts):
         """Stock is reduced when a sale is created."""
         from services.sale_service import SaleService
 
@@ -185,7 +183,7 @@ class TestStockOnSale:
         assert test_product.current_stock == initial - Decimal('4')
 
     def test_stock_restored_on_cancellation(self, client, db, login_owner, owner_user,
-                                             test_customer, test_product, warehouse, gl_accounts):
+                                            test_customer, test_product, warehouse, gl_accounts):
         """Stock is restored when a sale is cancelled."""
         from services.sale_service import SaleService
 
@@ -211,7 +209,7 @@ class TestStockOnSale:
         assert test_product.current_stock == initial
 
     def test_gl_reversed_on_cancellation(self, client, db, login_owner, owner_user,
-                                          test_customer, test_product, warehouse, gl_accounts):
+                                         test_customer, test_product, warehouse, gl_accounts):
         """GL entries are reversed when a sale is cancelled."""
         from models import GLJournalEntry
         from services.sale_service import SaleService
@@ -233,10 +231,10 @@ class TestStockOnSale:
         assert sale.status == 'cancelled'
 
         # GLService.reverse_entry creates a reversing entry — check by reference
-        reversing = GLJournalEntry.query.filter(
+        _ = GLJournalEntry.query.filter(
             GLJournalEntry.reference_type == 'Sale',
             GLJournalEntry.reference_id == sale.id,
-            GLJournalEntry.is_reversed == False,
+            GLJournalEntry.is_reversed is False,
         ).filter(
             GLJournalEntry.entry_type == 'reversing'
         ).first()
@@ -249,9 +247,9 @@ class TestChequeLifecycle:
     """Test cheque issue → clear/bounce → accounting reversal."""
 
     def test_cheque_payment_creates_pending(self, client, db, login_owner, owner_user,
-                                             test_customer, test_product, test_sale, warehouse, gl_accounts):
+                                            test_customer, test_product, test_sale, warehouse, gl_accounts):
         """Cheque payment creates a cheque record."""
-        from models import Payment, Cheque
+        from models import Cheque
         from services.sale_service import SaleService
 
         sale = test_sale
@@ -276,9 +274,8 @@ class TestChequeLifecycle:
         assert cheque.amount_aed == Decimal('100.000')
 
     def test_cheque_bounce_reverses_sale_balance(self, client, db, login_owner, owner_user,
-                                                  test_customer, test_product, test_sale, warehouse, gl_accounts):
+                                                 test_customer, test_product, test_sale, warehouse, gl_accounts):
         """Rejecting a cheque after confirmation restores unpaid status."""
-        from models import Payment
         from services.sale_service import SaleService
 
         sale = test_sale
@@ -304,9 +301,8 @@ class TestChequeLifecycle:
         assert sale.balance_due == Decimal('100.000')
 
     def test_cheque_bounce_reverses_payment(self, client, db, login_owner, owner_user,
-                                             test_customer, test_product, test_sale, warehouse, gl_accounts):
+                                            test_customer, test_product, test_sale, warehouse, gl_accounts):
         """Bouncing a cheque reverses the payment and restores unpaid status."""
-        from models import Payment, Cheque
         from services.sale_service import SaleService
 
         sale = test_sale

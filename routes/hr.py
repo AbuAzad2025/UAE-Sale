@@ -7,11 +7,11 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models.hr import (
-    Department, Employee, LeaveType, LeaveRequest, Payslip, PayslipLine,
+    Department, Employee, LeaveType, LeaveRequest, Payslip,
 )
 from models import User
 from services.hr_service import HRService
-from utils.decorators import permission_required, admin_required
+from utils.decorators import permission_required
 from utils.helpers import create_audit_log
 
 hr_bp = Blueprint('hr', __name__, url_prefix='/hr')
@@ -32,10 +32,10 @@ def dashboard():
     departments = Department.query.filter_by(is_active=True).all()
 
     return render_template('hr/dashboard.html',
-                         stats=stats,
-                         recent_leaves=recent_leaves,
-                         pending_leaves=pending_leaves,
-                         departments=departments)
+                           stats=stats,
+                           recent_leaves=recent_leaves,
+                           pending_leaves=pending_leaves,
+                           departments=departments)
 
 
 # ==================== DEPARTMENTS ====================
@@ -75,7 +75,7 @@ def create_department():
     parent_depts = Department.query.filter_by(is_active=True).order_by(Department.code).all()
     managers = User.query.filter_by(is_active=True).order_by(User.full_name).all()
     return render_template('hr/create_department.html',
-                         parent_departments=parent_depts, managers=managers)
+                           parent_departments=parent_depts, managers=managers)
 
 
 @hr_bp.route('/departments/<int:id>/edit', methods=['GET', 'POST'])
@@ -101,11 +101,11 @@ def edit_department(id):
             flash(f'❌ خطأ: {str(e)}', 'danger')
 
     parent_depts = Department.query.filter(
-        Department.is_active == True, Department.id != dept.id
+        Department.is_active is True, Department.id != dept.id
     ).order_by(Department.code).all()
     managers = User.query.filter_by(is_active=True).order_by(User.full_name).all()
     return render_template('hr/edit_department.html', department=dept,
-                         parent_departments=parent_depts, managers=managers)
+                           parent_departments=parent_depts, managers=managers)
 
 
 # ==================== EMPLOYEES ====================
@@ -147,9 +147,9 @@ def employees():
     departments = Department.query.filter_by(is_active=True).order_by(Department.code).all()
 
     return render_template('hr/employees.html',
-                         employees=pagination.items,
-                         pagination=pagination,
-                         departments=departments)
+                           employees=pagination.items,
+                           pagination=pagination,
+                           departments=departments)
 
 
 @hr_bp.route('/employees/create', methods=['GET', 'POST'])
@@ -222,15 +222,15 @@ def create_employee():
     # Users not yet employees
     existing_emp_user_ids = [e.user_id for e in Employee.query.all()]
     available_users = User.query.filter(
-        User.is_active == True,
-        User.is_owner == False,
+        User.is_active is True,
+        User.is_owner is False,
         ~User.id.in_(existing_emp_user_ids),
     ).order_by(User.full_name).all()
 
     departments = Department.query.filter_by(is_active=True).order_by(Department.code).all()
     return render_template('hr/create_employee.html',
-                         available_users=available_users,
-                         departments=departments)
+                           available_users=available_users,
+                           departments=departments)
 
 
 @hr_bp.route('/employees/<int:id>')
@@ -246,9 +246,9 @@ def view_employee(id):
     ).limit(5).all()
 
     return render_template('hr/view_employee.html',
-                         employee=emp,
-                         recent_leaves=recent_leaves,
-                         recent_payslips=recent_payslips)
+                           employee=emp,
+                           recent_leaves=recent_leaves,
+                           recent_payslips=recent_payslips)
 
 
 @hr_bp.route('/employees/<int:id>/edit', methods=['GET', 'POST'])
@@ -338,9 +338,9 @@ def leave_requests():
     employees = Employee.query.filter_by(is_active=True).order_by(Employee.employee_number).all()
 
     return render_template('hr/leave_requests.html',
-                         requests=pagination.items,
-                         pagination=pagination,
-                         employees=employees)
+                           requests=pagination.items,
+                           pagination=pagination,
+                           employees=employees)
 
 
 @hr_bp.route('/leave/create', methods=['GET', 'POST'])
@@ -386,8 +386,8 @@ def create_leave():
     leave_types = LeaveType.query.filter_by(is_active=True).all()
 
     return render_template('hr/create_leave.html',
-                         employees=employees,
-                         leave_types=leave_types)
+                           employees=employees,
+                           leave_types=leave_types)
 
 
 @hr_bp.route('/leave/<int:id>/approve', methods=['POST'])
@@ -471,9 +471,9 @@ def payroll():
     employees = Employee.query.filter_by(is_active=True).order_by(Employee.employee_number).all()
 
     return render_template('hr/payroll.html',
-                         payslips=pagination.items,
-                         pagination=pagination,
-                         employees=employees)
+                           payslips=pagination.items,
+                           pagination=pagination,
+                           employees=employees)
 
 
 @hr_bp.route('/payroll/generate', methods=['GET', 'POST'])

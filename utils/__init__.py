@@ -1,4 +1,4 @@
-from .decorators import permission_required, admin_required, seller_or_above, owner_required
+from .decorators import permission_required, admin_required, seller_or_above, owner_required  # noqa: F401
 from .helpers import (
     generate_number,
     format_currency_display,
@@ -39,4 +39,3 @@ __all__ = [
     'USER_ROLES',
     'CURRENCIES',
 ]
-

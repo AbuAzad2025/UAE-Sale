@@ -8,7 +8,6 @@ Auto-detects PostgreSQL (CI) vs SQLite (local):
 
 import os
 import pytest
-from datetime import datetime, timezone
 from decimal import Decimal
 
 # Force test environment before importing app
@@ -25,9 +24,9 @@ os.environ.setdefault('CACHE_TYPE', 'flask_caching.backends.SimpleCache')
 if 'DATABASE_URL' not in os.environ:
     os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
 
-from app import create_app
-from extensions import db as _db
-from models import User, Role, Permission, Customer, Product, ProductCategory, Sale, SaleLine
+from app import create_app  # noqa: E402
+from extensions import db as _db  # noqa: E402
+from models import User, Role, Permission, Customer, Product, ProductCategory, Sale, SaleLine  # noqa: E402
 
 IS_POSTGRES = os.environ.get('DATABASE_URL', '').startswith('postgresql')
 

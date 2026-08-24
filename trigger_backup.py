@@ -1,7 +1,6 @@
 import os
 import sys
 import logging
-from datetime import datetime
 
 # Set path to pg_dump
 os.environ['PG_DUMP_PATH'] = r"C:\Program Files\PostgreSQL\18\bin\pg_dump.exe"
@@ -9,13 +8,14 @@ os.environ['PG_DUMP_PATH'] = r"C:\Program Files\PostgreSQL\18\bin\pg_dump.exe"
 # Add project root to path
 sys.path.append(os.getcwd())
 
-from app import create_app
-from services.backup_service import BackupService
-from export_json_db import export_db_to_json
+from app import create_app  # noqa: E402
+from services.backup_service import BackupService  # noqa: E402
+from export_json_db import export_db_to_json  # noqa: E402
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 def main():
     app = create_app()
@@ -39,6 +39,7 @@ def main():
                 print(f"✅ JSON Export created successfully: {json_file}")
         except Exception as e:
             print(f"❌ Error during JSON export: {e}")
+
 
 if __name__ == "__main__":
     main()

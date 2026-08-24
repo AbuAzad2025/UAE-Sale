@@ -6,7 +6,7 @@ from extensions import db
 
 
 class MonitoringService:
-    
+
     @staticmethod
     def get_system_health() -> Dict:
         return {
@@ -17,7 +17,7 @@ class MonitoringService:
             'cpu': MonitoringService.get_cpu_usage(),
             'status': 'healthy'
         }
-    
+
     @staticmethod
     def check_database() -> Dict:
         try:
@@ -26,7 +26,7 @@ class MonitoringService:
             return {'status': 'connected', 'healthy': True}
         except Exception as e:
             return {'status': 'error', 'healthy': False, 'error': str(e)}
-    
+
     @staticmethod
     def get_disk_usage() -> Dict:
         try:
@@ -40,7 +40,7 @@ class MonitoringService:
             }
         except Exception:
             return {'healthy': True, 'error': 'unavailable'}
-    
+
     @staticmethod
     def get_memory_usage() -> Dict:
         try:
@@ -53,7 +53,7 @@ class MonitoringService:
             }
         except Exception:
             return {'healthy': True, 'error': 'unavailable'}
-    
+
     @staticmethod
     def get_cpu_usage() -> Dict:
         try:
@@ -65,11 +65,11 @@ class MonitoringService:
             }
         except Exception:
             return {'healthy': True, 'error': 'unavailable'}
-    
+
     @staticmethod
     def get_application_metrics() -> Dict:
         from models import Sale, Customer, Product
-        
+
         try:
             return {
                 'total_sales': Sale.query.count(),
@@ -82,7 +82,7 @@ class MonitoringService:
             }
         except Exception as e:
             return {'error': str(e)}
-    
+
     @staticmethod
     def log_performance_metric(metric_name: str, value: float, tags: Dict = None):
         try:
@@ -90,13 +90,12 @@ class MonitoringService:
             basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
             logs_dir = os.path.join(basedir, 'logs')
             metrics_file = os.path.join(logs_dir, 'performance.log')
-            
+
             os.makedirs(logs_dir, exist_ok=True)
-            
+
             with open(metrics_file, 'a', encoding='utf-8') as f:
                 timestamp = datetime.now().isoformat()
                 tags_str = ','.join([f'{k}={v}' for k, v in (tags or {}).items()])
                 f.write(f'{timestamp}|{metric_name}={value}|{tags_str}\n')
         except Exception:
             pass
-

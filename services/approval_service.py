@@ -219,7 +219,6 @@ class ApprovalService:
     @staticmethod
     def get_pending_for_user(user):
         """Get all pending approval requests the user can approve."""
-        from models import User
         roles = [r.name for r in user.roles] if hasattr(user, 'roles') else []
         level_query = ApprovalLevel.query.filter(
             ApprovalLevel.status == 'pending',

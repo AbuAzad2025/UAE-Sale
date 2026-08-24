@@ -3,7 +3,6 @@ Public Routes - Landing Page, Pricing, User Guide, SEO
 """
 from flask import Blueprint, render_template, redirect, url_for, Response, request
 from flask_login import current_user
-from datetime import datetime
 
 public_bp = Blueprint('public', __name__)
 
@@ -32,10 +31,10 @@ def features():
 def user_guide():
     """دليل المستخدم"""
     from flask import session
-    
+
     # اختيار القالب حسب اللغة
     lang = session.get('language', 'ar')
-    
+
     if lang == 'en':
         return render_template('public/user_guide_en.html')
     else:
@@ -60,17 +59,17 @@ def sitemap():
     خريطة الموقع الديناميكية لمحركات البحث
     Dynamic Sitemap for Search Engines (Google, Bing, etc.)
     """
-    from models import Product, Customer, Sale
-    
+    from models import Product
+
     # الحصول على URL الأساسي
     base_url = request.url_root.rstrip('/')
-    
+
     # الصفحات الثابتة العامة (أولوية عالية)
     static_pages = [
         # الصفحات الرئيسية - أعلى أولوية
-        {'loc': f'{base_url}/', 'priority': '1.0', 'changefreq': 'daily', 
+        {'loc': f'{base_url}/', 'priority': '1.0', 'changefreq': 'daily',
          'keywords': 'نظام إدارة مستودعات، برنامج محاسبة الإمارات'},
-        
+
         # صفحات تسويقية مهمة
         {'loc': f'{base_url}/pricing', 'priority': '0.95', 'changefreq': 'weekly',
          'keywords': 'أسعار برنامج المستودعات، باقات محاسبة'},
@@ -82,18 +81,18 @@ def sitemap():
          'keywords': 'اتصل بنا، دبي، الإمارات'},
         {'loc': f'{base_url}/user-guide', 'priority': '0.85', 'changefreq': 'monthly',
          'keywords': 'دليل المستخدم، شرح البرنامج'},
-        
+
         # صفحات عامة أخرى
         {'loc': f'{base_url}/auth/login', 'priority': '0.80', 'changefreq': 'monthly',
          'keywords': 'تسجيل دخول'},
     ]
-    
+
     # المنتجات النشطة (آخر 100)
     try:
         products = Product.query.filter_by(is_active=True).order_by(
             Product.updated_at.desc()
         ).limit(100).all()
-        
+
         for product in products:
             static_pages.append({
                 'loc': f'{base_url}/products/{product.id}',
@@ -101,13 +100,13 @@ def sitemap():
                 'changefreq': 'weekly',
                 'lastmod': product.updated_at.strftime('%Y-%m-%d') if product.updated_at else None
             })
-    except:
+    except Exception:
         pass
-    
+
     # بناء XML
     xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml_content += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    
+
     for page in static_pages:
         xml_content += '  <url>\n'
         xml_content += f'    <loc>{page["loc"]}</loc>\n'
@@ -116,9 +115,9 @@ def sitemap():
         if page.get('lastmod'):
             xml_content += f'    <lastmod>{page["lastmod"]}</lastmod>\n'
         xml_content += '  </url>\n'
-    
+
     xml_content += '</urlset>'
-    
+
     return Response(xml_content, mimetype='application/xml')
 
 
@@ -128,9 +127,9 @@ def robots():
     ملف Robots.txt لتوجيه محركات البحث
     Robots.txt for Search Engine Crawlers
     """
-    base_url = request.url_root.rstrip('/')
-    
-    robots_content = f"""# شركة أزاد للأنظمة الذكية
+    _ = request.url_root.rstrip('/')
+
+    robots_content = """# شركة أزاد للأنظمة الذكية
 # Azad Smart Systems - Robots.txt
 
 User-agent: *
@@ -160,6 +159,5 @@ Sitemap: {base_url}/sitemap.xml
 # معدل الزحف (Crawl-delay)
 Crawl-delay: 1
 """
-    
-    return Response(robots_content, mimetype='text/plain')
 
+    return Response(robots_content, mimetype='text/plain')

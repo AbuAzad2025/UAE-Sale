@@ -1,11 +1,11 @@
 from datetime import datetime, timezone
 from extensions import db
-from decimal import Decimal
+
 
 class CustomsTax(db.Model):
     """نموذج الجمارك والضرائب"""
     __tablename__ = 'customs_taxes'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     name_ar = db.Column(db.String(200), nullable=False)
@@ -20,12 +20,12 @@ class CustomsTax(db.Model):
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    
+
     gl_account = db.relationship('GLAccount')
-    
+
     def __repr__(self):
         return f'<CustomsTax {self.name_ar} - {self.rate}%>'
-    
+
     @property
     def tax_type_ar(self):
         types = {
@@ -37,10 +37,11 @@ class CustomsTax(db.Model):
         }
         return types.get(self.tax_type, self.tax_type)
 
+
 class AdvancedExpense(db.Model):
     """نموذج المصروفات المتقدمة"""
     __tablename__ = 'advanced_expenses'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     expense_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     expense_date = db.Column(db.Date, nullable=False, index=True)
@@ -52,36 +53,36 @@ class AdvancedExpense(db.Model):
     currency = db.Column(db.String(3), default='AED', nullable=False)
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
     amount_aed = db.Column(db.Numeric(18, 3), nullable=False)
-    
+
     # معلومات الضرائب
     taxable_amount = db.Column(db.Numeric(18, 3), default=0)
     tax_amount = db.Column(db.Numeric(18, 3), default=0)
     tax_rate = db.Column(db.Numeric(5, 4), default=0)
     tax_exempt = db.Column(db.Boolean, default=False)
-    
+
     # معلومات الجمارك
     customs_amount = db.Column(db.Numeric(18, 3), default=0)
     customs_rate = db.Column(db.Numeric(5, 4), default=0)
     customs_exempt = db.Column(db.Boolean, default=False)
-    
+
     # معلومات الدفع
     payment_method = db.Column(db.String(50))  # cash, bank_transfer, cheque, credit_card
     payment_status = db.Column(db.String(50), default='pending')  # pending, paid, partial, overdue
     paid_amount = db.Column(db.Numeric(18, 3), default=0)
     due_date = db.Column(db.Date)
-    
+
     # معلومات الموافقة
     requires_approval = db.Column(db.Boolean, default=False)
     approval_status = db.Column(db.String(50), default='pending')  # pending, approved, rejected
     approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     approved_at = db.Column(db.DateTime)
     approval_notes = db.Column(db.Text)
-    
+
     # معلومات المرفقات
     attachment_count = db.Column(db.Integer, default=0)
     has_receipt = db.Column(db.Boolean, default=False)
     receipt_number = db.Column(db.String(100))
-    
+
     # معلومات النظام
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     gl_journal_entry_id = db.Column(db.Integer, db.ForeignKey('gl_journal_entries.id'))
@@ -89,10 +90,10 @@ class AdvancedExpense(db.Model):
     reversed_at = db.Column(db.DateTime)
     reversed_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     reversal_reason = db.Column(db.Text)
-    
+
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    
+
     # العلاقات
     category = db.relationship('ExpenseCategory')
     supplier = db.relationship('Supplier')
@@ -100,10 +101,10 @@ class AdvancedExpense(db.Model):
     approved_user = db.relationship('User', foreign_keys=[approved_by])
     reversed_user = db.relationship('User', foreign_keys=[reversed_by])
     gl_journal_entry = db.relationship('GLJournalEntry')
-    
+
     def __repr__(self):
         return f'<AdvancedExpense {self.expense_number} - {self.description_ar}>'
-    
+
     @property
     def payment_method_ar(self):
         methods = {
@@ -113,7 +114,7 @@ class AdvancedExpense(db.Model):
             'credit_card': 'بطاقة ائتمان'
         }
         return methods.get(self.payment_method, self.payment_method)
-    
+
     @property
     def payment_status_ar(self):
         statuses = {
@@ -123,7 +124,7 @@ class AdvancedExpense(db.Model):
             'overdue': 'متأخر'
         }
         return statuses.get(self.payment_status, self.payment_status)
-    
+
     @property
     def approval_status_ar(self):
         statuses = {
@@ -132,36 +133,36 @@ class AdvancedExpense(db.Model):
             'rejected': 'مرفوض'
         }
         return statuses.get(self.approval_status, self.approval_status)
-    
+
     def calculate_taxes(self):
         """حساب الضرائب والجمارك"""
         if self.tax_exempt:
             self.tax_amount = 0
         else:
             self.tax_amount = self.taxable_amount * self.tax_rate
-        
+
         if self.customs_exempt:
             self.customs_amount = 0
         else:
             self.customs_amount = self.amount_aed * self.customs_rate
-    
+
     def get_total_amount(self):
         """الحصول على المبلغ الإجمالي مع الضرائب"""
         return self.amount_aed + self.tax_amount + self.customs_amount
-    
+
     def reverse_expense(self, reason, reversed_by_user):
         """عكس المصروف"""
         if self.is_reversed:
             raise ValueError("المصروف معكوس مسبقاً")
-        
+
         self.is_reversed = True
         self.reversed_at = datetime.now(timezone.utc)
         self.reversed_by = reversed_by_user.id
         self.reversal_reason = reason
-        
+
         # إنشاء قيد عكسي
         from services.gl_service import GLService
-        
+
         lines = [{
             'account_code': self.category.gl_account.code,
             'debit': 0,
@@ -173,7 +174,7 @@ class AdvancedExpense(db.Model):
             'credit': 0,
             'description': f'استرداد مصروف {self.expense_number}'
         }]
-        
+
         GLService.create_manual_entry(
             description=f'عكس مصروف {self.expense_number}',
             lines=lines,
@@ -182,10 +183,11 @@ class AdvancedExpense(db.Model):
             notes=f'سبب العكس: {reason}'
         )
 
+
 class TaxCalculationRule(db.Model):
     """قواعد حساب الضرائب"""
     __tablename__ = 'tax_calculation_rules'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     name_ar = db.Column(db.String(200), nullable=False)
@@ -197,23 +199,23 @@ class TaxCalculationRule(db.Model):
     priority = db.Column(db.Integer, default=0)  # أولوية التطبيق
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    
+
     tax = db.relationship('CustomsTax')
-    
+
     def __repr__(self):
         return f'<TaxCalculationRule {self.name_ar}>'
-    
+
     def matches(self, expense):
         """فحص إذا كانت القاعدة تنطبق على المصروف"""
         if not self.is_active:
             return False
-        
+
         # تطبيق القاعدة حسب النوع
         if self.rule_type == 'expense':
             return self._check_expense_condition(expense)
-        
+
         return False
-    
+
     def _check_expense_condition(self, expense):
         """فحص شروط المصروف"""
         if self.condition_field == 'category_id':
@@ -221,7 +223,7 @@ class TaxCalculationRule(db.Model):
         elif self.condition_field == 'amount':
             amount = float(expense.amount_aed)
             value = float(self.condition_value)
-            
+
             if self.condition_operator == '>':
                 return amount > value
             elif self.condition_operator == '<':
@@ -232,5 +234,5 @@ class TaxCalculationRule(db.Model):
                 return amount <= value
             elif self.condition_operator == '=':
                 return amount == value
-        
+
         return False

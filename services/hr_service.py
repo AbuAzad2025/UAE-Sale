@@ -2,11 +2,10 @@
 HR Service - Salary Calculation, Leave Management, Payroll Processing
 """
 
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
-from flask import current_app
 from extensions import db
-from models.hr import Employee, Department, LeaveType, LeaveRequest, Payslip, PayslipLine
+from models.hr import Employee, Department, LeaveType, LeaveRequest, Payslip
 from utils.helpers import generate_number
 
 
@@ -381,7 +380,7 @@ class HRService:
         today = date.today()
         visa_expiry_limit = today + timedelta(days=90)
         expiring_visas = Employee.query.filter(
-            Employee.is_active == True,
+            Employee.is_active is True,
             Employee.visa_expiry.isnot(None),
             Employee.visa_expiry <= visa_expiry_limit,
             Employee.visa_expiry >= today,
@@ -394,7 +393,7 @@ class HRService:
                      Employee.transport_allowance + Employee.phone_allowance +
                      Employee.other_allowances)
         ).filter(
-            Employee.is_active == True,
+            Employee.is_active is True,
             Employee.employment_status == 'active',
         ).scalar() or Decimal('0')
 

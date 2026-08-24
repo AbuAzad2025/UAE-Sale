@@ -40,6 +40,7 @@ CUSTOMS_CLEARANCE = {
     }
 }
 
+
 def get_customs_advice(question):
     """نصائح جمركية"""
     return """🛃 **التخليص الجمركي في الإمارات:**

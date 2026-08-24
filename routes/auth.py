@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import login_user, logout_user, current_user
 from extensions import db, limiter
-from models import User, Donation
+from models import User
 from utils.helpers import create_audit_log
 from services.nowpayments_service import NOWPaymentsService
 
@@ -22,21 +22,21 @@ def support():
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
-    
+
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         # Make username case-insensitive check
         # We will use the username as provided to find the user in a case-insensitive way
         password = request.form.get('password', '')
         remember = request.form.get('remember', False)
-        
+
         if not username or not password:
             flash('⚠️ الرجاء إدخال اسم المستخدم وكلمة المرور.\n💡 كلا الحقلين مطلوبان للدخول.', 'danger')
             return render_template('auth/login.html')
-        
+
         # Case-insensitive query
         user = User.query.filter(User.username.ilike(username)).first()
-        
+
         # --- Account lockout check ---
         if user and user.locked_until and user.locked_until > datetime.now(timezone.utc):
             remaining = (user.locked_until - datetime.now(timezone.utc)).seconds // 60 + 1
@@ -61,7 +61,7 @@ def login():
                 flash('❌ اسم المستخدم أو كلمة المرور غير صحيحة.', 'danger')
 
             create_audit_log('login_failed', 'users', None, {'username': username})
-            
+
             from models.login_history import LoginHistory
             failed_login = LoginHistory(
                 user_id=user.id if user else None,
@@ -74,22 +74,22 @@ def login():
             )
             db.session.add(failed_login)
             db.session.commit()
-            
+
             return render_template('auth/login.html')
-        
+
         if not user.is_active:
             flash('⚠️ حسابك غير نشط!\n💡 اتصل بمدير النظام لإعادة تفعيل حسابك.', 'danger')
             return render_template('auth/login.html')
-        
+
         # Regenerate session to prevent session fixation
         session.clear()
         login_user(user, remember=remember)
         session['last_activity'] = datetime.now().isoformat()
         session.permanent = True
-        
+
         user.last_login = datetime.now(timezone.utc)
         user.login_attempts = 0
-        
+
         from models.login_history import LoginHistory
         successful_login = LoginHistory(
             user_id=user.id,
@@ -102,15 +102,15 @@ def login():
         )
         db.session.add(successful_login)
         db.session.commit()
-        
+
         create_audit_log('login', 'users', user.id)
-        
+
         next_page = request.args.get('next')
         if next_page and next_page.startswith('/'):
             return redirect(next_page)
-        
+
         return redirect(url_for('main.dashboard'))
-    
+
     return render_template('auth/login.html')
 
 
@@ -121,7 +121,7 @@ def logout():
         logout_user()
         session.pop('last_activity', None)
         flash('✅ تم تسجيل الخروج بنجاح. نراك قريباً!', 'success')
-    
+
     return redirect(url_for('auth.login'))
 
 
@@ -132,13 +132,13 @@ def create_payment():
     """إنشاء دفعة جديدة"""
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({
                 'success': False,
                 'error': 'بيانات غير صحيحة'
             }), 400
-        
+
         # Input validation
         try:
             amount = float(data.get('amount', 0))
@@ -167,7 +167,7 @@ def create_payment():
         # Validate transaction type
         if transaction_type not in ('donation', 'purchase'):
             transaction_type = 'donation'
-        
+
         # إنشاء الدفعة
         nowpayments = NOWPaymentsService()
         result = nowpayments.create_payment(
@@ -183,12 +183,12 @@ def create_payment():
             donor_email=donor_email,
             donor_message=donor_message
         )
-        
+
         if result['success']:
             return jsonify(result)
         else:
             return jsonify(result), 400
-            
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -202,12 +202,12 @@ def payment_status(payment_id):
     try:
         nowpayments = NOWPaymentsService()
         result = nowpayments.get_payment_status(payment_id)
-        
+
         if result['success']:
             return jsonify(result)
         else:
             return jsonify(result), 400
-            
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -223,21 +223,21 @@ def payment_callback():
         signature = request.headers.get('x-nowpayments-sig')
         if not signature:
             return jsonify({'error': 'توقيع مفقود'}), 400
-        
+
         # التحقق من التوقيع
         nowpayments = NOWPaymentsService()
         if not nowpayments.verify_ipn(request.get_json(), signature):
             return jsonify({'error': 'توقيع غير صحيح'}), 400
-        
+
         # معالجة البيانات
         payment_data = request.get_json()
         success = nowpayments.process_payment_callback(payment_data)
-        
+
         if success:
             return jsonify({'status': 'success'})
         else:
             return jsonify({'error': 'فشل في معالجة الدفعة'}), 500
-            
+
     except Exception as e:
         return jsonify({
             'error': f'خطأ في معالجة callback: {str(e)}'
@@ -250,12 +250,12 @@ def available_currencies():
     try:
         nowpayments = NOWPaymentsService()
         result = nowpayments.get_available_currencies()
-        
+
         if result['success']:
             return jsonify(result)
         else:
             return jsonify(result), 400
-            
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -270,21 +270,21 @@ def estimate_amount():
         amount = float(request.args.get('amount', 0))
         from_currency = request.args.get('from', 'usd')
         to_currency = request.args.get('to', 'btc')
-        
+
         if amount < 1:
             return jsonify({
                 'success': False,
                 'error': 'الحد الأدنى للتبرع هو $1'
             }), 400
-        
+
         nowpayments = NOWPaymentsService()
         result = nowpayments.get_estimated_amount(amount, from_currency, to_currency)
-        
+
         if result['success']:
             return jsonify(result)
         else:
             return jsonify(result), 400
-            
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -297,8 +297,7 @@ def thank_you():
     """صفحة الشكر بعد الدفع"""
     payment_id = request.args.get('payment_id')
     status = request.args.get('status', 'pending')
-    
-    return render_template('thank_you.html', 
-                         payment_id=payment_id, 
-                         status=status)
 
+    return render_template('thank_you.html',
+                           payment_id=payment_id,
+                           status=status)

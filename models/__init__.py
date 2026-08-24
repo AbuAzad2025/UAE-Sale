@@ -34,7 +34,7 @@ from .login_history import LoginHistory
 from .security_alert import SecurityAlert
 from .api_key import APIKey
 from .approval_workflow import ApprovalWorkflow, ApprovalRequest, ApprovalLevel
-from .tenant_scope import (
+from .tenant_scope import (  # noqa: F401
     TenantScopedMixin, set_current_tenant_id, get_current_tenant_id,
     clear_current_tenant_id, register_tenant_scoped, install_tenant_filter_events,
 )
@@ -91,4 +91,3 @@ __all__ = [
     'StockTake', 'StockTakeItem', 'DunningLetter', 'RecurringExpense',
     'ProductLot', 'WarehouseBin', 'ProductBin', 'EInvoice',
 ]
-

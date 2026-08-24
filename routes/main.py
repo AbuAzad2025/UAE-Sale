@@ -1,11 +1,11 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from flask import Blueprint, render_template, current_app, redirect, url_for
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from extensions import db, cache
-from models import Sale, Customer, Product, Payment, Receipt, GLAccount, GLJournalLine
+from models import Sale, Customer, Product, GLAccount, GLJournalLine
 from services.stock_service import StockService
 
 # Dashboard cache TTL in seconds (60s = short enough to stay fresh,
@@ -22,7 +22,7 @@ def index():
 
 @main_bp.route('/dashboard')
 @login_required
-def dashboard():
+def dashboard():  # noqa: C901
     # Dashboard route with error handling
     try:
         today = datetime.now(timezone.utc).date()
@@ -45,16 +45,16 @@ def dashboard():
             return val
 
         stats['customers_count'] = _cached('customers',
-            lambda: Customer.query.filter_by(is_active=True).count())
+                                           lambda: Customer.query.filter_by(is_active=True).count())
 
         stats['products_count'] = _cached('products',
-            lambda: Product.query.filter_by(is_active=True).count())
+                                          lambda: Product.query.filter_by(is_active=True).count())
 
         low_stock = _cached('low_stock', lambda: [] if not hasattr(StockService, 'get_low_stock_products') else StockService.get_low_stock_products(limit=10))
         stats['low_stock_count'] = len(low_stock)
         stats['low_stock_products'] = low_stock
 
-        out_of_stock = _cached('out_of_stock', lambda: [] if not hasattr(StockService, 'get_out_of_stock_products') else StockService.get_out_of_stock_products())
+        out_of_stock = _cached('out_of_stock', lambda: [] if not hasattr(StockService, 'get_out_of_stock_products') else StockService.get_out_of_stock_products())  # noqa: E501
         stats['out_of_stock_count'] = len(out_of_stock)
 
         def _today_sales():

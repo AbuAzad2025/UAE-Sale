@@ -5,25 +5,24 @@
 
 import json
 import os
-from datetime import datetime, timedelta
-from collections import defaultdict
+from datetime import datetime
 import random
 
 
 class AzadSelfImprovement:
     """نظام التحسين الذاتي لأزاد"""
-    
+
     def __init__(self):
         from ai_knowledge import get_knowledge_path
         self.improvement_file = get_knowledge_path('self_improvement.json')
         self.performance_file = get_knowledge_path('performance_metrics.json')
         self.goals_file = get_knowledge_path('improvement_goals.json')
-        
+
         # تحميل البيانات
         self.improvement_data = self._load_improvement_data()
         self.performance_metrics = self._load_performance_metrics()
         self.improvement_goals = self._load_improvement_goals()
-        
+
         # مجالات التحسين
         self.improvement_areas = {
             'response_quality': {
@@ -57,14 +56,14 @@ class AzadSelfImprovement:
                 'last_improvement': None
             }
         }
-    
+
     def _load_improvement_data(self):
         """تحميل بيانات التحسين"""
         if os.path.exists(self.improvement_file):
             try:
                 with open(self.improvement_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
-            except:
+            except Exception:
                 pass
         return {
             'total_improvements': 0,
@@ -73,14 +72,14 @@ class AzadSelfImprovement:
             'current_version': '1.0.0',
             'next_version': '1.1.0'
         }
-    
+
     def _load_performance_metrics(self):
         """تحميل مقاييس الأداء"""
         if os.path.exists(self.performance_file):
             try:
                 with open(self.performance_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
-            except:
+            except Exception:
                 pass
         return {
             'daily_metrics': {},
@@ -88,14 +87,14 @@ class AzadSelfImprovement:
             'monthly_metrics': {},
             'overall_performance': 8.0
         }
-    
+
     def _load_improvement_goals(self):
         """تحميل أهداف التحسين"""
         if os.path.exists(self.goals_file):
             try:
                 with open(self.goals_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
-            except:
+            except Exception:
                 pass
         return {
             'short_term_goals': [
@@ -111,7 +110,7 @@ class AzadSelfImprovement:
             'achieved_goals': [],
             'current_focus': 'تحسين دقة التنبؤات'
         }
-    
+
     def analyze_performance(self):
         """تحليل الأداء الحالي"""
         analysis = {
@@ -121,14 +120,14 @@ class AzadSelfImprovement:
             'improvement_opportunities': self._identify_opportunities(),
             'recommendations': self._generate_recommendations()
         }
-        
+
         return analysis
-    
+
     def _calculate_overall_score(self):
         """حساب النقاط الإجمالية"""
         total_score = 0
         total_weight = 0
-        
+
         weights = {
             'response_quality': 0.25,
             'knowledge_depth': 0.25,
@@ -136,18 +135,18 @@ class AzadSelfImprovement:
             'customer_satisfaction': 0.20,
             'response_speed': 0.10
         }
-        
+
         for area, config in self.improvement_areas.items():
             weight = weights.get(area, 0.2)
             total_score += config['current_score'] * weight
             total_weight += weight
-        
+
         return round(total_score / total_weight, 2) if total_weight > 0 else 0
-    
+
     def _identify_strengths(self):
         """تحديد نقاط القوة"""
         strengths = []
-        
+
         for area, config in self.improvement_areas.items():
             if config['current_score'] >= 8.5:
                 strengths.append({
@@ -155,13 +154,13 @@ class AzadSelfImprovement:
                     'score': config['current_score'],
                     'description': self._get_area_description(area)
                 })
-        
+
         return strengths
-    
+
     def _identify_weaknesses(self):
         """تحديد نقاط الضعف"""
         weaknesses = []
-        
+
         for area, config in self.improvement_areas.items():
             if config['current_score'] < 7.0:
                 weaknesses.append({
@@ -171,13 +170,13 @@ class AzadSelfImprovement:
                     'improvement_needed': config['target_score'] - config['current_score'],
                     'description': self._get_area_description(area)
                 })
-        
+
         return weaknesses
-    
+
     def _identify_opportunities(self):
         """تحديد فرص التحسين"""
         opportunities = []
-        
+
         for area, config in self.improvement_areas.items():
             if 7.0 <= config['current_score'] < 8.5:
                 opportunities.append({
@@ -187,9 +186,9 @@ class AzadSelfImprovement:
                     'improvement_potential': config['target_score'] - config['current_score'],
                     'description': self._get_area_description(area)
                 })
-        
+
         return opportunities
-    
+
     def _get_area_description(self, area):
         """الحصول على وصف المجال"""
         descriptions = {
@@ -200,11 +199,11 @@ class AzadSelfImprovement:
             'response_speed': 'سرعة الاستجابة'
         }
         return descriptions.get(area, 'مجال غير محدد')
-    
+
     def _generate_recommendations(self):
         """توليد توصيات التحسين"""
         recommendations = []
-        
+
         # توصيات بناءً على نقاط الضعف
         weaknesses = self._identify_weaknesses()
         for weakness in weaknesses:
@@ -214,7 +213,7 @@ class AzadSelfImprovement:
                 'action': f"تحسين {weakness['description']} من {weakness['score']} إلى {weakness['target_score']}",
                 'priority': 'عالي'
             })
-        
+
         # توصيات بناءً على الفرص
         opportunities = self._identify_opportunities()
         for opportunity in opportunities:
@@ -224,26 +223,26 @@ class AzadSelfImprovement:
                 'action': f"تطوير {opportunity['description']} لتحقيق إمكانات كاملة",
                 'priority': 'متوسط'
             })
-        
+
         return recommendations
-    
+
     def implement_improvement(self, area, improvement_type='automatic'):
         """تطبيق التحسين"""
         if area not in self.improvement_areas:
             return {'success': False, 'error': 'المجال غير موجود'}
-        
+
         config = self.improvement_areas[area]
         current_score = config['current_score']
         improvement_rate = config['improvement_rate']
-        
+
         # حساب التحسين
         improvement_amount = improvement_rate * random.uniform(0.8, 1.2)  # تحسين عشوائي
         new_score = min(current_score + improvement_amount, config['target_score'])
-        
+
         # تحديث النقاط
         self.improvement_areas[area]['current_score'] = round(new_score, 2)
         self.improvement_areas[area]['last_improvement'] = datetime.now().isoformat()
-        
+
         # تسجيل التحسين
         improvement_record = {
             'area': area,
@@ -253,14 +252,14 @@ class AzadSelfImprovement:
             'type': improvement_type,
             'timestamp': datetime.now().isoformat()
         }
-        
+
         self.improvement_data['improvement_history'].append(improvement_record)
         self.improvement_data['total_improvements'] += 1
         self.improvement_data['last_improvement_date'] = datetime.now().isoformat()
-        
+
         # حفظ البيانات
         self._save_data()
-        
+
         return {
             'success': True,
             'area': area,
@@ -269,39 +268,39 @@ class AzadSelfImprovement:
             'improvement': round(new_score - current_score, 2),
             'timestamp': datetime.now().isoformat()
         }
-    
+
     def auto_improve(self):
         """التحسين التلقائي"""
         improvements_made = []
-        
+
         # تحسين المجالات ذات الأولوية العالية
         weaknesses = self._identify_weaknesses()
         for weakness in weaknesses[:2]:  # تحسين أول مجالين
             result = self.implement_improvement(weakness['area'], 'auto')
             if result['success']:
                 improvements_made.append(result)
-        
+
         # تحسين عشوائي لمجال آخر
-        available_areas = [area for area in self.improvement_areas.keys() 
-                          if area not in [w['area'] for w in weaknesses[:2]]]
-        
+        available_areas = [area for area in self.improvement_areas.keys()
+                           if area not in [w['area'] for w in weaknesses[:2]]]
+
         if available_areas:
             random_area = random.choice(available_areas)
             result = self.implement_improvement(random_area, 'auto')
             if result['success']:
                 improvements_made.append(result)
-        
+
         return {
             'improvements_made': len(improvements_made),
             'details': improvements_made,
             'timestamp': datetime.now().isoformat()
         }
-    
+
     def set_improvement_goal(self, area, target_score, timeframe='30_days'):
         """تعيين هدف تحسين"""
         if area not in self.improvement_areas:
             return {'success': False, 'error': 'المجال غير موجود'}
-        
+
         goal = {
             'area': area,
             'current_score': self.improvement_areas[area]['current_score'],
@@ -310,25 +309,25 @@ class AzadSelfImprovement:
             'created_at': datetime.now().isoformat(),
             'status': 'active'
         }
-        
+
         # إضافة للقائمة
         if 'active_goals' not in self.improvement_goals:
             self.improvement_goals['active_goals'] = []
-        
+
         self.improvement_goals['active_goals'].append(goal)
-        
+
         # تحديث الهدف في المجال
         self.improvement_areas[area]['target_score'] = target_score
-        
+
         # حفظ البيانات
         self._save_data()
-        
+
         return {
             'success': True,
             'goal': goal,
             'message': f"تم تعيين هدف تحسين {area} إلى {target_score} خلال {timeframe}"
         }
-    
+
     def track_progress(self):
         """تتبع التقدم"""
         progress_report = {
@@ -338,7 +337,7 @@ class AzadSelfImprovement:
             'improvement_trend': self._calculate_improvement_trend(),
             'next_milestones': self._get_next_milestones()
         }
-        
+
         # تقدم كل مجال
         for area, config in self.improvement_areas.items():
             progress_report['area_progress'][area] = {
@@ -347,25 +346,25 @@ class AzadSelfImprovement:
                 'progress_percentage': round((config['current_score'] / config['target_score']) * 100, 1),
                 'remaining': round(config['target_score'] - config['current_score'], 2)
             }
-        
+
         return progress_report
-    
+
     def _calculate_overall_progress(self):
         """حساب التقدم الإجمالي"""
         total_progress = 0
         total_areas = len(self.improvement_areas)
-        
+
         for area, config in self.improvement_areas.items():
             progress = (config['current_score'] / config['target_score']) * 100
             total_progress += progress
-        
+
         return round(total_progress / total_areas, 1) if total_areas > 0 else 0
-    
+
     def _track_goals_progress(self):
         """تتبع تقدم الأهداف"""
         if 'active_goals' not in self.improvement_goals:
             return []
-        
+
         goals_progress = []
         for goal in self.improvement_goals['active_goals']:
             if goal['status'] == 'active':
@@ -373,9 +372,9 @@ class AzadSelfImprovement:
                 current_score = self.improvement_areas[area]['current_score']
                 target_score = goal['target_score']
                 initial_score = goal['current_score']
-                
+
                 progress = ((current_score - initial_score) / (target_score - initial_score)) * 100
-                
+
                 goals_progress.append({
                     'area': area,
                     'initial_score': initial_score,
@@ -384,20 +383,20 @@ class AzadSelfImprovement:
                     'progress_percentage': round(progress, 1),
                     'created_at': goal['created_at']
                 })
-        
+
         return goals_progress
-    
+
     def _calculate_improvement_trend(self):
         """حساب اتجاه التحسين"""
         history = self.improvement_data.get('improvement_history', [])
-        
+
         if len(history) < 2:
             return 'غير محدد'
-        
+
         # تحليل آخر 10 تحسينات
         recent_improvements = history[-10:]
         total_improvement = sum(imp['improvement'] for imp in recent_improvements)
-        
+
         if total_improvement > 0.5:
             return 'تحسن سريع'
         elif total_improvement > 0.2:
@@ -406,15 +405,15 @@ class AzadSelfImprovement:
             return 'تحسن بطيء'
         else:
             return 'ثابت'
-    
+
     def _get_next_milestones(self):
         """الحصول على المعالم التالية"""
         milestones = []
-        
+
         for area, config in self.improvement_areas.items():
             current_score = config['current_score']
             target_score = config['target_score']
-            
+
             # المعالم القريبة
             if current_score < 8.0:
                 milestones.append({
@@ -437,9 +436,9 @@ class AzadSelfImprovement:
                     'description': f'تحقيق الهدف النهائي في {self._get_area_description(area)}',
                     'priority': 'منخفض'
                 })
-        
+
         return milestones
-    
+
     def evolve_capabilities(self):
         """تطوير القدرات"""
         evolution_report = {
@@ -447,10 +446,10 @@ class AzadSelfImprovement:
             'enhanced_capabilities': [],
             'evolution_timestamp': datetime.now().isoformat()
         }
-        
+
         # تطوير قدرات جديدة بناءً على الأداء
         overall_score = self._calculate_overall_score()
-        
+
         if overall_score >= 8.5:
             # مستوى عالي - إضافة قدرات متقدمة
             evolution_report['new_capabilities'].extend([
@@ -459,7 +458,7 @@ class AzadSelfImprovement:
                 'تحليل سلوك العملاء',
                 'توقع الاتجاهات المستقبلية'
             ])
-        
+
         if overall_score >= 9.0:
             # مستوى خبير - إضافة قدرات خارقة
             evolution_report['new_capabilities'].extend([
@@ -468,7 +467,7 @@ class AzadSelfImprovement:
                 'تحليل المخاطر المتقدم',
                 'تخطيط الأعمال الذكي'
             ])
-        
+
         # تحسين القدرات الموجودة
         for area, config in self.improvement_areas.items():
             if config['current_score'] >= 8.0:
@@ -477,27 +476,27 @@ class AzadSelfImprovement:
                     'enhancement': f'تحسين {self._get_area_description(area)}',
                     'level': 'متقدم'
                 })
-        
+
         return evolution_report
-    
+
     def _save_data(self):
         """حفظ البيانات"""
         try:
             # حفظ بيانات التحسين
             with open(self.improvement_file, 'w', encoding='utf-8') as f:
                 json.dump(self.improvement_data, f, ensure_ascii=False, indent=2)
-            
+
             # حفظ مقاييس الأداء
             with open(self.performance_file, 'w', encoding='utf-8') as f:
                 json.dump(self.performance_metrics, f, ensure_ascii=False, indent=2)
-            
+
             # حفظ أهداف التحسين
             with open(self.goals_file, 'w', encoding='utf-8') as f:
                 json.dump(self.improvement_goals, f, ensure_ascii=False, indent=2)
-                
+
         except Exception as e:
             print(f"Error saving improvement data: {e}")
-    
+
     def get_improvement_status(self):
         """الحصول على حالة التحسين"""
         return {

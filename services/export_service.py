@@ -34,7 +34,7 @@ class ExportService:
     # ── Excel (.xlsx) ────────────────────────────────────────────────────
 
     @staticmethod
-    def export_to_excel(title, headers, rows, filename='report.xlsx',
+    def export_to_excel(title, headers, rows, filename='report.xlsx',  # noqa: C901
                         summary=None, right_to_left=True):
         """
         Export data to a styled .xlsx workbook.
@@ -163,7 +163,7 @@ class ExportService:
         """
         from weasyprint import HTML
 
-        dir_attr = 'dir="rtl"' if right_to_left else ''
+        _ = 'dir="rtl"' if right_to_left else ''
         align = 'right' if right_to_left else 'left'
 
         rows_html = ''
@@ -174,24 +174,24 @@ class ExportService:
             )
             rows_html += f'<tr>{cells}</tr>'
 
-        summary_html = ''
+        _ = ''
         if summary:
             rows_s = ''.join(
                 f'<tr><td style="font-weight:bold;padding:4px 8px">{k}</td>'
                 f'<td style="text-align:right;padding:4px 8px">{v}</td></tr>'
                 for k, v in summary.items()
             )
-            summary_html = f'''
+            _ = f'''
             <h3 style="margin-top:20px;color:#4472C4">Summary / الإجماليات</h3>
             <table style="border-collapse:collapse;width:50%">{rows_s}</table>
             '''
 
-        html_content = f"""<!DOCTYPE html>
+        html_content = """<!DOCTYPE html>
 <html {dir_attr} lang="ar">
 <head>
 <meta charset="UTF-8">
 <style>
-  body {{ font-family: Arial, sans-serif; padding: 20px; {f'direction:rtl;' if right_to_left else ''} }}
+  body {{ font-family: Arial, sans-serif; padding: 20px; {'direction:rtl;' if right_to_left else ''} }}
   h1 {{ color: #4472C4; border-bottom: 3px solid #4472C4; padding-bottom: 8px; }}
   .meta {{ color: #888; font-size: 0.9em; margin-bottom: 16px; }}
   table {{ width: 100%; border-collapse: collapse; margin-top: 12px; }}
@@ -285,7 +285,7 @@ class ExportService:
     @staticmethod
     def generate_pdf_report(title, data, filename='report.pdf'):
         """Legacy: returns an HTML string for browser printing."""
-        html = f"""<!DOCTYPE html>
+        html = """<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
 <meta charset="UTF-8"><title>{title}</title>

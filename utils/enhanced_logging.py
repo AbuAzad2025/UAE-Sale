@@ -6,7 +6,6 @@ import io
 import logging
 import os
 import sys
-from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
 
@@ -44,7 +43,7 @@ def setup_enhanced_logging(app):
         '[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     ))
-    
+
     error_handler = RotatingFileHandler(
         os.path.join(logs_dir, 'errors.log'),
         maxBytes=10 * 1024 * 1024,
@@ -59,7 +58,7 @@ def setup_enhanced_logging(app):
         '%(exc_info)s\n',
         datefmt='%Y-%m-%d %H:%M:%S'
     ))
-    
+
     security_handler = RotatingFileHandler(
         os.path.join(logs_dir, 'security.log'),
         maxBytes=5 * 1024 * 1024,
@@ -73,7 +72,7 @@ def setup_enhanced_logging(app):
         'Message: %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     ))
-    
+
     perf_handler = RotatingFileHandler(
         os.path.join(logs_dir, 'performance.log'),
         maxBytes=5 * 1024 * 1024,
@@ -85,7 +84,7 @@ def setup_enhanced_logging(app):
         '[%(asctime)s] PERF - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     ))
-    
+
     app.logger.addHandler(app_handler)
     app.logger.addHandler(error_handler)
     app.logger.setLevel(logging.INFO if not app.debug else logging.DEBUG)
@@ -109,11 +108,11 @@ def setup_enhanced_logging(app):
         if isinstance(handler, logging.StreamHandler):
             werkzeug_logger.removeHandler(handler)
     werkzeug_logger.addHandler(logging.StreamHandler(utf8_stderr))
-    
+
     app.logger.info('=' * 60)
     app.logger.info('[OK] Enhanced Logging System initialized')
     app.logger.info('=' * 60)
-    
+
     return {
         'app': app_handler,
         'error': error_handler,
@@ -124,7 +123,7 @@ def setup_enhanced_logging(app):
 
 class SecurityLogger:
     """مسجل خاص بالأمان"""
-    
+
     @staticmethod
     def log_failed_login(username, ip_address, user_agent):
         """تسجيل محاولة دخول فاشلة"""
@@ -132,7 +131,7 @@ class SecurityLogger:
             f'فشل تسجيل الدخول: {username}',
             extra={'user': username, 'ip': ip_address}
         )
-    
+
     @staticmethod
     def log_successful_login(username, ip_address):
         """تسجيل دخول ناجح"""
@@ -140,7 +139,7 @@ class SecurityLogger:
             f'تسجيل دخول ناجح: {username}',
             extra={'user': username, 'ip': ip_address}
         )
-    
+
     @staticmethod
     def log_permission_denied(user, action, ip_address):
         """تسجيل محاولة وصول غير مصرح"""
@@ -148,7 +147,7 @@ class SecurityLogger:
             f'محاولة وصول مرفوضة: {user} حاول {action}',
             extra={'user': user, 'ip': ip_address}
         )
-    
+
     @staticmethod
     def log_rate_limit_exceeded(user, endpoint, ip_address):
         """تسجيل تجاوز rate limit"""
@@ -160,20 +159,19 @@ class SecurityLogger:
 
 class PerformanceLogger:
     """مسجل خاص بالأداء"""
-    
+
     @staticmethod
     def log_slow_query(query, duration):
         """تسجيل استعلام بطيء"""
         if duration > 1.0:
             logging.warning(f'استعلام بطيء ({duration:.2f}s): {query}')
-    
+
     @staticmethod
     def log_cache_hit(cache_key):
         """تسجيل cache hit"""
         logging.debug(f'Cache hit: {cache_key}')
-    
+
     @staticmethod
     def log_cache_miss(cache_key):
         """تسجيل cache miss"""
         logging.debug(f'Cache miss: {cache_key}')
-

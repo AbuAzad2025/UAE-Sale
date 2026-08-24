@@ -3,14 +3,13 @@ ERP Modules Service - Business logic for all extended modules
 """
 
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal, ROUND_HALF_UP
-from flask import current_app
+from decimal import Decimal
 from extensions import db
 from models.erp_modules import (
     Quotation, QuotationLine, PurchaseOrder, PurchaseOrderLine,
     FiscalPeriod, StockTransfer, StockTransferLine,
     StockTake, StockTakeItem, DunningLetter, RecurringExpense,
-    ProductLot, WarehouseBin, ProductBin, EInvoice,
+    EInvoice,
 )
 from utils.helpers import generate_number
 
@@ -22,11 +21,11 @@ class QuotationService:
                          currency='AED', user_exchange_rate=None,
                          discount_amount=0, shipping_cost=0, tax_rate=0,
                          valid_days=30, notes=None):
-        from models import Customer, User, Product, Warehouse
+        from models import Customer, User, Product
         from services.currency_service import CurrencyService
 
         customer = db.get_or_404(Customer, customer_id)
-        seller = db.get_or_404(User, seller_id)
+        _ = db.get_or_404(User, seller_id)
 
         exchange_rate = CurrencyService.get_exchange_rate(currency, 'AED', user_rate=user_exchange_rate)
         today = date.today()
@@ -69,7 +68,6 @@ class QuotationService:
     @staticmethod
     def convert_to_sale(quotation_id, user_id):
         """Convert accepted quotation to a sale"""
-        from models import Sale, SaleLine
         from services.sale_service import SaleService
 
         q = db.get_or_404(Quotation, quotation_id)
@@ -82,14 +80,14 @@ class QuotationService:
         customer = db.session.get(Customer, q.customer_id)
         seller = db.session.get(User, q.seller_id)
         lines_data = []
-        for l in q.lines:
-            product = db.session.get(Prod, l.product_id)
+        for ln in q.lines:
+            product = db.session.get(Prod, ln.product_id)
             if product:
                 lines_data.append({
                     'product': product,
-                    'quantity': l.quantity,
-                    'unit_price': l.unit_price,
-                    'discount_percent': l.discount_percent,
+                    'quantity': ln.quantity,
+                    'unit_price': ln.unit_price,
+                    'discount_percent': ln.discount_percent,
                 })
         sale = SaleService.create_sale(
             customer=customer,
@@ -116,7 +114,7 @@ class PurchaseOrderService:
                   expected_delivery=None, notes=None, tax_rate=0):
         from models import Supplier, Product
 
-        supplier = db.get_or_404(Supplier, supplier_id)
+        _ = db.get_or_404(Supplier, supplier_id)
 
         po = PurchaseOrder(
             po_number=generate_number('PO', PurchaseOrder, 'po_number'),
@@ -164,8 +162,6 @@ class PurchaseOrderService:
     def receive_po(po_id, user_id):
         """Receive a PO and create a Purchase Invoice"""
         from models import Purchase, PurchaseLine
-        from services.gl_service import GLService
-        from services.stock_service import StockService
         from decimal import Decimal
 
         po = db.get_or_404(PurchaseOrder, po_id)
@@ -266,7 +262,7 @@ class StockTransferService:
 
     @staticmethod
     def create_transfer(from_warehouse_id, to_warehouse_id, lines_data, user_id, notes=None):
-        from models import Warehouse, Product
+        from models import Warehouse
 
         if from_warehouse_id == to_warehouse_id:
             raise ValueError('لا يمكن النقل لنفس المستودع')
@@ -333,9 +329,8 @@ class StockTakeService:
     def create_stocktake(warehouse_id, user_id):
         """Create a new stock take snapshot"""
         from models import Product, Warehouse
-        from services.stock_service import StockService
 
-        wh = db.get_or_404(Warehouse, warehouse_id)
+        _ = db.get_or_404(Warehouse, warehouse_id)
         st = StockTake(
             stocktake_number=generate_number('STK', StockTake, 'stocktake_number'),
             warehouse_id=warehouse_id,
@@ -398,7 +393,7 @@ class DunningService:
     @staticmethod
     def check_overdue_accounts():
         """Find overdue sales and generate dunning letters"""
-        from models import Sale, Customer
+        from models import Sale
 
         overdue_sales = Sale.query.filter(
             Sale.status == 'confirmed',
@@ -473,10 +468,10 @@ class RecurringExpenseService:
     @staticmethod
     def process_due_expenses():
         """Generate expenses from recurring templates"""
-        from models import Expense, ExpenseCategory
+        from models import Expense
 
         due = RecurringExpense.query.filter(
-            RecurringExpense.is_active == True,
+            RecurringExpense.is_active is True,
             RecurringExpense.next_due_date <= date.today(),
         ).all()
 

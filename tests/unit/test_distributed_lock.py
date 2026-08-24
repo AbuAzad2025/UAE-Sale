@@ -4,7 +4,6 @@ Distributed Lock Tests — Multi-worker number generation safety.
 Proves that concurrent generate_number() calls never produce duplicates.
 """
 
-import pytest
 import threading
 from decimal import Decimal
 

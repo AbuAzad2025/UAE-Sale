@@ -5,46 +5,46 @@ from models.tenant_scope import TenantScopedMixin
 
 class Customer(TenantScopedMixin, db.Model):
     __tablename__ = 'customers'
-    
+
     __table_args__ = (
         db.Index('idx_customer_active_type', 'is_active', 'customer_type'),
         db.Index('idx_customer_balance', 'balance'),
     )
-    
+
     id = db.Column(db.Integer, primary_key=True)
     tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     name = db.Column(db.String(200), nullable=False, index=True)
     name_ar = db.Column(db.String(200))
-    
+
     customer_type = db.Column(db.String(20), nullable=False, default='regular', index=True)
-    
+
     customer_classification = db.Column(db.String(20), default='regular', index=True)
-    
+
     phone = db.Column(db.String(20))
     email = db.Column(db.String(120))
     address = db.Column(db.Text)
     tax_number = db.Column(db.String(50))
-    
+
     preferred_currency = db.Column(db.String(3), default='AED')
-    
+
     credit_limit = db.Column(db.Numeric(15, 3), default=0)
     total_purchases = db.Column(db.Numeric(15, 3), default=0)
-    
+
     # Customer balance (receivables)
     balance = db.Column(db.Numeric(15, 3), default=0, nullable=False)
-    
+
     notes = db.Column(db.Text)
-    
+
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    
+
     sales = db.relationship('Sale', back_populates='customer', lazy='dynamic')
     receipts = db.relationship('Receipt', back_populates='customer', lazy='dynamic')
-    
+
     def __repr__(self):
         return f'<Customer {self.name}>'
-    
+
     def get_balance(self):
         from decimal import Decimal
         sales = self.sales.filter_by(status='confirmed').all()
@@ -53,15 +53,15 @@ class Customer(TenantScopedMixin, db.Model):
             balance = (sale.amount_aed or Decimal('0')) - (sale.paid_amount_aed or Decimal('0'))
             total += balance
         return total
-    
+
     def get_balance_aed(self):
         return self.get_balance()
-    
+
     def get_display_name(self, lang='ar'):
         if lang == 'ar' and self.name_ar:
             return self.name_ar
         return self.name
-    
+
     def get_type_display(self, lang='ar'):
         types = {
             'regular': {'ar': 'عادي', 'en': 'Regular'},
@@ -69,7 +69,7 @@ class Customer(TenantScopedMixin, db.Model):
             'partner': {'ar': 'شريك', 'en': 'Partner'},
         }
         return types.get(self.customer_type, {}).get(lang, self.customer_type)
-    
+
     def get_classification_display(self, lang='ar'):
         classifications = {
             'vip': {'ar': 'VIP - عميل مميز', 'en': 'VIP'},
@@ -78,18 +78,18 @@ class Customer(TenantScopedMixin, db.Model):
             'inactive': {'ar': 'غير نشط', 'en': 'Inactive'},
         }
         return classifications.get(self.customer_classification, {}).get(lang, self.customer_classification)
-    
+
     def update_classification(self):
         from decimal import Decimal
         total = self.total_purchases or Decimal('0')
-        
+
         if total >= Decimal('100000'):
             self.customer_classification = 'vip'
         elif total >= Decimal('50000'):
             self.customer_classification = 'premium'
         else:
             self.customer_classification = 'regular'
-    
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -104,4 +104,3 @@ class Customer(TenantScopedMixin, db.Model):
             'total_purchases': float(self.total_purchases or 0),
             'is_active': self.is_active,
         }
-

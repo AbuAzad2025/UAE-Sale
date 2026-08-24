@@ -233,13 +233,14 @@ TAX_CUSTOMS_GUIDE = {
     'export': EXPORT_PROCEDURES,
 }
 
+
 def get_tax_info(country):
     """الحصول على معلومات ضريبية لدولة"""
     key = f"{country.lower()}_tax"
     return TAX_CUSTOMS_GUIDE.get(key, "معلومات غير متوفرة لهذه الدولة")
 
+
 def get_customs_info(country):
     """الحصول على معلومات جمركية"""
     key = f"{country.lower()}_customs"
     return TAX_CUSTOMS_GUIDE.get(key, "معلومات غير متوفرة")
-

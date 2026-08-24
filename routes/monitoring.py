@@ -27,8 +27,7 @@ def metrics():
 def dashboard():
     health = MonitoringService.get_system_health()
     metrics = MonitoringService.get_application_metrics()
-    
-    return render_template('monitoring/dashboard.html',
-                         health=health,
-                         metrics=metrics)
 
+    return render_template('monitoring/dashboard.html',
+                           health=health,
+                           metrics=metrics)

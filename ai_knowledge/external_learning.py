@@ -18,7 +18,7 @@
 import logging
 import json
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import List
 import os
 
 logger = logging.getLogger(__name__)
@@ -27,21 +27,21 @@ logger = logging.getLogger(__name__)
 class ExternalLearningSystem:
     """
     نظام التعلم من المصادر الخارجية
-    
+
     يتعلم ذاتياً من:
     - مكتبات ضخمة
     - مواقع متخصصة
     - أبحاث علمية
     - مجتمعات برمجية
     """
-    
+
     def __init__(self):
         self.learning_sources = self._initialize_sources()
         self.learned_data = self._load_learned_data()
         self.learning_log = []
-        
+
         logger.info("📚 External Learning System initialized with massive knowledge sources")
-    
+
     def _initialize_sources(self) -> dict:
         """تهيئة مصادر التعلم الضخمة"""
         return {
@@ -61,7 +61,7 @@ class ExternalLearningSystem:
                     'topics': ['accounting', 'finance', 'management', 'engineering']
                 }
             },
-            
+
             # ========== السيارات والميكانيكا ==========
             'automotive': {
                 'mitchell1': {
@@ -99,7 +99,7 @@ class ExternalLearningSystem:
                     'South Main Auto': 'تشخيص احترافي'
                 }
             },
-            
+
             # ========== المحاسبة والمالية ==========
             'accounting_finance': {
                 'ifrs': {
@@ -135,7 +135,7 @@ class ExternalLearningSystem:
                     ]
                 }
             },
-            
+
             # ========== الضرائب ==========
             'taxation': {
                 'uae_fta': {
@@ -160,7 +160,7 @@ class ExternalLearningSystem:
                     'description': 'أبحاث ضريبية عالمية'
                 }
             },
-            
+
             # ========== البرمجة والتقنية ==========
             'programming': {
                 'github': {
@@ -192,7 +192,7 @@ class ExternalLearningSystem:
                     'description': 'أبحاث مع تطبيقات عملية'
                 }
             },
-            
+
             # ========== AI/ML ==========
             'ai_ml': {
                 'huggingface': {
@@ -216,7 +216,7 @@ class ExternalLearningSystem:
                     'description': 'Google AI - Gemini, BERT, T5'
                 }
             },
-            
+
             # ========== قواعد بيانات متخصصة ==========
             'databases': {
                 'automotive_databases': {
@@ -236,7 +236,7 @@ class ExternalLearningSystem:
                     'gcc_tax': 'GCC Tax Authorities'
                 }
             },
-            
+
             # ========== كورسات ودورات ==========
             'courses': {
                 'coursera': {
@@ -257,7 +257,7 @@ class ExternalLearningSystem:
                     'universities': ['MIT', 'Harvard', 'Berkeley']
                 }
             },
-            
+
             # ========== مجتمعات ومنتديات ==========
             'communities': {
                 'reddit': {
@@ -278,19 +278,19 @@ class ExternalLearningSystem:
                 }
             }
         }
-    
+
     def _load_learned_data(self) -> dict:
         """تحميل البيانات المتعلمة"""
         from ai_knowledge import get_knowledge_path
         learned_file = get_knowledge_path('external_learned_data.json')
-        
+
         if os.path.exists(learned_file):
             try:
                 with open(learned_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
-            except:
+            except Exception:
                 pass
-        
+
         return {
             'articles': [],
             'code_snippets': [],
@@ -302,23 +302,23 @@ class ExternalLearningSystem:
                 'total_learned': 0
             }
         }
-    
+
     def learn_from_source(self, source_type: str, topic: str, content: str) -> dict:
         """
         التعلم من مصدر خارجي
-        
+
         Args:
             source_type: نوع المصدر (wikipedia, stackoverflow, etc)
             topic: الموضوع
             content: المحتوى
-        
+
         Returns:
             {success: bool, learned_items: int}
         """
         try:
             # استخراج المعلومات المهمة
             extracted = self._extract_knowledge(content, topic)
-            
+
             # حفظ في قاعدة المعرفة
             if source_type == 'wikipedia':
                 self.learned_data['articles'].append({
@@ -327,7 +327,7 @@ class ExternalLearningSystem:
                     'source': 'wikipedia',
                     'learned_at': datetime.now().isoformat()
                 })
-            
+
             elif source_type == 'stackoverflow':
                 self.learned_data['solutions'].append({
                     'problem': topic,
@@ -335,7 +335,7 @@ class ExternalLearningSystem:
                     'source': 'stackoverflow',
                     'learned_at': datetime.now().isoformat()
                 })
-            
+
             elif source_type == 'github':
                 self.learned_data['code_snippets'].append({
                     'topic': topic,
@@ -343,10 +343,10 @@ class ExternalLearningSystem:
                     'source': 'github',
                     'learned_at': datetime.now().isoformat()
                 })
-            
+
             # حفظ
             self._save_learned_data()
-            
+
             # تسجيل
             self.learning_log.append({
                 'timestamp': datetime.now().isoformat(),
@@ -354,26 +354,26 @@ class ExternalLearningSystem:
                 'topic': topic,
                 'success': True
             })
-            
+
             logger.info(f"📚 Learned from {source_type}: {topic}")
-            
+
             return {'success': True, 'learned_items': 1}
-        
+
         except Exception as e:
             logger.error(f"Learning failed: {e}")
             return {'success': False, 'error': str(e)}
-    
+
     def _extract_knowledge(self, content: str, topic: str) -> str:
         """استخراج المعرفة المهمة من المحتوى"""
         # استخراج ذكي (يمكن تطويره)
         # للآن، نأخذ أول 500 حرف
         return content[:500] if len(content) > 500 else content
-    
+
     def _save_learned_data(self):
         """حفظ البيانات المتعلمة"""
         from ai_knowledge import get_knowledge_path
         learned_file = get_knowledge_path('external_learned_data.json')
-        
+
         try:
             self.learned_data['metadata']['total_learned'] = (
                 len(self.learned_data['articles']) +
@@ -383,17 +383,17 @@ class ExternalLearningSystem:
                 len(self.learned_data['research_papers'])
             )
             self.learned_data['metadata']['last_updated'] = datetime.now().isoformat()
-            
+
             with open(learned_file, 'w', encoding='utf-8') as f:
                 json.dump(self.learned_data, f, ensure_ascii=False, indent=2)
-        
+
         except Exception as e:
             logger.error(f"Failed to save learned data: {e}")
-    
+
     def get_knowledge_sources_list(self) -> List[dict]:
         """الحصول على قائمة المصادر المتاحة"""
         sources_list = []
-        
+
         for category, sources in self.learning_sources.items():
             for source_name, source_data in sources.items():
                 if isinstance(source_data, dict):
@@ -404,17 +404,17 @@ class ExternalLearningSystem:
                         'url': source_data.get('url', ''),
                         'auto_learning': source_data.get('auto_learning', False)
                     })
-        
+
         return sources_list
-    
+
     def get_automotive_resources(self) -> dict:
         """الحصول على موارد السيارات"""
         return self.learning_sources.get('automotive', {})
-    
+
     def get_accounting_resources(self) -> dict:
         """الحصول على موارد المحاسبة"""
         return self.learning_sources.get('accounting_finance', {})
-    
+
     def get_statistics(self) -> dict:
         """إحصائيات التعلم"""
         return {
@@ -541,10 +541,10 @@ LEARNING_SOURCES_CATALOG = """
 
 _external_learning_instance = None
 
+
 def get_external_learning():
     """الحصول على نظام التعلم الخارجي"""
     global _external_learning_instance
     if _external_learning_instance is None:
         _external_learning_instance = ExternalLearningSystem()
     return _external_learning_instance
-

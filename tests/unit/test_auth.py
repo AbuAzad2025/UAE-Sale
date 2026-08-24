@@ -4,8 +4,7 @@ Authentication Tests — Login, Logout, Lockout, Session Security.
 Tests the critical security fixes applied to auth flow.
 """
 
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 
 class TestLogin:
@@ -158,7 +157,7 @@ class TestSessionSecurity:
         """Session is regenerated after successful login."""
         # Get initial session ID
         with client.session_transaction() as sess:
-            initial_session_id = sess.get('_id', None)
+            _ = sess.get('_id', None)
 
         client.post('/auth/login', data={
             'username': 'testowner',

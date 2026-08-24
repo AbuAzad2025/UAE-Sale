@@ -4,14 +4,12 @@
 """
 
 import requests
-import json
-from datetime import datetime, timedelta
-import time
+from datetime import datetime
 
 
 class GlobalKnowledgeConnector:
     """موصل المعرفة العالمية"""
-    
+
     def __init__(self):
         self.knowledge_sources = {
             'automotive_news': [
@@ -34,10 +32,10 @@ class GlobalKnowledgeConnector:
                 'https://api.fixer.io/latest'
             ]
         }
-        
+
         self.cache_duration = 3600  # ساعة واحدة
         self.cached_data = {}
-    
+
     def fetch_global_automotive_news(self):
         """جلب أخبار السيارات العالمية"""
         try:
@@ -59,21 +57,21 @@ class GlobalKnowledgeConnector:
                     'recommendation': 'طور معرفتك في المحركات الهجينة'
                 }
             }
-            
+
             return {
                 'success': True,
                 'data': automotive_trends,
                 'timestamp': datetime.now().isoformat(),
                 'source': 'Global Automotive Intelligence'
             }
-            
+
         except Exception as e:
             return {
                 'success': False,
                 'error': str(e),
                 'timestamp': datetime.now().isoformat()
             }
-    
+
     def fetch_heavy_equipment_trends(self):
         """جلب اتجاهات المعدات الثقيلة"""
         try:
@@ -94,21 +92,21 @@ class GlobalKnowledgeConnector:
                     'recommendation': 'استثمر في قطع التحكم الإلكتروني'
                 }
             }
-            
+
             return {
                 'success': True,
                 'data': equipment_trends,
                 'timestamp': datetime.now().isoformat(),
                 'source': 'Global Heavy Equipment Intelligence'
             }
-            
+
         except Exception as e:
             return {
                 'success': False,
                 'error': str(e),
                 'timestamp': datetime.now().isoformat()
             }
-    
+
     def fetch_tax_regulation_updates(self):
         """جلب تحديثات الأنظمة الضريبية"""
         try:
@@ -130,27 +128,27 @@ class GlobalKnowledgeConnector:
                     'impact': 'تأثير على أسعار بعض السلع'
                 }
             }
-            
+
             return {
                 'success': True,
                 'data': tax_updates,
                 'timestamp': datetime.now().isoformat(),
                 'source': 'UAE Federal Tax Authority'
             }
-            
+
         except Exception as e:
             return {
                 'success': False,
                 'error': str(e),
                 'timestamp': datetime.now().isoformat()
             }
-    
+
     def fetch_currency_rates(self):
         """جلب أسعار العملات العالمية"""
         try:
             # استخدام API حقيقي لأسعار العملات
             response = requests.get('https://api.exchangerate-api.com/v4/latest/AED', timeout=10)
-            
+
             if response.status_code == 200:
                 data = response.json()
                 return {
@@ -182,14 +180,14 @@ class GlobalKnowledgeConnector:
                     'timestamp': datetime.now().isoformat(),
                     'source': 'Default Rates'
                 }
-                
+
         except Exception as e:
             return {
                 'success': False,
                 'error': str(e),
                 'timestamp': datetime.now().isoformat()
             }
-    
+
     def get_global_insights(self):
         """الحصول على رؤى عالمية شاملة"""
         insights = {
@@ -199,24 +197,24 @@ class GlobalKnowledgeConnector:
             'currency_rates': self.fetch_currency_rates(),
             'generated_at': datetime.now().isoformat()
         }
-        
+
         return insights
-    
+
     def analyze_global_impact(self, local_data):
         """تحليل تأثير الاتجاهات العالمية على البيانات المحلية"""
         global_insights = self.get_global_insights()
-        
+
         analysis = {
             'local_vs_global': {},
             'opportunities': [],
             'threats': [],
             'recommendations': []
         }
-        
+
         # تحليل اتجاهات السيارات
         if global_insights['automotive_trends']['success']:
             auto_trends = global_insights['automotive_trends']['data']
-            
+
             # مقارنة مع البيانات المحلية
             if 'electric_vehicles' in auto_trends:
                 analysis['opportunities'].append({
@@ -225,11 +223,11 @@ class GlobalKnowledgeConnector:
                     'priority': 'عالي',
                     'action': 'طور معرفتك في البطاريات والمحركات الكهربائية'
                 })
-        
+
         # تحليل اتجاهات المعدات الثقيلة
         if global_insights['equipment_trends']['success']:
             equipment_trends = global_insights['equipment_trends']['data']
-            
+
             if 'construction_boom' in equipment_trends:
                 analysis['opportunities'].append({
                     'area': 'المعدات الثقيلة',
@@ -237,23 +235,23 @@ class GlobalKnowledgeConnector:
                     'priority': 'عالي',
                     'action': 'ركز على قطع CAT و Komatsu'
                 })
-        
+
         # تحليل التحديثات الضريبية
         if global_insights['tax_updates']['success']:
-            tax_updates = global_insights['tax_updates']['data']
-            
+            _ = global_insights['tax_updates']['data']
+
             analysis['recommendations'].append({
                 'area': 'الضرائب',
                 'description': 'تحديثات ضريبية جديدة',
                 'action': 'راجع التحديثات الضريبية مع العملاء'
             })
-        
+
         return analysis
 
 
 class GlobalExpertiseUpdater:
     """محدث الخبرة العالمية"""
-    
+
     def __init__(self):
         self.connector = GlobalKnowledgeConnector()
         self.expertise_areas = {
@@ -291,17 +289,17 @@ class GlobalExpertiseUpdater:
                 ]
             }
         }
-    
+
     def update_expertise(self):
         """تحديث الخبرة بناءً على المعرفة العالمية"""
         global_insights = self.connector.get_global_insights()
-        
+
         updates = {}
-        
+
         for area, config in self.expertise_areas.items():
             current_level = config['current_level']
             learning_path = config['learning_path']
-            
+
             # تحديد المرحلة التالية
             if current_level == 'مبتدئ':
                 next_level = 'متوسط'
@@ -318,7 +316,7 @@ class GlobalExpertiseUpdater:
             else:
                 next_level = 'خبير عالمي'
                 next_topic = learning_path[4] if len(learning_path) > 4 else 'خبرة عالمية'
-            
+
             updates[area] = {
                 'current_level': current_level,
                 'next_level': next_level,
@@ -326,28 +324,28 @@ class GlobalExpertiseUpdater:
                 'progress': self._calculate_progress(current_level),
                 'recommendations': self._get_learning_recommendations(area, global_insights)
             }
-        
+
         return updates
-    
+
     def _calculate_progress(self, current_level):
         """حساب التقدم في الخبرة"""
         levels = ['مبتدئ', 'متوسط', 'متقدم', 'خبير محلي', 'خبير إقليمي', 'خبير عالمي']
-        
+
         try:
             current_index = levels.index(current_level)
             progress = (current_index + 1) / len(levels) * 100
             return round(progress, 1)
         except ValueError:
             return 0.0
-    
+
     def _get_learning_recommendations(self, area, global_insights):
         """الحصول على توصيات التعلم"""
         recommendations = []
-        
+
         if area == 'automotive':
             if global_insights['automotive_trends']['success']:
                 auto_trends = global_insights['automotive_trends']['data']
-                
+
                 if 'electric_vehicles' in auto_trends:
                     recommendations.append({
                         'topic': 'السيارات الكهربائية',
@@ -355,7 +353,7 @@ class GlobalExpertiseUpdater:
                         'reason': 'اتجاه عالمي متزايد',
                         'action': 'تعلم عن البطاريات والمحركات الكهربائية'
                     })
-                
+
                 if 'autonomous_vehicles' in auto_trends:
                     recommendations.append({
                         'topic': 'السيارات ذاتية القيادة',
@@ -363,11 +361,11 @@ class GlobalExpertiseUpdater:
                         'reason': 'تكنولوجيا مستقبلية',
                         'action': 'تعلم عن أنظمة الاستشعار والتحكم'
                     })
-        
+
         elif area == 'heavy_equipment':
             if global_insights['equipment_trends']['success']:
                 equipment_trends = global_insights['equipment_trends']['data']
-                
+
                 if 'digitalization' in equipment_trends:
                     recommendations.append({
                         'topic': 'رقمنة المعدات',
@@ -375,7 +373,7 @@ class GlobalExpertiseUpdater:
                         'reason': 'اتجاه عالمي في الصناعة',
                         'action': 'تعلم عن أنظمة التحكم الإلكترونية'
                     })
-        
+
         elif area == 'tax_regulations':
             if global_insights['tax_updates']['success']:
                 recommendations.append({
@@ -384,7 +382,7 @@ class GlobalExpertiseUpdater:
                     'reason': 'تغييرات في الأنظمة',
                     'action': 'تابع التحديثات الضريبية الجديدة'
                 })
-        
+
         return recommendations
 
 

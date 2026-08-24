@@ -8,7 +8,6 @@ Falls back to in-process lock if Redis is unavailable.
 import logging
 import os
 import threading
-import time
 from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)

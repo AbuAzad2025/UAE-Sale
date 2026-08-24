@@ -14,10 +14,10 @@ api_analytics_bp = Blueprint('api_analytics', __name__, url_prefix='/api/analyti
 @cached_query(timeout=300, key_prefix='overdue_payments')
 def overdue_payments():
     from models import Customer
-    
+
     customers = Customer.query.filter_by(is_active=True).all()
     overdue = [c for c in customers if c.get_balance_aed() > Decimal('1000')]
-    
+
     return jsonify({
         'success': True,
         'count': len(overdue),
@@ -32,18 +32,18 @@ def overdue_payments():
 def daily_stats():
     from models import Sale, Payment
     from extensions import db
-    
+
     today = datetime.now().date()
-    
+
     today_sales = Sale.query.filter(
         db.func.date(Sale.sale_date) == today,
         Sale.status == 'confirmed'
     ).all()
-    
+
     today_payments = Payment.query.filter(
         db.func.date(Payment.payment_date) == today
     ).all()
-    
+
     return jsonify({
         'success': True,
         'sales': {
@@ -62,13 +62,13 @@ def daily_stats():
 @cached_query(timeout=600, key_prefix='top_customers')
 def top_customers():
     from models import Customer
-    
+
     limit = request.args.get('limit', 10, type=int)
-    
+
     customers = Customer.query.filter_by(is_active=True).order_by(
         Customer.total_purchases.desc()
     ).limit(limit).all()
-    
+
     return jsonify({
         'success': True,
         'customers': [{
@@ -86,12 +86,12 @@ def top_customers():
 @cached_query(timeout=120, key_prefix='low_stock_products')
 def low_stock_products():
     from models import Product
-    
+
     products = Product.query.filter(
-        Product.is_active == True,
+        Product.is_active is True,
         Product.current_stock <= Product.min_stock_alert
     ).all()
-    
+
     return jsonify({
         'success': True,
         'count': len(products),
@@ -112,10 +112,10 @@ def revenue_trend():
     from models import Sale
     from sqlalchemy import func
     from extensions import db
-    
+
     days = request.args.get('days', 30, type=int)
     since = datetime.now() - timedelta(days=days)
-    
+
     daily_revenue = db.session.query(
         func.date(Sale.sale_date).label('date'),
         func.sum(Sale.amount_aed).label('total')
@@ -123,7 +123,7 @@ def revenue_trend():
         Sale.sale_date >= since,
         Sale.status == 'confirmed'
     ).group_by(func.date(Sale.sale_date)).all()
-    
+
     return jsonify({
         'success': True,
         'data': [{
@@ -131,4 +131,3 @@ def revenue_trend():
             'revenue': float(row.total or 0)
         } for row in daily_revenue]
     })
-

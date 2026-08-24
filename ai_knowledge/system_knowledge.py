@@ -474,7 +474,7 @@ TROUBLESHOOTING = """
 # حل المشاكل الشائعة
 
 ## 1. لا يظهر الزبون في قائمة الاختيار:
-**الحل**: 
+**الحل**:
 - تأكد أن الزبون نشط (is_active = True)
 - جرب البحث بالاسم أو الهاتف
 - اضغط على القائمة - ستظهر جميع الزبائن
@@ -610,21 +610,22 @@ ALL_MODULES = {
     'recent_updates': RECENT_UPDATES_OCT_2025,  # ✅ التحديثات الأخيرة أكتوبر 2025
 }
 
+
 def get_module_help(module_name):
     """الحصول على مساعدة وحدة معينة"""
     return ALL_MODULES.get(module_name.lower(), "الوحدة غير موجودة")
+
 
 def search_knowledge(query):
     """البحث في قاعدة المعرفة"""
     query = query.lower()
     results = []
-    
+
     for module, content in ALL_MODULES.items():
         if query in content.lower():
             results.append({
                 'module': module,
                 'content': content[:500] + '...'
             })
-    
-    return results
 
+    return results

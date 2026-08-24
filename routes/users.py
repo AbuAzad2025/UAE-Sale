@@ -36,9 +36,9 @@ def index():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     search = request.args.get('search', '', type=str)
-    
+
     query = User.query.filter_by(is_owner=False, is_active=True)
-    
+
     if search:
         search_filter = f'%{search}%'
         query = query.filter(
@@ -48,16 +48,16 @@ def index():
                 User.full_name.ilike(search_filter)
             )
         )
-    
+
     pagination = query.order_by(User.username).paginate(
         page=page,
         per_page=per_page,
         error_out=False
     )
-    
+
     return render_template('users/index.html',
-                         users=pagination.items,
-                         pagination=pagination)
+                           users=pagination.items,
+                           pagination=pagination)
 
 
 @users_bp.route('/create', methods=['GET', 'POST'])
@@ -70,7 +70,7 @@ def create():
     roles = Role.query.filter_by(is_active=True).all()
     roles = [r for r in roles if _role_level(getattr(r, 'slug', None)) <= current_level]
     default_form = {'is_active': '1'}
-    
+
     if request.method == 'POST':
         try:
             role_id = request.form.get('role_id', type=int)
@@ -79,9 +79,9 @@ def create():
                 form_values = request.form.to_dict()
                 form_values['is_active'] = request.form.get('is_active', '1')
                 return render_template('users/create.html', roles=roles, form_data=form_values)
-            
+
             is_active = request.form.get('is_active', '1') == '1'
-            
+
             user = User(
                 username=request.form.get('username'),
                 email=request.form.get('email'),
@@ -92,30 +92,30 @@ def create():
                 is_owner=False,
                 is_active=is_active
             )
-            
+
             password = request.form.get('password')
-            
+
             # SECURITY: Enforce password strength policy
             from utils.password_validator import PasswordValidator
             is_valid, errors = PasswordValidator.validate(password or '')
             if not is_valid:
-                flash(f'⚠️ كلمة المرور ضعيفة:\n' + '\n'.join(errors), 'danger')
+                flash('⚠️ كلمة المرور ضعيفة:\n' + '\n'.join(errors), 'danger')
                 form_values = request.form.to_dict()
                 form_values['is_active'] = request.form.get('is_active', '1')
                 return render_template('users/create.html', roles=roles, form_data=form_values)
-            
+
             user.set_password(password)
-            
+
             db.session.add(user)
             db.session.flush()
-            
+
             create_audit_log('create', 'users', user.id)
-            
+
             db.session.commit()
-            
+
             flash('✅ تم إضافة المستخدم بنجاح!', 'success')
             return redirect(url_for('users.index'))
-        
+
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f'User creation error: {e}')
@@ -123,7 +123,7 @@ def create():
             form_values = request.form.to_dict()
             form_values['is_active'] = request.form.get('is_active', '1')
             return render_template('users/create.html', roles=roles, form_data=form_values)
-    
+
     return render_template('users/create.html', roles=roles, form_data=default_form)
 
 
@@ -142,7 +142,7 @@ def view(id):
 @admin_required
 def edit(id):
     user = User.query.filter_by(id=id, is_owner=False).first_or_404()
-    
+
     if request.method == 'POST':
         try:
             user.email = request.form.get('email')
@@ -150,29 +150,29 @@ def edit(id):
             user.full_name_ar = request.form.get('full_name_ar')
             user.phone = request.form.get('phone')
             user.role_id = request.form.get('role_id', type=int)
-            
+
             new_password = request.form.get('new_password')
             if new_password:
                 # SECURITY: Enforce password strength policy on password changes
                 from utils.password_validator import PasswordValidator
                 is_valid, errors = PasswordValidator.validate(new_password)
                 if not is_valid:
-                    flash(f'⚠️ كلمة المرور ضعيفة:\n' + '\n'.join(errors), 'danger')
+                    flash('⚠️ كلمة المرور ضعيفة:\n' + '\n'.join(errors), 'danger')
                     return redirect(url_for('users.edit', id=user.id))
                 user.set_password(new_password)
-            
+
             db.session.commit()
-            
+
             create_audit_log('update', 'users', user.id)
-            
+
             flash('✅ تم تحديث بيانات المستخدم بنجاح!', 'success')
             return redirect(url_for('users.view', id=user.id))
-        
+
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f'User edit error: {e}')
             flash('❌ حدث خطأ في تحديث المستخدم. يرجى المحاولة مرة أخرى.', 'danger')
-    
+
     current_level = _current_user_level()
     roles = Role.query.filter_by(is_active=True).all()
     roles = [r for r in roles if _role_level(getattr(r, 'slug', None)) <= current_level]
@@ -184,16 +184,16 @@ def edit(id):
 @admin_required
 def toggle_active(id):
     user = User.query.filter_by(id=id, is_owner=False).first_or_404()
-    
+
     user.is_active = not user.is_active
     db.session.commit()
-    
-    status = 'تفعيل' if user.is_active else 'تعطيل'
+
+    _ = 'تفعيل' if user.is_active else 'تعطيل'
     status_msg = 'تفعيل' if user.is_active else 'إلغاء تفعيل'
     flash(f'✅ تم {status_msg} المستخدم "{user.username}" بنجاح!', 'success')
-    
+
     create_audit_log('toggle_active', 'users', user.id)
-    
+
     return redirect(url_for('users.index'))
 
 
@@ -204,18 +204,18 @@ def delete(id):
     if not current_user.has_permission('manage_users'):
         flash('⛔ ليس لديك صلاحية لحذف المستخدمين.', 'danger')
         return redirect(url_for('users.index'))
-    
+
     # Ensure target is NOT owner (double check, though filter handles it)
     user = User.query.filter_by(id=id, is_owner=False).first_or_404()
-    
+
     if user.id == current_user.id:
         flash('⚠️ لا يمكنك حذف حسابك الخاص.\n💡 اطلب من مدير آخر حذف حسابك إذا لزم الأمر.', 'danger')
         return redirect(url_for('users.index'))
-    
+
     try:
-        from models import Sale, AuditLog
+        from models import Sale
         sales_count = Sale.query.filter_by(seller_id=id).count()
-        
+
         if sales_count > 0:
             user.is_active = False
             db.session.commit()
@@ -227,9 +227,9 @@ def delete(id):
             db.session.commit()
             flash(f'✅ تم حذف المستخدم "{username}" نهائياً!', 'success')
             create_audit_log('delete', 'users', id)
-        
+
         return redirect(url_for('users.index'))
-    
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'User delete error: {e}')
@@ -245,35 +245,34 @@ def change_password():
         current_password = request.form.get('current_password', '')
         new_password = request.form.get('new_password', '')
         confirm_password = request.form.get('confirm_password', '')
-        
+
         # Verify current password
         if not current_user.check_password(current_password):
             flash('❌ كلمة المرور الحالية غير صحيحة.', 'danger')
             return render_template('users/change_password.html')
-        
+
         # Validate new password matches confirmation
         if new_password != confirm_password:
             flash('❌ كلمة المرور الجديدة غير متطابقة.', 'danger')
             return render_template('users/change_password.html')
-        
+
         # Enforce password strength policy
         from utils.password_validator import PasswordValidator
         is_valid, errors = PasswordValidator.validate(new_password)
         if not is_valid:
-            flash(f'⚠️ كلمة المرور ضعيفة:\n' + '\n'.join(errors), 'danger')
+            flash('⚠️ كلمة المرور ضعيفة:\n' + '\n'.join(errors), 'danger')
             return render_template('users/change_password.html')
-        
+
         # Prevent reusing the current password
         if current_user.check_password(new_password):
             flash('❌ كلمة المرور الجديدة يجب أن تختلف عن الحالية.', 'danger')
             return render_template('users/change_password.html')
-        
+
         # Update password
         current_user.set_password(new_password)
         db.session.commit()
         create_audit_log('change_password', 'users', current_user.id)
         flash('✅ تم تغيير كلمة المرور بنجاح!', 'success')
         return redirect(url_for('users.change_password'))
-    
-    return render_template('users/change_password.html')
 
+    return render_template('users/change_password.html')

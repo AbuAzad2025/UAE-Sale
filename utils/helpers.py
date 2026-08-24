@@ -9,7 +9,7 @@ from extensions import db
 
 def generate_number(prefix, model, field_name='sale_number', date_format='%Y', max_retries=5):
     """Generate a unique sequential number with distributed locking.
-    
+
     Uses Redis-based distributed lock to prevent duplicate numbers
     in multi-worker deployments. Falls back to retry+UUID if Redis
     is unavailable.
@@ -18,7 +18,7 @@ def generate_number(prefix, model, field_name='sale_number', date_format='%Y', m
     import uuid
     year = datetime.now().strftime(date_format)
     lock_name = f'gen_number:{prefix}:{year}'
-    
+
     try:
         from utils.distributed_lock import distributed_lock
         with distributed_lock(lock_name, timeout=10, blocking_timeout=5):
@@ -28,30 +28,30 @@ def generate_number(prefix, model, field_name='sale_number', date_format='%Y', m
             ).order_by(
                 getattr(model, field_name).desc()
             ).first()
-            
+
             if latest:
                 last_number = getattr(latest, field_name).split('-')[-1]
                 next_number = int(last_number) + 1
             else:
                 next_number = 1
-            
+
             candidate = f'{prefix}-{year}-{next_number:04d}'
-            
+
             # Check for collision (belt-and-suspenders)
             existing = db.session.query(model).filter(
                 getattr(model, field_name) == candidate
             ).first()
-            
+
             if not existing:
                 return candidate
-            
+
             # Collision inside the lock — very unlikely; retry once
             next_number += 1
             candidate = f'{prefix}-{year}-{next_number:04d}'
             existing = db.session.query(model).filter(
                 getattr(model, field_name) == candidate
             ).first()
-            
+
             if not existing:
                 return candidate
     except ImportError:
@@ -59,7 +59,7 @@ def generate_number(prefix, model, field_name='sale_number', date_format='%Y', m
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning(f'Distributed lock failed for {lock_name}: {e}')
-    
+
     # Fallback: retry-only approach (no distributed lock)
     for attempt in range(max_retries):
         latest = db.session.query(model).filter(
@@ -67,24 +67,24 @@ def generate_number(prefix, model, field_name='sale_number', date_format='%Y', m
         ).order_by(
             getattr(model, field_name).desc()
         ).first()
-        
+
         if latest:
             last_number = getattr(latest, field_name).split('-')[-1]
             next_number = int(last_number) + 1
         else:
             next_number = 1
-        
+
         candidate = f'{prefix}-{year}-{next_number:04d}'
-        
+
         existing = db.session.query(model).filter(
             getattr(model, field_name) == candidate
         ).first()
-        
+
         if not existing:
             return candidate
-        
+
         time.sleep(0.01 * (attempt + 1))
-    
+
     # Final fallback: use UUID suffix
     return f'{prefix}-{year}-{uuid.uuid4().hex[:8].upper()}'
 
@@ -92,17 +92,17 @@ def generate_number(prefix, model, field_name='sale_number', date_format='%Y', m
 def get_next_number(prefix, model_class, number_field='number'):
     year = datetime.now().year
     pattern = f'{prefix}-{year}-%'
-    
+
     last_record = db.session.query(model_class).filter(
         getattr(model_class, number_field).like(pattern)
     ).order_by(
         getattr(model_class, number_field).desc()
     ).first()
-    
+
     if last_record:
         last_num = int(getattr(last_record, number_field).split('-')[-1])
         return f'{prefix}-{year}-{last_num + 1:04d}'
-    
+
     return f'{prefix}-{year}-0001'
 
 
@@ -123,13 +123,13 @@ def calculate_vat(amount, vat_rate):
 def format_currency_display(amount, currency='AED', lang='ar'):
     if not amount:
         return '0.00'
-    
+
     try:
         if isinstance(amount, (int, float)):
             amount = Decimal(str(amount))
-        
+
         formatted = f'{amount:,.2f}'
-        
+
         if lang == 'ar':
             symbols = {
                 'AED': 'د.إ',
@@ -139,9 +139,9 @@ def format_currency_display(amount, currency='AED', lang='ar'):
                 'SAR': 'ر.س',
             }
             return f'{formatted} {symbols.get(currency, currency)}'
-        
+
         return f'{currency} {formatted}'
-    
+
     except Exception:
         return str(amount)
 
@@ -155,20 +155,20 @@ def timeago(date):
     """Calculate time ago string"""
     if not date:
         return ''
-    
+
     try:
         now = datetime.now(timezone.utc)
         if date.tzinfo is None:
             # Assume naive datetime is UTC or handle accordingly
             # For simplicity, let's assume it's system local time, but comparing with UTC is tricky.
             # Let's try to make it aware or just use now() naive if date is naive.
-            if date.year < 1970: # Handle invalid dates
+            if date.year < 1970:  # Handle invalid dates
                 return ''
             date = date.replace(tzinfo=timezone.utc)
-            
+
         diff = now - date
         seconds = diff.total_seconds()
-        
+
         if seconds < 60:
             return 'منذ لحظات'
         elif seconds < 3600:
@@ -179,7 +179,7 @@ def timeago(date):
             return f'منذ {int(seconds // 86400)} يوم'
         else:
             return date.strftime('%Y-%m-%d')
-            
+
     except Exception:
         return str(date)
 
@@ -187,7 +187,7 @@ def timeago(date):
 def create_audit_log(action, table_name=None, record_id=None, changes=None):
     from models import AuditLog
     from flask_login import current_user
-    
+
     try:
         log = AuditLog(
             user_id=current_user.id if current_user.is_authenticated else None,
@@ -207,7 +207,7 @@ def create_audit_log(action, table_name=None, record_id=None, changes=None):
 def allowed_file(filename, allowed_extensions=None):
     if not filename:
         return False
-    
+
     if allowed_extensions is None:
         config_extensions = current_app.config.get('ALLOWED_UPLOAD_EXTENSIONS', {})
         if 'all' in config_extensions:
@@ -217,7 +217,7 @@ def allowed_file(filename, allowed_extensions=None):
             for ext_set in config_extensions.values():
                 if isinstance(ext_set, set):
                     allowed_extensions.update(ext_set)
-    
+
     return '.' in filename and \
            '.' + filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
@@ -226,45 +226,45 @@ def save_uploaded_file(file, upload_folder='uploads', allowed_extensions=None):
     """حفظ ملف مرفوع مع فحوصات أمان"""
     if not file or not file.filename:
         return None
-    
+
     if not allowed_file(file.filename, allowed_extensions):
         raise ValueError('File type not allowed')
-    
+
     MAX_FILE_SIZE = 5 * 1024 * 1024
     file.seek(0, os.SEEK_END)
     file_length = file.tell()
     file.seek(0)
-    
+
     if file_length > MAX_FILE_SIZE:
         raise ValueError('File size exceeds limit (5MB)')
-    
+
     file_header = file.read(512)
     file.seek(0)
-    
+
     if file_header.startswith(b'MZ') or file_header.startswith(b'\x7fELF'):
         raise ValueError('Executable files are not allowed')
-    
+
     filename = secure_filename(file.filename)
     name, ext = os.path.splitext(filename)
     unique_filename = f'{name}_{uuid.uuid4().hex[:8]}{ext}'
-    
+
     full_upload_folder = os.path.join(current_app.static_folder, upload_folder)
     os.makedirs(full_upload_folder, exist_ok=True)
-    
+
     filepath = os.path.join(full_upload_folder, unique_filename)
     file.save(filepath)
-    
+
     current_app.logger.info(f'File uploaded: {unique_filename} ({file_length} bytes)')
-    
+
     return os.path.join(upload_folder, unique_filename).replace('\\', '/')
 
 
 def convert_currency(amount, from_currency, to_currency='AED'):
     from services.currency_service import CurrencyService
-    
+
     if from_currency == to_currency:
         return amount
-    
+
     rate = CurrencyService.get_exchange_rate(from_currency, to_currency)
     return amount * Decimal(str(rate))
 
@@ -275,4 +275,3 @@ def generate_sku():
 
 def generate_barcode():
     return f'{datetime.now().strftime("%Y%m%d")}{uuid.uuid4().hex[:6].upper()}'
-

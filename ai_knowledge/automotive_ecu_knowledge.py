@@ -18,7 +18,6 @@
 """
 
 import logging
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +26,11 @@ class AutomotiveECUKnowledge:
     """
     خبير كمبيوترات السيارات والأنظمة الإلكترونية
     """
-    
+
     def __init__(self):
         self.knowledge_base = self._build_comprehensive_knowledge()
         logger.info("🚗 Automotive ECU Knowledge initialized")
-    
+
     def _build_comprehensive_knowledge(self) -> dict:
         """بناء قاعدة المعرفة الشاملة"""
         return {
@@ -164,7 +163,7 @@ class AutomotiveECUKnowledge:
                     }
                 }
             },
-            
+
             # ========== OBD-II Codes ==========
             'obd2_codes': {
                 'P0': 'Powertrain (المحرك ونقل الحركة)',
@@ -191,7 +190,7 @@ class AutomotiveECUKnowledge:
                     'P1000': 'OBD System Readiness Test - اختبار جاهزية النظام'
                 }
             },
-            
+
             # ========== CAN Bus ==========
             'can_bus': {
                 'description': 'Controller Area Network - شبكة التحكم',
@@ -224,7 +223,7 @@ class AutomotiveECUKnowledge:
                     'استخدام CAN Bus Analyzer'
                 ]
             },
-            
+
             # ========== TCU/TCM - القير الأوتوماتيك ==========
             'transmission': {
                 'description': 'Transmission Control Unit - وحدة التحكم في القير',
@@ -259,7 +258,7 @@ class AutomotiveECUKnowledge:
                     'معايرة التعلم: بعد إصلاحات كبيرة'
                 ]
             },
-            
+
             # ========== ABS/ESP ==========
             'abs_esp': {
                 'description': 'Anti-lock Braking System & Electronic Stability Program',
@@ -286,7 +285,7 @@ class AutomotiveECUKnowledge:
                     'C0050': 'Yaw Rate Sensor Malfunction'
                 }
             },
-            
+
             # ========== Body Control Module ==========
             'bcm': {
                 'description': 'Body Control Module - وحدة التحكم في الهيكل',
@@ -305,7 +304,7 @@ class AutomotiveECUKnowledge:
                     'data': 'VIN Programming + Key Learning'
                 }
             },
-            
+
             # ========== Diagnostic Tools ==========
             'diagnostic_tools': {
                 'basic': {
@@ -339,7 +338,7 @@ class AutomotiveECUKnowledge:
                     'access': 'يحتاج اشتراك'
                 }
             },
-            
+
             # ========== ECU Tuning ==========
             'ecu_tuning': {
                 'description': 'تعديل برمجة ECU لزيادة الأداء',
@@ -380,7 +379,7 @@ class AutomotiveECUKnowledge:
                     'استخدم بنزين عالي الأوكتان'
                 ]
             },
-            
+
             # ========== Modern Systems ==========
             'modern_systems': {
                 'adas': {
@@ -422,22 +421,22 @@ class AutomotiveECUKnowledge:
                 }
             }
         }
-    
+
     def get_ecu_info(self, ecu_type: str) -> dict:
         """الحصول على معلومات عن وحدة تحكم محددة"""
         return self.knowledge_base.get(ecu_type, {})
-    
+
     def diagnose_code(self, dtc_code: str) -> dict:
         """تشخيص كود خطأ"""
         codes_db = self.knowledge_base.get('obd2_codes', {}).get('common_codes', {})
-        
+
         if dtc_code in codes_db:
             return {
                 'code': dtc_code,
                 'description': codes_db[dtc_code],
                 'found': True
             }
-        
+
         # تحليل نوع الكود
         if dtc_code.startswith('P0'):
             category = 'Powertrain'
@@ -449,14 +448,14 @@ class AutomotiveECUKnowledge:
             category = 'Network'
         else:
             category = 'Unknown'
-        
+
         return {
             'code': dtc_code,
             'category': category,
             'found': False,
             'recommendation': 'ابحث في قاعدة بيانات الكودات الخاصة بالصانع'
         }
-    
+
     def get_sensor_info(self, sensor_name: str) -> dict:
         """معلومات عن حساس محدد"""
         sensors = self.knowledge_base.get('engine_ecu', {}).get('sensors', {})
@@ -469,10 +468,10 @@ class AutomotiveECUKnowledge:
 
 _automotive_ecu_instance = None
 
+
 def get_automotive_ecu_knowledge():
     """الحصول على خبير كمبيوترات السيارات"""
     global _automotive_ecu_instance
     if _automotive_ecu_instance is None:
         _automotive_ecu_instance = AutomotiveECUKnowledge()
     return _automotive_ecu_instance
-

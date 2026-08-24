@@ -17,4 +17,3 @@ class PurchaseForm(FlaskForm):
     tax_rate = DecimalField('الضريبة %', default=0, validators=[Optional(), NumberRange(min=0, max=100)])
     notes = TextAreaField('ملاحظات', validators=[Optional()])
     submit = SubmitField('حفظ')
-

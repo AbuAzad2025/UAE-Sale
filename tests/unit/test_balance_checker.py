@@ -4,7 +4,6 @@ Balance Checker Tests — Detect and repair drifted balances.
 Tests the utility created to fix denormalized balance drift.
 """
 
-import pytest
 from decimal import Decimal
 
 

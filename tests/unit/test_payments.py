@@ -4,7 +4,6 @@ Payment Tests — Receipt creation, confirmation, rejection.
 Tests the payment workflow and financial calculations.
 """
 
-import pytest
 from decimal import Decimal
 
 

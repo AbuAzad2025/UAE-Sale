@@ -6,7 +6,7 @@ from models import Product, StockMovement, Warehouse
 
 
 class StockService:
-    
+
     @staticmethod
     def add_stock(product_id, quantity, reference_type=None, reference_id=None, notes=None, warehouse_id=None):
         return StockService.create_movement(
@@ -18,7 +18,7 @@ class StockService:
             notes=notes,
             warehouse_id=warehouse_id
         )
-    
+
     @staticmethod
     def remove_stock(product_id, quantity, reference_type=None, reference_id=None, notes=None, warehouse_id=None):
         return StockService.create_movement(
@@ -30,7 +30,7 @@ class StockService:
             notes=notes,
             warehouse_id=warehouse_id
         )
-    
+
     @staticmethod
     def adjust_stock(product_id, quantity, notes=None, warehouse_id=None):
         movement = StockService.create_movement(
@@ -40,14 +40,14 @@ class StockService:
             notes=notes,
             warehouse_id=warehouse_id
         )
-        
+
         # GL Integration for Adjustment
         try:
             from services.gl_service import GLService
             product = db.session.get(Product, product_id)
             if product and product.cost_price:
                 cost_value = abs(Decimal(str(quantity))) * Decimal(str(product.cost_price))
-                
+
                 if cost_value > 0:
                     lines = []
                     if Decimal(str(quantity)) < 0:
@@ -65,7 +65,7 @@ class StockService:
                             {'account': '1140', 'debit': cost_value, 'credit': 0, 'description': f'Stock Increase - {product.name}'},
                             {'account': '5150', 'debit': 0, 'credit': cost_value, 'description': f'Inventory Adjustment (Gain) - {product.name}'}
                         ]
-                    
+
                     GLService.post_entry(
                         lines=lines,
                         description=f'Stock Adjustment - {product.name}',
@@ -74,17 +74,17 @@ class StockService:
                     )
         except Exception as e:
             current_app.logger.error(f"Failed to post GL entry for stock adjustment: {e}")
-            
+
         return movement
-    
+
     @staticmethod
-    def create_movement(product_id, quantity, movement_type, reference_type=None, reference_id=None, notes=None, warehouse_id=None):
+    def create_movement(product_id, quantity, movement_type, reference_type=None, reference_id=None, notes=None, warehouse_id=None):  # noqa: C901
         try:
             product = db.session.get(Product, product_id)
-            
+
             if not product:
                 raise ValueError(f'⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.')
-            
+
             # تحديد المستودع
             if warehouse_id:
                 # استخدام المستودع المحدد
@@ -96,18 +96,18 @@ class StockService:
                 warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
                 if not warehouse:
                     warehouse = Warehouse.query.filter_by(is_active=True).first()
-                
+
                 # إذا لم يوجد أي مستودع، إنشاء واحد افتراضي
                 if not warehouse:
                     warehouse = Warehouse(name='Main Warehouse', name_ar='المستودع الرئيسي', is_active=True, is_main=True)
                     db.session.add(warehouse)
                     db.session.flush()
-            
+
             try:
                 user_id = current_user.id if current_user and current_user.is_authenticated else None
-            except:
+            except Exception:
                 user_id = None
-            
+
             movement = StockMovement(
                 product_id=product_id,
                 warehouse_id=warehouse.id,
@@ -118,34 +118,34 @@ class StockService:
                 user_id=user_id,
                 notes=notes
             )
-            
+
             db.session.add(movement)
-            
+
             product.current_stock += Decimal(str(quantity))
-            
+
             if product.current_stock < 0:
-                raise ValueError(f'❌ المخزون غير كافٍ للمنتج "{product.name}"!\n📦 المتوفر: {product.current_stock} | المطلوب: {quantity}\n💡 قلل الكمية أو اطلب مخزون جديد من المورد.')
-            
+                raise ValueError(f'❌ المخزون غير كافٍ للمنتج "{product.name}"!\n📦 المتوفر: {product.current_stock} | المطلوب: {quantity}\n💡 قلل الكمية أو اطلب مخزون جديد من المورد.')  # noqa: E501
+
             db.session.flush()
-            
+
             current_app.logger.info(
                 f'Stock movement: {movement_type} {quantity} of product #{product_id}'
             )
-            
+
             return movement
-        
+
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f'Stock movement failed: {e}')
             raise
-    
+
     @staticmethod
     def process_sale_lines(sale, warehouse_id=None):
         """معالجة بيوع مع خصم من مستودع محدد"""
         # استخدام warehouse_id من sale إذا لم يُمرر
         if not warehouse_id and hasattr(sale, 'warehouse_id'):
             warehouse_id = sale.warehouse_id
-        
+
         for line in sale.lines:
             StockService.remove_stock(
                 product_id=line.product_id,
@@ -155,12 +155,12 @@ class StockService:
                 notes=f'بيع: {sale.sale_number}',
                 warehouse_id=warehouse_id  # ← تمرير المستودع
             )
-    
+
     @staticmethod
     def process_purchase_lines(purchase, warehouse_id=None):
         if not warehouse_id and hasattr(purchase, 'warehouse_id'):
             warehouse_id = purchase.warehouse_id
-        
+
         for line in purchase.lines:
             StockService.add_stock(
                 product_id=line.product_id,
@@ -170,7 +170,7 @@ class StockService:
                 notes=f'شراء: {purchase.purchase_number}',
                 warehouse_id=warehouse_id
             )
-            
+
             product = db.session.get(Product, line.product_id)
             if product:
                 # Update cost price in base currency (AED)
@@ -179,13 +179,13 @@ class StockService:
                 exchange_rate_decimal = Decimal(str(purchase.exchange_rate))
                 cost_in_aed = unit_cost_decimal * exchange_rate_decimal
                 product.cost_price = cost_in_aed
-    
+
     @staticmethod
     def reverse_sale(sale):
         """إلغاء بيع - إرجاع للمستودع الأصلي"""
         # استخدام نفس المستودع الذي تم البيع منه
         warehouse_id = getattr(sale, 'warehouse_id', None)
-        
+
         for line in sale.lines:
             StockService.add_stock(
                 product_id=line.product_id,
@@ -195,41 +195,40 @@ class StockService:
                 notes=f'إلغاء بيع: {sale.sale_number}',
                 warehouse_id=warehouse_id  # ← نفس المستودع
             )
-    
+
     @staticmethod
     def check_availability(product_id, quantity):
         product = db.session.get(Product, product_id)
-        
+
         if not product:
             return False, 'المنتج غير موجود'
-        
+
         if not product.is_active:
             return False, 'المنتج غير نشط'
-        
+
         if product.current_stock < Decimal(str(quantity)):
             return False, f'المخزون غير كافٍ (المتوفر: {product.current_stock})'
-        
+
         return True, 'متوفر'
-    
+
     @staticmethod
     def get_low_stock_products(limit=None):
         from sqlalchemy import func
         # Handle NULL values safely using coalesce
         query = Product.query.filter(
-            Product.is_active == True,
+            Product.is_active is True,
             func.coalesce(Product.current_stock, 0) <= func.coalesce(Product.min_stock_alert, 0)
         ).order_by(Product.current_stock.asc())
-        
+
         if limit:
             query = query.limit(limit)
-        
+
         return query.all()
-    
+
     @staticmethod
     def get_out_of_stock_products():
         from sqlalchemy import func
         return Product.query.filter(
-            Product.is_active == True,
+            Product.is_active is True,
             func.coalesce(Product.current_stock, 0) <= 0
         ).all()
-

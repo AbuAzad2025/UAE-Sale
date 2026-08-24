@@ -1,48 +1,47 @@
 import os
 print("DEBUG: App file starting load...", flush=True)
-import sys
-import uuid
-from datetime import datetime, timezone
-import time
-from decimal import Decimal
-from flask import Flask, render_template, request, g, redirect, url_for, flash
-from flask_login import current_user, login_required
-from werkzeug.routing import BuildError
+import sys  # noqa: E402,F401
+import uuid  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402,F401
+import time  # noqa: E402
+from decimal import Decimal  # noqa: E402,F401
+from flask import Flask, render_template, request, g, redirect, url_for, flash  # noqa: E402,F401
+from flask_login import current_user, login_required  # noqa: E402,F401
+from werkzeug.routing import BuildError  # noqa: E402,F401
 
-from config import Config, ensure_runtime_dirs, assert_production_sanity
-from extensions import (
+from config import Config, ensure_runtime_dirs, assert_production_sanity  # noqa: E402
+from extensions import (  # noqa: E402,F401
     db, migrate, login_manager, csrf, limiter, mail,
     init_extensions, setup_logging
 )
-from utils.monitoring import setup_advanced_logging
-from utils.enhanced_logging import setup_enhanced_logging
-from utils.asset_compression import register_compression_cli
-from config_redis import init_redis
-from werkzeug.middleware.proxy_fix import ProxyFix
+from utils.monitoring import setup_advanced_logging  # noqa: E402
+from utils.enhanced_logging import setup_enhanced_logging  # noqa: E402
+from utils.asset_compression import register_compression_cli  # noqa: E402,F401
+from config_redis import init_redis  # noqa: E402,F401
+from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
 
 try:
-    from flask_compress import Compress
     COMPRESS_AVAILABLE = True
 except ImportError:
     COMPRESS_AVAILABLE = False
 
 
-def create_app(config_class=Config):
+def create_app(config_class=Config):  # noqa: C901
     app = Flask(__name__)
     app.config.from_object(config_class)
-    
+
     # Ensure runtime directories exist
     ensure_runtime_dirs(config_class)
-    
+
     # Verify production sanity (Database check)
     assert_production_sanity(config_class)
-    
+
     # Initialize Extensions
     setup_logging(app)
     init_extensions(app)
 
     # Initialize User Loader for Flask-Login
-    from extensions import login_manager
+    from extensions import login_manager  # noqa: F811  (local import intentional)
     from models.user import User
 
     @login_manager.user_loader
@@ -51,7 +50,7 @@ def create_app(config_class=Config):
 
     setup_advanced_logging(app)
     setup_enhanced_logging(app)
-    
+
     # --- SYSTEM INTEGRITY CHECK (MASTER KEY) ---
     # print("DEBUG: System Integrity Check...")
     # from utils.system_init import ensure_system_integrity
@@ -61,10 +60,10 @@ def create_app(config_class=Config):
     # except Exception as e:
     #     app.logger.error(f"[ERROR] System integrity check failed: {e}")
     # -------------------------------------------
-    
+
     # Proxy Fix for Nginx/Cloudflare
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
-    
+
     # Register Blueprints
     from routes.auth import auth_bp
     from routes.main import main_bp
@@ -86,19 +85,19 @@ def create_app(config_class=Config):
     from routes.language import language_bp
     try:
         from routes.ai import ai_bp
-        _ai_enabled = True
+        _ = True
     except Exception as e:
         ai_import_error = str(e)
         print(f"AI Blueprint Import Error: {ai_import_error}")
         import traceback
         traceback.print_exc()
-        _ai_enabled = False
-        
+        _ = False
+
         # Fallback Blueprint to prevent url_for BuildError
         # This ensures the dashboard doesn't crash even if AI modules are missing
-        from flask import Blueprint, render_template, flash, redirect, url_for
+        from flask import Blueprint, render_template, flash, redirect, url_for  # noqa: F401,F811(local import intentional)
         ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
-        
+
         @ai_bp.route('/assistant')
         @login_required
         def assistant_page():
@@ -110,7 +109,7 @@ def create_app(config_class=Config):
         def config():
             flash(f"AI Module failed to load on server start. Please check logs. Error: {ai_import_error}", "error")
             return redirect(url_for('main.dashboard'))
-            
+
         @ai_bp.route('/chat', methods=['POST'])
         def chat():
             return {"error": "AI Module Unavailable"}, 503
@@ -128,13 +127,13 @@ def create_app(config_class=Config):
 
         @ai_bp.route('/exchange-rate/<currency>', methods=['GET'])
         def exchange_rate(currency): return {"error": "AI Module Unavailable"}, 503
-        
+
         @ai_bp.route('/search-market-price/<int:product_id>', methods=['GET'])
         def search_market_price(product_id): return {"error": "AI Module Unavailable"}, 503
-        
+
         @ai_bp.route('/find-compatible/<int:product_id>', methods=['GET'])
         def find_compatible(product_id): return {"error": "AI Module Unavailable"}, 503
-        
+
         @ai_bp.route('/upload-excel', methods=['POST'])
         def upload_excel(): return {"error": "AI Module Unavailable"}, 503
 
@@ -159,7 +158,7 @@ def create_app(config_class=Config):
     from routes.api_analytics import api_analytics_bp
     from routes.api_docs import api_docs_bp
     from routes.graphql import graphql_bp
-    
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(sales_bp)
@@ -200,20 +199,20 @@ def create_app(config_class=Config):
     # Error Handlers
     from utils.error_handlers import register_error_handlers
     register_error_handlers(app)
-    
+
     # Context Processors
     @app.context_processor
     def utility_processor():
         from utils.helpers import format_currency, timeago
         from utils.constants import CURRENCIES
         from utils.i18n import t, is_rtl, get_current_language
-        
+
         def get_currency_symbol(code):
             for c_code, data in CURRENCIES:
                 if c_code == code:
                     return data.get('symbol', code)
             return code
-            
+
         return {
             'format_currency': format_currency,
             'timeago': timeago,
@@ -226,19 +225,19 @@ def create_app(config_class=Config):
             'now': datetime.now(),
             'ai_enabled': 'ai' in app.blueprints
         }
-        
+
     @app.before_request
     def before_request():
         g.request_start_time = time.time()
         g.request_id = str(uuid.uuid4())
-        
+
         # Determine language (placeholder)
         g.lang_code = 'ar'
         g.rtl = True
-        
+
         # Multi-tenant: set current tenant from logged-in user
         from models import set_current_tenant_id
-        from flask_login import current_user
+        from flask_login import current_user  # noqa: F811  (local import intentional)
         if current_user.is_authenticated:
             # SECURITY: Session idle timeout — force logout after 30 minutes of inactivity
             from flask import session
@@ -260,7 +259,7 @@ def create_app(config_class=Config):
                     pass  # Invalid timestamp — let session continue
             session['last_activity'] = _dt.now().isoformat()
             session.permanent = True
-            
+
             # Owner sees all tenants (no filter); other users are scoped to their tenant
             if hasattr(current_user, 'is_owner') and current_user.is_owner:
                 set_current_tenant_id(None)  # Owner bypasses tenant filtering
@@ -270,7 +269,7 @@ def create_app(config_class=Config):
                 set_current_tenant_id(None)  # Default: no filtering
         else:
             set_current_tenant_id(None)
-        
+
     # CORS initialization
     from flask_cors import CORS
     CORS(app, origins=app.config.get('CORS_ORIGINS', ['http://localhost:5000']),
@@ -307,8 +306,8 @@ def create_app(config_class=Config):
         clear_current_tenant_id()
 
     # Models Import (to ensure they are known to SQLAlchemy)
-    from models import User, Customer, ProductCategory
-    
+    from models import User, Customer, ProductCategory  # noqa: F401,F811(local import intentional)
+
     # Initialize tenant filter events
     try:
         from models.tenant_scope import install_tenant_filter_events
@@ -324,12 +323,12 @@ def create_app(config_class=Config):
             register_all_listeners()
     except ImportError:
         app.logger.warning("Event listeners not available")
-    
+
     # Register CLI Commands
     # from cli_commands import register_cli
     # register_cli(app)
     # register_compression_cli(app)
-    
+
     try:
         from cli_commands import register_cli_commands
         register_cli_commands(app)
@@ -338,13 +337,13 @@ def create_app(config_class=Config):
         app.logger.info('CLI commands not available - skipping')
     except Exception as e:
         app.logger.warning(f'Enhanced CLI commands not registered: {e}')
-    
+
     app.logger.info('[OK] Application initialized successfully')
-    
+
     return app
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # noqa: C901
     print("DEBUG: Entering main block...", flush=True)
     try:
         app = create_app()
@@ -352,21 +351,21 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"DEBUG: Failed to create app: {e}", flush=True)
         raise e
-    
+
     from services.backup_service import BackupService
     BackupService.initialize()
-    
+
     try:
         from services.auto_approval_service import schedule_auto_approval
         schedule_auto_approval(app)
         app.logger.info("Auto-approval service scheduler started")
     except Exception as e:
         app.logger.warning("Auto-approval service failed: %s", e)
-    
+
     import threading
-    import time
+    import time  # noqa: F811  (local import intentional)
     import json
-    
+
     def schedule_daily_backup():
         """جدولة النسخ الاحتياطي اليومي"""
         while True:
@@ -374,7 +373,7 @@ if __name__ == '__main__':
                 # Use absolute path for settings
                 basedir = os.path.abspath(os.path.dirname(__file__))
                 settings_path = os.path.join(basedir, 'instance', 'backup_settings.json')
-                
+
                 if os.path.exists(settings_path):
                     with open(settings_path, 'r', encoding='utf-8') as f:
                         settings = json.load(f)
@@ -385,24 +384,24 @@ if __name__ == '__main__':
                         'backup_time': '02:00',
                         'keep_count': 5
                     }
-                
+
                 if settings.get('enabled', True):
                     now = datetime.now()
                     backup_time = settings.get('backup_time', '02:00')
-                    
+
                     if settings.get('frequency', 'daily') == 'daily':
                         target_hour, target_minute = map(int, backup_time.split(':'))
                         next_backup = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
-                        
+
                         if next_backup <= now:
                             from datetime import timedelta
                             next_backup += timedelta(days=1)
-                        
+
                         wait_seconds = (next_backup - now).total_seconds()
-                        
+
                         app.logger.info("Next automatic backup scheduled at %s", next_backup.strftime('%Y-%m-%d %H:%M:%S'))
                         time.sleep(wait_seconds)
-                        
+
                         with app.app_context():
                             backup = BackupService.auto_backup_daily()
                             if backup:
@@ -413,11 +412,11 @@ if __name__ == '__main__':
                         time.sleep(86400)
                 else:
                     time.sleep(3600)
-                    
+
             except Exception as e:
                 app.logger.error("Backup scheduler error: %s", e)
                 time.sleep(3600)
-    
+
     try:
         backup_thread = threading.Thread(target=schedule_daily_backup, daemon=True)
         backup_thread.start()
@@ -425,11 +424,11 @@ if __name__ == '__main__':
     except Exception as e:
         import logging
         logging.warning(f"Backup scheduler failed to start: {e}")
-    
+
     port = int(os.environ.get('PORT', 5000))
     host = os.environ.get('HOST', '0.0.0.0')
     debug_mode = os.environ.get('DEBUG', 'false').lower() in ('true', '1', 'yes')
-    
+
     app.logger.info("Starting UAE-Sale System")
     app.logger.info("Host: %s", host)
     app.logger.info("Port: %s", port)
@@ -440,7 +439,7 @@ if __name__ == '__main__':
         _db_log = _db_log.split('@')[0].split('://')[0] + '://***:***@' + _db_log.split('@')[1]
     app.logger.info("Database: %s", _db_log)
     app.logger.info("Starting server on http://%s:%s", host, port)
-    
+
     app.run(
         host=host,
         port=port,

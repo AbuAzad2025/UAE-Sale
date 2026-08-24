@@ -4,7 +4,6 @@ Sales Tests — CRUD operations, IDOR protection, permissions.
 Tests the sale workflow and security fixes.
 """
 
-import pytest
 from decimal import Decimal
 
 

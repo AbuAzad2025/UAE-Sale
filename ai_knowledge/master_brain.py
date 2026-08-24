@@ -4,7 +4,7 @@
 
 الهدف: عقل واحد متكامل - أذكى من:
 - ChatGPT
-- DeepSeek  
+- DeepSeek
 - Cursor
 - GitHub Copilot
 - Claude
@@ -23,10 +23,8 @@
 """
 
 import logging
-import json
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
-from typing import Dict, List, Any, Optional, Tuple
+from datetime import datetime
+from typing import List, Optional, Tuple
 import re
 
 logger = logging.getLogger(__name__)
@@ -35,17 +33,17 @@ logger = logging.getLogger(__name__)
 class MasterBrain:
     """
     العقل الرئيسي الموحد
-    
+
     يجمع كل القدرات في نظام واحد سريع ومترابط
     """
-    
+
     def __init__(self):
         self.name = "أزاد - العقل الخارق"
         self.version = "2.0 - Ultimate Edition"
-        
+
         # قواعد المعرفة الشاملة
         self.knowledge_base = self._initialize_ultimate_knowledge()
-        
+
         # الذاكرة الموحدة
         self.unified_memory = {
             'conversations': [],
@@ -53,33 +51,33 @@ class MasterBrain:
             'procedures': [],
             'user_preferences': {}
         }
-        
+
         # النماذج العصبية (كاش)
         self.neural_models = {}
         self.neural_ready = False
-        
+
         # الأداء
         self.response_time_target = 0.05  # 50ms max
         self.cache = {}
-        
+
         logger.info(f"🧠 {self.name} initialized - Ready for genius-level operations!")
-    
+
     def _initialize_ultimate_knowledge(self) -> dict:
         """تهيئة قاعدة المعرفة الشاملة - أضخم قاعدة معرفة!"""
-        
+
         # استيراد المعرفة الإضافية
         try:
             from ai_knowledge.automotive_ecu_knowledge import get_automotive_ecu_knowledge
             automotive_kb = get_automotive_ecu_knowledge().knowledge_base
-        except:
+        except Exception:
             automotive_kb = {}
-        
+
         try:
             from ai_knowledge.external_learning import get_external_learning
             external_sources = get_external_learning().learning_sources
-        except:
+        except Exception:
             external_sources = {}
-        
+
         return {
             # ========== المحاسبة ==========
             'accounting': {
@@ -137,7 +135,7 @@ class MasterBrain:
                     }
                 }
             },
-            
+
             # ========== الضرائب ==========
             'taxes': {
                 'uae_vat': {
@@ -164,7 +162,7 @@ class MasterBrain:
                     'gcc_exemption': 'معفاة للسلع من دول الخليج'
                 }
             },
-            
+
             # ========== الإدارة ==========
             'management': {
                 'theories': {
@@ -190,7 +188,7 @@ class MasterBrain:
                     'operating_leverage': 'الرافعة التشغيلية = هامش المساهمة / صافي الربح'
                 }
             },
-            
+
             # ========== الهندسة والصيانة ==========
             'engineering': {
                 'automotive': {
@@ -227,7 +225,7 @@ class MasterBrain:
                     }
                 }
             },
-            
+
             # ========== القانون التجاري ==========
             'commercial_law': {
                 'uae': {
@@ -241,7 +239,7 @@ class MasterBrain:
                     }
                 }
             },
-            
+
             # ========== البرمجة ==========
             'programming': {
                 'sql': {
@@ -262,7 +260,7 @@ class MasterBrain:
                     ]
                 }
             },
-            
+
             # ========== السكرتارية ==========
             'secretarial': {
                 'communication': {
@@ -275,22 +273,22 @@ class MasterBrain:
                     'time_blocking': 'تقسيم اليوم لكتل زمنية'
                 }
             },
-            
+
             # ========== كمبيوترات السيارات (من automotive_ecu_knowledge) ==========
             'automotive_ecu': automotive_kb,
-            
+
             # ========== مصادر التعلم الخارجية (30+ مصدر ضخم) ==========
             'external_sources': external_sources
         }
-    
+
     # ========================================================================
     # الدالة الرئيسية الموحدة - Master Function
     # ========================================================================
-    
+
     def ask(self, question: str, context: dict = None, user_id: int = None) -> dict:
         """
         الدالة الرئيسية الموحدة - اسأل العقل الخارق!
-        
+
         هذه الدالة الواحدة تفعل كل شيء:
         - تفهم السؤال
         - تحدد المجال
@@ -298,12 +296,12 @@ class MasterBrain:
         - تفكر منطقياً
         - تتذكر السياق
         - ترد بذكاء خارق
-        
+
         Args:
             question: السؤال
             context: السياق الإضافي
             user_id: معرف المستخدم
-        
+
         Returns:
             {
                 'answer': الإجابة الشاملة,
@@ -315,35 +313,35 @@ class MasterBrain:
         """
         start_time = datetime.now()
         context = context or {}
-        
+
         try:
             # 1. فهم السؤال
             intent, domain, entities = self._analyze_question(question)
-            
+
             # 2. البحث في قاعدة المعرفة
             knowledge = self._retrieve_knowledge(domain, question)
-            
+
             # 3. التفكير المنطقي
             reasoning_result = self._think_logically(question, intent, knowledge, context)
-            
+
             # 4. استخدام النماذج العصبية (إذا لزم الأمر)
             neural_result = self._use_neural_if_needed(intent, context)
-            
+
             # 5. دمج كل المصادر
             answer = self._synthesize_answer(
                 question, reasoning_result, neural_result, knowledge, intent
             )
-            
+
             # 6. التذكر
             if user_id:
                 self._remember(user_id, question, answer['text'])
-            
+
             # 7. حساب الوقت
             response_time = (datetime.now() - start_time).total_seconds()
-            
+
             # 8. الاقتراحات
             suggestions = self._generate_smart_suggestions(intent, domain)
-            
+
             result = {
                 'answer': answer['text'],
                 'confidence': answer['confidence'],
@@ -355,11 +353,11 @@ class MasterBrain:
                 'response_time_ms': round(response_time * 1000, 2),
                 'genius_mode': True
             }
-            
-            logger.info(f"🧠 Master Brain answered in {response_time*1000:.0f}ms - Confidence: {answer['confidence']:.0%}")
-            
+
+            logger.info(f"🧠 Master Brain answered in {response_time * 1000:.0f}ms - Confidence: {answer['confidence']:.0%}")
+
             return result
-        
+
         except Exception as e:
             logger.error(f"Master Brain error: {e}")
             return {
@@ -367,11 +365,11 @@ class MasterBrain:
                 'confidence': 0.3,
                 'error': str(e)
             }
-    
-    def _analyze_question(self, question: str) -> Tuple[str, str, dict]:
+
+    def _analyze_question(self, question: str) -> Tuple[str, str, dict]:  # noqa: C901
         """تحليل السؤال بذكاء خارق"""
         q_lower = question.lower()
-        
+
         # تحديد المجال
         if any(kw in q_lower for kw in ['قيد', 'محاسبة', 'مدين', 'دائن', 'ميزانية', 'ربح', 'خسارة']):
             domain = 'accounting'
@@ -391,7 +389,7 @@ class MasterBrain:
             domain = 'programming'
         else:
             domain = 'general'
-        
+
         # تحديد النية
         if '؟' in question or 'كيف' in q_lower or 'ما' in q_lower or 'متى' in q_lower:
             intent = 'question'
@@ -403,32 +401,32 @@ class MasterBrain:
             intent = 'review'
         else:
             intent = 'general'
-        
+
         # استخراج الكيانات
         entities = {}
         numbers = re.findall(r'\d+\.?\d*', question)
         if numbers:
             entities['numbers'] = [float(n) for n in numbers]
-        
+
         return intent, domain, entities
-    
+
     def _retrieve_knowledge(self, domain: str, question: str) -> dict:
         """استرجاع المعرفة المناسبة بسرعة فائقة"""
         if domain in self.knowledge_base:
             return self.knowledge_base[domain]
         return {}
-    
+
     def _think_logically(self, question: str, intent: str, knowledge: dict, context: dict) -> dict:
         """التفكير المنطقي العميق"""
         steps = []
-        
+
         # خطوة 1: فهم المطلوب
         steps.append({
             'step': 1,
             'thought': f'فهمت السؤال: {question[:50]}...',
             'action': 'understanding'
         })
-        
+
         # خطوة 2: تحليل المعطيات
         available_data = list(context.keys()) if context else []
         steps.append({
@@ -436,58 +434,58 @@ class MasterBrain:
             'thought': f'البيانات المتاحة: {", ".join(available_data) if available_data else "لا يوجد"}',
             'action': 'data_analysis'
         })
-        
+
         # خطوة 3: استخدام المعرفة
         if knowledge:
             steps.append({
                 'step': 3,
-                'thought': f'استخدام المعرفة المتخصصة في المجال',
+                'thought': 'استخدام المعرفة المتخصصة في المجال',
                 'action': 'applying_knowledge'
             })
-        
+
         # خطوة 4: الاستنتاج
         steps.append({
             'step': 4,
             'thought': 'الوصول للحل الأمثل',
             'action': 'conclusion'
         })
-        
+
         return {
             'steps': steps,
             'confidence': 0.9
         }
-    
+
     def _use_neural_if_needed(self, intent: str, context: dict) -> Optional[dict]:
         """استخدام النماذج العصبية عند الحاجة"""
         # استيراد كسول (lazy import) للسرعة
         if intent in ['prediction', 'pricing', 'classification']:
             try:
                 from services.ai_service import AIService
-                
+
                 if intent == 'pricing' and context.get('product_id'):
                     return AIService.predict_price_with_neural(
                         context['product_id'],
                         context.get('customer_id'),
                         context.get('quantity', 1)
                     )
-                
+
                 elif intent == 'prediction':
                     return AIService.forecast_sales_neural(days_ahead=7)
-                
+
             except Exception as e:
                 logger.debug(f"Neural model not used: {e}")
                 return None
-        
+
         return None
-    
-    def _synthesize_answer(self, question: str, reasoning: dict, neural: dict, 
-                          knowledge: dict, intent: str) -> dict:
+
+    def _synthesize_answer(self, question: str, reasoning: dict, neural: dict,  # noqa: C901
+                           knowledge: dict, intent: str) -> dict:
         """دمج كل المصادر في إجابة واحدة متكاملة"""
-        
+
         answer_parts = []
         sources = []
         confidence = 0.85
-        
+
         # إجابة من قاعدة المعرفة
         if knowledge:
             # محاسبة
@@ -496,12 +494,12 @@ class MasterBrain:
                     answer_parts.append(f"📚 {knowledge['principles']['accrual']}")
                     sources.append('قاعدة المعرفة المحاسبية')
                     confidence = 0.98
-                
+
                 elif 'قيد مزدوج' in question.lower() or 'double entry' in question.lower():
                     answer_parts.append(f"📚 {knowledge['principles']['double_entry']}")
                     sources.append('المبادئ المحاسبية')
                     confidence = 1.0
-            
+
             # الضرائب
             if 'vat' in knowledge or 'uae_vat' in knowledge:
                 if 'ضريبة' in question.lower() or 'vat' in question.lower():
@@ -510,7 +508,7 @@ class MasterBrain:
                     answer_parts.append(f"حد التسجيل: {vat_info.get('registration_threshold', 375000):,} درهم")
                     sources.append('قوانين الضرائب الإماراتية')
                     confidence = 1.0
-            
+
             # كمبيوترات السيارات
             if 'sensors' in knowledge:
                 for sensor_code, sensor_data in knowledge.get('sensors', {}).items():
@@ -521,7 +519,7 @@ class MasterBrain:
                             answer_parts.append(f"الفحص: {sensor_data['testing']}")
                         sources.append('خبير كمبيوترات السيارات - ECU')
                         confidence = 0.95
-            
+
             # الصيغ
             if 'formulas' in knowledge:
                 for formula_name, formula in knowledge['formulas'].items():
@@ -529,7 +527,7 @@ class MasterBrain:
                         answer_parts.append(f"📐 {formula}")
                         sources.append('الصيغ المحاسبية')
                         confidence = 0.95
-        
+
         # إجابة من النماذج العصبية
         if neural:
             if 'predicted_price' in neural:
@@ -538,14 +536,14 @@ class MasterBrain:
                 answer_parts.append(f"الثقة: {neural.get('confidence', 0):.0%}")
                 sources.append('الشبكة العصبية للتسعير')
                 confidence = neural.get('confidence', 0.9)
-            
+
             elif 'forecast' in neural:
-                answer_parts.append(f"📈 توقع المبيعات (بالشبكات العصبية):")
+                answer_parts.append("📈 توقع المبيعات (بالشبكات العصبية):")
                 for day in neural.get('forecast', [])[:3]:
                     answer_parts.append(f"- {day.get('day_name', '')}: {day.get('amount', 0):,.0f} AED")
                 sources.append('الشبكة العصبية للتوقعات')
                 confidence = 0.94
-        
+
         # إجابة عامة ذكية
         if not answer_parts:
             if intent == 'question':
@@ -563,13 +561,13 @@ class MasterBrain:
                 answer_parts.append("🔧 الصيانة والهندسة")
                 answer_parts.append("💼 الإدارة والتخطيط")
                 confidence = 0.7
-        
+
         return {
             'text': '\n'.join(answer_parts),
             'confidence': confidence,
             'sources': sources
         }
-    
+
     def _remember(self, user_id: int, question: str, answer: str):
         """حفظ في الذاكرة الموحدة"""
         self.unified_memory['conversations'].append({
@@ -578,11 +576,11 @@ class MasterBrain:
             'question': question,
             'answer': answer
         })
-        
+
         # الاحتفاظ بآخر 100 فقط للسرعة
         if len(self.unified_memory['conversations']) > 100:
             self.unified_memory['conversations'] = self.unified_memory['conversations'][-100:]
-    
+
     def _generate_smart_suggestions(self, intent: str, domain: str) -> List[str]:
         """توليد اقتراحات ذكية"""
         suggestions = {
@@ -612,17 +610,17 @@ class MasterBrain:
                 'كيف أنافس في السوق؟'
             ]
         }
-        
+
         return suggestions.get(domain, [
             'اسأل عن المحاسبة',
             'اسأل عن الضرائب',
             'اسأل عن المخزون'
         ])
-    
+
     # ========================================================================
     # دوال متقدمة سريعة
     # ========================================================================
-    
+
     def quick_calc(self, formula_name: str, **params) -> dict:
         """حسابات سريعة للصيغ الشائعة"""
         formulas = {
@@ -635,7 +633,7 @@ class MasterBrain:
             'price_with_vat': lambda amount: amount * 1.05,
             'price_without_vat': lambda amount_with_vat: amount_with_vat / 1.05
         }
-        
+
         if formula_name in formulas:
             try:
                 result = formulas[formula_name](**params)
@@ -647,9 +645,9 @@ class MasterBrain:
                 }
             except Exception as e:
                 return {'error': str(e), 'success': False}
-        
+
         return {'error': f'Unknown formula: {formula_name}', 'success': False}
-    
+
     def explain(self, concept: str) -> str:
         """شرح مفهوم بسرعة"""
         # البحث في قاعدة المعرفة
@@ -662,13 +660,13 @@ class MasterBrain:
                                 return f"📚 {sub_value}"
                             if isinstance(sub_value, str) and concept.lower() in sub_value.lower():
                                 return f"📚 {sub_value}"
-        
+
         return f"🤔 لم أجد شرح مباشر لـ '{concept}'. يمكنك السؤال بشكل أكثر تحديداً؟"
-    
+
     def validate_accounting_entry(self, debit: float, credit: float) -> dict:
         """التحقق من القيد المحاسبي بسرعة"""
         is_balanced = abs(debit - credit) < 0.01
-        
+
         return {
             'is_balanced': is_balanced,
             'debit': debit,
@@ -687,6 +685,7 @@ class MasterBrain:
 
 _master_brain_instance = None
 
+
 def get_master_brain():
     """الحصول على العقل الرئيسي - Singleton للسرعة"""
     global _master_brain_instance
@@ -702,7 +701,7 @@ def get_master_brain():
 def ask_azad(question: str, context: dict = None, user_id: int = None) -> dict:
     """
     اسأل أزاد - الواجهة البسيطة
-    
+
     مثال:
         result = ask_azad("ما هي ضريبة القيمة المضافة في الإمارات؟")
         print(result['answer'])
@@ -714,7 +713,7 @@ def ask_azad(question: str, context: dict = None, user_id: int = None) -> dict:
 def quick_calc(formula: str, **params) -> dict:
     """
     حسابات سريعة
-    
+
     مثال:
         result = quick_calc('vat', amount=1000)
         print(f"الضريبة: {result['result']} درهم")
@@ -726,11 +725,10 @@ def quick_calc(formula: str, **params) -> dict:
 def explain_concept(concept: str) -> str:
     """
     شرح سريع لمفهوم
-    
+
     مثال:
         explanation = explain_concept('مبدأ الاستحقاق')
         print(explanation)
     """
     brain = get_master_brain()
     return brain.explain(concept)
-

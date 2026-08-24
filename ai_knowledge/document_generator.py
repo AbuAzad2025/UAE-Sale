@@ -6,26 +6,25 @@
 import io
 import csv
 from datetime import datetime
-from flask import make_response
 from decimal import Decimal
 from extensions import db
 
 
 class DocumentGenerator:
     """مولد المستندات لأزاد"""
-    
+
     @staticmethod
     def generate_receipt(sale_id):
         """توليد سند قبض"""
         try:
             from models import Sale
-            
+
             sale = db.session.get(Sale, sale_id)
             if not sale:
                 return None, "الفاتورة غير موجودة"
-            
+
             # محتوى سند القبض
-            receipt_content = f"""
+            receipt_content = """
             ╔══════════════════════════════════════════════════════════════╗
             ║                    سند قبض - Receipt Voucher                  ║
             ╠══════════════════════════════════════════════════════════════╣
@@ -47,24 +46,24 @@ class DocumentGenerator:
             ║ شكراً لتعاملكم معنا! 😊                                      ║
             ╚══════════════════════════════════════════════════════════════╝
             """
-            
+
             return receipt_content, "تم توليد سند القبض بنجاح"
-            
+
         except Exception as e:
             return None, f"خطأ في توليد سند القبض: {str(e)}"
-    
+
     @staticmethod
     def generate_invoice(sale_id):
         """توليد فاتورة مفصلة"""
         try:
             from models import Sale
-            
+
             sale = db.session.get(Sale, sale_id)
             if not sale:
                 return None, "الفاتورة غير موجودة"
-            
+
             # محتوى الفاتورة
-            invoice_content = f"""
+            invoice_content = """
             ╔══════════════════════════════════════════════════════════════╗
             ║                    فاتورة مبيعات - Sales Invoice               ║
             ╠══════════════════════════════════════════════════════════════╣
@@ -79,18 +78,18 @@ class DocumentGenerator:
             ║                        تفاصيل الفاتورة                        ║
             ╠══════════════════════════════════════════════════════════════╣
             """
-            
+
             # تفاصيل المنتجات
             total_items = 0
             for line in sale.sale_lines:
                 total_items += line.quantity
-                invoice_content += f"""
+                invoice_content += """
             ║ المنتج: {line.product.name[:30]:30}                    ║
             ║ الكمية: {line.quantity:5} السعر: {line.unit_price:8.2f} المجموع: {line.line_total:8.2f} AED ║
             ║──────────────────────────────────────────────────────────────║"""
-            
+
             # المجاميع
-            invoice_content += f"""
+            invoice_content += """
             ║                                                            ║
             ║ عدد الأصناف: {len(sale.sale_lines):3} عدد القطع: {total_items:5}              ║
             ║                                                            ║
@@ -106,38 +105,38 @@ class DocumentGenerator:
             ║ شكراً لاختياركم خدماتنا! 🌟                                ║
             ╚══════════════════════════════════════════════════════════════╝
             """
-            
+
             return invoice_content, "تم توليد الفاتورة بنجاح"
-            
+
         except Exception as e:
             return None, f"خطأ في توليد الفاتورة: {str(e)}"
-    
+
     @staticmethod
     def generate_sales_report(start_date=None, end_date=None):
         """توليد تقرير المبيعات"""
         try:
             from models import Sale
-            
+
             # فلترة المبيعات حسب التاريخ
             query = Sale.query
             if start_date:
                 query = query.filter(Sale.created_at >= start_date)
             if end_date:
                 query = query.filter(Sale.created_at <= end_date)
-            
+
             sales = query.all()
-            
+
             if not sales:
                 return None, "لا توجد مبيعات في الفترة المحددة"
-            
+
             # حساب الإحصائيات
-            total_sales = len(sales)
+            _ = len(sales)
             total_amount = sum(float(sale.total_amount) for sale in sales)
             total_paid = sum(float(sale.paid_amount) for sale in sales)
-            total_receivables = total_amount - total_paid
-            
+            _ = total_amount - total_paid
+
             # تقرير المبيعات
-            report_content = f"""
+            report_content = """
             ╔══════════════════════════════════════════════════════════════╗
             ║                تقرير المبيعات - Sales Report                   ║
             ╠══════════════════════════════════════════════════════════════╣
@@ -156,29 +155,29 @@ class DocumentGenerator:
             ║                        تفاصيل المبيعات                        ║
             ╠══════════════════════════════════════════════════════════════╣
             """
-            
+
             # تفاصيل الفواتير
             for sale in sales[-10:]:  # آخر 10 فواتير
-                report_content += f"""
+                report_content += """
             ║ #{sale.id:06d} | {sale.customer.name[:20]:20} | {sale.total_amount:8.2f} AED | {sale.created_at.strftime('%Y-%m-%d')} ║"""
-            
-            report_content += f"""
+
+            report_content += """
             ║                                                            ║
             ║ تم توليد التقرير بواسطة أزاد 🤖                             ║
             ╚══════════════════════════════════════════════════════════════╝
             """
-            
+
             return report_content, "تم توليد تقرير المبيعات بنجاح"
-            
+
         except Exception as e:
             return None, f"خطأ في توليد تقرير المبيعات: {str(e)}"
-    
+
     @staticmethod
-    def export_to_excel(data_type, start_date=None, end_date=None):
+    def export_to_excel(data_type, start_date=None, end_date=None):  # noqa: C901
         """تصدير البيانات إلى CSV (بديل Excel)"""
         try:
             from models import Sale, Customer, Product
-            
+
             # إنشاء البيانات حسب نوع البيانات
             if data_type == 'sales':
                 sales = Sale.query.all()
@@ -186,7 +185,7 @@ class DocumentGenerator:
                     sales = [s for s in sales if s.created_at.date() >= start_date]
                 if end_date:
                     sales = [s for s in sales if s.created_at.date() <= end_date]
-                
+
                 data = []
                 headers = ['رقم الفاتورة', 'العميل', 'التاريخ', 'المجموع', 'المدفوع', 'المتبقي', 'الحالة']
                 for sale in sales:
@@ -199,9 +198,9 @@ class DocumentGenerator:
                         float(sale.balance_due),
                         'مدفوع' if sale.balance_due == 0 else 'جزئي' if sale.paid_amount > 0 else 'غير مدفوع'
                     ])
-                
+
                 filename = f"sales_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-                
+
             elif data_type == 'customers':
                 customers = Customer.query.all()
                 headers = ['المعرف', 'الاسم', 'النوع', 'الهاتف', 'الإيميل', 'الرصيد', 'تاريخ الإضافة']
@@ -216,9 +215,9 @@ class DocumentGenerator:
                         float(customer.get_balance_aed()),
                         customer.created_at.strftime('%Y-%m-%d')
                     ])
-                
+
                 filename = f"customers_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-                
+
             elif data_type == 'products':
                 products = Product.query.all()
                 headers = ['المعرف', 'الاسم', 'SKU', 'المخزون', 'السعر', 'الفئة', 'حد التنبيه']
@@ -233,49 +232,49 @@ class DocumentGenerator:
                         product.category.name if product.category else 'غير محدد',
                         product.min_stock_alert
                     ])
-                
+
                 filename = f"products_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-            
+
             else:
                 return None, "نوع البيانات غير صحيح"
-            
+
             # إنشاء CSV
             output = io.StringIO()
             writer = csv.writer(output)
             writer.writerow(headers)
             writer.writerows(data)
-            
+
             # تحويل إلى BytesIO
             output_bytes = io.BytesIO()
             output_bytes.write(output.getvalue().encode('utf-8-sig'))  # UTF-8 with BOM for Excel
             output_bytes.seek(0)
-            
+
             return output_bytes, filename
-            
+
         except Exception as e:
             return None, f"خطأ في تصدير البيانات: {str(e)}"
-    
+
     @staticmethod
     def generate_customer_statement(customer_id, start_date=None, end_date=None):
         """توليد كشف حساب العميل"""
         try:
             from models import Customer, Sale
-            
+
             customer = db.session.get(Customer, customer_id)
             if not customer:
                 return None, "العميل غير موجود"
-            
+
             # فلترة المبيعات
             query = Sale.query.filter(Sale.customer_id == customer_id)
             if start_date:
                 query = query.filter(Sale.created_at >= start_date)
             if end_date:
                 query = query.filter(Sale.created_at <= end_date)
-            
+
             sales = query.all()
-            
+
             # كشف الحساب
-            statement_content = f"""
+            statement_content = """
             ╔══════════════════════════════════════════════════════════════╗
             ║                 كشف حساب العميل - Customer Statement          ║
             ╠══════════════════════════════════════════════════════════════╣
@@ -288,29 +287,29 @@ class DocumentGenerator:
             ║                        حركات الحساب                           ║
             ╠══════════════════════════════════════════════════════════════╣
             """
-            
+
             balance = Decimal('0')
             for sale in sales:
                 balance += sale.total_amount
-                statement_content += f"""
+                statement_content += """
             ║ {sale.created_at.strftime('%Y-%m-%d')} | فاتورة #{sale.id} | {sale.total_amount:8.2f} AED | الرصيد: {balance:8.2f} AED ║"""
-                
+
                 # المدفوعات
                 for payment in sale.payments:
                     balance -= payment.amount
-                    statement_content += f"""
+                    statement_content += """
             ║ {payment.created_at.strftime('%Y-%m-%d')} | دفعة #{payment.id} | -{payment.amount:8.2f} AED | الرصيد: {balance:8.2f} AED ║"""
-            
-            statement_content += f"""
+
+            statement_content += """
             ║                                                            ║
             ║ الرصيد النهائي: {balance:,.2f} AED                          ║
             ║                                                            ║
             ║ تم توليد الكشف بواسطة أزاد 🤖                              ║
             ╚══════════════════════════════════════════════════════════════╝
             """
-            
+
             return statement_content, "تم توليد كشف الحساب بنجاح"
-            
+
         except Exception as e:
             return None, f"خطأ في توليد كشف الحساب: {str(e)}"
 

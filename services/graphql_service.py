@@ -1,5 +1,5 @@
 import graphene
-from models import Sale, Customer, Product, Payment
+from models import Sale, Customer, Product
 from extensions import db
 
 
@@ -44,37 +44,37 @@ class PaymentType(graphene.ObjectType):
 class Query(graphene.ObjectType):
     all_sales = graphene.List(SaleType, limit=graphene.Int(), offset=graphene.Int())
     sale = graphene.Field(SaleType, id=graphene.Int())
-    
+
     all_customers = graphene.List(CustomerType, limit=graphene.Int())
     customer = graphene.Field(CustomerType, id=graphene.Int())
-    
+
     all_products = graphene.List(ProductType, limit=graphene.Int())
     product = graphene.Field(ProductType, id=graphene.Int())
-    
+
     def resolve_all_sales(self, info, limit=50, offset=0):
         sales = Sale.query.limit(limit).offset(offset).all()
         return [self._convert_sale_to_type(sale) for sale in sales]
-    
+
     def resolve_sale(self, info, id):
         sale = db.session.get(Sale, id)
         return self._convert_sale_to_type(sale) if sale else None
-    
+
     def resolve_all_customers(self, info, limit=50):
         customers = Customer.query.limit(limit).all()
         return [self._convert_customer_to_type(customer) for customer in customers]
-    
+
     def resolve_customer(self, info, id):
         customer = db.session.get(Customer, id)
         return self._convert_customer_to_type(customer) if customer else None
-    
+
     def resolve_all_products(self, info, limit=50):
         products = Product.query.limit(limit).all()
         return [self._convert_product_to_type(product) for product in products]
-    
+
     def resolve_product(self, info, id):
         product = db.session.get(Product, id)
         return self._convert_product_to_type(product) if product else None
-    
+
     def _convert_sale_to_type(self, sale):
         return SaleType(
             id=sale.id,
@@ -85,7 +85,7 @@ class Query(graphene.ObjectType):
             status=sale.status,
             created_at=sale.created_at
         )
-    
+
     def _convert_customer_to_type(self, customer):
         return CustomerType(
             id=customer.id,
@@ -95,7 +95,7 @@ class Query(graphene.ObjectType):
             address=customer.address,
             balance=float(customer.balance) if customer.balance else 0
         )
-    
+
     def _convert_product_to_type(self, product):
         return ProductType(
             id=product.id,
@@ -112,14 +112,14 @@ class CreateSale(graphene.Mutation):
     class Arguments:
         customer_id = graphene.Int(required=True)
         total_amount = graphene.Float(required=True)
-    
+
     sale = graphene.Field(SaleType)
     success = graphene.Boolean()
-    
+
     def mutate(self, info, customer_id, total_amount):
         from utils.helpers import generate_number
         from decimal import Decimal
-        
+
         sale = Sale(
             sale_number=generate_number('INV', Sale, 'sale_number'),
             customer_id=customer_id,
@@ -130,7 +130,7 @@ class CreateSale(graphene.Mutation):
         )
         db.session.add(sale)
         db.session.commit()
-        
+
         # Convert to SaleType
         sale_type = SaleType(
             id=sale.id,
@@ -141,7 +141,7 @@ class CreateSale(graphene.Mutation):
             status=sale.status,
             created_at=sale.created_at
         )
-        
+
         return CreateSale(sale=sale_type, success=True)
 
 
@@ -150,4 +150,3 @@ class Mutation(graphene.ObjectType):
 
 
 schema = graphene.Schema(query=Query, mutation=Mutation)
-

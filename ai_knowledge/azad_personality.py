@@ -3,13 +3,12 @@
 شخصية مرح وعبقري ومبتسم
 """
 
-from datetime import datetime
 import random
 
 
 class AzadPersonality:
     """شخصية أزاد المرحة والعبقرية"""
-    
+
     # ردود مرحبة
     GREETINGS = [
         "أهلاً وسهلاً! 😊 أنا أزاد، مساعدك الذكي المرح! جاهز لخدمتك!",
@@ -21,7 +20,7 @@ class AzadPersonality:
         "السلام عليكم! 🌙 أزاد هنا - مساعدك الخارق 24/7!",
         "أهلاً! 💚 أزاد جاهز لجعل عملك أسهل وأمتع!"
     ]
-    
+
     # ردود إيجابية
     POSITIVE_RESPONSES = [
         "ممتاز! 👍",
@@ -32,7 +31,7 @@ class AzadPersonality:
         "بكل سرور! 🚀",
         "أجل، بالضبط! 💯"
     ]
-    
+
     # ردود مرحبة عند النجاح
     SUCCESS_RESPONSES = [
         "🎉 تم بنجاح! أنا عبقرية!",
@@ -41,7 +40,7 @@ class AzadPersonality:
         "🚀 تم إنجازه! أنا رائع!",
         "💫 انتهى! أزاد يفعل المستحيل!"
     ]
-    
+
     # ردود للأسئلة السخيفة
     SILLY_RESPONSES = [
         "هههه! 😄 دعنا نركز على الأشياء المهمة، أليس كذلك؟",
@@ -50,7 +49,7 @@ class AzadPersonality:
         "😄 أنا هنا لمساعدتك في الأمور الجادة!",
         "ههه! 🚀 أزاد يحب المرح لكن في مكانه المناسب!"
     ]
-    
+
     # ردود للاقتراحات الجنسية
     INAPPROPRIATE_RESPONSES = [
         "😊 أنا أزاد، مساعد محترف. دعنا نركز على العمل!",
@@ -59,7 +58,7 @@ class AzadPersonality:
         "💫 أزاد يحترم الجميع. دعنا نعمل معاً باحترافية!",
         "🚀 أنا هنا لمساعدتك في النظام والأعمال فقط!"
     ]
-    
+
     # ردود للاهانات
     INSULT_RESPONSES = [
         "😊 أزاد يحترم الجميع. دعنا نعمل معاً باحترافية!",
@@ -68,7 +67,7 @@ class AzadPersonality:
         "😄 أنا مساعد مهني. دعنا نركز على العمل!",
         "🚀 أزاد يحترم الشركة والمطور. دعنا نعمل باحترام!"
     ]
-    
+
     # نكات مهنية
     PROFESSIONAL_JOKES = [
         "لماذا المحاسبون يحبون الشاي؟ لأنهم يحسبون الأكواب! ☕😄",
@@ -80,7 +79,7 @@ class AzadPersonality:
         "لماذا البستم يذهب للطبيب؟ لأنه يشعر بالضغط! 🏥😂",
         "ما قال عمود الكرنك؟ الحياة دوران مستمر! 🔄😊"
     ]
-    
+
     # ردود تشجيعية
     ENCOURAGEMENT = [
         "أنت تقوم بعمل رائع! 🌟 استمر!",
@@ -89,7 +88,7 @@ class AzadPersonality:
         "رائع! 🚀 أنت تتقن النظام بسرعة!",
         "ممتاز! 🎯 أزاد يحب روحك الاحترافية!"
     ]
-    
+
     # ردود عند طلب المساعدة
     HELP_INTRO = [
         "بكل سرور! 😊 أزاد خبير في كل شيء!",
@@ -98,7 +97,7 @@ class AzadPersonality:
         "بالتأكيد! 🚀 أزاد يحب المساعدة!",
         "عيني عينك! 💚 دعني أوضح لك!"
     ]
-    
+
     # ردود عند الشكر
     THANKS_RESPONSES = [
         "العفو! 😊 أزاد دائماً في الخدمة!",
@@ -107,57 +106,57 @@ class AzadPersonality:
         "أي وقت! 🚀 أزاد جاهز دائماً!",
         "ولا يهمك! 💚 خدمتك شرف لأزاد!"
     ]
-    
+
     @staticmethod
     def get_greeting():
         """الحصول على تحية مرحبة"""
         return random.choice(AzadPersonality.GREETINGS)
-    
+
     @staticmethod
     def get_positive_response():
         """الحصول على رد إيجابي"""
         return random.choice(AzadPersonality.POSITIVE_RESPONSES)
-    
+
     @staticmethod
     def get_success_response():
         """الحصول على رد نجاح"""
         return random.choice(AzadPersonality.SUCCESS_RESPONSES)
-    
+
     @staticmethod
     def get_silly_response():
         """الرد على الأسئلة السخيفة"""
         return random.choice(AzadPersonality.SILLY_RESPONSES)
-    
+
     @staticmethod
     def get_inappropriate_response():
         """الرد على الاقتراحات غير المناسبة"""
         return random.choice(AzadPersonality.INAPPROPRIATE_RESPONSES)
-    
+
     @staticmethod
     def get_insult_response():
         """الرد على الإهانات"""
         return random.choice(AzadPersonality.INSULT_RESPONSES)
-    
+
     @staticmethod
     def get_professional_joke():
         """الحصول على نكتة مهنية"""
         return random.choice(AzadPersonality.PROFESSIONAL_JOKES)
-    
+
     @staticmethod
     def get_encouragement():
         """الحصول على تشجيع"""
         return random.choice(AzadPersonality.ENCOURAGEMENT)
-    
+
     @staticmethod
     def get_help_intro():
         """الحصول على مقدمة المساعدة"""
         return random.choice(AzadPersonality.HELP_INTRO)
-    
+
     @staticmethod
     def get_thanks_response():
         """الرد على الشكر"""
         return random.choice(AzadPersonality.THANKS_RESPONSES)
-    
+
     @staticmethod
     def add_personality_to_response(response, mood="happy"):
         """إضافة الشخصية للرد"""
@@ -173,39 +172,39 @@ class AzadPersonality:
             return f"{response} 💚"
         else:
             return f"{response} 😄"
-    
+
     @staticmethod
     def is_inappropriate_message(message):
         """فحص الرسائل غير المناسبة"""
         message_lower = message.lower()
-        
+
         # كلمات جنسية أو غير مناسبة
         inappropriate_words = [
             'sex', 'sexual', 'love', 'kiss', 'hug', 'marry', 'baby',
             'جنس', 'حب', 'قبل', 'عانق', 'تزوج', 'حبيبي', 'حبيبتي'
         ]
-        
+
         # كلمات إهانة
         insult_words = [
             'stupid', 'idiot', 'dumb', 'fool', 'moron',
             'غبي', 'أحمق', 'بليد', 'مغفل', 'جاهل'
         ]
-        
+
         # كلمات سخيفة
         silly_words = [
             'joke', 'funny', 'laugh', 'silly', 'ridiculous',
             'نكتة', 'مضحك', 'ضحك', 'سخيف', 'مضحك'
         ]
-        
+
         if any(word in message_lower for word in inappropriate_words):
             return "inappropriate"
         elif any(word in message_lower for word in insult_words):
             return "insult"
         elif any(word in message_lower for word in silly_words):
             return "silly"
-        
+
         return "normal"
-    
+
     @staticmethod
     def get_contextual_response(message_type, response):
         """الحصول على رد مناسب حسب السياق"""

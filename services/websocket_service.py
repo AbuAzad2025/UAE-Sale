@@ -11,7 +11,7 @@ socketio = None
 
 def init_socketio(app: Flask):
     global socketio
-    
+
     socketio = SocketIO(
         app,
         cors_allowed_origins="*",
@@ -19,24 +19,24 @@ def init_socketio(app: Flask):
         logger=False,
         engineio_logger=False
     )
-    
+
     @socketio.on('connect')
     def handle_connect():
         if current_user.is_authenticated:
             join_room(f'user_{current_user.id}')
             emit('connected', {'status': 'connected'})
             logger.info(f"User {current_user.id} connected via WebSocket")
-    
+
     @socketio.on('disconnect')
     def handle_disconnect():
         if current_user.is_authenticated:
             leave_room(f'user_{current_user.id}')
             logger.info(f"User {current_user.id} disconnected")
-    
+
     @socketio.on('ping')
     def handle_ping(data=None):
         emit('pong', {'timestamp': datetime.now().isoformat()})
-    
+
     logger.info("[OK] WebSocket initialized")
     return socketio
 
@@ -62,4 +62,3 @@ def notify_user(user_id, message, notification_type='info'):
 def broadcast_stock_alert(product_data):
     if socketio:
         socketio.emit('stock_alert', product_data)
-

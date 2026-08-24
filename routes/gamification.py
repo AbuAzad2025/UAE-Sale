@@ -24,4 +24,3 @@ def my_stats():
 def award_points(action):
     result = GamificationService.award_points(current_user.id, action)
     return jsonify(result)
-

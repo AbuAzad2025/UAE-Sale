@@ -3,12 +3,11 @@
 أزاد يعرف القوانين الضريبية والشحن في المنطقة
 """
 
-from datetime import datetime
 
 
-class AdvancedLaws:
+class AdvancedLaws:  # noqa: E303
     """معرفة القوانين المتقدمة لأزاد"""
-    
+
     # القوانين الضريبية الفلسطينية
     PALESTINIAN_TAX_LAWS = {
         'vat_rate': 16,
@@ -35,7 +34,7 @@ class AdvancedLaws:
             'الضرائب على الخدمات المالية'
         ]
     }
-    
+
     # القوانين الضريبية الإسرائيلية
     ISRAELI_TAX_LAWS = {
         'vat_rate': 17,
@@ -63,7 +62,7 @@ class AdvancedLaws:
             'الضرائب على الميراث والهبات'
         ]
     }
-    
+
     # قوانين الخليج
     GULF_TAX_LAWS = {
         'uae': {
@@ -89,7 +88,7 @@ class AdvancedLaws:
             'corporate_tax_rate': 10
         }
     }
-    
+
     # قوانين الشحن والتخليص
     SHIPPING_LAWS = {
         'documentation_required': [
@@ -118,7 +117,7 @@ class AdvancedLaws:
             'diplomatic_items': 'الأغراض الدبلوماسية'
         }
     }
-    
+
     # قوانين جودة البضائع
     QUALITY_LAWS = {
         'standards_organizations': {
@@ -140,7 +139,7 @@ class AdvancedLaws:
             'iso_14001': 'نظام الإدارة البيئية'
         }
     }
-    
+
     @staticmethod
     def get_tax_info(country, tax_type):
         """الحصول على معلومات ضريبية"""
@@ -154,7 +153,7 @@ class AdvancedLaws:
             laws = AdvancedLaws.GULF_TAX_LAWS['saudi']
         else:
             return None
-        
+
         if tax_type.lower() == 'vat':
             return f"ضريبة القيمة المضافة: {laws['vat_rate']}%"
         elif tax_type.lower() == 'corporate':
@@ -162,9 +161,9 @@ class AdvancedLaws:
                 return f"ضريبة الشركات: {laws['corporate_tax_rate']}%"
             elif 'income_tax_rates' in laws:
                 return f"ضريبة الشركات: {laws['income_tax_rates']['corporate']['standard']}%"
-        
+
         return "معلومات ضريبية غير متاحة"
-    
+
     @staticmethod
     def get_shipping_info(shipping_type):
         """الحصول على معلومات الشحن"""
@@ -192,9 +191,9 @@ class AdvancedLaws:
             • يحتاج 5-15 يوم
             • رسوم متوسطة
             """
-        
+
         return "نوع الشحن غير محدد"
-    
+
     @staticmethod
     def get_customs_info(country):
         """الحصول على معلومات جمركية"""
@@ -214,9 +213,9 @@ class AdvancedLaws:
             • وثائق مطلوبة: فاتورة تجارية، شهادة منشأ، شهادة حلال (إن وجدت)
             • وقت التخليص: 2-5 أيام عمل
             """
-        
+
         return "معلومات جمركية غير متاحة لهذا البلد"
-    
+
     @staticmethod
     def get_quality_standards(product_category):
         """الحصول على معايير الجودة"""
@@ -244,7 +243,7 @@ class AdvancedLaws:
             • معايير المقاسات
             • شهادة السلامة
             """
-        
+
         return "معايير جودة عامة: شهادة ISO 9001، شهادة منشأ، شهادة سلامة"
 
 

@@ -1,9 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
-from extensions import db, csrf, limiter
+from extensions import db, limiter
 from models import Sale, SaleLine, Customer, Product, InvoiceSettings
 from services.sale_service import SaleService
-from services.currency_service import CurrencyService
 from utils.decorators import permission_required
 from utils.helpers import create_audit_log
 
@@ -19,9 +18,9 @@ def index():
     search = request.args.get('search', '', type=str)
     status = request.args.get('status', '', type=str)
     payment_status = request.args.get('payment_status', '', type=str)
-    
+
     query = Sale.query
-    
+
     # إخفاء المبيعات المؤرشفة
     from models import ArchivedRecord
     from sqlalchemy import select
@@ -29,7 +28,7 @@ def index():
         ArchivedRecord.table_name == 'sales'
     ).scalar_subquery()
     query = query.filter(~Sale.id.in_(archived_sales))
-    
+
     if search:
         search_filter = f'%{search}%'
         query = query.join(Customer).filter(
@@ -38,56 +37,56 @@ def index():
                 Customer.name.ilike(search_filter)
             )
         )
-    
+
     if status:
         query = query.filter_by(status=status)
     else:
         query = query.filter_by(status='confirmed')
-    
+
     if payment_status:
         query = query.filter_by(payment_status=payment_status)
-    
+
     if current_user.is_seller():
         query = query.filter_by(seller_id=current_user.id)
-    
+
     pagination = query.order_by(Sale.sale_date.desc()).paginate(
         page=page,
         per_page=per_page,
         error_out=False
     )
-    
+
     return render_template('sales/index.html',
-                         sales=pagination.items,
-                         pagination=pagination)
+                           sales=pagination.items,
+                           pagination=pagination)
 
 
 @sales_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 @permission_required('manage_sales')
 @limiter.limit("15 per minute", methods=['POST'])
-def create():
+def create():  # noqa: C901
     if request.method == 'POST':
         try:
             customer_id = request.form.get('customer_id', type=int)
             customer = db.get_or_404(Customer, customer_id)
-            
+
             lines_data = []
             line_count = int(request.form.get('line_count', 0))
-            
+
             for i in range(line_count):
                 try:
                     product_id_str = request.form.get(f'lines[{i}][product_id]')
                     product_id = int(product_id_str) if product_id_str else None
-                    
+
                     quantity_str = request.form.get(f'lines[{i}][quantity]')
                     quantity = float(quantity_str) if quantity_str else None
-                    
+
                     discount_str = request.form.get(f'lines[{i}][discount_percent]')
                     discount_percent = float(discount_str) if discount_str else 0
-                    
+
                     price_str = request.form.get(f'lines[{i}][unit_price]')
                     override_price = float(price_str) if price_str else None
-                    
+
                     if product_id and quantity and quantity > 0:
                         product = db.session.get(Product, product_id)
                         if product:
@@ -97,38 +96,38 @@ def create():
                                 'discount_percent': discount_percent,
                                 'unit_price': override_price
                             })
-                except (ValueError, TypeError) as e:
+                except (ValueError, TypeError):
                     # Skip invalid lines
                     continue
-            
+
             if not lines_data:
                 from utils.error_messages import ErrorMessages
                 flash(ErrorMessages.sale_no_lines(), 'danger')
                 return redirect(url_for('sales.create'))
-            
+
             currency_value = request.form.get('currency')
             currency = currency_value if currency_value else 'AED'
             user_exchange_rate = request.form.get('exchange_rate', type=float)
-            
+
             # Track manual exchange rate changes for audit
             exchange_rate_manual = request.form.get('exchange_rate_manual') == 'true'
             exchange_rate_server = request.form.get('exchange_rate_server', type=float)
             exchange_rate_diff = request.form.get('exchange_rate_difference', type=float)
-            
+
             discount_amount = request.form.get('discount_amount', type=float, default=0)
             shipping_cost = request.form.get('shipping_cost', type=float, default=0)
             tax_rate = request.form.get('tax_rate', type=float, default=0)
             notes = request.form.get('notes')
-            
+
             # Add exchange rate audit to notes if manually changed
             if exchange_rate_manual and exchange_rate_server and user_exchange_rate:
                 if user_exchange_rate < exchange_rate_server:
                     audit_note = f"\n[تنبيه] سعر صرف يدوي: {user_exchange_rate:.6f} (سعر السيرفر: {exchange_rate_server:.6f}, فرق: {exchange_rate_diff:.2f}%)"
                     notes = (notes or '') + audit_note
-            
+
             payment_amount = request.form.get('payment_amount', type=float, default=0)
             payment_method = request.form.get('payment_method', 'cash')
-            
+
             payment_data = None
             if payment_amount > 0:
                 payment_data = {
@@ -141,10 +140,10 @@ def create():
                     'cheque_date': request.form.get('cheque_date'),
                     'bank_name': request.form.get('bank_name'),
                 }
-            
+
             # قراءة warehouse_id من النموذج
             warehouse_id = request.form.get('warehouse_id', type=int)
-            
+
             sale = SaleService.create_sale(
                 customer=customer,
                 seller=current_user,
@@ -158,12 +157,12 @@ def create():
                 notes=notes,
                 payment_data=payment_data
             )
-            
+
             create_audit_log('create', 'sales', sale.id)
-            
+
             flash('✅ تم إنشاء الفاتورة بنجاح!', 'success')
             return redirect(url_for('sales.view', id=sale.id))
-        
+
         except ValueError as e:
             # رسالة الخطأ من SaleService (مثل: insufficient stock)
             flash(f'⚠️ {str(e)}\n💡 تحقق من الكميات المتوفرة في المخزون.', 'danger')
@@ -171,14 +170,14 @@ def create():
             from utils.error_messages import ErrorMessages
             current_app.logger.error(f'Sale creation error: {e}')
             flash(ErrorMessages.database_error(), 'danger')
-    
+
     # تحميل المستودعات للقالب
     from models import Warehouse
     warehouses = Warehouse.query.filter_by(is_active=True).order_by(
         Warehouse.is_main.desc(),  # الرئيسي أولاً
         Warehouse.name
     ).all()
-    
+
     # No need to load customers or exchange rates - loaded via AJAX for speed
     return render_template('sales/create.html', warehouses=warehouses)
 
@@ -188,12 +187,12 @@ def create():
 @permission_required('manage_sales')
 def view(id):
     sale = db.get_or_404(Sale, id)
-    
+
     if current_user.is_seller() and sale.seller_id != current_user.id:
         from utils.error_messages import ErrorMessages
         flash(ErrorMessages.permission_denied('عرض هذه الفاتورة'), 'danger')
         return redirect(url_for('sales.index'))
-    
+
     return render_template('sales/view.html', sale=sale)
 
 
@@ -202,20 +201,20 @@ def view(id):
 @permission_required('manage_sales')
 def print_invoice(id):
     sale = db.get_or_404(Sale, id)
-    
+
     if current_user.is_seller() and sale.seller_id != current_user.id:
         from utils.error_messages import ErrorMessages
         flash(ErrorMessages.permission_denied('طباعة هذه الفاتورة'), 'danger')
         return redirect(url_for('sales.index'))
-    
+
     # Get invoice settings
     from config import Config
     settings = InvoiceSettings.get_active()
-    
+
     # استخدام القالب النشط من الإعدادات
     template = settings.active_template if settings and settings.active_template else 'modern'
     template_path = f'invoices/{template}.html'
-    
+
     # التحقق من وجود القالب، وإلا استخدام القالب الافتراضي
     try:
         return render_template(template_path, sale=sale, settings=settings, config=Config)
@@ -230,42 +229,42 @@ def print_invoice(id):
 def edit(id):
     """تعديل فاتورة - فقط الفواتير غير المدفوعة وغير الملغاة"""
     sale = db.get_or_404(Sale, id)
-    
+
     # IDOR protection: sellers can only edit their own invoices
     if current_user.is_seller() and sale.seller_id != current_user.id:
         flash('ليس لديك صلاحية لتعديل هذه الفاتورة', 'danger')
         return redirect(url_for('sales.index'))
-    
+
     # منع التعديل للفواتير المدفوعة أو الملغاة
     if sale.payment_status == 'paid':
         flash('⚠️ لا يمكن تعديل فاتورة مدفوعة بالكامل.\n💡 الفواتير المدفوعة لا يمكن تعديلها محاسبياً.', 'danger')
         return redirect(url_for('sales.view', id=id))
-    
+
     if sale.status == 'cancelled':
         flash('⚠️ لا يمكن تعديل فاتورة ملغاة.\n💡 قم بإنشاء فاتورة جديدة بدلاً من ذلك.', 'danger')
         return redirect(url_for('sales.view', id=id))
-    
+
     if request.method == 'POST':
         try:
             # السماح فقط بتعديل الملاحظات والخصم
             sale.notes = request.form.get('notes', '')
             discount_amount = request.form.get('discount_amount', type=float, default=0)
             sale.discount_amount = discount_amount
-            
+
             # إعادة حساب الإجماليات
             sale.calculate_totals()
-            
+
             db.session.commit()
             create_audit_log('update', 'sales', id)
-            
+
             flash('✅ تم تحديث الفاتورة بنجاح!', 'success')
             return redirect(url_for('sales.view', id=id))
-        
+
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f'Sale edit error: {e}')
             flash('❌ حدث خطأ في تحديث الفاتورة. يرجى المحاولة مرة أخرى.', 'danger')
-    
+
     return render_template('sales/edit.html', sale=sale)
 
 
@@ -277,20 +276,20 @@ def cancel(id):
         from utils.error_messages import ErrorMessages
         flash(ErrorMessages.permission_denied('إلغاء الفواتير'), 'danger')
         return redirect(url_for('sales.index'))
-    
+
     sale = db.get_or_404(Sale, id)
-    
+
     try:
         SaleService.cancel_sale(sale)
-        
+
         create_audit_log('cancel', 'sales', sale.id)
-        
+
         flash('✅ تم إلغاء الفاتورة بنجاح!', 'success')
-    
+
     except Exception as e:
         current_app.logger.error(f'Sale cancel error: {e}')
         flash('❌ حدث خطأ في إلغاء الفاتورة. يرجى المحاولة مرة أخرى.', 'danger')
-    
+
     return redirect(url_for('sales.view', id=id))
 
 
@@ -299,18 +298,18 @@ def cancel(id):
 def api_get_price():
     product_id = request.args.get('product_id', type=int)
     customer_id = request.args.get('customer_id', type=int)
-    
+
     if not product_id or not customer_id:
         return jsonify({'error': 'Missing parameters'}), 400
-    
+
     product = db.session.get(Product, product_id)
     customer = db.session.get(Customer, customer_id)
-    
+
     if not product or not customer:
         return jsonify({'error': 'Not found'}), 404
-    
+
     price = product.get_price_for_customer(customer.customer_type)
-    
+
     return jsonify({
         'price': float(price),
         'cost_price': float(product.cost_price) if current_user.can_see_costs() else None,
@@ -326,13 +325,13 @@ def archived():
     """عرض المبيعات المؤرشفة"""
     from models import ArchivedRecord
     from datetime import datetime
-    
+
     archived_sales_query = db.session.query(ArchivedRecord).filter(
         ArchivedRecord.table_name == 'sales'
     )
-    
+
     archived_items = []
-    
+
     for archived in archived_sales_query.all():
         data = archived.data
         # Get the actual sale to retrieve customer name
@@ -340,16 +339,16 @@ def archived():
         archived_items.append({
             'id': archived.record_id,
             'sale_number': data.get('sale_number'),
-            'sale_date': datetime.fromisoformat(data.get('sale_date').replace('Z', '+00:00')) if isinstance(data.get('sale_date'), str) else data.get('sale_date'),
+            'sale_date': datetime.fromisoformat(data.get('sale_date').replace('Z', '+00:00')) if isinstance(data.get('sale_date'), str) else data.get('sale_date'),  # noqa: E501
             'customer': sale.customer if sale else None,
             'total_amount': float(data.get('total_amount', 0)),
             'currency': data.get('currency'),
             'payment_status': data.get('payment_status'),
             'archived_at': archived.archived_at
         })
-    
+
     archived_items.sort(key=lambda x: x['archived_at'], reverse=True)
-    
+
     return render_template('sales/archived.html', sales=archived_items)
 
 
@@ -361,22 +360,22 @@ def delete(id):
     from services.archive_service import ArchiveService
     from models import Payment, Cheque, GLJournalEntry
     from services.gl_service import GLService
-    
+
     sale = db.get_or_404(Sale, id)
-    
+
     # IDOR protection: sellers can only delete their own invoices
     if current_user.is_seller() and sale.seller_id != current_user.id:
         flash('ليس لديك صلاحية لحذف هذه الفاتورة', 'danger')
         return redirect(url_for('sales.index'))
-    
+
     # التحقق من الارتباطات
     has_links = False
-    
+
     # 1. التحقق من المدفوعات (Payments)
     linked_payments = Payment.query.filter_by(sale_id=sale.id).count()
     if linked_payments > 0:
         has_links = True
-        
+
     # 2. التحقق من الشيكات (Cheques)
     linked_cheques = Cheque.query.filter_by(sale_id=sale.id).count()
     if linked_cheques > 0:
@@ -398,10 +397,10 @@ def delete(id):
 
             archive_service = ArchiveService()
             archive_service.archive_record('sales', sale, reason='تم أرشفة الفاتورة لوجود ارتباطات مالية', commit=False)
-            
+
             # يمكن أرشفة المدفوعات والشيكات المرتبطة أيضاً إذا لزم الأمر، ولكن سنكتفي بأرشفة الفاتورة حالياً
             # أو يمكن تركها كما هي ولكن الفاتورة ستختفي من القائمة النشطة
-            
+
             create_audit_log('archive', 'sales', id)
             db.session.commit()
             flash(f'✅ تم أرشفة الفاتورة "{sale.sale_number}" (لوجود ارتباطات مالية)', 'warning')
@@ -409,18 +408,18 @@ def delete(id):
             # حذف نهائي (Hard Delete)
             # 1. حذف البنود (SaleLines) - يتم تلقائياً عادةً عبر cascade ولكن للأمان
             SaleLine.query.filter_by(sale_id=sale.id).delete()
-            
+
             # 2. حذف القيود المحاسبية
             GLJournalEntry.query.filter_by(reference_type='Sale', reference_id=sale.id).delete()
-            
+
             # 3. حذف الفاتورة
             db.session.delete(sale)
             create_audit_log('delete', 'sales', id)
             db.session.commit()
             flash(f'✅ تم حذف الفاتورة "{sale.sale_number}" نهائياً', 'success')
-            
+
         return redirect(url_for('sales.index'))
-        
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'Sale delete error: {e}')
@@ -434,9 +433,9 @@ def delete(id):
 def archive(id):
     """أرشفة فاتورة"""
     from services.archive_service import ArchiveService
-    
+
     sale = db.get_or_404(Sale, id)
-    
+
     try:
         # عكس القيد المحاسبي قبل الأرشفة (إذا لم تكن ملغاة)
         if sale.status != 'cancelled':
@@ -453,9 +452,9 @@ def archive(id):
         archive_service = ArchiveService()
         archive_service.archive_record('sales', sale, reason='تم أرشفة فاتورة المبيعات')
         create_audit_log('archive', 'sales', sale.id)
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-    
+
     return redirect(url_for('sales.index'))
 
 
@@ -465,19 +464,19 @@ def archive(id):
 def restore(id):
     """استعادة فاتورة من الأرشيف"""
     from models import ArchivedRecord
-    
+
     archived = ArchivedRecord.query.filter_by(
         table_name='sales',
         record_id=id
     ).first_or_404()
-    
+
     try:
         db.session.delete(archived)
         db.session.commit()
         create_audit_log('restore', 'sales', id)
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-    
+
     return redirect(url_for('sales.archived'))
 
 
@@ -492,16 +491,16 @@ def api_calculate_sale_totals():
     """API لحساب إجماليات فاتورة المبيعات - Backend Calculation"""
     try:
         from decimal import Decimal
-        
+
         data = request.get_json(force=True)
         if not data:
             return jsonify({'success': False, 'error': 'No data provided'}), 400
-        
+
         lines = data.get('lines', [])
         discount_amount = Decimal(str(data.get('discount_amount', 0)))
         shipping_cost = Decimal(str(data.get('shipping_cost', 0)))
         tax_rate = Decimal(str(data.get('tax_rate', 0)))
-        
+
         # حساب المجموع الفرعي
         subtotal = Decimal('0')
         for line in lines:
@@ -509,7 +508,7 @@ def api_calculate_sale_totals():
                 qty = Decimal(str(line.get('quantity', 0)))
                 price = Decimal(str(line.get('unit_price', 0)))
                 discount_percent = Decimal(str(line.get('discount_percent', 0)))
-                
+
                 if qty > 0 and price > 0:
                     line_subtotal = qty * price
                     line_discount = line_subtotal * (discount_percent / Decimal('100'))
@@ -517,12 +516,12 @@ def api_calculate_sale_totals():
                     subtotal += line_total
             except (ValueError, TypeError, KeyError):
                 continue
-        
+
         # حساب الإجماليات
         after_discount = subtotal - discount_amount + shipping_cost
         tax_amount = after_discount * (tax_rate / Decimal('100'))
         total = after_discount + tax_amount
-        
+
         return jsonify({
             'success': True,
             'subtotal': float(subtotal),
@@ -531,8 +530,8 @@ def api_calculate_sale_totals():
             'tax_rate': float(tax_rate),
             'tax_amount': float(tax_amount),
             'total': float(total),
-            'line_count': len([l for l in lines if Decimal(str(l.get('quantity', 0))) > 0])
+            'line_count': len([ln for ln in lines if Decimal(str(ln.get('quantity', 0))) > 0])
         }), 200
-        
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

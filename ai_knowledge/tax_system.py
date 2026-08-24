@@ -47,10 +47,11 @@ UAE_TAX_SYSTEM = {
     }
 }
 
+
 def get_tax_advice(question):
     """نصائح ضريبية"""
     q_lower = question.lower()
-    
+
     if 'ضريبة' in q_lower or 'vat' in q_lower:
         if 'نسبة' in q_lower or 'كم' in q_lower:
             return """💰 **الضرائب في الإمارات:**
@@ -69,7 +70,7 @@ def get_tax_advice(question):
 • قيمة البضاعة: 100,000 درهم
 • ضريبة القيمة المضافة: 5,000 درهم
 • الإجمالي: 105,000 درهم"""
-        
+
         return "اسألني بشكل أوضح عن الضرائب"
-    
+
     return "اسألني عن الضرائب بشكل أوضح"

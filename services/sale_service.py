@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from flask import current_app
 from extensions import db
@@ -28,6 +29,14 @@ class SaleService:
         if not lines_data or len(lines_data) == 0:
             raise ValueError('⚠️ يجب إضافة منتج واحد على الأقل للفاتورة.\n💡 اضغط زر "➕ إضافة صف" واختر منتجاً.')
         
+        # --- Fiscal Period Check ---
+        from services.erp_modules_service import FiscalPeriodService
+        if not FiscalPeriodService.is_period_open(date.today()):
+            raise ValueError(
+                '⚠️ الفترة المالية الحالية مغلقة.\n'
+                '💡 لا يمكن إنشاء فواتير في فترة مالية مقفلة.'
+            )
+
         # Validate discount and tax
         discount_decimal = Decimal(str(discount_amount)) if discount_amount else Decimal('0')
         shipping_decimal = Decimal(str(shipping_cost)) if shipping_cost else Decimal('0')

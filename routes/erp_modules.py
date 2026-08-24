@@ -261,10 +261,12 @@ def create_fiscal_period():
 
 @erp_bp.route('/fiscal-periods/<int:id>/close', methods=['POST'])
 @login_required
-@permission_required('manage_ledger')
+@admin_required
 def close_fiscal_period(id):
+    """Close fiscal period — admin only (owner/super_admin)"""
     try:
         FiscalPeriodService.close_period(id, current_user.id)
+        create_audit_log('close', 'fiscal_periods', id)
         flash('✅ تم إغلاق الفترة المالية', 'success')
     except ValueError as e:
         flash(f'⚠️ {str(e)}', 'danger')
@@ -273,11 +275,13 @@ def close_fiscal_period(id):
 
 @erp_bp.route('/fiscal-periods/<int:id>/reopen', methods=['POST'])
 @login_required
-@permission_required('manage_ledger')
+@admin_required
 def reopen_fiscal_period(id):
+    """Reopen fiscal period — admin only (owner/super_admin)"""
     fp = FiscalPeriod.query.get_or_404(id)
     fp.reopen()
     db.session.commit()
+    create_audit_log('reopen', 'fiscal_periods', id)
     flash('✅ تم إعادة فتح الفترة المالية', 'success')
     return redirect(url_for('erp_modules.fiscal_periods'))
 
@@ -408,10 +412,12 @@ def view_stocktake(id):
 
 @erp_bp.route('/stock-takes/<int:id>/approve', methods=['POST'])
 @login_required
-@permission_required('manage_warehouse')
+@admin_required
 def approve_stocktake(id):
+    """Approve stock take and apply variances — admin only (owner/super_admin)"""
     try:
         StockTakeService.approve_stocktake(id, current_user.id)
+        create_audit_log('approve', 'stock_takes', id)
         flash('✅ تم اعتماد الجرد وتحديث المخزون', 'success')
     except ValueError as e:
         flash(f'⚠️ {str(e)}', 'danger')

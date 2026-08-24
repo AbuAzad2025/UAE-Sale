@@ -78,15 +78,23 @@ class QuotationService:
         if q.is_expired:
             raise ValueError('عرض الأسعار منتهي الصلاحية')
 
+        from models import Customer, User, Product as Prod
+        customer = Customer.query.get(q.customer_id)
+        seller = User.query.get(q.seller_id)
+        lines_data = []
+        for l in q.lines:
+            product = Prod.query.get(l.product_id)
+            if product:
+                lines_data.append({
+                    'product': product,
+                    'quantity': l.quantity,
+                    'unit_price': l.unit_price,
+                    'discount_percent': l.discount_percent,
+                })
         sale = SaleService.create_sale(
-            customer_id=q.customer_id,
-            seller_id=q.seller_id,
-            lines_data=[{
-                'product_id': l.product_id,
-                'quantity': float(l.quantity),
-                'unit_price': float(l.unit_price),
-                'discount_percent': float(l.discount_percent),
-            } for l in q.lines],
+            customer=customer,
+            seller=seller,
+            lines_data=lines_data,
             warehouse_id=q.warehouse_id,
             currency=q.currency,
             user_exchange_rate=float(q.exchange_rate),
@@ -174,6 +182,10 @@ class PurchaseOrderService:
             currency=po.currency,
             exchange_rate=po.exchange_rate,
             user_id=user_id,
+            subtotal=Decimal('0'),
+            tax_amount=Decimal('0'),
+            total_amount=Decimal('0'),
+            amount_aed=Decimal('0'),
         )
         db.session.add(purchase)
         db.session.flush()
@@ -296,16 +308,16 @@ class StockTransferService:
 
         for line in transfer.lines:
             # Deduct from source
-            StockService._adjust_stock(
-                line.product_id, transfer.from_warehouse_id,
-                -line.quantity, 'transfer_out',
-                f'Transfer OUT to {transfer.transfer_number}'
+            StockService.adjust_stock(
+                line.product_id, -line.quantity,
+                notes=f'Transfer OUT to {transfer.transfer_number}',
+                warehouse_id=transfer.from_warehouse_id
             )
             # Add to destination
-            StockService._adjust_stock(
-                line.product_id, transfer.to_warehouse_id,
-                line.quantity, 'transfer_in',
-                f'Transfer IN from {transfer.transfer_number}'
+            StockService.adjust_stock(
+                line.product_id, line.quantity,
+                notes=f'Transfer IN from {transfer.transfer_number}',
+                warehouse_id=transfer.to_warehouse_id
             )
 
         transfer.status = 'received'
@@ -369,10 +381,10 @@ class StockTakeService:
 
         for item in st.items:
             if item.variance and item.variance != 0:
-                StockService._adjust_stock(
-                    item.product_id, st.warehouse_id,
-                    item.variance, 'adjustment',
-                    f'Stock Take Adjustment: {st.stocktake_number}'
+                StockService.adjust_stock(
+                    item.product_id, item.variance,
+                    notes=f'Stock Take Adjustment: {st.stocktake_number}',
+                    warehouse_id=st.warehouse_id
                 )
 
         st.status = 'approved'
@@ -396,7 +408,10 @@ class DunningService:
 
         letters = []
         for sale in overdue_sales:
-            days_overdue = (date.today() - sale.sale_date.date()).days if sale.sale_date else 0
+            sale_date = sale.sale_date
+            if hasattr(sale_date, 'date') and callable(sale_date.date):
+                sale_date = sale_date.date()
+            days_overdue = (date.today() - sale_date).days if sale_date else 0
             if days_overdue < 15:
                 continue
 

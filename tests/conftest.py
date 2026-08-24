@@ -58,10 +58,28 @@ def db(app):
     SQLite: in-memory, same approach.
     """
     with app.app_context():
+        if IS_POSTGRES:
+            # Drop all tables first (clean slate) ignoring FK errors
+            try:
+                _db.session.execute(_db.text(
+                    'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+                ))
+                _db.session.commit()
+            except Exception:
+                _db.session.rollback()
         _db.create_all()
         yield _db
         _db.session.rollback()
-        _db.drop_all()
+        if IS_POSTGRES:
+            try:
+                _db.session.execute(_db.text(
+                    'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+                ))
+                _db.session.commit()
+            except Exception:
+                _db.session.rollback()
+        else:
+            _db.drop_all()
 
 
 @pytest.fixture(scope='function')

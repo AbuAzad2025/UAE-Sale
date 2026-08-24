@@ -206,8 +206,18 @@ jobs:
           OWNER_PASSWORD: "TestOwner1234567890123456"
           APP_ENV: testing
           DEBUG: "true"
+          FLASK_APP: "app:create_app"
         run: |
-          flask db upgrade head
+          echo "=== Checking DB connectivity ==="
+          python -c "import psycopg2; conn=psycopg2.connect('postgresql://azad_test:azad_test@localhost:5432/azad_test'); print('DB OK'); conn.close()" || echo 'psycopg2 direct check failed'
+          echo "=== Running flask db upgrade ==="
+          flask db upgrade head 2>&1
+          EXIT_CODE=$?
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "=== MIGRATION FAILED (exit code $EXIT_CODE) ==="
+            flask db current 2>&1 || true
+            exit $EXIT_CODE
+          fi
           echo "=== Schema applied ==="
       - name: Run integration tests
         env:
@@ -298,7 +308,17 @@ jobs:
           OWNER_PASSWORD: "TestOwner1234567890123456"
           APP_ENV: testing
           DEBUG: "true"
+          FLASK_APP: "app:create_app"
         run: |
-          flask db upgrade head
+          echo "=== Checking Flask CLI ==="
+          flask --version
+          flask db upgrade head 2>&1
+          EXIT_CODE=$?
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "=== MIGRATION FAILED (exit code $EXIT_CODE) ==="
+            flask db current 2>&1 || true
+            flask db history 2>&1 || true
+            exit $EXIT_CODE
+          fi
           echo "=== Migration applied successfully ==="
           flask db current

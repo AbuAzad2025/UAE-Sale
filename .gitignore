@@ -41,8 +41,15 @@ logs/
 .env
 .env.local
 .env.production
+.env.pythonanywhere
+env.pythonanywhere
 production_db_info.txt
 postgres_console_commands.txt
+
+# Secrets & deployment files (NEVER commit these)
+nowpayments_config.py
+deploy_db.ps1
+deploy_dump.sql
 
 # IDE
 .vscode/

@@ -13,7 +13,16 @@ from models.login_history import LoginHistory
 from models.security_alert import SecurityAlert
 from models.api_key import APIKey
 from utils.decorators import owner_required, permission_required
+from utils.db_safety import validate_table_name, validate_backup_filename
 from sqlalchemy import text, inspect
+
+
+def get_allowed_table_names_safe():
+    """Get a set of allowed table names for safe SQL queries."""
+    try:
+        return set(inspect(db.engine).get_table_names())
+    except Exception:
+        return set()
 import json
 import os
 import shutil
@@ -644,14 +653,14 @@ def database_tools():
     
     tables_info = []
     
-    for table_name in inspector.get_table_names():
-        columns = inspector.get_columns(table_name)
-        indexes = inspector.get_indexes(table_name)
+    for tbl_name in inspector.get_table_names():
+        columns = inspector.get_columns(tbl_name)
+        indexes = inspector.get_indexes(tbl_name)
         
-        row_count = db.session.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar()
+        row_count = db.session.execute(text(f"SELECT COUNT(*) FROM {tbl_name}")).scalar()
         
         tables_info.append({
-            'name': table_name,
+            'name': tbl_name,
             'columns_count': len(columns),
             'indexes_count': len(indexes),
             'rows_count': row_count
@@ -664,7 +673,14 @@ def database_tools():
 @login_required
 @owner_required
 def execute_query():
+    """Execute a safe, parameterized SQL query.
+    
+    SECURITY: Only allows SELECT queries on whitelisted tables.
+    UPDATE/INSERT/DELETE are blocked — use the application's normal
+    CRUD routes for data modifications.
+    """
     from sqlalchemy import text
+    import re
     
     query_text = request.form.get('query', '').strip()
     
@@ -673,37 +689,47 @@ def execute_query():
     
     query_lower = query_text.lower()
     
-    is_select = query_lower.startswith('select')
-    is_safe = is_select or query_lower.startswith(('update', 'insert', 'delete'))
+    # Only allow SELECT queries
+    if not query_lower.lstrip().startswith('select'):
+        return jsonify({'error': 'Only SELECT queries are allowed via this endpoint'}), 400
     
-    if not is_safe:
-        return jsonify({'error': 'Only SELECT, UPDATE, INSERT, DELETE allowed'}), 400
+    # Block dangerous SQL patterns
+    dangerous_patterns = [
+        r'\b(drop\b)', r'\b(alter\b)', r'\b(create\b)', r'\b(truncate\b)',
+        r'\b(grant\b)', r'\b(revoke\b)', r'\b(exec\b)', r'\b(execute\b)',
+        r'\b(into\s+outfile\b)', r'\b(load_file\b)', r'\b(pg_read_file\b)',
+        r'\b(pg_write_file\b)', r'\b\\x[0-9a-f]',
+        r';\s*\w',  # stacked queries
+        r'\bunion\b.*\bselect\b',  # UNION-based injection
+        r'\binformation_schema\b', r'\bpg_catalog\b',
+        r'\bpg_tables\b', r'\bpg_class\b',
+    ]
+    for pattern in dangerous_patterns:
+        if re.search(pattern, query_lower):
+            return jsonify({'error': 'Query contains disallowed patterns'}), 400
+    
+    # Validate that all referenced tables exist (extract FROM/JOIN table names)
+    table_refs = re.findall(r'\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)', query_lower)
+    allowed = get_allowed_table_names_safe()
+    for tbl in table_refs:
+        if tbl not in allowed:
+            return jsonify({'error': f'Table not accessible: {tbl}'}), 400
     
     try:
         result = db.session.execute(text(query_text))
+        rows = result.fetchall()
+        columns = result.keys()
         
-        if is_select:
-            rows = result.fetchall()
-            columns = result.keys()
-            
-            data = [dict(zip(columns, row)) for row in rows]
-            
-            return jsonify({
-                'success': True,
-                'rows': data,
-                'count': len(data)
-            })
-        else:
-            db.session.commit()
-            
-            return jsonify({
-                'success': True,
-                'message': f'Query executed. Rows affected: {result.rowcount}'
-            })
-    
+        data = [dict(zip(columns, row)) for row in rows]
+        
+        return jsonify({
+            'success': True,
+            'rows': data[:500],  # Limit to 500 rows max
+            'count': len(data)
+        })
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': 'Query execution failed'}), 400
 
 
 @owner_bp.route('/integrations')
@@ -874,7 +900,11 @@ def verify_backup(filename):
     from services.backup_service import BackupService
     import os
 
-    backup_path = os.path.join(BackupService.BACKUP_DIR, filename)
+    try:
+        backup_path = validate_backup_filename(filename, BackupService.BACKUP_DIR)
+    except ValueError:
+        return jsonify({'success': False, 'message': 'Invalid backup filename'}), 400
+
     if not os.path.exists(backup_path):
         return jsonify({'success': False, 'message': 'Backup not found'}), 404
 
@@ -890,6 +920,13 @@ def verify_backup(filename):
 def restore_backup(filename):
     """استعادة نسخة احتياطية - للمالك فقط!"""
     from services.backup_service import BackupService
+    
+    # SECURITY: Validate filename to prevent path traversal
+    try:
+        validate_backup_filename(filename, BackupService.BACKUP_DIR)
+    except ValueError:
+        flash('❌ اسم ملف غير صحيح!', 'danger')
+        return redirect(url_for('owner.list_backups'))
     
     # أمان إضافي - التأكد من أن المستخدم هو المالك
     if not current_user.is_owner:
@@ -942,6 +979,13 @@ def restore_backup(filename):
 def custom_restore_backup(filename):
     """استعادة مخصصة - جداول محددة فقط"""
     from services.backup_service import BackupService
+    
+    # SECURITY: Validate filename to prevent path traversal
+    try:
+        validate_backup_filename(filename, BackupService.BACKUP_DIR)
+    except ValueError:
+        flash('❌ اسم ملف غير صحيح!', 'danger')
+        return redirect(url_for('owner.list_backups'))
     
     if not str(filename or '').endswith('.dump'):
         flash('❌ الاستعادة المخصصة تتطلب نسخة بصيغة .dump', 'danger')
@@ -1001,13 +1045,17 @@ def delete_backup():
         flash('❌ اسم الملف مطلوب!', 'danger')
         return redirect(url_for('owner.list_backups'))
     
+    # SECURITY: Validate filename to prevent path traversal
+    try:
+        validate_backup_filename(filename, BackupService.BACKUP_DIR)
+    except ValueError:
+        flash('❌ اسم ملف غير صحيح!', 'danger')
+        return redirect(url_for('owner.list_backups'))
+    
     # التحقق من الصلاحيات
     if not current_user.is_owner:
         flash('❌ غير مصرح - الحذف للمالك فقط!', 'danger')
         return redirect(url_for('owner.list_backups'))
-    
-    # تم إزالة حماية النسخ التلقائية للسماح للمالك بحذفها
-    # if BackupService.BACKUP_PREFIX in filename: ...
     
     # التحقق من أن النسخة موجودة
     backups = BackupService.list_backups()
@@ -1037,8 +1085,12 @@ def download_backup(filename):
     from flask import send_file
     import os
     
-    # التحقق من أن النسخة موجودة
-    backup_path = os.path.join(BackupService.BACKUP_DIR, filename)
+    # SECURITY: Validate path to prevent path traversal
+    try:
+        backup_path = validate_backup_filename(filename, BackupService.BACKUP_DIR)
+    except ValueError:
+        flash('❌ اسم ملف غير صحيح!', 'danger')
+        return redirect(url_for('owner.list_backups'))
     
     if not os.path.exists(backup_path):
         flash('❌ النسخة الاحتياطية غير موجودة!', 'danger')
@@ -1053,7 +1105,7 @@ def download_backup(filename):
             mimetype=mimetype
         )
     except Exception as e:
-        flash(f'❌ فشل التحميل: {str(e)}', 'danger')
+        flash(f'❌ فشل التحميل.', 'danger')
         return redirect(url_for('owner.list_backups'))
 
 
@@ -1086,9 +1138,16 @@ def truncate_table():
         flash('❌ يجب كتابة YES_DELETE_ALL للتأكيد', 'danger')
         return redirect(url_for('owner.database_tools'))
     
-    protected_tables = ['user', 'role', 'permission']
+    protected_tables = ['users', 'roles', 'permissions', 'tenants', 'role_permissions']
     if table_name in protected_tables:
         flash('❌ لا يمكن مسح الجداول المحمية', 'danger')
+        return redirect(url_for('owner.database_tools'))
+    
+    # SECURITY: Validate table name against actual database schema
+    try:
+        validate_table_name(table_name)
+    except ValueError as e:
+        flash(f'❌ {e}', 'danger')
         return redirect(url_for('owner.database_tools'))
     
     try:
@@ -1119,6 +1178,13 @@ def browse_table(table_name):
     """تصفح محتويات جدول"""
     page = request.args.get('page', 1, type=int)
     per_page = 50
+    
+    # SECURITY: Validate table name against actual database schema
+    try:
+        validate_table_name(table_name)
+    except ValueError as e:
+        flash(f'❌ {e}', 'danger')
+        return redirect(url_for('owner.database_tools'))
     
     try:
         count_result = db.session.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
@@ -1152,6 +1218,13 @@ def browse_table(table_name):
 @owner_required
 def edit_table_data(table_name):
     """تعديل بيانات الجدول"""
+    # SECURITY: Validate table name against actual database schema
+    try:
+        validate_table_name(table_name)
+    except ValueError as e:
+        flash(f'❌ {e}', 'danger')
+        return redirect(url_for('owner.database_tools'))
+    
     try:
         # جلب بيانات الجدول
         result = db.session.execute(text(f"SELECT * FROM {table_name} LIMIT 100"))
@@ -1172,31 +1245,33 @@ def edit_table_data(table_name):
 @login_required
 @owner_required
 def sql_console():
-    """SQL Console - تنفيذ استعلامات مباشرة"""
+    """SQL Console - READ-ONLY queries only.
+    
+    SECURITY: Only SELECT queries allowed. Write operations must use
+    the application's normal CRUD routes.
+    """
     result_data = None
     error = None
     
     if request.method == 'POST':
         sql_query = request.form.get('sql_query', '').strip()
         
-        dangerous_keywords = ['DROP DATABASE', 'DROP SCHEMA']
-        if any(keyword in sql_query.upper() for keyword in dangerous_keywords):
+        # Only allow SELECT queries
+        query_upper = sql_query.upper().strip()
+        if not query_upper.startswith('SELECT'):
+            error = '❌ فقط الاستعلامات SELECT مسموح بها عبر وحدة التحكم'
+        elif any(kw in query_upper for kw in ['DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'GRANT', 'REVOKE', 'EXEC', 'INTO OUTFILE', 'LOAD_FILE', 'PG_READ_FILE', 'PG_WRITE_FILE']):
             error = '❌ استعلام خطير! غير مسموح.'
         else:
             try:
                 result = db.session.execute(text(sql_query))
-                
-                if sql_query.strip().upper().startswith('SELECT'):
-                    rows = result.fetchall()
-                    columns = result.keys()
-                    result_data = {
-                        'columns': list(columns),
-                        'rows': [list(row) for row in rows],
-                        'count': len(rows)
-                    }
-                else:
-                    db.session.commit()
-                    result_data = {'message': '✅ تم تنفيذ الاستعلام بنجاح'}
+                rows = result.fetchall()
+                columns = result.keys()
+                result_data = {
+                    'columns': list(columns),
+                    'rows': [list(row) for row in rows[:500]],  # Limit 500 rows
+                    'count': len(rows)
+                }
                 
                 from utils.helpers import create_audit_log
                 create_audit_log(
@@ -1248,12 +1323,13 @@ def export_database():
             export_data = {}
             inspector = inspect(db.engine)
             
-            for table_name in inspector.get_table_names(schema='public'):
-                result = db.session.execute(text(f"SELECT * FROM {table_name}"))
+            # SECURITY: Use validated table names from inspector (not user input)
+            for tbl_name in inspector.get_table_names(schema='public'):
+                result = db.session.execute(text(f"SELECT * FROM {tbl_name}"))
                 rows = result.fetchall()
                 columns = result.keys()
                 
-                export_data[table_name] = [
+                export_data[tbl_name] = [
                     dict(zip(columns, row)) for row in rows
                 ]
             

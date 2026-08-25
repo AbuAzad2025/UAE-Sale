@@ -308,7 +308,7 @@ class GLService:
             notes=notes,
             total_debit=total_debit,
             total_credit=total_credit,
-            created_by=created_by or (current_user.id if current_user.is_authenticated else None)
+            created_by=created_by or (current_user.id if (current_user and current_user.is_authenticated) else None)
         )
         db.session.add(entry)
         db.session.flush()

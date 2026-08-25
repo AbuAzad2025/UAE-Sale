@@ -3,8 +3,16 @@
 """
 
 from decimal import Decimal
-from datetime import datetime, date
+from datetime import datetime, date, time
 from models import Customer, Supplier, Sale, Purchase
+
+
+def _day_end(d):
+    """نهاية اليوم لعمود DateTime — يمنع استبعاد حركات اليوم نفسه
+    (مقارنة timestamp <= تاريخ تُسقط كل ما بعد منتصف الليل)."""
+    if isinstance(d, datetime):
+        return d
+    return datetime.combine(d, time.max)
 
 
 class AgingAnalysisService:
@@ -58,7 +66,7 @@ class AgingAnalysisService:
             unpaid_sales = Sale.query.filter(
                 Sale.customer_id == customer.id,
                 Sale.payment_status.in_(['partial', 'pending']),
-                Sale.sale_date <= as_of_date
+                Sale.sale_date <= _day_end(as_of_date)
             ).order_by(Sale.sale_date).all()
 
             for sale in unpaid_sales:
@@ -171,7 +179,7 @@ class AgingAnalysisService:
             unpaid_purchases = Purchase.query.filter(
                 Purchase.supplier_id == supplier.id,
                 Purchase.payment_status.in_(['partial', 'pending']),
-                Purchase.purchase_date <= as_of_date
+                Purchase.purchase_date <= _day_end(as_of_date)
             ).order_by(Purchase.purchase_date).all()
 
             for purchase in unpaid_purchases:

@@ -78,6 +78,16 @@ class TestReceivablesAging:
         result = AgingAnalysisService.get_receivables_aging()
         assert result['totals']['over_120'] == 150.0
 
+    def test_invoice_dated_today_included(self, db, test_customer):
+        """انحدار: فاتورة اليوم نفسه يجب ألا تُستبعد بفلتر التاريخ المجرد."""
+        today_sale = _sale(test_customer.id, 90, 0, 'pending', 0, 'S-AGE-TODAY')
+        db.session.add(today_sale)
+        db.session.commit()
+
+        result = AgingAnalysisService.get_receivables_aging(as_of_date=date.today())
+        assert result['totals']['total'] == 90.0
+        assert result['totals']['0-30'] == 90.0
+
 
 class TestPayablesAging:
     def test_supplier_buckets(self, db, owner_user):

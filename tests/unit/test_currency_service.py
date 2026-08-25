@@ -27,16 +27,18 @@ class TestBaseCurrency:
         assert CurrencyService.get_base_currency() == CurrencyService.DEFAULT_BASE
 
     def test_config_override(self, app, db):
-        app.config['DEFAULT_CURRENCY'] = 'USD'
-        try:
-            assert CurrencyService.get_base_currency() == 'USD'
-        finally:
-            app.config['DEFAULT_CURRENCY'] = CurrencyService.DEFAULT_BASE
+        with app.test_request_context():
+            app.config['DEFAULT_CURRENCY'] = 'USD'
+            try:
+                assert CurrencyService.get_base_currency() == 'USD'
+            finally:
+                app.config['DEFAULT_CURRENCY'] = CurrencyService.DEFAULT_BASE
 
     def test_system_settings_win(self, app, db):
         db.session.add(SystemSettings(default_currency='EUR', is_active=True))
         db.session.commit()
-        assert CurrencyService.get_base_currency() == 'EUR'
+        with app.test_request_context():
+            assert CurrencyService.get_base_currency() == 'EUR'
 
 
 class TestExchangeRateBasics:

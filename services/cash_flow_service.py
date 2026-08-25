@@ -40,14 +40,20 @@ class CashFlowService:
         if isinstance(period_end, str):
             period_end = datetime.strptime(period_end, '%Y-%m-%d').date()
 
+        # تطبيع الفترة لتغطية كامل يوم النهاية — مقارنة DateTime بتاريخ
+        # مجرد تُسقط كل حركات ما بعد منتصف ليل اليوم الأخير.
+        from datetime import time as _time
+        period_end_dt = datetime.combine(period_end, _time.max)
+        period_start_dt = datetime.combine(period_start, _time.min)
+
         # 1. الأنشطة التشغيلية (Operating Activities)
-        operating = CashFlowService._get_operating_activities(period_start, period_end)
+        operating = CashFlowService._get_operating_activities(period_start_dt, period_end_dt)
 
         # 2. الأنشطة الاستثمارية (Investing Activities)
-        investing = CashFlowService._get_investing_activities(period_start, period_end)
+        investing = CashFlowService._get_investing_activities(period_start_dt, period_end_dt)
 
         # 3. الأنشطة التمويلية (Financing Activities)
-        financing = CashFlowService._get_financing_activities(period_start, period_end)
+        financing = CashFlowService._get_financing_activities(period_start_dt, period_end_dt)
 
         # 4. حساب النقدية
         cash_accounts = GLAccount.query.filter(

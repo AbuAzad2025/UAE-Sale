@@ -167,7 +167,7 @@ a.btn.btn-outline-secondary span {
                   <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المستودع الذي سيُخصم منه المخزون (إجباري)"></i>
                 </label>
                 <select name="warehouse_id" id="warehouse_id" class="form-control" required>
-                  <option value="" selected>بلا</option>
+                  <option value="" disabled selected>اختر المستودع...</option>
                   {% if warehouses %}
                     {% for warehouse in warehouses %}
                     <option value="{{ warehouse.id }}">

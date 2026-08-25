@@ -157,6 +157,11 @@
               <input type="checkbox" name="remember_me" id="remember">
               <label for="remember">{{ t('Remember Me') }}</label>
             </div>
+            <div class="mt-2">
+              <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank" class="text-muted small">
+                <i class="fas fa-key mr-1"></i>{{ t('Forgot password? Contact admin') }}
+              </a>
+            </div>
           </div>
           <div class="col-5">
             <button type="submit" class="btn btn-primary btn-block">

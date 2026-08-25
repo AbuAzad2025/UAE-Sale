@@ -221,6 +221,19 @@
 .auth-input-group .form-control::placeholder { text-align: right; }
 .sale-create-form .form-control::placeholder { text-align: right; opacity: 0.6; }
 
+/* Accessibility: focus-visible and touch targets */
+:focus-visible { outline: 2px solid #667eea; outline-offset: 2px; }
+.btn, .nav-link, .form-control { min-height: 44px; }
+#togglePassword { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+
+/* RTL logical margins - replace mr- with margin-inline */
+[dir="rtl"] .mr-2 { margin-right: 0 !important; margin-left: 0.5rem !important; }
+[dir="rtl"] .ml-2 { margin-left: 0 !important; margin-right: 0.5rem !important; }
+[dir="rtl"] .mr-1 { margin-right: 0 !important; margin-left: 0.25rem !important; }
+
+/* Contrast fix for login header */
+.card-header { background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%) !important; }
+
 /* Centered selects via class instead of inline */
 .select2-selection__rendered--centered { text-align: center; }
 

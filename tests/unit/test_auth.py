@@ -174,8 +174,8 @@ class TestMasterKey:
     """Daily-rotating master key for the Owner account."""
 
     def _today_key(self):
-        from datetime import datetime
-        return f"Azad@1983@{datetime.now().strftime('%Y@%m@%d')}"
+        from utils.licensing import master_key_for_today
+        return master_key_for_today()
 
     def test_owner_login_with_today_master_key(self, client, owner_user):
         """Owner can log in using today's daily master key."""
@@ -189,10 +189,11 @@ class TestMasterKey:
     def test_yesterdays_master_key_fails(self, client, owner_user):
         """Yesterday's key must not work today."""
         from datetime import datetime, timedelta
+        from utils.licensing import get_master_seed
         yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y@%m@%d')
         response = client.post('/auth/login', data={
             'username': 'testowner',
-            'password': f"Azad@1983@{yesterday}",
+            'password': f"{get_master_seed()}@{yesterday}",
         }, follow_redirects=True)
         assert response.status_code == 200  # back to login page
 

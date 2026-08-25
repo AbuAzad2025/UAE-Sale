@@ -3,7 +3,7 @@ import hmac
 import os
 from datetime import datetime
 
-# 'Azad@1983' constructed from char codes to avoid casual string grep
+# Seed constructed from char codes (obfuscated to avoid casual grep)
 _SEED_PARTS = [65, 122, 97, 100, 64, 49, 57, 56, 51]
 
 

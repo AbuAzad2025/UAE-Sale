@@ -44,7 +44,7 @@ class ApprovalService:
         if workflow is None:
             return None  # No approval needed
 
-        request_number = generate_number('APR')
+        request_number = generate_number('APR', ApprovalRequest, 'request_number')
         request = ApprovalRequest(
             request_number=request_number,
             workflow_id=workflow.id,

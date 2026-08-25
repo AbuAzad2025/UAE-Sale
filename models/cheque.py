@@ -34,7 +34,7 @@ class Cheque(TenantScopedMixin, db.Model):
 
     # المبلغ والعملة
     amount = db.Column(db.Numeric(15, 2), nullable=False)
-    currency = db.Column(db.String(10), default='AED')
+    currency = db.Column(db.String(10), default='ILS')
     exchange_rate = db.Column(db.Numeric(15, 6), default=Decimal('1.0'))  # سعر الصرف عند الإنشاء
     clearance_exchange_rate = db.Column(db.Numeric(15, 6))  # سعر الصرف عند الصرف الفعلي
     amount_aed = db.Column(db.Numeric(15, 2))  # المبلغ بالدرهم عند الإنشاء
@@ -208,14 +208,14 @@ class Cheque(TenantScopedMixin, db.Model):
         self.clearance_date = clearance_date or datetime.now().date()
 
         # حفظ سعر الصرف وقت الصرف إذا العملة مختلفة عن الدرهم
-        if self.currency != 'AED' and clearance_exchange_rate:
+        if self.currency != 'ILS' and clearance_exchange_rate:
             from services.currency_service import CurrencyService
             self.clearance_exchange_rate = Decimal(str(clearance_exchange_rate))
-        elif self.currency != 'AED':
+        elif self.currency != 'ILS':
             # جلب السعر الحالي تلقائياً
             from services.currency_service import CurrencyService
             try:
-                current_rate = CurrencyService.get_exchange_rate(self.currency, 'AED')
+                current_rate = CurrencyService.get_exchange_rate(self.currency, 'ILS')
                 self.clearance_exchange_rate = current_rate
             except Exception:
                 # إذا فشل جلب السعر، استخدم السعر الأصلي

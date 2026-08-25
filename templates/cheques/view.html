@@ -518,7 +518,7 @@ function cancelCheque() {
 function fetchCurrentExchangeRate() {
   // جلب سعر الصرف الحالي من API
   $.ajax({
-    url: '/api/currency-rate/{{ cheque.currency }}/AED',
+    url: '/api/currency-rate/{{ cheque.currency }}/ILS',
     method: 'GET',
     success: function(data) {
       if (data.rate) {

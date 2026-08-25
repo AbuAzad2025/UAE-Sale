@@ -102,7 +102,7 @@ class GLService:
                 parent_id=parent_id,
                 is_header=is_header,
                 level=level,
-                currency='AED'
+                currency='ILS'
             )
             db.session.add(acc)
             db.session.flush()
@@ -209,7 +209,7 @@ class GLService:
         return entry
 
     @staticmethod
-    def post_entry(lines, description='', reference_type=None, reference_id=None, currency='AED', exchange_rate=1):
+    def post_entry(lines, description='', reference_type=None, reference_id=None, currency='ILS', exchange_rate=1):
         def _unique_entry_number():
             y = datetime.now().strftime('%Y')
             from models import GLJournalEntry as _JE

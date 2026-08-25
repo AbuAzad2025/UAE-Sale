@@ -12,7 +12,7 @@ class GLAccount(db.Model):
     name_ar = db.Column(db.String(200))  # Arabic name
     parent_id = db.Column(db.Integer, db.ForeignKey('gl_accounts.id'))
     type = db.Column(db.String(20), nullable=False, index=True)  # asset, liability, equity, revenue, expense
-    currency = db.Column(db.String(3), default='AED', nullable=False)
+    currency = db.Column(db.String(3), default='ILS', nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     is_header = db.Column(db.Boolean, default=False)  # حساب رئيسي (لا يقبل قيود مباشرة)
     level = db.Column(db.Integer, default=0)  # مستوى الحساب في الشجرة
@@ -75,7 +75,7 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
     reference_type = db.Column(db.String(50))  # sale, purchase, payment, expense, manual, adjustment, closing, reversing
     reference_id = db.Column(db.Integer)
     entry_type = db.Column(db.String(30), default='manual')  # manual, auto, adjustment, closing, reversing
-    currency = db.Column(db.String(3), default='AED', nullable=False)
+    currency = db.Column(db.String(3), default='ILS', nullable=False)
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
     total_debit = db.Column(db.Numeric(18, 3), default=0)
     total_credit = db.Column(db.Numeric(18, 3), default=0)

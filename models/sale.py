@@ -36,7 +36,7 @@ class Sale(TenantScopedMixin, db.Model):
     paid_amount = db.Column(db.Numeric(15, 3), default=0)
     balance_due = db.Column(db.Numeric(15, 3), default=0)
 
-    currency = db.Column(db.String(3), default='AED', nullable=False)
+    currency = db.Column(db.String(3), default='ILS', nullable=False)
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
     amount_aed = db.Column(db.Numeric(15, 3), nullable=False)
     paid_amount_aed = db.Column(db.Numeric(15, 3), default=0)
@@ -90,7 +90,7 @@ class Sale(TenantScopedMixin, db.Model):
         )
 
         # Calculate amount in AED (Base Currency)
-        if self.currency == 'AED':
+        if self.currency == 'ILS':
             self.amount_aed = self.total_amount
         else:
             self.amount_aed = (self.total_amount * exchange_rate_decimal).quantize(
@@ -99,7 +99,7 @@ class Sale(TenantScopedMixin, db.Model):
 
         # Calculate paid amount AED based on transaction currency
         paid_foreign = Decimal(str(self.paid_amount)) if self.paid_amount else Decimal('0')
-        if self.currency == 'AED':
+        if self.currency == 'ILS':
             self.paid_amount_aed = paid_foreign
         else:
             self.paid_amount_aed = (paid_foreign * exchange_rate_decimal).quantize(
@@ -107,7 +107,7 @@ class Sale(TenantScopedMixin, db.Model):
             )
 
         # Calculate balance consistently
-        if self.currency == 'AED':
+        if self.currency == 'ILS':
             self.balance_due = (self.total_amount - self.paid_amount_aed).quantize(
                 Decimal('0.001'), rounding=ROUND_HALF_UP
             )
@@ -142,7 +142,7 @@ class Sale(TenantScopedMixin, db.Model):
         self.paid_amount_aed = total_confirmed_paid_aed
         try:
             ex = Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal('1')
-            if self.currency == 'AED':
+            if self.currency == 'ILS':
                 self.paid_amount = total_confirmed_paid_aed
             else:
                 self.paid_amount = (total_confirmed_paid_aed / ex).quantize(

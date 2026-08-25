@@ -40,7 +40,7 @@ class Quotation(db.Model):
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     total_amount = db.Column(db.Numeric(15, 3), default=0)
 
-    currency = db.Column(db.String(3), default='AED')
+    currency = db.Column(db.String(3), default='ILS')
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
     amount_aed = db.Column(db.Numeric(15, 3), default=0)
 
@@ -129,7 +129,7 @@ class PurchaseOrder(db.Model):
     tax_rate = db.Column(db.Numeric(5, 2), default=0)
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     total_amount = db.Column(db.Numeric(15, 3), default=0)
-    currency = db.Column(db.String(3), default='AED')
+    currency = db.Column(db.String(3), default='ILS')
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
 
     status = db.Column(db.String(20), default='draft', index=True)
@@ -365,7 +365,7 @@ class RecurringExpense(db.Model):
     name = db.Column(db.String(200), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'), nullable=False)
     amount = db.Column(db.Numeric(15, 3), nullable=False)
-    currency = db.Column(db.String(3), default='AED')
+    currency = db.Column(db.String(3), default='ILS')
     payment_method = db.Column(db.String(20), default='bank_transfer')
     supplier_name = db.Column(db.String(200))
     description = db.Column(db.Text)
@@ -510,7 +510,7 @@ class EInvoice(db.Model):
     total_amount = db.Column(db.Numeric(15, 3), nullable=False)
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     total_with_tax = db.Column(db.Numeric(15, 3), nullable=False)
-    currency = db.Column(db.String(3), default='AED')
+    currency = db.Column(db.String(3), default='ILS')
 
     # Status
     status = db.Column(db.String(20), default='draft', index=True)

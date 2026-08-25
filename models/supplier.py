@@ -43,7 +43,7 @@ class Supplier(TenantScopedMixin, db.Model):
     # الحد الائتماني والعملة
     credit_limit = db.Column(db.Numeric(15, 3), default=0)
     payment_terms_days = db.Column(db.Integer, default=30)  # شروط الدفع بالأيام
-    preferred_currency = db.Column(db.String(3), default='AED')
+    preferred_currency = db.Column(db.String(3), default='ILS')
 
     # إحصائيات
     total_purchases_aed = db.Column(db.Numeric(15, 3), default=0)

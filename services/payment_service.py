@@ -29,7 +29,7 @@ class PaymentService:
 
         customer_id = payment_data.get('customer_id')
         amount = payment_data.get('amount')
-        currency = payment_data.get('currency', 'AED')
+        currency = payment_data.get('currency', 'ILS')
         payment_method = payment_data.get('payment_method', 'cash')
         notes = payment_data.get('notes')
         user_exchange_rate = payment_data.get('user_exchange_rate')
@@ -53,7 +53,7 @@ class PaymentService:
 
             exchange_rate = CurrencyService.get_exchange_rate(
                 currency,
-                'AED',
+                'ILS',
                 user_rate=user_exchange_rate
             )
 

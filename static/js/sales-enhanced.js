@@ -421,7 +421,7 @@ $('#currency').on('change', function() {
     $rateInput.val('...').css('background-color', '#fff8dc');
     
     $.ajax({
-        url: `/api/currency-rate/${currency}/AED`,
+        url: `/api/currency-rate/${currency}/ILS`,
         success: function(data) {
             if (data.rate) {
                 serverExchangeRate = data.rate;

@@ -307,7 +307,7 @@ $(function() {
     }
     
     $.ajax({
-      url: `/api/currency-rate/${currency}/AED`,
+      url: `/api/currency-rate/${currency}/ILS`,
       method: 'GET',
       success: function(data) {
         if (data && data.rate) {

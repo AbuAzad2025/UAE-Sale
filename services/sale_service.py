@@ -12,7 +12,7 @@ from utils.helpers import generate_number
 class SaleService:
 
     @staticmethod
-    def create_sale(customer, seller, lines_data, warehouse_id=None, currency='AED', user_exchange_rate=None,  # noqa: C901
+    def create_sale(customer, seller, lines_data, warehouse_id=None, currency='ILS', user_exchange_rate=None,  # noqa: C901
                     discount_amount=0, shipping_cost=0, tax_rate=0, notes=None, payment_data=None):
         """
         Create a new sale with proper validations and decimal precision
@@ -74,7 +74,7 @@ class SaleService:
 
             exchange_rate = CurrencyService.get_exchange_rate(
                 currency,
-                'AED',
+                'ILS',
                 user_rate=user_exchange_rate
             )
 
@@ -169,7 +169,7 @@ class SaleService:
             # Handle payment if provided
             if payment_data:
                 paid_amount = Decimal(str(payment_data.get('amount', 0)))
-                payment_currency = payment_data.get('currency', 'AED')
+                payment_currency = payment_data.get('currency', 'ILS')
                 payment_exchange_rate = payment_data.get('exchange_rate', 1.0)
 
                 # Convert payment to AED
@@ -194,7 +194,7 @@ class SaleService:
                     sale.notes = (sale.notes or '') + payment_note
 
                 # Add payment currency info to notes if not AED
-                if payment_currency != 'AED':
+                if payment_currency != 'ILS':
                     payment_note = f"\n[دفعة] {paid_amount} {payment_currency} = {paid_amount_aed} AED (سعر: {payment_exchange_rate})"
                     sale.notes = (sale.notes or '') + payment_note
 
@@ -210,7 +210,7 @@ class SaleService:
                     sale=sale,
                     amount=payment_data['amount'],
                     payment_method=payment_data['payment_method'],
-                    currency=payment_data.get('currency', 'AED'),
+                    currency=payment_data.get('currency', 'ILS'),
                     exchange_rate=payment_data.get('exchange_rate', 1.0),
                     reference_number=payment_data.get('reference_number'),
                     cheque_number=payment_data.get('cheque_number'),
@@ -310,7 +310,7 @@ class SaleService:
                     description=f'COGS - Sale {sale.sale_number}',
                     reference_type='Sale',
                     reference_id=sale.id,
-                    currency='AED',
+                    currency='ILS',
                     exchange_rate=1.0
                 )
 
@@ -326,7 +326,7 @@ class SaleService:
             raise
 
     @staticmethod
-    def create_payment_for_sale(sale, amount, payment_method, currency='AED', exchange_rate=1.0,  # noqa: C901
+    def create_payment_for_sale(sale, amount, payment_method, currency='ILS', exchange_rate=1.0,  # noqa: C901
                                 reference_number=None, cheque_number=None, cheque_date=None,
                                 bank_name=None, notes=None):
         """

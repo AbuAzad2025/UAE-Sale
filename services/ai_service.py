@@ -609,9 +609,9 @@ class AIService:
             }
 
         default_rates = {
-            'USD': 3.67,
-            'EUR': 4.02,
-            'AED': 1.0
+            'USD': 3.70,
+            'EUR': 4.05,
+            'ILS': 1.0
         }
 
         return {

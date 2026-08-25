@@ -85,7 +85,7 @@ class ApprovalRequest(db.Model):
     entity_id = db.Column(db.Integer, nullable=False)
 
     amount = db.Column(db.Numeric(15, 3), nullable=False)
-    currency = db.Column(db.String(3), default='AED', nullable=False)
+    currency = db.Column(db.String(3), default='ILS', nullable=False)
 
     # Status: pending → approved | rejected | cancelled
     status = db.Column(db.String(20), default='pending', nullable=False, index=True)

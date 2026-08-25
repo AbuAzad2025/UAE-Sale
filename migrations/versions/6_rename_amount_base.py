@@ -4,6 +4,7 @@ Revision ID: 6_rename_amount_base
 Revises: 5_add_missing_indexes
 """
 from alembic import op
+import sqlalchemy as sa
 
 revision = '6_rename_amount_base'
 down_revision = '5_add_missing_indexes'
@@ -27,20 +28,37 @@ RENAMES = [
 ]
 
 
+def column_exists(table, column):
+    """Check if a column exists in a table."""
+    bind = op.get_bind()
+    result = bind.execute(
+        sa.text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = :table AND column_name = :column"
+        ),
+        {'table': table, 'column': column}
+    )
+    return result.scalar() is not None
+
+
 def upgrade():
     for table, old, new in RENAMES:
-        try:
-            with op.batch_alter_table(table) as batch_op:
-                batch_op.alter_column(column_name=old, new_column_name=new)
-        except Exception as e:
-            # Column may not exist in older schemas; log and continue
-            print(f"[migration] skip {table}.{old}: {e}")
+        if column_exists(table, old):
+            op.execute(f'ALTER TABLE {table} RENAME COLUMN {old} TO {new}')
+        else:
+            print(f"[migration] skip {table}.{old}: column does not exist")
+
+    # Update check constraint name in sales table
+    op.execute("""
+        ALTER TABLE sales
+        RENAME CONSTRAINT ck_sale_paid_non_negative TO ck_sale_paid_base_non_negative;
+    """)
 
 
 def downgrade():
     for table, old, new in RENAMES:
-        try:
-            with op.batch_alter_table(table) as batch_op:
-                batch_op.alter_column(column_name=new, new_column_name=old)
-        except Exception as e:
-            print(f"[migration downgrade] skip {table}.{new}: {e}")
+        # Check if new column exists before renaming back
+        if column_exists(table, new):
+            op.execute(f'ALTER TABLE {table} RENAME COLUMN {new} TO {old}')
+        else:
+            print(f"[migration downgrade] skip {table}.{new}: column does not exist")

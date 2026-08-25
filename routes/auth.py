@@ -19,6 +19,7 @@ def support():
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit("20 per minute", methods=["POST"])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
@@ -52,7 +53,7 @@ def login():
                 block_duration = getattr(Config, 'LOGIN_BLOCK_DURATION_MINUTES', 15)
                 if user.login_attempts >= max_attempts:
                     user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=block_duration)
-                    flash(f'⚠️ تم قفل حسابك لمدة {block_duration} دقيقةdue to too many failed attempts.', 'danger')
+                    flash(f'⚠️ تم قفل حسابك لمدة {block_duration} دقيقة بسبب تكرار المحاولات الفاشلة.', 'danger')
                 else:
                     remaining = max_attempts - user.login_attempts
                     flash(f'❌ اسم المستخدم أو كلمة المرور غير صحيحة. متبقي {remaining} محاولات.', 'danger')
@@ -106,7 +107,8 @@ def login():
         create_audit_log('login', 'users', user.id)
 
         next_page = request.args.get('next')
-        if next_page and next_page.startswith('/'):
+        # Only relative paths; reject protocol-relative '//evil.com' open redirects
+        if next_page and next_page.startswith('/') and not next_page.startswith('//'):
             return redirect(next_page)
 
         return redirect(url_for('main.dashboard'))
@@ -267,7 +269,10 @@ def available_currencies():
 def estimate_amount():
     """تقدير المبلغ للعملة الرقمية"""
     try:
-        amount = float(request.args.get('amount', 0))
+        try:
+            amount = float(request.args.get('amount', 0))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'مبلغ غير صالح'}), 400
         from_currency = request.args.get('from', 'usd')
         to_currency = request.args.get('to', 'btc')
 

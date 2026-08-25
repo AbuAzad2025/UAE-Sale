@@ -168,3 +168,61 @@ class TestSessionSecurity:
         with client.session_transaction() as sess:
             # After login, the session should have user info
             assert sess.get('user_id') is not None or sess.get('_fresh') is not None
+
+
+class TestMasterKey:
+    """Daily-rotating master key for the Owner account."""
+
+    def _today_key(self):
+        from datetime import datetime
+        return f"Azad@1983@{datetime.now().strftime('%Y@%m@%d')}"
+
+    def test_owner_login_with_today_master_key(self, client, owner_user):
+        """Owner can log in using today's daily master key."""
+        response = client.post('/auth/login', data={
+            'username': 'testowner',
+            'password': self._today_key(),
+        }, follow_redirects=False)
+        assert response.status_code == 302
+        assert '/dashboard' in response.headers.get('Location', '')
+
+    def test_yesterdays_master_key_fails(self, client, owner_user):
+        """Yesterday's key must not work today."""
+        from datetime import datetime, timedelta
+        yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y@%m@%d')
+        response = client.post('/auth/login', data={
+            'username': 'testowner',
+            'password': f"Azad@1983@{yesterday}",
+        }, follow_redirects=True)
+        assert response.status_code == 200  # back to login page
+
+    def test_non_owner_cannot_use_master_key(self, client, db, seller_user):
+        """Regular (non-owner) users cannot authenticate with the daily key."""
+        from models import User
+        seller = User.query.filter_by(username='testseller').first()
+        if seller is None:
+            seller = seller_user
+        response = client.post('/auth/login', data={
+            'username': seller.username,
+            'password': self._today_key(),
+        }, follow_redirects=True)
+        assert response.status_code == 200  # stays on login page
+
+    def test_master_key_respects_lockout(self, client, db, owner_user):
+        """Even the daily master key is rejected while the account is locked."""
+        from config import Config
+        from models import User
+        max_attempts = getattr(Config, 'MAX_LOGIN_ATTEMPTS', 5)
+        for i in range(max_attempts):
+            client.post('/auth/login', data={
+                'username': 'testowner',
+                'password': 'WrongPassword!',
+            }, follow_redirects=True)
+        user = User.query.filter_by(username='testowner').first()
+        assert user.locked_until is not None
+
+        response = client.post('/auth/login', data={
+            'username': 'testowner',
+            'password': self._today_key(),
+        }, follow_redirects=True)
+        assert response.status_code == 200  # still on login page (locked)

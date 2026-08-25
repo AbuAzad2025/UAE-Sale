@@ -160,6 +160,25 @@ jobs:
           CACHE_TYPE: simple
         run: |
           pytest tests/unit/ -v --tb=short --cov=. --cov-config=.coveragerc --cov-report=term --cov-report=xml:coverage-unit.xml
+      - name: Coverage summary on run page
+        if: always()
+        run: |
+          {
+            echo "## 📊 Unit Tests Coverage"
+            echo ""
+            TOTAL=$(python -m coverage report | grep -E "^TOTAL" || echo "N/A")
+            echo "**\`$TOTAL\`**"
+            echo ""
+            echo "<details><summary>Full per-module breakdown</summary>"
+            echo ""
+            echo '```'
+            python -m coverage report --show-missing
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Generate HTML coverage report
+        if: always()
+        run: python -m coverage html -d coverage-html-unit --title "UAE-Sale Unit Coverage" || true
       - name: Upload unit test coverage
         if: always()
         uses: actions/upload-artifact@v5
@@ -168,6 +187,14 @@ jobs:
           path: coverage-unit.xml
           if-no-files-found: ignore
           retention-days: 7
+      - name: Upload HTML coverage report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-html-unit
+          path: coverage-html-unit/
+          if-no-files-found: ignore
+          retention-days: 14
 
   # ── Integration tests (real PostgreSQL, full workflow verification) ──
   integration:
@@ -231,6 +258,25 @@ jobs:
           CACHE_TYPE: simple
         run: |
           pytest tests/integration/ -v --tb=short --cov=. --cov-config=.coveragerc --cov-report=term --cov-report=xml:coverage-integration.xml
+      - name: Coverage summary on run page
+        if: always()
+        run: |
+          {
+            echo "## 📊 Integration Tests Coverage"
+            echo ""
+            TOTAL=$(python -m coverage report | grep -E "^TOTAL" || echo "N/A")
+            echo "**\`$TOTAL\`**"
+            echo ""
+            echo "<details><summary>Full per-module breakdown</summary>"
+            echo ""
+            echo '```'
+            python -m coverage report --show-missing
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Generate HTML coverage report
+        if: always()
+        run: python -m coverage html -d coverage-html-integration --title "UAE-Sale Integration Coverage" || true
       - name: Upload integration coverage
         if: always()
         uses: actions/upload-artifact@v5
@@ -239,6 +285,14 @@ jobs:
           path: coverage-integration.xml
           if-no-files-found: ignore
           retention-days: 7
+      - name: Upload HTML coverage report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-html-integration
+          path: coverage-html-integration/
+          if-no-files-found: ignore
+          retention-days: 14
 
   repo-security:
     runs-on: ubuntu-latest

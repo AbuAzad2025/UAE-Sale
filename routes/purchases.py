@@ -108,7 +108,7 @@ def create():  # noqa: C901
                 subtotal=0,
                 tax_amount=0,
                 total_amount=0,
-                amount_aed=0
+                amount_base=0
             )
 
             db.session.add(purchase)
@@ -183,9 +183,9 @@ def create():  # noqa: C901
             purchase.subtotal = subtotal
             purchase.tax_amount = subtotal * (Decimal(str(purchase.tax_rate)) / Decimal('100'))
             purchase.total_amount = subtotal + purchase.tax_amount
-            purchase.amount_aed = purchase.total_amount * purchase.exchange_rate
+            purchase.amount_base = purchase.total_amount * purchase.exchange_rate
 
-            current_app.logger.info(f"Final totals: subtotal={purchase.subtotal}, tax={purchase.tax_amount}, total={purchase.total_amount}, aed={purchase.amount_aed}")  # noqa: E501
+            current_app.logger.info(f"Final totals: subtotal={purchase.subtotal}, tax={purchase.tax_amount}, total={purchase.total_amount}, aed={purchase.amount_base}")  # noqa: E501
 
             db.session.flush()
 
@@ -229,7 +229,7 @@ def create():  # noqa: C901
                     current_app.logger.warning(f'Supplier stats update failed: {e}')
 
             current_app.logger.info("About to commit to database...")
-            current_app.logger.info(f"Final values: subtotal={purchase.subtotal}, tax_amount={purchase.tax_amount}, total_amount={purchase.total_amount}, amount_aed={purchase.amount_aed}")  # noqa: E501
+            current_app.logger.info(f"Final values: subtotal={purchase.subtotal}, tax_amount={purchase.tax_amount}, total_amount={purchase.total_amount}, amount_base={purchase.amount_base}")  # noqa: E501
             db.session.commit()
             current_app.logger.info("Database commit successful!")
 

@@ -38,7 +38,7 @@ class ChequeAccountingIntegration:
             # المدين: شيكات تحت التحصيل
             lines.append({
                 'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['incoming_under_collection'],
-                'debit': cheque.amount_aed,
+                'debit': cheque.amount_base,
                 'credit': 0,
                 'description': f'استلام شيك وارد رقم {cheque.cheque_bank_number} من {cheque.customer.name if cheque.customer else "غير محدد"}'
             })
@@ -47,7 +47,7 @@ class ChequeAccountingIntegration:
             lines.append({
                 'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['accounts_receivable'],
                 'debit': 0,
-                'credit': cheque.amount_aed,
+                'credit': cheque.amount_base,
                 'description': f'تسوية ذمم مدينة - شيك رقم {cheque.cheque_bank_number}'
             })
 
@@ -92,7 +92,7 @@ class ChequeAccountingIntegration:
             # المدين: الذمم الدائنة
             lines.append({
                 'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['accounts_payable'],
-                'debit': cheque.amount_aed,
+                'debit': cheque.amount_base,
                 'credit': 0,
                 'description': f'تسوية ذمم دائنة - شيك رقم {cheque.cheque_bank_number}'
             })
@@ -101,7 +101,7 @@ class ChequeAccountingIntegration:
             lines.append({
                 'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['outgoing_deferred'],
                 'debit': 0,
-                'credit': cheque.amount_aed,
+                'credit': cheque.amount_base,
                 'description': f'إصدار شيك صادر رقم {cheque.cheque_bank_number} لـ {cheque.supplier.name if cheque.supplier else "غير محدد"}'
             })
 
@@ -145,7 +145,7 @@ class ChequeAccountingIntegration:
                 # المدين: حساب البنك
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['bank_account'],
-                    'debit': cheque.amount_aed - bank_charges + exchange_gain_loss,
+                    'debit': cheque.amount_base - bank_charges + exchange_gain_loss,
                     'credit': 0,
                     'description': f'صرف شيك وارد رقم {cheque.cheque_bank_number}'
                 })
@@ -154,7 +154,7 @@ class ChequeAccountingIntegration:
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['incoming_under_collection'],
                     'debit': 0,
-                    'credit': cheque.amount_aed,
+                    'credit': cheque.amount_base,
                     'description': f'صرف شيك تحت التحصيل رقم {cheque.cheque_bank_number}'
                 })
 
@@ -190,7 +190,7 @@ class ChequeAccountingIntegration:
                 # المدين: شيكات مؤجلة الدفع
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['outgoing_deferred'],
-                    'debit': cheque.amount_aed,
+                    'debit': cheque.amount_base,
                     'credit': 0,
                     'description': f'صرف شيك مؤجل الدفع رقم {cheque.cheque_bank_number}'
                 })
@@ -199,7 +199,7 @@ class ChequeAccountingIntegration:
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['bank_account'],
                     'debit': 0,
-                    'credit': cheque.amount_aed + bank_charges - exchange_gain_loss,
+                    'credit': cheque.amount_base + bank_charges - exchange_gain_loss,
                     'description': f'صرف شيك صادر رقم {cheque.cheque_bank_number}'
                 })
 
@@ -270,7 +270,7 @@ class ChequeAccountingIntegration:
                 # المدين: الذمم المدينة (استرداد)
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['accounts_receivable'],
-                    'debit': cheque.amount_aed,
+                    'debit': cheque.amount_base,
                     'credit': 0,
                     'description': f'استرداد ذمم مدينة - شيك مرتد رقم {cheque.cheque_bank_number}'
                 })
@@ -279,7 +279,7 @@ class ChequeAccountingIntegration:
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['incoming_under_collection'],
                     'debit': 0,
-                    'credit': cheque.amount_aed,
+                    'credit': cheque.amount_base,
                     'description': f'شيك مرتد رقم {cheque.cheque_bank_number}'
                 })
 
@@ -289,7 +289,7 @@ class ChequeAccountingIntegration:
                 # المدين: شيكات مؤجلة الدفع
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['outgoing_deferred'],
-                    'debit': cheque.amount_aed,
+                    'debit': cheque.amount_base,
                     'credit': 0,
                     'description': f'شيك صادر مرتد رقم {cheque.cheque_bank_number}'
                 })
@@ -298,7 +298,7 @@ class ChequeAccountingIntegration:
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['accounts_payable'],
                     'debit': 0,
-                    'credit': cheque.amount_aed,
+                    'credit': cheque.amount_base,
                     'description': f'استرداد ذمم دائنة - شيك مرتد رقم {cheque.cheque_bank_number}'
                 })
 
@@ -338,7 +338,7 @@ class ChequeAccountingIntegration:
                 'id': cheque.id,
                 'number': cheque.cheque_bank_number,
                 'type': cheque.cheque_type_ar,
-                'amount': float(cheque.amount_aed),
+                'amount': float(cheque.amount_base),
                 'status': cheque.status_ar,
                 'date': cheque.cheque_date.isoformat() if cheque.cheque_date else None
             },

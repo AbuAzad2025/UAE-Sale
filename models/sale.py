@@ -12,7 +12,7 @@ class Sale(TenantScopedMixin, db.Model):
         db.Index('idx_sale_status_date', 'status', 'sale_date'),
         db.Index('idx_sale_payment_status', 'payment_status', 'customer_id'),
         db.CheckConstraint('total_amount >= 0', name='ck_sale_total_non_negative'),
-        db.CheckConstraint('paid_amount_aed >= 0', name='ck_sale_paid_non_negative'),
+        db.CheckConstraint('paid_amount_base >= 0', name='ck_sale_paid_non_negative'),
         db.CheckConstraint('balance_due >= 0', name='ck_sale_balance_non_negative'),
     )
 
@@ -38,8 +38,8 @@ class Sale(TenantScopedMixin, db.Model):
 
     currency = db.Column(db.String(3), default='ILS', nullable=False)
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
-    amount_aed = db.Column(db.Numeric(15, 3), nullable=False)
-    paid_amount_aed = db.Column(db.Numeric(15, 3), default=0)
+    amount_base = db.Column(db.Numeric(15, 3), nullable=False)
+    paid_amount_base = db.Column(db.Numeric(15, 3), default=0)
 
     payment_status = db.Column(db.String(20), default='unpaid', index=True)
     status = db.Column(db.String(20), default='confirmed', index=True)
@@ -91,35 +91,35 @@ class Sale(TenantScopedMixin, db.Model):
 
         # Calculate amount in AED (Base Currency)
         if self.currency == 'ILS':
-            self.amount_aed = self.total_amount
+            self.amount_base = self.total_amount
         else:
-            self.amount_aed = (self.total_amount * exchange_rate_decimal).quantize(
+            self.amount_base = (self.total_amount * exchange_rate_decimal).quantize(
                 Decimal('0.001'), rounding=ROUND_HALF_UP
             )
 
         # Calculate paid amount AED based on transaction currency
         paid_foreign = Decimal(str(self.paid_amount)) if self.paid_amount else Decimal('0')
         if self.currency == 'ILS':
-            self.paid_amount_aed = paid_foreign
+            self.paid_amount_base = paid_foreign
         else:
-            self.paid_amount_aed = (paid_foreign * exchange_rate_decimal).quantize(
+            self.paid_amount_base = (paid_foreign * exchange_rate_decimal).quantize(
                 Decimal('0.001'), rounding=ROUND_HALF_UP
             )
 
         # Calculate balance consistently
         if self.currency == 'ILS':
-            self.balance_due = (self.total_amount - self.paid_amount_aed).quantize(
+            self.balance_due = (self.total_amount - self.paid_amount_base).quantize(
                 Decimal('0.001'), rounding=ROUND_HALF_UP
             )
         else:
-            self.balance_due = (self.amount_aed - self.paid_amount_aed).quantize(
+            self.balance_due = (self.amount_base - self.paid_amount_base).quantize(
                 Decimal('0.001'), rounding=ROUND_HALF_UP
             )
 
         # Update payment status
         if self.balance_due <= Decimal('0'):
             self.payment_status = 'paid'
-        elif self.paid_amount_aed > Decimal('0'):
+        elif self.paid_amount_base > Decimal('0'):
             self.payment_status = 'partial'
         else:
             self.payment_status = 'unpaid'
@@ -136,10 +136,10 @@ class Sale(TenantScopedMixin, db.Model):
             # التحقق من وجود payment_confirmed (للتوافق مع البيانات القديمة)
             is_confirmed = getattr(p, 'payment_confirmed', True)
             if is_confirmed:
-                total_confirmed_paid_aed += Decimal(str(p.amount_aed))
+                total_confirmed_paid_aed += Decimal(str(p.amount_base))
 
         # Update paid amounts (confirmed only)
-        self.paid_amount_aed = total_confirmed_paid_aed
+        self.paid_amount_base = total_confirmed_paid_aed
         try:
             ex = Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal('1')
             if self.currency == 'ILS':
@@ -152,7 +152,7 @@ class Sale(TenantScopedMixin, db.Model):
             self.paid_amount = self.paid_amount or Decimal('0')
 
         # Calculate balance consistently
-        total_aed = Decimal(str(self.amount_aed))
+        total_aed = Decimal(str(self.amount_base))
         self.balance_due = (total_aed - total_confirmed_paid_aed).quantize(
             Decimal('0.001'), rounding=ROUND_HALF_UP
         )
@@ -177,7 +177,7 @@ class Sale(TenantScopedMixin, db.Model):
                 # التحقق من وجود payment_confirmed
                 is_confirmed = getattr(p, 'payment_confirmed', True)
                 if not is_confirmed and p.payment_method == 'cheque':
-                    total += Decimal(str(p.amount_aed))
+                    total += Decimal(str(p.amount_base))
             return total
         except Exception:
             return Decimal('0')

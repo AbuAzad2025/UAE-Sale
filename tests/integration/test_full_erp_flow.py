@@ -239,7 +239,7 @@ def test_dunning(seed):
     sale = Sale(sale_number='S-OLD-001', customer_id=seed['customer'].id,
                 seller_id=seed['manager'].id, warehouse_id=seed['warehouse'].id,
                 sale_date=date.today() - timedelta(days=45),
-                total_amount=Decimal('1000'), amount_aed=Decimal('1000'),
+                total_amount=Decimal('1000'), amount_base=Decimal('1000'),
                 paid_amount=Decimal('0'), balance_due=Decimal('1000'),
                 payment_status='unpaid', status='confirmed', currency='AED')
     db.session.add(sale)

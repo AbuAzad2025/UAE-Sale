@@ -170,8 +170,8 @@ def {function_name}():
 SELECT
     DATE(sale_date) as date,
     COUNT(*) as sales_count,
-    SUM(amount_aed) as total_sales,
-    AVG(amount_aed) as avg_sale
+    SUM(amount_base) as total_sales,
+    AVG(amount_base) as avg_sale
 FROM sales
 WHERE status = 'confirmed'
   AND sale_date BETWEEN '{start_date}' AND '{end_date}'
@@ -199,7 +199,7 @@ SELECT
     c.name,
     c.customer_type,
     COUNT(s.id) as total_orders,
-    SUM(s.amount_aed) as total_purchases,
+    SUM(s.amount_base) as total_purchases,
     MAX(s.sale_date) as last_purchase
 FROM customers c
 LEFT JOIN sales s ON c.id = s.customer_id

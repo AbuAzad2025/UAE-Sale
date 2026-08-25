@@ -8,7 +8,7 @@ class SaleType(graphene.ObjectType):
     sale_number = graphene.String()
     customer_id = graphene.Int()
     total_amount = graphene.Float()
-    amount_aed = graphene.Float()
+    amount_base = graphene.Float()
     status = graphene.String()
     created_at = graphene.DateTime()
 
@@ -81,7 +81,7 @@ class Query(graphene.ObjectType):
             sale_number=sale.sale_number,
             customer_id=sale.customer_id,
             total_amount=float(sale.total_amount) if sale.total_amount else 0,
-            amount_aed=float(sale.amount_aed) if sale.amount_aed else 0,
+            amount_base=float(sale.amount_base) if sale.amount_base else 0,
             status=sale.status,
             created_at=sale.created_at
         )
@@ -125,7 +125,7 @@ class CreateSale(graphene.Mutation):
             customer_id=customer_id,
             seller_id=1,
             total_amount=Decimal(str(total_amount)),
-            amount_aed=Decimal(str(total_amount)),
+            amount_base=Decimal(str(total_amount)),
             status='confirmed'
         )
         db.session.add(sale)
@@ -137,7 +137,7 @@ class CreateSale(graphene.Mutation):
             sale_number=sale.sale_number,
             customer_id=sale.customer_id,
             total_amount=float(sale.total_amount),
-            amount_aed=float(sale.amount_aed),
+            amount_base=float(sale.amount_base),
             status=sale.status,
             created_at=sale.created_at
         )

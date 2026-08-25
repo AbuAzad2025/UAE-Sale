@@ -75,7 +75,7 @@
           
           {% if receipt.currency != 'AED' %}
           <dt class="col-sm-5">المبلغ بالدرهم:</dt>
-          <dd class="col-sm-7">{{ "{:,.2f}".format(receipt.amount_aed) }} AED</dd>
+          <dd class="col-sm-7">{{ "{:,.2f}".format(receipt.amount_base) }} AED</dd>
           {% endif %}
           
           <dt class="col-sm-5">طريقة الدفع:</dt>

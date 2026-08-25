@@ -50,7 +50,7 @@ class Customer(TenantScopedMixin, db.Model):
         sales = self.sales.filter_by(status='confirmed').all()
         total = Decimal('0')
         for sale in sales:
-            balance = (sale.amount_aed or Decimal('0')) - (sale.paid_amount_aed or Decimal('0'))
+            balance = (sale.amount_base or Decimal('0')) - (sale.paid_amount_base or Decimal('0'))
             total += balance
         return total
 

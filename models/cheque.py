@@ -37,8 +37,8 @@ class Cheque(TenantScopedMixin, db.Model):
     currency = db.Column(db.String(10), default='ILS')
     exchange_rate = db.Column(db.Numeric(15, 6), default=Decimal('1.0'))  # سعر الصرف عند الإنشاء
     clearance_exchange_rate = db.Column(db.Numeric(15, 6))  # سعر الصرف عند الصرف الفعلي
-    amount_aed = db.Column(db.Numeric(15, 2))  # المبلغ بالدرهم عند الإنشاء
-    actual_amount_aed = db.Column(db.Numeric(15, 2))  # المبلغ الفعلي بالدرهم عند الصرف
+    amount_base = db.Column(db.Numeric(15, 2))  # المبلغ بالدرهم عند الإنشاء
+    actual_amount_base = db.Column(db.Numeric(15, 2))  # المبلغ الفعلي بالدرهم عند الصرف
     currency_gain_loss = db.Column(db.Numeric(15, 2), default=Decimal('0'))  # ربح/خسارة فرق العملة
 
     # التواريخ
@@ -118,12 +118,12 @@ class Cheque(TenantScopedMixin, db.Model):
         else:
             self.is_overdue = False
 
-    def calculate_amount_aed(self):
+    def calculate_amount_base(self):
         """حساب المبلغ بالدرهم"""
         if self.exchange_rate:
-            self.amount_aed = self.amount * self.exchange_rate
+            self.amount_base = self.amount * self.exchange_rate
         else:
-            self.amount_aed = self.amount
+            self.amount_base = self.amount
 
     def receive_cheque(self):
         """تسجيل استلام الشيك الوارد"""
@@ -134,14 +134,14 @@ class Cheque(TenantScopedMixin, db.Model):
                 lines = [
                     {
                         'account': '1150',
-                        'debit': self.amount_aed,
+                        'debit': self.amount_base,
                         'credit': 0,
                         'description': f'استلام شيك رقم {self.cheque_bank_number}'
                     },
                     {
                         'account': credit_account,
                         'debit': 0,
-                        'credit': self.amount_aed,
+                        'credit': self.amount_base,
                         'description': f'استلام شيك من عميل - رقم {self.cheque_bank_number}'
                     }
                 ]
@@ -169,14 +169,14 @@ class Cheque(TenantScopedMixin, db.Model):
                 lines = [
                     {
                         'account': debit_account,
-                        'debit': self.amount_aed,
+                        'debit': self.amount_base,
                         'credit': 0,
                         'description': f'إصدار شيك رقم {self.cheque_bank_number}'
                     },
                     {
                         'account': '2120',
                         'debit': 0,
-                        'credit': self.amount_aed,
+                        'credit': self.amount_base,
                         'description': f'إصدار شيك - رقم {self.cheque_bank_number}'
                     }
                 ]
@@ -207,15 +207,15 @@ class Cheque(TenantScopedMixin, db.Model):
         self.status = 'cleared'
         self.clearance_date = clearance_date or datetime.now().date()
 
-        # حفظ سعر الصرف وقت الصرف إذا العملة مختلفة عن الدرهم
-        if self.currency != 'ILS' and clearance_exchange_rate:
-            from services.currency_service import CurrencyService
+        # حفظ سعر الصرف وقت الصرف إذا العملة مختلفة عن عملة القاعدة
+        from services.currency_service import CurrencyService
+        _base = CurrencyService.get_base_currency()
+        if self.currency != _base and clearance_exchange_rate:
             self.clearance_exchange_rate = Decimal(str(clearance_exchange_rate))
-        elif self.currency != 'ILS':
+        elif self.currency != _base:
             # جلب السعر الحالي تلقائياً
-            from services.currency_service import CurrencyService
             try:
-                current_rate = CurrencyService.get_exchange_rate(self.currency, 'ILS')
+                current_rate = CurrencyService.get_exchange_rate(self.currency, _base)
                 self.clearance_exchange_rate = current_rate
             except Exception:
                 # إذا فشل جلب السعر، استخدم السعر الأصلي
@@ -225,10 +225,10 @@ class Cheque(TenantScopedMixin, db.Model):
             self.clearance_exchange_rate = Decimal('1.0')
 
         # حساب المبلغ الفعلي بالدرهم
-        self.actual_amount_aed = self.amount * self.clearance_exchange_rate
+        self.actual_amount_base = self.amount * self.clearance_exchange_rate
 
         # حساب ربح/خسارة فرق العملة
-        self.currency_gain_loss = self.actual_amount_aed - self.amount_aed
+        self.currency_gain_loss = self.actual_amount_base - self.amount_base
 
         # إنشاء قيد محاسبي تلقائي
         self._create_clearing_journal_entry()
@@ -255,14 +255,14 @@ class Cheque(TenantScopedMixin, db.Model):
                 # شيك وارد - نقل من "شيكات تحت التحصيل" إلى "البنك"
                 lines.append({
                     'account': '1120',  # البنك
-                    'debit': self.actual_amount_aed,
+                    'debit': self.actual_amount_base,
                     'credit': 0,
                     'description': f'صرف شيك وارد رقم {self.cheque_bank_number}'
                 })
                 lines.append({
                     'account': '1150',  # شيكات تحت التحصيل
                     'debit': 0,
-                    'credit': self.amount_aed,
+                    'credit': self.amount_base,
                     'description': f'صرف شيك رقم {self.cheque_bank_number}'
                 })
 
@@ -289,14 +289,14 @@ class Cheque(TenantScopedMixin, db.Model):
                 # شيك صادر - نقل من "شيكات مؤجلة الدفع" إلى "البنك"
                 lines.append({
                     'account': '2120',  # شيكات مؤجلة الدفع
-                    'debit': self.amount_aed,
+                    'debit': self.amount_base,
                     'credit': 0,
                     'description': f'صرف شيك صادر رقم {self.cheque_bank_number}'
                 })
                 lines.append({
                     'account': '1120',  # البنك
                     'debit': 0,
-                    'credit': self.actual_amount_aed,
+                    'credit': self.actual_amount_base,
                     'description': f'صرف شيك رقم {self.cheque_bank_number}'
                 })
 
@@ -364,21 +364,21 @@ class Cheque(TenantScopedMixin, db.Model):
                 ar_account = GLService.get_customer_credit_account(self.customer) if self.customer_id else '1130'
                 lines.append({
                     'account': ar_account,
-                    'debit': self.amount_aed,
+                    'debit': self.amount_base,
                     'credit': 0,
                     'description': f'ارتداد شيك رقم {self.cheque_bank_number} - إرجاع الدين'
                 })
                 lines.append({
                     'account': '1150',  # شيكات تحت التحصيل
                     'debit': 0,
-                    'credit': self.amount_aed,
+                    'credit': self.amount_base,
                     'description': f'ارتداد شيك رقم {self.cheque_bank_number}'
                 })
 
             elif self.cheque_type == 'outgoing':
                 lines.append({
                     'account': '2120',  # شيكات مؤجلة الدفع
-                    'debit': self.amount_aed,
+                    'debit': self.amount_base,
                     'credit': 0,
                     'description': f'ارتداد شيك صادر رقم {self.cheque_bank_number}'
                 })
@@ -391,7 +391,7 @@ class Cheque(TenantScopedMixin, db.Model):
                 lines.append({
                     'account': credit_account,
                     'debit': 0,
-                    'credit': self.amount_aed,
+                    'credit': self.amount_base,
                     'description': f'ارتداد شيك رقم {self.cheque_bank_number} - إرجاع الالتزام'
                 })
 
@@ -431,14 +431,14 @@ class Cheque(TenantScopedMixin, db.Model):
                 lines = [
                     {
                         'account': ar_account,
-                        'debit': self.amount_aed,
+                        'debit': self.amount_base,
                         'credit': 0,
                         'description': f'إلغاء شيك وارد رقم {self.cheque_bank_number}'
                     },
                     {
                         'account': '1150',
                         'debit': 0,
-                        'credit': self.amount_aed,
+                        'credit': self.amount_base,
                         'description': f'إلغاء شيك رقم {self.cheque_bank_number}'
                     }
                 ]
@@ -453,14 +453,14 @@ class Cheque(TenantScopedMixin, db.Model):
                 lines = [
                     {
                         'account': '2120',
-                        'debit': self.amount_aed,
+                        'debit': self.amount_base,
                         'credit': 0,
                         'description': f'إلغاء شيك صادر رقم {self.cheque_bank_number}'
                     },
                     {
                         'account': credit_account,
                         'debit': 0,
-                        'credit': self.amount_aed,
+                        'credit': self.amount_base,
                         'description': f'إلغاء شيك رقم {self.cheque_bank_number}'
                     }
                 ]
@@ -543,8 +543,8 @@ class Cheque(TenantScopedMixin, db.Model):
             'currency': self.currency,
             'exchange_rate': float(self.exchange_rate) if self.exchange_rate else 1.0,
             'clearance_exchange_rate': float(self.clearance_exchange_rate) if self.clearance_exchange_rate else None,
-            'amount_aed': float(self.amount_aed) if self.amount_aed else 0,
-            'actual_amount_aed': float(self.actual_amount_aed) if self.actual_amount_aed else None,
+            'amount_base': float(self.amount_base) if self.amount_base else 0,
+            'actual_amount_base': float(self.actual_amount_base) if self.actual_amount_base else None,
             'currency_gain_loss': float(self.currency_gain_loss) if self.currency_gain_loss else 0,
             'issue_date': self.issue_date.isoformat() if self.issue_date else None,
             'due_date': self.due_date.isoformat() if self.due_date else None,
@@ -639,7 +639,7 @@ class Cheque(TenantScopedMixin, db.Model):
 
         # المبالغ
         incoming_amount = db.session.query(
-            db.func.sum(Cheque.amount_aed)
+            db.func.sum(Cheque.amount_base)
         ).filter_by(
             cheque_type='incoming',
             status='pending',
@@ -647,7 +647,7 @@ class Cheque(TenantScopedMixin, db.Model):
         ).scalar() or Decimal('0')
 
         outgoing_amount = db.session.query(
-            db.func.sum(Cheque.amount_aed)
+            db.func.sum(Cheque.amount_base)
         ).filter_by(
             cheque_type='outgoing',
             status='pending',

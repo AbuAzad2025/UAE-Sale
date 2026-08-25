@@ -8,7 +8,7 @@ class Payment(TenantScopedMixin, db.Model):
 
     __table_args__ = (
         db.CheckConstraint('amount > 0', name='ck_payment_amount_positive'),
-        db.CheckConstraint('amount_aed > 0', name='ck_payment_amount_aed_positive'),
+        db.CheckConstraint('amount_base > 0', name='ck_payment_amount_base_positive'),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -30,7 +30,7 @@ class Payment(TenantScopedMixin, db.Model):
     amount = db.Column(db.Numeric(15, 3), nullable=False)
     currency = db.Column(db.String(3), default='AED', nullable=False)
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
-    amount_aed = db.Column(db.Numeric(15, 3), nullable=False)
+    amount_base = db.Column(db.Numeric(15, 3), nullable=False)
 
     payment_method = db.Column(db.String(20), nullable=False)
 
@@ -139,7 +139,7 @@ class Receipt(TenantScopedMixin, db.Model):
 
     __table_args__ = (
         db.CheckConstraint('amount > 0', name='ck_receipt_amount_positive'),
-        db.CheckConstraint('amount_aed > 0', name='ck_receipt_amount_aed_positive'),
+        db.CheckConstraint('amount_base > 0', name='ck_receipt_amount_base_positive'),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -158,7 +158,7 @@ class Receipt(TenantScopedMixin, db.Model):
     amount = db.Column(db.Numeric(15, 3), nullable=False)
     currency = db.Column(db.String(3), default='AED', nullable=False)
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
-    amount_aed = db.Column(db.Numeric(15, 3), nullable=False)
+    amount_base = db.Column(db.Numeric(15, 3), nullable=False)
 
     payment_method = db.Column(db.String(20), nullable=False)
 

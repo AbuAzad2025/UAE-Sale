@@ -48,7 +48,7 @@ class GLAccount(db.Model):
         from sqlalchemy import func
         from models import GLJournalLine
 
-        balance_sum = db.session.query(func.sum(GLJournalLine.amount_aed)).filter_by(account_id=self.id).scalar() or 0
+        balance_sum = db.session.query(func.sum(GLJournalLine.amount_base)).filter_by(account_id=self.id).scalar() or 0
 
         if self.type in ['asset', 'expense']:
             return balance_sum
@@ -152,7 +152,7 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
                 description=line.description,
                 debit=line.credit,  # عكس
                 credit=line.debit,  # عكس
-                amount_aed=-line.amount_aed  # عكس
+                amount_base=-line.amount_base  # عكس
             )
             db.session.add(reversed_line)
 
@@ -172,7 +172,7 @@ class GLJournalLine(db.Model):
     description = db.Column(db.String(255))
     debit = db.Column(db.Numeric(18, 3), default=0)
     credit = db.Column(db.Numeric(18, 3), default=0)
-    amount_aed = db.Column(db.Numeric(18, 3), default=0)
+    amount_base = db.Column(db.Numeric(18, 3), default=0)
 
     # مركز التكلفة (اختياري)
     cost_center_id = db.Column(db.Integer, db.ForeignKey('cost_centers.id'))

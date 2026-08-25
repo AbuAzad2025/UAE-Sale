@@ -724,7 +724,7 @@ $('#currency').on('change', function() {
   
   if (currency !== 'AED') {
     $.ajax({
-      url: `/api/currency-rate/${currency}/ILS`,
+      url: `/api/currency-rate/${currency}/{{ base_currency }}`,
       success: function(data) {
         if (data.rate) {
           $('#exchange_rate').val(data.rate.toFixed(6));

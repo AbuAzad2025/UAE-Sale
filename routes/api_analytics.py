@@ -48,11 +48,11 @@ def daily_stats():
         'success': True,
         'sales': {
             'count': len(today_sales),
-            'total': sum(float(s.amount_aed) for s in today_sales)
+            'total': sum(float(s.amount_base) for s in today_sales)
         },
         'payments': {
             'count': len(today_payments),
-            'total': sum(float(p.amount_aed) for p in today_payments)
+            'total': sum(float(p.amount_base) for p in today_payments)
         }
     })
 
@@ -118,7 +118,7 @@ def revenue_trend():
 
     daily_revenue = db.session.query(
         func.date(Sale.sale_date).label('date'),
-        func.sum(Sale.amount_aed).label('total')
+        func.sum(Sale.amount_base).label('total')
     ).filter(
         Sale.sale_date >= since,
         Sale.status == 'confirmed'

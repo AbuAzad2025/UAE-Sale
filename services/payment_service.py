@@ -53,7 +53,7 @@ class PaymentService:
 
             exchange_rate = CurrencyService.get_exchange_rate(
                 currency,
-                'ILS',
+                CurrencyService.get_base_currency(),
                 user_rate=user_exchange_rate
             )
 
@@ -76,7 +76,7 @@ class PaymentService:
                 amount=Decimal(str(amount)),
                 currency=currency,
                 exchange_rate=exchange_rate,
-                amount_aed=Decimal(str(amount)) * exchange_rate,
+                amount_base=Decimal(str(amount)) * exchange_rate,
                 payment_method=payment_method,
                 reference_number=reference_number,
                 cheque_number=cheque_number,
@@ -100,7 +100,7 @@ class PaymentService:
                     amount=Decimal(str(amount)),
                     currency=currency,
                     exchange_rate=exchange_rate,
-                    amount_aed=Decimal(str(amount)) * exchange_rate,
+                    amount_base=Decimal(str(amount)) * exchange_rate,
                     issue_date=receipt.receipt_date.date(),  # تاريخ الإصدار = تاريخ السند
                     due_date=cheque_date,  # تاريخ الاستحقاق
                     bank_name=bank_name,
@@ -148,7 +148,7 @@ class PaymentService:
                     allocated_amount = min(Decimal(str(allocated)), remaining_amount, sale.balance_due)
 
                     sale.paid_amount += allocated_amount
-                    sale.paid_amount_aed += allocated_amount * exchange_rate
+                    sale.paid_amount_base += allocated_amount * exchange_rate
                     sale.balance_due -= allocated_amount
 
                     if sale.paid_amount >= sale.total_amount:
@@ -183,7 +183,7 @@ class PaymentService:
     @staticmethod
     def get_customer_balance_aed(customer):
         total_sales_aed = db.session.query(
-            db.func.sum(Sale.amount_aed - Sale.paid_amount_aed)
+            db.func.sum(Sale.amount_base - Sale.paid_amount_base)
         ).filter(
             Sale.customer_id == customer.id,
             Sale.status == 'confirmed'
@@ -213,7 +213,7 @@ class PaymentService:
                 allocated = min(remaining_amount, sale.balance_due)
 
                 sale.paid_amount += allocated
-                sale.paid_amount_aed += allocated * receipt.exchange_rate
+                sale.paid_amount_base += allocated * receipt.exchange_rate
                 sale.balance_due -= allocated
 
                 if sale.paid_amount >= sale.total_amount:

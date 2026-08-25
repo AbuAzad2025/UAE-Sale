@@ -642,7 +642,7 @@ class AIService:
             day = sale.sale_date.date()
             if day not in daily_sales:
                 daily_sales[day] = Decimal('0')
-            daily_sales[day] += sale.amount_aed
+            daily_sales[day] += sale.amount_base
 
         days = sorted(daily_sales.keys())
         values = [float(daily_sales[d]) for d in days]
@@ -697,7 +697,7 @@ class AIService:
         if not sales:
             return {'success': False, 'message': 'لا توجد مبيعات'}
 
-        total_revenue = sum((Decimal(str(s.amount_aed)) for s in sales), Decimal('0'))
+        total_revenue = sum((Decimal(str(s.amount_base)) for s in sales), Decimal('0'))
         total_cost = Decimal('0')
 
         products_data = {}
@@ -772,9 +772,9 @@ class AIService:
             hour = sale.sale_date.hour
 
             weekday_sales[weekday]['count'] += 1
-            weekday_sales[weekday]['total'] += Decimal(str(sale.amount_aed))
+            weekday_sales[weekday]['total'] += Decimal(str(sale.amount_base))
             hour_sales[hour]['count'] += 1
-            hour_sales[hour]['total'] += Decimal(str(sale.amount_aed))
+            hour_sales[hour]['total'] += Decimal(str(sale.amount_base))
 
         best_day = max(weekday_sales.items(), key=lambda x: x[1]['total'])
         peak_hour = max(hour_sales.items(), key=lambda x: x[1]['count'])
@@ -1030,7 +1030,7 @@ class AIService:
                 Sale.sale_date >= datetime.now() - timedelta(days=30)
             ).scalar() or 0
 
-            _ = db.session.query(func.sum(Expense.amount_aed)).filter(
+            _ = db.session.query(func.sum(Expense.amount_base)).filter(
                 Expense.expense_date >= datetime.now() - timedelta(days=30)
             ).scalar() or 0
 

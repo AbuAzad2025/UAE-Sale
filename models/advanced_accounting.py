@@ -52,7 +52,7 @@ class AdvancedExpense(db.Model):
     amount = db.Column(db.Numeric(18, 3), nullable=False)
     currency = db.Column(db.String(3), default='ILS', nullable=False)
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
-    amount_aed = db.Column(db.Numeric(18, 3), nullable=False)
+    amount_base = db.Column(db.Numeric(18, 3), nullable=False)
 
     # معلومات الضرائب
     taxable_amount = db.Column(db.Numeric(18, 3), default=0)
@@ -144,11 +144,11 @@ class AdvancedExpense(db.Model):
         if self.customs_exempt:
             self.customs_amount = 0
         else:
-            self.customs_amount = self.amount_aed * self.customs_rate
+            self.customs_amount = self.amount_base * self.customs_rate
 
     def get_total_amount(self):
         """الحصول على المبلغ الإجمالي مع الضرائب"""
-        return self.amount_aed + self.tax_amount + self.customs_amount
+        return self.amount_base + self.tax_amount + self.customs_amount
 
     def reverse_expense(self, reason, reversed_by_user):
         """عكس المصروف"""
@@ -166,11 +166,11 @@ class AdvancedExpense(db.Model):
         lines = [{
             'account_code': self.category.gl_account.code,
             'debit': 0,
-            'credit': self.amount_aed,
+            'credit': self.amount_base,
             'description': f'عكس مصروف {self.description_ar}'
         }, {
             'account_code': '1110',  # صندوق
-            'debit': self.amount_aed,
+            'debit': self.amount_base,
             'credit': 0,
             'description': f'استرداد مصروف {self.expense_number}'
         }]
@@ -221,7 +221,7 @@ class TaxCalculationRule(db.Model):
         if self.condition_field == 'category_id':
             return str(expense.category_id) == self.condition_value
         elif self.condition_field == 'amount':
-            amount = float(expense.amount_aed)
+            amount = float(expense.amount_base)
             value = float(self.condition_value)
 
             if self.condition_operator == '>':

@@ -542,23 +542,23 @@ class AzadNeuralEngine:
             end_date = datetime.now(timezone.utc) - timedelta(days=30 * month_offset)
 
             # المبيعات
-            sales = db.session.query(func.sum(Sale.amount_aed)).filter(
+            sales = db.session.query(func.sum(Sale.amount_base)).filter(
                 Sale.sale_date.between(start_date, end_date),
                 Sale.status == 'confirmed'
             ).scalar() or 0
 
             # المشتريات
-            purchases = db.session.query(func.sum(Purchase.amount_aed)).filter(
+            purchases = db.session.query(func.sum(Purchase.amount_base)).filter(
                 Purchase.purchase_date.between(start_date, end_date)
             ).scalar() or 0
 
             # المصروفات
-            expenses = db.session.query(func.sum(Expense.amount_aed)).filter(
+            expenses = db.session.query(func.sum(Expense.amount_base)).filter(
                 Expense.expense_date.between(start_date, end_date)
             ).scalar() or 0
 
             # المقبوضات
-            receipts = db.session.query(func.sum(Receipt.amount_aed)).filter(
+            receipts = db.session.query(func.sum(Receipt.amount_base)).filter(
                 Receipt.receipt_date.between(start_date, end_date)
             ).scalar() or 0
 
@@ -654,19 +654,19 @@ class AzadNeuralEngine:
         current_month = datetime.now(timezone.utc)
         start_month = current_month - timedelta(days=30)
 
-        sales = db.session.query(func.sum(Sale.amount_aed)).filter(
+        sales = db.session.query(func.sum(Sale.amount_base)).filter(
             Sale.sale_date >= start_month
         ).scalar() or 0
 
-        purchases = db.session.query(func.sum(Purchase.amount_aed)).filter(
+        purchases = db.session.query(func.sum(Purchase.amount_base)).filter(
             Purchase.purchase_date >= start_month
         ).scalar() or 0
 
-        expenses = db.session.query(func.sum(Expense.amount_aed)).filter(
+        expenses = db.session.query(func.sum(Expense.amount_base)).filter(
             Expense.expense_date >= start_month
         ).scalar() or 0
 
-        receipts = db.session.query(func.sum(Receipt.amount_aed)).filter(
+        receipts = db.session.query(func.sum(Receipt.amount_base)).filter(
             Receipt.receipt_date >= start_month
         ).scalar() or 0
 
@@ -954,7 +954,7 @@ class AzadNeuralEngine:
         daily_sales = db.session.query(
             func.date(Sale.sale_date).label('sale_date'),
             func.count(Sale.id).label('sales_count'),
-            func.sum(Sale.amount_aed).label('total_amount')
+            func.sum(Sale.amount_base).label('total_amount')
         ).filter(
             Sale.status == 'confirmed',
             Sale.sale_date >= datetime.now(timezone.utc) - timedelta(days=90)
@@ -1045,7 +1045,7 @@ class AzadNeuralEngine:
         # الحصول على آخر 7 أيام
         recent_sales = db.session.query(
             func.date(Sale.sale_date).label('sale_date'),
-            func.sum(Sale.amount_aed).label('total_amount')
+            func.sum(Sale.amount_base).label('total_amount')
         ).filter(
             Sale.status == 'confirmed',
             Sale.sale_date >= datetime.now(timezone.utc) - timedelta(days=7)
@@ -1151,7 +1151,7 @@ class AzadNeuralEngine:
             Customer.customer_classification,
             func.count(Sale.id).label('sales_count'),
             func.max(Sale.sale_date).label('last_purchase'),
-            func.avg(Sale.amount_aed).label('avg_order_value')
+            func.avg(Sale.amount_base).label('avg_order_value')
         ).outerjoin(Sale).group_by(Customer.id).limit(500).all()
 
         if len(customers_data) < 20:
@@ -1233,7 +1233,7 @@ class AzadNeuralEngine:
             Customer.total_purchases,
             func.count(Sale.id).label('sales_count'),
             func.max(Sale.sale_date).label('last_purchase'),
-            func.avg(Sale.amount_aed).label('avg_order_value')
+            func.avg(Sale.amount_base).label('avg_order_value')
         ).outerjoin(Sale).filter(Customer.id == customer_id).group_by(Customer.id).first()
 
         if not customer_data:
@@ -1331,10 +1331,10 @@ class AzadNeuralEngine:
 
         # جمع المعاملات
         sales = db.session.query(
-            Sale.amount_aed,
+            Sale.amount_base,
             Sale.discount_amount,
             Sale.subtotal,
-            Sale.paid_amount_aed,
+            Sale.paid_amount_base,
             Sale.sale_date,
             Customer.total_purchases
         ).join(Customer).filter(
@@ -1350,22 +1350,22 @@ class AzadNeuralEngine:
         for sale in sales:
             # الميزات
             discount_percent = (sale.discount_amount / sale.subtotal * 100) if sale.subtotal > 0 else 0
-            cash_percent = (sale.paid_amount_aed / sale.amount_aed * 100) if sale.amount_aed > 0 else 0
+            cash_percent = (sale.paid_amount_base / sale.amount_base * 100) if sale.amount_base > 0 else 0
             hour = sale.sale_date.hour if sale.sale_date else 12
 
             features = [
-                float(sale.amount_aed),
+                float(sale.amount_base),
                 float(discount_percent),
                 float(cash_percent),
                 float(hour),
                 1 if hour < 6 or hour > 22 else 0,  # وقت غريب
                 1 if discount_percent > 30 else 0,  # خصم كبير
-                1 if sale.amount_aed > 50000 else 0  # مبلغ كبير
+                1 if sale.amount_base > 50000 else 0  # مبلغ كبير
             ]
 
             # التسمية (افتراضياً معظم المعاملات صحيحة)
             # الاحتيال = مبلغ كبير + خصم كبير + وقت غريب
-            is_fraud = 1 if (sale.amount_aed > 100000 and discount_percent > 50) else 0
+            is_fraud = 1 if (sale.amount_base > 100000 and discount_percent > 50) else 0
 
             X.append(features)
             y.append(is_fraud)
@@ -1402,10 +1402,10 @@ class AzadNeuralEngine:
             reasons: list
         """
         try:
-            amount = sale_data.get('amount_aed', 0)
+            amount = sale_data.get('amount_base', 0)
             discount = sale_data.get('discount_amount', 0)
             subtotal = sale_data.get('subtotal', amount)
-            paid = sale_data.get('paid_amount_aed', 0)
+            paid = sale_data.get('paid_amount_base', 0)
             sale_time = sale_data.get('sale_date', datetime.now())
 
             # حساب النسب
@@ -1945,7 +1945,7 @@ class AzadNeuralEngine:
             Customer.total_purchases,
             func.count(Sale.id).label('sales_count'),
             func.max(Sale.sale_date).label('last_purchase'),
-            func.avg(Sale.amount_aed).label('avg_order')
+            func.avg(Sale.amount_base).label('avg_order')
         ).outerjoin(Sale).group_by(Customer.id).limit(500).all()
 
         if len(customers) < 30:

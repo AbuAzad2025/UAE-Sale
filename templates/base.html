@@ -5,6 +5,7 @@
   <title>{% block title %}{{ config.COMPANY_NAME_AR }}{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  <script>window.BASE_CURRENCY = '{{ base_currency }}';</script>
   
   <link rel="manifest" href="/static/manifest.json">
   <meta name="theme-color" content="#667eea">
@@ -174,11 +175,11 @@
             <!-- سعر الصرف -->
             <div class="navbar-exchange-widget">
               <div class="exchange-label">
-                <i class="fas fa-exchange-alt mr-1"></i>USD/ILS
+                <i class="fas fa-exchange-alt mr-1"></i>USD/{{ base_currency }}
               </div>
               <div id="exchange-rate" class="exchange-value">
                 <i class="fas fa-dollar-sign mr-1"></i>
-                <span id="rate-display">3.70</span>
+                <span id="rate-display">--</span>
               </div>
             </div>
           </div>
@@ -1005,7 +1006,7 @@ $(function() {
     if (!rateDisplay) return;
     try {
       // نحاول API الداخلي أولاً (يستخدم خوادم مجانية open.er-api + exchangerate-api + fawazahmed)
-      const res = await fetch('/api/currency-rate/USD/ILS', { headers: { 'Accept': 'application/json' }});
+      const res = await fetch(`/api/currency-rate/USD/{{ base_currency }}`, { headers: { 'Accept': 'application/json' }});
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.rate) {

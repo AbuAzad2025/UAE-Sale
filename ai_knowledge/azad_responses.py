@@ -352,7 +352,7 @@ class AzadResponses:
 
                 # آخر 12 شهر
                 monthly_sales = db.session.query(
-                    func.sum(Sale.amount_aed).label('total')
+                    func.sum(Sale.amount_base).label('total')
                 ).filter(
                     Sale.status == 'confirmed',
                     Sale.sale_date >= datetime.now() - timedelta(days=365)
@@ -1356,8 +1356,8 @@ class AzadResponses:
         sales_7d = Sale.query.filter(Sale.sale_date >= last_7_days, Sale.status == 'confirmed').all()
         sales_30d = Sale.query.filter(Sale.sale_date >= last_30_days, Sale.status == 'confirmed').all()
 
-        total_7d = sum((Decimal(str(s.amount_aed)) for s in sales_7d), Decimal('0'))
-        total_30d = sum((Decimal(str(s.amount_aed)) for s in sales_30d), Decimal('0'))
+        total_7d = sum((Decimal(str(s.amount_base)) for s in sales_7d), Decimal('0'))
+        total_30d = sum((Decimal(str(s.amount_base)) for s in sales_30d), Decimal('0'))
 
         avg_7d = total_7d / 7 if total_7d > 0 else Decimal('0')
         avg_30d = total_30d / 30 if total_30d > 0 else Decimal('0')

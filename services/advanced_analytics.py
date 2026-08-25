@@ -129,19 +129,19 @@ class AdvancedFinancialAnalytics:
             lines = lines_query.all()
 
             for line in lines:
-                # amount_aed represents (Debit - Credit) in AED
+                # amount_base represents (Debit - Credit) in AED
                 # Asset/Expense: Normal Balance is Debit (+)
                 # Liability/Equity/Revenue: Normal Balance is Credit (-)
 
-                val = line.amount_aed
+                val = line.amount_base
 
                 if account.type in ['asset', 'expense']:
                     total += val
                 else:
-                    # For credit-normal accounts, a positive amount_aed (Debit > Credit) reduces the balance
-                    # A negative amount_aed (Credit > Debit) increases the balance (absolute value)
+                    # For credit-normal accounts, a positive amount_base (Debit > Credit) reduces the balance
+                    # A negative amount_base (Credit > Debit) increases the balance (absolute value)
                     # So we subtract val:
-                    # If Credit=100, Debit=0 -> amount_aed = -100 -> total -= (-100) -> total += 100 (Correct)
+                    # If Credit=100, Debit=0 -> amount_base = -100 -> total -= (-100) -> total += 100 (Correct)
                     total -= val
 
         return total
@@ -168,9 +168,9 @@ class AdvancedFinancialAnalytics:
 
                 for line in lines:
                     if account_type in ['asset', 'expense']:
-                        total += line.amount_aed
+                        total += line.amount_base
                     else:
-                        total -= line.amount_aed
+                        total -= line.amount_base
             else:
                 # الرصيد الكامل
                 balance = account.get_balance()

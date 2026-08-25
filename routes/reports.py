@@ -129,17 +129,17 @@ def partners():  # noqa: C901
 
         for cust in customers:
             # Paid TO Customer (Outgoing Payments)
-            paid_query = db.session.query(func.sum(Payment.amount_aed)).filter(
+            paid_query = db.session.query(func.sum(Payment.amount_base)).filter(
                 Payment.customer_id == cust.id,
                 Payment.direction == 'outgoing'
             )
             # Received FROM Customer (Receipts OR Incoming Payments)
             # 1. Receipts
-            receipts_query = db.session.query(func.sum(Receipt.amount_aed)).filter(
+            receipts_query = db.session.query(func.sum(Receipt.amount_base)).filter(
                 Receipt.customer_id == cust.id
             )
             # 2. Incoming Payments (Refunds/etc)
-            payment_in_query = db.session.query(func.sum(Payment.amount_aed)).filter(
+            payment_in_query = db.session.query(func.sum(Payment.amount_base)).filter(
                 Payment.customer_id == cust.id,
                 Payment.direction == 'incoming'
             )
@@ -187,17 +187,17 @@ def partners():  # noqa: C901
 
     for sup in suppliers:
         # Total Purchases
-        purchases_query = db.session.query(func.sum(Purchase.amount_aed)).filter(
+        purchases_query = db.session.query(func.sum(Purchase.amount_base)).filter(
             Purchase.supplier_id == sup.id,
             Purchase.status == 'confirmed'
         )
         # Paid TO Supplier (Outgoing)
-        paid_query = db.session.query(func.sum(Payment.amount_aed)).filter(
+        paid_query = db.session.query(func.sum(Payment.amount_base)).filter(
             Payment.supplier_id == sup.id,
             Payment.direction == 'outgoing'
         )
         # Received FROM Supplier (Incoming - Refunds)
-        received_query = db.session.query(func.sum(Payment.amount_aed)).filter(
+        received_query = db.session.query(func.sum(Payment.amount_base)).filter(
             Payment.supplier_id == sup.id,
             Payment.direction == 'incoming'
         )
@@ -269,9 +269,9 @@ def sales():
     total_due = Decimal('0')
 
     for sale in sales_list:
-        total_sales += (sale.amount_aed or Decimal('0'))
-        total_paid += (sale.paid_amount_aed or Decimal('0'))
-        total_due += ((sale.amount_aed or Decimal('0')) - (sale.paid_amount_aed or Decimal('0')))
+        total_sales += (sale.amount_base or Decimal('0'))
+        total_paid += (sale.paid_amount_base or Decimal('0'))
+        total_due += ((sale.amount_base or Decimal('0')) - (sale.paid_amount_base or Decimal('0')))
 
     total_profit = Decimal('0')
     if current_user.can_see_costs():
@@ -319,7 +319,7 @@ def purchases():  # noqa: C901
 
     # Calculate total purchases amount
     for p in purchases_list:
-        amount = p.amount_aed or Decimal('0')
+        amount = p.amount_base or Decimal('0')
         total_amount += amount
         # Add dummy attributes for template compatibility if not present
         if not hasattr(p, 'paid_amount'):
@@ -342,7 +342,7 @@ def purchases():  # noqa: C901
         payment_query = payment_query.filter_by(supplier_id=supplier_id)
 
     payments_list = payment_query.all()
-    total_paid = sum((p.amount_aed or Decimal('0') for p in payments_list), Decimal('0'))
+    total_paid = sum((p.amount_base or Decimal('0') for p in payments_list), Decimal('0'))
 
     # Total due is rough estimate: Purchases - Payments
     # Note: This doesn't account for opening balance
@@ -378,7 +378,7 @@ def receivables():
         Sale.status == 'confirmed'
     ).all()
 
-    all_sales = [sale for sale in all_sales if (sale.amount_aed or Decimal('0')) > (sale.paid_amount_aed or Decimal('0'))]
+    all_sales = [sale for sale in all_sales if (sale.amount_base or Decimal('0')) > (sale.paid_amount_base or Decimal('0'))]
 
     aging_data = {
         'current': {'sales': [], 'total': Decimal('0')},
@@ -393,7 +393,7 @@ def receivables():
         if sale_date.tzinfo is None:
             sale_date = sale_date.replace(tzinfo=timezone.utc)
         days_old = (now - sale_date).days
-        balance = (sale.amount_aed or Decimal('0')) - (sale.paid_amount_aed or Decimal('0'))
+        balance = (sale.amount_base or Decimal('0')) - (sale.paid_amount_base or Decimal('0'))
 
         sale.days_old = days_old
         sale.calculated_balance = balance
@@ -564,9 +564,9 @@ def entity_report_fragment(type, id):  # noqa: C901
                 'number': p.purchase_number,
                 'date': p.purchase_date.strftime('%Y-%m-%d'),
                 'status': p.status,
-                'amount': p.amount_aed or 0,
+                'amount': p.amount_base or 0,
                 'paid': p.get_paid_amount(),
-                'balance': (p.amount_aed or 0) - p.get_paid_amount()
+                'balance': (p.amount_base or 0) - p.get_paid_amount()
             } for p in purchases]
 
             # Transactions (Payments TO Supplier)
@@ -575,7 +575,7 @@ def entity_report_fragment(type, id):  # noqa: C901
                 'number': p.payment_number,
                 'type': 'out',  # Payment out
                 'date': p.payment_date.strftime('%Y-%m-%d'),
-                'amount': p.amount_aed,
+                'amount': p.amount_base,
                 'method': p.payment_method,
                 'notes': p.notes or '-'
             } for p in payments]
@@ -592,10 +592,10 @@ def entity_report_fragment(type, id):  # noqa: C901
 
             # Balance calculation (Receivables/Payables)
             # Sales (He took goods) + Payments Out (He took money) - Receipts (He gave money)
-            total_sales = db.session.query(func.sum(Sale.amount_aed)).filter(Sale.customer_id == id, Sale.status == 'confirmed').scalar() or 0
-            total_receipts = db.session.query(func.sum(Receipt.amount_aed)).filter(Receipt.customer_id == id).scalar() or 0
+            total_sales = db.session.query(func.sum(Sale.amount_base)).filter(Sale.customer_id == id, Sale.status == 'confirmed').scalar() or 0
+            total_receipts = db.session.query(func.sum(Receipt.amount_base)).filter(Receipt.customer_id == id).scalar() or 0
             # Payments made TO customer (e.g. returns/share/drawings)
-            total_payments_to = db.session.query(func.sum(Payment.amount_aed)).filter(Payment.customer_id == id, Payment.direction == 'outgoing').scalar() or 0
+            total_payments_to = db.session.query(func.sum(Payment.amount_base)).filter(Payment.customer_id == id, Payment.direction == 'outgoing').scalar() or 0
 
             context['balance'] = (total_sales + total_payments_to) - total_receipts  # Positive means they owe us
             context['balance_label'] = 'مستحق لنا'
@@ -677,9 +677,9 @@ def entity_report_fragment(type, id):  # noqa: C901
                 'number': s.sale_number,
                 'date': s.sale_date.strftime('%Y-%m-%d'),
                 'status': s.status,
-                'amount': s.amount_aed or 0,
-                'paid': s.paid_amount_aed or 0,
-                'balance': (s.amount_aed or 0) - (s.paid_amount_aed or 0)
+                'amount': s.amount_base or 0,
+                'paid': s.paid_amount_base or 0,
+                'balance': (s.amount_base or 0) - (s.paid_amount_base or 0)
             } for s in sales]
 
             # Transactions (Receipts + Payments)
@@ -692,7 +692,7 @@ def entity_report_fragment(type, id):  # noqa: C901
                     'number': r.receipt_number,
                     'type': 'in',  # Money In
                     'date': r.receipt_date,
-                    'amount': r.amount_aed,
+                    'amount': r.amount_base,
                     'method': r.payment_method,
                     'notes': 'قبض'
                 })
@@ -701,7 +701,7 @@ def entity_report_fragment(type, id):  # noqa: C901
                     'number': p.payment_number,
                     'type': 'out',  # Money Out
                     'date': p.payment_date,
-                    'amount': p.amount_aed,
+                    'amount': p.amount_base,
                     'method': p.payment_method,
                     'notes': p.notes or 'دفع'
                 })
@@ -869,8 +869,8 @@ def ap_aging():  # noqa: C901
             Payment.payment_confirmed.is_(True)
         ).all()
 
-        total_purchases = sum((p.amount_aed or Decimal('0') for p in purchases), Decimal('0'))
-        total_paid = sum((p.amount_aed or Decimal('0') for p in payments), Decimal('0'))
+        total_purchases = sum((p.amount_base or Decimal('0') for p in purchases), Decimal('0'))
+        total_paid = sum((p.amount_base or Decimal('0') for p in payments), Decimal('0'))
         balance = total_purchases - total_paid
 
         if balance <= 0:
@@ -937,7 +937,7 @@ def cash_flow():
         GLJournalLine.account_id,
         GLJournalLine.debit,
         GLJournalLine.credit,
-        GLJournalLine.amount_aed,
+        GLJournalLine.amount_base,
         GLJournalEntry.entry_date,
         GLAccount.type.label('account_type'),
         GLAccount.code.label('account_code'),
@@ -1035,7 +1035,7 @@ def vat_report():
     total_exempt_sales = Decimal('0')
 
     for sale in sales:
-        amount = sale.amount_aed or Decimal('0')
+        amount = sale.amount_base or Decimal('0')
         tax_rate = sale.tax_rate or Decimal('0')
         tax_amount = sale.tax_amount or Decimal('0')
 
@@ -1068,7 +1068,7 @@ def vat_report():
     total_exempt_purchases = Decimal('0')
 
     for purchase in purchases:
-        amount = purchase.amount_aed or Decimal('0')
+        amount = purchase.amount_base or Decimal('0')
         tax_rate = purchase.tax_rate or Decimal('0')
         tax_amount = purchase.tax_amount or Decimal('0')
 
@@ -1186,8 +1186,8 @@ def export_ap_aging():
             Payment.direction == 'outgoing',
             Payment.payment_confirmed == True,  # noqa: E712
         ).all()
-        total_purchases = sum((p.amount_aed or Decimal('0') for p in purchases), Decimal('0'))
-        total_paid = sum((p.amount_aed or Decimal('0') for p in payments), Decimal('0'))
+        total_purchases = sum((p.amount_base or Decimal('0') for p in purchases), Decimal('0'))
+        total_paid = sum((p.amount_base or Decimal('0') for p in payments), Decimal('0'))
         balance = total_purchases - total_paid
         if balance <= 0:
             continue
@@ -1301,7 +1301,7 @@ def export_vat_report():  # noqa: C901
         if tr > 0:
             sales_rows.append([s.sale_number, s.sale_date.strftime('%Y-%m-%d') if s.sale_date else '',
                                s.customer.name if s.customer else 'عميل نقدي',
-                               float(s.amount_aed or 0), f'{tr}%', float(ta)])
+                               float(s.amount_base or 0), f'{tr}%', float(ta)])
             total_output += ta
 
     # Purchases
@@ -1320,7 +1320,7 @@ def export_vat_report():  # noqa: C901
         if tr > 0:
             purchase_rows.append([p.purchase_number, p.purchase_date.strftime('%Y-%m-%d') if p.purchase_date else '',
                                   p.supplier.name if p.supplier else p.supplier_name,
-                                  float(p.amount_aed or 0), f'{tr}%', float(ta)])
+                                  float(p.amount_base or 0), f'{tr}%', float(ta)])
             total_input += ta
 
     net_vat = total_output - total_input

@@ -101,8 +101,8 @@ def register_sale_listeners():  # noqa: C901
 
             new_balance = Decimal('0')
             for sale_row in sales_result:
-                amount = sale_row.amount_aed or Decimal('0')
-                paid = sale_row.paid_amount_aed or Decimal('0')
+                amount = sale_row.amount_base or Decimal('0')
+                paid = sale_row.paid_amount_base or Decimal('0')
                 new_balance += (amount - paid)
 
             # تحديث رصيد العميل في قاعدة البيانات
@@ -159,7 +159,7 @@ def register_receipt_listeners():
         هذا Listener يضمن تحديث الرصيد الإجمالي
         """
         try:
-            logger.info(f"📝 Receipt {target.receipt_number} created - amount: {target.amount_aed} AED for customer {target.customer_id}")
+            logger.info(f"📝 Receipt {target.receipt_number} created - amount: {target.amount_base} AED for customer {target.customer_id}")
 
             # حساب رصيد العميل من جديد
             sales_result = connection.execute(
@@ -172,8 +172,8 @@ def register_receipt_listeners():
 
             new_balance = Decimal('0')
             for sale_row in sales_result:
-                amount = sale_row.amount_aed or Decimal('0')
-                paid = sale_row.paid_amount_aed or Decimal('0')
+                amount = sale_row.amount_base or Decimal('0')
+                paid = sale_row.paid_amount_base or Decimal('0')
                 new_balance += (amount - paid)
 
             # تحديث رصيد العميل
@@ -227,11 +227,11 @@ def register_purchase_listeners():
             total_paid_from_purchases = Decimal('0')
 
             for purchase_row in purchases_result:
-                total_purchases += (purchase_row.amount_aed or Decimal('0'))
+                total_purchases += (purchase_row.amount_base or Decimal('0'))
                 # حساب المدفوع من جدول المدفوعات لهذا المورد
                 from sqlalchemy import func
                 paid_for_supplier = connection.execute(
-                    func.sum(Payment.amount_aed).select().where(
+                    func.sum(Payment.amount_base).select().where(
                         Payment.supplier_id == target.supplier_id
                     )
                 ).scalar() or Decimal('0')
@@ -245,7 +245,7 @@ def register_purchase_listeners():
             )
 
             total_paid_direct = sum(
-                (payment_row.amount_aed or Decimal('0'))
+                (payment_row.amount_base or Decimal('0'))
                 for payment_row in payments_result
             )
 
@@ -285,7 +285,7 @@ def register_payment_listeners():
             if not hasattr(target, 'supplier_id') or target.supplier_id is None:
                 return
 
-            logger.info(f"💰 Payment created - amount: {target.amount_aed} AED to supplier {target.supplier_id}")
+            logger.info(f"💰 Payment created - amount: {target.amount_base} AED to supplier {target.supplier_id}")
 
             # حساب إجمالي المشتريات المؤكدة
             purchases_result = connection.execute(
@@ -298,12 +298,12 @@ def register_payment_listeners():
             total_purchases = Decimal('0')
 
             for purchase_row in purchases_result:
-                total_purchases += (purchase_row.amount_aed or Decimal('0'))
+                total_purchases += (purchase_row.amount_base or Decimal('0'))
 
             # حساب إجمالي المدفوعات من جدول المدفوعات لهذا المورد
             # Using Core Select properly
             from sqlalchemy import select, func
-            stmt = select(func.sum(Payment.amount_aed)).where(
+            stmt = select(func.sum(Payment.amount_base)).where(
                 Payment.supplier_id == target.supplier_id
             )
             total_paid = connection.execute(stmt).scalar() or Decimal('0')
@@ -389,7 +389,7 @@ def ensure_balance_consistency(connection, model, record_id):
             ).fetchall()
 
             calculated_balance = sum(
-                (row.amount_aed or Decimal('0')) - (row.paid_amount_aed or Decimal('0'))
+                (row.amount_base or Decimal('0')) - (row.paid_amount_base or Decimal('0'))
                 for row in result
             )
 
@@ -450,7 +450,7 @@ def register_advanced_sale_listener():
             ).fetchall()
 
             new_balance = sum(
-                (sale.amount_aed or Decimal('0')) - (sale.paid_amount_aed or Decimal('0'))
+                (sale.amount_base or Decimal('0')) - (sale.paid_amount_base or Decimal('0'))
                 for sale in sales
             )
 
@@ -590,7 +590,7 @@ def register_expense_listeners():
         """تسجيل المصروفات"""
         try:
             if target.is_active:
-                logger.info(f"💸 Expense recorded: {target.amount_aed} AED - Category: {target.category_id}")
+                logger.info(f"💸 Expense recorded: {target.amount_base} AED - Category: {target.category_id}")
 
         except Exception as e:
             logger.error(f"❌ Failed to log expense: {e}")
@@ -638,12 +638,12 @@ def register_validation_listeners():  # noqa: C901
         """التحقق من صحة مبالغ الفاتورة"""
         try:
             # التحقق من المبالغ
-            if target.amount_aed and target.amount_aed < 0:
+            if target.amount_base and target.amount_base < 0:
                 logger.error(f"❌ Sale {target.sale_number}: Negative amount detected!")
 
             # التحقق من الرصيد المتبقي
-            if target.paid_amount_aed and target.amount_aed:
-                expected_balance = target.amount_aed - target.paid_amount_aed
+            if target.paid_amount_base and target.amount_base:
+                expected_balance = target.amount_base - target.paid_amount_base
                 if target.balance_due and abs(target.balance_due - expected_balance) > Decimal('0.01'):
                     # تصحيح تلقائي
                     target.balance_due = expected_balance
@@ -657,7 +657,7 @@ def register_validation_listeners():  # noqa: C901
     def validate_purchase_amounts(mapper, connection, target):
         """التحقق من صحة مبالغ فاتورة الشراء"""
         try:
-            if target.amount_aed and target.amount_aed < 0:
+            if target.amount_base and target.amount_base < 0:
                 logger.error(f"❌ Purchase {target.purchase_number}: Negative amount detected!")
 
         except Exception as e:
@@ -667,7 +667,7 @@ def register_validation_listeners():  # noqa: C901
     def validate_receipt_amount(mapper, connection, target):
         """التحقق من صحة مبلغ سند القبض"""
         try:
-            if target.amount_aed and target.amount_aed <= 0:
+            if target.amount_base and target.amount_base <= 0:
                 logger.error(f"❌ Receipt {target.receipt_number}: Invalid amount!")
 
         except Exception as e:
@@ -677,7 +677,7 @@ def register_validation_listeners():  # noqa: C901
     def validate_payment_amount(mapper, connection, target):
         """التحقق من صحة مبلغ سند الصرف"""
         try:
-            if target.amount_aed and target.amount_aed <= 0:
+            if target.amount_base and target.amount_base <= 0:
                 logger.error("❌ Payment: Invalid amount!")
 
         except Exception as e:
@@ -711,22 +711,22 @@ def register_audit_listeners():
     @event.listens_for(Sale, 'after_delete')
     def log_sale_deletion(mapper, connection, target):
         """تسجيل حذف الفواتير"""
-        logger.warning(f"🗑️ DELETED: Sale {target.sale_number} - Amount: {target.amount_aed} AED")
+        logger.warning(f"🗑️ DELETED: Sale {target.sale_number} - Amount: {target.amount_base} AED")
 
     @event.listens_for(Purchase, 'after_delete')
     def log_purchase_deletion(mapper, connection, target):
         """تسجيل حذف فواتير الشراء"""
-        logger.warning(f"🗑️ DELETED: Purchase {target.purchase_number} - Amount: {target.amount_aed} AED")
+        logger.warning(f"🗑️ DELETED: Purchase {target.purchase_number} - Amount: {target.amount_base} AED")
 
     @event.listens_for(Receipt, 'after_delete')
     def log_receipt_deletion(mapper, connection, target):
         """تسجيل حذف سندات القبض"""
-        logger.warning(f"🗑️ DELETED: Receipt {target.receipt_number} - Amount: {target.amount_aed} AED")
+        logger.warning(f"🗑️ DELETED: Receipt {target.receipt_number} - Amount: {target.amount_base} AED")
 
     @event.listens_for(Payment, 'after_delete')
     def log_payment_deletion(mapper, connection, target):
         """تسجيل حذف سندات الصرف"""
-        logger.warning(f"🗑️ DELETED: Payment - Amount: {target.amount_aed} AED")
+        logger.warning(f"🗑️ DELETED: Payment - Amount: {target.amount_base} AED")
 
 
 # ============================================================================
@@ -769,7 +769,7 @@ def register_ai_learning_listeners():  # noqa: C901
             learning_data = {
                 'sale_id': target.id,
                 'customer_id': target.customer_id,
-                'amount': float(target.amount_aed),
+                'amount': float(target.amount_base),
                 'items_count': len(target.lines) if target.lines else 0,
                 'discount_percent': float(target.discount_amount / target.subtotal * 100) if target.subtotal > 0 else 0,
                 'payment_status': target.payment_status,
@@ -793,7 +793,7 @@ def register_ai_learning_listeners():  # noqa: C901
             )
 
             logger.info(f"🤖 AI Learned: Sale {target.sale_number} | "
-                        f"{day_of_week} {hour}:00 | {target.amount_aed} AED")
+                        f"{day_of_week} {hour}:00 | {target.amount_base} AED")
 
         except Exception as e:
             logger.error(f"❌ AI learning failed: {e}")
@@ -920,9 +920,9 @@ def register_ai_learning_listeners():  # noqa: C901
             insights = []
 
             # 1. كشف المبالغ الكبيرة
-            if target.amount_aed and target.amount_aed > Decimal('50000'):
+            if target.amount_base and target.amount_base > Decimal('50000'):
                 anomalies.append('large_amount')
-                logger.warning(f"🤖 AI Anomaly: Large sale! {target.sale_number} - {target.amount_aed} AED")
+                logger.warning(f"🤖 AI Anomaly: Large sale! {target.sale_number} - {target.amount_base} AED")
 
             # 2. كشف الخصومات الكبيرة
             if target.discount_amount and target.subtotal:
@@ -935,7 +935,7 @@ def register_ai_learning_listeners():  # noqa: C901
             if target.lines:
                 total_cost = sum(line.cost_price * line.quantity for line in target.lines if line.cost_price)
                 if total_cost > 0:
-                    profit = target.amount_aed - total_cost
+                    profit = target.amount_base - total_cost
                     margin_percent = (profit / total_cost) * 100
 
                     if margin_percent < 10:
@@ -1047,7 +1047,7 @@ def register_ai_professional_listeners():
             practice_data = {
                 'sale_number': target.sale_number,
                 'payment_terms': {
-                    'cash_percentage': float(target.paid_amount_aed / target.amount_aed * 100) if target.amount_aed > 0 else 0,
+                    'cash_percentage': float(target.paid_amount_base / target.amount_base * 100) if target.amount_base > 0 else 0,
                     'credit_given': target.payment_status in ['unpaid', 'partial']
                 },
                 'discount_strategy': {
@@ -1081,7 +1081,7 @@ def register_ai_professional_listeners():
             # تحليل استراتيجية الشراء
             procurement_data = {
                 'supplier_id': target.supplier_id,
-                'amount': float(target.amount_aed),
+                'amount': float(target.amount_base),
                 'payment_method': getattr(target, 'payment_method', None),
                 'credit_terms': target.status != 'paid_in_full'
             }
@@ -1108,7 +1108,7 @@ def register_ai_professional_listeners():
             # تحليل نمط المصروف
             expense_data = {
                 'category_id': target.category_id,
-                'amount': float(target.amount_aed),
+                'amount': float(target.amount_base),
                 'payment_method': target.payment_method,
                 'is_recurring': target.is_recurring if hasattr(target, 'is_recurring') else False
             }
@@ -1121,7 +1121,7 @@ def register_ai_professional_listeners():
                 context={'type': 'professional_learning', 'subtype': 'expense_management'}
             )
 
-            logger.info(f"🤖 AI Professional: Learned expense pattern - {target.amount_aed} AED")
+            logger.info(f"🤖 AI Professional: Learned expense pattern - {target.amount_base} AED")
 
         except Exception as e:
             logger.error(f"❌ AI expense learning failed: {e}")
@@ -1189,9 +1189,9 @@ def register_ai_accounting_listeners():  # noqa: C901
             # مبدأ الاعتراف بالإيراد
             revenue_data = {
                 'sale_number': target.sale_number,
-                'total_revenue': float(target.amount_aed),
+                'total_revenue': float(target.amount_base),
                 'revenue_recognized': target.status == 'confirmed',
-                'cash_received': float(target.paid_amount_aed or 0),
+                'cash_received': float(target.paid_amount_base or 0),
                 'accounts_receivable': float(target.balance_due or 0),
                 'recognition_principle': 'accrual' if target.status == 'confirmed' else 'cash'
             }
@@ -1218,10 +1218,10 @@ def register_ai_accounting_listeners():  # noqa: C901
             # مبدأ المقابلة المحاسبية
             matching_data = {
                 'purchase_number': target.purchase_number,
-                'total_cost': float(target.amount_aed),
+                'total_cost': float(target.amount_base),
                 'recognized_as_expense': target.status == 'confirmed',
-                'cash_paid': float(getattr(target, 'paid_amount_aed', 0) or 0),
-                'accounts_payable': float(((target.amount_aed or 0) - (getattr(target, 'paid_amount_aed', 0) or 0)) if target.amount_aed else 0)
+                'cash_paid': float(getattr(target, 'paid_amount_base', 0) or 0),
+                'accounts_payable': float(((target.amount_base or 0) - (getattr(target, 'paid_amount_base', 0) or 0)) if target.amount_base else 0)
             }
 
             learning_system = AzadLearningSystem()
@@ -1267,7 +1267,7 @@ def register_ai_predictive_listeners():  # noqa: C901
             ).fetchall()
 
             if len(recent_sales) > 10:  # نحتاج بيانات كافية
-                total_recent = sum(sale.amount_aed or Decimal('0') for sale in recent_sales)
+                total_recent = sum(sale.amount_base or Decimal('0') for sale in recent_sales)
                 avg_daily = total_recent / 30
 
                 # التوقع البسيط
@@ -1461,19 +1461,19 @@ def register_intelligent_assistant_listeners():  # noqa: C901
 
             # معلومات البيع
             sale_context = {
-                'amount': float(target.amount_aed),
+                'amount': float(target.amount_base),
                 'items_count': len(target.lines) if target.lines else 0,
                 'customer_type': target.customer.customer_type if target.customer else None,
                 'payment_status': target.payment_status,
                 'profit_margin': (
                     float(
                         (
-                            (target.amount_aed or Decimal('0')) -
+                            (target.amount_base or Decimal('0')) -
                             sum((line.cost_price or Decimal('0')) * (line.quantity or 0) for line in (target.lines or []))
-                        ) / (target.amount_aed or Decimal('1'))
+                        ) / (target.amount_base or Decimal('1'))
                     )
                     * 100
-                ) if (target.amount_aed and target.amount_aed > 0) else 0
+                ) if (target.amount_base and target.amount_base > 0) else 0
             }
 
             # رؤى ذكية

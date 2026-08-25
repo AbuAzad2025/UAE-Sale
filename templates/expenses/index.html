@@ -51,7 +51,7 @@
                         <td>{{ expense.description or '-' }}</td>
                         <td>{{ '{:,.2f}'.format(expense.amount) }}</td>
                         <td>{{ expense.currency }}</td>
-                        <td>{{ '{:,.2f}'.format(expense.amount_aed) }}</td>
+                        <td>{{ '{:,.2f}'.format(expense.amount_base) }}</td>
                         <td>{{ expense.expense_date.strftime('%Y-%m-%d') }}</td>
                         <td><span class="badge badge-info">{{ expense.payment_method }}</span></td>
                         <td>

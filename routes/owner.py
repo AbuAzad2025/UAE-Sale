@@ -79,8 +79,8 @@ def dashboard():
 
     today_sales = db.session.query(
         func.count(Sale.id),
-        func.sum(Sale.amount_aed),
-        func.sum(Sale.amount_aed - Sale.paid_amount_aed)
+        func.sum(Sale.amount_base),
+        func.sum(Sale.amount_base - Sale.paid_amount_base)
     ).filter(
         func.date(Sale.sale_date) == today,
         Sale.status == 'confirmed'
@@ -92,7 +92,7 @@ def dashboard():
 
     month_sales = db.session.query(
         func.count(Sale.id),
-        func.sum(Sale.amount_aed)
+        func.sum(Sale.amount_base)
     ).filter(
         func.date(Sale.sale_date) >= month_start,
         Sale.status == 'confirmed'
@@ -102,7 +102,7 @@ def dashboard():
     stats['month_sales_amount'] = float(month_sales[1] or 0)
 
     year_sales = db.session.query(
-        func.sum(Sale.amount_aed)
+        func.sum(Sale.amount_base)
     ).filter(
         func.date(Sale.sale_date) >= year_start,
         Sale.status == 'confirmed'
@@ -111,7 +111,7 @@ def dashboard():
     stats['year_sales_amount'] = float(year_sales)
 
     month_purchases = db.session.query(
-        func.sum(Purchase.amount_aed)
+        func.sum(Purchase.amount_base)
     ).filter(
         func.date(Purchase.purchase_date) >= month_start,
         Purchase.status == 'confirmed'
@@ -143,7 +143,7 @@ def dashboard():
     overdue_count = 0
 
     for sale in Sale.query.filter(Sale.status == 'confirmed').all():
-        balance = (sale.amount_aed or Decimal('0')) - (sale.paid_amount_aed or Decimal('0'))
+        balance = (sale.amount_base or Decimal('0')) - (sale.paid_amount_base or Decimal('0'))
         if balance > 0:
             total_receivables += balance
             if sale.sale_date < cutoff_date:
@@ -158,7 +158,7 @@ def dashboard():
         Customer.name,
         Customer.customer_type,
         Customer.customer_classification,
-        func.sum(Sale.amount_aed).label('total')
+        func.sum(Sale.amount_base).label('total')
     ).join(
         Sale, Customer.id == Sale.customer_id
     ).filter(
@@ -476,9 +476,9 @@ def user_profile(user_id):
 
     stats = {
         'sales_count': Sale.query.count(),
-        'sales_total': db.session.query(func.sum(Sale.amount_aed)).filter_by(status='confirmed').scalar() or 0,
+        'sales_total': db.session.query(func.sum(Sale.amount_base)).filter_by(status='confirmed').scalar() or 0,
         'payments_count': Payment.query.count(),
-        'payments_total': db.session.query(func.sum(Payment.amount_aed)).scalar() or 0,
+        'payments_total': db.session.query(func.sum(Payment.amount_base)).scalar() or 0,
         'audits_count': 0,  # Audit.query.filter_by(user_id=user_id).count(),
     }
 
@@ -555,8 +555,8 @@ def financial_overview():
         start_date = now.date().replace(day=1)
 
     sales_data = db.session.query(
-        func.sum(Sale.amount_aed).label('total_sales'),
-        func.sum(Sale.paid_amount_aed).label('total_paid'),
+        func.sum(Sale.amount_base).label('total_sales'),
+        func.sum(Sale.paid_amount_base).label('total_paid'),
         func.count(Sale.id).label('count')
     ).filter(
         func.date(Sale.sale_date) >= start_date,
@@ -564,7 +564,7 @@ def financial_overview():
     ).first()
 
     purchases_data = db.session.query(
-        func.sum(Purchase.amount_aed).label('total_purchases'),
+        func.sum(Purchase.amount_base).label('total_purchases'),
         func.count(Purchase.id).label('count')
     ).filter(
         func.date(Purchase.purchase_date) >= start_date,
@@ -572,7 +572,7 @@ def financial_overview():
     ).first()
 
     receipts_total = db.session.query(
-        func.sum(Receipt.amount_aed)
+        func.sum(Receipt.amount_base)
     ).filter(
         func.date(Receipt.receipt_date) >= start_date
     ).scalar() or Decimal('0')
@@ -1543,7 +1543,7 @@ def system_config():
             settings.enable_returns = request.form.get('enable_returns') == 'on'
 
             # General
-            settings.default_currency = request.form.get('default_currency', 'AED')
+            settings.default_currency = request.form.get('default_currency', 'ILS')
             settings.default_language = request.form.get('default_language', 'ar')
             settings.timezone = request.form.get('timezone', 'Asia/Dubai')
             settings.items_per_page = int(request.form.get('items_per_page', 25))
@@ -1730,7 +1730,7 @@ def preview_invoice(template):
         def __init__(self):
             self.payment_number = 'PAY-2025-0001'
             self.payment_date = datetime.now()
-            self.amount_aed = Decimal('500.00')
+            self.amount_base = Decimal('500.00')
             self.payment_method = 'cheque'
             self.cheque_number = '123456'
             self.cheque_date = datetime.now().date()
@@ -1799,7 +1799,7 @@ def preview_receipt(template):
         customer = SampleCustomer()
         user = SampleUser()
         amount = Decimal('1500.00')
-        amount_aed = Decimal('1500.00')
+        amount_base = Decimal('1500.00')
         currency = 'AED'
         payment_method = 'cheque'
         cheque_number = '789456'
@@ -2220,7 +2220,7 @@ def currency_settings():
     if request.method == 'POST':
         settings = SystemSettings.get_current()
 
-        settings.default_currency = request.form.get('default_currency', 'AED')
+        settings.default_currency = request.form.get('default_currency', 'ILS')
         settings.auto_update_rates = request.form.get('auto_update_rates') == 'on'
 
         db.session.commit()

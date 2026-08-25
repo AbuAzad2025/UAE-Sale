@@ -113,7 +113,7 @@ class GamificationService:
 
         total_sales = Sale.query.filter_by(seller_id=user_id).count()
         total_amount = db.session.query(
-            db.func.sum(Sale.amount_aed)
+            db.func.sum(Sale.amount_base)
         ).filter_by(seller_id=user_id, status='confirmed').scalar() or Decimal('0')
 
         next_badge = None

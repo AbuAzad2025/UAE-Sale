@@ -105,11 +105,11 @@ class Supplier(TenantScopedMixin, db.Model):
         confirmed_purchases = self.purchases.filter_by(status='confirmed').all()
 
         self.total_purchases_aed = sum(
-            p.amount_aed or Decimal('0') for p in confirmed_purchases
+            p.amount_base or Decimal('0') for p in confirmed_purchases
         )
 
         # Calculate total paid from Payment table
-        total_paid = db.session.query(db.func.sum(Payment.amount_aed)).filter(
+        total_paid = db.session.query(db.func.sum(Payment.amount_base)).filter(
             Payment.supplier_id == self.id,
             Payment.payment_confirmed.is_(True)
         ).scalar()

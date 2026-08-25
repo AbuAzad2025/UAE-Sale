@@ -40,14 +40,14 @@ class TestJournalEntry:
             account_id=cash.id,
             debit=Decimal('100.000'),
             credit=Decimal('0'),
-            amount_aed=Decimal('100.000'),
+            amount_base=Decimal('100.000'),
         )
         credit_line = GLJournalLine(
             entry_id=entry.id,
             account_id=revenue.id,
             debit=Decimal('0'),
             credit=Decimal('100.000'),
-            amount_aed=Decimal('-100.000'),
+            amount_base=Decimal('-100.000'),
         )
         db.session.add_all([debit_line, credit_line])
         db.session.commit()
@@ -99,14 +99,14 @@ class TestJournalEntry:
             account_id=cash.id,
             debit=Decimal('100.000'),
             credit=Decimal('0'),
-            amount_aed=Decimal('100.000'),
+            amount_base=Decimal('100.000'),
         )
         credit_line = GLJournalLine(
             entry_id=entry.id,
             account_id=revenue.id,
             debit=Decimal('0'),
             credit=Decimal('100.000'),
-            amount_aed=Decimal('-100.000'),
+            amount_base=Decimal('-100.000'),
         )
         db.session.add_all([debit_line, credit_line])
         db.session.commit()

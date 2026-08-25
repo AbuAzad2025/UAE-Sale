@@ -87,7 +87,7 @@
               </tr>
               <tr>
                 <th>المبلغ المتوقع (AED):</th>
-                <td><strong>{{ "{:,.2f}".format(cheque.amount_aed) }}</strong> AED</td>
+                <td><strong>{{ "{:,.2f}".format(cheque.amount_base) }}</strong> AED</td>
               </tr>
               {% if cheque.status == 'cleared' and cheque.clearance_exchange_rate %}
               <tr class="table-success">
@@ -98,7 +98,7 @@
               </tr>
               <tr class="table-success">
                 <th>المبلغ الفعلي (AED):</th>
-                <td><strong>{{ "{:,.2f}".format(cheque.actual_amount_aed) }}</strong> AED</td>
+                <td><strong>{{ "{:,.2f}".format(cheque.actual_amount_base) }}</strong> AED</td>
               </tr>
               {% if cheque.currency_gain_loss and cheque.currency_gain_loss != 0 %}
               <tr class="{% if cheque.currency_gain_loss > 0 %}table-success{% else %}table-danger{% endif %}">
@@ -360,7 +360,7 @@
           <div class="form-group">
             <label>المبلغ المتوقع بالدرهم:</label>
             <input type="text" class="form-control" 
-                   value="{{ "{:,.2f}".format(cheque.amount_aed) }} AED" readonly>
+                   value="{{ "{:,.2f}".format(cheque.amount_base) }} AED" readonly>
           </div>
           
           <div class="form-group">
@@ -436,7 +436,7 @@
           </div>
           
           <p>إيداع الشيك رقم: <strong>{{ cheque.cheque_bank_number }}</strong></p>
-          <p>المبلغ: <strong>{{ "{:,.2f}".format(cheque.amount_aed) }} AED</strong></p>
+          <p>المبلغ: <strong>{{ "{:,.2f}".format(cheque.amount_base) }} AED</strong></p>
           
           <div class="form-group">
             <label>تاريخ الإيداع: <span class="text-danger">*</span></label>
@@ -518,7 +518,7 @@ function cancelCheque() {
 function fetchCurrentExchangeRate() {
   // جلب سعر الصرف الحالي من API
   $.ajax({
-    url: '/api/currency-rate/{{ cheque.currency }}/ILS',
+    url: '/api/currency-rate/{{ cheque.currency }}/{{ base_currency }}',
     method: 'GET',
     success: function(data) {
       if (data.rate) {

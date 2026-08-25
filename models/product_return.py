@@ -19,7 +19,7 @@ class ProductReturn(db.Model):
 
     currency = db.Column(db.String(3), default='ILS', nullable=False)
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
-    amount_aed = db.Column(db.Numeric(15, 3), nullable=False)
+    amount_base = db.Column(db.Numeric(15, 3), nullable=False)
 
     return_reason = db.Column(db.String(255))
     status = db.Column(db.String(20), default='pending', index=True)
@@ -41,7 +41,7 @@ class ProductReturn(db.Model):
         """Calculate return totals with proper decimal precision"""
         self.total_amount = sum((Decimal(str(line.line_total)) for line in self.lines), Decimal('0'))
         exchange_rate_decimal = Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal('1')
-        self.amount_aed = (self.total_amount * exchange_rate_decimal).quantize(
+        self.amount_base = (self.total_amount * exchange_rate_decimal).quantize(
             Decimal('0.001'), rounding=ROUND_HALF_UP
         )
 

@@ -52,7 +52,7 @@ class ReturnService:
 
             product_return.total_amount = Decimal('0')
             product_return.refund_amount = Decimal('0')
-            product_return.amount_aed = Decimal('0')
+            product_return.amount_base = Decimal('0')
 
             db.session.add(product_return)
             db.session.flush()  # Get ID

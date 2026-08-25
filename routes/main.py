@@ -59,7 +59,7 @@ def dashboard():  # noqa: C901
 
         def _today_sales():
             return db.session.query(
-                func.count(Sale.id), func.sum(Sale.amount_aed)
+                func.count(Sale.id), func.sum(Sale.amount_base)
             ).filter(func.date(Sale.sale_date) == today,
                      Sale.status == 'confirmed').first()
 
@@ -69,7 +69,7 @@ def dashboard():  # noqa: C901
 
         def _month_sales():
             return db.session.query(
-                func.count(Sale.id), func.sum(Sale.amount_aed)
+                func.count(Sale.id), func.sum(Sale.amount_base)
             ).filter(func.date(Sale.sale_date) >= month_start,
                      Sale.status == 'confirmed').first()
 
@@ -79,14 +79,14 @@ def dashboard():  # noqa: C901
 
         if current_user.can_see_costs():
             def _month_profit():
-                return db.session.query(func.sum(Sale.amount_aed)).filter(
+                return db.session.query(func.sum(Sale.amount_base)).filter(
                     func.date(Sale.sale_date) >= month_start,
                     Sale.status == 'confirmed').scalar() or Decimal('0')
             stats['month_profit'] = float(_cached('month_profit', _month_profit))
 
         def _receivables():
             return db.session.query(
-                func.sum(Sale.amount_aed - Sale.paid_amount_aed)
+                func.sum(Sale.amount_base - Sale.paid_amount_base)
             ).filter(Sale.status == 'confirmed',
                      Sale.balance_due > 0).scalar() or Decimal('0')
 
@@ -111,7 +111,7 @@ def dashboard():  # noqa: C901
         def _recent_sales():
             return [s.to_dict() if hasattr(s, 'to_dict') else {
                 'id': s.id, 'sale_number': s.sale_number,
-                'amount': float(s.amount_aed or 0),
+                'amount': float(s.amount_base or 0),
                 'date': s.sale_date.strftime('%Y-%m-%d') if s.sale_date else '',
                 'customer': s.customer.name if s.customer else 'عميل نقدي',
                 'seller': s.seller.username if s.seller else '',
@@ -124,7 +124,7 @@ def dashboard():  # noqa: C901
         if current_user.is_seller():
             def _my_today():
                 return db.session.query(
-                    func.count(Sale.id), func.sum(Sale.amount_aed)
+                    func.count(Sale.id), func.sum(Sale.amount_base)
                 ).filter(func.date(Sale.sale_date) == today,
                          Sale.seller_id == current_user.id,
                          Sale.status == 'confirmed').first()

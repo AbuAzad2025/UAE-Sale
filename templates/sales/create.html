@@ -189,14 +189,14 @@ a.btn.btn-outline-secondary span {
               <div class="form-group">
                 <label class="font-weight-bold">
                   <i class="fas fa-money-bill-wave text-success mr-1"></i>عملة الدفع
-                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="العملة التي سيدفع بها العميل - الفاتورة بالشيقل دائماً (اختياري)"></i>
+                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="العملة التي سيدفع بها العميل - الفاتورة بـ{{ base_currency_name }} دائماً (اختياري)"></i>
                 </label>
                 <select name="currency" id="currency" class="form-control">
-                  <option value="ILS" selected>شيقل (ILS)</option>
-                  <option value="JOD">دينار أردني (JOD)</option>
-                  <option value="AED">درهم إماراتي (AED)</option>
-                  <option value="SAR">ريال سعودي (SAR)</option>
-                  <option value="USD">دولار أمريكي (USD)</option>
+                  <option value="ILS" {% if base_currency == 'ILS' %}selected{% endif %}>شيقل (ILS)</option>
+                  <option value="JOD" {% if base_currency == 'JOD' %}selected{% endif %}>دينار أردني (JOD)</option>
+                  <option value="AED" {% if base_currency == 'AED' %}selected{% endif %}>درهم إماراتي (AED)</option>
+                  <option value="SAR" {% if base_currency == 'SAR' %}selected{% endif %}>ريال سعودي (SAR)</option>
+                  <option value="USD" {% if base_currency == 'USD' %}selected{% endif %}>دولار أمريكي (USD)</option>
                   <option value="EUR">يورو (EUR)</option>
                   <option value="GBP">جنيه استرليني (GBP)</option>
                   <option value="KWD">دينار كويتي (KWD)</option>
@@ -205,7 +205,7 @@ a.btn.btn-outline-secondary span {
                   <option value="BHD">دينار بحريني (BHD)</option>
                 </select>
                 <small class="form-text text-info">
-                  <i class="fas fa-lightbulb"></i> الأسعار بالشيقل - العملة فقط لتحويل المدفوع
+                  <i class="fas fa-lightbulb"></i> الأسعار بـ{{ base_currency_name }} - العملة فقط لتحويل المدفوع
                 </small>
               </div>
             </div>
@@ -246,30 +246,30 @@ a.btn.btn-outline-secondary span {
           <div class="form-group">
             <label class="font-weight-bold">
               <i class="fas fa-percent text-danger mr-1"></i>الخصم الإجمالي
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="خصم إضافي على إجمالي الفاتورة بالشيقل (اختياري - افتراضي: 0)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="خصم إضافي على إجمالي الفاتورة بـ{{ base_currency_name }} (اختياري - افتراضي: 0)"></i>
             </label>
             <div class="input-group">
               <input type="number" name="discount_amount" class="form-control" value="0" step="0.01" min="0" 
                      onchange="calculateTotals()" onkeyup="calculateTotals()"
                      placeholder="0.00">
               <div class="input-group-append">
-                <span class="input-group-text">ILS</span>
+                <span class="input-group-text">{{ base_currency }}</span>
               </div>
             </div>
-            <small class="form-text text-muted">خصم بالشيقل على المجموع الفرعي</small>
+            <small class="form-text text-muted">خصم بـ{{ base_currency_name }} على المجموع الفرعي</small>
           </div>
 
           <div class="form-group">
             <label class="font-weight-bold">
               <i class="fas fa-shipping-fast text-primary mr-1"></i>تكلفة الشحن
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تكلفة الشحن والتوصيل بالشيقل (اختياري - افتراضي: 0)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تكلفة الشحن والتوصيل بـ{{ base_currency_name }} (اختياري - افتراضي: 0)"></i>
             </label>
             <div class="input-group">
               <input type="number" name="shipping_cost" class="form-control" value="0" step="0.01" min="0" 
                      onchange="calculateTotals()" onkeyup="calculateTotals()"
                      placeholder="0.00">
               <div class="input-group-append">
-                <span class="input-group-text">ILS</span>
+                <span class="input-group-text">{{ base_currency }}</span>
               </div>
             </div>
             <small class="form-text text-muted">تُضاف للمجموع قبل الضريبة</small>
@@ -294,7 +294,7 @@ a.btn.btn-outline-secondary span {
           <div class="total-box text-center">
             <div class="alert alert-info mb-3" style="background: rgba(255,255,255,0.2); border: none;">
               <i class="fas fa-info-circle"></i>
-              <strong>ملاحظة:</strong> جميع الأسعار بالشيقل (ILS)
+              <strong>ملاحظة:</strong> جميع الأسعار بـ{{ base_currency_name }} ({{ base_currency }})
             </div>
             <h6 class="mb-2">{{ t('Subtotal') }}</h6>
             <h3 id="subtotal" class="mb-3">0.00</h3>
@@ -302,7 +302,7 @@ a.btn.btn-outline-secondary span {
             <h5 class="mb-2">{{ t('Final Total') }}</h5>
             <h2 id="total" class="mb-0" style="font-size: 36px; font-weight: 700;">0.00</h2>
             <small style="opacity: 0.9; font-size: 1.1rem;">
-              <i class="fas fa-coins"></i> <span id="total_currency_label">شيقل (ILS)</span>
+              <i class="fas fa-coins"></i> <span id="total_currency_label">{{ base_currency_name }} ({{ base_currency }})</span>
             </small>
           </div>
 
@@ -337,7 +337,7 @@ a.btn.btn-outline-secondary span {
                      value="0" step="0.01" min="0"
                      title="المبلغ المدفوع بعملة الدفع المختارة">
               <div class="input-group-append">
-                <span class="input-group-text" id="payment_currency_display">ILS</span>
+                <span class="input-group-text" id="payment_currency_display">{{ base_currency }}</span>
               </div>
             </div>
             <small class="form-text text-success">
@@ -370,7 +370,7 @@ a.btn.btn-outline-secondary span {
   <!-- Mobile bottom bar -->
   <div class="sale-mobile-bottom-bar d-md-none d-flex">
     <div>
-      <strong id="mobile-total">0.00 ILS</strong>
+      <strong id="mobile-total">0.00 {{ base_currency }}</strong>
       <small class="d-block text-muted"><span id="mobile-count">0</span> أصناف</small>
     </div>
     <button type="submit" form="saleForm" class="btn btn-primary">

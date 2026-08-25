@@ -42,7 +42,7 @@ class Quotation(db.Model):
 
     currency = db.Column(db.String(3), default='ILS')
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
-    amount_aed = db.Column(db.Numeric(15, 3), default=0)
+    amount_base = db.Column(db.Numeric(15, 3), default=0)
 
     status = db.Column(db.String(20), default='draft', index=True)
     # draft, sent, accepted, rejected, expired, converted
@@ -68,7 +68,7 @@ class Quotation(db.Model):
         self.tax_amount = (taxable * (tax_r / Decimal('100'))).quantize(Decimal('0.01'), ROUND_HALF_UP)
         self.total_amount = (taxable + self.tax_amount).quantize(Decimal('0.001'), ROUND_HALF_UP)
         ex = Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal('1')
-        self.amount_aed = (self.total_amount * ex).quantize(Decimal('0.001'), ROUND_HALF_UP)
+        self.amount_base = (self.total_amount * ex).quantize(Decimal('0.001'), ROUND_HALF_UP)
 
     @property
     def is_expired(self):

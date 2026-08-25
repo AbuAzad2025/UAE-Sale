@@ -79,11 +79,11 @@ class BankReconciliationService:
                 item_type='outstanding_deposit',
                 transaction_date=cheque.issue_date,
                 description=f'شيك وارد رقم {cheque.cheque_bank_number} - {cheque.drawer_name or ""}',
-                amount=cheque.amount_aed,
+                amount=cheque.amount_base,
                 cheque_id=cheque.id
             )
             db.session.add(item)
-            reconciliation.outstanding_deposits += cheque.amount_aed
+            reconciliation.outstanding_deposits += cheque.amount_base
 
         # 2. الشيكات الصادرة المعلقة
         outstanding_cheques_out = Cheque.query.filter(
@@ -99,11 +99,11 @@ class BankReconciliationService:
                 item_type='outstanding_withdrawal',
                 transaction_date=cheque.issue_date,
                 description=f'شيك صادر رقم {cheque.cheque_bank_number} - {cheque.payee_name or ""}',
-                amount=cheque.amount_aed,
+                amount=cheque.amount_base,
                 cheque_id=cheque.id
             )
             db.session.add(item)
-            reconciliation.outstanding_withdrawals += cheque.amount_aed
+            reconciliation.outstanding_withdrawals += cheque.amount_base
 
     @staticmethod
     def add_bank_charge(reconciliation_id, amount, description, transaction_date=None):
@@ -248,8 +248,8 @@ class BankReconciliationService:
             Cheque.due_date.between(period_start, period_end)
         ).all()
 
-        outstanding_deposits = sum(c.amount_aed for c in outstanding_cheques_in)
-        outstanding_withdrawals = sum(c.amount_aed for c in outstanding_cheques_out)
+        outstanding_deposits = sum(c.amount_base for c in outstanding_cheques_in)
+        outstanding_withdrawals = sum(c.amount_base for c in outstanding_cheques_out)
 
         return {
             'closing_balance_per_books': statement['closing_balance'],

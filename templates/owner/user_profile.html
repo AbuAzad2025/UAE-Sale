@@ -173,7 +173,7 @@
                 <tr>
                   <td><a href="{{ url_for('sales.view', id=sale.id) }}" target="_blank">#{{ sale.id }}</a></td>
                   <td>{{ sale.customer.name if sale.customer else 'زبون عام' }}</td>
-                  <td>{{ '{:,.2f}'.format(sale.amount_aed) }} AED</td>
+                  <td>{{ '{:,.2f}'.format(sale.amount_base) }} AED</td>
                   <td>
                     <span class="badge badge-{{ 'success' if sale.status == 'confirmed' else 'warning' if sale.status == 'pending' else 'danger' }}">
                       {{ sale.status }}

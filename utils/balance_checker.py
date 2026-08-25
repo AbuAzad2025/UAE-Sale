@@ -39,8 +39,8 @@ def check_customer_balance(customer_id=None):
 
         calculated = Decimal('0')
         for sale in sales:
-            amount = Decimal(str(sale.amount_aed or 0))
-            paid = Decimal(str(sale.paid_amount_aed or 0))
+            amount = Decimal(str(sale.amount_base or 0))
+            paid = Decimal(str(sale.paid_amount_base or 0))
             calculated += (amount - paid)
 
         stored = Decimal(str(customer.balance or 0))

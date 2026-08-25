@@ -156,7 +156,7 @@ class RealTimeAccountingListeners:
                 'expense_id': expense.id,
                 'expense_number': expense.expense_number,
                 'description': expense.description_ar,
-                'amount': float(expense.amount_aed),
+                'amount': float(expense.amount_base),
                 'category': expense.category.name_ar,
                 'tax_amount': float(expense.tax_amount),
                 'customs_amount': float(expense.customs_amount)
@@ -165,12 +165,12 @@ class RealTimeAccountingListeners:
             # إشعار فوري
             RealTimeAccountingListeners._send_notification(
                 'مصروف جديد',
-                f'تم إنشاء مصروف جديد رقم {expense.expense_number} بقيمة {expense.amount_aed:,.2f} درهم',
+                f'تم إنشاء مصروف جديد رقم {expense.expense_number} بقيمة {expense.amount_base:,.2f} درهم',
                 'info'
             )
 
             # فحص حدود الموافقة
-            if expense.requires_approval and expense.amount_aed > expense.category.approval_limit:
+            if expense.requires_approval and expense.amount_base > expense.category.approval_limit:
                 RealTimeAccountingListeners._send_notification(
                     'موافقة مطلوبة',
                     f'مصروف رقم {expense.expense_number} يحتاج موافقة (يتجاوز الحد المسموح)',
@@ -189,7 +189,7 @@ class RealTimeAccountingListeners:
                 'cheque_id': cheque.id,
                 'cheque_number': cheque.cheque_bank_number,
                 'status': cheque.status,
-                'amount': float(cheque.amount_aed),
+                'amount': float(cheque.amount_base),
                 'type': cheque.cheque_type,
                 'updated_at': cheque.updated_at.isoformat() if cheque.updated_at else None
             })

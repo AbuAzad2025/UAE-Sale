@@ -157,7 +157,7 @@
             </td>
             <td class="text-center">{{ purchase.lines|length }}</td>
             <td class="text-left">{{ '{:,.2f}'.format(purchase.total_amount) }}</td>
-            <td class="text-left text-success"><strong>{{ '{:,.2f}'.format(purchase.amount_aed) }}</strong></td>
+            <td class="text-left text-success"><strong>{{ '{:,.2f}'.format(purchase.amount_base) }}</strong></td>
             <td class="text-center">
               <span class="badge badge-success">
                 <i class="fas fa-check"></i> مؤكد
@@ -236,7 +236,7 @@
                   -
                 {% endif %}
               </td>
-              <td class="text-left text-primary"><strong>{{ '{:,.2f}'.format(p.amount_aed or 0) }}</strong></td>
+              <td class="text-left text-primary"><strong>{{ '{:,.2f}'.format(p.amount_base or 0) }}</strong></td>
               <td>{{ p.notes or '-' }}</td>
             </tr>
             {% endfor %}
@@ -246,7 +246,7 @@
               <td colspan="6" class="text-left">إجمالي الدفعات:</td>
               <td class="text-left text-primary">
                 <h5 class="mb-0">
-                  {{ '{:,.2f}'.format(payments|sum(attribute='amount_aed') or 0) }} AED
+                  {{ '{:,.2f}'.format(payments|sum(attribute='amount_base') or 0) }} AED
                 </h5>
               </td>
               <td></td>

@@ -39,7 +39,7 @@ class TestPaymentStatus:
             amount=Decimal('50.000'),
             currency='AED',
             exchange_rate=Decimal('1'),
-            amount_aed=Decimal('50.000'),
+            amount_base=Decimal('50.000'),
             payment_method='cash',
             payment_confirmed=True,
             user_id=test_sale.seller_id,
@@ -52,7 +52,7 @@ class TestPaymentStatus:
         db.session.commit()
 
         assert test_sale.payment_status == 'partial'
-        assert test_sale.paid_amount_aed == Decimal('50.000')
+        assert test_sale.paid_amount_base == Decimal('50.000')
 
     def test_full_payment_marks_sale_paid(self, client, db, test_sale):
         """Full payment marks sale as paid."""
@@ -67,7 +67,7 @@ class TestPaymentStatus:
             amount=Decimal('100.000'),
             currency='AED',
             exchange_rate=Decimal('1'),
-            amount_aed=Decimal('100.000'),
+            amount_base=Decimal('100.000'),
             payment_method='cash',
             payment_confirmed=True,
             user_id=test_sale.seller_id,
@@ -95,7 +95,7 @@ class TestPaymentStatus:
             amount=Decimal('100.000'),
             currency='AED',
             exchange_rate=Decimal('1'),
-            amount_aed=Decimal('100.000'),
+            amount_base=Decimal('100.000'),
             payment_method='cheque',
             payment_confirmed=False,  # Pending cheque
             user_id=test_sale.seller_id,
@@ -123,7 +123,7 @@ class TestPaymentStatus:
             amount=Decimal('75.000'),
             currency='AED',
             exchange_rate=Decimal('1'),
-            amount_aed=Decimal('75.000'),
+            amount_base=Decimal('75.000'),
             payment_method='cheque',
             payment_confirmed=False,  # Initially pending
             user_id=test_sale.seller_id,
@@ -144,4 +144,4 @@ class TestPaymentStatus:
         test_sale.recalculate_payment_status()
         db.session.commit()
         assert test_sale.payment_status == 'partial'
-        assert test_sale.paid_amount_aed == Decimal('75.000')
+        assert test_sale.paid_amount_base == Decimal('75.000')

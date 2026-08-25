@@ -305,6 +305,22 @@ def create_app(config_class=Config):  # noqa: C901
         from models import clear_current_tenant_id
         clear_current_tenant_id()
 
+    # Dynamic base currency per tenant/company - available in all templates & JS
+    @app.context_processor
+    def inject_base_currency():
+        try:
+            from services.currency_service import CurrencyService
+            base = CurrencyService.get_base_currency()
+        except Exception:
+            base = 'ILS'
+        names = {
+            'ILS': 'شيقل', 'JOD': 'دينار أردني', 'AED': 'درهم إماراتي',
+            'SAR': 'ريال سعودي', 'USD': 'دولار أمريكي', 'EUR': 'يورو',
+            'GBP': 'جنيه إسترليني', 'KWD': 'دينار كويتي', 'QAR': 'ريال قطري',
+            'OMR': 'ريال عماني', 'BHD': 'دينار بحريني',
+        }
+        return {'base_currency': base, 'base_currency_name': names.get(base, base)}
+
     # Models Import (to ensure they are known to SQLAlchemy)
     from models import User, Customer, ProductCategory  # noqa: F401,F811(local import intentional)
 

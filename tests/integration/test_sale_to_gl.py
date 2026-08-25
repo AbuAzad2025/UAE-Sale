@@ -96,7 +96,7 @@ class TestSaleToGL:
         )
 
         assert payment.id is not None
-        assert payment.amount_aed == Decimal('50.000')
+        assert payment.amount_base == Decimal('50.000')
 
         # GL entry was posted for payment
         payment_entry = GLJournalEntry.query.filter_by(
@@ -108,7 +108,7 @@ class TestSaleToGL:
         # Sale balance updated
         db.session.refresh(sale)
         sale.recalculate_payment_status()
-        assert sale.paid_amount_aed == Decimal('50.000')
+        assert sale.paid_amount_base == Decimal('50.000')
         assert sale.balance_due == initial_balance - Decimal('50.000')
 
     def test_full_payment_marks_sale_paid(self, client, db, login_owner, owner_user,
@@ -271,7 +271,7 @@ class TestChequeLifecycle:
         cheque = db.session.get(Cheque, payment.cheque_id)
         assert cheque is not None
         assert cheque.status == 'pending'
-        assert cheque.amount_aed == Decimal('100.000')
+        assert cheque.amount_base == Decimal('100.000')
 
     def test_cheque_bounce_reverses_sale_balance(self, client, db, login_owner, owner_user,
                                                  test_customer, test_product, test_sale, warehouse, gl_accounts):

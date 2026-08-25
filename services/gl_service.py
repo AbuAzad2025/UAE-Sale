@@ -2,6 +2,7 @@ from decimal import Decimal
 from datetime import datetime, timezone
 from extensions import db
 from models import GLAccount, GLJournalEntry, GLJournalLine
+from services.currency_service import CurrencyService
 
 
 _JE_SEQ = {}
@@ -209,7 +210,9 @@ class GLService:
         return entry
 
     @staticmethod
-    def post_entry(lines, description='', reference_type=None, reference_id=None, currency='ILS', exchange_rate=1):
+    def post_entry(lines, description='', reference_type=None, reference_id=None, currency=None, exchange_rate=1):
+        currency = currency or CurrencyService.get_base_currency()
+
         def _unique_entry_number():
             y = datetime.now().strftime('%Y')
             from models import GLJournalEntry as _JE
@@ -247,14 +250,14 @@ class GLService:
                 raise ValueError(f"GL account '{ln['account']}' not found while posting entry '{description}'")
             debit = Decimal(str(ln.get('debit', 0) or 0))
             credit = Decimal(str(ln.get('credit', 0) or 0))
-            amount_aed = (debit - credit) * Decimal(str(exchange_rate))
+            amount_base = (debit - credit) * Decimal(str(exchange_rate))
             db.session.add(GLJournalLine(
                 entry=entry,
                 account=account,
                 description=ln.get('description'),
                 debit=debit,
                 credit=credit,
-                amount_aed=amount_aed
+                amount_base=amount_base
             ))
             total_debit += debit
             total_credit += credit
@@ -331,7 +334,7 @@ class GLService:
                 description=line_data.get('description', ''),
                 debit=debit,
                 credit=credit,
-                amount_aed=debit - credit
+                amount_base=debit - credit
             )
             db.session.add(line)
 

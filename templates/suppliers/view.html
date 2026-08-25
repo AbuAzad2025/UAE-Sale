@@ -264,7 +264,7 @@
                 <td>{{ purchase.purchase_date.strftime('%Y-%m-%d') }}</td>
                 <td><span class="badge badge-info">{{ purchase.currency }}</span></td>
                 <td>{{ '{:,.2f}'.format(purchase.total_amount) }}</td>
-                <td class="text-success"><strong>{{ '{:,.2f}'.format(purchase.amount_aed) }}</strong></td>
+                <td class="text-success"><strong>{{ '{:,.2f}'.format(purchase.amount_base) }}</strong></td>
                 <td>
                   <span class="badge badge-success">
                     <i class="fas fa-check"></i> مؤكد

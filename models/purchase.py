@@ -9,7 +9,7 @@ class Purchase(TenantScopedMixin, db.Model):
 
     __table_args__ = (
         db.CheckConstraint('total_amount >= 0', name='ck_purchase_total_non_negative'),
-        db.CheckConstraint('amount_aed >= 0', name='ck_purchase_amount_non_negative'),
+        db.CheckConstraint('amount_base >= 0', name='ck_purchase_amount_non_negative'),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -33,7 +33,7 @@ class Purchase(TenantScopedMixin, db.Model):
 
     currency = db.Column(db.String(3), default='ILS', nullable=False)
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
-    amount_aed = db.Column(db.Numeric(15, 3), nullable=False)
+    amount_base = db.Column(db.Numeric(15, 3), nullable=False)
 
     status = db.Column(db.String(20), default='confirmed', index=True)
 
@@ -64,14 +64,14 @@ class Purchase(TenantScopedMixin, db.Model):
         from decimal import Decimal
 
         # Sum payments linked to this specific purchase via reference
-        paid = db.session.query(func.sum(Payment.amount_aed)).filter(
+        paid = db.session.query(func.sum(Payment.amount_base)).filter(
             Payment.reference_type == 'purchase',
             Payment.reference_id == self.id
         ).scalar()
 
         # Fallback: sum all payments to this supplier if no reference-based payments found
         if not paid:
-            paid = db.session.query(func.sum(Payment.amount_aed)).filter(
+            paid = db.session.query(func.sum(Payment.amount_base)).filter(
                 Payment.supplier_id == self.supplier_id
             ).scalar()
 
@@ -102,7 +102,7 @@ class Purchase(TenantScopedMixin, db.Model):
         )
 
         # Calculate AED amount with proper rounding
-        self.amount_aed = (self.total_amount * exchange_rate_decimal).quantize(
+        self.amount_base = (self.total_amount * exchange_rate_decimal).quantize(
             Decimal('0.001'), rounding=ROUND_HALF_UP
         )
 

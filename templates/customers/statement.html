@@ -493,7 +493,7 @@ table.statement-table thead th {
                       <span>متبقي: {{ "{:,.2f}".format(trans.balance_due) }} AED</span>
                     {% elif trans.type == 'payment' and trans.payment %}
                       <span>المبلغ الأصلي: {{ "{:,.2f}".format(trans.payment.amount_original) }} {{ trans.payment.currency }}</span>
-                      <span>محول: {{ "{:,.2f}".format(trans.payment.amount_aed) }} AED</span>
+                      <span>محول: {{ "{:,.2f}".format(trans.payment.amount_base) }} AED</span>
                       <span>الطريقة: {{ trans.payment.payment_method_display }}</span>
                       {% if trans.payment.payment_method == 'cheque' %}
                         {% if trans.payment.payment_confirmed %}

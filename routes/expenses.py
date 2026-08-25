@@ -83,7 +83,7 @@ def create():  # noqa: C901
                 amount=amount,
                 currency=currency,
                 exchange_rate=exchange_rate,
-                amount_aed=amount * exchange_rate,
+                amount_base=amount * exchange_rate,
                 payment_method=request.form.get('payment_method'),
                 reference_number=request.form.get('reference_number'),
                 cheque_number=request.form.get('cheque_number'),
@@ -111,7 +111,7 @@ def create():  # noqa: C901
                     amount=expense.amount,
                     currency=expense.currency,
                     exchange_rate=expense.exchange_rate,
-                    amount_aed=expense.amount_aed,
+                    amount_base=expense.amount_base,
                     issue_date=datetime.now().date(),
                     due_date=cheque_date_val,
                     status='pending',
@@ -221,7 +221,7 @@ def edit(id):
             # حساب المبلغ بالدرهم
             exchange_rate = CurrencyService.get_rate(expense.currency)
             expense.exchange_rate = exchange_rate
-            expense.amount_aed = float(expense.amount) * exchange_rate
+            expense.amount_base = float(expense.amount) * exchange_rate
 
             db.session.commit()
 

@@ -1,6 +1,8 @@
 from decimal import Decimal, ROUND_HALF_UP
 import time
 
+from extensions import db
+
 try:
     import requests
     REQUESTS_AVAILABLE = True
@@ -18,9 +20,42 @@ class CurrencyService:
 
     CACHE_TTL_SECONDS = 300  # 5 دقائق
     _rates_cache = {}
-    BASE_CURRENCY = 'ILS'
+    DEFAULT_BASE = 'ILS'  # يُستخدم فقط إذا لم تُعرّف عملة قاعدة للشركة/النظام
 
-    # قيم احتياطية: قيمة 1 شيقل (ILS) بالعملات الأخرى — تُستخدم فقط عند فشل كل الخوادم
+    @staticmethod
+    def get_base_currency():
+        """عملة القاعدة الديناميكية: الشركة الحالية > إعدادات النظام > config.
+
+        يتيح بيع النظام لعدة دول: كل شركة (Tenant) تختار عملتها الأساسية
+        من صفحة إعدادات المالك، وكل التحويلات والتقارير تتبعها تلقائيًا.
+        """
+        try:
+            from flask import has_request_context, current_app
+            if has_request_context():
+                try:
+                    from models.tenant_scope import get_current_tenant_id
+                    tid = get_current_tenant_id()
+                    if tid:
+                        from models import Tenant
+                        t = db.session.get(Tenant, tid)
+                        if t and t.default_currency:
+                            return t.default_currency
+                except Exception:
+                    pass
+                try:
+                    from models.system_settings import SystemSettings
+                    s = SystemSettings.query.filter_by(is_active=True).first()
+                    if s and s.default_currency:
+                        return s.default_currency
+                except Exception:
+                    pass
+                return current_app.config.get('DEFAULT_CURRENCY', CurrencyService.DEFAULT_BASE)
+        except Exception:
+            pass
+        return CurrencyService.DEFAULT_BASE
+
+    # قيم احتياطية: قيمة 1 وحدة من كل عملة مقابل الشيقل — تُستخدم فقط عند فشل كل الخوادم
+    # وتُعاد معايرتها تلقائيًا نسبةً لعملة القاعدة المطلوبة في get_all_rates
     FALLBACK_RATES = {
         'ILS': Decimal('1.00'),
         'USD': Decimal('0.27'),
@@ -36,7 +71,8 @@ class CurrencyService:
     }
 
     @staticmethod
-    def get_all_rates(base='ILS'):
+    def get_all_rates(base=None):
+        base = base or CurrencyService.get_base_currency()
         base = (base or 'AED').upper()
 
         # Check cache first
@@ -125,16 +161,16 @@ class CurrencyService:
         return rates
 
     @staticmethod
-    def get_exchange_rate(from_currency, to_currency='ILS', user_rate=None):
+    def get_exchange_rate(from_currency, to_currency=None, user_rate=None):
         """
         Get exchange rate between two currencies.
         Prioritises user-supplied rate, then checks CACHE, then live Forex,
         and finally uses static fallback rates.
         """
         if not from_currency:
-            from_currency = CurrencyService.BASE_CURRENCY
+            from_currency = CurrencyService.get_base_currency()
         if not to_currency:
-            to_currency = CurrencyService.BASE_CURRENCY
+            to_currency = CurrencyService.get_base_currency()
 
         from_currency = from_currency.upper()
         to_currency = to_currency.upper()

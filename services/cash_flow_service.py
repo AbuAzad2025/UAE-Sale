@@ -73,7 +73,7 @@ class CashFlowService:
 
         # المقبوضات من العملاء
         receipts = db.session.query(
-            func.sum(Receipt.amount_aed)
+            func.sum(Receipt.amount_base)
         ).filter(
             and_(
                 Receipt.receipt_date >= period_start,
@@ -84,7 +84,7 @@ class CashFlowService:
 
         # المدفوعات للموردين
         supplier_payments = db.session.query(
-            func.sum(Payment.amount_aed)
+            func.sum(Payment.amount_base)
         ).filter(
             and_(
                 Payment.payment_date >= period_start,
@@ -96,7 +96,7 @@ class CashFlowService:
 
         # المدفوعات للمصروفات
         expense_payments = db.session.query(
-            func.sum(Expense.amount_aed)
+            func.sum(Expense.amount_base)
         ).filter(
             and_(
                 Expense.expense_date >= period_start,

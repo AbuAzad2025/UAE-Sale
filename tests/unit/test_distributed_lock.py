@@ -44,8 +44,8 @@ class TestGenerateNumberConcurrency:
             sale = Sale(
                 sale_number=num,
                 total_amount=Decimal('0'),
-                amount_aed=Decimal('0'),
-                paid_amount_aed=Decimal('0'),
+                amount_base=Decimal('0'),
+                paid_amount_base=Decimal('0'),
                 balance_due=Decimal('0'),
                 currency='AED',
                 exchange_rate=Decimal('1'),
@@ -80,8 +80,8 @@ class TestGenerateNumberConcurrency:
                     sale = Sale(
                         sale_number=num,
                         total_amount=Decimal('0'),
-                        amount_aed=Decimal('0'),
-                        paid_amount_aed=Decimal('0'),
+                        amount_base=Decimal('0'),
+                        paid_amount_base=Decimal('0'),
                         balance_due=Decimal('0'),
                         currency='AED',
                         exchange_rate=Decimal('1'),

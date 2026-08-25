@@ -35,7 +35,7 @@
               <dd><strong class="text-primary">{{ "{:,.2f}".format(purchase.total_amount) }} AED</strong></dd>
               
               <dt>المدفوع:</dt>
-              <dd class="text-success">{{ "{:,.2f}".format(purchase.paid_amount_aed or 0) }} AED</dd>
+              <dd class="text-success">{{ "{:,.2f}".format(purchase.paid_amount_base or 0) }} AED</dd>
               
               <dt>المتبقي:</dt>
               <dd><strong class="text-danger">{{ "{:,.2f}".format(balance) }} AED</strong></dd>

@@ -32,7 +32,7 @@ class Expense(db.Model):
     amount = db.Column(db.Numeric(15, 3), nullable=False)
     currency = db.Column(db.String(3), default='AED', nullable=False)
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
-    amount_aed = db.Column(db.Numeric(15, 3), nullable=False)
+    amount_base = db.Column(db.Numeric(15, 3), nullable=False)
 
     expense_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
 
@@ -67,7 +67,7 @@ class Expense(db.Model):
             'description': self.description,
             'amount': float(self.amount),
             'currency': self.currency,
-            'amount_aed': float(self.amount_aed),
+            'amount_base': float(self.amount_base),
             'expense_date': self.expense_date.isoformat(),
             'payment_method': self.payment_method,
             'status': self.status,

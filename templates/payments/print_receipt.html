@@ -49,7 +49,7 @@
       <tbody>
         <tr>
           <td>المبلغ المدفوع (AED)</td>
-          <td>{{ "%.2f"|format(receipt.amount_aed) }}</td>
+          <td>{{ "%.2f"|format(receipt.amount_base) }}</td>
         </tr>
         {% if receipt.payment_method %}
         <tr>
@@ -67,7 +67,7 @@
       <tfoot>
         <tr class="total">
           <td>الإجمالي</td>
-          <td>{{ "%.2f"|format(receipt.amount_aed) }} AED</td>
+          <td>{{ "%.2f"|format(receipt.amount_base) }} AED</td>
         </tr>
       </tfoot>
     </table>

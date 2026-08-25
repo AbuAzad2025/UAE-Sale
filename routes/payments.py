@@ -83,7 +83,7 @@ def receipts():
             'date': receipt.receipt_date,
             'amount': receipt.amount,
             'currency': receipt.currency,
-            'amount_aed': receipt.amount_aed,
+            'amount_base': receipt.amount_base,
             'direction': receipt.direction,
             'type': 'receipt',
             'customer_name': receipt.customer.name if receipt.customer else '-',
@@ -101,7 +101,7 @@ def receipts():
             'date': payment.payment_date,
             'amount': payment.amount,
             'currency': payment.currency,
-            'amount_aed': payment.amount_aed,
+            'amount_base': payment.amount_base,
             'direction': payment.direction,
             'type': 'payment',
             'customer_name': None,
@@ -390,7 +390,7 @@ def create_voucher_submit():  # noqa: C901
 
                 exchange_rate = CurrencyService.get_exchange_rate(currency, 'AED', user_rate=user_exchange_rate)
                 amount_decimal = Decimal(str(amount))
-                amount_aed = amount_decimal * exchange_rate
+                amount_base = amount_decimal * exchange_rate
 
                 supplier = db.session.get(Supplier, party_id)
                 payment = Payment(
@@ -402,7 +402,7 @@ def create_voucher_submit():  # noqa: C901
                     amount=amount_decimal,
                     currency=currency,
                     exchange_rate=exchange_rate,
-                    amount_aed=amount_aed,
+                    amount_base=amount_base,
                     payment_method=payment_method,
                     notes=notes,
                     cheque_number=cheque_number if payment_method == 'cheque' else None,
@@ -423,7 +423,7 @@ def create_voucher_submit():  # noqa: C901
 
             exchange_rate = CurrencyService.get_exchange_rate(currency, 'AED', user_rate=user_exchange_rate)
             amount_decimal = Decimal(str(amount))
-            amount_aed = amount_decimal * exchange_rate
+            amount_base = amount_decimal * exchange_rate
 
             if party_type == 'supplier':
                 # دفع لمورد (المنطق المعتاد)
@@ -437,7 +437,7 @@ def create_voucher_submit():  # noqa: C901
                     amount=amount_decimal,
                     currency=currency,
                     exchange_rate=exchange_rate,
-                    amount_aed=amount_aed,
+                    amount_base=amount_base,
                     payment_method=payment_method,
                     notes=notes,
                     cheque_number=cheque_number if payment_method == 'cheque' else None,
@@ -460,7 +460,7 @@ def create_voucher_submit():  # noqa: C901
                         amount=payment.amount,
                         currency=payment.currency,
                         exchange_rate=payment.exchange_rate,
-                        amount_aed=payment.amount_aed,
+                        amount_base=payment.amount_base,
                         issue_date=datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else datetime.now().date(),
                         due_date=datetime.strptime(cheque_date, '%Y-%m-%d').date() if cheque_date else datetime.now().date(),
                         bank_name=bank_name,
@@ -517,7 +517,7 @@ def create_voucher_submit():  # noqa: C901
                     amount=amount_decimal,
                     currency=currency,
                     exchange_rate=exchange_rate,
-                    amount_aed=amount_aed,
+                    amount_base=amount_base,
                     payment_method=payment_method,
                     notes=notes,
                     cheque_number=cheque_number if payment_method == 'cheque' else None,
@@ -540,7 +540,7 @@ def create_voucher_submit():  # noqa: C901
                         amount=payment.amount,
                         currency=payment.currency,
                         exchange_rate=payment.exchange_rate,
-                        amount_aed=payment.amount_aed,
+                        amount_base=payment.amount_base,
                         issue_date=datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else datetime.now().date(),
                         due_date=datetime.strptime(cheque_date, '%Y-%m-%d').date() if cheque_date else datetime.now().date(),
                         bank_name=bank_name,
@@ -681,7 +681,7 @@ def archived_receipts():
             'date': datetime.fromisoformat(data.get('receipt_date').replace('Z', '+00:00')) if isinstance(data.get('receipt_date'), str) else data.get('receipt_date'),  # noqa: E501
             'amount': float(data.get('amount', 0)),
             'currency': data.get('currency'),
-            'amount_aed': float(data.get('amount_aed', 0)),
+            'amount_base': float(data.get('amount_base', 0)),
             'type': 'receipt',
             'customer_name': data.get('customer_name'),
             'supplier_name': None,
@@ -697,7 +697,7 @@ def archived_receipts():
             'date': datetime.fromisoformat(data.get('payment_date').replace('Z', '+00:00')) if isinstance(data.get('payment_date'), str) else data.get('payment_date'),  # noqa: E501
             'amount': float(data.get('amount', 0)),
             'currency': data.get('currency'),
-            'amount_aed': float(data.get('amount_aed', 0)),
+            'amount_base': float(data.get('amount_base', 0)),
             'type': 'payment',
             'customer_name': None,
             'supplier_name': data.get('supplier_name'),
@@ -778,13 +778,13 @@ def delete_receipt(id):  # noqa: C901
             sale = db.session.get(Sale, receipt.source_id)
             if sale:
                 sale.paid_amount -= receipt.amount
-                sale.paid_amount_aed -= receipt.amount_aed
+                sale.paid_amount_base -= receipt.amount_base
 
                 # منع القيم السالبة
                 if sale.paid_amount < 0:
                     sale.paid_amount = 0
-                if sale.paid_amount_aed < 0:
-                    sale.paid_amount_aed = 0
+                if sale.paid_amount_base < 0:
+                    sale.paid_amount_base = 0
 
                 # تحديث الرصيد المتبقي
                 sale.balance_due = sale.total_amount - sale.paid_amount
@@ -924,7 +924,7 @@ def create_payment(purchase_id):  # noqa: C901
     supplier = db.session.get(Supplier, purchase.supplier_id) if purchase.supplier_id else None
 
     # حساب المبلغ المدفوع من جدول payments
-    paid_amount = db.session.query(func.sum(Payment.amount_aed)).filter(
+    paid_amount = db.session.query(func.sum(Payment.amount_base)).filter(
         Payment.supplier_id == purchase.supplier_id
     ).scalar() or 0
 
@@ -967,7 +967,7 @@ def create_payment(purchase_id):  # noqa: C901
             # تحويل إلى Decimal للحسابات الدقيقة
             amount_decimal = Decimal(str(amount))
             exchange_rate_decimal = Decimal(str(exchange_rate))
-            amount_aed = amount_decimal * exchange_rate_decimal
+            amount_base = amount_decimal * exchange_rate_decimal
 
             # إنشاء سند الصرف
             payment_number = generate_number('PAY', Payment, 'payment_number')
@@ -978,7 +978,7 @@ def create_payment(purchase_id):  # noqa: C901
                 amount=amount_decimal,
                 currency=currency,
                 exchange_rate=exchange_rate_decimal,
-                amount_aed=amount_aed,
+                amount_base=amount_base,
                 payment_method=payment_method_value,
                 notes=notes,
                 user_id=current_user.id,
@@ -1016,7 +1016,7 @@ def create_payment(purchase_id):  # noqa: C901
                     amount=amount_decimal,
                     currency=currency,
                     exchange_rate=exchange_rate_decimal,
-                    amount_aed=amount_aed,
+                    amount_base=amount_base,
                     issue_date=datetime.utcnow().date(),
                     due_date=cheque_date if cheque_date else None,
                     bank_name=bank_name,
@@ -1034,8 +1034,8 @@ def create_payment(purchase_id):  # noqa: C901
                 GLService.ensure_core_accounts()
                 cash_or_bank = '1110' if payment_method_value == 'cash' else '1120'
                 lines = [
-                    {'account': '2110', 'debit': payment.amount_aed, 'description': f'سداد للمورد {payment.supplier_name}'},
-                    {'account': cash_or_bank, 'credit': payment.amount_aed, 'description': f'سند صرف {payment.payment_number}'}
+                    {'account': '2110', 'debit': payment.amount_base, 'description': f'سداد للمورد {payment.supplier_name}'},
+                    {'account': cash_or_bank, 'credit': payment.amount_base, 'description': f'سند صرف {payment.payment_number}'}
                 ]
                 GLService.post_entry(
                     lines,

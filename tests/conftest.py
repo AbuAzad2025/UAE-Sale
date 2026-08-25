@@ -228,8 +228,8 @@ def test_sale(db, owner_user, test_customer, test_product):
     sale = Sale(
         sale_number=sale_number,
         customer_id=test_customer.id, seller_id=owner_user.id,
-        total_amount=Decimal('100.000'), amount_aed=Decimal('100.000'),
-        paid_amount=Decimal('0'), paid_amount_aed=Decimal('0'),
+        total_amount=Decimal('100.000'), amount_base=Decimal('100.000'),
+        paid_amount=Decimal('0'), paid_amount_base=Decimal('0'),
         balance_due=Decimal('100.000'), currency='AED',
         exchange_rate=Decimal('1'), payment_status='unpaid',
         status='confirmed', is_active=True,

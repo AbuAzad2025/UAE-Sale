@@ -181,7 +181,7 @@ class PurchaseOrderService:
             subtotal=Decimal('0'),
             tax_amount=Decimal('0'),
             total_amount=Decimal('0'),
-            amount_aed=Decimal('0'),
+            amount_base=Decimal('0'),
         )
         db.session.add(purchase)
         db.session.flush()
@@ -483,7 +483,7 @@ class RecurringExpenseService:
                 description=f'[دوري] {re.name}',
                 amount=re.amount,
                 currency=re.currency,
-                amount_aed=re.amount,
+                amount_base=re.amount,
                 payment_method=re.payment_method,
                 supplier_name=re.supplier_name,
                 expense_date=datetime.now(timezone.utc),

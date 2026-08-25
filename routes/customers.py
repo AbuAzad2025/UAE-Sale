@@ -244,7 +244,7 @@ def statement(id):
                 'id': payment.id,
                 'payment_number': payment.payment_number,
                 'payment_date': payment.payment_date,
-                'amount_aed': float(payment.amount_aed or 0),
+                'amount_base': float(payment.amount_base or 0),
                 'amount_original': float(payment.amount or 0),
                 'currency': payment.currency or 'AED',
                 'exchange_rate': float(payment.exchange_rate or 1),
@@ -271,9 +271,9 @@ def statement(id):
             'shipping_cost': float(sale.shipping_cost or 0),
             'tax_rate': float(sale.tax_rate or 0),
             'tax_amount': float(sale.tax_amount or 0),
-            'total_amount': float(sale.total_amount or sale.amount_aed or 0),
-            'amount_aed': float(sale.amount_aed or 0),
-            'paid_amount': float(sale.paid_amount_aed or 0),
+            'total_amount': float(sale.total_amount or sale.amount_base or 0),
+            'amount_base': float(sale.amount_base or 0),
+            'paid_amount': float(sale.paid_amount_base or 0),
             'balance_due': float(sale.balance_due or 0),
             'currency': sale.currency or 'AED',
             'exchange_rate': float(sale.exchange_rate or 1),
@@ -288,21 +288,21 @@ def statement(id):
             'date': sale.sale_date,
             'type': 'sale',
             'reference': sale.sale_number,
-            'debit': float(sale.amount_aed or 0),
+            'debit': float(sale.amount_base or 0),
             'credit': 0,
             'balance': 0,
             'description': 'فاتورة بيع',
             'currency': sale.currency or 'AED',
             'exchange_rate': float(sale.exchange_rate or 1),
-            'paid_amount': float(sale.paid_amount_aed or 0),
+            'paid_amount': float(sale.paid_amount_base or 0),
             'balance_due': float(sale.balance_due or 0),
             'status': sale.payment_status,
             'sale': sale_data
         })
 
     for payment in payments:
-        credit_amount = float(payment.amount_aed or 0) if payment.direction == 'incoming' else 0.0
-        debit_amount = float(payment.amount_aed or 0) if payment.direction != 'incoming' else 0.0
+        credit_amount = float(payment.amount_base or 0) if payment.direction == 'incoming' else 0.0
+        debit_amount = float(payment.amount_base or 0) if payment.direction != 'incoming' else 0.0
 
         cheque = payment.cheque if hasattr(payment, 'cheque') else None
 
@@ -323,7 +323,7 @@ def statement(id):
                 'id': payment.id,
                 'payment_number': payment.payment_number,
                 'payment_date': payment.payment_date,
-                'amount_aed': float(payment.amount_aed or 0),
+                'amount_base': float(payment.amount_base or 0),
                 'amount_original': float(payment.amount or 0),
                 'currency': payment.currency or 'AED',
                 'exchange_rate': float(payment.exchange_rate or 1),
@@ -441,14 +441,14 @@ def customer_sales(id):
 
     sales_data = []
     for sale in sales:
-        balance = sale.amount_aed - sale.paid_amount_aed
+        balance = sale.amount_base - sale.paid_amount_base
         if balance > 0:
             sales_data.append({
                 'id': sale.id,
                 'invoice_number': sale.sale_number or f'#{sale.id}',
                 'sale_date': sale.sale_date.strftime('%Y-%m-%d'),
-                'amount_aed': float(sale.amount_aed),
-                'paid_amount_aed': float(sale.paid_amount_aed),
+                'amount_base': float(sale.amount_base),
+                'paid_amount_base': float(sale.paid_amount_base),
                 'balance': float(balance)
             })
 

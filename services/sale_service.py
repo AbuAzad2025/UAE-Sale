@@ -74,7 +74,7 @@ class SaleService:
 
             exchange_rate = CurrencyService.get_exchange_rate(
                 currency,
-                'ILS',
+                CurrencyService.get_base_currency(),
                 user_rate=user_exchange_rate
             )
 
@@ -111,7 +111,7 @@ class SaleService:
                 shipping_cost=shipping_decimal,
                 tax_rate=tax_rate_decimal,
                 total_amount=Decimal('0'),  # Temporary - will be calculated
-                amount_aed=Decimal('0'),    # Temporary - will be calculated
+                amount_base=Decimal('0'),    # Temporary - will be calculated
                 notes=notes
             )
 
@@ -174,28 +174,28 @@ class SaleService:
 
                 # Convert payment to AED
                 payment_exchange_decimal = Decimal(str(payment_exchange_rate)) if payment_exchange_rate else Decimal('1')
-                paid_amount_aed = (paid_amount * payment_exchange_decimal).quantize(
+                paid_amount_base = (paid_amount * payment_exchange_decimal).quantize(
                     Decimal('0.001'), rounding=ROUND_HALF_UP
                 )
 
                 # Validate payment amount (in AED)
-                if paid_amount_aed < Decimal('0'):
+                if paid_amount_base < Decimal('0'):
                     raise ValueError('مبلغ الدفع لا يمكن أن يكون سالب')
 
                 # Store payment in AED
                 sale.paid_amount = paid_amount  # في عملة الفاتورة
-                sale.paid_amount_aed = paid_amount_aed  # محول للدرهم
+                sale.paid_amount_base = paid_amount_base  # محول للدرهم
 
                 # Handle overpayment (credit to customer)
-                if paid_amount_aed > sale.total_amount:
-                    overpayment = paid_amount_aed - sale.total_amount
+                if paid_amount_base > sale.total_amount:
+                    overpayment = paid_amount_base - sale.total_amount
                     customer.balance = (customer.balance or Decimal('0')) + overpayment
                     payment_note = f"\n[دفع زائد] مبلغ {overpayment} AED سُجّل كرصيد للزبون"
                     sale.notes = (sale.notes or '') + payment_note
 
                 # Add payment currency info to notes if not AED
-                if payment_currency != 'ILS':
-                    payment_note = f"\n[دفعة] {paid_amount} {payment_currency} = {paid_amount_aed} AED (سعر: {payment_exchange_rate})"
+                if payment_currency != CurrencyService.get_base_currency():
+                    payment_note = f"\n[دفعة] {paid_amount} {payment_currency} = {paid_amount_base} AED (سعر: {payment_exchange_rate})"
                     sale.notes = (sale.notes or '') + payment_note
 
             sale.calculate_totals()
@@ -219,7 +219,7 @@ class SaleService:
                     notes=payment_data.get('notes')
                 )
 
-            customer.total_purchases += sale.amount_aed
+            customer.total_purchases += sale.amount_base
             customer.update_classification()
 
             # Post to General Ledger with proper decimal precision
@@ -366,7 +366,7 @@ class SaleService:
 
         # Calculate AED amount with proper rounding using PROVIDED exchange rate
         exchange_rate_decimal = Decimal(str(exchange_rate))
-        amount_aed = (amount_decimal * exchange_rate_decimal).quantize(
+        amount_base = (amount_decimal * exchange_rate_decimal).quantize(
             Decimal('0.001'), rounding=ROUND_HALF_UP
         )
 
@@ -378,7 +378,7 @@ class SaleService:
             amount=amount_decimal,
             currency=currency,
             exchange_rate=exchange_rate_decimal,
-            amount_aed=amount_aed,
+            amount_base=amount_base,
             payment_method=payment_method,
             reference_number=reference_number,
             cheque_number=cheque_number,
@@ -402,7 +402,7 @@ class SaleService:
                 amount=amount_decimal,
                 currency=currency,
                 exchange_rate=exchange_rate_decimal,
-                amount_aed=amount_aed,
+                amount_base=amount_base,
                 issue_date=sale.sale_date.date(),  # تاريخ الإصدار = تاريخ الفاتورة
                 due_date=cheque_date,  # تاريخ الاستحقاق
                 bank_name=bank_name,

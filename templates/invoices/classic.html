@@ -270,7 +270,7 @@
           <tr>
             <td>{{ payment.payment_number }}</td>
             <td>{{ payment.payment_date.strftime('%Y-%m-%d') }}</td>
-            <td style="font-weight: bold; color: #28a745;">{{ "{:,.2f}".format(payment.amount_aed) }} AED</td>
+            <td style="font-weight: bold; color: #28a745;">{{ "{:,.2f}".format(payment.amount_base) }} AED</td>
             <td>
               {% if payment.payment_method == 'cash' %}نقدي
               {% elif payment.payment_method == 'card' %}بطاقة

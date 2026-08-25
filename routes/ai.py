@@ -1208,7 +1208,7 @@ def _process_user_action(message, user):  # noqa: C901
                     payment = Payment(
                         payment_number=payment_number,
                         customer_id=data['customer_id'],
-                        amount_aed=data['amount'],
+                        amount_base=data['amount'],
                         payment_date=datetime.now(timezone.utc),
                         payment_method=data['payment_method'],
                         user_id=user.id,
@@ -1346,7 +1346,7 @@ def _process_user_action(message, user):  # noqa: C901
                     payment = Payment(
                         payment_number=payment_number,
                         customer_id=data['customer_id'],
-                        amount_aed=-data['amount'],  # سالب لأننا نعطي للعميل
+                        amount_base=-data['amount'],  # سالب لأننا نعطي للعميل
                         payment_date=datetime.now(timezone.utc),
                         payment_method='refund',
                         user_id=user.id,
@@ -2616,7 +2616,7 @@ http://localhost:5000/ai/assistant
                         sale_date=datetime.now(timezone.utc),
                         subtotal=product.regular_price * quantity,
                         total_amount=product.regular_price * quantity,
-                        amount_aed=product.regular_price * quantity,
+                        amount_base=product.regular_price * quantity,
                         payment_status='paid' if payment_method == 'cash' else 'unpaid',
                         status='confirmed'
                     )
@@ -2664,7 +2664,7 @@ http://localhost:5000/ai/assistant
 
                     expense = Expense(
                         description=description,
-                        amount_aed=amount,
+                        amount_base=amount,
                         expense_date=datetime.now(timezone.utc),
                         category=category,
                         user_id=user.id
@@ -2704,7 +2704,7 @@ http://localhost:5000/ai/assistant
                     payment = Payment(
                         payment_number=payment_number,
                         customer_id=customer.id,
-                        amount_aed=amount,
+                        amount_base=amount,
                         payment_date=datetime.now(timezone.utc),
                         payment_method=payment_method,
                         user_id=user.id,
@@ -2781,7 +2781,7 @@ http://localhost:5000/ai/assistant
                     payment = Payment(
                         payment_number=payment_number,
                         customer_id=customer.id,
-                        amount_aed=amount,
+                        amount_base=amount,
                         payment_date=datetime.now(timezone.utc),
                         payment_method=payment_method,
                         user_id=user.id,
@@ -2825,7 +2825,7 @@ http://localhost:5000/ai/assistant
                 if recent_payments:
                     payments_info = "\n\n📋 **آخر 5 دفعات:**\n"
                     for payment in recent_payments:
-                        payments_info += f"• {payment.payment_date.strftime('%Y-%m-%d')}: {payment.amount_aed} درهم ({payment.payment_method})\n"
+                        payments_info += f"• {payment.payment_date.strftime('%Y-%m-%d')}: {payment.amount_base} درهم ({payment.payment_method})\n"
 
                 return """✅ رصيد العميل:
 
@@ -2860,7 +2860,7 @@ http://localhost:5000/ai/assistant
                     # تسجيل العملية كدفعة سالبة
                     payment = Payment(
                         customer_id=customer.id,
-                        amount_aed=-amount,  # سالب لأننا نعطي للعميل
+                        amount_base=-amount,  # سالب لأننا نعطي للعميل
                         payment_date=datetime.now(timezone.utc),
                         payment_method='refund',
                         user_id=user.id

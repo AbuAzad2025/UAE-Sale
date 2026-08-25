@@ -189,7 +189,7 @@ def add_advanced_expense():
                 amount=Decimal(request.form.get('amount', 0)),
                 currency=request.form.get('currency', 'AED'),
                 exchange_rate=Decimal(request.form.get('exchange_rate', 1)),
-                amount_aed=Decimal(request.form.get('amount_aed', 0)),
+                amount_base=Decimal(request.form.get('amount_base', 0)),
                 taxable_amount=Decimal(request.form.get('taxable_amount', 0)),
                 tax_amount=Decimal(request.form.get('tax_amount', 0)),
                 tax_rate=Decimal(request.form.get('tax_rate', 0)),
@@ -325,7 +325,7 @@ def cheque_integration():
         'pending_cheques': Cheque.query.filter_by(status='pending').count(),
         'cleared_cheques': Cheque.query.filter_by(status='cleared').count(),
         'bounced_cheques': Cheque.query.filter_by(status='bounced').count(),
-        'total_amount': db.session.query(db.func.sum(Cheque.amount_aed)).scalar() or 0
+        'total_amount': db.session.query(db.func.sum(Cheque.amount_base)).scalar() or 0
     }
 
     return render_template('ledger/advanced/cheque_integration.html',

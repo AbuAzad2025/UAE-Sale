@@ -177,7 +177,7 @@ def create():
                 user_id=current_user.id
             )
 
-            cheque.calculate_amount_aed()
+            cheque.calculate_amount_base()
             cheque.update_status_based_on_date()
 
             db.session.add(cheque)
@@ -264,7 +264,7 @@ def edit(id):
             cheque.payee_name = request.form.get('payee_name')
             cheque.notes = request.form.get('notes')
 
-            cheque.calculate_amount_aed()
+            cheque.calculate_amount_base()
             cheque.update_status_based_on_date()
 
             db.session.commit()

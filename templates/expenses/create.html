@@ -263,7 +263,7 @@ $(function () {
     }
     
     $.ajax({
-      url: `/api/currency-rate/${currency}/ILS`,
+      url: `/api/currency-rate/${currency}/{{ base_currency }}`,
       method: 'GET',
       success: function(data) {
         if (data && data.rate) {

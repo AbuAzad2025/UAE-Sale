@@ -145,7 +145,7 @@
           <td>
             <strong>{{ "{:,.2f}".format(item.amount) }} {{ item.currency }}</strong>
             {% if item.currency != 'AED' %}
-              <br><small class="text-muted">{{ "{:,.2f}".format(item.amount_aed) }} AED</small>
+              <br><small class="text-muted">{{ "{:,.2f}".format(item.amount_base) }} AED</small>
             {% endif %}
           </td>
           <td>

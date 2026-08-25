@@ -204,7 +204,7 @@ def dashboard():
     stats['recent_actions'] = recent_actions
 
     low_stock = Product.query.filter(
-        Product.is_active is True,
+        Product.is_active.is_(True),
         Product.current_stock <= Product.min_stock_alert
     ).order_by(Product.current_stock).limit(10).all()
 
@@ -1888,7 +1888,7 @@ def system_health():  # noqa: C901
         try:
             active_users = db.session.query(func.count(User.id)).filter(
                 User.last_seen >= datetime.now(timezone.utc) - timedelta(minutes=30),
-                User.is_active is True
+                User.is_active.is_(True)
             ).scalar() or 0
         except Exception:
             active_users = 0
@@ -1910,7 +1910,7 @@ def activity_monitor():
 
     active_users = User.query.filter(
         User.last_seen >= datetime.now(timezone.utc) - timedelta(minutes=30),
-        User.is_active is True
+        User.is_active.is_(True)
     ).all()
 
     recent_sales = Sale.query.filter(

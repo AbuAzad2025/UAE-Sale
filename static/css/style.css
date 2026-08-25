@@ -1633,3 +1633,52 @@ td .btn-success i {
 [class*="btn-success"] i {
   color: #ffffff !important;
 }
+
+/* ===== Dropdown scroll & UX (professional) ===== */
+.select2-dropdown {
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.14);
+  overflow: hidden;
+}
+.select2-results__options {
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,.28) transparent;
+}
+.select2-results__options::-webkit-scrollbar {
+  width: 8px;
+}
+.select2-results__options::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,.22);
+  border-radius: 8px;
+}
+.select2-results__options::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,.36);
+}
+.select2-results__option {
+  padding: .5rem .9rem;
+}
+.select2-search--dropdown .select2-search__field {
+  padding: .45rem .7rem;
+  border-radius: 8px;
+}
+
+/* Native selects: keep long lists tidy inside modals/cards */
+select.form-control {
+  max-width: 100%;
+}
+
+/* Modal bodies: scroll long forms instead of clipping */
+.modal-body {
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+.modal-body::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,.2);
+  border-radius: 8px;
+}

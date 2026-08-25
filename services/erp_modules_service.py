@@ -471,7 +471,7 @@ class RecurringExpenseService:
         from models import Expense
 
         due = RecurringExpense.query.filter(
-            RecurringExpense.is_active is True,
+            RecurringExpense.is_active.is_(True),
             RecurringExpense.next_due_date <= date.today(),
         ).all()
 

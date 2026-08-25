@@ -77,7 +77,7 @@ def partners():  # noqa: C901
     # Find products linked to a merchant
     merchant_products = Product.query.filter(
         Product.merchant_customer_id.isnot(None),
-        Product.is_active is True
+        Product.is_active.is_(True)
     ).all()
 
     merchants_data = []
@@ -774,7 +774,7 @@ def inventory_valuation():
 
     # Base query: active products with stock > 0
     products_query = Product.query.filter(
-        Product.is_active is True,
+        Product.is_active.is_(True),
         Product.current_stock > 0
     )
 
@@ -866,7 +866,7 @@ def ap_aging():  # noqa: C901
         payments = Payment.query.filter(
             Payment.supplier_id == supplier.id,
             Payment.direction == 'outgoing',
-            Payment.payment_confirmed is True
+            Payment.payment_confirmed.is_(True)
         ).all()
 
         total_purchases = sum((p.amount_aed or Decimal('0') for p in purchases), Decimal('0'))
@@ -948,8 +948,8 @@ def cash_flow():
     ).join(
         GLAccount, GLJournalLine.account_id == GLAccount.id
     ).filter(
-        GLJournalEntry.is_posted is True,
-        GLJournalEntry.is_reversed is False
+        GLJournalEntry.is_posted.is_(True),
+        GLJournalEntry.is_reversed.is_(False)
     )
 
     if date_from:

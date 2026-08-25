@@ -111,7 +111,7 @@ class Supplier(TenantScopedMixin, db.Model):
         # Calculate total paid from Payment table
         total_paid = db.session.query(db.func.sum(Payment.amount_aed)).filter(
             Payment.supplier_id == self.id,
-            Payment.payment_confirmed is True
+            Payment.payment_confirmed.is_(True)
         ).scalar()
 
         self.total_paid_aed = total_paid or Decimal('0')

@@ -88,7 +88,7 @@ def low_stock_products():
     from models import Product
 
     products = Product.query.filter(
-        Product.is_active is True,
+        Product.is_active.is_(True),
         Product.current_stock <= Product.min_stock_alert
     ).all()
 

@@ -367,7 +367,9 @@ def receive_stock_transfer(id):
 @permission_required('manage_warehouse')
 def stock_takes():
     takes = StockTake.query.order_by(StockTake.created_at.desc()).all()
-    return render_template('erp/stock_takes.html', stock_takes=takes)
+    from models import Warehouse
+    warehouses = Warehouse.query.filter_by(is_active=True).order_by(Warehouse.name).all()
+    return render_template('erp/stock_takes.html', stock_takes=takes, warehouses=warehouses)
 
 
 @erp_bp.route('/stock-takes/create', methods=['POST'])

@@ -422,8 +422,8 @@ def api_search_accounts():
     query = request.args.get('q', '').strip()
 
     accounts = GLAccount.query.filter(
-        GLAccount.is_active is True,
-        GLAccount.is_header is False,
+        GLAccount.is_active.is_(True),
+        GLAccount.is_header.is_(False),
         db.or_(
             GLAccount.code.ilike(f'%{query}%'),
             GLAccount.name.ilike(f'%{query}%'),

@@ -375,7 +375,7 @@ def api_search():
     # السماح بالبحث حتى بدون query (لعرض كل العملاء)
     if query and len(query) >= 1:
         customers = Customer.query.filter(
-            Customer.is_active is True,
+            Customer.is_active.is_(True),
             db.or_(
                 Customer.name.ilike(f'%{query}%'),
                 Customer.phone.ilike(f'%{query}%'),
@@ -411,7 +411,7 @@ def customer_balance(id):
     unpaid_sales = Sale.query.filter(
         Sale.customer_id == id,
         Sale.balance_due > 0,
-        Sale.is_active is True
+        Sale.is_active.is_(True)
     ).order_by(Sale.sale_date.desc()).all()
 
     return jsonify({

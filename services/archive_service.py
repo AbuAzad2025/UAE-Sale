@@ -100,7 +100,7 @@ class ArchiveService:
 
         old_archives = ArchivedRecord.query.filter(
             ArchivedRecord.archived_at < cutoff,
-            ArchivedRecord.can_restore is False
+            ArchivedRecord.can_restore.is_(False)
         ).all()
 
         count = 0

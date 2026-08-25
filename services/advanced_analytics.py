@@ -117,7 +117,7 @@ class AdvancedFinancialAnalytics:
         for account in accounts:
             lines_query = GLJournalLine.query.join(GLJournalEntry).filter(
                 GLJournalLine.account_id == account.id,
-                GLJournalEntry.is_posted is True
+                GLJournalEntry.is_posted.is_(True)
             )
 
             if filter_start:
@@ -163,7 +163,7 @@ class AdvancedFinancialAnalytics:
                     GLJournalLine.account_id == account.id,
                     GLJournalEntry.entry_date >= date_from,
                     GLJournalEntry.entry_date <= date_to,
-                    GLJournalEntry.is_posted is True
+                    GLJournalEntry.is_posted.is_(True)
                 ).all()
 
                 for line in lines:

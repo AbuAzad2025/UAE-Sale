@@ -69,7 +69,7 @@ class BankReconciliationService:
         outstanding_cheques_in = Cheque.query.filter(
             Cheque.cheque_type == 'incoming',
             Cheque.status.in_(['pending', 'deposited']),
-            Cheque.is_active is True,
+            Cheque.is_active.is_(True),
             Cheque.due_date <= reconciliation.period_end
         ).all()
 
@@ -89,7 +89,7 @@ class BankReconciliationService:
         outstanding_cheques_out = Cheque.query.filter(
             Cheque.cheque_type == 'outgoing',
             Cheque.status.in_(['pending', 'deposited']),
-            Cheque.is_active is True,
+            Cheque.is_active.is_(True),
             Cheque.due_date <= reconciliation.period_end
         ).all()
 
@@ -237,14 +237,14 @@ class BankReconciliationService:
         outstanding_cheques_in = Cheque.query.filter(
             Cheque.cheque_type == 'incoming',
             Cheque.status.in_(['pending', 'deposited']),
-            Cheque.is_active is True,
+            Cheque.is_active.is_(True),
             Cheque.due_date.between(period_start, period_end)
         ).all()
 
         outstanding_cheques_out = Cheque.query.filter(
             Cheque.cheque_type == 'outgoing',
             Cheque.status.in_(['pending', 'deposited']),
-            Cheque.is_active is True,
+            Cheque.is_active.is_(True),
             Cheque.due_date.between(period_start, period_end)
         ).all()
 

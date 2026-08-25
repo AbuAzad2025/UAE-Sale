@@ -268,7 +268,7 @@ def api_search():
         # السماح بالبحث حتى بدون query (لعرض كل الموردين)
         if query and len(query) >= 1:
             suppliers = Supplier.query.filter(
-                Supplier.is_active is True,
+                Supplier.is_active.is_(True),
                 db.or_(
                     Supplier.name.ilike(f'%{query}%'),
                     Supplier.phone.ilike(f'%{query}%'),

@@ -234,7 +234,7 @@ class TestStockOnSale:
         _ = GLJournalEntry.query.filter(
             GLJournalEntry.reference_type == 'Sale',
             GLJournalEntry.reference_id == sale.id,
-            GLJournalEntry.is_reversed is False,
+            GLJournalEntry.is_reversed.is_(False),
         ).filter(
             GLJournalEntry.entry_type == 'reversing'
         ).first()

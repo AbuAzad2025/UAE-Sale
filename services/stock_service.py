@@ -216,7 +216,7 @@ class StockService:
         from sqlalchemy import func
         # Handle NULL values safely using coalesce
         query = Product.query.filter(
-            Product.is_active is True,
+            Product.is_active.is_(True),
             func.coalesce(Product.current_stock, 0) <= func.coalesce(Product.min_stock_alert, 0)
         ).order_by(Product.current_stock.asc())
 
@@ -229,6 +229,6 @@ class StockService:
     def get_out_of_stock_products():
         from sqlalchemy import func
         return Product.query.filter(
-            Product.is_active is True,
+            Product.is_active.is_(True),
             func.coalesce(Product.current_stock, 0) <= 0
         ).all()

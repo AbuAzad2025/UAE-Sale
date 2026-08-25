@@ -95,7 +95,7 @@ def register_sale_listeners():  # noqa: C901
                 Sale.__table__.select().where(
                     Sale.customer_id == target.customer_id,
                     Sale.status == 'confirmed',
-                    Sale.is_active is True
+                    Sale.is_active.is_(True)
                 )
             )
 
@@ -166,7 +166,7 @@ def register_receipt_listeners():
                 Sale.__table__.select().where(
                     Sale.customer_id == target.customer_id,
                     Sale.status == 'confirmed',
-                    Sale.is_active is True
+                    Sale.is_active.is_(True)
                 )
             )
 
@@ -445,7 +445,7 @@ def register_advanced_sale_listener():
                 Sale.__table__.select().where(
                     Sale.customer_id == target.customer_id,
                     Sale.status == 'confirmed',
-                    Sale.is_active is True
+                    Sale.is_active.is_(True)
                 )
             ).fetchall()
 
@@ -1402,7 +1402,7 @@ def register_neural_training_listeners():  # noqa: C901
             # حساب إجمالي العملاء
             total_customers = connection.execute(
                 Customer.__table__.select().where(
-                    Customer.is_active is True
+                    Customer.is_active.is_(True)
                 )
             ).fetchall()
 

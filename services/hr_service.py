@@ -380,7 +380,7 @@ class HRService:
         today = date.today()
         visa_expiry_limit = today + timedelta(days=90)
         expiring_visas = Employee.query.filter(
-            Employee.is_active is True,
+            Employee.is_active.is_(True),
             Employee.visa_expiry.isnot(None),
             Employee.visa_expiry <= visa_expiry_limit,
             Employee.visa_expiry >= today,
@@ -393,7 +393,7 @@ class HRService:
                      Employee.transport_allowance + Employee.phone_allowance +
                      Employee.other_allowances)
         ).filter(
-            Employee.is_active is True,
+            Employee.is_active.is_(True),
             Employee.employment_status == 'active',
         ).scalar() or Decimal('0')
 

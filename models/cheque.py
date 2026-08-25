@@ -592,7 +592,7 @@ class Cheque(TenantScopedMixin, db.Model):
         Cheque.update_all_statuses()
 
         return Cheque.query.filter(
-            Cheque.is_active is True,
+            Cheque.is_active.is_(True),
             Cheque.status == 'pending',
             Cheque.days_until_due <= 7,
             Cheque.days_until_due >= 0
@@ -604,9 +604,9 @@ class Cheque(TenantScopedMixin, db.Model):
         Cheque.update_all_statuses()
 
         return Cheque.query.filter(
-            Cheque.is_active is True,
+            Cheque.is_active.is_(True),
             Cheque.status == 'pending',
-            Cheque.is_overdue is True
+            Cheque.is_overdue.is_(True)
         ).order_by(Cheque.due_date).all()
 
     @staticmethod
@@ -664,7 +664,7 @@ class Cheque(TenantScopedMixin, db.Model):
         # القريبة من الاستحقاق
         due_soon = Cheque.query.filter(
             Cheque.status == 'pending',
-            Cheque.is_active is True,
+            Cheque.is_active.is_(True),
             Cheque.days_until_due <= 7,
             Cheque.days_until_due >= 0
         ).count()

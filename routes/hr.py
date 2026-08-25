@@ -101,7 +101,7 @@ def edit_department(id):
             flash(f'❌ خطأ: {str(e)}', 'danger')
 
     parent_depts = Department.query.filter(
-        Department.is_active is True, Department.id != dept.id
+        Department.is_active.is_(True), Department.id != dept.id
     ).order_by(Department.code).all()
     managers = User.query.filter_by(is_active=True).order_by(User.full_name).all()
     return render_template('hr/edit_department.html', department=dept,
@@ -222,8 +222,8 @@ def create_employee():
     # Users not yet employees
     existing_emp_user_ids = [e.user_id for e in Employee.query.all()]
     available_users = User.query.filter(
-        User.is_active is True,
-        User.is_owner is False,
+        User.is_active.is_(True),
+        User.is_owner.is_(False),
         ~User.id.in_(existing_emp_user_ids),
     ).order_by(User.full_name).all()
 

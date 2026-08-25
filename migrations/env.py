@@ -97,10 +97,14 @@ def run_migrations_online():
     connectable = get_engine()
 
     with connectable.connect() as connection:
+        conf = dict(conf_args)
+        if connection.dialect.name == "sqlite":
+            # SQLite cannot ALTER constraints; batch mode rebuilds tables instead
+            conf.setdefault("render_as_batch", True)
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),
-            **conf_args
+            **conf
         )
 
         with context.begin_transaction():

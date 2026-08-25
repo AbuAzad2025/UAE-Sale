@@ -1087,7 +1087,7 @@ class AIService:
 
             # رؤية 1: المخزون المنخفض
             low_stock_count = Product.query.filter(
-                Product.is_active is True,
+                Product.is_active.is_(True),
                 Product.current_stock <= Product.min_stock_alert
             ).count()
 
@@ -1102,7 +1102,7 @@ class AIService:
 
             # رؤية 2: العملاء المتأخرين
             high_balance_customers = Customer.query.filter(
-                Customer.is_active is True
+                Customer.is_active.is_(True)
             ).all()
 
             overdue_count = sum(1 for c in high_balance_customers if c.get_balance_aed() > 1000)
@@ -1152,7 +1152,7 @@ class AIService:
 
             # المنتجات التي تحتاج طلب
             low_stock = Product.query.filter(
-                Product.is_active is True,
+                Product.is_active.is_(True),
                 Product.current_stock <= Product.min_stock_alert
             ).all()
 

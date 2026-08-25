@@ -433,7 +433,7 @@ def api_search():
     # السماح بالبحث حتى بدون query (لعرض كل المنتجات)
     if query and len(query) >= 1:
         products = Product.query.filter(
-            Product.is_active is True,
+            Product.is_active.is_(True),
             db.or_(
                 Product.name.ilike(f'%{query}%'),
                 Product.sku.ilike(f'%{query}%'),

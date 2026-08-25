@@ -82,7 +82,7 @@ def search_products():
         return jsonify({'success': False, 'error': 'Query required'})
 
     products = Product.query.filter(
-        Product.is_active is True,
+        Product.is_active.is_(True),
         or_(
             Product.name.ilike(f'%{query_text}%'),
             Product.name_ar.ilike(f'%{query_text}%'),

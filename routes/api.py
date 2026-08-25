@@ -112,7 +112,7 @@ def api_search():
     # ========================================
     if search_type == 'products':
         products = Product.query.filter(
-            Product.is_active is True,
+            Product.is_active.is_(True),
             db.or_(
                 Product.name.ilike(f'%{query}%'),
                 Product.sku.ilike(f'%{query}%'),
@@ -245,7 +245,7 @@ def products_low_stock():
         from models import Product
         low_stock_products = Product.query.filter(
             Product.current_stock <= Product.min_stock_alert,
-            Product.is_active is True
+            Product.is_active.is_(True)
         ).order_by(Product.current_stock).all()
 
         products_data = []

@@ -2,6 +2,12 @@ from decimal import Decimal, ROUND_HALF_UP
 import time
 
 try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
+
+try:
     from forex_python.converter import CurrencyRates
     FOREX_AVAILABLE = True
 except ImportError:
@@ -36,7 +42,38 @@ class CurrencyService:
 
         rates = {}
 
-        # Try fetching live rates
+        # Try fetching live rates via free HTTP APIs (no key required)
+        free_endpoints = [
+            f"https://open.er-api.com/v6/latest/{base}",
+            f"https://api.exchangerate-api.com/v4/latest/{base}",
+            f"https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{base.lower()}.json",
+        ]
+        if REQUESTS_AVAILABLE:
+            for url in free_endpoints:
+                try:
+                    resp = requests.get(url, timeout=5)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        # Normalize different API response formats
+                        fetched = None
+                        if "rates" in data:
+                            fetched = data["rates"]
+                        elif base.lower() in data:
+                            fetched = data[base.lower()]
+                        if fetched:
+                            for curr, rate in fetched.items():
+                                try:
+                                    rates[curr.upper()] = Decimal(str(rate))
+                                except Exception:
+                                    continue
+                            rates[base] = Decimal('1.00')
+                            CurrencyService._rates_cache[base] = {'timestamp': time.time(), 'rates': rates}
+                            return rates.copy()
+                except Exception as e:
+                    print(f"Free API {url} failed: {e}")
+                    continue
+
+        # Try forex_python as secondary source
         if FOREX_AVAILABLE:
             try:
                 c = CurrencyRates()

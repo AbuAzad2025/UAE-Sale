@@ -157,26 +157,26 @@
     <ul class="navbar-nav ml-auto">
       <!-- الساعة والتاريخ وسعر الصرف -->
       <li class="nav-item d-none d-lg-inline-block">
-        <div class="nav-link" style="padding: 8px 15px;">
+        <div class="nav-link navbar-widgets">
           <div class="d-flex align-items-center" style="gap: 15px;">
             <!-- الساعة والتاريخ -->
-            <div class="text-center" style="min-width: 120px;">
-              <div id="current-time" style="font-size: 14px; font-weight: 700; color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.7);">
-                <i class="fas fa-clock mr-1" style="color: #ffffff;"></i>
+            <div class="navbar-datetime-widget">
+              <div id="current-time">
+                <i class="fas fa-clock mr-1"></i>
                 <span id="time-display">--:--</span>
               </div>
-              <div id="current-date" style="font-size: 12px; color: #ffffff; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.6);">
-                <i class="fas fa-calendar mr-1" style="color: #ffffff;"></i>
+              <div id="current-date">
+                <i class="fas fa-calendar mr-1"></i>
                 <span id="date-display">--/--/----</span>
               </div>
             </div>
             
             <!-- سعر الصرف -->
-            <div class="text-center" style="min-width: 100px; padding: 5px 10px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); border: 1px solid #adb5bd;">
-              <div style="font-size: 12px; color: #ffffff; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
+            <div class="navbar-exchange-widget">
+              <div class="exchange-label">
                 <i class="fas fa-exchange-alt mr-1"></i>USD/AED
               </div>
-              <div id="exchange-rate" style="font-size: 14px; color: #ffffff; font-weight: 800; text-shadow: 0 1px 2px rgba(0,0,0,0.6);">
+              <div id="exchange-rate" class="exchange-value">
                 <i class="fas fa-dollar-sign mr-1"></i>
                 <span id="rate-display">3.67</span>
               </div>
@@ -272,8 +272,8 @@
           </li>
           
           {% if current_user.has_permission('manage_sales') %}
-          <li class="nav-item has-treeview {% if request.endpoint and 'sales' in request.endpoint %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and 'sales' in request.endpoint %}active{% endif %}">
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('sales.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('sales.') %}active{% endif %}">
               <i class="nav-icon fas fa-file-invoice"></i>
               <p>
                 المبيعات
@@ -298,8 +298,8 @@
           {% endif %}
           
           {% if current_user.has_permission('manage_customers') %}
-          <li class="nav-item has-treeview {% if request.endpoint and 'customers' in request.endpoint %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and 'customers' in request.endpoint %}active{% endif %}">
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('customers.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('customers.') %}active{% endif %}">
               <i class="nav-icon fas fa-users"></i>
               <p>
                 الزبائن
@@ -324,8 +324,8 @@
           {% endif %}
           
           {% if current_user.has_permission('manage_products') %}
-          <li class="nav-item has-treeview {% if request.endpoint and 'products' in request.endpoint %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and 'products' in request.endpoint %}active{% endif %}">
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('products.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('products.') %}active{% endif %}">
               <i class="nav-icon fas fa-box"></i>
               <p>
                 المنتجات
@@ -350,8 +350,8 @@
           {% endif %}
           
           {% if current_user.has_permission('manage_purchases') %}
-          <li class="nav-item has-treeview {% if request.endpoint and 'purchases' in request.endpoint %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and 'purchases' in request.endpoint %}active{% endif %}">
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('purchases.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('purchases.') %}active{% endif %}">
               <i class="nav-icon fas fa-shopping-cart"></i>
               <p>
                 المشتريات
@@ -376,8 +376,8 @@
           {% endif %}
           
           {% if current_user.has_permission('manage_suppliers') %}
-          <li class="nav-item has-treeview {% if request.endpoint and 'suppliers' in request.endpoint %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and 'suppliers' in request.endpoint %}active{% endif %}">
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('suppliers.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('suppliers.') %}active{% endif %}">
               <i class="nav-icon fas fa-truck"></i>
               <p>
                 الموردين
@@ -402,8 +402,8 @@
           {% endif %}
           
           {% if current_user.has_permission('manage_users') %}
-          <li class="nav-item has-treeview {% if request.endpoint and 'users' in request.endpoint %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and 'users' in request.endpoint %}active{% endif %}">
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('users.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('users.') %}active{% endif %}">
               <i class="nav-icon fas fa-users-cog"></i>
               <p>
                 المستخدمين
@@ -428,8 +428,8 @@
           {% endif %}
           
           {% if current_user.has_permission('manage_payments') %}
-          <li class="nav-item has-treeview {% if request.endpoint and 'payments' in request.endpoint %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and 'payments' in request.endpoint %}active{% endif %}">
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('payments.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('payments.') %}active{% endif %}">
               <i class="nav-icon fas fa-money-bill-wave"></i>
               <p>
                 المدفوعات
@@ -454,8 +454,8 @@
           {% endif %}
           
           {% if current_user.has_permission('manage_payments') %}
-          <li class="nav-item has-treeview {% if request.endpoint and 'cheques' in request.endpoint %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and 'cheques' in request.endpoint %}active{% endif %}">
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('cheques.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('cheques.') %}active{% endif %}">
               <i class="nav-icon fas fa-money-check-alt"></i>
               <p>
                 إدارة الشيكات
@@ -480,8 +480,8 @@
           {% endif %}
           
           {% if current_user.has_permission('manage_expenses') %}
-          <li class="nav-item has-treeview {% if request.endpoint and 'expenses' in request.endpoint %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and 'expenses' in request.endpoint %}active{% endif %}">
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('expenses.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('expenses.') %}active{% endif %}">
               <i class="nav-icon fas fa-receipt"></i>
               <p>
                 المصروفات
@@ -506,8 +506,8 @@
           {% endif %}
           
           {% if current_user.has_permission('view_ledger') %}
-          <li class="nav-item has-treeview {% if request.endpoint and 'ledger' in request.endpoint %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and 'ledger' in request.endpoint %}active{% endif %}">
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('ledger.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('ledger.') %}active{% endif %}">
               <i class="nav-icon fas fa-book"></i>
               <p>
                 دفتر الأستاذ
@@ -552,8 +552,8 @@
           {% endif %}
           
           {% if current_user.has_permission('manage_sales') or current_user.has_permission('manage_purchases') or current_user.has_permission('manage_warehouse') or current_user.has_permission('manage_ledger') %}
-          <li class="nav-item has-treeview {% if request.endpoint and 'erp_modules' in request.endpoint %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and 'erp_modules' in request.endpoint %}active{% endif %}">
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('erp_modules.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('erp_modules.') %}active{% endif %}">
               <i class="nav-icon fas fa-puzzle-piece"></i>
               <p>
                 الوحدات المتقدمة
@@ -586,8 +586,8 @@
           {% endif %}
 
           {% if current_user.has_permission('manage_hr') %}
-          <li class="nav-item has-treeview {% if request.endpoint and 'hr' in request.endpoint %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and 'hr' in request.endpoint %}active{% endif %}">
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('hr.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('hr.') %}active{% endif %}">
               <i class="nav-icon fas fa-users-cog"></i>
               <p>
                 الموارد البشرية
@@ -630,8 +630,8 @@
           {% endif %}
 
           {% if current_user.has_permission('view_reports') %}
-          <li class="nav-item has-treeview {% if request.endpoint and 'reports' in request.endpoint %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and 'reports' in request.endpoint %}active{% endif %}">
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('reports.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('reports.') %}active{% endif %}">
               <i class="nav-icon fas fa-chart-bar"></i>
               <p>
                 التقارير
@@ -695,8 +695,8 @@
           {% endif %}
 
           {% if current_user.has_permission('manage_warehouse') %}
-          <li class="nav-item has-treeview {% if request.endpoint and 'warehouse' in request.endpoint %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and 'warehouse' in request.endpoint %}active{% endif %}">
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('warehouse.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('warehouse.') %}active{% endif %}">
               <i class="nav-icon fas fa-warehouse"></i>
               <p>
                 المستودعات والمخزون
@@ -863,6 +863,49 @@
 <script defer src="{{ url_for('static', filename='js/smart-print.js') }}"></script>
 {% block extra_js %}{% endblock %}
 
+<!-- Command Palette (Ctrl+K) -->
+<div class="modal fade" id="commandPalette" tabindex="-1" role="dialog" aria-labelledby="commandPaletteLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content" style="border-radius:12px; overflow:hidden;">
+      <div class="modal-header py-2" style="background:linear-gradient(135deg,#667eea,#764ba2); color:#fff;">
+        <h6 class="modal-title" id="commandPaletteLabel"><i class="fas fa-bolt mr-2"></i>لوحة الأوامر — Ctrl+K</h6>
+        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body p-0">
+        <input type="text" id="commandInput" class="form-control border-0" placeholder="ابحث عن: فاتورة جديدة، زبون، كشف حساب..." style="border-radius:0; padding:14px 16px;" autocomplete="off">
+        <div id="commandResults" style="max-height:320px; overflow-y:auto; border-top:1px solid #eee;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+document.addEventListener('keydown', function(e){
+  if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); $('#commandPalette').modal('show'); setTimeout(()=>document.getElementById('commandInput').focus(),300); }
+  if (e.key==='?' && !e.ctrlKey && e.target.tagName!=='INPUT' && e.target.tagName!=='TEXTAREA'){ e.preventDefault(); $('#commandPalette').modal('show'); }
+});
+(function(){
+  const commands=[
+    {label:'فاتورة جديدة', icon:'fa-file-invoice', url:"{{ url_for('sales.create') }}", keys:'فاتورة بيع sale'},
+    {label:'قائمة الفواتير', icon:'fa-list', url:"{{ url_for('sales.index') }}", keys:'فواتير sales'},
+    {label:'زبون جديد', icon:'fa-user-plus', url:"{{ url_for('customers.create') }}", keys:'زبون customer'},
+    {label:'قائمة الزبائن', icon:'fa-users', url:"{{ url_for('customers.index') }}", keys:'زبائن customers'},
+    {label:'منتج جديد', icon:'fa-box', url:"{{ url_for('products.create') }}", keys:'منتج product'},
+    {label:'سند قبض جديد', icon:'fa-money-bill-wave', url:"{{ url_for('payments.create_receipt') }}", keys:'سند قبض payment'},
+    {label:'كشف حساب', icon:'fa-book', url:"{{ url_for('ledger.index') }}", keys:'كشف حساب ledger'},
+    {label:'ميزان المراجعة', icon:'fa-balance-scale', url:"{{ url_for('ledger.trial_balance') }}", keys:'ميزان trial'},
+  ];
+  const input=document.getElementById('commandInput');
+  const results=document.getElementById('commandResults');
+  function render(q){
+    const f=q.trim().toLowerCase();
+    const filtered= f ? commands.filter(c=> (c.label+c.keys+c.url).toLowerCase().includes(f)) : commands;
+    results.innerHTML = filtered.map(c=> `<a href="${c.url}" class="d-flex align-items-center p-3 text-dark" style="text-decoration:none; border-bottom:1px solid #f0f0f0;"><i class="fas ${c.icon} mr-3 text-primary"></i><span>${c.label}</span><small class="ml-auto text-muted">${c.keys.split(' ')[0]}</small></a>`).join('') || '<div class="p-4 text-center text-muted">لا نتائج</div>';
+  }
+  if(input){ input.addEventListener('input', e=>render(e.target.value)); }
+  $('#commandPalette').on('shown.bs.modal', ()=>render(''));
+})();
+</script>
+
 <script>
 // CSRF: attach token to all jQuery AJAX requests
 $(function() {
@@ -950,24 +993,40 @@ $(function() {
     if (dateDisplay) dateDisplay.textContent = dateString;
   }
   
-  // تحديث سعر الصرف
-  function updateExchangeRate() {
-    // يمكن استبدال هذا بـ API حقيقي لسعر الصرف
-    const baseRate = 3.67;
-    const variation = (Math.random() - 0.5) * 0.02; // تغيير عشوائي صغير
-    const currentRate = (baseRate + variation).toFixed(4);
-    
+  // تحديث سعر الصرف - جلب حقيقي من الخادم (خوادم مجانية بدون مفتاح)
+  async function updateExchangeRate() {
     const rateDisplay = document.getElementById('rate-display');
-    if (rateDisplay) {
-      rateDisplay.textContent = currentRate;
-      
-      // تأثير بصري للتحديث
-      rateDisplay.style.transform = 'scale(1.1)';
-      rateDisplay.style.color = '#f39c12';
-      setTimeout(() => {
-        rateDisplay.style.transform = 'scale(1)';
-        rateDisplay.style.color = '#ffffff';
-      }, 300);
+    if (!rateDisplay) return;
+    try {
+      // نحاول API الداخلي أولاً (يستخدم خوادم مجانية open.er-api + exchangerate-api + fawazahmed)
+      const res = await fetch('/api/currency-rate/USD/AED', { headers: { 'Accept': 'application/json' }});
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.rate) {
+          const currentRate = parseFloat(data.rate).toFixed(4);
+          rateDisplay.textContent = currentRate;
+          rateDisplay.style.transform = 'scale(1.1)';
+          rateDisplay.style.color = '#f39c12';
+          setTimeout(() => { rateDisplay.style.transform = 'scale(1)'; rateDisplay.style.color = '#ffffff'; }, 300);
+          return;
+        }
+      }
+      throw new Error('API failed');
+    } catch (e) {
+      // محاولة مباشرة لخادم مجاني كخطة بديلة (بدون المرور بالخادم)
+      try {
+        const r2 = await fetch('https://open.er-api.com/v6/latest/USD', { cache: 'no-store' });
+        if (r2.ok) {
+          const j2 = await r2.json();
+          const aed = j2.rates && j2.rates.AED;
+          if (aed) {
+            rateDisplay.textContent = parseFloat(aed).toFixed(4);
+            return;
+          }
+        }
+      } catch (e2) {}
+      // يبقى السعر الحالي كما هو في حال فشل كل المحاولات
+      console.warn('Exchange rate fetch failed', e);
     }
   }
   
@@ -985,6 +1044,7 @@ $(function() {
 
 // تبديل اتجاه الـ Sidebar بين اليمين والشمال
 function toggleSidebarDirection() {
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sidebar = document.querySelector('.main-sidebar');
   const content = document.querySelector('.content-wrapper');
   const navbar = document.querySelector('.main-header');

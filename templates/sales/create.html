@@ -154,9 +154,9 @@ a.btn.btn-outline-secondary span {
                   <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر العميل - الفلتر الذكي: ابحث بالاسم أو الهاتف (إجباري)"></i>
                 </label>
                 <select name="customer_id" id="customer_id" class="form-control customer-select" required>
-                  <option value="" selected>بلا</option>
+                  <option value=""></option>
                 </select>
-                <small class="form-text text-muted">💡 الفلتر الذكي: ابحث بالاسم أو رقم الهاتف</small>
+                <small class="form-text text-muted">💡 الفلتر الذكي: ابحث بالاسم أو رقم الهاتف (اكتب حرفين على الأقل)</small>
               </div>
             </div>
             <div class="col-md-4">
@@ -236,7 +236,7 @@ a.btn.btn-outline-secondary span {
     </div>
 
     <div class="col-md-4">
-      <div class="card">
+      <div class="card sale-totals-sticky">
         <div class="card-header bg-gradient-info">
           <h3 class="card-title text-white"><i class="fas fa-calculator mr-2"></i>الإجماليات</h3>
         </div>
@@ -311,11 +311,11 @@ a.btn.btn-outline-secondary span {
             </label>
             <select name="payment_method" id="payment_method" class="form-control">
               <option value="">آجل (بدون دفع)</option>
-              <option value="cash">💵 نقدي</option>
-              <option value="card">💳 بطاقة</option>
-              <option value="bank_transfer">🏦 تحويل بنكي</option>
-              <option value="cheque">📝 شيك</option>
-              <option value="e_wallet">💰 محفظة إلكترونية</option>
+              <option value="cash">نقدي</option>
+              <option value="card">بطاقة</option>
+              <option value="bank_transfer">تحويل بنكي</option>
+              <option value="cheque">شيك</option>
+              <option value="e_wallet">محفظة إلكترونية</option>
             </select>
             <small class="form-text text-muted">
               <i class="fas fa-info-circle"></i> اترك فارغاً للدفع الآجل (على الحساب)
@@ -355,12 +355,25 @@ a.btn.btn-outline-secondary span {
             </small>
           </div>
 
-          <button type="submit" class="btn btn-primary btn-block btn-lg">
+          <button type="submit" class="btn btn-primary btn-block btn-lg d-none d-md-block">
             <i class="fas fa-save mr-2"></i>حفظ الفاتورة
           </button>
+          <div class="d-md-none text-center text-muted small mt-2">
+            <i class="fas fa-info-circle"></i> استخدم الشريط السفلي للحفظ على الجوال
+          </div>
         </div>
       </div>
     </div>
+  </div>
+  <!-- Mobile bottom bar -->
+  <div class="sale-mobile-bottom-bar d-md-none d-flex">
+    <div>
+      <strong id="mobile-total">0.00 AED</strong>
+      <small class="d-block text-muted"><span id="mobile-count">0</span> أصناف</small>
+    </div>
+    <button type="submit" form="saleForm" class="btn btn-primary">
+      <i class="fas fa-save mr-1"></i> حفظ
+    </button>
   </div>
 </form>
 {% endblock %}

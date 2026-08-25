@@ -171,9 +171,15 @@ login_manager.login_view = "auth.login"
 login_manager.login_message = "الرجاء تسجيل الدخول للوصول لهذه الصفحة"
 login_manager.login_message_category = "warning"
 
-# Monkey-patch AnonymousUserMixin so templates can safely call has_permission()
+
+# User loader for Flask-Login
+@login_manager.user_loader
+def load_user(user_id):
+    from models.user import User
+    return db.session.get(User, int(user_id))
+
+
 from flask_login import AnonymousUserMixin  # noqa: E402
-AnonymousUserMixin.has_permission = lambda self, code: False
 AnonymousUserMixin.is_owner = False
 AnonymousUserMixin.is_super_admin = lambda self: False
 AnonymousUserMixin.is_manager = lambda self: False

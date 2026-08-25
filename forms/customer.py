@@ -16,10 +16,13 @@ class CustomerForm(FlaskForm):
     address = TextAreaField('العنوان', validators=[Optional()])
     tax_number = StringField('الرقم الضريبي', validators=[Optional()])
     preferred_currency = SelectField('العملة الافتراضية', choices=[
+        ('ILS', 'شيقل'),
+        ('JOD', 'دينار أردني'),
         ('AED', 'درهم'),
+        ('SAR', 'ريال سعودي'),
         ('USD', 'دولار'),
         ('EUR', 'يورو')
-    ], default='AED', validators=[Optional()])
+    ], default='ILS', validators=[Optional()])
     is_active = SelectField('الحالة', choices=[
         ('1', 'نشط'),
         ('0', 'غير نشط')

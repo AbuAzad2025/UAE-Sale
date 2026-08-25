@@ -87,9 +87,11 @@
           <div class="form-group">
             <label>
               <i class="fas fa-dollar-sign text-success"></i> العملة الافتراضية
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="العملة المفضلة (افتراضي: AED)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="العملة المفضلة (افتراضي: ILS)"></i>
             </label>
             <select name="default_currency" class="form-control">
+              <option value="ILS" {% if customer.default_currency == 'ILS' %}selected{% endif %}>شيقل</option>
+              <option value="JOD" {% if customer.default_currency == 'JOD' %}selected{% endif %}>دينار أردني</option>
               <option value="AED" {% if customer.default_currency == 'AED' %}selected{% endif %}>درهم</option>
               <option value="USD" {% if customer.default_currency == 'USD' %}selected{% endif %}>دولار</option>
               <option value="EUR" {% if customer.default_currency == 'EUR' %}selected{% endif %}>يورو</option>

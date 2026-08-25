@@ -60,7 +60,7 @@
 {% block content %}
 {% set submitted = form_data if form_data is defined else None %}
 {% set selected_customer_id = submitted.get('customer_id') if submitted and submitted.get('customer_id') else (preselected_customer.id if preselected_customer else '') %}
-{% set selected_currency = submitted.get('currency') if submitted and submitted.get('currency') else (purchase.currency if purchase else sale.currency if sale else 'AED') %}
+{% set selected_currency = submitted.get('currency') if submitted and submitted.get('currency') else (purchase.currency if purchase else sale.currency if sale else 'ILS') %}
 {% set selected_payment_method = submitted.get('payment_method') if submitted and submitted.get('payment_method') else 'cash' %}
 {% set selected_ewallet = submitted.get('ewallet_name') if submitted and submitted.get('ewallet_name') else '' %}
 {% if sale %}
@@ -196,11 +196,13 @@
             </label>
             <select name="currency" id="currency" class="form-control">
               {% set currency_options = [
+                ('ILS', 'ILS - شيقل'),
+                ('JOD', 'JOD - دينار أردني'),
                 ('AED', 'AED - درهم إماراتي'),
+                ('SAR', 'SAR - ريال سعودي'),
                 ('USD', 'USD - دولار أمريكي'),
                 ('EUR', 'EUR - يورو'),
                 ('GBP', 'GBP - جنيه إسترليني'),
-                ('SAR', 'SAR - ريال سعودي'),
                 ('KWD', 'KWD - دينار كويتي'),
                 ('QAR', 'QAR - ريال قطري'),
                 ('OMR', 'OMR - ريال عماني'),

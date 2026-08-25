@@ -174,11 +174,11 @@
             <!-- سعر الصرف -->
             <div class="navbar-exchange-widget">
               <div class="exchange-label">
-                <i class="fas fa-exchange-alt mr-1"></i>USD/AED
+                <i class="fas fa-exchange-alt mr-1"></i>USD/ILS
               </div>
               <div id="exchange-rate" class="exchange-value">
                 <i class="fas fa-dollar-sign mr-1"></i>
-                <span id="rate-display">3.67</span>
+                <span id="rate-display">3.70</span>
               </div>
             </div>
           </div>
@@ -1005,7 +1005,7 @@ $(function() {
     if (!rateDisplay) return;
     try {
       // نحاول API الداخلي أولاً (يستخدم خوادم مجانية open.er-api + exchangerate-api + fawazahmed)
-      const res = await fetch('/api/currency-rate/USD/AED', { headers: { 'Accept': 'application/json' }});
+      const res = await fetch('/api/currency-rate/USD/ILS', { headers: { 'Accept': 'application/json' }});
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.rate) {

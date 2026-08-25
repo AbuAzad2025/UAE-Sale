@@ -154,6 +154,8 @@
           <div class="form-group">
             <label>العملة المفضلة</label>
             <select name="preferred_currency" class="form-control">
+              <option value="ILS" {% if supplier.preferred_currency == 'ILS' %}selected{% endif %}>ILS - شيقل</option>
+              <option value="JOD" {% if supplier.preferred_currency == 'JOD' %}selected{% endif %}>JOD - دينار أردني</option>
               <option value="AED" {% if supplier.preferred_currency == 'AED' %}selected{% endif %}>AED - درهم</option>
               <option value="USD" {% if supplier.preferred_currency == 'USD' %}selected{% endif %}>USD - دولار</option>
               <option value="EUR" {% if supplier.preferred_currency == 'EUR' %}selected{% endif %}>EUR - يورو</option>

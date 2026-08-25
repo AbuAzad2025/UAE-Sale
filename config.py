@@ -141,7 +141,7 @@ class Config:
     CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", REDIS_URL)
     CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", REDIS_URL)
 
-    DEFAULT_CURRENCY = os.environ.get("DEFAULT_CURRENCY", "AED")
+    DEFAULT_CURRENCY = os.environ.get("DEFAULT_CURRENCY", "ILS")
 
     CURRENCY_API_PROVIDER = os.environ.get("CURRENCY_API_PROVIDER", "exchangerate-api")
     CURRENCY_API_KEY = os.environ.get("CURRENCY_API_KEY", "")

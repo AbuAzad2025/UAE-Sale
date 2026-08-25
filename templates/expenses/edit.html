@@ -82,6 +82,8 @@
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عملة الدفع"></i>
             </label>
             <select name="currency" id="currency" class="form-control">
+              <option value="ILS" {% if expense.currency == 'ILS' %}selected{% endif %}>شيقل (ILS)</option>
+              <option value="JOD" {% if expense.currency == 'JOD' %}selected{% endif %}>دينار أردني (JOD)</option>
               <option value="AED" {% if expense.currency == 'AED' %}selected{% endif %}>درهم (AED)</option>
               <option value="USD" {% if expense.currency == 'USD' %}selected{% endif %}>دولار (USD)</option>
               <option value="EUR" {% if expense.currency == 'EUR' %}selected{% endif %}>يورو (EUR)</option>

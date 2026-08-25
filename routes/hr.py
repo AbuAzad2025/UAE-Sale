@@ -16,8 +16,8 @@ from utils.helpers import create_audit_log
 
 hr_bp = Blueprint('hr', __name__, url_prefix='/hr')
 
-
 # ==================== DASHBOARD ====================
+
 
 @hr_bp.route('/')
 @login_required
@@ -37,8 +37,8 @@ def dashboard():
                            pending_leaves=pending_leaves,
                            departments=departments)
 
-
 # ==================== DEPARTMENTS ====================
+
 
 @hr_bp.route('/departments')
 @login_required
@@ -107,8 +107,8 @@ def edit_department(id):
     return render_template('hr/edit_department.html', department=dept,
                            parent_departments=parent_depts, managers=managers)
 
-
 # ==================== EMPLOYEES ====================
+
 
 @hr_bp.route('/employees')
 @login_required
@@ -314,8 +314,8 @@ def edit_employee(id):
     departments = Department.query.filter_by(is_active=True).order_by(Department.code).all()
     return render_template('hr/edit_employee.html', employee=emp, departments=departments)
 
-
 # ==================== LEAVE MANAGEMENT ====================
+
 
 @hr_bp.route('/leave')
 @login_required
@@ -447,8 +447,8 @@ def leave_types():
     types = LeaveType.query.order_by(LeaveType.code).all()
     return render_template('hr/leave_types.html', leave_types=types)
 
-
 # ==================== PAYROLL ====================
+
 
 @hr_bp.route('/payroll')
 @login_required
@@ -558,8 +558,8 @@ def mark_payslip_paid(id):
         flash(f'❌ خطأ: {str(e)}', 'danger')
     return redirect(url_for('hr.view_payslip', id=id))
 
-
 # ==================== API ====================
+
 
 @hr_bp.route('/api/employee/<int:id>/leave-balance')
 @login_required

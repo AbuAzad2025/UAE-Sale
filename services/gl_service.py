@@ -4,7 +4,6 @@ from extensions import db
 from models import GLAccount, GLJournalEntry, GLJournalLine
 from services.currency_service import CurrencyService
 
-
 _JE_SEQ = {}
 
 

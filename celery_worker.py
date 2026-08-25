@@ -64,9 +64,9 @@ celery.conf.beat_schedule = {
 # ── Auto-discover tasks from the tasks module ───────────────────────────
 celery.autodiscover_tasks(['celery_tasks'])
 
-
 # ── Inline Tasks ────────────────────────────────────────────────────────
 # These create a Flask app context so they can use SQLAlchemy models.
+
 
 @celery.task(name='celery_worker.run_balance_repair', bind=True, max_retries=2)
 def run_balance_repair(self):

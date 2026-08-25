@@ -3,7 +3,6 @@
 from flask import request, abort
 from functools import wraps
 
-
 OWNER_ALLOWED_IPS = [
     '127.0.0.1',
     'localhost',

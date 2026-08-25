@@ -7,7 +7,6 @@ database credentials, and other secrets.
 
 import re
 
-
 # Patterns that indicate sensitive data
 SENSITIVE_PATTERNS = [
     # Passwords in connection strings

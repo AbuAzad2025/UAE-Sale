@@ -635,7 +635,7 @@ def entity_report_fragment(type, id):  # noqa: C901
                  .filter(
                      ProductPartner.partner_customer_id == id,
                      Sale.status == 'confirmed'
-                 ).group_by(Product.name, ProductPartner.percentage).all()
+                ).group_by(Product.name, ProductPartner.percentage).all()
 
                 for sp in shared_products_query:
                     share_amount = sp.total_sales * (sp.percentage / 100)
@@ -659,7 +659,7 @@ def entity_report_fragment(type, id):  # noqa: C901
                  .filter(
                      Product.merchant_customer_id == id,
                      Sale.status == 'confirmed'
-                 ).group_by(Product.name, Product.merchant_share).all()
+                ).group_by(Product.name, Product.merchant_share).all()
 
                 for mp in merchant_products_query:
                     share_pct = mp.merchant_share or 100
@@ -752,7 +752,6 @@ def top_selling():
     ).limit(limit).all()
 
     return render_template('reports/top_selling.html', products=products)
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PHASE 2: NEW REPORTS
@@ -1107,7 +1106,6 @@ def vat_report():
                            summary=summary,
                            date_from=date_from,
                            date_to=date_to)
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PHASE 3: EXPORT ENDPOINTS

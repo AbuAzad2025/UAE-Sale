@@ -6,7 +6,6 @@ import copy
 
 api_docs_bp = Blueprint('api_docs', __name__, url_prefix='/api-docs')
 
-
 # OpenAPI 3.0 Specification
 OPENAPI_SPEC = {
     "openapi": "3.0.3",

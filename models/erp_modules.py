@@ -16,8 +16,8 @@ from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from extensions import db
 
-
 # ==================== QUOTATIONS ====================
+
 
 class Quotation(db.Model):
     """Sales quotation / proposal"""
@@ -109,8 +109,8 @@ class QuotationLine(db.Model):
         disc = Decimal(str(self.discount_percent)) if self.discount_percent else Decimal('0')
         self.line_total = (qty * price * (Decimal('100') - disc) / Decimal('100')).quantize(Decimal('0.001'), ROUND_HALF_UP)
 
-
 # ==================== PURCHASE ORDERS ====================
+
 
 class PurchaseOrder(db.Model):
     """Purchase Order - formal procurement document"""
@@ -194,8 +194,8 @@ class PurchaseOrderLine(db.Model):
         disc = Decimal(str(self.discount_percent)) if self.discount_percent else Decimal('0')
         self.line_total = (qty * cost * (Decimal('100') - disc) / Decimal('100')).quantize(Decimal('0.001'), ROUND_HALF_UP)
 
-
 # ==================== FISCAL PERIODS ====================
+
 
 class FiscalPeriod(db.Model):
     """Fiscal period locking to prevent backdating"""
@@ -234,8 +234,8 @@ class FiscalPeriod(db.Model):
     def status_ar(self):
         return 'مغلقة' if self.is_closed else 'مفتوحة'
 
-
 # ==================== STOCK TRANSFERS ====================
+
 
 class StockTransfer(db.Model):
     """Transfer stock between warehouses"""
@@ -276,8 +276,8 @@ class StockTransferLine(db.Model):
     transfer = db.relationship('StockTransfer', back_populates='lines')
     product = db.relationship('Product')
 
-
 # ==================== STOCK TAKE ====================
+
 
 class StockTake(db.Model):
     """Physical inventory count"""
@@ -325,8 +325,8 @@ class StockTakeItem(db.Model):
         if self.counted_quantity is not None:
             self.variance = self.counted_quantity - self.system_quantity
 
-
 # ==================== DUNNING LETTERS ====================
+
 
 class DunningLetter(db.Model):
     """Automated collection reminder for overdue receivables"""
@@ -354,8 +354,8 @@ class DunningLetter(db.Model):
     def level_ar(self):
         return {1: 'تذ friendly', 2: 'تذكير رسمي', 3: 'إنذار عاجل', 4: 'إنذار قانوني'}.get(self.level, str(self.level))
 
-
 # ==================== RECURRING EXPENSES ====================
+
 
 class RecurringExpense(db.Model):
     """Template for recurring expenses (rent, salaries, etc.)"""
@@ -391,8 +391,8 @@ class RecurringExpense(db.Model):
             return self.next_due_date + timedelta(days=365)
         return self.next_due_date
 
-
 # ==================== LOT/SERIAL TRACKING ====================
+
 
 class ProductLot(db.Model):
     """Lot/batch tracking for products"""
@@ -430,8 +430,8 @@ class ProductLot(db.Model):
             return None
         return (self.expiry_date - date.today()).days
 
-
 # ==================== BIN/LOCATION TRACKING ====================
+
 
 class WarehouseBin(db.Model):
     """Physical bin/shelf location within a warehouse"""
@@ -485,8 +485,8 @@ class ProductBin(db.Model):
         db.UniqueConstraint('bin_id', 'product_id', name='uq_bin_product'),
     )
 
-
 # ==================== E-INVOICING (FATOORA) ====================
+
 
 class EInvoice(db.Model):
     """UAE FATOORA e-invoice record"""

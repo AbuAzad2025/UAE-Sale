@@ -126,8 +126,9 @@ def logout():
 
     return redirect(url_for('auth.login'))
 
-
 # Payment Routes
+
+
 @auth_bp.route('/payment/create', methods=['POST'])
 @limiter.limit("10 per minute")
 def create_payment():

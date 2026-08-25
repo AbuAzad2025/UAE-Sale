@@ -83,7 +83,7 @@ __all__ = [
     'CostCenter',
     'FixedAsset', 'DepreciationSchedule',
     'CustomsTax', 'AdvancedExpense', 'TaxCalculationRule',
-    'LoginHistory', 'SecurityAlert',    'APIKey',
+    'LoginHistory', 'SecurityAlert', 'APIKey',
     'ApprovalWorkflow', 'ApprovalRequest', 'ApprovalLevel',
     'Department', 'Employee', 'LeaveType', 'LeaveRequest', 'Payslip', 'PayslipLine',
     'Quotation', 'QuotationLine', 'PurchaseOrder', 'PurchaseOrderLine',

@@ -116,7 +116,6 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
         if self.is_reversed:
             raise ValueError('هذا القيد تم عكسه مسبقاً')
 
-
         # إنشاء قيد معكوس  # noqa: E303
         y = datetime.now().strftime('%Y')
         from models import GLJournalEntry as _JE

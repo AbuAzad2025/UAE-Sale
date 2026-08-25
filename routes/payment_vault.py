@@ -173,7 +173,6 @@ def dashboard():
                            customer_behavior=customer_behavior,
                            package_performance=package_performance)
 
-
 # تم نقل route /purchases إلى view_purchases في نهاية الملف
 
 
@@ -736,8 +735,8 @@ def change_password():
 
     return render_template('payment_vault/change_password.html')
 
-
 # ==================== API Routes للشراء والتبرع (متاحة للجميع) ====================
+
 
 @payment_vault_bp.route('/api/purchase', methods=['POST'])
 @csrf.exempt  # JSON API - CSRF bypassed; Origin validation below
@@ -1021,8 +1020,8 @@ def api_create_donation():  # noqa: C901
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
 # ==================== Routes لإدارة المشتريات (محمية) ====================
+
 
 @payment_vault_bp.route('/purchases')
 @login_required
@@ -1231,7 +1230,6 @@ def reject_donation(donation_id):
 
     return redirect(url_for('payment_vault.donations'))
 
-
 # route /cards موجود مسبقاً في السطر 392
 
 
@@ -1304,8 +1302,8 @@ def api_live_stats():
         'timestamp': datetime.now(timezone.utc).isoformat()
     })
 
-
 # ==================== Export Routes - تصدير التقارير ====================
+
 
 @payment_vault_bp.route('/export/purchases')
 @login_required
@@ -1408,8 +1406,8 @@ def export_report_pdf():
     from flask import Response
     return Response(html, mimetype='text/html')
 
-
 # ==================== Webhook Routes - معالجة Webhooks ====================
+
 
 @payment_vault_bp.route('/webhook/nowpayments', methods=['POST'])
 @csrf.exempt
@@ -1503,8 +1501,8 @@ def stripe_webhook():
         logger.error(f'❌ Stripe webhook error: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
-
 # ==================== Health & Monitoring Routes - المراقبة ====================
+
 
 @payment_vault_bp.route('/health', methods=['GET'])
 def health_check():
@@ -1529,8 +1527,8 @@ def system_metrics():
     metrics = HealthCheckService.get_system_metrics()
     return jsonify(metrics)
 
-
 # ==================== API v2 - Enhanced API with Versioning ====================
+
 
 @payment_vault_bp.route('/api/v2/purchases', methods=['GET'])
 @login_required

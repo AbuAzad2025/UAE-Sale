@@ -373,10 +373,10 @@ def delete(id):
         flash(f'❌ حدث خطأ: {str(e)}', 'danger')
         return redirect(url_for('purchases.view', id=id))
 
-
 # =====================================
 # API Endpoints - Backend Calculations
 # =====================================
+
 
 @purchases_bp.route('/api/calculate-totals', methods=['POST'])
 def api_calculate_purchase_totals():

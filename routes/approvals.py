@@ -11,8 +11,8 @@ from utils.decorators import permission_required
 
 approvals_bp = Blueprint('approvals', __name__, url_prefix='/approvals')
 
-
 # ── List pending requests ───────────────────────────────────────────────
+
 
 @approvals_bp.route('/')
 @login_required
@@ -32,8 +32,8 @@ def index():
                            requests=requests, pending_count=pending,
                            selected_status=status, selected_entity=entity_type)
 
-
 # ── View a specific request ─────────────────────────────────────────────
+
 
 @approvals_bp.route('/<int:request_id>')
 @login_required
@@ -44,8 +44,8 @@ def view(request_id):
     return render_template('approvals/view.html',
                            req=req, workflow=workflow, levels=levels)
 
-
 # ── Approve ─────────────────────────────────────────────────────────────
+
 
 @approvals_bp.route('/<int:request_id>/approve', methods=['POST'])
 @login_required
@@ -55,8 +55,8 @@ def approve(request_id):
     flash(message, 'success' if success else 'danger')
     return redirect(url_for('approvals.view', request_id=request_id))
 
-
 # ── Reject ──────────────────────────────────────────────────────────────
+
 
 @approvals_bp.route('/<int:request_id>/reject', methods=['POST'])
 @login_required
@@ -66,8 +66,8 @@ def reject(request_id):
     flash(message, 'success' if success else 'danger')
     return redirect(url_for('approvals.view', request_id=request_id))
 
-
 # ── Cancel ──────────────────────────────────────────────────────────────
+
 
 @approvals_bp.route('/<int:request_id>/cancel', methods=['POST'])
 @login_required
@@ -76,8 +76,8 @@ def cancel(request_id):
     flash(message, 'success' if success else 'danger')
     return redirect(url_for('approvals.index'))
 
-
 # ── Manage Workflows (admin/owner only) ────────────────────────────────
+
 
 @approvals_bp.route('/workflows')
 @login_required

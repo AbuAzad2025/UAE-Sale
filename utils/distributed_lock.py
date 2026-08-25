@@ -39,8 +39,8 @@ def _get_redis():
 
     return _redis_client
 
-
 # ── In-process fallback lock ───────────────────────────────────────────
+
 
 _fallback_locks = {}
 _fallback_lock_lock = threading.Lock()
@@ -53,8 +53,8 @@ def _get_fallback_lock(name):
             _fallback_locks[name] = threading.Lock()
         return _fallback_locks[name]
 
-
 # ── Public API ──────────────────────────────────────────────────────────
+
 
 @contextmanager
 def distributed_lock(name, timeout=10, blocking_timeout=5):

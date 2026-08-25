@@ -75,10 +75,10 @@ class ColorFormatter(logging.Formatter):
     """Colored console logging with better PowerShell support"""
 
     COLORS = {
-        "DEBUG":   Fore.CYAN + Style.BRIGHT,      # سماوي فاتح
-        "INFO":    Fore.WHITE + Style.BRIGHT,     # أبيض فاتح
+        "DEBUG": Fore.CYAN + Style.BRIGHT,      # سماوي فاتح
+        "INFO": Fore.WHITE + Style.BRIGHT,     # أبيض فاتح
         "WARNING": Fore.YELLOW + Style.BRIGHT,    # أصفر فاتح
-        "ERROR":   Fore.RED + Style.BRIGHT,       # أحمر فاتح
+        "ERROR": Fore.RED + Style.BRIGHT,       # أحمر فاتح
         "CRITICAL": Fore.MAGENTA + Style.BRIGHT,  # وردي فاتح
     }
 
@@ -112,10 +112,11 @@ class ColorFormatter(logging.Formatter):
 
         return message
 
-
 # ======================
 # Setup Logging
 # ======================
+
+
 def setup_logging(app):
     """Configure application logging with UTF-8 support"""
     level_name = app.config.get("LOG_LEVEL", "INFO").upper()
@@ -171,8 +172,9 @@ login_manager.login_view = "auth.login"
 login_manager.login_message = "الرجاء تسجيل الدخول للوصول لهذه الصفحة"
 login_manager.login_message_category = "warning"
 
-
 # User loader for Flask-Login
+
+
 @login_manager.user_loader
 def load_user(user_id):
     from models.user import User

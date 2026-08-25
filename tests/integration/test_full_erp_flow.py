@@ -66,8 +66,8 @@ def seed(db):
     return {'owner': owner, 'manager': manager, 'product': product,
             'customer': customer, 'supplier': supplier, 'warehouse': warehouse}
 
-
 # ===== CREDIT LIMIT =====
+
 
 def test_sale_within_limit(seed):
     from services.sale_service import SaleService
@@ -100,8 +100,8 @@ def test_zero_credit_limit_allows_all(seed):
         currency='AED')
     assert sale.total_amount == Decimal('4500.000')
 
-
 # ===== FISCAL PERIOD =====
+
 
 def test_sale_in_closed_period_fails(seed):
     from services.sale_service import SaleService
@@ -130,8 +130,8 @@ def test_fiscal_period_close_reopen(seed):
     db.session.commit()
     assert not fp.is_closed
 
-
 # ===== QUOTATIONS =====
+
 
 def test_create_quotation(seed):
     from services.erp_modules_service import QuotationService
@@ -156,8 +156,8 @@ def test_convert_quotation_to_sale(seed):
     assert sale is not None
     assert q.status == 'converted'
 
-
 # ===== PURCHASE ORDERS =====
+
 
 def test_create_and_receive_po(seed):
     from services.erp_modules_service import PurchaseOrderService
@@ -174,8 +174,8 @@ def test_create_and_receive_po(seed):
     assert purchase is not None
     assert po.status == 'received'
 
-
 # ===== STOCK TRANSFERS =====
+
 
 def test_stock_transfer(seed):
     from services.erp_modules_service import StockTransferService
@@ -195,8 +195,8 @@ def test_stock_transfer(seed):
     StockTransferService.receive_transfer(t.id, seed['manager'].id)
     assert t.status == 'received'
 
-
 # ===== STOCK TAKE =====
+
 
 def test_stock_take(seed):
     from services.erp_modules_service import StockTakeService
@@ -212,8 +212,8 @@ def test_stock_take(seed):
     StockTakeService.approve_stocktake(st.id, seed['owner'].id)
     assert st.status == 'approved'
 
-
 # ===== E-INVOICE =====
+
 
 def test_einvoice(seed):
     from services.erp_modules_service import EInvoiceService
@@ -229,8 +229,8 @@ def test_einvoice(seed):
     assert einv.json_payload is not None
     assert einv.xml_payload is not None
 
-
 # ===== DUNNING =====
+
 
 def test_dunning(seed):
     from services.erp_modules_service import DunningService
@@ -248,8 +248,8 @@ def test_dunning(seed):
     assert len(letters) >= 1
     assert letters[0].days_overdue >= 45
 
-
 # ===== LOT TRACKING =====
+
 
 def test_lot_tracking(seed):
     from models.erp_modules import ProductLot
@@ -264,8 +264,8 @@ def test_lot_tracking(seed):
     assert lot.id is not None
     assert not lot.is_expired
 
-
 # ===== BIN TRACKING =====
+
 
 def test_bin_tracking(seed):
     from models.erp_modules import WarehouseBin, ProductBin

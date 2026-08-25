@@ -479,10 +479,10 @@ def restore(id):
 
     return redirect(url_for('sales.archived'))
 
-
 # =====================================
 # API Endpoints - Backend Calculations
 # =====================================
+
 
 @sales_bp.route('/api/calculate-totals', methods=['POST'])
 @login_required

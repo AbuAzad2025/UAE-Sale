@@ -22,8 +22,8 @@ from utils.helpers import create_audit_log
 
 erp_bp = Blueprint('erp_modules', __name__, url_prefix='/erp')
 
-
 # ==================== QUOTATIONS ====================
+
 
 @erp_bp.route('/quotations')
 @login_required
@@ -122,8 +122,8 @@ def convert_quotation(id):
         flash(f'⚠️ {str(e)}', 'danger')
         return redirect(url_for('erp_modules.view_quotation', id=id))
 
-
 # ==================== PURCHASE ORDERS ====================
+
 
 @erp_bp.route('/purchase-orders')
 @login_required
@@ -235,8 +235,8 @@ def receive_purchase_order(id):
         flash(f'⚠️ {str(e)}', 'danger')
         return redirect(url_for('erp_modules.view_purchase_order', id=id))
 
-
 # ==================== FISCAL PERIODS ====================
+
 
 @erp_bp.route('/fiscal-periods')
 @login_required
@@ -285,8 +285,8 @@ def reopen_fiscal_period(id):
     flash('✅ تم إعادة فتح الفترة المالية', 'success')
     return redirect(url_for('erp_modules.fiscal_periods'))
 
-
 # ==================== STOCK TRANSFERS ====================
+
 
 @erp_bp.route('/stock-transfers')
 @login_required
@@ -359,8 +359,8 @@ def receive_stock_transfer(id):
         flash(f'⚠️ {str(e)}', 'danger')
     return redirect(url_for('erp_modules.stock_transfers'))
 
-
 # ==================== STOCK TAKES ====================
+
 
 @erp_bp.route('/stock-takes')
 @login_required
@@ -425,8 +425,8 @@ def approve_stocktake(id):
         flash(f'⚠️ {str(e)}', 'danger')
     return redirect(url_for('erp_modules.view_stocktake', id=id))
 
-
 # ==================== DUNNING LETTERS ====================
+
 
 @erp_bp.route('/dunning')
 @login_required
@@ -460,8 +460,8 @@ def send_dunning(id):
     flash('✅ تم تسجيل إرسال الإنذار', 'success')
     return redirect(url_for('erp_modules.dunning'))
 
-
 # ==================== RECURRING EXPENSES ====================
+
 
 @erp_bp.route('/recurring-expenses')
 @login_required
@@ -513,8 +513,8 @@ def toggle_recurring_expense(id):
     flash(f'✅ تم {"تفعيل" if re.is_active else "إيقاف"} المصروف الدوري', 'success')
     return redirect(url_for('erp_modules.recurring_expenses'))
 
-
 # ==================== LOT TRACKING ====================
+
 
 @erp_bp.route('/lots')
 @login_required
@@ -554,8 +554,8 @@ def create_lot():
     warehouses = Warehouse.query.filter_by(is_active=True).all()
     return render_template('erp/create_lot.html', products=products, warehouses=warehouses)
 
-
 # ==================== BIN TRACKING ====================
+
 
 @erp_bp.route('/bins')
 @login_required
@@ -589,8 +589,8 @@ def create_bin():
         flash(f'❌ خطأ: {str(e)}', 'danger')
     return redirect(url_for('erp_modules.bins'))
 
-
 # ==================== E-INVOICING ====================
+
 
 @erp_bp.route('/e-invoices')
 @login_required

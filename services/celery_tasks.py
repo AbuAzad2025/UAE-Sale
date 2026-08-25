@@ -2,7 +2,6 @@ from celery import Celery
 import os
 from extensions import db
 
-
 celery = Celery(
     'garage_tasks',
     broker=os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0'),

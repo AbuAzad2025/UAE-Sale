@@ -64,10 +64,10 @@ def register_all_listeners():
 
     logger.info("[OK] All event listeners registered successfully - Full coverage + AI + Neural Networks + Auto GL enabled")
 
-
 # ============================================================================
 # Sale Listeners - مستمعات الفواتير
 # ============================================================================
+
 
 def register_sale_listeners():  # noqa: C901
     """تسجيل مستمعات الفواتير"""
@@ -141,10 +141,10 @@ def register_sale_listeners():  # noqa: C901
         except Exception as e:
             logger.warning(f"Failed to log sale deletion: {e}")
 
-
 # ============================================================================
 # Receipt Listeners - مستمعات سندات القبض
 # ============================================================================
+
 
 def register_receipt_listeners():
     """تسجيل مستمعات سندات القبض"""
@@ -198,10 +198,10 @@ def register_receipt_listeners():
         # يمكن رفع استثناء هنا لمنع الحذف:
         # raise ValueError("لا يمكن حذف سندات القبض، يجب إلغاؤها بدلاً من ذلك")
 
-
 # ============================================================================
 # Purchase Listeners - مستمعات المشتريات
 # ============================================================================
+
 
 def register_purchase_listeners():
     """تسجيل مستمعات فواتير المشتريات"""
@@ -268,10 +268,10 @@ def register_purchase_listeners():
         except Exception as e:
             logger.error(f"❌ Failed to auto-update supplier totals: {e}")
 
-
 # ============================================================================
 # Payment Listeners - مستمعات سندات الصرف
 # ============================================================================
+
 
 def register_payment_listeners():
     """تسجيل مستمعات سندات الصرف"""
@@ -324,10 +324,10 @@ def register_payment_listeners():
         except Exception as e:
             logger.error(f"❌ Failed to auto-update supplier on payment: {e}")
 
-
 # ============================================================================
 # Utility Functions - دوال مساعدة
 # ============================================================================
+
 
 def validate_decimal_precision(value, max_digits=15, decimal_places=3):
     """
@@ -412,11 +412,11 @@ def ensure_balance_consistency(connection, model, record_id):
         logger.error(f"Failed to check balance consistency: {e}")
         return {'stored': None, 'calculated': None, 'consistent': None}
 
-
 # ============================================================================
 # Example: Advanced Listener with Transaction Handling
 # مثال: مستمع متقدم مع معالجة المعاملات
 # ============================================================================
+
 
 def register_advanced_sale_listener():
     """
@@ -470,7 +470,6 @@ def register_advanced_sale_listener():
             logger.error(f"Failed to auto-update customer balance: {e}")
             # لا نرفع الاستثناء لتجنب إيقاف العملية الأساسية
 
-
 # ============================================================================
 # Example: Validation Listener
 # مثال: مستمع للتحقق من البيانات
@@ -479,6 +478,7 @@ def register_advanced_sale_listener():
 # ============================================================================
 # Stock Movement Listeners - مستمعات حركات المخزون
 # ============================================================================
+
 
 def register_stock_movement_listeners():
     """تسجيل مستمعات حركات المخزون"""
@@ -511,10 +511,10 @@ def register_stock_movement_listeners():
         except Exception as e:
             logger.error(f"❌ Failed to log stock movement: {e}")
 
-
 # ============================================================================
 # Cheque Listeners - مستمعات الشيكات
 # ============================================================================
+
 
 def register_cheque_listeners():  # noqa: C901
     """تسجيل مستمعات الشيكات"""
@@ -556,10 +556,10 @@ def register_cheque_listeners():  # noqa: C901
         except Exception as e:
             logger.error(f"❌ Failed to log cheque status change: {e}")
 
-
 # ============================================================================
 # Product Return Listeners - مستمعات الإرجاعات
 # ============================================================================
+
 
 def register_product_return_listeners():
     """تسجيل مستمعات إرجاعات المنتجات"""
@@ -575,10 +575,10 @@ def register_product_return_listeners():
         except Exception as e:
             logger.error(f"❌ Failed to process product return: {e}")
 
-
 # ============================================================================
 # Expense Listeners - مستمعات المصروفات
 # ============================================================================
+
 
 def register_expense_listeners():
     """تسجيل مستمعات المصروفات"""
@@ -595,10 +595,10 @@ def register_expense_listeners():
         except Exception as e:
             logger.error(f"❌ Failed to log expense: {e}")
 
-
 # ============================================================================
 # GL (General Ledger) Listeners - مستمعات دفتر الأستاذ
 # ============================================================================
+
 
 def register_gl_listeners():
     """تسجيل مستمعات دفتر الأستاذ"""
@@ -623,10 +623,10 @@ def register_gl_listeners():
         except Exception as e:
             logger.error(f"❌ Failed to validate journal entry: {e}")
 
-
 # ============================================================================
 # Validation Listeners - مستمعات التحقق من البيانات
 # ============================================================================
+
 
 def register_validation_listeners():  # noqa: C901
     """تسجيل مستمعات التحقق من البيانات"""
@@ -699,10 +699,10 @@ def register_validation_listeners():  # noqa: C901
         except Exception as e:
             logger.error(f"❌ Failed to validate product stock: {e}")
 
-
 # ============================================================================
 # Audit Listeners - مستمعات التدقيق
 # ============================================================================
+
 
 def register_audit_listeners():
     """تسجيل مستمعات التدقيق للعمليات الحساسة"""
@@ -728,10 +728,10 @@ def register_audit_listeners():
         """تسجيل حذف سندات الصرف"""
         logger.warning(f"🗑️ DELETED: Payment - Amount: {target.amount_base} AED")
 
-
 # ============================================================================
 # AI (Artificial Intelligence) Listeners - مستمعات الذكاء الاصطناعي
 # ============================================================================
+
 
 def register_ai_listeners():
     """تسجيل مستمعات الذكاء الاصطناعي المتقدمة"""
@@ -742,10 +742,10 @@ def register_ai_listeners():
     register_ai_predictive_listeners()
     register_intelligent_assistant_listeners()  # 🧠 المساعد الذكي الحقيقي
 
-
 # ============================================================================
 # AI Learning Listeners - مستمعات التعلم الذكي
 # ============================================================================
+
 
 def register_ai_learning_listeners():  # noqa: C901
     """مستمعات التعلم الذكي - متكاملة مع LearningSystem"""
@@ -957,10 +957,10 @@ def register_ai_learning_listeners():  # noqa: C901
         except Exception as e:
             logger.error(f"❌ AI sale analysis failed: {e}")
 
-
 # ============================================================================
 # AI Linguistic Listeners - مستمعات التعلم اللغوي
 # ============================================================================
+
 
 def register_ai_linguistic_listeners():
     """
@@ -1025,10 +1025,10 @@ def register_ai_linguistic_listeners():
         except Exception as e:
             logger.error(f"❌ AI name learning failed: {e}")
 
-
 # ============================================================================
 # AI Professional Listeners - مستمعات التعلم المهني
 # ============================================================================
+
 
 def register_ai_professional_listeners():
     """
@@ -1126,10 +1126,10 @@ def register_ai_professional_listeners():
         except Exception as e:
             logger.error(f"❌ AI expense learning failed: {e}")
 
-
 # ============================================================================
 # AI Accounting Listeners - مستمعات التعلم المحاسبي
 # ============================================================================
+
 
 def register_ai_accounting_listeners():  # noqa: C901
     """
@@ -1237,10 +1237,10 @@ def register_ai_accounting_listeners():  # noqa: C901
         except Exception as e:
             logger.error(f"❌ AI expense recognition learning failed: {e}")
 
-
 # ============================================================================
 # AI Predictive Listeners - مستمعات التوقعات الذكية
 # ============================================================================
+
 
 def register_ai_predictive_listeners():  # noqa: C901
     """
@@ -1357,10 +1357,10 @@ def register_ai_predictive_listeners():  # noqa: C901
         except Exception as e:
             logger.error(f"❌ AI churn prediction failed: {e}")
 
-
 # ============================================================================
 # Neural Training Listeners - مستمعات التدريب العصبي التلقائي
 # ============================================================================
+
 
 def register_neural_training_listeners():  # noqa: C901
     from models import Sale, Customer, Product
@@ -1431,10 +1431,10 @@ def register_neural_training_listeners():  # noqa: C901
         except Exception as e:
             logger.error(f"❌ Neural inventory learning failed: {e}")
 
-
 # ============================================================================
 # Intelligent Assistant Listeners - مستمعات المساعد الذكي الحقيقي
 # ============================================================================
+
 
 def register_intelligent_assistant_listeners():  # noqa: C901
     """
@@ -1550,13 +1550,13 @@ def register_intelligent_assistant_listeners():  # noqa: C901
         except Exception as e:
             logger.error(f"❌ Intelligent inventory alert failed: {e}")
 
-
 # ============================================================================
 # Initialization
 # ============================================================================
 
 # ملاحظة: لتفعيل المستمعات، قم باستدعاء register_all_listeners()
 # في app.py بعد تعريف جميع Models
+
 
 """
 مثال في app.py:
@@ -1575,10 +1575,10 @@ def create_app():
     return app
 """
 
-
 # ============================================================================
 # Automatic GL (General Ledger) Listeners - القيود المحاسبية التلقائية
 # ============================================================================
+
 
 def register_automatic_gl_listeners():
     """

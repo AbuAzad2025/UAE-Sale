@@ -3,7 +3,6 @@ from decimal import Decimal
 
 import pytest
 
-from extensions import db
 from models import Receipt, Cheque, Sale
 from services.payment_service import PaymentService
 

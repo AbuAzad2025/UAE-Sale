@@ -3,8 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from extensions import db
-from models import ApprovalWorkflow, ApprovalRequest, ApprovalLevel
+from models import ApprovalWorkflow, ApprovalLevel
 from services.approval_service import ApprovalService
 
 

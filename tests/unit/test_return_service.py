@@ -3,8 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from extensions import db
-from models import ProductReturn, Sale, SaleLine
+from models import SaleLine
 from services.return_service import ReturnService
 
 

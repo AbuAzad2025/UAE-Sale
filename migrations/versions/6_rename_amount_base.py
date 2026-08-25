@@ -41,6 +41,19 @@ def column_exists(table, column):
     return result.scalar() is not None
 
 
+def constraint_exists(table, constraint):
+    """Check if a constraint exists in a table."""
+    bind = op.get_bind()
+    result = bind.execute(
+        sa.text(
+            "SELECT 1 FROM information_schema.table_constraints "
+            "WHERE table_name = :table AND constraint_name = :constraint"
+        ),
+        {'table': table, 'constraint': constraint}
+    )
+    return result.scalar() is not None
+
+
 def upgrade():
     for table, old, new in RENAMES:
         if column_exists(table, old):
@@ -48,16 +61,28 @@ def upgrade():
         else:
             print(f"[migration] skip {table}.{old}: column does not exist")
 
-    # Update check constraint name in sales table
-    op.execute("""
-        ALTER TABLE sales
-        RENAME CONSTRAINT ck_sale_paid_non_negative TO ck_sale_paid_base_non_negative;
-    """)
+    # Rename check constraints if they exist
+    if constraint_exists('sales', 'ck_sale_paid_non_negative'):
+        op.execute("""
+            ALTER TABLE sales
+            RENAME CONSTRAINT ck_sale_paid_non_negative TO ck_sale_paid_base_non_negative;
+        """)
+
+    if constraint_exists('sales', 'ck_sale_total_non_negative'):
+        op.execute("""
+            ALTER TABLE sales
+            RENAME CONSTRAINT ck_sale_total_non_negative TO ck_sale_total_base_non_negative;
+        """)
+
+    if constraint_exists('sales', 'ck_sale_balance_non_negative'):
+        op.execute("""
+            ALTER TABLE sales
+            RENAME CONSTRAINT ck_sale_balance_non_negative TO ck_sale_balance_base_non_negative;
+        """)
 
 
 def downgrade():
     for table, old, new in RENAMES:
-        # Check if new column exists before renaming back
         if column_exists(table, new):
             op.execute(f'ALTER TABLE {table} RENAME COLUMN {new} TO {old}')
         else:

@@ -46,7 +46,7 @@ class RedisCache:
         try:
             if hasattr(cache.cache, '_client'):
                 redis_client = cache.cache._client
-                keys = redis_client.keys(f"{current_app.config['CACHE_KEY_PREFIX']}:{pattern}")
+                keys = redis_client.keys(f"*{pattern}")
                 if keys:
                     redis_client.delete(*keys)
                 return True
@@ -79,7 +79,7 @@ class RedisCache:
     def increment(key, delta=1):
         """Increment counter"""
         try:
-            return cache.inc(key, delta)
+            return cache.cache.inc(key, delta)
         except Exception as e:
             current_app.logger.warning(f"Cache increment error: {e}")
             return None
@@ -88,7 +88,7 @@ class RedisCache:
     def decrement(key, delta=1):
         """Decrement counter"""
         try:
-            return cache.dec(key, delta)
+            return cache.cache.dec(key, delta)
         except Exception as e:
             current_app.logger.warning(f"Cache decrement error: {e}")
             return None

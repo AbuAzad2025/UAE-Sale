@@ -3,6 +3,7 @@ from decimal import Decimal
 from io import BytesIO
 from flask import Blueprint, render_template, request, jsonify, make_response
 from flask_login import login_required, current_user
+from werkzeug.exceptions import HTTPException
 from sqlalchemy import func
 from extensions import db
 from models import Sale, SaleLine, Purchase, Product, Customer, ProductPartner
@@ -714,6 +715,8 @@ def entity_report_fragment(type, id):  # noqa: C901
 
         return render_template('reports/partials/entity_report.html', **context)
 
+    except HTTPException:
+        raise
     except Exception as e:
         return render_template('reports/partials/entity_report.html', error=str(e))
 
@@ -826,7 +829,7 @@ def inventory_valuation():
                            categories_list=categories,
                            total_value=total_value,
                            total_qty=total_qty,
-                           total_products=products.count(),
+                           total_products=len(products),
                            selected_warehouse=warehouse_id,
                            selected_category=category_id)
 
@@ -981,6 +984,7 @@ def cash_flow():
             operating_items[key] = operating_items.get(key, Decimal('0')) + net
         elif acct_type == 'expense':
             # Expenses: debit is negative cash flow
+            net = -net
             operating_items[key] = operating_items.get(key, Decimal('0')) + net
         elif acct_type == 'asset' and code.startswith(('1',)):
             # Fixed assets (investing)
@@ -1171,7 +1175,7 @@ def export_ap_aging():
     from models import Supplier, Purchase, Payment
     from datetime import timezone as tz
     fmt = request.args.get('format', 'xlsx')
-    now = datetime.now(tz)
+    now = datetime.now(tz.utc)
 
     suppliers = Supplier.query.filter_by(is_active=True).all()
     headers = ['المورد', 'إجمالي المشتريات', 'المدفوع', 'الرصيد المستحق', 'الأيام', 'شروط الدفع']
@@ -1250,6 +1254,7 @@ def export_cash_flow():
             net = -net
             operating += net
         elif line.account_type == 'expense':
+            net = -net
             operating += net
         elif line.account_type == 'asset':
             investing += net

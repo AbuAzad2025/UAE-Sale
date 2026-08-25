@@ -164,7 +164,7 @@ class AdvancedExpense(db.Model):
         from services.gl_service import GLService
 
         lines = [{
-            'account_code': self.category.gl_account.code,
+            'account_code': self.category.gl_account_code,
             'debit': 0,
             'credit': self.amount_base,
             'description': f'عكس مصروف {self.description_ar}'

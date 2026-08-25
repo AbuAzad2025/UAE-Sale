@@ -190,12 +190,16 @@ def archive_payment(id):
         create_audit_log('archive', 'payments', payment.id)
 
         # 2. Reverse GL Entry (Must succeed)
-        from services.gl_service import GLService
-        GLService.reverse_entry(
+        from models import GLJournalEntry
+        gl_entries = GLJournalEntry.query.filter_by(
             reference_type='Payment',
             reference_id=id,
-            description=f'Reverse Payment {payment.payment_number}'
-        )
+            is_reversed=False
+        ).all()
+        for entry in gl_entries:
+            entry.reverse_entry(
+                description=f'Reverse Payment {payment.payment_number}'
+            )
 
         # 3. Commit all
         db.session.commit()
@@ -761,6 +765,8 @@ def delete_receipt(id):  # noqa: C901
     from services.archive_service import ArchiveService
 
     receipt = db.get_or_404(Receipt, id)
+    from models import Cheque
+    linked_cheques = Cheque.query.filter_by(receipt_id=receipt.id).all()
 
     # التحقق من الارتباطات
     has_links = False
@@ -768,7 +774,7 @@ def delete_receipt(id):  # noqa: C901
         has_links = True
     if receipt.cheque_id:
         has_links = True
-    if receipt.cheques:  # التحقق من الشيكات المرتبطة
+    if linked_cheques:  # التحقق من الشيكات المرتبطة
         has_links = True
 
     try:
@@ -816,7 +822,7 @@ def delete_receipt(id):  # noqa: C901
             archive_service.archive_record('receipts', receipt, reason='تم أرشفة السند لوجود ارتباطات', commit=False)
 
             # أرشفة الشيكات المرتبطة
-            for cheque in receipt.cheques:
+            for cheque in linked_cheques:
                 archive_service.archive_record('cheques', cheque, reason='تم أرشفة الشيك لارتباطه بسند مؤرشف', commit=False)
 
             create_audit_log('archive', 'receipts', id)
@@ -829,7 +835,7 @@ def delete_receipt(id):  # noqa: C901
 
             # حذف نهائي (Hard Delete)
             # حذف الشيكات المرتبطة أولاً لتجنب خطأ المفتاح الأجنبي
-            for cheque in receipt.cheques:
+            for cheque in linked_cheques:
                 db.session.delete(cheque)
 
             db.session.delete(receipt)
@@ -854,12 +860,14 @@ def delete_payment(id):
     from services.archive_service import ArchiveService
 
     payment = db.get_or_404(Payment, id)
+    from models import Cheque as _Cheque
+    linked_cheques = _Cheque.query.filter_by(payment_id=payment.id).all()
 
     # التحقق من الارتباطات
     has_links = False
     if payment.cheque_id:
         has_links = True
-    if payment.cheques:  # التحقق من الشيكات المرتبطة
+    if linked_cheques:  # التحقق من الشيكات المرتبطة
         has_links = True
     # يمكن إضافة شروط أخرى للارتباط هنا
 
@@ -882,7 +890,7 @@ def delete_payment(id):
             archive_service.archive_record('payments', payment, reason='تم أرشفة السند لوجود ارتباطات', commit=False)
 
             # أرشفة الشيكات المرتبطة
-            for cheque in payment.cheques:
+            for cheque in linked_cheques:
                 archive_service.archive_record('cheques', cheque, reason='تم أرشفة الشيك لارتباطه بسند مؤرشف', commit=False)
 
             create_audit_log('archive', 'payments', id)
@@ -895,7 +903,7 @@ def delete_payment(id):
 
             # حذف نهائي
             # حذف الشيكات المرتبطة أولاً
-            for cheque in payment.cheques:
+            for cheque in linked_cheques:
                 db.session.delete(cheque)
 
             db.session.delete(payment)

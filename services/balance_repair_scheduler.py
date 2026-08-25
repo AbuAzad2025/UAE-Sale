@@ -21,13 +21,11 @@ class BalanceRepairScheduler:
     def get_schedule_settings():
         """Get current schedule settings from SystemSettings."""
         from models import SystemSettings
-        setting = SystemSettings.query.filter_by(key=BalanceRepairScheduler.SETTINGS_KEY).first()
-        if setting:
-            import json
-            try:
-                return json.loads(setting.value)
-            except (json.JSONDecodeError, TypeError):
-                pass
+        current = SystemSettings.query.filter_by(is_active=True).first()
+        if current:
+            stored = current.get_custom_setting(BalanceRepairScheduler.SETTINGS_KEY)
+            if isinstance(stored, dict):
+                return stored
         return {
             'enabled': False,
             'interval_hours': 6,  # Run every 6 hours by default
@@ -39,13 +37,11 @@ class BalanceRepairScheduler:
     def save_schedule_settings(settings):
         """Save schedule settings to SystemSettings."""
         from models import SystemSettings
-        import json
-        setting = SystemSettings.query.filter_by(
-            key=BalanceRepairScheduler.SETTINGS_KEY).first()
-        if not setting:
-            setting = SystemSettings(key=BalanceRepairScheduler.SETTINGS_KEY)
-            db.session.add(setting)
-        setting.value = json.dumps(settings)
+        current = SystemSettings.query.filter_by(is_active=True).first()
+        if not current:
+            current = SystemSettings()
+            db.session.add(current)
+        current.set_custom_setting(BalanceRepairScheduler.SETTINGS_KEY, settings)
         db.session.commit()
 
     @staticmethod
@@ -74,8 +70,9 @@ class BalanceRepairScheduler:
                         table_name='customers',
                         record_id=drift['customer_id'],
                         changes={
-                            'old_balance': float(drift.get('stored_balance', 0)),
-                            'new_balance': float(drift.get('calculated_balance', 0)),
+                            'old_balance': float(drift.get('stored', drift.get('stored_balance', 0))),
+                            'new_balance': float(
+                                drift.get('calculated', drift.get('calculated_balance', 0))),
                             'drift': float(drift.get('drift', 0)),
                             'auto': True,
                         }

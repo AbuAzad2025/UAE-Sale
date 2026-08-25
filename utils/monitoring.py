@@ -106,7 +106,7 @@ class ErrorLogger:
             from models.audit import AuditLog
             audit = AuditLog(
                 action='error',
-                details=json.dumps(error_data),
+                changes=json.dumps(error_data),
                 ip_address=request.remote_addr if request else None
             )
             db.session.add(audit)
@@ -128,7 +128,7 @@ class MetricsCollector:
             'tags': tags or {}
         }
 
-        current_app.logger.info(f"METRIC: {json.dumps(metric_data)}")
+        current_app.logger.info(f"METRIC: {json.dumps(metric_data, default=str)}")
 
     @staticmethod
     def record_sale(amount, currency):
@@ -165,7 +165,7 @@ class HealthCheck:
     def check_database():
         """Check database connectivity"""
         try:
-            db.session.execute('SELECT 1')
+            db.session.execute(db.text('SELECT 1'))
             return {'status': 'healthy', 'message': 'Database connected'}
         except Exception as e:
             return {'status': 'unhealthy', 'message': str(e)}

@@ -2,6 +2,8 @@
 🏪 Suppliers Routes - مسارات الموردين
 إدارة الموردين: عرض، إضافة، تعديل، تقارير
 """
+from datetime import datetime
+
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from extensions import db, limiter
@@ -254,7 +256,8 @@ def statement(id):
     return render_template('suppliers/statement.html',
                            supplier=supplier,
                            purchases=purchases,
-                           payments=payments)
+                           payments=payments,
+                           now=datetime.now)
 
 
 @suppliers_bp.route('/api/search')

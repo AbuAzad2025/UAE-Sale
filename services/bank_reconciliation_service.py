@@ -44,7 +44,7 @@ class BankReconciliationService:
             period_end=period_end,
             opening_balance_per_books=opening_balance,
             closing_balance_per_books=closing_balance_per_books,
-            closing_balance_per_bank=closing_balance_per_bank,
+            closing_balance_per_bank=Decimal(str(closing_balance_per_bank)),
             created_by=created_by or (current_user.id if current_user.is_authenticated else None)
         )
 

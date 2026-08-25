@@ -7,6 +7,13 @@ from flask import current_app, request
 from extensions import db
 
 
+def _parse_sequence(raw):
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
 def generate_number(prefix, model, field_name='sale_number', date_format='%Y', max_retries=5):
     """Generate a unique sequential number with distributed locking.
 
@@ -31,7 +38,8 @@ def generate_number(prefix, model, field_name='sale_number', date_format='%Y', m
 
             if latest:
                 last_number = getattr(latest, field_name).split('-')[-1]
-                next_number = int(last_number) + 1
+                seq = _parse_sequence(last_number)
+                next_number = seq + 1 if seq is not None else 1
             else:
                 next_number = 1
 
@@ -70,7 +78,8 @@ def generate_number(prefix, model, field_name='sale_number', date_format='%Y', m
 
         if latest:
             last_number = getattr(latest, field_name).split('-')[-1]
-            next_number = int(last_number) + 1
+            seq = _parse_sequence(last_number)
+            next_number = seq + 1 if seq is not None else 1
         else:
             next_number = 1
 
@@ -100,8 +109,9 @@ def get_next_number(prefix, model_class, number_field='number'):
     ).first()
 
     if last_record:
-        last_num = int(getattr(last_record, number_field).split('-')[-1])
-        return f'{prefix}-{year}-{last_num + 1:04d}'
+        seq = _parse_sequence(getattr(last_record, number_field).split('-')[-1])
+        if seq is not None:
+            return f'{prefix}-{year}-{seq + 1:04d}'
 
     return f'{prefix}-{year}-0001'
 

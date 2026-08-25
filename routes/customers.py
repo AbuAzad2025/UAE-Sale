@@ -342,7 +342,13 @@ def statement(id):
             }
         })
 
-    transactions.sort(key=lambda x: (x['date'] or datetime.min))
+    def _transaction_date_key(trans):
+        trans_date = trans['date']
+        if trans_date is None:
+            return datetime.min
+        return trans_date.replace(tzinfo=None) if trans_date.tzinfo else trans_date
+
+    transactions.sort(key=_transaction_date_key)
 
     if transaction_type in {'sale', 'payment'}:
         transactions = [trans for trans in transactions if trans['type'] == transaction_type]

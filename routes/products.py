@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db, limiter
@@ -552,30 +554,39 @@ def adjust_stock(id):
         if quantity <= 0:
             return jsonify({'success': False, 'message': 'الكمية يجب أن تكون أكبر من صفر'})
 
-        old_stock = product.current_stock
+        old_stock = Decimal(str(product.current_stock or 0))
 
         if adjustment_type == 'add':
-            new_stock = old_stock + quantity
+            new_stock = old_stock + Decimal(str(quantity))
         elif adjustment_type == 'subtract':
-            new_stock = old_stock - quantity
+            new_stock = old_stock - Decimal(str(quantity))
             if new_stock < 0:
                 return jsonify({'success': False, 'message': 'لا يمكن أن يكون المخزون سالباً'})
         elif adjustment_type == 'set':
-            new_stock = quantity
+            new_stock = Decimal(str(quantity))
         else:
             return jsonify({'success': False, 'message': 'نوع التعديل غير صحيح'})
 
         product.current_stock = new_stock
 
-        from models import StockMovement
+        from models import StockMovement, Warehouse
+        warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
+        if not warehouse:
+            warehouse = Warehouse.query.filter_by(is_active=True).first()
+        if not warehouse:
+            warehouse = Warehouse(name='Main Warehouse', name_ar='المستودع الرئيسي',
+                                  is_active=True, is_main=True)
+            db.session.add(warehouse)
+            db.session.flush()
+
         movement = StockMovement(
             product_id=product.id,
+            warehouse_id=warehouse.id,
             movement_type='adjustment',
-            quantity=quantity if adjustment_type != 'set' else (new_stock - old_stock),
-            previous_stock=old_stock,
-            new_stock=new_stock,
-            reference=f'تعديل يدوي - {reason}',
-            notes=notes,
+            quantity=(Decimal(str(quantity)) if adjustment_type != 'set'
+                      else Decimal(str(new_stock)) - Decimal(str(old_stock))),
+            reference_type='Manual Adjustment',
+            notes=notes or f'تعديل يدوي - {reason}',
             user_id=current_user.id
         )
 
@@ -587,7 +598,7 @@ def adjust_stock(id):
         return jsonify({
             'success': True,
             'message': f'تم تعديل المخزون من {old_stock} إلى {new_stock}',
-            'new_stock': new_stock
+            'new_stock': float(new_stock)
         })
 
     except Exception as e:

@@ -33,7 +33,7 @@ class WhatsAppService:
 يمكنك مراجعتها والدفع.
 
 شكراً لتعاملكم معنا
-        """.strip()
+        """.strip().format(invoice_number=invoice_number)
 
         try:
             if pdf_url:
@@ -88,7 +88,7 @@ class WhatsAppService:
 نرجو منكم التكرم بالسداد في أقرب وقت ممكن.
 
 شكراً لكم
-        """.strip()
+        """.strip().format(customer_name=customer_name, amount_due=amount_due)
 
         try:
             endpoint = f'{api_url}/{instance_id}/messages/chat'

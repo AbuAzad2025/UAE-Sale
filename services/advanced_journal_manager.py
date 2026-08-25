@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 from extensions import db
-from models.gl import GLJournalEntry, GLJournalLine
+from models.gl import GLAccount, GLJournalEntry, GLJournalLine
 
 
 class JournalEntryAudit(db.Model):
@@ -44,11 +45,11 @@ class AdvancedJournalEntryManager:
         for line in lines:
             account_code = line.get('account_code')
             if account_code:
-                from models.gl import GLAccount
                 account = GLAccount.query.filter_by(code=account_code).first()
                 if account and account.is_header:
                     raise ValueError(f"لا يمكن القيد على الحساب الرئيسي: {account.full_name}")
 
+        entry_type = kwargs.pop('entry_type', None)
         # إنشاء القيد
         entry = GLService.create_manual_entry(
             description=description,
@@ -58,6 +59,8 @@ class AdvancedJournalEntryManager:
             created_by=created_by,
             **kwargs
         )
+        if entry_type:
+            entry.entry_type = entry_type
 
         # تسجيل التدقيق
         AdvancedJournalEntryManager._log_audit(
@@ -83,16 +86,37 @@ class AdvancedJournalEntryManager:
 
         # تطبيق التحديثات
         for field, value in updates.items():
+            if field == 'lines':
+                continue
             if hasattr(entry, field):
                 setattr(entry, field, value)
 
         # التحقق من التوازن إذا تم تحديث السطور
         if 'lines' in updates:
-            total_debit = sum(line.get('debit', 0) for line in updates['lines'])
-            total_credit = sum(line.get('credit', 0) for line in updates['lines'])
+            total_debit = sum((Decimal(str(line.get('debit', 0) or 0)) for line in updates['lines']), Decimal('0'))
+            total_credit = sum((Decimal(str(line.get('credit', 0) or 0)) for line in updates['lines']), Decimal('0'))
 
-            if abs(total_debit - total_credit) > 0.01:
+            if abs(total_debit - total_credit) > Decimal('0.01'):
                 raise ValueError(f"القيد غير متوازن بعد التحديث: المدين {total_debit} ≠ الدائن {total_credit}")
+
+            GLJournalLine.query.filter_by(entry_id=entry_id).delete()
+            for line_data in updates['lines']:
+                account_code = line_data.get('account_code') or line_data.get('account')
+                account = GLAccount.query.filter_by(code=account_code).first() if account_code else None
+                if not account:
+                    raise ValueError(f'الحساب {account_code} غير موجود')
+                debit = Decimal(str(line_data.get('debit', 0) or 0))
+                credit = Decimal(str(line_data.get('credit', 0) or 0))
+                db.session.add(GLJournalLine(
+                    entry_id=entry.id,
+                    account_id=account.id,
+                    description=line_data.get('description', ''),
+                    debit=debit,
+                    credit=credit,
+                    amount_base=debit - credit,
+                ))
+            entry.total_debit = total_debit
+            entry.total_credit = total_credit
 
         entry.updated_at = datetime.now(timezone.utc)
 
@@ -150,12 +174,6 @@ class AdvancedJournalEntryManager:
             entry_id, 'reverse', old_values, entry.to_dict(),
             f"عكس القيد - السبب: {reason}", reversed_by
         )
-
-        if reversal_entry:
-            AdvancedJournalEntryManager._log_audit(
-                reversal_entry.id, 'create', None, reversal_entry.to_dict(),
-                f"إنشاء قيد عكسي للقيد {entry.entry_number}", reversed_by
-            )
 
         db.session.commit()
         return reversal_entry

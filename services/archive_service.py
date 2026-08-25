@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from decimal import Decimal
 from flask import current_app
 from flask_login import current_user
 from extensions import db
@@ -13,7 +14,14 @@ class ArchiveService:
             if hasattr(record, 'to_dict'):
                 data = record.to_dict()
             else:
-                data = {c.name: getattr(record, c.name) for c in record.__table__.columns}
+                data = {}
+                for c in record.__table__.columns:
+                    value = getattr(record, c.name)
+                    if isinstance(value, Decimal):
+                        value = float(value)
+                    elif isinstance(value, (datetime, date)):
+                        value = value.isoformat()
+                    data[c.name] = value
 
             archived = ArchivedRecord(
                 table_name=table_name,

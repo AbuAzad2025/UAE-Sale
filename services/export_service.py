@@ -52,6 +52,7 @@ class ExportService:
         """
         from openpyxl import Workbook
         from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+        from openpyxl.utils import get_column_letter
 
         wb = Workbook()
         ws = wb.active
@@ -132,9 +133,8 @@ class ExportService:
                 val = ws.cell(row=row_idx, column=col_idx).value
                 if val:
                     max_len = max(max_len, min(len(str(val)), 40))
-            ws.column_dimensions[
-                ws.cell(row=1, column=col_idx).column_letter
-            ].width = max_len + 2
+            ws.column_dimensions[get_column_letter(col_idx)].width = (
+                max_len + 2)
 
         # Save
         output = BytesIO()
@@ -163,8 +163,11 @@ class ExportService:
         """
         from weasyprint import HTML
 
-        _ = 'dir="rtl"' if right_to_left else ''
+        dir_attr = 'dir="rtl"' if right_to_left else ''
         align = 'right' if right_to_left else 'left'
+        direction_css = 'direction:rtl;' if right_to_left else ''
+        header_cells = ''.join(f'<th>{h}</th>' for h in headers)
+        generated_ts = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
 
         rows_html = ''
         for row in rows:
@@ -174,14 +177,14 @@ class ExportService:
             )
             rows_html += f'<tr>{cells}</tr>'
 
-        _ = ''
+        summary_html = ''
         if summary:
             rows_s = ''.join(
                 f'<tr><td style="font-weight:bold;padding:4px 8px">{k}</td>'
                 f'<td style="text-align:right;padding:4px 8px">{v}</td></tr>'
                 for k, v in summary.items()
             )
-            _ = f'''
+            summary_html = f'''
             <h3 style="margin-top:20px;color:#4472C4">Summary / الإجماليات</h3>
             <table style="border-collapse:collapse;width:50%">{rows_s}</table>
             '''
@@ -191,7 +194,7 @@ class ExportService:
 <head>
 <meta charset="UTF-8">
 <style>
-  body {{ font-family: Arial, sans-serif; padding: 20px; {'direction:rtl;' if right_to_left else ''} }}
+  body {{ font-family: Arial, sans-serif; padding: 20px; {direction_css} }}
   h1 {{ color: #4472C4; border-bottom: 3px solid #4472C4; padding-bottom: 8px; }}
   .meta {{ color: #888; font-size: 0.9em; margin-bottom: 16px; }}
   table {{ width: 100%; border-collapse: collapse; margin-top: 12px; }}
@@ -203,15 +206,19 @@ class ExportService:
 </head>
 <body>
   <h1>{title}</h1>
-  <div class="meta">Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC</div>
+  <div class="meta">Generated: {generated_ts} UTC</div>
   <table>
-    <thead><tr>{''.join(f'<th>{h}</th>' for h in headers)}</tr></thead>
+    <thead><tr>{header_cells}</tr></thead>
     <tbody>{rows_html}</tbody>
   </table>
   {summary_html}
   <div class="footer">Azad Systems — UAE-Sale ERP</div>
 </body>
-</html>"""
+</html>""".format(
+            dir_attr=dir_attr, direction_css=direction_css,
+            title=title, generated_ts=generated_ts,
+            header_cells=header_cells, rows_html=rows_html,
+            summary_html=summary_html)
 
         pdf_bytes = HTML(string=html_content).write_pdf()
         output = BytesIO(pdf_bytes)
@@ -285,6 +292,10 @@ class ExportService:
     @staticmethod
     def generate_pdf_report(title, data, filename='report.pdf'):
         """Legacy: returns an HTML string for browser printing."""
+        generated_ts = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
+        stats_html = ExportService._generate_stats_html(data.get('stats', {}))
+        table_html = ExportService._generate_table_html(
+            data.get('table_data', []), data.get('table_headers', []))
         html = """<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
@@ -304,10 +315,11 @@ tr:nth-child(even) {{ background-color: #f8f9fa; }}
 </head>
 <body>
 <h1>{title}</h1>
-<p><strong>تاريخ التقرير:</strong> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}</p>
-<div class="stats">{ExportService._generate_stats_html(data.get('stats', {}))}</div>
-{ExportService._generate_table_html(data.get('table_data', []), data.get('table_headers', []))}
-</body></html>"""
+<p><strong>تاريخ التقرير:</strong> {generated_ts}</p>
+<div class="stats">{stats_html}</div>
+{table_html}
+</body></html>""".format(title=title, generated_ts=generated_ts,
+                         stats_html=stats_html, table_html=table_html)
         return html
 
     @staticmethod

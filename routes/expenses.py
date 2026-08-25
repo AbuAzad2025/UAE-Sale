@@ -219,9 +219,9 @@ def edit(id):
             expense.notes = request.form.get('notes')
 
             # حساب المبلغ بالدرهم
-            exchange_rate = CurrencyService.get_rate(expense.currency)
+            exchange_rate = CurrencyService.get_exchange_rate(expense.currency, 'AED')
             expense.exchange_rate = exchange_rate
-            expense.amount_base = float(expense.amount) * exchange_rate
+            expense.amount_base = Decimal(str(float(expense.amount))) * exchange_rate
 
             db.session.commit()
 

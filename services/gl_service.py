@@ -268,7 +268,8 @@ class GLService:
         return entry
 
     @staticmethod
-    def create_manual_entry(description, lines, entry_date=None, notes=None, created_by=None):
+    def create_manual_entry(description, lines, entry_date=None, notes=None, created_by=None,
+                            reference_type=None, reference_id=None):
         """إنشاء قيد يدوي"""
         from flask_login import current_user
 
@@ -306,6 +307,8 @@ class GLService:
             description=description,
             entry_type='manual',
             notes=notes,
+            reference_type=reference_type,
+            reference_id=reference_id,
             total_debit=total_debit,
             total_credit=total_credit,
             created_by=created_by or (current_user.id if (current_user and current_user.is_authenticated) else None)
@@ -317,6 +320,10 @@ class GLService:
         for line_data in lines:
             account_code = line_data.get('account_code') or line_data.get('account')
             account = GLAccount.query.filter_by(code=account_code).first()
+
+            if not account:
+                GLService.ensure_core_accounts()
+                account = GLAccount.query.filter_by(code=account_code).first()
 
             if not account:
                 raise ValueError(f'الحساب {account_code} غير موجود')

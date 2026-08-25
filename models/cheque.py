@@ -71,6 +71,11 @@ class Cheque(TenantScopedMixin, db.Model):
     receipt_id = db.Column(db.Integer, db.ForeignKey('receipts.id'), index=True)
     expense_id = db.Column(db.Integer, db.ForeignKey('expenses.id'), index=True)
 
+    # روابط القيود المحاسبية (استلام/صرف/ارتداد) — كانت تضيع سابقًا كخصائص غير معرفة
+    gl_journal_entry_id = db.Column(db.Integer, db.ForeignKey('gl_journal_entries.id'), index=True)
+    gl_clearing_entry_id = db.Column(db.Integer, db.ForeignKey('gl_journal_entries.id'))
+    gl_bounce_entry_id = db.Column(db.Integer, db.ForeignKey('gl_journal_entries.id'))
+
     # ملاحظات وسبب الإرتداد
     notes = db.Column(db.Text)
     bounce_reason = db.Column(db.String(500))  # سبب الإرتداد
@@ -397,7 +402,7 @@ class Cheque(TenantScopedMixin, db.Model):
 
             GLService.post_entry(
                 lines=lines,
-                description=f'ارتداد شيك {self.cheque_type_ar} رقم {self.cheque_bank_number}',
+                description=f'ارتداد شيك {self.type_ar} رقم {self.cheque_bank_number}',
                 reference_type='cheque_bounce',
                 reference_id=self.id
             )

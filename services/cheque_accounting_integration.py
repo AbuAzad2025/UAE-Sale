@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+﻿from datetime import datetime, timezone
+from decimal import Decimal
 from extensions import db
 from models.cheque import Cheque
 from models.gl import GLAccount, GLJournalEntry
@@ -21,6 +22,14 @@ class ChequeAccountingIntegration:
     }
 
     @staticmethod
+    def _ensure_amount_base(cheque):
+        """ضمان وجود المبلغ الأساسي — منع قيود صفرية صامتة"""
+        if cheque.amount_base in (None, Decimal('0')) and cheque.amount:
+            cheque.calculate_amount_base()
+            db.session.flush()
+        return cheque.amount_base or Decimal('0')
+
+    @staticmethod
     def receive_cheque(cheque_id, received_by=None):
         """تسجيل استلام شيك وارد مع القيود المحاسبية"""
         cheque = db.get_or_404(Cheque, cheque_id)
@@ -32,13 +41,14 @@ class ChequeAccountingIntegration:
             raise ValueError("الشيك ليس في حالة معلق")
 
         try:
+            amount_base = ChequeAccountingIntegration._ensure_amount_base(cheque)
             # إنشاء القيد المحاسبي
             lines = []
 
             # المدين: شيكات تحت التحصيل
             lines.append({
                 'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['incoming_under_collection'],
-                'debit': cheque.amount_base,
+                'debit': amount_base,
                 'credit': 0,
                 'description': f'استلام شيك وارد رقم {cheque.cheque_bank_number} من {cheque.customer.name if cheque.customer else "غير محدد"}'
             })
@@ -47,7 +57,7 @@ class ChequeAccountingIntegration:
             lines.append({
                 'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['accounts_receivable'],
                 'debit': 0,
-                'credit': cheque.amount_base,
+                'credit': amount_base,
                 'description': f'تسوية ذمم مدينة - شيك رقم {cheque.cheque_bank_number}'
             })
 
@@ -55,7 +65,7 @@ class ChequeAccountingIntegration:
             entry = GLService.create_manual_entry(
                 description=f'استلام شيك وارد رقم {cheque.cheque_bank_number}',
                 lines=lines,
-                entry_date=cheque.received_date or datetime.now().date(),
+                entry_date=datetime.now().date(),
                 reference_type='cheque_receive',
                 reference_id=cheque.id,
                 created_by=received_by
@@ -86,13 +96,14 @@ class ChequeAccountingIntegration:
             raise ValueError("الشيك ليس في حالة معلق")
 
         try:
+            amount_base = ChequeAccountingIntegration._ensure_amount_base(cheque)
             # إنشاء القيد المحاسبي
             lines = []
 
             # المدين: الذمم الدائنة
             lines.append({
                 'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['accounts_payable'],
-                'debit': cheque.amount_base,
+                'debit': amount_base,
                 'credit': 0,
                 'description': f'تسوية ذمم دائنة - شيك رقم {cheque.cheque_bank_number}'
             })
@@ -101,7 +112,7 @@ class ChequeAccountingIntegration:
             lines.append({
                 'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['outgoing_deferred'],
                 'debit': 0,
-                'credit': cheque.amount_base,
+                'credit': amount_base,
                 'description': f'إصدار شيك صادر رقم {cheque.cheque_bank_number} لـ {cheque.supplier.name if cheque.supplier else "غير محدد"}'
             })
 
@@ -137,6 +148,7 @@ class ChequeAccountingIntegration:
             raise ValueError("الشيك ليس في حالة يمكن صرفه")
 
         try:
+            amount_base = ChequeAccountingIntegration._ensure_amount_base(cheque)
             lines = []
 
             if cheque.cheque_type == 'incoming':
@@ -145,7 +157,7 @@ class ChequeAccountingIntegration:
                 # المدين: حساب البنك
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['bank_account'],
-                    'debit': cheque.amount_base - bank_charges + exchange_gain_loss,
+                    'debit': amount_base - bank_charges + exchange_gain_loss,
                     'credit': 0,
                     'description': f'صرف شيك وارد رقم {cheque.cheque_bank_number}'
                 })
@@ -154,7 +166,7 @@ class ChequeAccountingIntegration:
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['incoming_under_collection'],
                     'debit': 0,
-                    'credit': cheque.amount_base,
+                    'credit': amount_base,
                     'description': f'صرف شيك تحت التحصيل رقم {cheque.cheque_bank_number}'
                 })
 
@@ -190,7 +202,7 @@ class ChequeAccountingIntegration:
                 # المدين: شيكات مؤجلة الدفع
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['outgoing_deferred'],
-                    'debit': cheque.amount_base,
+                    'debit': amount_base,
                     'credit': 0,
                     'description': f'صرف شيك مؤجل الدفع رقم {cheque.cheque_bank_number}'
                 })
@@ -199,7 +211,7 @@ class ChequeAccountingIntegration:
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['bank_account'],
                     'debit': 0,
-                    'credit': cheque.amount_base + bank_charges - exchange_gain_loss,
+                    'credit': amount_base + bank_charges - exchange_gain_loss,
                     'description': f'صرف شيك صادر رقم {cheque.cheque_bank_number}'
                 })
 
@@ -231,7 +243,7 @@ class ChequeAccountingIntegration:
 
             # إنشاء القيد
             entry = GLService.create_manual_entry(
-                description=f'صرف شيك {cheque.cheque_type_ar} رقم {cheque.cheque_bank_number}',
+                description=f'صرف شيك {cheque.type_ar} رقم {cheque.cheque_bank_number}',
                 lines=lines,
                 entry_date=cheque.cleared_date or datetime.now().date(),
                 reference_type='cheque_clear',
@@ -262,6 +274,7 @@ class ChequeAccountingIntegration:
             raise ValueError("الشيك ليس في حالة يمكن ارتداده")
 
         try:
+            amount_base = ChequeAccountingIntegration._ensure_amount_base(cheque)
             lines = []
 
             if cheque.cheque_type == 'incoming':
@@ -270,7 +283,7 @@ class ChequeAccountingIntegration:
                 # المدين: الذمم المدينة (استرداد)
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['accounts_receivable'],
-                    'debit': cheque.amount_base,
+                    'debit': amount_base,
                     'credit': 0,
                     'description': f'استرداد ذمم مدينة - شيك مرتد رقم {cheque.cheque_bank_number}'
                 })
@@ -279,7 +292,7 @@ class ChequeAccountingIntegration:
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['incoming_under_collection'],
                     'debit': 0,
-                    'credit': cheque.amount_base,
+                    'credit': amount_base,
                     'description': f'شيك مرتد رقم {cheque.cheque_bank_number}'
                 })
 
@@ -289,7 +302,7 @@ class ChequeAccountingIntegration:
                 # المدين: شيكات مؤجلة الدفع
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['outgoing_deferred'],
-                    'debit': cheque.amount_base,
+                    'debit': amount_base,
                     'credit': 0,
                     'description': f'شيك صادر مرتد رقم {cheque.cheque_bank_number}'
                 })
@@ -298,13 +311,13 @@ class ChequeAccountingIntegration:
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['accounts_payable'],
                     'debit': 0,
-                    'credit': cheque.amount_base,
+                    'credit': amount_base,
                     'description': f'استرداد ذمم دائنة - شيك مرتد رقم {cheque.cheque_bank_number}'
                 })
 
             # إنشاء القيد
             entry = GLService.create_manual_entry(
-                description=f'ارتداد شيك {cheque.cheque_type_ar} رقم {cheque.cheque_bank_number}',
+                description=f'ارتداد شيك {cheque.type_ar} رقم {cheque.cheque_bank_number}',
                 lines=lines,
                 entry_date=datetime.now().date(),
                 reference_type='cheque_bounce',
@@ -337,10 +350,10 @@ class ChequeAccountingIntegration:
             'cheque_info': {
                 'id': cheque.id,
                 'number': cheque.cheque_bank_number,
-                'type': cheque.cheque_type_ar,
+                'type': cheque.type_ar,
                 'amount': float(cheque.amount_base),
                 'status': cheque.status_ar,
-                'date': cheque.cheque_date.isoformat() if cheque.cheque_date else None
+                'date': cheque.due_date.isoformat() if cheque.due_date else None
             },
             'journal_entries': [],
             'account_impact': []

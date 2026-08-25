@@ -407,6 +407,8 @@ class TestCardPayment:
 
 
 class TestCardVault:
+    pytest.importorskip('cryptography', reason='CardVault encryption requires cryptography pkg')
+
     def test_detect_card_type_variants(self, db):
         cases = [
             ('4111111111111111', 'visa'),

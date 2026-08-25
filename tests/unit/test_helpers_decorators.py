@@ -296,18 +296,20 @@ class TestAllowedFile:
         assert not allowed_file('', exts)
 
     def test_config_all_key_short_circuits_merge(self, app, monkeypatch):
-        monkeypatch.setitem(app.config, 'ALLOWED_UPLOAD_EXTENSIONS', {'all': {'.csv'}})
-        assert allowed_file('a.CSV')
-        assert not allowed_file('a.exe')
+        with app.app_context():
+            monkeypatch.setitem(app.config, 'ALLOWED_UPLOAD_EXTENSIONS', {'all': {'.csv'}})
+            assert allowed_file('a.CSV')
+            assert not allowed_file('a.exe')
 
     def test_config_merges_extension_sets(self, app, monkeypatch):
-        monkeypatch.setitem(
-            app.config, 'ALLOWED_UPLOAD_EXTENSIONS',
-            {'images': {'.jpg'}, 'documents': {'.pdf'}},
-        )
-        assert allowed_file('doc.pdf')
-        assert allowed_file('pic.jpg')
-        assert not allowed_file('arc.zip')
+        with app.app_context():
+            monkeypatch.setitem(
+                app.config, 'ALLOWED_UPLOAD_EXTENSIONS',
+                {'images': {'.jpg'}, 'documents': {'.pdf'}},
+            )
+            assert allowed_file('doc.pdf')
+            assert allowed_file('pic.jpg')
+            assert not allowed_file('arc.zip')
 
 
 class TestSaveUploadedFile:
@@ -337,18 +339,19 @@ class TestSaveUploadedFile:
             save_uploaded_file(big, 'up', {'.png'})
 
     def test_successful_upload_saves_unique_file(self, app, tmp_path, monkeypatch):
-        monkeypatch.setattr(app, 'static_folder', str(tmp_path))
-        payload = b'\x89PNG\r\n\x1a\n' + b'x' * 64
-        upload = FakeUpload('invoice copy.png', content=payload)
-        result = save_uploaded_file(upload, 'uploads_test', {'.png'})
+        with app.app_context():
+            monkeypatch.setattr(app, 'static_folder', str(tmp_path))
+            payload = b'\x89PNG\r\n\x1a\n' + b'x' * 64
+            upload = FakeUpload('invoice copy.png', content=payload)
+            result = save_uploaded_file(upload, 'uploads_test', {'.png'})
 
-        base = os.path.basename(result)
-        name, ext = os.path.splitext(base)
-        assert result.startswith('uploads_test/')
-        assert result == result.replace('\\', '/')
-        assert ext == '.png'
-        assert name.startswith('invoice_copy')
-        assert re.search(r'_[0-9a-f]{8}$', name)
+            base = os.path.basename(result)
+            name, ext = os.path.splitext(base)
+            assert result.startswith('uploads_test/')
+            assert result == result.replace('\\', '/')
+            assert ext == '.png'
+            assert name.startswith('invoice_copy')
+            assert re.search(r'_[0-9a-f]{8}$', name)
         assert upload.saved_to == os.path.join(str(tmp_path), 'uploads_test', base)
         with open(upload.saved_to, 'rb') as fh:
             assert fh.read() == payload

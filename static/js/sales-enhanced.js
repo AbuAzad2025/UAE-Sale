@@ -336,6 +336,9 @@ async function calculateTotals() {
             $('#subtotal').text(azad.formatNumber(result.subtotal));
             $('#total').text(azad.formatNumber(result.total));
             $('#line_count_display').text(result.line_count);
+            $('#mobile-total').text(azad.formatNumber(result.total) + ' AED');
+            $('#mobile-count').text(result.line_count);
+            $('#total_currency_label').text($('#currency').val() || 'AED');
             
             return {
                 subtotal: result.subtotal,

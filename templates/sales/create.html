@@ -394,7 +394,7 @@ $(document).ready(function() {
       ajax: {
         url: "{{ url_for('api.api_search') }}",
         dataType: 'json',
-        delay: 250,
+        delay: 150,
         data: function(params) {
           return { q: params.term, type: 'customers' };
         },
@@ -412,7 +412,7 @@ $(document).ready(function() {
       language: 'ar',
       dir: 'rtl',
       placeholder: 'ابحث عن زبون...',
-      minimumInputLength: 2,
+      minimumInputLength: 1,
       width: '100%'
     });
   }

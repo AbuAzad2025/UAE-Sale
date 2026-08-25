@@ -1,4 +1,4 @@
-"""
+﻿"""
 خدمة قائمة التدفقات النقدية - Cash Flow Statement Service
 """
 
@@ -13,6 +13,14 @@ from models import (
 
 
 class CashFlowService:
+
+    @staticmethod
+    def _dec(value):
+        """تحويل آمن لأي نتيجة تجميع (Decimal/float/None) إلى Decimal —
+        SQLite يعيد float من func.sum بينما PostgreSQL يعيد Decimal."""
+        if value is None:
+            return Decimal('0')
+        return value if isinstance(value, Decimal) else Decimal(str(value))
 
     @staticmethod
     def generate_cash_flow(period_start, period_end):
@@ -49,9 +57,9 @@ class CashFlowService:
         cash_beginning = CashFlowService._get_cash_balance(cash_accounts, period_start, is_beginning=True)
 
         net_cash_flow = (
-            operating['net_cash_from_operating'] +
-            investing['net_cash_from_investing'] +
-            financing['net_cash_from_financing']
+            CashFlowService._dec(operating['net_cash_from_operating']) +
+            CashFlowService._dec(investing['net_cash_from_investing']) +
+            CashFlowService._dec(financing['net_cash_from_financing'])
         )
 
         cash_ending = cash_beginning + net_cash_flow
@@ -80,7 +88,8 @@ class CashFlowService:
                 Receipt.receipt_date <= period_end,
                 Receipt.payment_method.in_(['cash', 'bank'])  # نقدي وبنكي فقط
             )
-        ).scalar() or Decimal('0')
+        ).scalar()
+        receipts = CashFlowService._dec(receipts)
 
         # المدفوعات للموردين
         supplier_payments = db.session.query(
@@ -92,7 +101,8 @@ class CashFlowService:
                 Payment.payment_method.in_(['cash', 'bank']),
                 Payment.supplier_id.isnot(None)
             )
-        ).scalar() or Decimal('0')
+        ).scalar()
+        supplier_payments = CashFlowService._dec(supplier_payments)
 
         # المدفوعات للمصروفات
         expense_payments = db.session.query(
@@ -103,7 +113,8 @@ class CashFlowService:
                 Expense.expense_date <= period_end,
                 Expense.payment_method.in_(['cash', 'bank'])
             )
-        ).scalar() or Decimal('0')
+        ).scalar()
+        expense_payments = CashFlowService._dec(expense_payments)
 
         # الرواتب (من حساب الرواتب)
         salary_account = GLAccount.query.filter_by(code='6100').first()
@@ -117,7 +128,8 @@ class CashFlowService:
                     func.date(GLJournalEntry.entry_date) >= period_start,
                     func.date(GLJournalEntry.entry_date) <= period_end
                 )
-            ).scalar() or Decimal('0')
+            ).scalar()
+            salaries = CashFlowService._dec(salaries)
 
         net_cash_from_operating = receipts - supplier_payments - expense_payments - salaries
 
@@ -171,7 +183,7 @@ class CashFlowService:
                     func.date(GLJournalEntry.entry_date) <= period_end
                 )
             ).scalar() or Decimal('0')
-            purchase_of_assets += purchases
+            purchase_of_assets += CashFlowService._dec(purchases)
 
         # بيع أصول ثابتة (credits في نفس الحسابات)
         sale_of_assets = Decimal('0')
@@ -185,7 +197,7 @@ class CashFlowService:
                     func.date(GLJournalEntry.entry_date) <= period_end
                 )
             ).scalar() or Decimal('0')
-            sale_of_assets += sales
+            sale_of_assets += CashFlowService._dec(sales)
 
         net_cash_from_investing = sale_of_assets - purchase_of_assets
 
@@ -223,7 +235,8 @@ class CashFlowService:
                     func.date(GLJournalEntry.entry_date) >= period_start,
                     func.date(GLJournalEntry.entry_date) <= period_end
                 )
-            ).scalar() or Decimal('0')
+            ).scalar()
+            capital_contributions = CashFlowService._dec(capital_contributions)
 
         # سحوبات المالك (حساب 3300)
         owner_draw_account = GLAccount.query.filter_by(code='3300').first()
@@ -237,7 +250,8 @@ class CashFlowService:
                     func.date(GLJournalEntry.entry_date) >= period_start,
                     func.date(GLJournalEntry.entry_date) <= period_end
                 )
-            ).scalar() or Decimal('0')
+            ).scalar()
+            owner_withdrawals = CashFlowService._dec(owner_withdrawals)
 
         # القروض (حساب 2210)
         loans_account = GLAccount.query.filter_by(code='2210').first()
@@ -252,7 +266,8 @@ class CashFlowService:
                     func.date(GLJournalEntry.entry_date) >= period_start,
                     func.date(GLJournalEntry.entry_date) <= period_end
                 )
-            ).scalar() or Decimal('0')
+            ).scalar()
+            loans_received = CashFlowService._dec(loans_received)
 
             loan_repayments = db.session.query(
                 func.sum(GLJournalLine.debit)
@@ -262,7 +277,8 @@ class CashFlowService:
                     func.date(GLJournalEntry.entry_date) >= period_start,
                     func.date(GLJournalEntry.entry_date) <= period_end
                 )
-            ).scalar() or Decimal('0')
+            ).scalar()
+            loan_repayments = CashFlowService._dec(loan_repayments)
 
         net_cash_from_financing = (
             capital_contributions + loans_received - owner_withdrawals - loan_repayments
@@ -313,7 +329,7 @@ class CashFlowService:
                     func.date(GLJournalEntry.entry_date) < target_date if is_beginning
                     else func.date(GLJournalEntry.entry_date) <= target_date
                 )
-            ).scalar() or Decimal('0')
+            ).scalar()
 
             credit_sum = db.session.query(
                 func.sum(GLJournalLine.credit)
@@ -323,8 +339,8 @@ class CashFlowService:
                     func.date(GLJournalEntry.entry_date) < target_date if is_beginning
                     else func.date(GLJournalEntry.entry_date) <= target_date
                 )
-            ).scalar() or Decimal('0')
+            ).scalar()
 
-            total_balance += (debit_sum - credit_sum)
+            total_balance += (CashFlowService._dec(debit_sum) - CashFlowService._dec(credit_sum))
 
         return total_balance

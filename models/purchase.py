@@ -37,6 +37,10 @@ class Purchase(TenantScopedMixin, db.Model):
 
     status = db.Column(db.String(20), default='confirmed', index=True)
 
+    # تتبع السداد (كانت خدمة أعمار الذمم الدائنة تفلتر على عمودين غير موجودين)
+    paid_amount = db.Column(db.Numeric(15, 3), default=0)
+    payment_status = db.Column(db.String(20), default='pending', index=True)
+
     notes = db.Column(db.Text)
 
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)

@@ -357,26 +357,25 @@ class GLService:
 
         lines = query.order_by(GLJournalEntry.entry_date).all()
 
-        # حساب الرصيد الافتتاحي
-        opening_query = GLJournalLine.query.filter_by(account_id=account_id).join(GLJournalEntry)
-        if date_from:
-            opening_query = opening_query.filter(func.date(GLJournalEntry.entry_date) < date_from)
-
-        opening_debit = db.session.query(func.sum(GLJournalLine.debit)).filter(
+        # حساب الرصيد الافتتاحي (فقط عند وجود تاريخ بداية،
+        # وإلا فالافتتاحي صفر لتفادي الاحتساب المزدوج)
+        opening_debit_q = db.session.query(func.sum(GLJournalLine.debit)).filter(
+            GLJournalLine.account_id == account_id
+        ).join(GLJournalEntry)
+        opening_credit_q = db.session.query(func.sum(GLJournalLine.credit)).filter(
             GLJournalLine.account_id == account_id
         ).join(GLJournalEntry)
 
         if date_from:
-            opening_debit = opening_debit.filter(func.date(GLJournalEntry.entry_date) < date_from)
-        opening_debit = opening_debit.scalar() or Decimal('0')
+            opening_debit_q = opening_debit_q.filter(func.date(GLJournalEntry.entry_date) < date_from)
+            opening_credit_q = opening_credit_q.filter(func.date(GLJournalEntry.entry_date) < date_from)
+        else:
+            # بلا تاريخ بداية: كل القيود ضمن الفترة، الافتتاحي صفر
+            opening_debit_q = opening_debit_q.filter(db.false())
+            opening_credit_q = opening_credit_q.filter(db.false())
 
-        opening_credit = db.session.query(func.sum(GLJournalLine.credit)).filter(
-            GLJournalLine.account_id == account_id
-        ).join(GLJournalEntry)
-
-        if date_from:
-            opening_credit = opening_credit.filter(func.date(GLJournalEntry.entry_date) < date_from)
-        opening_credit = opening_credit.scalar() or Decimal('0')
+        opening_debit = opening_debit_q.scalar() or Decimal('0')
+        opening_credit = opening_credit_q.scalar() or Decimal('0')
 
         # حساب الرصيد بناءً على نوع الحساب
         if account.type in ['asset', 'expense']:

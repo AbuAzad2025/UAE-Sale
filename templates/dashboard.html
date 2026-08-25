@@ -290,6 +290,18 @@
   transform: translateY(-8px) scale(1.05);
   box-shadow: 0 12px 32px rgba(0, 122, 61, 0.2);
 }
+@media (prefers-reduced-motion: reduce) {
+  .hover-card, .stat-card { transition: none !important; }
+  .hover-card:hover { transform: none !important; }
+}
+.stat-card {
+  background: #fff; border-radius: 12px; padding: 20px; text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s;
+}
+.stat-card:hover { transform: translateY(-4px); }
+.stat-icon { width: 56px; height: 56px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; color: #fff; margin-bottom: 12px; font-size: 1.5rem; }
+.stat-value { font-size: 1.8rem; font-weight: 800; color: #1f2937; }
+.stat-label { color: #6b7280; font-size: 0.9rem; }
 </style>
 {% endblock %}
 

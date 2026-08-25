@@ -176,6 +176,15 @@
     transform: scale(1.1);
 }
 
+/* Footer Azad - extracted */
+.main-footer-azad {
+  padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center;
+}
+.main-footer-azad .footer-logo {
+  height: 70px; background: white; padding: 10px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+.main-footer-azad .footer-title { font-size: 1.1em; font-weight: 700; }
+
 /* Navbar widgets - extracted from inline styles (base.html) */
 .navbar-datetime-widget {
   min-width: 120px;

@@ -630,9 +630,20 @@ $(document).ready(function() {
             return false;
         }
         
-        if (!$('#customer_id').val()) {
+        const custEl = $('#customer_id');
+        const whEl = $('#warehouse_id');
+        custEl.toggleClass('is-invalid', !custEl.val()).toggleClass('is-valid', !!custEl.val());
+        whEl.toggleClass('is-invalid', !whEl.val()).toggleClass('is-valid', !!whEl.val());
+        if (!custEl.val()) {
             e.preventDefault();
             azad.showError('⚠️ يجب اختيار زبون');
+            custEl.select2('open');
+            return false;
+        }
+        if (!whEl.val()) {
+            e.preventDefault();
+            azad.showError('⚠️ يجب اختيار مستودع');
+            whEl.focus();
             return false;
         }
         

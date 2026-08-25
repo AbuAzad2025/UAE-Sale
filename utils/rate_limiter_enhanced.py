@@ -1,4 +1,4 @@
-from functools import wraps
+﻿from functools import wraps
 from flask import request, jsonify
 from flask_login import current_user
 from extensions import cache
@@ -53,7 +53,7 @@ def adaptive_rate_limit(base_limit: int = 60):
             else:
                 limit = base_limit // 2
 
-            key = f"adaptive_limit:{request.endpoint}:{current_user.id if current_user.is_authenticated else request.remote_addr}"
+            key = f"adaptive_limit:{request.endpoint}:{(current_user.id if (current_user and current_user.is_authenticated) else request.remote_addr)}"
 
             count = cache.get(key) or 0
 

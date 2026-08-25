@@ -1,4 +1,4 @@
-"""
+﻿"""
 Advanced Monitoring and Logging System
 """
 import time
@@ -266,7 +266,7 @@ def setup_advanced_logging(app):
         from flask import jsonify
         from flask_login import current_user
 
-        if not current_user.is_authenticated or not current_user.is_owner:
+        if not (current_user and current_user.is_authenticated) or not current_user.is_owner:
             return jsonify({'error': 'Unauthorized'}), 403
 
         metrics_data = {

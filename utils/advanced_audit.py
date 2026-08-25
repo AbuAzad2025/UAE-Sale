@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+﻿from datetime import datetime, timezone
 from flask import request
 from flask_login import current_user
 from extensions import db
@@ -23,7 +23,7 @@ def log_sensitive_action(action: str, table_name: str = None, record_id: int = N
 
     try:
         audit_entry = AuditLog(
-            user_id=current_user.id if current_user.is_authenticated else None,
+            user_id=current_user.id if (current_user and current_user.is_authenticated) else None,
             action=action,
             table_name=table_name,
             record_id=record_id,

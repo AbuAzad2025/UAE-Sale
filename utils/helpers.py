@@ -1,4 +1,4 @@
-import os
+﻿import os
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -200,7 +200,7 @@ def create_audit_log(action, table_name=None, record_id=None, changes=None):
 
     try:
         log = AuditLog(
-            user_id=current_user.id if current_user.is_authenticated else None,
+            user_id=current_user.id if (current_user and current_user.is_authenticated) else None,
             action=action,
             table_name=table_name,
             record_id=record_id,

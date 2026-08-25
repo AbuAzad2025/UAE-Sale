@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+﻿from datetime import date, datetime, timezone
 from decimal import Decimal
 from flask import current_app
 from flask_login import current_user
@@ -27,7 +27,7 @@ class ArchiveService:
                 table_name=table_name,
                 record_id=record.id,
                 data=data,
-                archived_by=current_user.id if current_user.is_authenticated else None,
+                archived_by=current_user.id if (current_user and current_user.is_authenticated) else None,
                 reason=reason
             )
 

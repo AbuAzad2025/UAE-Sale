@@ -26,6 +26,14 @@ class BackupService:
     BACKUP_PREFIX = 'auto_backup_'
     MANUAL_PREFIX = 'manual_backup_'
 
+    # Interval (in hours) between automatic backups per configured frequency
+    FREQUENCY_INTERVAL_HOURS = {
+        'hourly': 1,
+        'daily': 24,
+        'weekly': 24 * 7,
+        'monthly': 24 * 30,
+    }
+
     @classmethod
     def _schedule_settings_path(cls) -> str:
         return os.path.join(cls._BASEDIR, 'instance', 'backup_settings.json')
@@ -73,6 +81,81 @@ class BackupService:
             'keep_count': int(settings.get('keep_count', cls.MAX_BACKUPS)),
         }
         return cls._write_json_file(cls._schedule_settings_path(), normalized)
+
+    @classmethod
+    def _parse_state_datetime(cls, raw_value) -> Optional[datetime]:
+        """Parse an ISO timestamp from schedule state; naive local on success, None otherwise."""
+        if not raw_value or not isinstance(raw_value, str):
+            return None
+        try:
+            parsed = datetime.fromisoformat(raw_value.strip())
+        except (ValueError, TypeError):
+            return None
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone().replace(tzinfo=None)
+        return parsed
+
+    @classmethod
+    def _resolve_interval_hours(cls, settings: Dict, state: Dict) -> int:
+        """Interval between auto backups: explicit state override, else per frequency."""
+        try:
+            override = int(state.get('interval_hours', 0))
+            if override > 0:
+                return override
+        except (TypeError, ValueError):
+            pass
+        frequency = str(settings.get('frequency', 'daily')).strip().lower()
+        return cls.FREQUENCY_INTERVAL_HOURS.get(frequency, 24)
+
+    @classmethod
+    def auto_backup_daily(cls) -> Optional[Dict]:
+        """تشغيل النسخ الاحتياطي التلقائي عند استحقاقه.
+
+        Reads the saved schedule settings (get_schedule_settings), runs
+        create_backup when due (last run older than the configured interval),
+        then records last_run in backup_state.json. Returns the backup
+        metadata dict, or None when disabled / not due / failed. Never raises.
+        """
+        try:
+            settings = cls.get_schedule_settings()
+            if not settings.get('enabled', True):
+                logger.info('Automatic backup disabled by schedule settings')
+                return None
+
+            state = cls._load_json_file(cls._schedule_state_path()) or {}
+            interval_hours = cls._resolve_interval_hours(settings, state)
+            now = datetime.now()
+            last_run = cls._parse_state_datetime(state.get('last_auto_backup'))
+
+            if last_run is not None:
+                elapsed_hours = (now - last_run).total_seconds() / 3600.0
+                if elapsed_hours < interval_hours:
+                    logger.debug(
+                        'Auto-backup not due (elapsed %.2fh < interval %dh)',
+                        elapsed_hours, interval_hours,
+                    )
+                    return None
+
+            backup = cls.create_backup(manual=False, description='Scheduled automatic backup')
+
+            if not backup:
+                logger.error('Automatic backup failed — last_run not advanced')
+                return None
+
+            updated_state = dict(state)
+            updated_state['last_auto_backup'] = now.isoformat()
+            updated_state['last_backup_filename'] = backup.get('filename')
+            cls._write_json_file(cls._schedule_state_path(), updated_state)
+
+            logger.info(
+                'Automatic backup completed: %s (interval %dh)',
+                backup.get('filename'), interval_hours,
+            )
+            return backup
+
+        except Exception as e:
+            logger.error(f"auto_backup_daily failed: {e}")
+            return None
 
     @classmethod
     def get_backup_stats(cls) -> Dict:

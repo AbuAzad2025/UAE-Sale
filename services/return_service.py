@@ -128,11 +128,16 @@ class ReturnService:
                 )
 
                 # Prepare COGS Reversal GL Data (Credit COGS, Debit Inventory)
-                # Need Cost Price.
-                # Ideally, we track cost at time of sale. If not available, use current cost.
+                # Cost basis: the HISTORICAL cost captured on the sale line at
+                # sell time. Only legacy lines missing cost_price fall back to
+                # the product's current cost.
                 product = db.session.get(Product, sale_line.product_id)
-                cost_price = product.cost_price if product else Decimal('0')
-                cost_value = (quantity * cost_price).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
+                cost_price = sale_line.cost_price
+                if cost_price is None and product is not None:
+                    cost_price = product.cost_price
+                cost_value = (quantity * (Decimal(str(cost_price)) if cost_price else Decimal('0'))).quantize(
+                    Decimal('0.001'), rounding=ROUND_HALF_UP
+                )
 
                 if cost_value > 0:
                     # Inventory (Asset) - Debit (Increase)
@@ -199,7 +204,9 @@ class ReturnService:
                     lines=gl_lines,
                     description=f'Sales Return {product_return.return_number} for Sale {sale.sale_number}',
                     reference_type='ProductReturn',
-                    reference_id=product_return.id
+                    reference_id=product_return.id,
+                    currency=sale.currency,
+                    exchange_rate=sale.exchange_rate
                 )
 
             db.session.commit()

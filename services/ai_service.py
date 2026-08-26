@@ -832,7 +832,7 @@ class AIService:
         local_response = local_result.get('response', '')
 
         force_local = context.get('force_local', False) if context else False
-        _ = '' if force_local else AIService._gather_relevant_knowledge(message, local_result)
+        knowledge_context = '' if force_local else AIService._gather_relevant_knowledge(message, local_result)
 
         # ========== المرحلة 2: التعاون مع Groq ==========
         api_key = AIService.get_api_key()
@@ -882,7 +882,10 @@ class AIService:
     "message": "رسالة للمستخدم"
   }}
 
-⚠️ مهم: إذا سأل عن بيانات - استخدم الأرقام الموجودة."""
+⚠️ مهم: إذا سأل عن بيانات - استخدم الأرقام الموجودة.""".format(
+                    message=message,
+                    knowledge_context=knowledge_context or 'لا توجد بيانات إضافية',
+                )
 
                 response = requests.post(
                     url,
@@ -890,7 +893,8 @@ class AIService:
                     json={
                         "model": model,
                         "messages": [
-                            {"role": "user", "content": expert_prompt}
+                            {"role": "system", "content": expert_prompt},
+                            {"role": "user", "content": message},
                         ],
                         "temperature": 0.7,
                         "max_tokens": 2000
@@ -938,10 +942,13 @@ class AIService:
 
             # إنشاء عميل
             if action_type == 'create_customer':
-                _ = action_data.get('data_needed', [])
-                return """✅ تمام! لإنشاء عميل جديد، أعطني المعلومات التالية:
+                data_needed = action_data.get('data_needed', []) or []
+                numbered_fields = '\n'.join(
+                    f'{i + 1}. {field}' for i, field in enumerate(data_needed)
+                )
+                return f"""✅ تمام! لإنشاء عميل جديد، أعطني المعلومات التالية:
 
-{chr(10).join([f'{i+1}. {field}' for i, field in enumerate(data_needed)])}
+{numbered_fields}
 
 أدخل البيانات بهذا الشكل:
 عميل جديد: الاسم، الهاتف، العنوان، ..."""
@@ -1003,38 +1010,43 @@ class AIService:
             data_parts = []
 
             # 📊 إحصائيات شاملة للنظام (دائماً)
-            _ = User.query.count()
-            _ = Customer.query.filter_by(is_active=True).count()
-            _ = Supplier.query.filter_by(is_active=True).count()
-            _ = Product.query.filter_by(is_active=True).count()
+            users_count = User.query.count()
+            customers_count = Customer.query.filter_by(is_active=True).count()
+            suppliers_count = Supplier.query.filter_by(is_active=True).count()
+            products_count = Product.query.filter_by(is_active=True).count()
 
-            _ = Sale.query.filter(
+            sales_30d = Sale.query.filter(
                 Sale.sale_date >= datetime.now() - timedelta(days=30)
             ).count()
 
-            _ = Purchase.query.filter(
+            purchases_30d = Purchase.query.filter(
                 Purchase.purchase_date >= datetime.now() - timedelta(days=30)
             ).count()
 
-            _ = Expense.query.filter(
+            expenses_30d = Expense.query.filter(
                 Expense.expense_date >= datetime.now() - timedelta(days=30)
             ).count()
 
-            _ = Payment.query.filter(
+            payments_30d = Payment.query.filter(
                 Payment.payment_date >= datetime.now() - timedelta(days=30)
             ).count()
 
-            _ = Cheque.query.count()
+            cheques_count = Cheque.query.count()
 
-            _ = db.session.query(func.sum(Sale.total_amount)).filter(
+            total_sales_amount = db.session.query(func.sum(Sale.total_amount)).filter(
                 Sale.sale_date >= datetime.now() - timedelta(days=30)
             ).scalar() or 0
 
-            _ = db.session.query(func.sum(Expense.amount_base)).filter(
+            total_expenses_amount = db.session.query(func.sum(Expense.amount_base)).filter(
                 Expense.expense_date >= datetime.now() - timedelta(days=30)
             ).scalar() or 0
 
-            data_parts.append("""📊 **بيانات النظام الكاملة:**
+            try:
+                net_profit = total_sales_amount - total_expenses_amount
+            except Exception:
+                net_profit = 0
+
+            data_parts.append(f"""📊 **بيانات النظام الكاملة:**
 
 👥 الأطراف:
 - المستخدمين: {users_count}
@@ -1045,18 +1057,18 @@ class AIService:
 - المنتجات: {products_count}
 
 💰 المعاملات (آخر 30 يوم):
-- المبيعات: {sales_30d} فاتورة (إجمالي: {total_sales_amount:.2f} درهم)
+- المبيعات: {sales_30d} فاتورة (إجمالي: {float(total_sales_amount):.2f} درهم)
 - المشتريات: {purchases_30d}
-- المصروفات: {expenses_30d} (إجمالي: {total_expenses_amount:.2f} درهم)
+- المصروفات: {expenses_30d} (إجمالي: {float(total_expenses_amount):.2f} درهم)
 - الدفعات: {payments_30d}
 - الشيكات: {cheques_count}
 
 💵 الأرباح (30 يوم):
-- الربح الصافي: {(total_sales_amount - total_expenses_amount):.2f} درهم""")
+- الربح الصافي: {float(net_profit):.2f} درهم""")
 
             # بيانات الشركة
-            _ = current_app.config
-            data_parts.append("""📞 **بيانات الشركة:**
+            config = current_app.config
+            data_parts.append(f"""📞 **بيانات الشركة:**
 - الاسم: {config.get('COMPANY_NAME_AR')}
 - الهاتف: {config.get('COMPANY_PHONE')}
 - WhatsApp: {config.get('COMPANY_WHATSAPP')}
@@ -1065,10 +1077,14 @@ class AIService:
             # معلومات المستخدم الحالي
             current_user = local_result.get('context', {}).get('current_user')
             if current_user:
-                data_parts.append("""👤 **المستخدم الحالي:**
+                role_name = 'غير محدد'
+                if getattr(current_user, 'role', None):
+                    role_name = getattr(current_user.role, 'name_ar', None) or current_user.role.name
+                owner_label = 'نعم' if getattr(current_user, 'is_owner', False) else 'لا'
+                data_parts.append(f"""👤 **المستخدم الحالي:**
 - الاسم: {current_user.username}
-- الدور: {current_user.role.name_ar if current_user.role else 'غير محدد'}
-- Owner: {'نعم' if current_user.is_owner else 'لا'}""")
+- الدور: {role_name}
+- Owner: {owner_label}""")
 
             return '\n\n'.join(data_parts)
 

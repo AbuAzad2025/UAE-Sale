@@ -5,11 +5,35 @@ from models.cheque import Cheque
 from models.gl import GLAccount, GLJournalEntry
 from services.gl_service import GLService
 
+# Dynamic CoA resolution (contract C3/Agent 1) with literal fallbacks equal to
+# today's codes when the resolver is unavailable or the role is unmapped.
+try:
+    from services.account_resolution import AccountResolver, AccountRole
+except Exception:  # pragma: no cover - resolver ships in parallel
+    AccountRole = None  # type: ignore[assignment,misc]
+    AccountResolver = None  # type: ignore[assignment,misc]
+
+
+def _resolve_role_code(role_value, fallback_code):
+    """Resolve an AccountRole to its live code, falling back to the literal."""
+    try:
+        if AccountRole is not None and AccountResolver is not None:
+            code = AccountResolver.resolve(AccountRole(role_value))
+            if code:
+                return str(code)
+    except Exception:
+        pass
+    return fallback_code
+
 
 class ChequeAccountingIntegration:
-    """تكامل الشيكات مع النظام المحاسبي"""
+    """تكامل الشيكات مع النظام المحاسبي
 
-    # حسابات الشيكات الافتراضية
+    حالة الشيك تتبع قيم النموذج الصالحة فقط (C3): بعد الاستلام/الإصدار تصبح
+    الحالة 'deposited' (تحت البنك) — لا حالات مُختلقة مثل 'received'/'issued'.
+    """
+
+    # حسابات الشيكات الافتراضية (fallback literals = DEFAULT_ROLE_MAP)
     CHEQUE_ACCOUNTS = {
         'incoming_under_collection': '1150',  # شيكات تحت التحصيل
         'outgoing_deferred': '2120',          # شيكات مؤجلة الدفع
@@ -17,8 +41,9 @@ class ChequeAccountingIntegration:
         'cash_account': '1110',              # صندوق
         'accounts_receivable': '1130',        # الذمم المدينة
         'accounts_payable': '2110',           # الذمم الدائنة
-        'exchange_gain': '4200',             # أرباح الصرف
-        'exchange_loss': '5200',             # خسائر الصرف
+        'bank_charges': '6950',              # مصروفات بنكية
+        'exchange_gain': '4400',             # أرباح فرق العملة
+        'exchange_loss': '6900',             # خسائر فرق العملة
     }
 
     @staticmethod
@@ -71,8 +96,8 @@ class ChequeAccountingIntegration:
                 created_by=received_by
             )
 
-            # تحديث حالة الشيك
-            cheque.status = 'received'
+            # تحديث حالة الشيك — C3: حالة نموذج صالحة (تحت البنك)
+            cheque.status = 'deposited'
             cheque.gl_journal_entry_id = entry.id
             cheque.updated_at = datetime.now(timezone.utc)
 
@@ -126,8 +151,8 @@ class ChequeAccountingIntegration:
                 created_by=issued_by
             )
 
-            # تحديث حالة الشيك
-            cheque.status = 'issued'
+            # تحديث حالة الشيك — C3: حالة نموذج صالحة (تحت البنك)
+            cheque.status = 'deposited'
             cheque.gl_journal_entry_id = entry.id
             cheque.updated_at = datetime.now(timezone.utc)
 
@@ -144,11 +169,14 @@ class ChequeAccountingIntegration:
         """تسجيل صرف شيك مع القيود المحاسبية"""
         cheque = db.get_or_404(Cheque, cheque_id)
 
-        if cheque.status not in ['received', 'issued']:
+        if cheque.status not in ['deposited']:
             raise ValueError("الشيك ليس في حالة يمكن صرفه")
 
         try:
             amount_base = ChequeAccountingIntegration._ensure_amount_base(cheque)
+            bank_charges_account = _resolve_role_code('BANK_CHARGES', '6950')
+            fx_gain_account = _resolve_role_code('FX_GAIN', '4400')
+            fx_loss_account = _resolve_role_code('FX_LOSS', '6900')
             lines = []
 
             if cheque.cheque_type == 'incoming':
@@ -173,7 +201,7 @@ class ChequeAccountingIntegration:
                 # رسوم البنك (إذا وجدت)
                 if bank_charges > 0:
                     lines.append({
-                        'account_code': '5300',  # رسوم البنك
+                        'account_code': bank_charges_account,  # مصروفات بنكية (BANK_CHARGES)
                         'debit': bank_charges,
                         'credit': 0,
                         'description': f'رسوم بنك - شيك رقم {cheque.cheque_bank_number}'
@@ -183,14 +211,14 @@ class ChequeAccountingIntegration:
                 if exchange_gain_loss != 0:
                     if exchange_gain_loss > 0:
                         lines.append({
-                            'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['exchange_gain'],
+                            'account_code': fx_gain_account,
                             'debit': 0,
                             'credit': exchange_gain_loss,
                             'description': f'ربح صرف - شيك رقم {cheque.cheque_bank_number}'
                         })
                     else:
                         lines.append({
-                            'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['exchange_loss'],
+                            'account_code': fx_loss_account,
                             'debit': abs(exchange_gain_loss),
                             'credit': 0,
                             'description': f'خسارة صرف - شيك رقم {cheque.cheque_bank_number}'
@@ -218,7 +246,7 @@ class ChequeAccountingIntegration:
                 # رسوم البنك (إذا وجدت)
                 if bank_charges > 0:
                     lines.append({
-                        'account_code': '5300',  # رسوم البنك
+                        'account_code': bank_charges_account,  # مصروفات بنكية (BANK_CHARGES)
                         'debit': bank_charges,
                         'credit': 0,
                         'description': f'رسوم بنك - شيك رقم {cheque.cheque_bank_number}'
@@ -228,14 +256,14 @@ class ChequeAccountingIntegration:
                 if exchange_gain_loss != 0:
                     if exchange_gain_loss > 0:
                         lines.append({
-                            'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['exchange_gain'],
+                            'account_code': fx_gain_account,
                             'debit': 0,
                             'credit': exchange_gain_loss,
                             'description': f'ربح صرف - شيك رقم {cheque.cheque_bank_number}'
                         })
                     else:
                         lines.append({
-                            'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['exchange_loss'],
+                            'account_code': fx_loss_account,
                             'debit': abs(exchange_gain_loss),
                             'credit': 0,
                             'description': f'خسارة صرف - شيك رقم {cheque.cheque_bank_number}'
@@ -270,7 +298,7 @@ class ChequeAccountingIntegration:
         """تسجيل ارتداد شيك مع القيود المحاسبية"""
         cheque = db.get_or_404(Cheque, cheque_id)
 
-        if cheque.status not in ['received', 'issued']:
+        if cheque.status not in ['deposited']:
             raise ValueError("الشيك ليس في حالة يمكن ارتداده")
 
         try:

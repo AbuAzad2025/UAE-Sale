@@ -32,7 +32,15 @@ class StockService:
         )
 
     @staticmethod
-    def adjust_stock(product_id, quantity, notes=None, warehouse_id=None):
+    def adjust_stock(product_id, quantity, notes=None, warehouse_id=None, post_gl=True):
+        """Adjust stock with an optional GL posting (contract C1).
+
+        Args:
+            post_gl (bool): When False the adjustment is a pure stock delta +
+                movement row — no GL journal entry is posted at all. Callers
+                doing pair transfers (e.g. StockTransfer send/receive) use
+                this to avoid double-posting.
+        """
         movement = StockService.create_movement(
             product_id=product_id,
             quantity=Decimal(str(quantity)),
@@ -40,6 +48,9 @@ class StockService:
             notes=notes,
             warehouse_id=warehouse_id
         )
+
+        if not post_gl:
+            return movement
 
         # GL Integration for Adjustment
         try:
@@ -79,65 +90,78 @@ class StockService:
 
     @staticmethod
     def create_movement(product_id, quantity, movement_type, reference_type=None, reference_id=None, notes=None, warehouse_id=None):  # noqa: C901
+        product = db.session.get(Product, product_id)
+
+        if not product:
+            raise ValueError(f'⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.')
+
+        # تحديد المستودع
+        if warehouse_id:
+            # استخدام المستودع المحدد
+            warehouse = Warehouse.query.filter_by(id=warehouse_id, is_active=True).first()
+            if not warehouse:
+                raise ValueError(f'⚠️ المستودع المحدد غير موجود أو غير نشط (ID: {warehouse_id}).')
+        else:
+            # البحث عن المستودع الرئيسي أولاً، ثم أول مستودع نشط
+            warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
+            if not warehouse:
+                warehouse = Warehouse.query.filter_by(is_active=True).first()
+
+            # إذا لم يوجد أي مستودع، إنشاء واحد افتراضي
+            if not warehouse:
+                warehouse = Warehouse(name='Main Warehouse', name_ar='المستودع الرئيسي', is_active=True, is_main=True)
+                db.session.add(warehouse)
+                db.session.flush()
+
         try:
-            product = db.session.get(Product, product_id)
+            user_id = current_user.id if current_user and current_user.is_authenticated else None
+        except Exception:
+            user_id = None
 
-            if not product:
-                raise ValueError(f'⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.')
+        quantity_decimal = Decimal(str(quantity))
+        available_stock = Decimal(str(product.current_stock or 0))
+        resulting_stock = available_stock + quantity_decimal
 
-            # تحديد المستودع
-            if warehouse_id:
-                # استخدام المستودع المحدد
-                warehouse = Warehouse.query.filter_by(id=warehouse_id, is_active=True).first()
-                if not warehouse:
-                    raise ValueError(f'⚠️ المستودع المحدد غير موجود أو غير نشط (ID: {warehouse_id}).')
-            else:
-                # البحث عن المستودع الرئيسي أولاً، ثم أول مستودع نشط
-                warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
-                if not warehouse:
-                    warehouse = Warehouse.query.filter_by(is_active=True).first()
+        # التحقق من المخزون الناتج قبل أي تعديل — الرسالة تعرض المتوفر الفعلي
+        # (كانت تعرض الرصيد بعد التعديل فتُربك المستخدم برقم سالب خاطئ)
+        if resulting_stock < 0:
+            raise ValueError(f'❌ المخزون غير كافٍ للمنتج "{product.name}"!\n📦 المتوفر: {available_stock} | المطلوب: {abs(quantity_decimal)}\n💡 قلل الكمية أو اطلب مخزون جديد من المورد.')  # noqa: E501
 
-                # إذا لم يوجد أي مستودع، إنشاء واحد افتراضي
-                if not warehouse:
-                    warehouse = Warehouse(name='Main Warehouse', name_ar='المستودع الرئيسي', is_active=True, is_main=True)
-                    db.session.add(warehouse)
-                    db.session.flush()
+        movement = StockMovement(
+            product_id=product_id,
+            warehouse_id=warehouse.id,
+            movement_type=movement_type,
+            quantity=quantity_decimal,
+            reference_type=reference_type,
+            reference_id=reference_id,
+            user_id=user_id,
+            notes=notes
+        )
 
-            try:
-                user_id = current_user.id if current_user and current_user.is_authenticated else None
-            except Exception:
-                user_id = None
+        db.session.add(movement)
 
-            movement = StockMovement(
-                product_id=product_id,
-                warehouse_id=warehouse.id,
-                movement_type=movement_type,
-                quantity=Decimal(str(quantity)),
-                reference_type=reference_type,
-                reference_id=reference_id,
-                user_id=user_id,
-                notes=notes
-            )
-
-            db.session.add(movement)
-
-            product.current_stock += Decimal(str(quantity))
-
-            if product.current_stock < 0:
-                raise ValueError(f'❌ المخزون غير كافٍ للمنتج "{product.name}"!\n📦 المتوفر: {product.current_stock} | المطلوب: {quantity}\n💡 قلل الكمية أو اطلب مخزون جديد من المورد.')  # noqa: E501
-
+        # Savepoint: a failed flush here must NOT poison the caller's outer
+        # transaction — only our own work is rolled back.
+        nested = db.session.begin_nested()
+        try:
+            product.current_stock = resulting_stock
             db.session.flush()
-
-            current_app.logger.info(
-                f'Stock movement: {movement_type} {quantity} of product #{product_id}'
-            )
-
-            return movement
-
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f'Stock movement failed: {e}')
+            nested.commit()
+        except Exception as flush_error:
+            nested.rollback()
+            product.current_stock = available_stock
+            try:
+                db.session.expunge(movement)
+            except Exception:
+                pass
+            current_app.logger.error(f'Stock movement failed: {flush_error}')
             raise
+
+        current_app.logger.info(
+            f'Stock movement: {movement_type} {quantity} of product #{product_id}'
+        )
+
+        return movement
 
     @staticmethod
     def process_sale_lines(sale, warehouse_id=None):

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from flask import Blueprint, render_template, current_app, redirect, url_for
 from flask_login import login_required, current_user
@@ -79,9 +79,24 @@ def dashboard():  # noqa: C901
 
         if current_user.can_see_costs():
             def _month_profit():
-                return db.session.query(func.sum(Sale.amount_base)).filter(
-                    func.date(Sale.sale_date) >= month_start,
-                    Sale.status == 'confirmed').scalar() or Decimal('0')
+                """True profit: sum of sale.get_profit() over last-30d confirmed sales."""
+                cutoff = today - timedelta(days=30)
+                try:
+                    recent_sales = Sale.query.options(
+                        joinedload(Sale.lines)
+                    ).filter(
+                        func.date(Sale.sale_date) >= cutoff,
+                        Sale.status == 'confirmed'
+                    ).all()
+                    total = Decimal('0')
+                    for sale in recent_sales:
+                        try:
+                            total += Decimal(str(sale.get_profit()))
+                        except Exception:
+                            continue
+                    return total
+                except Exception:
+                    return Decimal('0')
             stats['month_profit'] = float(_cached('month_profit', _month_profit))
 
         def _receivables():

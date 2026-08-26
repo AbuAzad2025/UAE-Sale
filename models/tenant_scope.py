@@ -4,11 +4,18 @@ Provides automatic row-level tenant isolation for all business models.
 
 Usage:
     class MyModel(TenantScopedMixin, db.Model):
+        tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
         ...
+
+Fail-fast: any subclass that does not declare (or inherit) its own
+``tenant_id`` column raises RuntimeError at import time.
 """
 
+import logging
 import threading
 from sqlalchemy import event
+
+logger = logging.getLogger(__name__)
 
 # Thread-local storage for current tenant ID
 _thread_local = threading.local()
@@ -46,8 +53,24 @@ def is_tenant_scoped(tablename):
 class TenantScopedMixin:
     """
     Mixin that marks a model for automatic tenant filtering.
-    Each model that inherits this mixin should define a tenant_id column.
+    Each model that inherits this mixin MUST define a tenant_id column.
+
+    Implemented with __init_subclass__ (not a metaclass) so it composes
+    safely with SQLAlchemy's DeclarativeMeta without metaclass conflicts.
     """
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        defines_tenant_column = any(
+            'tenant_id' in vars(ancestor) for ancestor in cls.__mro__
+        )
+        if not defines_tenant_column:
+            raise RuntimeError(
+                f"{cls.__name__} mixes in TenantScopedMixin but does not "
+                f"define its own tenant_id column. Add: "
+                f"tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), "
+                f"nullable=True, index=True)"
+            )
 
     def set_tenant(self, tenant_id):
         """Explicitly set the tenant for this instance."""
@@ -57,6 +80,24 @@ class TenantScopedMixin:
     def set_tenant_for_class(cls, tenant_id):
         """Set tenant filter for all future queries on this class."""
         set_current_tenant_id(tenant_id)
+
+
+def _warn_unfiltered_access_in_strict_mode(query):
+    """TENANT_STRICT audit aid: warn when a registered scoped model is queried
+    with no resolved tenant (unfiltered access). Never alters behaviour."""
+    try:
+        from flask import current_app, has_app_context
+        if not has_app_context() or not current_app.config.get('TENANT_STRICT'):
+            return
+        col_descs = query.column_descriptions
+        if not col_descs:
+            return
+        entity = col_descs[0].get('entity')
+        tablename = getattr(entity, '__tablename__', None)
+        if tablename and tablename in _tenant_scoped_tables:
+            logger.warning('TENANT_STRICT: unfiltered access to %s', tablename)
+    except Exception:
+        pass
 
 
 def install_tenant_filter_events():  # noqa: C901
@@ -71,7 +112,9 @@ def install_tenant_filter_events():  # noqa: C901
         """Automatically add tenant_id filter to tenant-scoped queries."""
         tenant_id = get_current_tenant_id()
         if tenant_id is None:
-            return query  # No tenant set — no filtering
+            # No tenant set — no filtering (default behaviour unchanged).
+            _warn_unfiltered_access_in_strict_mode(query)
+            return query
 
         # Skip DDL, system, and subqueries
         try:

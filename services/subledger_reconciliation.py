@@ -22,8 +22,10 @@ active customers/suppliers only; confirmed sales; purchases by status
 (Purchase has no is_active column); tolerance |delta| ≤ 0.01 inclusive.
 
 Known structural break sources surfaced by design (see audit findings):
-- merchant-type customer invoices are debited to '2115' (sale_service), so AR
-  control '1130' alone will not equal the customer sub-ledger when merchants exist;
+- merchant-type customer invoices are debited to '2115' and partner invoices
+  to '3350' (sale_service), so the AR scope now includes those buckets via
+  sale_service.merchant_receivable_codes() — the proof holds for ALL
+  customer types, not just regular ones;
 - unallocated receipts credit AR control without updating sale.paid_*;
 - supplier stat listeners derive total_paid_aed from the Payment table while
   this sub-ledger derives paid from Purchase.paid_amount (dual sources of truth).
@@ -48,6 +50,10 @@ except ImportError:  # pragma: no cover - resolver ships in Agent 1's turn
 
 DEFAULT_AR_CONTROL_CODES = ['1130']
 DEFAULT_AP_CONTROL_CODES = ['2115', '2110']
+# Merchant ('2115') and partner ('3350') invoices bypass the plain AR control;
+# the AR proof must include those buckets or merchant/partner customers always
+# look like breaks.
+DEFAULT_AR_MERCHANT_BUCKETS = ['2115', '3350']
 
 
 def _resolve_role_codes(role_value, fallback_codes):
@@ -67,6 +73,32 @@ def _resolve_role_codes(role_value, fallback_codes):
     return list(fallback_codes)
 
 
+def _ar_control_codes():
+    """AR scope = plain control ('1130') + partner/merchant buckets.
+
+    Consumes sale_service.merchant_receivable_codes() defensively so both
+    sides of the contract stay in sync; falls back to today's literals.
+    """
+    try:
+        from services.sale_service import merchant_receivable_codes
+        buckets = [str(c) for c in merchant_receivable_codes() if c]
+    except Exception as exc:
+        logger.warning(
+            f'merchant_receivable_codes unavailable ({exc}) — using literal buckets'
+        )
+        buckets = []
+
+    codes = []
+    for code in (
+        _resolve_role_codes('AR_CONTROL', DEFAULT_AR_CONTROL_CODES)
+        + buckets
+        + DEFAULT_AR_MERCHANT_BUCKETS
+    ):
+        if code not in codes:
+            codes.append(code)
+    return codes
+
+
 def _ap_control_codes():
     """AP scope per audit mandate: merchants payable ('2115') + AP control ('2110')."""
     codes = []
@@ -82,6 +114,47 @@ def _ap_control_codes():
 def _q2(value):
     """Quantize reported money to 0.01."""
     return Decimal(value).quantize(Decimal('0.01'))
+
+
+def _ar_debit_normal_balance(account_codes):
+    """Σ(debit − credit) across the AR control scope (base currency).
+
+    Merchant ('2115') and partner ('3350') buckets are DEBITED by the sale
+    flow even though the seeded CoA types them liability/equity. Treating the
+    entire AR scope debit-normal matches the receivable direction of both the
+    sub-ledger and Customer.balance; plain AR control ('1130', asset) is
+    numerically identical to the generic signed helper.
+    """
+    from sqlalchemy import func
+
+    from models import GLAccount, GLJournalLine
+
+    wanted = [str(c) for c in (account_codes or []) if c]
+    if not wanted:
+        return Decimal('0')
+
+    rows = (
+        db.session.query(
+            GLAccount.code,
+            func.coalesce(func.sum(GLJournalLine.amount_base), 0),
+        )
+        .outerjoin(GLJournalLine, GLJournalLine.account_id == GLAccount.id)
+        .filter(GLAccount.code.in_(wanted))
+        .group_by(GLAccount.code)
+        .all()
+    )
+
+    total = Decimal('0')
+    found = set()
+    for code, raw_net in rows:
+        found.add(code)
+        total += to_decimal(raw_net)
+
+    missing = [c for c in wanted if c not in found]
+    if missing:
+        logger.warning(f'AR control account(s) missing from CoA: {missing}')
+
+    return total
 
 
 class SubLedgerReconciliation:
@@ -100,7 +173,7 @@ class SubLedgerReconciliation:
         """
         from models import Customer, Sale
 
-        codes = _resolve_role_codes('AR_CONTROL', DEFAULT_AR_CONTROL_CODES)
+        codes = _ar_control_codes()
 
         query = (
             db.session.query(Sale.customer_id, Sale.amount_base, Sale.paid_amount_base)
@@ -155,7 +228,14 @@ class SubLedgerReconciliation:
                     f'expected={expected} stored={stored} delta={delta}'
                 )
 
-        control_balance = get_control_account_balance(codes)
+        control_balance = _ar_debit_normal_balance(codes)
+
+        # Section detail lines: one entry per control bucket so reviewers can
+        # see exactly which bucket carries (or misses) the value.
+        breakdown = [
+            {'account_code': code, 'balance': _q2(_ar_debit_normal_balance([code]))}
+            for code in codes
+        ]
 
         balanced = (
             not breaks
@@ -166,6 +246,7 @@ class SubLedgerReconciliation:
         return {
             'section': 'AR',
             'control_accounts': codes,
+            'control_breakdown': breakdown,
             'control_balance': _q2(control_balance),
             'subledger_sum': _q2(subledger_sum),
             'column_sum': _q2(column_sum),
@@ -241,6 +322,12 @@ class SubLedgerReconciliation:
 
         control_balance = get_control_account_balance(codes)
 
+        # Section detail lines per AP control bucket (merchants vs AP control).
+        breakdown = [
+            {'account_code': code, 'balance': _q2(get_control_account_balance([code]))}
+            for code in codes
+        ]
+
         balanced = (
             not breaks
             and abs(control_balance - subledger_sum) <= TOLERANCE
@@ -250,6 +337,7 @@ class SubLedgerReconciliation:
         return {
             'section': 'AP',
             'control_accounts': codes,
+            'control_breakdown': breakdown,
             'control_balance': _q2(control_balance),
             'subledger_sum': _q2(subledger_sum),
             'column_sum': _q2(column_sum),

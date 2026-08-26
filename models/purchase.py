@@ -62,24 +62,15 @@ class Purchase(TenantScopedMixin, db.Model):
         return f'<Purchase {self.purchase_number}>'
 
     def get_paid_amount(self):
-        """حساب المبلغ المدفوع لهذا المشتري تحديداً"""
-        from models import Payment
-        from sqlalchemy import func
-        from decimal import Decimal
+        """Return the tracked paid amount for this purchase (base currency).
 
-        # Sum payments linked to this specific purchase via reference
-        paid = db.session.query(func.sum(Payment.amount_base)).filter(
-            Payment.reference_type == 'purchase',
-            Payment.reference_id == self.id
-        ).scalar()
-
-        # Fallback: sum all payments to this supplier if no reference-based payments found
-        if not paid:
-            paid = db.session.query(func.sum(Payment.amount_base)).filter(
-                Payment.supplier_id == self.supplier_id
-            ).scalar()
-
-        return Decimal(str(paid)) if paid else Decimal('0')
+        Payments carry no purchase foreign key by design — supplier payments
+        are settled at the supplier level — so deriving a per-purchase figure
+        by querying the payments table was unreliable (it crashed on columns
+        that do not exist on Payment). The tracked ``paid_amount`` column is
+        the single source of truth for per-purchase settlement.
+        """
+        return Decimal(str(self.paid_amount)) if self.paid_amount is not None else Decimal('0')
 
     def calculate_totals(self):
         """

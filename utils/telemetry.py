@@ -1,3 +1,20 @@
+"""Telemetry utilities — strictly OPT-IN.
+
+SECURITY CONTRACT (remediation): no external transmission ever happens unless
+the operator explicitly sets ``ENABLE_TELEMETRY=1`` in the environment.
+The previous behaviour (phone-home by default, disabled only via
+``DISABLE_TELEMETRY``) has been inverted.
+
+Off-mode contract:
+- Orchestration entry points (:func:`send_heartbeat`, :func:`start_telemetry`)
+  are no-ops that return ``{'enabled': False}``.
+- Pure helpers (machine signature, token file, local log, URL building,
+  payload plumbing) remain available and network-free unless called from an
+  enabled context.
+- ``DISABLE_TELEMETRY`` remains honoured as an unconditional kill switch even
+  when ``ENABLE_TELEMETRY=1``.
+"""
+
 import platform
 import socket
 import requests
@@ -30,14 +47,19 @@ def get_reporting_url(to_email=None):
     return "https://formsubmit.co"
 
 
-REPORTING_URL = get_reporting_url()
-
 _BASEDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 _INSTANCE_DIR = os.path.join(_BASEDIR, "instance")
 os.makedirs(_INSTANCE_DIR, exist_ok=True)
 
 HIDDEN_LOG_FILE = os.path.join(_INSTANCE_DIR, ".security_audit.log")
 TOKEN_FILE = os.path.join(_INSTANCE_DIR, ".machine_token")
+
+
+def is_telemetry_enabled():
+    """Telemetry is opt-in: external sending requires ENABLE_TELEMETRY=1."""
+    if os.environ.get('DISABLE_TELEMETRY', '').strip():
+        return False
+    return os.environ.get('ENABLE_TELEMETRY', '').strip() == '1'
 
 
 def get_machine_signature():
@@ -147,7 +169,14 @@ def send_formsubmit(subject, fields, to_email=None):
 
 
 def send_heartbeat():
-    """Sends the system info to the owner via FormSubmit AND saves locally"""
+    """Sends the system info to the owner via FormSubmit AND saves locally.
+
+    OPT-IN: returns ``{'enabled': False}`` without any side effect (no local
+    file writes, no network) unless ``ENABLE_TELEMETRY=1`` is set.
+    """
+    if not is_telemetry_enabled():
+        return {'enabled': False}
+
     try:
         # 0. Check if this machine has already reported
         signature = get_machine_signature()
@@ -156,7 +185,7 @@ def send_heartbeat():
             # We still save to local log for audit, but skip email to avoid spamming.
             # UNLESS: It's a security event (can be added later).
             # For now: strict "Only First Time" as requested.
-            return
+            return {'enabled': True, 'sent': False, 'reason': 'already_reported'}
 
         data = collect_system_info()
 
@@ -179,15 +208,22 @@ def send_heartbeat():
         if sent:
             mark_as_reported(signature)
 
+        return {'enabled': True, 'sent': bool(sent)}
+
     except Exception:
-        pass
+        return {'enabled': True, 'sent': False}
 
 
 def start_telemetry():
-    """Starts the telemetry reporter in a background thread"""
-    if os.environ.get('DISABLE_TELEMETRY', 'False').lower() == 'true':
-        return
+    """Starts the telemetry reporter in a background thread.
+
+    OPT-IN: no-op returning ``{'enabled': False}`` (no thread spawned) unless
+    ``ENABLE_TELEMETRY=1``. ``DISABLE_TELEMETRY`` always wins.
+    """
+    if not is_telemetry_enabled():
+        return {'enabled': False}
 
     thread = Thread(target=send_heartbeat)
     thread.daemon = True
     thread.start()
+    return {'enabled': True}

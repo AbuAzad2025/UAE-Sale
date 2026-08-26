@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+{% extends "base.html" %}
 
 {% block title %}تفاصيل الشراء #{{ purchase.id }}{% endblock %}
 
@@ -231,7 +231,7 @@
                                     <i class="fas fa-envelope"></i> إرسال إيميل للعميل
                                 </button>
                                 
-                                <a href="https://wa.me/{{ purchase.customer_phone.replace('+', '').replace(' ', '') if purchase.customer_phone else '970598953362' }}" 
+                                <a href="https://wa.me/{{ purchase.customer_phone.replace('+', '').replace(' ', '') if purchase.customer_phone else config.COMPANY_PHONE }}" 
                                    target="_blank" 
                                    class="btn btn-success btn-block">
                                     <i class="fab fa-whatsapp"></i> تواصل عبر WhatsApp

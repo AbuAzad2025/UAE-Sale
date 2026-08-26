@@ -637,7 +637,8 @@ class TestSuppliersCrud:
 
 
 class TestSuppliersApiAndPermissions:
-    def test_api_search_by_phone_and_balance(self, client, db):
+    def test_api_search_by_phone_and_balance(self, client, login_owner, db):
+        # Q-remediation: /suppliers/api/search now requires login + manage_suppliers
         supplier = Supplier(name='Api Search Co', phone='+971509876599',
                             total_purchases_aed=Decimal('1500'), total_paid_aed=Decimal('500'))
         db.session.add(supplier)

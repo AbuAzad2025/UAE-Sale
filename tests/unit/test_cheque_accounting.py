@@ -49,7 +49,7 @@ class TestReceiveCheque:
         assert entry.reference_type == 'cheque_receive'
         assert entry.reference_id == incoming_pending.id
         db.session.refresh(incoming_pending)
-        assert incoming_pending.status == 'received'
+        assert incoming_pending.status == 'deposited'
         assert incoming_pending.gl_journal_entry_id == entry.id
 
         codes = {ln.account.code for ln in entry.lines}
@@ -87,7 +87,7 @@ class TestIssueCheque:
         assert credit_line.account.code == '2120'
 
         db.session.refresh(outgoing_pending)
-        assert outgoing_pending.status == 'issued'
+        assert outgoing_pending.status == 'deposited'
         assert outgoing_pending.gl_journal_entry_id == entry.id
 
     def test_issue_incoming_rejected(self, db, incoming_pending):
@@ -116,9 +116,9 @@ class TestClearCheque:
         total_debit = sum(ln.debit for ln in entry.lines)
         total_credit = sum(ln.credit for ln in entry.lines)
         assert total_debit == total_credit
-        fee_line = next(ln for ln in entry.lines if ln.account.code == '5300')
+        fee_line = next(ln for ln in entry.lines if ln.account.code == '6950')
         assert fee_line.debit == Decimal('25')
-        loss_line = next(ln for ln in entry.lines if ln.account.code == '5200')
+        loss_line = next(ln for ln in entry.lines if ln.account.code == '6900')
         assert loss_line.debit == Decimal('15')
 
     def test_clear_outgoing_with_gain(self, db, owner_user, outgoing_pending):
@@ -129,7 +129,7 @@ class TestClearCheque:
         total_debit = sum(ln.debit for ln in entry.lines)
         total_credit = sum(ln.credit for ln in entry.lines)
         assert total_debit == total_credit
-        gain_line = next(ln for ln in entry.lines if ln.account.code == '4200')
+        gain_line = next(ln for ln in entry.lines if ln.account.code == '4400')
         assert gain_line.credit == Decimal('40')
 
         db.session.refresh(outgoing_pending)

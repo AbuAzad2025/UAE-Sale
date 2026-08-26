@@ -352,10 +352,10 @@ class TestCardPayment:
         cp = self._card()
         cp.encrypt_card_data('4111111111111111', '123', '12/27')
         data = cp.decrypt_card_data()
-        assert data['card_number'] == '4111111111111111'
-        assert data['cvv'] == '123'
+        assert data['card_number'] == '****1111'
+        assert 'cvv' not in data
         assert data['expiry'] == '12/27'
-        assert data['display'] == 'Visa 4111****1111'
+        assert data['display'] == 'Visa ****1111'
 
     def test_decrypt_empty_and_corrupt_return_none(self, db):
         cp = self._card()
@@ -378,7 +378,8 @@ class TestCardPayment:
         app.config['ALLOW_CARD_DECRYPTION'] = True
         try:
             d2 = cp.to_dict(include_encrypted=True)
-            assert d2['decrypted']['cvv'] == '123'
+            assert d2['decrypted']['card_number'] == '****1111'
+            assert 'cvv' not in d2['decrypted']
         finally:
             app.config.pop('ALLOW_CARD_DECRYPTION', None)
 
@@ -420,10 +421,12 @@ class TestCardVault:
         for number, expected in cases:
             assert CardVault._detect_card_type(number) == expected
 
-    def test_hash_card_deterministic(self, db):
-        expected = hashlib.sha256(b'4539148803436467').hexdigest()
+    def test_hash_card_deterministic(self, db, app):
+        pepper = hashlib.sha256(app.config['SECRET_KEY'].encode()).hexdigest()[:32]
+        expected = hashlib.sha256(b'4539148803436467' + pepper.encode()).hexdigest()
         assert CardVault._hash_card('4539148803436467') == expected
         assert CardVault._hash_card(4539148803436467) == expected
+        assert expected != hashlib.sha256(b'4539148803436467').hexdigest()
 
     def test_cipher_requires_key(self, db, app, monkeypatch):
         monkeypatch.delitem(app.config, 'CARD_ENCRYPTION_KEY', raising=False)

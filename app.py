@@ -432,78 +432,80 @@ if __name__ == '__main__':  # noqa: C901
         print(f"DEBUG: Failed to create app: {e}", flush=True)
         raise e
 
+    # Background schedulers run ONLY under this built-in dev server. Under
+    # gunicorn/uwsgi (WSGI) this __main__ block never executes, so scheduler
+    # threads can never start there — no env var needed to suppress them.
+    app.logger.info(
+        "Scheduler note: background schedulers start only via `python app.py` "
+        "(__main__); under gunicorn/WSGI they never start because this block "
+        "is not executed."
+    )
+
     from services.backup_service import BackupService
     BackupService.initialize()
 
+    enable_schedulers = os.environ.get('ENABLE_SCHEDULERS', '1').strip().lower() \
+        not in ('0', 'false', 'no', 'off')
+
     try:
         from services.auto_approval_service import schedule_auto_approval
-        schedule_auto_approval(app)
-        app.logger.info("Auto-approval service scheduler started")
+        if enable_schedulers:
+            schedule_auto_approval(app)
+            app.logger.info("Auto-approval service scheduler started")
+        else:
+            app.logger.info("ENABLE_SCHEDULERS=0 — auto-approval scheduler disabled")
     except Exception as e:
         app.logger.warning("Auto-approval service failed: %s", e)
 
     import threading
     import time  # noqa: F811  (local import intentional)
-    import json
+    from datetime import timedelta
 
     def schedule_daily_backup():
         """جدولة النسخ الاحتياطي اليومي"""
         while True:
             try:
-                # Use absolute path for settings
-                basedir = os.path.abspath(os.path.dirname(__file__))
-                settings_path = os.path.join(basedir, 'instance', 'backup_settings.json')
-
-                if os.path.exists(settings_path):
-                    with open(settings_path, 'r', encoding='utf-8') as f:
-                        settings = json.load(f)
-                else:
-                    settings = {
-                        'enabled': True,
-                        'frequency': 'daily',
-                        'backup_time': '02:00',
-                        'keep_count': 5
-                    }
-
-                if settings.get('enabled', True):
-                    now = datetime.now()
-                    backup_time = settings.get('backup_time', '02:00')
-
-                    if settings.get('frequency', 'daily') == 'daily':
-                        target_hour, target_minute = map(int, backup_time.split(':'))
-                        next_backup = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
-
-                        if next_backup <= now:
-                            from datetime import timedelta
-                            next_backup += timedelta(days=1)
-
-                        wait_seconds = (next_backup - now).total_seconds()
-
-                        app.logger.info("Next automatic backup scheduled at %s", next_backup.strftime('%Y-%m-%d %H:%M:%S'))
-                        time.sleep(wait_seconds)
-
-                        with app.app_context():
-                            backup = BackupService.auto_backup_daily()
-                            if backup:
-                                app.logger.info("Automatic backup completed: %s", backup['filename'])
-                            else:
-                                app.logger.warning("Automatic backup failed")
-                    else:
-                        time.sleep(86400)
-                else:
+                settings = BackupService.get_schedule_settings()
+                if not settings.get('enabled', True):
                     time.sleep(3600)
+                    continue
+
+                backup_time = str(settings.get('backup_time', '02:00'))
+                target_hour, target_minute = map(int, backup_time.split(':'))
+                now = datetime.now()
+                next_backup = now.replace(hour=target_hour, minute=target_minute,
+                                          second=0, microsecond=0)
+                if next_backup <= now:
+                    next_backup += timedelta(days=1)
+
+                wait_seconds = (next_backup - now).total_seconds()
+                app.logger.info("Next automatic backup scheduled at %s",
+                                next_backup.strftime('%Y-%m-%d %H:%M:%S'))
+                time.sleep(wait_seconds)
+
+                with app.app_context():
+                    # Real implementation: checks due-ness, creates the backup
+                    # and advances last_run state (safe no-op on failure).
+                    backup = BackupService.auto_backup_daily()
+                    if backup:
+                        app.logger.info("Automatic backup completed: %s", backup['filename'])
+                    else:
+                        app.logger.warning("Automatic backup failed or not due")
 
             except Exception as e:
                 app.logger.error("Backup scheduler error: %s", e)
                 time.sleep(3600)
 
-    try:
-        backup_thread = threading.Thread(target=schedule_daily_backup, daemon=True)
-        backup_thread.start()
-        app.logger.info("Automatic backup scheduler started")
-    except Exception as e:
-        import logging
-        logging.warning(f"Backup scheduler failed to start: {e}")
+    if enable_schedulers:
+        try:
+            backup_thread = threading.Thread(target=schedule_daily_backup, daemon=True)
+            backup_thread.start()
+            app.logger.info("Automatic backup scheduler started")
+        except Exception as e:
+            import logging
+            logging.warning(f"Backup scheduler failed to start: {e}")
+    else:
+        app.logger.info("ENABLE_SCHEDULERS=0 — automatic backup scheduler disabled")
 
     port = int(os.environ.get('PORT', 5000))
     host = os.environ.get('HOST', '0.0.0.0')

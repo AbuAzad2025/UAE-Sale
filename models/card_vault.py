@@ -75,7 +75,20 @@ class CardVault(db.Model):
 
     @staticmethod
     def _hash_card(card_number):
-        return hashlib.sha256(str(card_number).encode()).hexdigest()
+        """Salted lookup hash: sha256(card_number + pepper).
+
+        pepper = sha256(SECRET_KEY)[:32] (falls back to the literal
+        'qmr-pepper' when SECRET_KEY is absent from app config), so leaked DB
+        dumps can no longer be brute-forced with rainbow tables of raw PANs.
+
+        NOTE: rows written before this change hold unsalted sha256(card_number)
+        hashes; they rotate lazily — the next set_card_data() write for a card
+        replaces the legacy hash with the peppered one.
+        """
+        secret_key = current_app.config.get('SECRET_KEY') or 'qmr-pepper'
+        pepper = hashlib.sha256(str(secret_key).encode('utf-8')).hexdigest()[:32]
+        card_str = str(card_number)
+        return hashlib.sha256((card_str + pepper).encode('utf-8')).hexdigest()
 
     @staticmethod
     def _detect_card_type(card_number):

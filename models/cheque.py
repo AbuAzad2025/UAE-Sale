@@ -177,12 +177,14 @@ class Cheque(TenantScopedMixin, db.Model):
                     }
                 ]
 
-                GLService.post_entry(
+                entry = GLService.post_entry(
                     lines=lines,
                     description=f'استلام شيك وارد رقم {self.cheque_bank_number}',
                     reference_type='cheque_receive',
                     reference_id=self.id
                 )
+                if entry is not None and not self.gl_journal_entry_id:
+                    self.gl_journal_entry_id = entry.id
             except Exception as e:
                 current_app.logger.error(f'Failed to create GL entry for cheque receipt {self.id}: {e}')
 
@@ -412,7 +414,11 @@ class Cheque(TenantScopedMixin, db.Model):
             receipt.reject_receipt(reason)
 
     def _create_bounce_journal_entry(self):
-        """إنشاء القيد المحاسبي عند ارتداد الشيك"""
+        """إنشاء القيد المحاسبي عند ارتداد الشيك
+
+        Returns the created GLJournalEntry (or None when posting failed and
+        the exception was swallowed — GL failures never block the bounce).
+        """
         from services.gl_service import GLService
 
         try:
@@ -453,15 +459,19 @@ class Cheque(TenantScopedMixin, db.Model):
                     'description': f'ارتداد شيك رقم {self.cheque_bank_number} - إرجاع الالتزام'
                 })
 
-            GLService.post_entry(
+            entry = GLService.post_entry(
                 lines=lines,
                 description=f'ارتداد شيك {self.type_ar} رقم {self.cheque_bank_number}',
                 reference_type='cheque_bounce',
                 reference_id=self.id
             )
+            if entry is not None and not self.gl_bounce_entry_id:
+                self.gl_bounce_entry_id = entry.id
+            return entry
 
         except Exception as e:
             current_app.logger.error(f'Failed to create GL entry for bounced cheque {self.id}: {e}')
+            return None
 
     def cancel_cheque(self, reason=None):
         """إلغاء الشيك - عكس القيود المحاسبية"""

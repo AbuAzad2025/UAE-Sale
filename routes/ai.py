@@ -3,6 +3,7 @@
 المساعد الذكي الخارق - Superhuman AI Assistant
 """
 import os
+import threading
 from flask import Blueprint, request, jsonify, render_template
 from flask_login import login_required, current_user
 from extensions import csrf, db
@@ -23,8 +24,103 @@ ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
 
 # Note: CSRF exemptions are added to individual routes that need them
 
+
+class ConversationContextStore(threading.local):
+    """Thread-local conversation state store (max 50 turns per thread).
+
+    Drop-in replacement for the previous module-level dict: supports
+    ``store[user_id] = ctx``, ``store[user_id]``, ``user_id in store`` and
+    ``del store[user_id]`` — but each thread gets its own isolated map and
+    no single thread can accumulate more than MAX_TURNS entries.
+    """
+
+    MAX_TURNS = 50
+
+    def __init__(self):
+        self._contexts = {}
+
+    def _trim_store(self):
+        """Evict oldest conversations beyond the per-thread turn budget."""
+        while len(self._contexts) > self.MAX_TURNS:
+            oldest_user = next(iter(self._contexts))
+            del self._contexts[oldest_user]
+
+    def __contains__(self, user_id):
+        return user_id in self._contexts
+
+    def __getitem__(self, user_id):
+        return self._contexts[user_id]
+
+    def __setitem__(self, user_id, value):
+        if isinstance(value, dict):
+            history = value.get('history')
+            if isinstance(history, list) and len(history) > self.MAX_TURNS:
+                value['history'] = history[-self.MAX_TURNS:]
+        self._contexts[user_id] = value
+        self._trim_store()
+
+    def __delitem__(self, user_id):
+        del self._contexts[user_id]
+
+    def get(self, user_id, default=None):
+        return self._contexts.get(user_id, default)
+
+    def pop(self, user_id, default=None):
+        return self._contexts.pop(user_id, default)
+
+
 # ========== نظام حفظ السياق المتقدم للمحادثة ==========
-conversation_context = {}  # {user_id: {'last_action': 'عميل', 'step': 1, 'option': '1', 'data': {}, 'history': []}}
+conversation_context = ConversationContextStore()
+
+# Permission codes required for destructive AI chat actions (C2 of the
+# permission_required decorator pattern): inline checks reuse
+# current_user.has_permission → Role.has_permission.
+_AI_ACTION_PERMISSIONS = {
+    'رصيد': 'manage_customers',
+    'عميل': 'manage_customers',
+    'منتج': 'manage_products',
+    'فاتورة': 'manage_sales',
+    'استلام': 'manage_payments',
+    'إعطاء': 'manage_payments',
+    'مصروف': 'manage_expenses',
+    'مورد': 'manage_suppliers',
+    'مشتريات': 'manage_purchases',
+    'شيك': 'manage_payments',
+    'مستخدم': 'manage_users',
+}
+
+_PERMISSION_LABELS_AR = {
+    'manage_sales': 'إدارة المبيعات',
+    'manage_purchases': 'إدارة المشتريات',
+    'manage_payments': 'إدارة المدفوعات',
+    'manage_warehouse': 'إدارة المستودعات',
+    'manage_expenses': 'إدارة المصروفات',
+    'manage_customers': 'إدارة الزبائن',
+    'manage_products': 'إدارة المنتجات',
+    'manage_suppliers': 'إدارة الموردين',
+    'manage_users': 'إدارة المستخدمين',
+}
+
+
+def _ai_action_denied(user, permission_code):
+    """permission_required-equivalent inline check for destructive AI actions.
+
+    Returns an Arabic denial message when ``user`` lacks the permission
+    (via User.has_permission → Role.has_permission), or None to proceed.
+    """
+    from flask_login import current_user as _current_user
+
+    actor = user if user is not None else _current_user
+    if not getattr(actor, 'is_authenticated', False):
+        return '⛔ يجب تسجيل الدخول أولاً لتنفيذ هذا الإجراء عبر المساعد الذكي.'
+    has_perm = getattr(actor, 'has_permission', None)
+    if callable(has_perm) and has_perm(permission_code):
+        return None
+    label = _PERMISSION_LABELS_AR.get(permission_code, permission_code)
+    return (
+        f'⛔ ليس لديك صلاحية لتنفيذ هذا الإجراء عبر المساعد الذكي. '
+        f'هذه العملية تتطلب صلاحية: {label}.'
+    )
 
 # ========== مستمعات ذكية ==========
 
@@ -405,6 +501,10 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب الرصيد الجديد الآن..."""
 
             elif step == 2:
+                _denial = _ai_action_denied(user, 'manage_customers')
+                if _denial:
+                    del conversation_context[user_id]
+                    return _denial
                 try:
                     new_balance = float(message.strip().replace('درهم', '').strip())
 
@@ -720,6 +820,11 @@ def _process_user_action(message, user):  # noqa: C901
                 # حفظ العنوان وإنشاء العميل
                 data['address'] = message.strip()
 
+                _denial = _ai_action_denied(user, 'manage_customers')
+                if _denial:
+                    del conversation_context[user_id]
+                    return _denial
+
                 try:
                     from models.customer import Customer
 
@@ -868,6 +973,10 @@ def _process_user_action(message, user):  # noqa: C901
 
             elif step == 4:
                 # حفظ الكمية وإنشاء المنتج
+                _denial = _ai_action_denied(user, 'manage_products')
+                if _denial:
+                    del conversation_context[user_id]
+                    return _denial
                 try:
                     data['quantity'] = float(message.strip().replace('قطعة', '').strip())
 
@@ -1051,6 +1160,10 @@ def _process_user_action(message, user):  # noqa: C901
 
             elif step == 3:
                 # حفظ الكمية وإنشاء الفاتورة
+                _denial = _ai_action_denied(user, 'manage_sales')
+                if _denial:
+                    del conversation_context[user_id]
+                    return _denial
                 try:
                     data['quantity'] = float(message.strip())
                     total_amount = data['product_price'] * data['quantity']
@@ -1198,6 +1311,11 @@ def _process_user_action(message, user):  # noqa: C901
                 # حفظ طريقة الدفع وتسجيل الدفعة
                 data['payment_method'] = message.strip()
 
+                _denial = _ai_action_denied(user, 'manage_payments')
+                if _denial:
+                    del conversation_context[user_id]
+                    return _denial
+
                 try:
                     from models.payment import Payment  # noqa: F811  (local import intentional)
                     from models.customer import Customer
@@ -1336,6 +1454,11 @@ def _process_user_action(message, user):  # noqa: C901
                 # حفظ السبب وتسجيل الدفعة
                 data['reason'] = message.strip()
 
+                _denial = _ai_action_denied(user, 'manage_payments')
+                if _denial:
+                    del conversation_context[user_id]
+                    return _denial
+
                 try:
                     from models.payment import Payment
                     from models.customer import Customer
@@ -1461,6 +1584,11 @@ def _process_user_action(message, user):  # noqa: C901
             elif step == 3:
                 # حفظ الفئة وإنشاء المصروف
                 data['category'] = message.strip()
+
+                _denial = _ai_action_denied(user, 'manage_expenses')
+                if _denial:
+                    del conversation_context[user_id]
+                    return _denial
 
                 try:
                     from models.expense import Expense  # noqa: F811  (local import intentional)
@@ -1612,6 +1740,11 @@ def _process_user_action(message, user):  # noqa: C901
                 tax_number = message.strip() if message.strip().lower() not in ['تخطي', 'skip'] else None
                 data['tax_number'] = tax_number
 
+                _denial = _ai_action_denied(user, 'manage_suppliers')
+                if _denial:
+                    del conversation_context[user_id]
+                    return _denial
+
                 try:
                     from models.supplier import Supplier  # noqa: F811  (local import intentional)
 
@@ -1754,6 +1887,10 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 أعد إدخال الكمية..."""
 
             elif step == 4:
+                _denial = _ai_action_denied(user, 'manage_purchases')
+                if _denial:
+                    del conversation_context[user_id]
+                    return _denial
                 try:
                     data['unit_price'] = float(message.strip().replace('درهم', '').strip())
                     total_amount = data['unit_price'] * data['quantity']
@@ -1896,6 +2033,10 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 أعد إدخال المبلغ..."""
 
             elif step == 4:
+                _denial = _ai_action_denied(user, 'manage_payments')
+                if _denial:
+                    del conversation_context[user_id]
+                    return _denial
                 try:
                     from models.cheque import Cheque  # noqa: F811  (local import intentional)
                     from datetime import datetime as dt
@@ -2077,6 +2218,11 @@ def _process_user_action(message, user):  # noqa: C901
             elif step == 4:
                 email = message.strip() if message.strip().lower() != 'تخطي' else None
                 data['email'] = email
+
+                _denial = _ai_action_denied(user, 'manage_users')
+                if _denial:
+                    del conversation_context[user_id]
+                    return _denial
 
                 try:
                     from models.user import User
@@ -2484,6 +2630,9 @@ http://localhost:5000/ai/assistant
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         if 'عميل' in msg_lower and ':' in message:
+            _denial = _ai_action_denied(user, 'manage_customers')
+            if _denial:
+                return _denial
             match = re.search(r':(.*)', message)
             if match:
                 data_str = match.group(1).strip()
@@ -2517,6 +2666,9 @@ http://localhost:5000/ai/assistant
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         if 'منتج' in msg_lower and ':' in message:
+            _denial = _ai_action_denied(user, 'manage_products')
+            if _denial:
+                return _denial
             match = re.search(r':(.*)', message)
             if match:
                 data_str = match.group(1).strip()
@@ -2553,6 +2705,9 @@ http://localhost:5000/ai/assistant
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         if 'مورد' in msg_lower and ':' in message:
+            _denial = _ai_action_denied(user, 'manage_suppliers')
+            if _denial:
+                return _denial
             match = re.search(r':(.*)', message)
             if match:
                 data_str = match.group(1).strip()
@@ -2589,6 +2744,9 @@ http://localhost:5000/ai/assistant
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         if any(word in msg_lower for word in ['فاتورة', 'بيع', 'مبيعات']) and ':' in message:
+            _denial = _ai_action_denied(user, 'manage_sales')
+            if _denial:
+                return _denial
             match = re.search(r':(.*)', message)
             if match:
                 data_str = match.group(1).strip()
@@ -2651,6 +2809,9 @@ http://localhost:5000/ai/assistant
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         if 'مصروف' in msg_lower and ':' in message:
+            _denial = _ai_action_denied(user, 'manage_expenses')
+            if _denial:
+                return _denial
             match = re.search(r':(.*)', message)
             if match:
                 data_str = match.group(1).strip()
@@ -2684,6 +2845,9 @@ http://localhost:5000/ai/assistant
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         if 'دفعة' in msg_lower and ':' in message:
+            _denial = _ai_action_denied(user, 'manage_payments')
+            if _denial:
+                return _denial
             match = re.search(r':(.*)', message)
             if match:
                 data_str = match.group(1).strip()
@@ -2730,6 +2894,9 @@ http://localhost:5000/ai/assistant
 
         # ========== تعديل رصيد العميل ==========
         if any(word in msg_lower for word in ['رصيد', 'تعديل رصيد', 'تغيير رصيد']) and ':' in message:
+            _denial = _ai_action_denied(user, 'manage_customers')
+            if _denial:
+                return _denial
             match = re.search(r':(.*)', message)
             if match:
                 data_str = match.group(1).strip()
@@ -2761,6 +2928,9 @@ http://localhost:5000/ai/assistant
 
         # ========== استلام دفعة من العميل ==========
         if any(word in msg_lower for word in ['استلام', 'استلم', 'دفعة من']) and ':' in message:
+            _denial = _ai_action_denied(user, 'manage_payments')
+            if _denial:
+                return _denial
             match = re.search(r':(.*)', message)
             if match:
                 data_str = match.group(1).strip()
@@ -2839,6 +3009,9 @@ http://localhost:5000/ai/assistant
 
         # ========== إعطاء دفعة للعميل ==========
         if any(word in msg_lower for word in ['إعطاء', 'أعطى', 'دفعة لل', 'دفعة ل']) and ':' in message:
+            _denial = _ai_action_denied(user, 'manage_payments')
+            if _denial:
+                return _denial
             match = re.search(r':(.*)', message)
             if match:
                 data_str = match.group(1).strip()

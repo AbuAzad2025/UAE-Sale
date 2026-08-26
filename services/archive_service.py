@@ -6,6 +6,30 @@ from extensions import db
 from models import ArchivedRecord
 
 
+def resolve_model_class(table_name):
+    """Resolve a model class from an archive's table_name.
+
+    Archives store the SQL tablename (e.g. 'customers'), but the SQLAlchemy
+    class registry is keyed by class name ('Customer'). Try the direct
+    class-name lookup first (legacy archives), then scan the registry
+    mappers for a matching __tablename__.
+    """
+    if not table_name:
+        return None
+
+    registry = db.Model.registry
+
+    direct = registry._class_registry.get(table_name)
+    if isinstance(direct, type):
+        return direct
+
+    for mapper in registry.mappers:
+        model = mapper.class_
+        if getattr(model, '__tablename__', None) == table_name:
+            return model
+    return None
+
+
 class ArchiveService:
 
     @staticmethod
@@ -72,7 +96,7 @@ class ArchiveService:
     @staticmethod
     def restore_record(archived_record):
         try:
-            model_class = db.Model.registry._class_registry.get(archived_record.table_name)
+            model_class = resolve_model_class(archived_record.table_name)
 
             if not model_class:
                 raise ValueError(f'Model not found: {archived_record.table_name}')

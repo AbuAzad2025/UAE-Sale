@@ -12,6 +12,12 @@ import os
 logger = logging.getLogger(__name__)
 
 
+def _disk_root():
+    """OS-appropriate filesystem root for the disk usage probe
+    ('C:\\' on Windows, '/' on POSIX)."""
+    return os.path.normpath(os.path.abspath(os.sep))
+
+
 class HealthCheckService:
     """خدمة فحص صحة النظام"""
 
@@ -90,10 +96,17 @@ class HealthCheckService:
         try:
             cpu_percent = psutil.cpu_percent(interval=1)
             memory = psutil.virtual_memory()
-            disk = psutil.disk_usage('/')
 
             status = 'healthy'
             warnings = []
+
+            # Cross-platform disk probe: never raises — degrades to unknown.
+            disk_percent = None
+            try:
+                disk = psutil.disk_usage(_disk_root())
+                disk_percent = disk.percent
+            except Exception as disk_exc:
+                logger.warning(f'Disk usage check failed on {_disk_root()}: {disk_exc}')
 
             if cpu_percent > 90:
                 status = 'warning'
@@ -103,15 +116,19 @@ class HealthCheckService:
                 status = 'warning'
                 warnings.append(f'High memory usage: {memory.percent}%')
 
-            if disk.percent > 90:
+            if disk_percent is None:
+                if status == 'healthy':
+                    status = 'unknown'
+                warnings.append('Disk usage unavailable')
+            elif disk_percent > 90:
                 status = 'warning'
-                warnings.append(f'Low disk space: {disk.percent}% used')
+                warnings.append(f'Low disk space: {disk_percent}% used')
 
             return {
                 'status': status,
                 'cpu_percent': cpu_percent,
                 'memory_percent': memory.percent,
-                'disk_percent': disk.percent,
+                'disk_percent': disk_percent,
                 'warnings': warnings if warnings else None
             }
         except Exception as e:

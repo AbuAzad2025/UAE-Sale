@@ -8,6 +8,7 @@ from models import Donation, PackagePurchase
 from services.notification_service import NotificationService
 import hmac
 import hashlib
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,9 +18,43 @@ class WebhookService:
     """خدمة معالجة Webhooks"""
 
     @staticmethod
+    def verify_ipn_signature(raw_body, received_sig, secret):
+        """C2 canonical NOWPayments IPN verification (contract C2).
+
+        Canonical scheme: SHA256-HMAC hex digest over the sorted-keys JSON
+        serialization of the parsed body:
+
+            expected = HMAC_SHA256(secret, json.dumps(parsed, sort_keys=True))
+
+        Args:
+            raw_body: raw request body bytes (or an already-parsed dict)
+            received_sig: signature hex string from the request header
+            secret: IPN secret
+
+        Returns:
+            bool: True only when the canonical signature matches; fails closed.
+        """
+        if not secret or not received_sig or raw_body is None:
+            return False
+        try:
+            if isinstance(raw_body, (bytes, bytearray)):
+                payload = json.loads(raw_body.decode('utf-8'))
+            else:
+                payload = raw_body
+            canonical = json.dumps(payload, sort_keys=True).encode('utf-8')
+            expected_signature = hmac.new(
+                secret.encode('utf-8'),
+                canonical,
+                hashlib.sha256,
+            ).hexdigest()
+            return hmac.compare_digest(expected_signature, str(received_sig))
+        except Exception:
+            return False
+
+    @staticmethod
     def verify_nowpayments_signature(payload, signature, ipn_secret):
         """
-        التحقق من توقيع NOWPayments
+        التحقق من توقيع NOWPayments — LEGACY scheme: SHA512-hex-of-raw-body.
 
         Args:
             payload (bytes): محتوى الـ webhook
@@ -29,7 +64,7 @@ class WebhookService:
         Returns:
             bool: صحة التوقيع
         """
-        if not ipn_secret:
+        if not ipn_secret or payload is None:
             logger.warning('NOWPayments IPN secret not configured')
             return False
 
@@ -43,17 +78,51 @@ class WebhookService:
         return hmac.compare_digest(expected_signature, signature)
 
     @staticmethod
-    def process_nowpayments_webhook(data):
+    def process_nowpayments_webhook(data, raw_body=None, received_sig=None,
+                                    ipn_secret=None):  # noqa: C901
         """
         معالجة webhook من NOWPayments
 
+        Signature policy (C2): when both received_sig and ipn_secret are
+        provided the webhook must verify under EITHER the canonical
+        verify_ipn_signature scheme OR the legacy x-nowpayments-signature
+        SHA512-of-body scheme; the matched scheme is logged. If neither
+        matches the payload is rejected without processing.
+
         Args:
             data (dict): بيانات الـ webhook
+            raw_body (bytes|None): original request body (used for legacy check)
+            received_sig (str|None): signature header value
+            ipn_secret (str|None): configured IPN secret
 
         Returns:
             dict: نتيجة المعالجة
         """
         try:
+            if received_sig is not None and ipn_secret:
+                body_bytes = raw_body
+                if body_bytes is None:
+                    try:
+                        body_bytes = json.dumps(data).encode('utf-8')
+                    except Exception:
+                        body_bytes = b''
+
+                canonical_ok = WebhookService.verify_ipn_signature(
+                    raw_body if raw_body is not None else data,
+                    received_sig, ipn_secret,
+                )
+                legacy_ok = WebhookService.verify_nowpayments_signature(
+                    body_bytes, str(received_sig), ipn_secret,
+                )
+
+                if canonical_ok:
+                    logger.info('NOWPayments webhook signature verified via canonical SHA256-sorted-JSON scheme')
+                elif legacy_ok:
+                    logger.info('NOWPayments webhook signature verified via legacy SHA512(body) scheme')
+                else:
+                    logger.warning('NOWPayments webhook signature invalid under all known schemes')
+                    return {'success': False, 'error': 'Invalid signature'}
+
             payment_id = data.get('payment_id')
             payment_status = data.get('payment_status')
             order_id = data.get('order_id', '')

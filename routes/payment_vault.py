@@ -7,13 +7,64 @@ from datetime import datetime, timezone
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db, limiter, csrf
-from models import PaymentVault, PaymentLog, Donation, CardPayment, Package, PackagePurchase
+from models import (PaymentVault, PaymentLog, Donation, CardPayment,
+                    Package, PackagePurchase, CardVault, Customer,
+                    SystemSettings)
 from services.nowpayments_service import NOWPaymentsService
 from utils.helpers import create_audit_log
 import logging
+import uuid
 
 payment_vault_bp = Blueprint('payment_vault', __name__, url_prefix='/payment-vault')
 logger = logging.getLogger(__name__)
+
+
+def get_whatsapp_contact():
+    """Public WhatsApp contact — settings-driven, never hardcoded.
+
+    Priority: SystemSettings custom setting 'contact_whatsapp' → config
+    COMPANY_PHONE → empty string.
+    """
+    try:
+        settings = SystemSettings.query.filter_by(is_active=True).first()
+        if settings:
+            custom = settings.get_custom_setting('contact_whatsapp')
+            if custom:
+                return str(custom)
+    except Exception:
+        pass
+    return current_app.config.get('COMPANY_PHONE', '')
+
+
+def _find_or_create_customer_for_card(customer_name, customer_email, customer_phone):
+    """Resolve a Customer row to own a CardVault entry for public card flows."""
+    email = (customer_email or '').strip() or None
+    customer = None
+    if email:
+        customer = Customer.query.filter_by(email=email).first()
+    if customer is None:
+        customer = Customer(
+            name=(customer_name or 'Guest').strip()[:200] or 'Guest',
+            email=email,
+            phone=(customer_phone or '').strip() or None,
+            customer_type='regular',
+        )
+        db.session.add(customer)
+        db.session.flush()
+    return customer
+
+
+def _split_expiry(expiry):
+    """'MM/YY' | 'MM/YYYY' | 'MM-YY' → ('MM', 'YY') or (None, None)."""
+    try:
+        parts = str(expiry or '').replace('-', '/').split('/')
+        month = parts[0].strip()
+        year = parts[1].strip() if len(parts) > 1 else ''
+        if month.isdigit() and year.isdigit():
+            return month, year
+    except Exception:
+        pass
+    return None, None
 
 
 @payment_vault_bp.route('/')
@@ -591,7 +642,7 @@ def decrypt_card(card_id):
 
 
 @payment_vault_bp.route('/process-payment', methods=['POST'])
-@limiter.limit("20 per minute")
+@limiter.limit("5 per minute")
 def process_payment():
     """معالجة الدفع (كريبتو أو بطاقة) - عام، لا يحتاج تسجيل دخول"""
     try:
@@ -624,8 +675,11 @@ def process_payment():
             # معالجة البطاقات
             amount = float(data.get('amount', 0))
             card_number = data.get('card_number', '').replace(' ', '')
-            cvv = data.get('cvv', '')
             expiry = data.get('expiry', '')
+
+            # SECURITY: CVV is accept-and-discard — it must never be persisted
+            # in any store (CardPayment payload or CardVault).
+            _ = data.get('cvv', '')
 
             if amount < 1:
                 return jsonify({'success': False, 'error': 'الحد الأدنى هو $1'}), 400
@@ -641,33 +695,56 @@ def process_payment():
                 transaction_type=data.get('type', 'donation'),
                 package=data.get('package', ''),
                 amount=amount,
-                transaction_id=f'CARD_{int(datetime.now().timestamp())}',
+                transaction_id=f'CARD_{uuid.uuid4().hex}',
                 payment_gateway='whatsapp',
                 status='pending',
                 ip_address=request.remote_addr,
                 user_agent=request.headers.get('User-Agent')
             )
 
-            # تشفير البيانات
-            if card_payment.encrypt_card_data(card_number, cvv, expiry):
+            # تشفير البيانات (CVV مستبعد بالكامل — masked PAN + token hash فقط)
+            if card_payment.encrypt_card_data(card_number, '', expiry):
+                # SECURITY: PAN is stored encrypted via CardVault.set_card_data
+                # (no CVV argument) and tied to a resolved Customer record.
+                # card_hash is UNIQUE — reuse the vault row for a known card
+                # instead of violating the constraint on repeat payments.
+                card_hash = CardVault._hash_card(card_number)
+                card_vault_entry = CardVault.query.filter_by(card_hash=card_hash).first()
+                if card_vault_entry is None:
+                    vault_customer = _find_or_create_customer_for_card(
+                        data.get('customer_name', ''),
+                        data.get('customer_email', ''),
+                        data.get('customer_phone', ''),
+                    )
+                    exp_month, exp_year = _split_expiry(expiry)
+                    card_vault_entry = CardVault(customer_id=vault_customer.id)
+                    card_vault_entry.set_card_data(
+                        card_number,
+                        cardholder_name=data.get('customer_name', '') or 'Guest',
+                        expiry_month=exp_month,
+                        expiry_year=exp_year,
+                    )
+                    db.session.add(card_vault_entry)
                 db.session.add(card_payment)
                 db.session.commit()
 
-                # تسجيل
-                PaymentLog.log_action(
-                    vault_id=PaymentVault.query.first().id if PaymentVault.query.first() else None,
-                    action='card_payment_received',
-                    description=f'دفع بالبطاقة: {card_payment.get_card_display()} - ${amount}',
-                    level='info',
-                    ip_address=request.remote_addr,
-                    user_agent=request.headers.get('User-Agent')
-                )
+                # تسجيل (يُتجاهل بأمان إذا لم تُنشأ الخزينة بعد)
+                vault_row = PaymentVault.query.first()
+                if vault_row:
+                    PaymentLog.log_action(
+                        vault_id=vault_row.id,
+                        action='card_payment_received',
+                        description=f'دفع بالبطاقة: {card_payment.get_card_display()} - ${amount}',
+                        level='info',
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent')
+                    )
 
                 return jsonify({
                     'success': True,
                     'message': 'تم حفظ معلومات البطاقة بشكل آمن ومشفر',
                     'transaction_id': card_payment.transaction_id,
-                    'whatsapp': '0598953362',
+                    'whatsapp': get_whatsapp_contact(),
                     'next_step': 'سيتم التواصل معك عبر WhatsApp خلال 24 ساعة'
                 })
             else:
@@ -677,6 +754,7 @@ def process_payment():
             return jsonify({'success': False, 'error': 'طريقة دفع غير مدعومة'}), 400
 
     except Exception as e:
+        db.session.rollback()
         current_app.logger.error(f'خطأ في معالجة الدفع: {str(e)}')
         return jsonify({'success': False, 'error': f'خطأ: {str(e)}'}), 500
 
@@ -740,7 +818,7 @@ def change_password():
 
 @payment_vault_bp.route('/api/purchase', methods=['POST'])
 @csrf.exempt  # JSON API - CSRF bypassed; Origin validation below
-@limiter.limit("10 per minute")
+@limiter.limit("5 per minute")
 def api_create_purchase():  # noqa: C901
     """API لإنشاء عملية شراء جديدة"""
     try:
@@ -908,7 +986,7 @@ def api_create_purchase():  # noqa: C901
 
 @payment_vault_bp.route('/api/donation', methods=['POST'])
 @csrf.exempt  # JSON API - CSRF bypassed; Origin validation below
-@limiter.limit("10 per minute")
+@limiter.limit("5 per minute")
 def api_create_donation():  # noqa: C901
     """API لإنشاء تبرع جديد"""
     try:

@@ -74,3 +74,21 @@ jobs:
           flask db upgrade head
           echo "=== Current version ==="
           flask db current
+
+      - name: Best-effort downgrade one revision then re-upgrade
+        if: always()
+        continue-on-error: true
+        env:
+          DATABASE_URL: postgresql://azad_test:azad_test@localhost:5432/azad_test
+          SECRET_KEY: test-secret-key-not-for-production
+          APP_ENV: testing
+          DEBUG: "true"
+        run: |
+          echo "=== Downgrade one revision (reversibility probe) ==="
+          flask db downgrade -1
+          echo "=== Current version after downgrade ==="
+          flask db current
+          echo "=== Re-upgrade back to head ==="
+          flask db upgrade head
+          echo "=== Current version after re-upgrade ==="
+          flask db current

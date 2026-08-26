@@ -127,7 +127,7 @@ def robots():
     ملف Robots.txt لتوجيه محركات البحث
     Robots.txt for Search Engine Crawlers
     """
-    _ = request.url_root.rstrip('/')
+    base_url = request.url_root.rstrip('/')
 
     robots_content = """# شركة أزاد للأنظمة الذكية
 # Azad Smart Systems - Robots.txt
@@ -160,4 +160,4 @@ Sitemap: {base_url}/sitemap.xml
 Crawl-delay: 1
 """
 
-    return Response(robots_content, mimetype='text/plain')
+    return Response(robots_content.replace('{base_url}', base_url), mimetype='text/plain')

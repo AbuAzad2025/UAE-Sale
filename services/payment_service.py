@@ -47,6 +47,27 @@ def write_receipt_audit(action, record_id, changes):
 class PaymentService:
 
     @staticmethod
+    def _apply_allocation(sale, allocated_amount):
+        """Apply one allocation to a sale (mutates paid/balance/status).
+
+        FX contract: the base-currency impact is converted at the SALE's own
+        exchange rate (the rate the invoice was booked at), never at the
+        receipt's rate.
+        """
+        sale_rate = Decimal(str(sale.exchange_rate)) if sale.exchange_rate else Decimal('1')
+        sale.paid_amount = Decimal(str(sale.paid_amount or 0)) + allocated_amount
+        sale.paid_amount_base = (
+            Decimal(str(sale.paid_amount_base or 0)) + allocated_amount * sale_rate
+        )
+        balance_due = Decimal(str(sale.balance_due or 0))
+        sale.balance_due = max(balance_due - allocated_amount, Decimal('0'))
+
+        if sale.paid_amount >= sale.total_amount:
+            sale.payment_status = 'paid'
+        elif sale.paid_amount > 0:
+            sale.payment_status = 'partial'
+
+    @staticmethod
     @tx
     def create_receipt(payment_data):  # noqa: C901
         """
@@ -61,6 +82,15 @@ class PaymentService:
                 'notes': str (optional),
                 ...
             }
+
+        Allocation contract (C4):
+            * ``allocate_to_sales`` falsy (None/False) → auto-FIFO allocation
+              against the customer's oldest open sales when any exist.
+            * ``allocate_to_sales == {}`` (explicit empty dict) → forced
+              UNALLOCATED receipt, even when open sales exist.
+            * non-empty mapping → explicit allocation to those sales.
+        Each allocated line converts to base currency at that sale's
+        exchange rate.
         """
         from models import Customer
 
@@ -82,6 +112,19 @@ class PaymentService:
         gl_entry_ref = None
         gl_warning = None
         allocation_summary = []
+        auto_fifo = False
+
+        # C4: resolve the allocation mode up-front (before the receipt row is
+        # built) so source_type and audit flags reflect the real behavior.
+        allocate_requested = payment_data.get('allocate_to_sales')
+        if allocate_requested == {}:
+            # explicit empty dict → force-unallocated
+            allocate_to_sales = None
+        elif not allocate_requested:
+            allocate_to_sales = None
+            auto_fifo = bool(PaymentService.get_unpaid_sales(customer))
+        else:
+            allocate_to_sales = allocate_requested
 
         try:
             # Convert cheque_date to date object if it's a string
@@ -197,16 +240,31 @@ class PaymentService:
                     if not sale or sale.customer_id != customer.id:
                         continue
 
-                    allocated_amount = min(Decimal(str(allocated)), remaining_amount, sale.balance_due)
+                    balance_due = Decimal(str(sale.balance_due or 0))
+                    allocated_amount = min(
+                        Decimal(str(allocated)), remaining_amount, balance_due
+                    )
 
-                    sale.paid_amount += allocated_amount
-                    sale.paid_amount_base += allocated_amount * exchange_rate
-                    sale.balance_due -= allocated_amount
+                    PaymentService._apply_allocation(sale, allocated_amount)
 
-                    if sale.paid_amount >= sale.total_amount:
-                        sale.payment_status = 'paid'
-                    elif sale.paid_amount > 0:
-                        sale.payment_status = 'partial'
+                    remaining_amount -= allocated_amount
+                    allocation_summary.append({'sale_id': sale.id, 'allocated': allocated_amount})
+
+            elif auto_fifo:
+                # C4 auto-FIFO: oldest open sales first, same internal loop.
+                remaining_amount = Decimal(str(amount))
+
+                for sale in PaymentService.get_unpaid_sales(customer):
+                    if remaining_amount <= 0:
+                        break
+
+                    balance_due = Decimal(str(sale.balance_due or 0))
+                    if balance_due <= 0:
+                        continue
+
+                    allocated_amount = min(remaining_amount, balance_due)
+
+                    PaymentService._apply_allocation(sale, allocated_amount)
 
                     remaining_amount -= allocated_amount
                     allocation_summary.append({'sale_id': sale.id, 'allocated': allocated_amount})
@@ -229,6 +287,7 @@ class PaymentService:
                 'gl_posted': gl_posted,
                 'gl_entry': gl_entry_ref,
                 'gl_warning': gl_warning,
+                'auto_fifo': auto_fifo,
                 'allocations': allocation_summary,
             })
 
@@ -290,16 +349,13 @@ class PaymentService:
                 if remaining_amount <= 0:
                     break
 
-                allocated = min(remaining_amount, sale.balance_due)
+                balance_due = Decimal(str(sale.balance_due or 0))
+                if balance_due <= 0:
+                    continue
 
-                sale.paid_amount += allocated
-                sale.paid_amount_base += allocated * receipt.exchange_rate
-                sale.balance_due -= allocated
+                allocated = min(remaining_amount, balance_due)
 
-                if sale.paid_amount >= sale.total_amount:
-                    sale.payment_status = 'paid'
-                elif sale.paid_amount > 0:
-                    sale.payment_status = 'partial'
+                PaymentService._apply_allocation(sale, allocated)
 
                 remaining_amount -= allocated
                 allocations.append({'sale_id': sale.id, 'allocated': allocated})

@@ -215,7 +215,7 @@ def register_purchase_listeners():
             return
 
         try:
-            # حساب إجمالي المشتريات المؤكدة
+            # حساب إجمالي المشتريات المؤكدة (تمرير واحد على فواتير المورد)
             purchases_result = connection.execute(
                 Purchase.__table__.select().where(
                     Purchase.supplier_id == target.supplier_id,
@@ -224,33 +224,21 @@ def register_purchase_listeners():
             )
 
             total_purchases = Decimal('0')
-            total_paid_from_purchases = Decimal('0')
-
             for purchase_row in purchases_result:
-                total_purchases += (purchase_row.amount_base or Decimal('0'))
-                # حساب المدفوع من جدول المدفوعات لهذا المورد
-                from sqlalchemy import func
-                paid_for_supplier = connection.execute(
-                    func.sum(Payment.amount_base).select().where(
-                        Payment.supplier_id == target.supplier_id
-                    )
-                ).scalar() or Decimal('0')
-                total_paid_from_purchases += paid_for_supplier
+                amount = purchase_row.amount_base
+                if amount is None:
+                    amount = purchase_row.total_amount
+                total_purchases += (Decimal(str(amount)) if amount is not None else Decimal('0'))
 
-            # حساب إجمالي المدفوعات المباشرة
-            payments_result = connection.execute(
-                Payment.__table__.select().where(
-                    Payment.supplier_id == target.supplier_id
-                )
+            # إجمالي المدفوعات المؤكدة للمورد — استعلام واحد خارج حلقة الفواتير.
+            # كان يُحسب داخل الحلقة سابقاً فيُضرب إجمالي المدفوعات بعدد الفواتير
+            # (N+1 double-count) ثم يُضاف مرة رابعة من حلقة المدفوعات المباشرة.
+            from sqlalchemy import select, func
+            stmt = select(func.sum(Payment.amount_base)).where(
+                Payment.supplier_id == target.supplier_id,
+                Payment.payment_confirmed.is_(True)
             )
-
-            total_paid_direct = sum(
-                (payment_row.amount_base or Decimal('0'))
-                for payment_row in payments_result
-            )
-
-            # إجمالي المدفوع = من الفواتير + المدفوعات المباشرة
-            total_paid = total_paid_from_purchases + total_paid_direct
+            total_paid = connection.execute(stmt).scalar() or Decimal('0')
 
             # تحديث إحصائيات المورد
             connection.execute(

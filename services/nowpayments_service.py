@@ -5,8 +5,6 @@ NOWPayments Integration Service
 
 import requests
 import json
-import hashlib
-import hmac
 from datetime import datetime
 from decimal import Decimal
 from flask import current_app
@@ -249,7 +247,9 @@ class NOWPaymentsService:
 
     def verify_ipn(self, request_data, signature):
         """
-        التحقق من صحة IPN callback
+        التحقق من صحة IPN callback — delegates to the single canonical
+        implementation (WebhookService.verify_ipn_signature, contract C2):
+        sorted-keys JSON SHA256-HMAC hex.
 
         Args:
             request_data (dict): بيانات الطلب
@@ -258,18 +258,14 @@ class NOWPaymentsService:
         Returns:
             bool: صحة التوقيع
         """
+        from services.webhook_service import WebhookService
+
         try:
-            # إنشاء التوقيع المتوقع
-            expected_signature = hmac.new(
-                self.ipn_secret.encode('utf-8'),
-                json.dumps(request_data, sort_keys=True).encode('utf-8'),
-                hashlib.sha256
-            ).hexdigest()
-
-            return hmac.compare_digest(signature, expected_signature)
-
+            raw_body = json.dumps(request_data).encode('utf-8')
         except Exception:
             return False
+
+        return WebhookService.verify_ipn_signature(raw_body, signature, self.ipn_secret)
 
     def process_payment_callback(self, payment_data):
         """

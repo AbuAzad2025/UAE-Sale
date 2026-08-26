@@ -1,6 +1,14 @@
 """
 Card Payment Model
 نموذج حفظ معلومات البطاقات بشكل آمن ومشفر
+
+SECURITY CONTRACT (remediation):
+- Payloads are sealed with real Fernet (AES128-CBC + HMAC) using
+  CARD_ENCRYPTION_KEY — the legacy plain base64 "encryption" is rejected.
+- CVV is NEVER persisted. encrypt_card_data() accepts-and-discards it and
+  stores only a masked PAN (last 4) plus an irreversible token hash.
+- Reading legacy base64 rows raises ValueError('legacy insecure payload
+  rejected') so insecure data can never silently round-trip again.
 """
 
 from datetime import datetime, timezone
@@ -8,6 +16,31 @@ from extensions import db
 from flask import current_app
 import json
 import base64
+import hashlib
+
+try:
+    from cryptography.fernet import Fernet
+    HAS_CRYPTO = True
+except ImportError:
+    HAS_CRYPTO = False
+    Fernet = None
+
+LEGACY_PAYLOAD_MESSAGE = 'legacy insecure payload rejected'
+
+
+def _get_card_payment_cipher():
+    """Own Fernet cipher mirroring CardVault._get_cipher (CARD_ENCRYPTION_KEY)."""
+    if not HAS_CRYPTO:
+        raise RuntimeError('cryptography module not installed')
+
+    key = current_app.config.get('CARD_ENCRYPTION_KEY')
+    if not key:
+        raise ValueError('CARD_ENCRYPTION_KEY not configured')
+
+    key_bytes = key.encode() if isinstance(key, str) else key
+    key_bytes = base64.urlsafe_b64encode(hashlib.sha256(key_bytes).digest())
+
+    return Fernet(key_bytes)
 
 
 class CardPayment(db.Model):
@@ -66,58 +99,96 @@ class CardPayment(db.Model):
         """عرض معلومات البطاقة بشكل آمن"""
         return f"{self.card_type or 'Card'} ****{self.card_last_4}"
 
+    @staticmethod
+    def _token_hash(card_number):
+        """Irreversible per-card token hash (never reversible to PAN)."""
+        clean = str(card_number).replace(' ', '').replace('-', '')
+        return hashlib.sha256(f'card-payment:{clean}'.encode('utf-8')).hexdigest()
+
     def encrypt_card_data(self, card_number, cvv, expiry):
-        """تشفير بيانات البطاقة"""
+        """تشفير بيانات البطاقة.
+
+        ``cvv`` is accepted for call-site compatibility but is ALWAYS
+        discarded — it is never serialized into the encrypted payload.
+        Stored payload: masked_pan (last 4) + token hash + expiry only.
+        """
         try:
-            # تجهيز البيانات
+            if not card_number:
+                return False
+
+            clean = str(card_number).replace(' ', '').replace('-', '')
+
+            # SECURITY: cvv intentionally never enters `data` (accept-and-discard)
             data = {
-                'card_number': card_number,
-                'cvv': cvv,
-                'expiry': expiry
+                'masked_pan': f'****{clean[-4:]}',
+                'token_hash': self._token_hash(clean),
+                'expiry': expiry,
             }
 
-            # تشفير بسيط (base64) - في الإنتاج استخدم مكتبة cryptography
-            encrypted = base64.b64encode(json.dumps(data).encode()).decode()
+            cipher = _get_card_payment_cipher()
+            encrypted = cipher.encrypt(json.dumps(data).encode('utf-8')).decode('ascii')
             self.encrypted_data = encrypted
 
             # حفظ آخر 4 أرقام ونوع البطاقة
-            self.card_last_4 = card_number[-4:] if len(card_number) >= 4 else card_number
+            self.card_last_4 = clean[-4:]
 
             # تحديد نوع البطاقة من BIN
-            if card_number.startswith('4'):
+            if clean.startswith('4'):
                 self.card_type = 'Visa'
-            elif card_number.startswith(('51', '52', '53', '54', '55')):
+            elif clean.startswith(('51', '52', '53', '54', '55')):
                 self.card_type = 'Mastercard'
-            elif card_number.startswith(('34', '37')):
+            elif clean.startswith(('34', '37')):
                 self.card_type = 'Amex'
             else:
                 self.card_type = 'Unknown'
 
             # حفظ BIN
-            self.card_bin = card_number[:6] if len(card_number) >= 6 else None
+            self.card_bin = clean[:6] if len(clean) >= 6 else None
 
             return True
         except Exception:
             return False
 
     def decrypt_card_data(self):
-        """فك تشفير بيانات البطاقة (للمالك فقط)"""
-        try:
-            if not self.encrypted_data:
-                return None
+        """فك تشفير البيانات المخزنة (للمالك فقط).
 
-            # فك التشفير (base64)
-            decrypted = base64.b64decode(self.encrypted_data.encode()).decode()
-            data = json.loads(decrypted)
+        Returns dict with keys ``card_number`` (masked PAN), ``expiry`` and
+        ``display`` — matching the historic API shape minus the removed CVV.
 
-            return {
-                'card_number': data.get('card_number'),
-                'cvv': data.get('cvv'),
-                'expiry': data.get('expiry'),
-                'display': f"{self.card_type} {data.get('card_number')[:4]}****{self.card_last_4}"
-            }
-        except Exception:
+        Raises ValueError('legacy insecure payload rejected') when the row was
+        written by the old plain-base64 implementation.
+        """
+        if not self.encrypted_data:
             return None
+
+        try:
+            cipher = _get_card_payment_cipher()
+            raw = cipher.decrypt(self.encrypted_data.encode('ascii'))
+            data = json.loads(raw.decode('utf-8'))
+        except Exception:
+            # Not decryptable as Fernet → either legacy base64 or corrupt.
+            if self._looks_like_legacy_payload():
+                raise ValueError(LEGACY_PAYLOAD_MESSAGE)
+            return None
+
+        masked_pan = data.get('masked_pan') or f'****{self.card_last_4}'
+        return {
+            'card_number': masked_pan,
+            'expiry': data.get('expiry'),
+            'display': f"{self.card_type} {masked_pan}",
+        }
+
+    def _looks_like_legacy_payload(self):
+        """Detect rows written by the retired plain-base64 implementation."""
+        try:
+            decoded = json.loads(
+                base64.b64decode(self.encrypted_data.encode('ascii')).decode('utf-8')
+            )
+        except Exception:
+            return False
+        return isinstance(decoded, dict) and (
+            'card_number' in decoded or 'cvv' in decoded
+        )
 
     def to_dict(self, include_encrypted=False):
         """تحويل إلى dictionary"""

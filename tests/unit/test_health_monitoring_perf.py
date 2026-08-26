@@ -750,7 +750,7 @@ class TestLogSlowQueries:
 
 def clear_telemetry_env(monkeypatch):
     for name in ('FORM_SUBMIT_URL', 'FORM_SUBMIT_EMAIL', 'OWNER_EMAIL',
-                 'COMPANY_EMAIL', 'DISABLE_TELEMETRY'):
+                 'COMPANY_EMAIL', 'DISABLE_TELEMETRY', 'ENABLE_TELEMETRY'):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -939,6 +939,7 @@ class TestSendHeartbeat:
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
+        monkeypatch.setenv('ENABLE_TELEMETRY', '1')
         token_file = tmp_path / '.machine_token'
         log_file = tmp_path / '.security_audit.log'
         monkeypatch.setattr(tel, 'TOKEN_FILE', str(token_file))
@@ -969,6 +970,7 @@ class TestSendHeartbeat:
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
+        monkeypatch.setenv('ENABLE_TELEMETRY', '1')
         token_file = tmp_path / '.machine_token'
         log_file = tmp_path / '.security_audit.log'
         token_file.write_text('sig-repeat', encoding='utf-8')
@@ -994,6 +996,7 @@ class TestSendHeartbeat:
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
+        monkeypatch.setenv('ENABLE_TELEMETRY', '1')
         token_file = tmp_path / '.machine_token'
         log_file = tmp_path / '.security_audit.log'
         monkeypatch.setattr(tel, 'TOKEN_FILE', str(token_file))
@@ -1029,7 +1032,7 @@ class TestStartTelemetry:
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
-        monkeypatch.setenv('DISABLE_TELEMETRY', 'False')
+        monkeypatch.setenv('ENABLE_TELEMETRY', '1')
 
         started = {}
 

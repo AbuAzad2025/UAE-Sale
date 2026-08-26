@@ -41,6 +41,23 @@ def resolve_account(role_name):
     return FALLBACK_ACCOUNTS.get(role_name)
 
 
+def merchant_receivable_codes():
+    """Non-standard AR buckets used for merchant/partner invoices.
+
+    Merchant-type customer invoices are debited to MERCHANTS_PAYABLE ('2115')
+    and partner-type to PARTNERS_CURRENT ('3350') instead of the AR control
+    ('1130'). Sub-ledger reconciliation imports this helper (defensively) so
+    its control scope covers ALL customer types, keeping the
+    control-vs-subledger proof intact. Returns ``['2115', '3350']`` today.
+    """
+    codes = []
+    for role_name in ('MERCHANTS_PAYABLE', 'PARTNER_CURRENT'):
+        code = resolve_account(role_name)
+        if code and code not in codes:
+            codes.append(str(code))
+    return codes
+
+
 class SaleService:
 
     @staticmethod

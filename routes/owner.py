@@ -1271,6 +1271,9 @@ def sql_console():
         query_upper = sql_query.upper().strip()
         if not query_upper.startswith('SELECT'):
             error = '❌ فقط الاستعلامات SELECT مسموح بها عبر وحدة التحكم'
+        # SECURITY: exactly one statement — reject any ';' beyond a trailing one
+        elif ';' in query_upper.rstrip(';').rstrip():
+            error = '❌ يُسمح بعبارة واحدة فقط (لا يجوز استخدام الفاصلة المنقوطة داخل الاستعلام)'
         elif any(kw in query_upper for kw in ['DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'GRANT', 'REVOKE', 'EXEC', 'INTO OUTFILE', 'LOAD_FILE', 'PG_READ_FILE', 'PG_WRITE_FILE']):  # noqa: E501
             error = '❌ استعلام خطير! غير مسموح.'
         else:
@@ -2598,7 +2601,7 @@ def product_performance():
     for p in products_perf:
         product = db.session.get(Product, p.id)
 
-        margin = p.total_revenue - (product.purchase_price * p.total_sold) if product.purchase_price else 0
+        margin = p.total_revenue - (product.cost_price * p.total_sold) if product.cost_price else 0
         margin_percent = (margin / p.total_revenue * 100) if p.total_revenue > 0 else 0
 
         performance_data.append({

@@ -9,7 +9,7 @@ Covers:
 - Header accounts excluded from posting (existing guard)
 - Aggregation: parent = sum(children)
 """
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -290,19 +290,20 @@ class TestHeaderGuardAndAggregation:
         assert current.get_aggregate_balance(active_only=False) == Decimal('750')
         assert current.get_balance() == 0  # header itself never posted to
 
-    def test_get_balance_date_filters(self, db, core):
-        """حدود تواريخ الرصيد — قيد مؤرخ مستقبلًا لإزالة الغموض الزمني."""
-        entry_date = datetime.now(timezone.utc) + timedelta(days=2)
+        # قيد مثبت على منتصف يوم اليوم — حتمي عبر المناطق الزمنية/CI
+        t = date.today()
+        entry_date = datetime(t.year, t.month, t.day, 12, 0, 0)
         GLService.create_manual_entry('إيراد مؤجل', [
             {'account_code': '4100', 'debit': 0, 'credit': 120},
             {'account_code': '1110', 'debit': 120, 'credit': 0},
         ], entry_date=entry_date)
         sales = GLAccount.query.filter_by(code='4100').first()
-        today = date.today()
+        today = t
         assert sales.get_balance(as_of_date=today - timedelta(days=1)) == 0
+        assert sales.get_balance(as_of_date=today) == Decimal('120')
         assert sales.get_balance(as_of_date=today + timedelta(days=1)) == Decimal('120')
         assert sales.get_balance(date_from=today) == Decimal('120')
-        assert sales.get_balance(date_from=today + timedelta(days=1)) == Decimal('120')
+        assert sales.get_balance(date_from=today + timedelta(days=1)) == 0
         assert sales.get_balance(date_to=today - timedelta(days=1)) == 0
 
     def test_descendants_all_levels_and_cycle_safe(self, db, core):

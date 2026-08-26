@@ -295,6 +295,7 @@ def cancel(id):
 
 @sales_bp.route('/api/get-price')
 @login_required
+@permission_required('manage_sales')
 def api_get_price():
     product_id = request.args.get('product_id', type=int)
     customer_id = request.args.get('customer_id', type=int)

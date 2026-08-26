@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from werkzeug.exceptions import HTTPException
 from sqlalchemy import func
 from extensions import db
-from models import Sale, SaleLine, Purchase, Product, Customer, ProductPartner
+from models import Sale, SaleLine, Purchase, Product, Customer, ProductPartner, StockMovement
 from utils.decorators import permission_required
 
 reports_bp = Blueprint('reports', __name__, url_prefix='/reports')
@@ -332,7 +332,7 @@ def purchases():  # noqa: C901
     from models import Payment
     payment_query = Payment.query.filter(
         Payment.direction == 'outgoing',
-        Payment.supplier_id is not None
+        Payment.supplier_id.isnot(None)
     )
 
     if date_from:
@@ -774,11 +774,31 @@ def inventory_valuation():
     warehouse_id = request.args.get('warehouse_id', type=int)
     category_id = request.args.get('category_id', type=int)
 
-    # Base query: active products with stock > 0
-    products_query = Product.query.filter(
-        Product.is_active.is_(True),
-        Product.current_stock > 0
-    )
+    # Schema reality: Product carries one global current_stock column with no
+    # per-product warehouse link; per-warehouse quantities live in StockMovement
+    # (warehouse_id NOT NULL). When a warehouse filter is present we therefore
+    # aggregate net movement quantity per product for that warehouse instead of
+    # using the global stock figure.
+    qty_by_product = {}
+    if warehouse_id:
+        movement_rows = db.session.query(
+            StockMovement.product_id.label('product_id'),
+            func.sum(StockMovement.quantity).label('net_qty'),
+        ).filter(
+            StockMovement.warehouse_id == warehouse_id
+        ).group_by(StockMovement.product_id).all()
+        qty_by_product = {
+            row.product_id: (row.net_qty or Decimal('0'))
+            for row in movement_rows
+        }
+
+    products_query = Product.query.filter(Product.is_active.is_(True))
+
+    if warehouse_id:
+        stocked_ids = [pid for pid, qty in qty_by_product.items() if qty > 0]
+        products_query = products_query.filter(Product.id.in_(stocked_ids or [0]))
+    else:
+        products_query = products_query.filter(Product.current_stock > 0)
 
     if category_id:
         products_query = products_query.filter_by(category_id=category_id)
@@ -791,7 +811,10 @@ def inventory_valuation():
     total_qty = Decimal('0')
 
     for product in products:
-        qty = product.current_stock or Decimal('0')
+        if warehouse_id:
+            qty = qty_by_product.get(product.id) or Decimal('0')
+        else:
+            qty = product.current_stock or Decimal('0')
         cost = product.cost_price or Decimal('0')
         value = qty * cost
         total_value += value

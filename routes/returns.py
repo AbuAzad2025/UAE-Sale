@@ -3,12 +3,14 @@ from flask_login import login_required, current_user
 from services.return_service import ReturnService
 from models import ProductReturn
 from extensions import db
+from utils.decorators import permission_required
 
 returns_bp = Blueprint('returns', __name__, url_prefix='/returns')
 
 
 @returns_bp.route('/api/create', methods=['POST'])
 @login_required
+@permission_required('manage_sales')
 def api_create_return():
     """
     API Endpoint to create a sales return.
@@ -61,6 +63,7 @@ def api_create_return():
 
 @returns_bp.route('/view/<int:id>')
 @login_required
+@permission_required('manage_sales')
 def view(id):
     product_return = db.get_or_404(ProductReturn, id)
     return render_template('returns/view.html', product_return=product_return)

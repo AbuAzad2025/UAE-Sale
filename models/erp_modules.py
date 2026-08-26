@@ -31,7 +31,19 @@ class Quotation(db.Model):
 
     quotation_date = db.Column(db.Date, nullable=False, index=True)
     valid_until = db.Column(db.Date, nullable=False)
-    expiry_date = db.Column(db.Date)
+    # Deprecated duplicate of valid_until. The physical column stays declared
+    # (schema frozen, no drop) but is unmapped: instance access aliases
+    # valid_until so there is a single source of truth.
+    _expiry_date_column = db.Column('expiry_date', db.Date)
+
+    @property
+    def expiry_date(self):
+        """Legacy alias — valid_until is the authoritative expiry date."""
+        return self.valid_until
+
+    @expiry_date.setter
+    def expiry_date(self, value):
+        self.valid_until = value
 
     subtotal = db.Column(db.Numeric(15, 3), default=0)
     discount_amount = db.Column(db.Numeric(15, 3), default=0)
@@ -352,7 +364,7 @@ class DunningLetter(db.Model):
 
     @property
     def level_ar(self):
-        return {1: 'تذ friendly', 2: 'تذكير رسمي', 3: 'إنذار عاجل', 4: 'إنذار قانوني'}.get(self.level, str(self.level))
+        return {1: 'تذكير ودّي', 2: 'تذكير رسمي', 3: 'إنذار عاجل', 4: 'إنذار قانوني'}.get(self.level, str(self.level))
 
 # ==================== RECURRING EXPENSES ====================
 
@@ -557,8 +569,6 @@ class EInvoice(db.Model):
         # Seller
         seller = SubElement(ApplicableHeaderTradeAgreement, 'SellerTradeParty')
         SubElement(seller, 'Name').text = 'Seller'
-        SubElement(seller, 'DefinedTradeContact').append(SubElement(seller.find('DefinedTradeContact') if seller.find('DefinedTradeContact') is not None else seller, 'TelephoneUniversalCommunication'))  # noqa: E501
-        seller.find('.//TelephoneUniversalCommunication') if seller.find('.//TelephoneUniversalCommunication') is not None else None
 
         # Buyer
         buyer = SubElement(ApplicableHeaderTradeAgreement, 'BuyerTradeParty')
@@ -589,7 +599,9 @@ class EInvoice(db.Model):
                     'quantity': float(line.quantity),
                     'unit_price': float(line.unit_price),
                     'total': float(line.line_total),
-                    'vat_rate': float(line.unit_price * Decimal('0.05')),
+                    # Honest naming: this is the per-unit VAT amount (5% of
+                    # unit price), not a rate.
+                    'vat_amount_per_unit': float(line.unit_price * Decimal('0.05')),
                 })
 
         payload = {

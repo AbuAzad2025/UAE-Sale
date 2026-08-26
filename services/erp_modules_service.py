@@ -2,6 +2,7 @@
 ERP Modules Service - Business logic for all extended modules
 """
 
+import logging
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from extensions import db
@@ -12,6 +13,8 @@ from models.erp_modules import (
     EInvoice,
 )
 from utils.helpers import generate_number
+
+logger = logging.getLogger(__name__)
 
 
 class QuotationService:
@@ -261,6 +264,34 @@ class FiscalPeriodService:
 class StockTransferService:
 
     @staticmethod
+    def _adjust_stock_no_gl(product_id, quantity, notes, warehouse_id):
+        """C1: transfers are pure stock relocation — no P&L GL rows.
+
+        Calls StockService.adjust_stock(..., post_gl=False) per contract C1.
+        Defensive TypeError fallback for the window before services.stock_service
+        (owned by L) exposes the post_gl kwarg; in that case the legacy GL
+        posting still fires and a warning is logged.
+        """
+        from services.stock_service import StockService
+
+        try:
+            return StockService.adjust_stock(
+                product_id, quantity,
+                notes=notes,
+                warehouse_id=warehouse_id,
+                post_gl=False,
+            )
+        except TypeError:
+            logger.warning(
+                'StockService.adjust_stock(post_gl=...) unavailable — '
+                'legacy signature used (GL rows possible) for product %s', product_id)
+            return StockService.adjust_stock(
+                product_id, quantity,
+                notes=notes,
+                warehouse_id=warehouse_id,
+            )
+
+    @staticmethod
     def create_transfer(from_warehouse_id, to_warehouse_id, lines_data, user_id, notes=None):
         from models import Warehouse
 
@@ -296,24 +327,22 @@ class StockTransferService:
     @staticmethod
     def receive_transfer(transfer_id, user_id):
         """Receive transfer: deduct from source, add to destination"""
-        from services.stock_service import StockService
-
         transfer = db.get_or_404(StockTransfer, transfer_id)
         if transfer.status != 'in_transit':
             raise ValueError('يمكن استلام نقل في حالة "في الطريق" فقط')
 
         for line in transfer.lines:
             # Deduct from source
-            StockService.adjust_stock(
+            StockTransferService._adjust_stock_no_gl(
                 line.product_id, -line.quantity,
-                notes=f'Transfer OUT to {transfer.transfer_number}',
-                warehouse_id=transfer.from_warehouse_id
+                f'Transfer OUT to {transfer.transfer_number}',
+                transfer.from_warehouse_id,
             )
             # Add to destination
-            StockService.adjust_stock(
+            StockTransferService._adjust_stock_no_gl(
                 line.product_id, line.quantity,
-                notes=f'Transfer IN from {transfer.transfer_number}',
-                warehouse_id=transfer.to_warehouse_id
+                f'Transfer IN from {transfer.transfer_number}',
+                transfer.to_warehouse_id,
             )
 
         transfer.status = 'received'
@@ -326,9 +355,43 @@ class StockTransferService:
 class StockTakeService:
 
     @staticmethod
+    def _warehouse_quantities(warehouse_id):
+        """Per-product net stock for one warehouse, derived from StockMovement.
+
+        Schema reality: Product has a single global current_stock column and no
+        per-product warehouse link, so per-warehouse quantities are computed
+        from StockMovement history (its warehouse_id is NOT NULL).
+        Returns {product_id: net_qty}.
+        """
+        from sqlalchemy import func
+        from models import StockMovement
+
+        rows = (
+            db.session.query(
+                StockMovement.product_id.label('product_id'),
+                func.sum(StockMovement.quantity).label('net_qty'),
+            )
+            .filter(StockMovement.warehouse_id == warehouse_id)
+            .group_by(StockMovement.product_id)
+            .all()
+        )
+        return {
+            r.product_id: Decimal(str(r.net_qty or 0))
+            for r in rows
+        }
+
+    @staticmethod
     def create_stocktake(warehouse_id, user_id):
-        """Create a new stock take snapshot"""
-        from models import Product, Warehouse
+        """Create a new stock take snapshot scoped to the chosen warehouse.
+
+        Scoping per actual schema (no per-product warehouse column):
+        - products with movement history in THIS warehouse → net warehouse qty;
+        - products moved only in OTHER warehouses → excluded here;
+        - products never moved anywhere → global current_stock fallback, since
+          their stock cannot be attributed to any other warehouse.
+        The chosen warehouse is recorded on the stock take row itself.
+        """
+        from models import Product, Warehouse, StockMovement
 
         _ = db.get_or_404(Warehouse, warehouse_id)
         st = StockTake(
@@ -340,15 +403,26 @@ class StockTakeService:
         db.session.add(st)
         db.session.flush()
 
-        # Snapshot all products in this warehouse
+        wh_qty = StockTakeService._warehouse_quantities(warehouse_id)
+        moved_anywhere = {
+            pid for (pid,) in db.session.query(StockMovement.product_id).distinct().all()
+        }
+
         products = Product.query.filter_by(is_active=True).all()
         for product in products:
-            current_stock = product.current_stock or Decimal('0')
-            if current_stock > 0:
+            if product.id in wh_qty:
+                system_qty = wh_qty[product.id]
+            elif product.id in moved_anywhere:
+                # Tracked stock lives in other warehouses only.
+                continue
+            else:
+                system_qty = product.current_stock or Decimal('0')
+
+            if system_qty > 0:
                 item = StockTakeItem(
                     stocktake_id=st.id,
                     product_id=product.id,
-                    system_quantity=current_stock,
+                    system_quantity=system_qty,
                 )
                 db.session.add(item)
 
@@ -466,9 +540,39 @@ class DunningService:
 class RecurringExpenseService:
 
     @staticmethod
+    def _resolve_actor_id():
+        """Created-by resolution for generated expenses.
+
+        Authenticated actor wins. Otherwise explicit None — never a fabricated
+        literal user id. Because expenses.user_id is NOT NULL (frozen schema),
+        a None actor in a headless context is attributed to the first real
+        account of the installation (logged loudly); with no users at all we
+        refuse to write rather than inventing ownership.
+        """
+        try:
+            from flask_login import current_user
+            actor_id = current_user.id if (current_user and current_user.is_authenticated) else None
+        except Exception:
+            actor_id = None
+
+        if actor_id is not None:
+            return actor_id
+
+        from models import User
+        fallback = User.query.filter_by(is_active=True).order_by(User.id.asc()).first()
+        if fallback is None:
+            raise ValueError('لا يوجد مستخدم لربط المصروف الدوري المُولّد')
+        logger.warning(
+            'Recurring expense generation without an authenticated actor — '
+            'attributing to first real user #%s', fallback.id)
+        return fallback.id
+
+    @staticmethod
     def process_due_expenses():
         """Generate expenses from recurring templates"""
         from models import Expense
+
+        actor_id = RecurringExpenseService._resolve_actor_id()
 
         due = RecurringExpense.query.filter(
             RecurringExpense.is_active.is_(True),
@@ -487,7 +591,7 @@ class RecurringExpenseService:
                 payment_method=re.payment_method,
                 supplier_name=re.supplier_name,
                 expense_date=datetime.now(timezone.utc),
-                user_id=1,  # System user
+                user_id=actor_id,
             )
             db.session.add(expense)
             re.last_generated_date = date.today()

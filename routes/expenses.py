@@ -199,21 +199,107 @@ def print_expense(id):
     return render_template('expenses/print.html', expense=expense, company=company)
 
 
+def _expense_gl_accounts(expense):
+    """Resolve (expense_account, payment_account) the same way create() does."""
+    category = expense.category
+    expense_account = category.gl_account_code if category and category.gl_account_code else '6990'
+
+    if expense.payment_method == 'cash':
+        payment_account = '1110'
+    elif expense.payment_method == 'cheque':
+        payment_account = '2110'  # Accounts Payable (cleared by Cheque Issue)
+    else:
+        payment_account = '1120'
+
+    return expense_account, payment_account
+
+
+def _repost_expense_gl(expense):
+    """C5: when an edited expense changes amount/category (or payment method),
+    reverse the prior GL entry (reference_type='Expense') then post the
+    corrected one. Any failure is logged with an ORPHAN EXPENSE WARNING and
+    flashed — never silent.
+
+    Returns the entry_number of the reversed entry, or None when nothing was
+    reversed.
+    """
+    from models import GLJournalEntry
+
+    try:
+        prior_entry = GLJournalEntry.query.filter_by(
+            reference_type='Expense',
+            reference_id=expense.id,
+            is_reversed=False,
+        ).order_by(GLJournalEntry.entry_date.desc()).first()
+    except Exception as e:
+        current_app.logger.error(
+            f'ORPHAN EXPENSE WARNING: could not look up prior GL entry for '
+            f'{expense.expense_number}: {e}')
+        flash('⚠️ تعذر التحقق من القيد المحاسبي للمصروف؛ راجع دفتر اليومية يدوياً.', 'warning')
+        return None
+
+    if prior_entry is None:
+        current_app.logger.warning(
+            f'ORPHAN EXPENSE WARNING: no active GL entry found for edited expense {expense.expense_number}')
+        flash('⚠️ لا يوجد قيد محاسبي أصلي لهذا المصروف؛ تم تحديث البيانات دون إعادة ترحيل.', 'warning')
+        return None
+
+    try:
+        prior_entry.reverse_entry(f'Reverse Expense {expense.expense_number} (edited)')
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(
+            f'ORPHAN EXPENSE WARNING: GL reversal failed for {expense.expense_number}: {e}')
+        flash('⚠️ فشل عكس القيد المحاسبي القديم؛ لم يتم ترحيل القيمة المصححة.', 'warning')
+        return None
+
+    try:
+        GLService.ensure_core_accounts()
+        expense_account, payment_account = _expense_gl_accounts(expense)
+        lines = [
+            {'account': expense_account, 'debit': expense.amount, 'description': expense.description},
+            {'account': payment_account, 'credit': expense.amount, 'description': f'دفع {expense.payment_method}'},
+        ]
+        GLService.post_entry(
+            lines,
+            description=f'Expense {expense.expense_number} (corrected)',
+            reference_type='Expense',
+            reference_id=expense.id,
+            currency=expense.currency,
+            exchange_rate=expense.exchange_rate,
+        )
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(
+            f'ORPHAN EXPENSE WARNING: corrected GL repost failed for {expense.expense_number}: {e}')
+        flash('⚠️ تم عكس القيد القديم لكن فشل ترحيل القيمة المصححة؛ يلزم قيد يدوي.', 'warning')
+
+    return prior_entry.entry_number
+
+
 @expenses_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
 @permission_required('manage_expenses')
-def edit(id):
+def edit(id):  # noqa: C901
     """تعديل مصروف"""
     expense = db.get_or_404(Expense, id)
     categories = ExpenseCategory.query.filter_by(is_active=True).all()
 
     if request.method == 'POST':
         try:
+            # Snapshot GL-relevant values before mutation (C5 trigger set)
+            old_amount = Decimal(str(expense.amount or 0))
+            old_category_id = expense.category_id
+            old_payment_method = expense.payment_method
+
             # تحديث البيانات
-            expense.category_id = request.form.get('category_id')
+            new_category_raw = request.form.get('category_id')
+            expense.category_id = int(new_category_raw) if new_category_raw else None
             expense.description = request.form.get('description')
             expense.description_ar = request.form.get('description_ar')
-            expense.amount = request.form.get('amount')
+            expense.amount = Decimal(str(request.form.get('amount') or 0))
             expense.currency = request.form.get('currency', 'AED')
             expense.supplier_name = request.form.get('supplier_name')
             expense.notes = request.form.get('notes')
@@ -221,11 +307,28 @@ def edit(id):
             # حساب المبلغ بالدرهم
             exchange_rate = CurrencyService.get_exchange_rate(expense.currency, 'AED')
             expense.exchange_rate = exchange_rate
-            expense.amount_base = Decimal(str(float(expense.amount))) * exchange_rate
+            expense.amount_base = Decimal(str(expense.amount)) * exchange_rate
 
             db.session.commit()
 
-            create_audit_log('update', 'expenses', id)
+            gl_relevant_change = (
+                Decimal(str(expense.amount or 0)) != old_amount
+                or expense.category_id != old_category_id
+                or expense.payment_method != old_payment_method
+            )
+
+            gl_reversed_entry_number = None
+            if gl_relevant_change:
+                gl_reversed_entry_number = _repost_expense_gl(expense)
+
+            audit_changes = {}
+            if gl_relevant_change:
+                audit_changes['amount'] = float(old_amount)
+                audit_changes['new_amount'] = float(expense.amount or 0)
+                if gl_reversed_entry_number:
+                    audit_changes['gl_reversed'] = gl_reversed_entry_number
+            create_audit_log('update', 'expenses', id, changes=audit_changes or None)
+
             flash('✅ تم تحديث المصروف بنجاح!', 'success')
             return redirect(url_for('expenses.view', id=id))
 

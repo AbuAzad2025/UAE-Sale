@@ -261,6 +261,8 @@ def statement(id):
 
 
 @suppliers_bp.route('/api/search')
+@login_required
+@permission_required('manage_suppliers')
 def api_search():
     """API endpoint للبحث عن الموردين"""
     try:

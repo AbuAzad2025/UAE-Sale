@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, abort
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from extensions import db
@@ -443,8 +443,13 @@ def api_search_accounts():
 
 
 @ledger_bp.route('/api/calculate-journal-balance', methods=['POST'])
+@login_required
+@permission_required('view_ledger')
 def api_calculate_journal_balance():
     """API لحساب توازن القيد اليدوي - Backend Calculation"""
+    # Dual-check: read-only calculation serves ledger viewers and editors alike
+    if not (current_user.has_permission('view_ledger') or current_user.has_permission('manage_ledger')):
+        abort(403)
     try:
         data = request.get_json(force=True)
         if not data:

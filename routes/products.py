@@ -426,6 +426,7 @@ def delete(id):
 
 @products_bp.route('/api/search')
 @login_required
+@permission_required('manage_products')
 def api_search():
     """API endpoint للبحث عن المنتجات"""
     query = request.args.get('q', '')

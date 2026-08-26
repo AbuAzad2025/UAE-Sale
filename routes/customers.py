@@ -1,5 +1,7 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
-from flask_login import login_required
+from functools import wraps
+
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, abort
+from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Customer, Sale
 from utils.decorators import permission_required
@@ -9,6 +11,22 @@ from decimal import Decimal
 from datetime import datetime
 
 customers_bp = Blueprint('customers', __name__, url_prefix='/customers')
+
+
+def sales_or_customers_required(f):
+    """Dual-check guard: customer lookups are shared by the sales form and the
+    customers screens, so either manage_sales OR manage_customers grants access.
+    Mirrors utils.decorators.permission_required semantics (302 anon / 403 denied).
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('الرجاء تسجيل الدخول أولاً', 'warning')
+            return redirect(url_for('auth.login'))
+        if not (current_user.has_permission('manage_sales') or current_user.has_permission('manage_customers')):
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 @customers_bp.route('/')
@@ -373,6 +391,7 @@ def statement(id):
 
 @customers_bp.route('/api/search')
 @login_required
+@sales_or_customers_required
 def api_search():
     query = request.args.get('q', '')
     _ = request.args.get('page', 1, type=int)
@@ -409,6 +428,7 @@ def api_search():
 
 @customers_bp.route('/<int:id>/balance')
 @login_required
+@sales_or_customers_required
 def customer_balance(id):
     """Get customer balance and unpaid sales - API for payment receipts"""
     customer = db.get_or_404(Customer, id)

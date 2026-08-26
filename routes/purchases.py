@@ -379,6 +379,8 @@ def delete(id):
 
 
 @purchases_bp.route('/api/calculate-totals', methods=['POST'])
+@login_required
+@permission_required('manage_purchases')
 def api_calculate_purchase_totals():
     """API لحساب إجماليات فاتورة المشتريات - Backend Calculation"""
     try:

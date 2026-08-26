@@ -106,9 +106,9 @@
                 <th>رقم الفاتورة</th>
                 <th>التاريخ</th>
                 <th>المورد</th>
-                <th>المبلغ الإجمالي</th>
-                <th>المدفوع</th>
-                <th>المتبقي</th>
+                <th class="num-cell">المبلغ الإجمالي</th>
+                <th class="num-cell">المدفوع</th>
+                <th class="num-cell">المتبقي</th>
               </tr>
             </thead>
             <tbody>
@@ -117,9 +117,9 @@
                 <td>{{ purchase.purchase_number }}</td>
                 <td>{{ purchase.purchase_date.strftime('%Y-%m-%d') }}</td>
                 <td>{{ purchase.supplier.name }}</td>
-                <td>{{ purchase.total_amount }}</td>
-                <td>{{ purchase.paid_amount }}</td>
-                <td>{{ purchase.balance_due }}</td>
+                <td class="num-cell">{{ purchase.total_amount|money }}</td>
+                <td class="num-cell">{{ purchase.paid_amount|money }}</td>
+                <td class="num-cell {{ 'money-neg' if purchase.balance_due < 0 else 'money-pos' }}">{{ purchase.balance_due|money }}</td>
               </tr>
               {% else %}
               <tr>
@@ -133,5 +133,9 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/financial_grid.css') }}">
 {% endblock %}
 

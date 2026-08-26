@@ -8,11 +8,43 @@ from services.currency_service import CurrencyService
 from services.gl_service import GLService
 from utils.helpers import generate_number
 
+# Fallback account codes (must mirror GLService.ensure_core_accounts defaults).
+# Used only when Agent1's services.account_resolution resolver is unavailable.
+FALLBACK_ACCOUNTS = {
+    'AR_CONTROL': '1130',
+    'PARTNER_CURRENT': '3350',
+    'MERCHANTS_PAYABLE': '2115',
+    'SALES_REVENUE': '4100',
+    'SHIPPING_REVENUE': '4300',
+    'DISCOUNTS_GIVEN': '5200',
+    'TAX_PAYABLE': '2130',
+    'COGS': '5000',
+    'INVENTORY': '1140',
+}
+
+
+def resolve_account(role_name):
+    """Resolve an account code through the central AccountResolver contract.
+
+    Falls back to today's literal codes when services.account_resolution
+    (Agent1) is not importable or does not define the role yet.
+    """
+    try:
+        from services.account_resolution import AccountRole, AccountResolver
+        role = getattr(AccountRole, role_name, None)
+        if role is not None:
+            code = AccountResolver.resolve(role)
+            if code:
+                return str(code)
+    except Exception:
+        pass
+    return FALLBACK_ACCOUNTS.get(role_name)
+
 
 class SaleService:
 
     @staticmethod
-    def create_sale(customer, seller, lines_data, warehouse_id=None, currency='ILS', user_exchange_rate=None,  # noqa: C901
+    def create_sale(customer, seller, lines_data, warehouse_id=None, currency='ILS', user_exchange_rate=None,
                     discount_amount=0, shipping_cost=0, tax_rate=0, notes=None, payment_data=None):
         """
         Create a new sale with proper validations and decimal precision
@@ -187,11 +219,21 @@ class SaleService:
                 sale.paid_amount_base = paid_amount_base  # محول للدرهم
 
                 # Handle overpayment (credit to customer)
-                if paid_amount_base > sale.total_amount:
-                    overpayment = paid_amount_base - sale.total_amount
+                # FIX(base-currency mixing): compare base-vs-base.
+                # paid_amount_base is in base currency while total_amount is in
+                # transaction currency; amount_base holds the base equivalent.
+                if paid_amount_base > sale.amount_base:
+                    overpayment = paid_amount_base - sale.amount_base
                     customer.balance = (customer.balance or Decimal('0')) + overpayment
                     payment_note = f"\n[دفع زائد] مبلغ {overpayment} AED سُجّل كرصيد للزبون"
                     sale.notes = (sale.notes or '') + payment_note
+
+                    # FIX(negative-balance crash): only the settled portion may
+                    # sit on the invoice; the excess already became customer
+                    # credit. Letting paid exceed the total drove balance_due
+                    # negative and violated ck_sale_balance_non_negative.
+                    sale.paid_amount = Decimal(str(sale.total_amount))
+                    sale.paid_amount_base = Decimal(str(sale.amount_base))
 
                 # Add payment currency info to notes if not AED
                 if payment_currency != CurrencyService.get_base_currency():
@@ -199,6 +241,15 @@ class SaleService:
                     sale.notes = (sale.notes or '') + payment_note
 
             sale.calculate_totals()
+
+            # FIX(negative-balance crash): an overpaid sale made
+            # calculate_totals() produce a negative balance_due, which violates
+            # the ck_sale_balance_non_negative CHECK constraint and crashed
+            # creation. The excess is already credited to customer.balance,
+            # so the invoice itself must settle at zero.
+            if sale.balance_due is not None and Decimal(str(sale.balance_due)) < Decimal('0'):
+                sale.balance_due = Decimal('0')
+                sale.payment_status = 'paid'
 
             db.session.flush()
 
@@ -226,25 +277,28 @@ class SaleService:
             GLService.ensure_core_accounts()
 
             # Calculate COGS with proper decimal precision
-            cogs_total = sum(
+            # FIX(base-currency mixing): cost_price is stored in base currency
+            # (see StockService.process_purchase_lines), so it must NOT be
+            # multiplied by the sale's exchange rate again.
+            cogs_total_base = sum(
                 (Decimal(str(line.cost_price)) * Decimal(str(line.quantity))
                     for line in sale.lines),
                 Decimal('0')
             )
-            cogs_total_aed = (cogs_total * exchange_rate).quantize(
+            cogs_total_base = cogs_total_base.quantize(
                 Decimal('0.001'), rounding=ROUND_HALF_UP
             )
 
-            # Determine AR Account based on Customer Type
-            ar_account = '1130'  # Default Accounts Receivable
+            # Determine AR Account based on Customer Type (resolved dynamically)
+            ar_account = resolve_account('AR_CONTROL')
             if customer.customer_type == 'partner':
-                ar_account = '3350'  # Partner Current Account
+                ar_account = resolve_account('PARTNER_CURRENT')
             elif customer.customer_type == 'merchant':
-                ar_account = '2115'  # Merchants Payable
+                ar_account = resolve_account('MERCHANTS_PAYABLE')
 
             # Prepare GL lines with proper decimal precision
             # AR and Revenue should be in Transaction Currency (Foreign)
-            # GLService.post_entry will handle conversion to AED
+            # GLService.post_entry will handle conversion to base currency
 
             lines = [
                 {
@@ -253,7 +307,7 @@ class SaleService:
                     'description': f'فاتورة {sale.sale_number}'
                 },
                 {
-                    'account': '4100',
+                    'account': resolve_account('SALES_REVENUE'),
                     'credit': sale.subtotal,  # Use Foreign Amount (Gross Revenue)
                     'description': 'إيرادات المبيعات'
                 },
@@ -261,21 +315,21 @@ class SaleService:
 
             if sale.shipping_cost > Decimal('0'):
                 lines.append({
-                    'account': '4300',
+                    'account': resolve_account('SHIPPING_REVENUE'),
                     'credit': sale.shipping_cost,  # Use Foreign Amount
                     'description': 'إيرادات الشحن'
                 })
 
             if sale.discount_amount > Decimal('0'):
                 lines.append({
-                    'account': '5200',
+                    'account': resolve_account('DISCOUNTS_GIVEN'),
                     'debit': sale.discount_amount,  # Use Foreign Amount
                     'description': 'خصومات ممنوحة'
                 })
 
             if sale.tax_amount > Decimal('0'):
                 lines.append({
-                    'account': '2130',
+                    'account': resolve_account('TAX_PAYABLE'),
                     'credit': sale.tax_amount,  # Use Foreign Amount
                     'description': 'ضرائب مستحقة'
                 })
@@ -290,17 +344,17 @@ class SaleService:
                 exchange_rate=sale.exchange_rate
             )
 
-            # COGS Entry (Always in Base Currency AED)
-            if cogs_total_aed > Decimal('0'):
+            # COGS Entry (Always in Base Currency — cost is base-denominated)
+            if cogs_total_base > Decimal('0'):
                 cogs_lines = [
                     {
-                        'account': '5000',
-                        'debit': cogs_total_aed,
+                        'account': resolve_account('COGS'),
+                        'debit': cogs_total_base,
                         'description': 'تكلفة البضاعة المباعة'
                     },
                     {
-                        'account': '1140',
-                        'credit': cogs_total_aed,
+                        'account': resolve_account('INVENTORY'),
+                        'credit': cogs_total_base,
                         'description': 'خصم من المخزون'
                     }
                 ]
@@ -310,7 +364,7 @@ class SaleService:
                     description=f'COGS - Sale {sale.sale_number}',
                     reference_type='Sale',
                     reference_id=sale.id,
-                    currency='ILS',
+                    currency=CurrencyService.get_base_currency(),
                     exchange_rate=1.0
                 )
 
@@ -326,7 +380,7 @@ class SaleService:
             raise
 
     @staticmethod
-    def create_payment_for_sale(sale, amount, payment_method, currency='ILS', exchange_rate=1.0,  # noqa: C901
+    def create_payment_for_sale(sale, amount, payment_method, currency='ILS', exchange_rate=1.0,
                                 reference_number=None, cheque_number=None, cheque_date=None,
                                 bank_name=None, notes=None):
         """
@@ -454,6 +508,32 @@ class SaleService:
         return payment
 
     @staticmethod
+    def reverse_sale_gl_entries(sale, reason='Cancelled'):
+        """Reverse (never delete) every posted GL entry referencing this sale.
+
+        Follows the cheque-cancel convention: the reversal keeps the original
+        reference_type/reference_id, links back via reversed_entry_id and uses
+        a 'Reverse ...' description. The original entry stays untouched except
+        for the is_reversed flag.
+        """
+        from models import GLJournalEntry
+
+        entries = GLJournalEntry.query.filter_by(
+            reference_type='Sale',
+            reference_id=sale.id,
+            is_posted=True,
+            is_reversed=False,
+        ).all()
+
+        reversals = []
+        for entry in entries:
+            reversal = entry.reverse_entry(
+                description=f'Reverse Sale {sale.sale_number} ({reason})'
+            )
+            reversals.append(reversal)
+        return reversals
+
+    @staticmethod
     def cancel_sale(sale):
         if sale.status == 'cancelled':
             raise ValueError('الفاتورة ملغاة بالفعل')
@@ -462,15 +542,12 @@ class SaleService:
 
         StockService.reverse_sale(sale)
 
-        # Reverse GL Entry for Sale (Revenue & AR)
-        try:
-            GLService.reverse_entry(
-                reference_type='Sale',
-                reference_id=sale.id,
-                description=f'Reverse Sale {sale.sale_number} (Cancelled)'
-            )
-        except Exception as e:
-            current_app.logger.error(f'Failed to reverse GL entry for cancelled sale {sale.id}: {e}')
+        # Reverse GL Entries for Sale (Revenue & COGS) — posted entries are
+        # immutable, so cancellation posts REVERSING entries instead of edits.
+        # FIX: GLService.reverse_entry never existed; the old call raised
+        # AttributeError that was swallowed here, so cancellations silently
+        # posted no reversal at all.
+        SaleService.reverse_sale_gl_entries(sale, reason='Cancelled')
 
         db.session.commit()
 

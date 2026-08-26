@@ -29,8 +29,8 @@
                                         <tr>
                                             <th>الترتيب</th>
                                             <th>اسم المنتج</th>
-                                            <th>الكمية المباعة</th>
-                                            <th>إجمالي المبيعات</th>
+                                            <th class="num-cell">الكمية المباعة</th>
+                                            <th class="num-cell">إجمالي المبيعات</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -38,8 +38,8 @@
                                         <tr>
                                             <td>{{ loop.index }}</td>
                                             <td>{{ product.name }}</td>
-                                            <td>{{ product.total_quantity }}</td>
-                                            <td>{{ "%.2f"|format(product.total_sales) }} درهم</td>
+                                            <td class="num-cell">{{ product.total_quantity }}</td>
+                                            <td class="num-cell {{ 'money-neg' if product.total_sales < 0 else 'money-pos' }}">{{ product.total_sales|money }} درهم</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
@@ -52,4 +52,8 @@
         </div>
     </section>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/financial_grid.css') }}">
 {% endblock %}

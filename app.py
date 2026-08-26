@@ -4,9 +4,10 @@ import sys  # noqa: E402,F401
 import uuid  # noqa: E402
 from datetime import datetime, timezone  # noqa: E402,F401
 import time  # noqa: E402
-from decimal import Decimal  # noqa: E402,F401
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP  # noqa: E402,F401
 from flask import Flask, render_template, request, g, redirect, url_for, flash  # noqa: E402,F401
 from flask_login import current_user, login_required  # noqa: E402,F401
+from markupsafe import Markup, escape  # noqa: E402,F401
 from werkzeug.routing import BuildError  # noqa: E402,F401
 
 from config import Config, ensure_runtime_dirs, assert_production_sanity  # noqa: E402
@@ -24,6 +25,64 @@ try:
     COMPRESS_AVAILABLE = True
 except ImportError:
     COMPRESS_AVAILABLE = False
+
+
+# ---------------------------------------------------------------------------
+# Financial UI filters (Agent 7) — Bidi-safe money, numeric cells, badges.
+# Decimal-only arithmetic: every boundary value is coerced via Decimal(str(x))
+# so float drift can never reach a rendered amount.
+# ---------------------------------------------------------------------------
+_MONEY_TWO = Decimal('0.01')
+_LRM = '\u200e'  # Left-To-Right Mark: keeps digits contiguous inside RTL rows
+
+_STATUS_BADGE_MAP = {
+    'unpaid': ('warning', 'غير مدفوع'),
+    'partial': ('info', 'جزئي'),
+    'paid': ('success', 'مدفوع'),
+    'void': ('secondary', 'ملغي'),
+    'bounced': ('danger', 'مرتد'),
+}
+
+
+def _to_decimal(value):
+    """Coerce a template value to Decimal (never float math on amounts)."""
+    if isinstance(value, Decimal):
+        return value if value.is_finite() else None
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        d = Decimal(str(value).strip().replace(',', ''))
+    except (InvalidOperation, ValueError):
+        return None
+    return d if d.is_finite() else None
+
+
+def _format_money(value, currency=None):
+    """Quantize to 2dp with thousands separators, LRM-embedded for RTL safety."""
+    d = _to_decimal(value)
+    if d is None:
+        return '' if value is None else str(value)
+    q = d.quantize(_MONEY_TWO, rounding=ROUND_HALF_UP)
+    s = _LRM + format(q, ',.2f') + _LRM
+    return f'{s} {currency}' if currency else s
+
+
+def _format_num(value):
+    """Plain grouped 2dp numeric string for right-aligned grid cells."""
+    d = _to_decimal(value)
+    if d is None:
+        return '' if value is None else str(value)
+    return format(d.quantize(_MONEY_TWO, rounding=ROUND_HALF_UP), ',.2f')
+
+
+def _status_badge(status):
+    """Map payment status to a Bootstrap badge with Arabic label."""
+    key = str(status or '').strip().lower()
+    cls, label = _STATUS_BADGE_MAP.get(key, (None, None))
+    if cls is None:
+        cls, label = 'secondary', str(status or '')
+    return Markup('<span class="badge badge-{}">{}</span>'.format(
+        cls, escape(label)))
 
 
 def create_app(config_class=Config):  # noqa: C901
@@ -320,6 +379,11 @@ def create_app(config_class=Config):  # noqa: C901
             'OMR': 'ريال عماني', 'BHD': 'دينار بحريني',
         }
         return {'base_currency': base, 'base_currency_name': names.get(base, base)}
+
+    # Financial grid filters (Agent 7): money / num / status_badge
+    app.template_filter('money')(_format_money)
+    app.template_filter('num')(_format_num)
+    app.template_filter('status_badge')(_status_badge)
 
     # Models Import (to ensure they are known to SQLAlchemy)
     from models import User, Customer, ProductCategory  # noqa: F401,F811(local import intentional)

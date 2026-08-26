@@ -87,9 +87,9 @@
         <tr>
           <th>المنتج</th>
           <th>الكود</th>
-          <th class="text-right">الكمية</th>
-          <th class="text-right">سعر التكلفة</th>
-          <th class="text-right">القيمة الإجمالية</th>
+          <th class="text-right num-cell">الكمية</th>
+          <th class="text-right num-cell">سعر التكلفة</th>
+          <th class="text-right num-cell">القيمة الإجمالية</th>
         </tr>
       </thead>
       <tbody>
@@ -97,18 +97,18 @@
         <tr>
           <td>{{ item.product.name_ar or item.product.name }}</td>
           <td><code>{{ item.product.sku or item.product.part_number or '-' }}</code></td>
-          <td class="text-right">{{ "{:,.3f}".format(item.qty) }}</td>
-          <td class="text-right">{{ "{:,.3f}".format(item.cost) }}</td>
-          <td class="text-right font-weight-bold">{{ "{:,.3f}".format(item.value) }}</td>
+          <td class="text-right num-cell">{{ "{:,.3f}".format(item.qty) }}</td>
+          <td class="text-right num-cell">{{ "{:,.3f}".format(item.cost) }}</td>
+          <td class="text-right num-cell font-weight-bold">{{ "{:,.3f}".format(item.value) }}</td>
         </tr>
         {% endfor %}
       </tbody>
       <tfoot>
         <tr class="table-info font-weight-bold">
           <td colspan="2">المجموع — {{ cat_data.name_ar or cat_data.name }}</td>
-          <td class="text-right">{{ "{:,.3f}".format(cat_data.total_qty) }}</td>
+          <td class="text-right num-cell">{{ "{:,.3f}".format(cat_data.total_qty) }}</td>
           <td></td>
-          <td class="text-right">{{ "{:,.3f}".format(cat_data.total_value) }}</td>
+          <td class="text-right num-cell">{{ "{:,.3f}".format(cat_data.total_value) }}</td>
         </tr>
       </tfoot>
     </table>
@@ -124,4 +124,8 @@
   </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/financial_grid.css') }}">
 {% endblock %}

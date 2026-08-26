@@ -66,11 +66,11 @@
               <tr>
                 <th>المنتج</th>
                 <th>الكود</th>
-                <th>الكمية المتاحة</th>
-                <th>الحد الأدنى</th>
-                <th>سعر التكلفة</th>
-                <th>سعر البيع</th>
-                <th>القيمة الإجمالية</th>
+                <th class="num-cell">الكمية المتاحة</th>
+                <th class="num-cell">الحد الأدنى</th>
+                <th class="num-cell">سعر التكلفة</th>
+                <th class="num-cell">سعر البيع</th>
+                <th class="num-cell">القيمة الإجمالية</th>
                 <th>الحالة</th>
               </tr>
             </thead>
@@ -79,11 +79,11 @@
               <tr>
                 <td>{{ product.name }}</td>
                 <td>{{ product.sku }}</td>
-                <td>{{ product.current_stock }}</td>
-                <td>{{ product.min_stock_alert }}</td>
-                <td>{{ product.cost_price }}</td>
-                <td>{{ product.regular_price }}</td>
-                <td>{{ (product.current_stock * product.cost_price)|round(2) }}</td>
+                <td class="num-cell">{{ product.current_stock|num }}</td>
+                <td class="num-cell">{{ product.min_stock_alert|num }}</td>
+                <td class="num-cell">{{ product.cost_price|num }}</td>
+                <td class="num-cell">{{ product.regular_price|num }}</td>
+                <td class="num-cell">{{ '%.2f'|format((product.current_stock or 0) * (product.cost_price or 0)) }}</td>
                 <td>
                   {% if product.current_stock == 0 %}
                     <span class="badge badge-danger">نفذ</span>

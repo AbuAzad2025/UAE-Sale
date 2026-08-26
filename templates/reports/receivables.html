@@ -78,7 +78,7 @@
           <th>الزبون</th>
           <th>{{ t('Date') }}</th>
           <th>العمر (يوم)</th>
-          <th>{{ t('Amount') }}</th>
+          <th class="num-cell">{{ t('Amount') }}</th>
           <th><i class="fas fa-exchange-alt mr-1"></i>سعر الصرف</th>
           <th>{{ t('Status') }}</th>
         </tr>
@@ -90,8 +90,8 @@
             <td><a href="{{ url_for('sales.view', id=sale.id) }}">{{ sale.sale_number }}</a></td>
             <td>{{ sale.customer.name if sale.customer else '-' }}</td>
             <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
-            <td>{{ sale.days_old }}</td>
-            <td>{{ "{:,.2f}".format(sale.calculated_balance) }} AED</td>
+            <td class="num-cell">{{ sale.days_old }}</td>
+            <td class="num-cell">{{ sale.calculated_balance|money('AED') }}</td>
             <td>
               {% if sale.exchange_rate and sale.exchange_rate != 1 %}
                 <span class="badge badge-info" title="سعر الصرف وقت المعاملة">
@@ -147,6 +147,7 @@ $(document).ready(function() {
 </script>
 {% endblock %}
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/financial_grid.css') }}">
 <style>
 @media print {
   @page {

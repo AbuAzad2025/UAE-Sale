@@ -116,11 +116,11 @@
                                 {% for partner in partners_summary %}
                                 <tr>
                                     <td class="fw-bold">{{ partner.name }}</td>
-                                    <td class="text-success">{{ "{:,.2f}".format(partner.total_share) }}</td>
-                                    <td class="text-primary">{{ "{:,.2f}".format(partner.received_from) }}</td>
-                                    <td class="text-danger">{{ "{:,.2f}".format(partner.paid_to) }}</td>
-                                    <td class="fw-bold {% if partner.net_balance >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-size: 1.1em;">
-                                        {{ "{:,.2f}".format(partner.net_balance) }}
+                                    <td class="num-cell text-success">{{ partner.total_share|money }}</td>
+                                    <td class="num-cell text-primary">{{ partner.received_from|money }}</td>
+                                    <td class="num-cell text-danger">{{ partner.paid_to|money }}</td>
+                                    <td class="fw-bold num-cell {{ 'money-neg' if partner.net_balance < 0 else 'money-pos' }}" style="font-size: 1.1em;">
+                                        {{ partner.net_balance|money }}
                                     </td>
                                 </tr>
                                 {% else %}
@@ -159,10 +159,10 @@
                                     <td class="fw-bold">{{ item.product_name }}</td>
                                     <td>{{ item.partner_name }}</td>
                                     <td><span class="badge bg-info">{{ item.percentage }}%</span></td>
-                                    <td>{{ "{:,.2f}".format(item.avg_unit_price) }}</td>
-                                    <td>{{ item.total_qty }}</td>
-                                    <td>{{ "{:,.2f}".format(item.total_revenue) }}</td>
-                                    <td class="table-success fw-bold text-success">{{ "{:,.2f}".format(item.partner_share_amount) }}</td>
+                                    <td class="num-cell">{{ item.avg_unit_price|money }}</td>
+                                    <td class="num-cell">{{ item.total_qty }}</td>
+                                    <td class="num-cell">{{ item.total_revenue|money }}</td>
+                                    <td class="num-cell table-success fw-bold text-success">{{ item.partner_share_amount|money }}</td>
                                 </tr>
                                 {% else %}
                                 <tr>
@@ -174,8 +174,8 @@
                             <tfoot class="table-light fw-bold">
                                 <tr>
                                     <td colspan="5" class="text-end">الإجمالي الكلي:</td>
-                                    <td>{{ "{:,.2f}".format(partners_data|sum(attribute='total_revenue')) }}</td>
-                                    <td class="text-success">{{ "{:,.2f}".format(partners_data|sum(attribute='partner_share_amount')) }}</td>
+                                    <td class="num-cell">{{ partners_data|sum(attribute='total_revenue')|money }}</td>
+                                    <td class="num-cell text-success">{{ partners_data|sum(attribute='partner_share_amount')|money }}</td>
                                 </tr>
                             </tfoot>
                             {% endif %}
@@ -209,11 +209,11 @@
                                 {% for merchant in merchants_summary %}
                                 <tr>
                                     <td class="fw-bold">{{ merchant.name }}</td>
-                                    <td class="text-success">{{ "{:,.2f}".format(merchant.total_share) }}</td>
-                                    <td class="text-primary">{{ "{:,.2f}".format(merchant.received_from) }}</td>
-                                    <td class="text-danger">{{ "{:,.2f}".format(merchant.paid_to) }}</td>
-                                    <td class="fw-bold {% if merchant.net_balance >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-size: 1.1em;">
-                                        {{ "{:,.2f}".format(merchant.net_balance) }}
+                                    <td class="num-cell text-success">{{ merchant.total_share|money }}</td>
+                                    <td class="num-cell text-primary">{{ merchant.received_from|money }}</td>
+                                    <td class="num-cell text-danger">{{ merchant.paid_to|money }}</td>
+                                    <td class="fw-bold num-cell {{ 'money-neg' if merchant.net_balance < 0 else 'money-pos' }}" style="font-size: 1.1em;">
+                                        {{ merchant.net_balance|money }}
                                     </td>
                                 </tr>
                                 {% else %}
@@ -252,10 +252,10 @@
                                     <td class="fw-bold">{{ item.product_name }}</td>
                                     <td>{{ item.merchant_name }}</td>
                                     <td><span class="badge bg-warning text-dark">{{ item.percentage }}%</span></td>
-                                    <td>{{ "{:,.2f}".format(item.avg_unit_price) }}</td>
-                                    <td>{{ item.total_qty }}</td>
-                                    <td>{{ "{:,.2f}".format(item.total_revenue) }}</td>
-                                    <td class="table-success fw-bold text-success">{{ "{:,.2f}".format(item.merchant_share_amount) }}</td>
+                                    <td class="num-cell">{{ item.avg_unit_price|money }}</td>
+                                    <td class="num-cell">{{ item.total_qty }}</td>
+                                    <td class="num-cell">{{ item.total_revenue|money }}</td>
+                                    <td class="num-cell table-success fw-bold text-success">{{ item.merchant_share_amount|money }}</td>
                                 </tr>
                                 {% else %}
                                 <tr>
@@ -267,8 +267,8 @@
                             <tfoot class="table-light fw-bold">
                                 <tr>
                                     <td colspan="5" class="text-end">الإجمالي الكلي:</td>
-                                    <td>{{ "{:,.2f}".format(merchants_data|sum(attribute='total_revenue')) }}</td>
-                                    <td class="text-success">{{ "{:,.2f}".format(merchants_data|sum(attribute='merchant_share_amount')) }}</td>
+                                    <td class="num-cell">{{ merchants_data|sum(attribute='total_revenue')|money }}</td>
+                                    <td class="num-cell text-success">{{ merchants_data|sum(attribute='merchant_share_amount')|money }}</td>
                                 </tr>
                             </tfoot>
                             {% endif %}
@@ -300,11 +300,11 @@
                                 {% for supplier in suppliers_summary %}
                                 <tr>
                                     <td class="fw-bold">{{ supplier.name }}</td>
-                                    <td>{{ "{:,.2f}".format(supplier.total_purchases) }}</td>
-                                    <td class="text-success">{{ "{:,.2f}".format(supplier.paid_to) }}</td>
-                                    <td class="text-primary">{{ "{:,.2f}".format(supplier.received_from) }}</td>
-                                    <td class="fw-bold {% if supplier.balance_due > 0 %}text-danger{% else %}text-success{% endif %}">
-                                        {{ "{:,.2f}".format(supplier.balance_due) }}
+                                    <td class="num-cell">{{ supplier.total_purchases|money }}</td>
+                                    <td class="num-cell text-success">{{ supplier.paid_to|money }}</td>
+                                    <td class="num-cell text-primary">{{ supplier.received_from|money }}</td>
+                                    <td class="fw-bold num-cell {{ 'money-neg' if supplier.balance_due > 0 else 'money-pos' }}">
+                                        {{ supplier.balance_due|money }}
                                     </td>
                                 </tr>
                                 {% else %}
@@ -317,10 +317,10 @@
                             <tfoot class="table-light fw-bold">
                                 <tr>
                                     <td class="text-end">الإجمالي الكلي:</td>
-                                    <td>{{ "{:,.2f}".format(suppliers_summary|sum(attribute='total_purchases')) }}</td>
-                                    <td class="text-success">{{ "{:,.2f}".format(suppliers_summary|sum(attribute='paid_to')) }}</td>
-                                    <td class="text-primary">{{ "{:,.2f}".format(suppliers_summary|sum(attribute='received_from')) }}</td>
-                                    <td class="text-danger">{{ "{:,.2f}".format(suppliers_summary|sum(attribute='balance_due')) }}</td>
+                                    <td class="num-cell">{{ suppliers_summary|sum(attribute='total_purchases')|money }}</td>
+                                    <td class="num-cell text-success">{{ suppliers_summary|sum(attribute='paid_to')|money }}</td>
+                                    <td class="num-cell text-primary">{{ suppliers_summary|sum(attribute='received_from')|money }}</td>
+                                    <td class="num-cell text-danger">{{ suppliers_summary|sum(attribute='balance_due')|money }}</td>
                                 </tr>
                             </tfoot>
                             {% endif %}
@@ -432,4 +432,8 @@
         };
     });
 </script>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/financial_grid.css') }}">
 {% endblock %}

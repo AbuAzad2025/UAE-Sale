@@ -10,6 +10,53 @@ from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
+# Strict-match tolerance: deltas up to 0.01 (inclusive) are considered balanced;
+# anything strictly greater is reported as a break (matches legacy drift rule).
+TOLERANCE = Decimal('0.01')
+
+
+def to_decimal(value):
+    """Coerce any numeric boundary value to Decimal (never float arithmetic)."""
+    return Decimal(str(value)) if value is not None else Decimal('0')
+
+
+def get_control_account_balance(account_codes):
+    """
+    Signed net balance (base currency) for the given GL control account codes.
+
+    Sign convention mirrors GLAccount.get_balance():
+      asset/expense     -> Σ(debit − credit)
+      liability/equity/revenue -> Σ(credit − debit)
+
+    Reversing entries are included naturally: posted entries are immutable and
+    corrections are posted as new offsetting lines, so the net already reflects them.
+    Missing codes are logged (not fatal) so reconciliation can still run.
+    """
+    from sqlalchemy import func
+
+    from extensions import db
+    from models import GLAccount, GLJournalLine
+
+    codes = [str(c) for c in (account_codes or []) if c]
+    if not codes:
+        return Decimal('0')
+
+    accounts = GLAccount.query.filter(GLAccount.code.in_(codes)).all()
+    found = {acc.code for acc in accounts}
+    missing = [c for c in codes if c not in found]
+    if missing:
+        logger.warning(f'Control account(s) missing from CoA: {missing}')
+
+    total = Decimal('0')
+    for acc in accounts:
+        raw_net = db.session.query(
+            func.coalesce(func.sum(GLJournalLine.amount_base), 0)
+        ).filter(GLJournalLine.account_id == acc.id).scalar()
+        net = to_decimal(raw_net)
+        total += net if acc.type in ('asset', 'expense') else -net
+
+    return total
+
 
 def check_customer_balance(customer_id=None):
     """

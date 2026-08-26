@@ -1,7 +1,14 @@
-from decimal import Decimal, ROUND_HALF_UP
 import time
+from decimal import ROUND_HALF_UP, Decimal
 
 from extensions import db
+
+# سعر الصرف يُكمَّم دائمًا إلى 6 منازل عشرية (نصف لأعلى) لضمان اتساق كل المصادر
+RATE_QUANTUM = Decimal('0.000001')
+# تنسيق المبالغ المعروضة: منزلتان عشريتان افتراضيًا
+DISPLAY_MONEY_QUANTUM = Decimal('0.01')
+# علامة الاتجاه الأيسر-إلى-اليمنى لعزل المبالغ داخل نصوص RTL
+LRM_MARK = '\u200e'
 
 try:
     import requests
@@ -30,7 +37,7 @@ class CurrencyService:
         من صفحة إعدادات المالك، وكل التحويلات والتقارير تتبعها تلقائيًا.
         """
         try:
-            from flask import has_request_context, current_app
+            from flask import current_app, has_request_context
             if has_request_context():
                 try:
                     from models.tenant_scope import get_current_tenant_id
@@ -103,7 +110,8 @@ class CurrencyService:
                         if fetched:
                             for curr, rate in fetched.items():
                                 try:
-                                    rates[curr.upper()] = Decimal(str(rate))
+                                    rates[curr.upper()] = Decimal(str(rate)).quantize(
+                                        RATE_QUANTUM, rounding=ROUND_HALF_UP)
                                 except Exception:
                                     continue
                             rates[base] = Decimal('1.00')
@@ -121,9 +129,9 @@ class CurrencyService:
                 # This is a SINGLE API call, much faster than a loop
                 fetched_rates = c.get_rates(base)
 
-                # Convert to Decimal
+                # Convert to Decimal (quantized for consistency with other sources)
                 for curr, rate in fetched_rates.items():
-                    rates[curr] = Decimal(str(rate))
+                    rates[curr] = Decimal(str(rate)).quantize(RATE_QUANTUM, rounding=ROUND_HALF_UP)
 
                 # Ensure base currency is 1.0
                 rates[base] = Decimal('1.00')
@@ -155,10 +163,10 @@ class CurrencyService:
                 val_target = get_ils_value(curr)
                 val_base = get_ils_value(base)
 
-                rates[curr] = (val_target / val_base).quantize(Decimal('0.000001'), rounding=ROUND_HALF_UP)
+                rates[curr] = (val_target / val_base).quantize(RATE_QUANTUM, rounding=ROUND_HALF_UP)
 
         CurrencyService._rates_cache[base] = {'timestamp': time.time(), 'rates': rates}
-        return rates
+        return rates.copy()
 
     @staticmethod
     def get_exchange_rate(from_currency, to_currency=None, user_rate=None):
@@ -190,9 +198,36 @@ class CurrencyService:
         if cache_entry and (time.time() - cache_entry['timestamp']) < CurrencyService.CACHE_TTL_SECONDS:
             cached_rate = cache_entry['rates'].get(to_currency)
             if cached_rate:
-                return cached_rate
+                return Decimal(str(cached_rate)).quantize(RATE_QUANTUM, rounding=ROUND_HALF_UP)
 
         # If not in cache, try to fetch/refresh cache for 'from_currency'
         # This calls the optimized get_all_rates which handles API/Fallback + Caching
         all_rates = CurrencyService.get_all_rates(base=from_currency)
         return all_rates.get(to_currency, Decimal('1'))
+
+    @staticmethod
+    def format_amount(amount, currency=None, decimal_places=2):
+        """تنسيق مبلغ بعملته بطريقة آمنة ثنائية الاتجاه (Bidi-safe).
+
+        - يُعيد نصًا مثل '‎1,234.50 ILS' مع علامة U+200E (LRM) في البداية
+          حتى لا ينقلب ترتيب المبلغ داخل الفقرات العربية (RTL).
+        - أرقام لاتينية دائمًا (الأرقام العربية-الهندية مغلقة)، فواصل آلاف كل 3 خانات.
+        - دالة نقية: لا تعتمد على سياق الطلب أو قاعدة البيانات.
+        """
+        if amount is None:
+            raise ValueError('amount is required')
+        if currency is None or not str(currency).strip():
+            raise ValueError('currency is required')
+        try:
+            value = Decimal(str(amount))
+        except Exception as exc:
+            raise ValueError(f'Invalid amount: {amount!r}') from exc
+        places = int(decimal_places) if decimal_places is not None else 2
+        if places < 0:
+            raise ValueError('decimal_places must be >= 0')
+        quantum = Decimal(1).scaleb(-places)
+        value = value.quantize(quantum, rounding=ROUND_HALF_UP)
+        if value == 0:
+            value = value.copy_abs()  # تجنّب '-0.00'
+        body = f'{value:,}'
+        return f'{LRM_MARK}{body} {str(currency).strip().upper()}'

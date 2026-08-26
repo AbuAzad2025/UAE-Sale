@@ -6,6 +6,11 @@ from models.tenant_scope import TenantScopedMixin
 class GLAccount(db.Model):
     __tablename__ = 'gl_accounts'
 
+    # طبيعة الحساب: الأصول والمصروفات مدينة (طبيعية مدينة)،
+    # الخصوم وحقوق الملكية والإيرادات دائنة (طبيعية دائنة).
+    DEBIT_NATURE_TYPES = frozenset({'asset', 'expense'})
+    CREDIT_NATURE_TYPES = frozenset({'liability', 'equity', 'revenue'})
+
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(20), unique=True, nullable=False, index=True)
     name = db.Column(db.String(200), nullable=False)  # English name
@@ -32,6 +37,23 @@ class GLAccount(db.Model):
         return f"{self.code} - {self.name_ar or self.name}"
 
     @property
+    def full_path(self):
+        """المسار الهرمي الكامل (من الجذر إلى هذا الحساب) — إضافي لا يغيّر full_name"""
+        chain = []
+        seen = set()
+        node = self
+        while node is not None and node.id not in seen:
+            seen.add(node.id)
+            chain.append(node.code)
+            node = node.parent
+        return ' / '.join(reversed(chain))
+
+    @property
+    def is_debit_nature(self):
+        """True للحسابات ذات الطبيعة المدينة (أصول/مصروفات)"""
+        return self.type in GLAccount.DEBIT_NATURE_TYPES
+
+    @property
     def type_ar(self):
         """نوع الحساب بالعربي"""
         types = {
@@ -43,25 +65,124 @@ class GLAccount(db.Model):
         }
         return types.get(self.type, self.type)
 
-    def get_balance(self):
-        """حساب رصيد الحساب بالعملة المحلية (AED)"""
+    @staticmethod
+    def _as_bound_datetime(value, end_of_day=False):
+        """تطبيع حدود التاريخ للمقارنة مع entry_date (DateTime)."""
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                value = datetime.fromisoformat(value)
+            except ValueError:
+                return None
+        # كائن date (بدون وقت): بداية اليوم أو نهايته حسب الحد
+        if end_of_day:
+            return datetime(value.year, value.month, value.day, 23, 59, 59, 999999)
+        return datetime(value.year, value.month, value.day)
+
+    def _signed_balance_query(self, date_from=None, date_to=None, as_of_date=None):
+        """استعلام مجموع amount_base مع فلاتر التاريخ (بدون تطبيق الإشارة)."""
         from sqlalchemy import func
-        from models import GLJournalLine
+        from models import GLJournalEntry, GLJournalLine
 
-        balance_sum = db.session.query(func.sum(GLJournalLine.amount_base)).filter_by(account_id=self.id).scalar() or 0
+        q = db.session.query(func.sum(GLJournalLine.amount_base)).join(
+            GLJournalEntry, GLJournalLine.entry_id == GLJournalEntry.id
+        ).filter(GLJournalLine.account_id == self.id)
 
-        if self.type in ['asset', 'expense']:
+        lower = self._as_bound_datetime(date_from, end_of_day=False)
+        upper = self._as_bound_datetime(date_to, end_of_day=True) or self._as_bound_datetime(as_of_date, end_of_day=True)
+        if lower is not None:
+            q = q.filter(GLJournalEntry.entry_date >= lower)
+        if upper is not None:
+            q = q.filter(GLJournalEntry.entry_date <= upper)
+        return q
+
+    def get_balance(self, date_from=None, date_to=None, as_of_date=None):
+        """حساب رصيد الحساب بالعملة المحلية.
+
+        طبيعة الرصيد: الأصول/المصروفات مدينة (مدين - دائن)،
+        الخصوم/حقوق الملكية/الإيرادات دائنة (دائن - مدين).
+
+        يدعم اختيارياً:
+        - date_from/date_to: رصيد فترة محددة.
+        - as_of_date: الرصيد التراكمي حتى تاريخ معين (شامل).
+        الاستدعاء بلا وسائط يحافظ على السلوك السابق تماماً.
+        """
+        balance_sum = self._signed_balance_query(
+            date_from=date_from, date_to=date_to, as_of_date=as_of_date
+        ).scalar()
+
+        if balance_sum is None:
+            return 0
+        if self.is_debit_nature:
             return balance_sum
-        else:  # liability, equity, revenue
-            return -balance_sum
+        return -balance_sum
+
+    def get_descendants(self, active_only=True):
+        """جميع الحسابات الفرعية (كل المستويات) — مسح تكراري آمن ضد الدورات."""
+        result = []
+        seen = {self.id}
+        stack = list(self.children)
+        while stack:
+            child = stack.pop(0)
+            if child.id in seen:
+                continue  # حماية من المراجع الدائرية
+            seen.add(child.id)
+            if active_only and not child.is_active:
+                continue  # تجاهل الفرع غير النشط بأكمله
+            result.append(child)
+            stack.extend(child.children)
+        return result
 
     def get_children_recursive(self):
-        """الحصول على جميع الحسابات الفرعية بشكل متكرر"""
+        """الحصول على جميع الحسابات الفرعية بشكل متكرر (سلوك تاريخي محفوظ)"""
         result = []
         for child in self.children:
             result.append(child)
             result.extend(child.get_children_recursive())
         return result
+
+    def get_aggregate_balance(self, date_from=None, date_to=None, as_of_date=None,
+                              include_self=True, active_only=False):
+        """الرصيد الإجمالي: هذا الحساب + كل فروعه (parent = sum(children)).
+
+        يطبق طبيعة كل حساب (مدين/دائن) على مجموعه قبل الجمع، عبر استعلام
+        واحد مجمع حسب نوع الحساب.
+        """
+        from sqlalchemy import func
+        from models import GLJournalEntry, GLJournalLine
+
+        ids = [self.id] if include_self else []
+        seen = {self.id}
+        for desc in self.get_descendants(active_only=active_only):
+            if desc.id not in seen:
+                seen.add(desc.id)
+                ids.append(desc.id)
+
+        q = db.session.query(
+            GLAccount.type, func.sum(GLJournalLine.amount_base)
+        ).join(
+            GLJournalLine, GLJournalLine.account_id == GLAccount.id
+        ).join(
+            GLJournalEntry, GLJournalLine.entry_id == GLJournalEntry.id
+        ).filter(GLAccount.id.in_(ids))
+
+        lower = self._as_bound_datetime(date_from, end_of_day=False)
+        upper = self._as_bound_datetime(date_to, end_of_day=True) or self._as_bound_datetime(as_of_date, end_of_day=True)
+        if lower is not None:
+            q = q.filter(GLJournalEntry.entry_date >= lower)
+        if upper is not None:
+            q = q.filter(GLJournalEntry.entry_date <= upper)
+
+        total = None
+        for acc_type, raw_sum in q.group_by(GLAccount.type).all():
+            if raw_sum is None:
+                continue
+            signed = raw_sum if acc_type in GLAccount.DEBIT_NATURE_TYPES else -raw_sum
+            total = signed if total is None else total + signed
+        return total if total is not None else 0
 
 
 class GLJournalEntry(TenantScopedMixin, db.Model):

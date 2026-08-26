@@ -4,6 +4,7 @@ from extensions import db
 from models import Sale, SaleLine, ProductReturn, ProductReturnLine, Product
 from services.stock_service import StockService
 from services.gl_service import GLService
+from services.tax_engine import TaxEngine
 from utils.helpers import generate_number
 
 
@@ -58,7 +59,12 @@ class ReturnService:
             db.session.flush()  # Get ID
 
             total_return_amount = Decimal('0')
+            return_line_totals = []
             gl_lines = []
+
+            # GL account routing via central TaxEngine/resolver (literal fallbacks
+            # keep today's codes until Agent 1's account_resolution module lands).
+            routing = TaxEngine.liability_routing()
 
             # 3. Process Lines
             for line_data in return_lines_data:
@@ -94,6 +100,7 @@ class ReturnService:
                 line_total = (unit_price * quantity).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
 
                 total_return_amount += line_total
+                return_line_totals.append(line_total)
 
                 # Create Return Line
                 return_line = ProductReturnLine(
@@ -130,14 +137,14 @@ class ReturnService:
                 if cost_value > 0:
                     # Inventory (Asset) - Debit (Increase)
                     gl_lines.append({
-                        'account': '1140',
+                        'account': routing['inventory'],
                         'debit': cost_value,
                         'credit': 0,
                         'description': f'Inventory Restock - {product.name}'
                     })
                     # COGS (Expense) - Credit (Decrease)
                     gl_lines.append({
-                        'account': '5100',
+                        'account': routing['cogs'],
                         'debit': 0,
                         'credit': cost_value,
                         'description': f'COGS Reversal - {product.name}'
@@ -146,32 +153,33 @@ class ReturnService:
             product_return.calculate_totals()
 
             # 4. Financial GL Entries (Revenue Reversal)
-            # Total Return Amount includes Tax if sale had tax?
-            # SaleLine usually stores unit_price * quantity. Tax is usually on top in Sale model.
-            # But wait, SaleLine doesn't store tax info usually. Sale stores tax_rate.
-            # We need to reverse Tax proportionally.
-
+            # TaxEngine policy: tax is computed PER RETURN LINE then summed,
+            # so the reversal mirrors how each line's VAT was accrued.
+            # For single-line returns this is numerically identical to the
+            # legacy aggregate formula ((net * rate/100).quantize(0.001, HALF_UP)).
             tax_rate = sale.tax_rate or Decimal('0')
-            # If line_total excludes tax (which is standard), then we calculate tax on top.
+            breakdown = TaxEngine.compute_invoice(
+                [{'amount': t, 'rate': tax_rate} for t in return_line_totals]
+            )
 
-            net_return_amount = total_return_amount  # Excluding tax
-            tax_amount = (net_return_amount * (tax_rate / Decimal('100'))).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
-            gross_return_amount = net_return_amount + tax_amount
+            net_return_amount = breakdown['total_net']  # Excluding tax
+            tax_amount = breakdown['total_tax']
+            gross_return_amount = breakdown['total_gross']
 
             product_return.refund_amount = gross_return_amount  # Default to full refund of value
 
-            # Debit Sales Revenue (or Sales Returns)
+            # Debit Sales Returns/Revenue (reducing revenue)
             gl_lines.append({
-                'account': '4100',  # Sales Revenue (Debiting it reduces revenue)
+                'account': routing['sales_returns'],
                 'debit': net_return_amount,
                 'credit': 0,
                 'description': f'Sales Return Revenue Reversal {sale.sale_number}'
             })
 
-            # Debit Tax Liability (Reducing liability)
+            # Debit Output VAT liability (Reducing liability)
             if tax_amount > 0:
                 gl_lines.append({
-                    'account': '2130',  # Taxes Payable
+                    'account': routing['output_vat'],
                     'debit': tax_amount,
                     'credit': 0,
                     'description': f'Sales Return Tax Reversal {sale.sale_number}'

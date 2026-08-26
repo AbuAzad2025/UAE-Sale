@@ -155,9 +155,9 @@
           <th>رقم الفاتورة</th>
           <th>التاريخ</th>
           <th>العميل</th>
-          <th class="text-right">المبلغ</th>
+          <th class="text-right num-cell">المبلغ</th>
           <th class="text-center">نسبة الضريبة</th>
-          <th class="text-right">الضريبة</th>
+          <th class="text-right num-cell">الضريبة</th>
         </tr>
       </thead>
       <tbody>
@@ -166,18 +166,18 @@
           <td>{{ sale.number }}</td>
           <td>{{ sale.date.strftime('%Y-%m-%d') if sale.date else '-' }}</td>
           <td>{{ sale.customer }}</td>
-          <td class="text-right">{{ "{:,.2f}".format(sale.amount) }}</td>
+          <td class="text-right num-cell">{{ sale.amount|money }}</td>
           <td class="text-center">{{ sale.tax_rate }}%</td>
-          <td class="text-right font-weight-bold">{{ "{:,.2f}".format(sale.tax_amount) }}</td>
+          <td class="text-right num-cell">{{ sale.tax_amount|money }}</td>
         </tr>
         {% endfor %}
       </tbody>
       <tfoot>
         <tr class="font-weight-bold">
           <td colspan="3">المجموع</td>
-          <td class="text-right">{{ "{:,.2f}".format(summary.total_taxable_sales) }}</td>
+          <td class="text-right num-cell">{{ summary.total_taxable_sales|money }}</td>
           <td></td>
-          <td class="text-right text-danger">{{ "{:,.2f}".format(summary.total_output_vat) }}</td>
+          <td class="text-right num-cell">{{ summary.total_output_vat|money }}</td>
         </tr>
       </tfoot>
     </table>
@@ -199,9 +199,9 @@
           <th>رقم الفاتورة</th>
           <th>التاريخ</th>
           <th>المورد</th>
-          <th class="text-right">المبلغ</th>
+          <th class="text-right num-cell">المبلغ</th>
           <th class="text-center">نسبة الضريبة</th>
-          <th class="text-right">الضريبة</th>
+          <th class="text-right num-cell">الضريبة</th>
         </tr>
       </thead>
       <tbody>
@@ -210,18 +210,18 @@
           <td>{{ purchase.number }}</td>
           <td>{{ purchase.date.strftime('%Y-%m-%d') if purchase.date else '-' }}</td>
           <td>{{ purchase.supplier }}</td>
-          <td class="text-right">{{ "{:,.2f}".format(purchase.amount) }}</td>
+          <td class="text-right num-cell">{{ purchase.amount|money }}</td>
           <td class="text-center">{{ purchase.tax_rate }}%</td>
-          <td class="text-right font-weight-bold">{{ "{:,.2f}".format(purchase.tax_amount) }}</td>
+          <td class="text-right num-cell">{{ purchase.tax_amount|money }}</td>
         </tr>
         {% endfor %}
       </tbody>
       <tfoot>
         <tr class="font-weight-bold">
           <td colspan="3">المجموع</td>
-          <td class="text-right">{{ "{:,.2f}".format(summary.total_taxable_purchases) }}</td>
+          <td class="text-right num-cell">{{ summary.total_taxable_purchases|money }}</td>
           <td></td>
-          <td class="text-right text-success">{{ "{:,.2f}".format(summary.total_input_vat) }}</td>
+          <td class="text-right num-cell">{{ summary.total_input_vat|money }}</td>
         </tr>
       </tfoot>
     </table>
@@ -241,16 +241,16 @@
         <table class="table">
           <tr>
             <td>ضريبة المبيعات (Output VAT)</td>
-            <td class="text-right text-danger font-weight-bold">{{ "{:,.2f}".format(summary.total_output_vat) }}</td>
+            <td class="text-right num-cell font-weight-bold">{{ summary.total_output_vat|money }}</td>
           </tr>
           <tr>
             <td>ضريبة المشتريات (Input VAT)</td>
-            <td class="text-right text-success font-weight-bold">({{ "{:,.2f}".format(summary.total_input_vat) }})</td>
+            <td class="text-right num-cell font-weight-bold">({{ summary.total_input_vat|money }})</td>
           </tr>
           <tr class="font-weight-bold">
             <td>الرصيد النهائي</td>
-            <td class="text-right {% if summary.net_vat > 0 %}text-danger{% elif summary.net_vat < 0 %}text-success{% endif %}">
-              {{ "{:,.2f}".format(summary.net_vat) }}
+            <td class="text-right num-cell {{ 'money-neg' if summary.net_vat > 0 else ('money-pos' if summary.net_vat < 0 else '') }}">
+              {{ summary.net_vat|money }}
             </td>
           </tr>
         </table>
@@ -276,4 +276,8 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/financial_grid.css') }}">
 {% endblock %}

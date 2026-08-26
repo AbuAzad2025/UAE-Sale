@@ -34,11 +34,15 @@ class AdvancedJournalEntryManager:
         """إنشاء قيد مع التحقق المتقدم"""
         from services.gl_service import GLService
 
-        # التحقق من التوازن
-        total_debit = sum(line.get('debit', 0) for line in lines)
-        total_credit = sum(line.get('credit', 0) for line in lines)
+        # التحقق من التوازن (Decimal إلزامي — ممنوع الحساب العشري float)
+        total_debit = sum(
+            (Decimal(str(line.get('debit', 0) or 0)) for line in lines), Decimal('0')
+        )
+        total_credit = sum(
+            (Decimal(str(line.get('credit', 0) or 0)) for line in lines), Decimal('0')
+        )
 
-        if abs(total_debit - total_credit) > 0.01:
+        if abs(total_debit - total_credit) > Decimal('0.01'):
             raise ValueError(f"القيد غير متوازن: المدين {total_debit} ≠ الدائن {total_credit}")
 
         # التحقق من الحسابات الرئيسية
@@ -76,7 +80,7 @@ class AdvancedJournalEntryManager:
         entry = db.get_or_404(GLJournalEntry, entry_id)
 
         if entry.is_posted:
-            raise ValueError("لا يمكن تعديل قيد مرحل")
+            raise ValueError("posted entries immutable; post reversal - لا يمكن تعديل قيد مرحل")
 
         if entry.is_reversed:
             raise ValueError("لا يمكن تعديل قيد معكوس")
@@ -164,6 +168,10 @@ class AdvancedJournalEntryManager:
                 entry_type='reversing'
             )
 
+            # ربط القيد العكسي بالمصدر الأصلي (نفس أسلوب إلغاء الشيكات)
+            reversal_entry.reference_type = entry.reference_type
+            reversal_entry.reference_id = entry.reference_id
+
             # ربط القيود
             entry.is_reversed = True
             entry.reversed_entry_id = reversal_entry.id
@@ -184,7 +192,7 @@ class AdvancedJournalEntryManager:
         entry = db.get_or_404(GLJournalEntry, entry_id)
 
         if entry.is_posted:
-            raise ValueError("لا يمكن حذف قيد مرحل - استخدم العكس بدلاً من ذلك")
+            raise ValueError("posted entries immutable; post reversal - لا يمكن حذف قيد مرحل - استخدم العكس بدلاً من ذلك")
 
         if entry.is_reversed:
             raise ValueError("لا يمكن حذف قيد معكوس")
@@ -220,10 +228,10 @@ class AdvancedJournalEntryManager:
             raise ValueError("القيد مرحل مسبقاً")
 
         # التحقق من التوازن مرة أخرى
-        total_debit = sum(line.debit for line in entry.lines)
-        total_credit = sum(line.credit for line in entry.lines)
+        total_debit = sum((line.debit for line in entry.lines), Decimal('0'))
+        total_credit = sum((line.credit for line in entry.lines), Decimal('0'))
 
-        if abs(total_debit - total_credit) > 0.01:
+        if abs(total_debit - total_credit) > Decimal('0.01'):
             raise ValueError(f"القيد غير متوازن: المدين {total_debit} ≠ الدائن {total_credit}")
 
         # الموافقة
@@ -293,10 +301,10 @@ def add_helper_methods():
 
     def get_balance_status(self):
         """الحصول على حالة التوازن"""
-        difference = abs(self.total_debit - self.total_credit)
-        if difference < 0.01:
+        difference = abs(Decimal(str(self.total_debit)) - Decimal(str(self.total_credit)))
+        if difference < Decimal('0.01'):
             return 'balanced'
-        elif difference < 10:
+        elif difference < Decimal('10'):
             return 'minor_imbalance'
         else:
             return 'major_imbalance'

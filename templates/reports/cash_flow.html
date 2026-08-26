@@ -87,19 +87,19 @@
       <i class="fas fa-store mr-2"></i>الأنشطة التشغيلية
     </h4>
     {% if operating_items %}
-    <table class="table table-sm table-bordered mb-4">
+    <table class="table table-sm table-bordered mb-4 financial-grid">
       <thead>
         <tr>
           <th>الحساب</th>
-          <th class="text-right">المبلغ (AED)</th>
+          <th class="text-right num-cell">المبلغ (AED)</th>
         </tr>
       </thead>
       <tbody>
         {% for name, amount in operating_items.items() %}
         <tr>
           <td>{{ name }}</td>
-          <td class="text-right {% if amount > 0 %}text-success{% elif amount < 0 %}text-danger{% endif %}">
-            {{ "{:,.2f}".format(amount) }}
+          <td class="num-cell {{ 'money-neg' if amount < 0 else ('money-pos' if amount > 0 else '') }}">
+            {{ amount|money }}
           </td>
         </tr>
         {% endfor %}
@@ -107,8 +107,8 @@
       <tfoot>
         <tr class="font-weight-bold">
           <td>صافي الأنشطة التشغيلية</td>
-          <td class="text-right {% if operating_total > 0 %}text-success{% elif operating_total < 0 %}text-danger{% endif %}">
-            {{ "{:,.2f}".format(operating_total) }}
+          <td class="num-cell {{ 'money-neg' if operating_total < 0 else ('money-pos' if operating_total > 0 else '') }}">
+            {{ operating_total|money }}
           </td>
         </tr>
       </tfoot>
@@ -122,19 +122,19 @@
       <i class="fas fa-industry mr-2"></i>الأنشطة الاستثمارية
     </h4>
     {% if investing_items %}
-    <table class="table table-sm table-bordered mb-4">
+    <table class="table table-sm table-bordered mb-4 financial-grid">
       <thead>
         <tr>
           <th>الحساب</th>
-          <th class="text-right">المبلغ (AED)</th>
+          <th class="text-right num-cell">المبلغ (AED)</th>
         </tr>
       </thead>
       <tbody>
         {% for name, amount in investing_items.items() %}
         <tr>
           <td>{{ name }}</td>
-          <td class="text-right {% if amount > 0 %}text-success{% elif amount < 0 %}text-danger{% endif %}">
-            {{ "{:,.2f}".format(amount) }}
+          <td class="num-cell {{ 'money-neg' if amount < 0 else ('money-pos' if amount > 0 else '') }}">
+            {{ amount|money }}
           </td>
         </tr>
         {% endfor %}
@@ -142,8 +142,8 @@
       <tfoot>
         <tr class="font-weight-bold">
           <td>صافي الأنشطة الاستثمارية</td>
-          <td class="text-right {% if investing_total > 0 %}text-success{% elif investing_total < 0 %}text-danger{% endif %}">
-            {{ "{:,.2f}".format(investing_total) }}
+          <td class="num-cell {{ 'money-neg' if investing_total < 0 else ('money-pos' if investing_total > 0 else '') }}">
+            {{ investing_total|money }}
           </td>
         </tr>
       </tfoot>
@@ -157,19 +157,19 @@
       <i class="fas fa-university mr-2"></i>الأنشطة التمويلية
     </h4>
     {% if financing_items %}
-    <table class="table table-sm table-bordered mb-4">
+    <table class="table table-sm table-bordered mb-4 financial-grid">
       <thead>
         <tr>
           <th>الحساب</th>
-          <th class="text-right">المبلغ (AED)</th>
+          <th class="text-right num-cell">المبلغ (AED)</th>
         </tr>
       </thead>
       <tbody>
         {% for name, amount in financing_items.items() %}
         <tr>
           <td>{{ name }}</td>
-          <td class="text-right {% if amount > 0 %}text-success{% elif amount < 0 %}text-danger{% endif %}">
-            {{ "{:,.2f}".format(amount) }}
+          <td class="num-cell {{ 'money-neg' if amount < 0 else ('money-pos' if amount > 0 else '') }}">
+            {{ amount|money }}
           </td>
         </tr>
         {% endfor %}
@@ -177,8 +177,8 @@
       <tfoot>
         <tr class="font-weight-bold">
           <td>صافي الأنشطة التمويلية</td>
-          <td class="text-right {% if financing_total > 0 %}text-success{% elif financing_total < 0 %}text-danger{% endif %}">
-            {{ "{:,.2f}".format(financing_total) }}
+          <td class="num-cell {{ 'money-neg' if financing_total < 0 else ('money-pos' if financing_total > 0 else '') }}">
+            {{ financing_total|money }}
           </td>
         </tr>
       </tfoot>
@@ -193,12 +193,16 @@
         <h4 class="mb-0">
           <i class="fas fa-calculator mr-2"></i>
           صافي التدفق النقدي:
-          <span class="{% if net_change > 0 %}text-success{% elif net_change < 0 %}text-danger{% endif %} font-weight-bold">
-            {{ "{:,.2f}".format(net_change) }} AED
+          <span class="num-cell {{ 'money-neg' if net_change < 0 else ('money-pos' if net_change > 0 else '') }} font-weight-bold">
+            {{ net_change|money }} AED
           </span>
         </h4>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/financial_grid.css') }}">
 {% endblock %}

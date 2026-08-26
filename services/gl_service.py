@@ -2,9 +2,17 @@ from decimal import Decimal
 from datetime import datetime, timezone
 from extensions import db
 from models import GLAccount, GLJournalEntry, GLJournalLine
+from services.account_resolution import AccountResolver, AccountRole
 from services.currency_service import CurrencyService
 
 _JE_SEQ = {}
+
+_PAYMENT_METHOD_ROLES = {
+    'cash': AccountRole.CASH,
+    'bank_transfer': AccountRole.BANK,
+    'card': AccountRole.BANK,
+    'cheque': AccountRole.UNDER_COLLECTION,
+}
 
 
 class GLService:
@@ -115,22 +123,17 @@ class GLService:
     @staticmethod
     def get_payment_debit_account(method):
         m = (method or '').strip()
-        if m == 'cash':
-            return '1110'
-        if m in ('bank_transfer', 'card'):
-            return '1120'
-        if m == 'cheque':
-            return '1150'
-        return '1110'
+        role = _PAYMENT_METHOD_ROLES.get(m, AccountRole.CASH)
+        return AccountResolver.resolve(role)
 
     @staticmethod
     def get_customer_credit_account(customer):
-        code = '1130'
-        if customer and getattr(customer, 'customer_type', None) == 'partner':
-            code = '3350'
-        elif customer and getattr(customer, 'customer_type', None) == 'merchant':
-            code = '2115'
-        return code
+        ctype = getattr(customer, 'customer_type', None)
+        if ctype == 'partner':
+            return AccountResolver.resolve(AccountRole.PARTNERS_CURRENT)
+        if ctype == 'merchant':
+            return AccountResolver.resolve(AccountRole.MERCHANTS_PAYABLE)
+        return AccountResolver.resolve(AccountRole.AR_CONTROL)
 
     @staticmethod
     def create_journal_entry(entry_type, description, lines, reference_type=None, reference_id=None):
@@ -393,12 +396,17 @@ class GLService:
         # إنشاء كشف الحساب
         running_balance = opening_balance
         transactions = []
+        total_debit = Decimal('0')
+        total_credit = Decimal('0')
 
         for line in lines:
             if account.type in ['asset', 'expense']:
                 running_balance += line.debit - line.credit
             else:
                 running_balance += line.credit - line.debit
+
+            total_debit += line.debit or Decimal('0')
+            total_credit += line.credit or Decimal('0')
 
             transactions.append({
                 'date': line.entry.entry_date,
@@ -416,8 +424,8 @@ class GLService:
             'opening_balance': float(opening_balance),
             'transactions': transactions,
             'closing_balance': float(running_balance),
-            'total_debit': sum(t['debit'] for t in transactions),
-            'total_credit': sum(t['credit'] for t in transactions)
+            'total_debit': float(total_debit),
+            'total_credit': float(total_credit)
         }
 
     @staticmethod
@@ -439,6 +447,7 @@ class GLService:
                 'is_header': account.is_header,
                 'level': account.level,
                 'balance': float(account.get_balance()),
+                'aggregate_balance': float(account.get_aggregate_balance()),
                 'children': [build_tree(child) for child in account.children if child.is_active]
             }
 

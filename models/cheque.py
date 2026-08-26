@@ -4,10 +4,32 @@
 """
 
 from datetime import datetime, timezone
-from extensions import db
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
+
 from flask import current_app
+
+from extensions import db
 from models.tenant_scope import TenantScopedMixin
+
+# حل ديناميكي لحسابات الأرباح/الخسائر لفروق العملة (عقد Agent 1) مع سقوط آمن
+# إلى الرموز الحرفية الحالية إذا لم تتوفر الوحدة بعد.
+try:
+    from services.account_resolution import AccountResolver, AccountRole
+except Exception:  # pragma: no cover - الوحدة تُسلَّم بالتوازي
+    AccountRole = None  # type: ignore[assignment,misc]
+    AccountResolver = None  # type: ignore[assignment,misc]
+
+
+def _resolve_account(role_value, fallback_code):
+    """Resolve an account by role name, falling back to the historical literal."""
+    try:
+        if AccountRole is not None and AccountResolver is not None:
+            code = AccountResolver.resolve(AccountRole(role_value))
+            if code:
+                return code
+    except Exception:
+        pass
+    return fallback_code
 
 
 class Cheque(TenantScopedMixin, db.Model):
@@ -125,10 +147,14 @@ class Cheque(TenantScopedMixin, db.Model):
 
     def calculate_amount_base(self):
         """حساب المبلغ بالدرهم"""
-        if self.exchange_rate:
-            self.amount_base = self.amount * self.exchange_rate
+        amount = Decimal(str(self.amount))
+        if self.exchange_rate is not None:
+            rate = Decimal(str(self.exchange_rate))
+            if rate <= 0:
+                raise ValueError('Invalid exchange rate: must be positive')
+            self.amount_base = (amount * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         else:
-            self.amount_base = self.amount
+            self.amount_base = amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
     def receive_cheque(self):
         """تسجيل استلام الشيك الوارد"""
@@ -209,14 +235,23 @@ class Cheque(TenantScopedMixin, db.Model):
         if self.status not in ['deposited', 'pending']:
             raise ValueError(f'لا يمكن تأكيد صرف شيك بحالة: {self.status_ar}')
 
+        from services.currency_service import CurrencyService
+        _base = CurrencyService.get_base_currency()
+
+        # التحقق من السعر المُمرَّر قبل أي تغيير حالة لتفادي الشيكات نصف المحدّثة
+        explicit_rate = None
+        if self.currency != _base and clearance_exchange_rate is not None:
+            explicit_rate = Decimal(str(clearance_exchange_rate))
+            if explicit_rate <= 0:
+                raise ValueError('Invalid clearance exchange rate: must be positive')
+
         self.status = 'cleared'
         self.clearance_date = clearance_date or datetime.now().date()
 
         # حفظ سعر الصرف وقت الصرف إذا العملة مختلفة عن عملة القاعدة
-        from services.currency_service import CurrencyService
-        _base = CurrencyService.get_base_currency()
-        if self.currency != _base and clearance_exchange_rate:
-            self.clearance_exchange_rate = Decimal(str(clearance_exchange_rate))
+        if self.currency != _base and explicit_rate is not None:
+            self.clearance_exchange_rate = explicit_rate.quantize(
+                Decimal('0.000001'), rounding=ROUND_HALF_UP)
         elif self.currency != _base:
             # جلب السعر الحالي تلقائياً
             try:
@@ -226,14 +261,22 @@ class Cheque(TenantScopedMixin, db.Model):
                 # إذا فشل جلب السعر، استخدم السعر الأصلي
                 self.clearance_exchange_rate = self.exchange_rate
         else:
-            # إذا العملة AED، السعر 1
+            # إذا العملة هي عملة القاعدة، السعر 1
             self.clearance_exchange_rate = Decimal('1.0')
 
-        # حساب المبلغ الفعلي بالدرهم
-        self.actual_amount_base = self.amount * self.clearance_exchange_rate
+        # إصلاح ذاتي: لا يمكن حساب الفرق بدون مبلغ أساس تاريخي
+        if self.amount_base is None:
+            self.calculate_amount_base()
+
+        # حساب المبلغ الفعلي بالعملة الأساسية (تكميم منزلتين)
+        amount = Decimal(str(self.amount))
+        rate = Decimal(str(self.clearance_exchange_rate))
+        self.actual_amount_base = (amount * rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
         # حساب ربح/خسارة فرق العملة
-        self.currency_gain_loss = self.actual_amount_base - self.amount_base
+        # موجب = القيمة الفعلية أعلى من الدفترية؛ دلالته تختلف بين الوارد والصادر (انظر القيد أدناه)
+        self.currency_gain_loss = (self.actual_amount_base - Decimal(str(self.amount_base))).quantize(
+            Decimal('0.01'), rounding=ROUND_HALF_UP)
 
         # إنشاء قيد محاسبي تلقائي
         self._create_clearing_journal_entry()
@@ -250,8 +293,16 @@ class Cheque(TenantScopedMixin, db.Model):
             receipt.confirm_receipt()
 
     def _create_clearing_journal_entry(self):
-        """إنشاء القيد المحاسبي عند صرف الشيك"""
+        """إنشاء القيد المحاسبي عند صرف الشيك
+
+        اصطلاح الإشارة المُثبَّت (موجب currency_gain_loss = الفعلي أعلى من الدفتري):
+        - وارد: موجب = ربح  → دائن أرباح فرق العملة؛ سالب = خسارة → مدين خسائر فرق العملة
+        - صادر: موجب = خسارة (دُفع نقدًا أكثر من الالتزام) → مدين خسائر؛ سالب = ربح → دائن أرباح
+        """
         from services.gl_service import GLService
+
+        fx_gain_account = _resolve_account('FX_GAIN', '4400')
+        fx_loss_account = _resolve_account('FX_LOSS', '6900')
 
         try:
             lines = []
@@ -276,7 +327,7 @@ class Cheque(TenantScopedMixin, db.Model):
                     if self.currency_gain_loss > 0:
                         # ربح
                         lines.append({
-                            'account': '4400',  # أرباح فرق العملة
+                            'account': fx_gain_account,  # أرباح فرق العملة
                             'debit': 0,
                             'credit': abs(self.currency_gain_loss),
                             'description': f'ربح فرق عملة - شيك {self.cheque_bank_number}'
@@ -284,7 +335,7 @@ class Cheque(TenantScopedMixin, db.Model):
                     else:
                         # خسارة
                         lines.append({
-                            'account': '6900',  # خسائر فرق العملة
+                            'account': fx_loss_account,  # خسائر فرق العملة
                             'debit': abs(self.currency_gain_loss),
                             'credit': 0,
                             'description': f'خسارة فرق عملة - شيك {self.cheque_bank_number}'
@@ -308,9 +359,9 @@ class Cheque(TenantScopedMixin, db.Model):
                 # إضافة ربح/خسارة فرق العملة إن وجد
                 if self.currency_gain_loss and abs(self.currency_gain_loss) > Decimal('0.01'):
                     if self.currency_gain_loss > 0:
-                        # خسارة (للشيك الصادر ربح فرق العملة يعتبر خسارة)
+                        # خسارة (للشيك الصادر ارتفاع السعر يعني دفع نقدي أكبر = خسارة)
                         lines.append({
-                            'account': '6900',  # خسائر فرق العملة
+                            'account': fx_loss_account,  # خسائر فرق العملة
                             'debit': abs(self.currency_gain_loss),
                             'credit': 0,
                             'description': f'خسارة فرق عملة - شيك {self.cheque_bank_number}'
@@ -318,18 +369,20 @@ class Cheque(TenantScopedMixin, db.Model):
                     else:
                         # ربح
                         lines.append({
-                            'account': '4400',  # أرباح فرق العملة
+                            'account': fx_gain_account,  # أرباح فرق العملة
                             'debit': 0,
                             'credit': abs(self.currency_gain_loss),
                             'description': f'ربح فرق عملة - شيك {self.cheque_bank_number}'
                         })
 
-            GLService.post_entry(
+            entry = GLService.post_entry(
                 lines=lines,
                 description=f'صرف شيك {self.type_ar} رقم {self.cheque_bank_number}',
                 reference_type='cheque_clear',
                 reference_id=self.id
             )
+            if entry is not None and not self.gl_clearing_entry_id:
+                self.gl_clearing_entry_id = entry.id
 
         except Exception as e:
             # لا نوقف العملية إذا فشل القيد المحاسبي

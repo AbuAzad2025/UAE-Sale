@@ -66,7 +66,7 @@
           <th>الفاتورة</th>
           <th>الزبون</th>
           <th>{{ t('Date') }}</th>
-          <th>{{ t('Amount') }}</th>
+          <th class="num-cell">{{ t('Amount') }}</th>
           <th><i class="fas fa-exchange-alt mr-1"></i>سعر الصرف</th>
           <th>{{ t('Status') }}</th>
         </tr>
@@ -77,7 +77,7 @@
           <td><a href="{{ url_for('sales.view', id=sale.id) }}">{{ sale.sale_number }}</a></td>
           <td>{{ sale.customer.name if sale.customer else '-' }}</td>
           <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
-          <td>{{ "{:,.2f}".format(sale.amount_base) }} AED</td>
+          <td class="num-cell">{{ sale.amount_base|money('AED') }}</td>
           <td>
             {% if sale.exchange_rate and sale.exchange_rate != 1 %}
               <span class="badge badge-info" title="سعر الصرف وقت المعاملة">
@@ -87,11 +87,7 @@
               <span class="text-muted">1.0000</span>
             {% endif %}
           </td>
-          <td>
-            {% if sale.payment_status == 'paid' %}<span class="badge badge-success">مدفوعة</span>
-            {% elif sale.payment_status == 'partial' %}<span class="badge badge-warning">جزئي</span>
-            {% else %}<span class="badge badge-danger">آجل</span>{% endif %}
-          </td>
+          <td>{{ sale.payment_status|status_badge }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -127,6 +123,7 @@ $(document).ready(function() {
 </script>
 {% endblock %}
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/financial_grid.css') }}">
 <style>
 @media print {
   @page {

@@ -81,9 +81,9 @@
         <tr>
           <th>المورد</th>
           <th>الهاتف</th>
-          <th class="text-right">إجمالي المشتريات</th>
-          <th class="text-right">المدفوع</th>
-          <th class="text-right">الرصيد المستحق</th>
+          <th class="text-right num-cell">إجمالي المشتريات</th>
+          <th class="text-right num-cell">المدفوع</th>
+          <th class="text-right num-cell">الرصيد المستحق</th>
           <th class="text-center">الأيام</th>
           <th class="text-center">الفئة</th>
           <th class="text-center">شروط الدفع</th>
@@ -96,9 +96,9 @@
             <strong>{{ item.supplier.name_ar or item.supplier.name }}</strong>
           </td>
           <td>{{ item.supplier.phone or '-' }}</td>
-          <td class="text-right">{{ "{:,.2f}".format(item.total_purchases) }}</td>
-          <td class="text-right">{{ "{:,.2f}".format(item.total_paid) }}</td>
-          <td class="text-right font-weight-bold text-danger">{{ "{:,.2f}".format(item.balance) }}</td>
+          <td class="text-right num-cell">{{ item.total_purchases|money }}</td>
+          <td class="text-right num-cell">{{ item.total_paid|money }}</td>
+          <td class="text-right num-cell font-weight-bold text-danger">{{ item.balance|money }}</td>
           <td class="text-center">
             {% if item.days_old > 90 %}
               <span class="badge badge-danger">{{ item.days_old }}</span>
@@ -128,9 +128,9 @@
       <tfoot>
         <tr class="font-weight-bold">
           <td colspan="2">الإجمالي</td>
-          <td class="text-right">{{ "{:,.2f}".format(supplier_aging | sum(attribute='total_purchases') | default(0)) }}</td>
-          <td class="text-right">{{ "{:,.2f}".format(supplier_aging | sum(attribute='total_paid') | default(0)) }}</td>
-          <td class="text-right text-danger">{{ "{:,.2f}".format(total_payable) }}</td>
+          <td class="text-right num-cell">{{ supplier_aging | sum(attribute='total_purchases') | default(0)|money }}</td>
+          <td class="text-right num-cell">{{ supplier_aging | sum(attribute='total_paid') | default(0)|money }}</td>
+          <td class="text-right num-cell text-danger">{{ total_payable|money }}</td>
           <td colspan="3"></td>
         </tr>
       </tfoot>
@@ -146,4 +146,8 @@
   </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/financial_grid.css') }}">
 {% endblock %}

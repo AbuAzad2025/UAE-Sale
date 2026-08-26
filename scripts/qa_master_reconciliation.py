@@ -57,8 +57,13 @@ os.environ.setdefault('WTF_CSRF_ENABLED', 'false')
 os.environ.setdefault('RATELIMIT_ENABLED', 'false')
 os.environ.setdefault('RATELIMIT_STORAGE_URI', 'memory://')
 os.environ.setdefault('CACHE_TYPE', 'flask_caching.backends.SimpleCache')
-if 'DATABASE_URL' not in os.environ:
+
+# التسوية يجب أن تعمل على قاعدة معزولة حتمية — في CI قد يكون DATABASE_URL
+# يشير لـPostgres مشتركة فتُصطدم البذرة بقيود UNIQUE من تشغيل سابق
+# (roles_name_key) وينهار drop_all على مفاتيح FK. العزل إجباري ما لم يُطلب خلافه.
+if os.environ.get('QMR_ALLOW_EXTERNAL_DB') != '1':
     os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+_ISOLATED_DB = os.environ.get('DATABASE_URL', '').startswith('sqlite')
 
 from app import create_app  # noqa: E402
 from extensions import db as _db  # noqa: E402
@@ -726,10 +731,12 @@ def main(check_only=False, quiet=False, json_path=None):
             report = render_report(scenario, sections, ok)
         except Exception:
             _db.session.rollback()
-            _db.drop_all()
+            if _ISOLATED_DB:
+                _db.drop_all()
             raise
         _db.session.remove()
-        _db.drop_all()
+        if _ISOLATED_DB:
+            _db.drop_all()
 
     payload = {
         'passed': ok,

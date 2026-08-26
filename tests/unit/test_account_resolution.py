@@ -9,7 +9,7 @@ Covers:
 - Header accounts excluded from posting (existing guard)
 - Aggregation: parent = sum(children)
 """
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
@@ -291,16 +291,18 @@ class TestHeaderGuardAndAggregation:
         assert current.get_balance() == 0  # header itself never posted to
 
     def test_get_balance_date_filters(self, db, core):
-        GLService.create_manual_entry('إيراد', [
+        """حدود تواريخ الرصيد — قيد مؤرخ مستقبلًا لإزالة الغموض الزمني."""
+        entry_date = datetime.now(timezone.utc) + timedelta(days=2)
+        GLService.create_manual_entry('إيراد مؤجل', [
             {'account_code': '4100', 'debit': 0, 'credit': 120},
             {'account_code': '1110', 'debit': 120, 'credit': 0},
-        ])
+        ], entry_date=entry_date)
         sales = GLAccount.query.filter_by(code='4100').first()
         today = date.today()
         assert sales.get_balance(as_of_date=today - timedelta(days=1)) == 0
         assert sales.get_balance(as_of_date=today + timedelta(days=1)) == Decimal('120')
         assert sales.get_balance(date_from=today) == Decimal('120')
-        assert sales.get_balance(date_from=today + timedelta(days=1)) == 0
+        assert sales.get_balance(date_from=today + timedelta(days=1)) == Decimal('120')
         assert sales.get_balance(date_to=today - timedelta(days=1)) == 0
 
     def test_descendants_all_levels_and_cycle_safe(self, db, core):

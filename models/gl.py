@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, date, timezone
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
 
@@ -67,20 +67,23 @@ class GLAccount(db.Model):
 
     @staticmethod
     def _as_bound_datetime(value, end_of_day=False):
-        """تطبيع حدود التاريخ للمقارنة مع entry_date (DateTime)."""
+        """Convert date/string to datetime for query bounds."""
         if value is None:
             return None
         if isinstance(value, datetime):
             return value
+        if isinstance(value, date):
+            if end_of_day:
+                return datetime(value.year, value.month, value.day, 23, 59, 59, 999999)
+            return datetime(value.year, value.month, value.day)
         if isinstance(value, str):
             try:
                 value = datetime.fromisoformat(value)
             except ValueError:
                 return None
-        # كائن date (بدون وقت): بداية اليوم أو نهايته حسب الحد
-        if end_of_day:
-            return datetime(value.year, value.month, value.day, 23, 59, 59, 999999)
-        return datetime(value.year, value.month, value.day)
+            if end_of_day:
+                return datetime(value.year, value.month, value.day, 23, 59, 59, 999999)
+            return datetime(value.year, value.month, value.day)
 
     def _signed_balance_query(self, date_from=None, date_to=None, as_of_date=None):
         """استعلام مجموع amount_base مع فلاتر التاريخ (بدون تطبيق الإشارة)."""

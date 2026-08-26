@@ -9,7 +9,7 @@ def smart_rate_limit(max_requests: int, window_seconds: int = 60):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if current_user.is_authenticated and current_user.is_owner:
+            if getattr(current_user, 'is_authenticated', False) and current_user.is_owner:
                 return f(*args, **kwargs)
 
             key = f"rate_limit:{request.endpoint}:{request.remote_addr}"
@@ -41,7 +41,7 @@ def adaptive_rate_limit(base_limit: int = 60):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if current_user.is_authenticated:
+            if getattr(current_user, 'is_authenticated', False):
                 if current_user.is_owner:
                     limit = base_limit * 100
                 elif current_user.is_super_admin():
@@ -53,7 +53,7 @@ def adaptive_rate_limit(base_limit: int = 60):
             else:
                 limit = base_limit // 2
 
-            key = f"adaptive_limit:{request.endpoint}:{(current_user.id if (current_user and current_user.is_authenticated) else request.remote_addr)}"
+            key = f"adaptive_limit:{request.endpoint}:{(current_user.id if (getattr(current_user, 'is_authenticated', False)) else request.remote_addr)}"
 
             count = cache.get(key) or 0
 

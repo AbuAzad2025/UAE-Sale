@@ -114,7 +114,7 @@ class StockService:
                 db.session.flush()
 
         try:
-            user_id = current_user.id if current_user and current_user.is_authenticated else None
+            user_id = current_user.id if getattr(current_user, 'is_authenticated', False) else None
         except Exception:
             user_id = None
 

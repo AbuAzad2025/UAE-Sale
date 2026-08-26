@@ -551,7 +551,7 @@ class RecurringExpenseService:
         """
         try:
             from flask_login import current_user
-            actor_id = current_user.id if (current_user and current_user.is_authenticated) else None
+            actor_id = current_user.id if (getattr(current_user, 'is_authenticated', False)) else None
         except Exception:
             actor_id = None
 

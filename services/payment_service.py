@@ -168,7 +168,7 @@ class PaymentService:
                 cheque_date=cheque_date,
                 bank_name=bank_name,
                 notes=notes,
-                user_id=current_user.id if current_user and current_user.is_authenticated else 1
+                user_id=current_user.id if getattr(current_user, 'is_authenticated', False) else 1
             )
 
             db.session.add(receipt)

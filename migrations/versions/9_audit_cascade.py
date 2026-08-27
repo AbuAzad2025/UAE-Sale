@@ -8,6 +8,7 @@ Revision ID: 9_audit_cascade
 Revises: 8_purchase_payment_tracking
 """
 from alembic import op
+import sqlalchemy as sa
 
 revision = '9_audit_cascade'
 down_revision = '8_purchase_payment_tracking'
@@ -15,24 +16,22 @@ branch_labels = None
 depends_on = None
 
 
-def _find_fk(bind):
-    q = bind.execute(
-        "SELECT conname FROM pg_constraint "
-        "WHERE conrelid = 'journal_entry_audits'::regclass "
-        "AND contype = 'f' AND conkey @> ARRAY[(SELECT attnum FROM pg_attribute "
-        "WHERE attrelid='journal_entry_audits'::regclass AND attname='journal_entry_id')]"
-    )
-    row = q.first()
-    return row[0] if row else None
-
-
 def upgrade():
     bind = op.get_bind()
     if bind.dialect.name != 'postgresql':
         return  # SQLite recreates schema from models (already CASCADE)
-    name = _find_fk(bind)
-    if name:
-        op.drop_constraint(name, 'journal_entry_audits', type_='foreignkey')
+    # الصياغة الأصلية باسم مقيد SQLAlchemy الافتراضي؛ نحاول إسقاطه مباشرة
+    # (لا حاجة لاستعلام pg_constraint الديناميكي الذي كسر SQLAlchemy 2.x)
+    try:
+        op.drop_constraint('journal_entry_audits_journal_entry_id_fkey',
+                           'journal_entry_audits', type_='foreignkey')
+    except Exception:
+        pass
+    try:
+        op.drop_constraint('fk_jea_entry_cascade', 'journal_entry_audits',
+                           type_='foreignkey')
+    except Exception:
+        pass
     op.create_foreign_key(
         'fk_jea_entry_cascade', 'journal_entry_audits',
         'gl_journal_entries', ['journal_entry_id'], ['id'],

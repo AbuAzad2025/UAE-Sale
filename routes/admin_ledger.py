@@ -436,6 +436,10 @@ def api_account_statement(account_id):
 
     statement = GLService.get_account_statement(account_id, date_from, date_to)
 
+    # get_account_statement includes the ORM object itself for templates;
+    # strip it before serializing to JSON.
+    statement.pop('account', None)
+
     return jsonify({
         'account': {
             'code': account.code,

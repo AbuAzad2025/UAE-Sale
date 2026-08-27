@@ -43,7 +43,9 @@ def professional_printing():
                            total_debit=total_debit,
                            total_credit=total_credit,
                            date_from=date.today() - timedelta(days=30),
-                           date_to=date.today())
+                           date_to=date.today(),
+                           date=date,
+                           datetime=datetime)
 
 
 @advanced_ledger_bp.route('/customs-taxes')
@@ -223,7 +225,7 @@ def add_advanced_expense():
 
     # الحصول على البيانات المطلوبة
     categories = ExpenseCategory.query.filter_by(is_active=True).all()
-    suppliers = db.session.query(db.text("SELECT id, name FROM suppliers")).all() if hasattr(db, 'text') else []
+    suppliers = db.session.execute(db.text("SELECT id, name FROM suppliers")).all()
 
     return render_template('ledger/advanced/add_advanced_expense.html',
                            categories=categories, suppliers=suppliers)
@@ -254,7 +256,7 @@ def reverse_journal_entry(entry_id):
 
         reversal_entry = AdvancedJournalEntryManager.reverse_entry_advanced(
             entry_id=entry_id,
-            reversed_by=current_user,
+            reversed_by=current_user.id,
             reason=reason,
             create_reversal_entry=True
         )
@@ -277,7 +279,7 @@ def delete_journal_entry(entry_id):
 
         AdvancedJournalEntryManager.delete_entry(
             entry_id=entry_id,
-            deleted_by=current_user,
+            deleted_by=current_user.id,
             reason=reason
         )
 
@@ -299,7 +301,7 @@ def approve_journal_entry(entry_id):
 
         AdvancedJournalEntryManager.approve_entry(
             entry_id=entry_id,
-            approved_by=current_user,
+            approved_by=current_user.id,
             approval_notes=approval_notes
         )
 
@@ -464,7 +466,30 @@ def professional_reports():
                            expense_data=expense_data,
                            profit_data=profit_data,
                            date_from=date.today() - timedelta(days=365),
-                           date_to=date.today())
+                           date_to=date.today(),
+                           abs=abs)
+
+
+class _AttrDict(dict):
+    """dict that lets stored keys shadow same-named dict methods on attr access.
+
+    advanced_analytics.html reads breakdown payloads as `x.items`, which
+    normally binds to dict.items(); this makes an actual 'items' key win.
+    """
+    _COLLIDING = ('items', 'keys', 'values')
+
+    def __getattribute__(self, name):
+        if name in _AttrDict._COLLIDING and dict.__contains__(self, name):
+            return dict.__getitem__(self, name)
+        return dict.__getattribute__(self, name)
+
+
+def _attrify(obj):
+    if isinstance(obj, dict):
+        return _AttrDict({k: _attrify(v) for k, v in obj.items()})
+    if isinstance(obj, list):
+        return [_attrify(v) for v in obj]
+    return obj
 
 
 @advanced_ledger_bp.route('/advanced-analytics')
@@ -476,12 +501,12 @@ def advanced_analytics():
     dashboard_summary = AdvancedFinancialAnalytics.get_dashboard_summary()
 
     return render_template('ledger/advanced/advanced_analytics.html',
-                           summary=dashboard_summary,
-                           ratios=dashboard_summary['ratios'],
+                           summary=_attrify(dashboard_summary),
+                           ratios=_attrify(dashboard_summary['ratios']),
                            trends=dashboard_summary['trends'],
-                           expense_breakdown=dashboard_summary['expense_breakdown'],
-                           revenue_breakdown=dashboard_summary['revenue_breakdown'],
-                           forecast=dashboard_summary['forecast'])
+                           expense_breakdown=_attrify(dashboard_summary['expense_breakdown']),
+                           revenue_breakdown=_attrify(dashboard_summary['revenue_breakdown']),
+                           forecast=_attrify(dashboard_summary['forecast']))
 
 
 @advanced_ledger_bp.route('/api/financial-ratios')

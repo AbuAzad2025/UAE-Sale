@@ -39,12 +39,12 @@ def index():
         )
 
     if status:
-        query = query.filter_by(status=status)
+        query = query.filter(Sale.status == status)
     else:
-        query = query.filter_by(status='confirmed')
+        query = query.filter(Sale.status == 'confirmed')
 
     if payment_status:
-        query = query.filter_by(payment_status=payment_status)
+        query = query.filter(Sale.payment_status == payment_status)
 
     if current_user.is_seller():
         query = query.filter_by(seller_id=current_user.id)
@@ -440,13 +440,9 @@ def archive(id):
     try:
         # عكس القيد المحاسبي قبل الأرشفة (إذا لم تكن ملغاة)
         if sale.status != 'cancelled':
-            from services.gl_service import GLService
+            from services.sale_service import SaleService
             try:
-                GLService.reverse_entry(
-                    reference_type='Sale',
-                    reference_id=sale.id,
-                    description=f'Reverse Sale {sale.sale_number} (Archived)'
-                )
+                SaleService.reverse_sale_gl_entries(sale, reason='Archived')
             except Exception as e:
                 current_app.logger.error(f'Failed to reverse GL entry for archived sale {sale.id}: {e}')
 

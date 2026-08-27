@@ -360,6 +360,13 @@ def create_voucher_submit():  # noqa: C901
         cheque_date = request.form.get('cheque_date')
         bank_name = request.form.get('bank_name')
 
+        cheque_due = None
+        if cheque_date:
+            try:
+                cheque_due = datetime.strptime(cheque_date, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                cheque_due = None
+
         if not party_id or not amount:
             flash('يرجى تعبئة جميع الحقول الإلزامية', 'warning')
             return redirect(url_for('payments.create_voucher'))
@@ -410,7 +417,7 @@ def create_voucher_submit():  # noqa: C901
                     payment_method=payment_method,
                     notes=notes,
                     cheque_number=cheque_number if payment_method == 'cheque' else None,
-                    cheque_date=cheque_date if payment_method == 'cheque' else None,
+                    cheque_date=cheque_due if payment_method == 'cheque' else None,
                     bank_name=bank_name if payment_method == 'cheque' else None,
                     user_id=current_user.id
                 )
@@ -445,7 +452,7 @@ def create_voucher_submit():  # noqa: C901
                     payment_method=payment_method,
                     notes=notes,
                     cheque_number=cheque_number if payment_method == 'cheque' else None,
-                    cheque_date=cheque_date if payment_method == 'cheque' else None,
+                    cheque_date=cheque_due if payment_method == 'cheque' else None,
                     bank_name=bank_name if payment_method == 'cheque' else None,
                     user_id=current_user.id
                 )
@@ -466,7 +473,7 @@ def create_voucher_submit():  # noqa: C901
                         exchange_rate=payment.exchange_rate,
                         amount_base=payment.amount_base,
                         issue_date=datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else datetime.now().date(),
-                        due_date=datetime.strptime(cheque_date, '%Y-%m-%d').date() if cheque_date else datetime.now().date(),
+                        due_date=cheque_due or datetime.now().date(),
                         bank_name=bank_name,
                         payee_name=supplier.name,
                         status='pending',
@@ -525,7 +532,7 @@ def create_voucher_submit():  # noqa: C901
                     payment_method=payment_method,
                     notes=notes,
                     cheque_number=cheque_number if payment_method == 'cheque' else None,
-                    cheque_date=cheque_date if payment_method == 'cheque' else None,
+                    cheque_date=cheque_due if payment_method == 'cheque' else None,
                     bank_name=bank_name if payment_method == 'cheque' else None,
                     user_id=current_user.id
                 )
@@ -546,7 +553,7 @@ def create_voucher_submit():  # noqa: C901
                         exchange_rate=payment.exchange_rate,
                         amount_base=payment.amount_base,
                         issue_date=datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else datetime.now().date(),
-                        due_date=datetime.strptime(cheque_date, '%Y-%m-%d').date() if cheque_date else datetime.now().date(),
+                        due_date=cheque_due or datetime.now().date(),
                         bank_name=bank_name,
                         payee_name=customer.name,
                         status='pending',
@@ -808,12 +815,16 @@ def delete_receipt(id):  # noqa: C901
         if has_links:
             # عكس القيد المحاسبي (للحفاظ على السجل)
             try:
-                from services.gl_service import GLService
-                GLService.reverse_entry(
+                from models import GLJournalEntry
+                gl_entries = GLJournalEntry.query.filter_by(
                     reference_type='Receipt',
                     reference_id=receipt.id,
-                    description=f'Reverse Receipt {receipt.receipt_number}'
-                )
+                    is_reversed=False
+                ).all()
+                for entry in gl_entries:
+                    entry.reverse_entry(
+                        description=f'Reverse Receipt {receipt.receipt_number}'
+                    )
             except Exception as e:
                 current_app.logger.warning(f'GL reversal warning: {e}')
 
@@ -876,12 +887,16 @@ def delete_payment(id):
         if has_links:
             # عكس القيد المحاسبي
             try:
-                from services.gl_service import GLService
-                GLService.reverse_entry(
+                from models import GLJournalEntry
+                gl_entries = GLJournalEntry.query.filter_by(
                     reference_type='Payment',
                     reference_id=payment.id,
-                    description=f'Reverse Payment {payment.payment_number}'
-                )
+                    is_reversed=False
+                ).all()
+                for entry in gl_entries:
+                    entry.reverse_entry(
+                        description=f'Reverse Payment {payment.payment_number}'
+                    )
             except Exception as e:
                 current_app.logger.warning(f"GL Reversal warning: {e}")
 

@@ -191,6 +191,10 @@ class FixedAsset(db.Model):
             reference_type='depreciation',
             reference_id=self.id
         )
+        # تأكيد أن القيد مثبت قبل ربط جدول الإهلاك به (FK على PostgreSQL)
+        db.session.flush()
+        if not db.session.get(entry.__class__, entry.id):
+            raise RuntimeError('فشل إنشاء قيد الإهلاك')
 
         # تحديث الأصل
         self.accumulated_depreciation += depreciation_amount
@@ -207,6 +211,7 @@ class FixedAsset(db.Model):
             journal_entry_id=entry.id
         )
         db.session.add(schedule)
+        db.session.flush()
 
         # التحقق من الاستهلاك الكامل
         if self.book_value <= self.salvage_value:

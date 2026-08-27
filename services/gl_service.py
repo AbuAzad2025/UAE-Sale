@@ -121,6 +121,33 @@ class GLService:
             db.session.flush()
 
     @staticmethod
+    def purge_by_reference(ref_type, ref_id):
+        """حذف كل القيود المرتبطة بمرجع نهائياً — بأمان FK على PostgreSQL:
+        يحذف سجلات التدقيق والسطور أولاً ثم قيود الرأس."""
+        from models import GLJournalLine
+
+        entries = GLJournalEntry.query.filter_by(
+            reference_type=ref_type, reference_id=ref_id).all()
+        if not entries:
+            return 0
+        ids = [e.id for e in entries]
+
+        try:
+            from services.advanced_journal_manager import JournalEntryAudit
+            JournalEntryAudit.query.filter(
+                JournalEntryAudit.journal_entry_id.in_(ids)
+            ).delete(synchronize_session=False)
+        except Exception:
+            pass
+
+        GLJournalLine.query.filter(
+            GLJournalLine.entry_id.in_(ids)).delete(synchronize_session=False)
+
+        count = GLJournalEntry.query.filter(
+            GLJournalEntry.id.in_(ids)).delete(synchronize_session=False)
+        return count
+
+    @staticmethod
     def get_payment_debit_account(method):
         m = (method or '').strip()
         role = _PAYMENT_METHOD_ROLES.get(m, AccountRole.CASH)

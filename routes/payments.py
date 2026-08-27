@@ -840,9 +840,12 @@ def delete_receipt(id):  # noqa: C901
             db.session.commit()
             flash(f'تم أرشفة سند القبض "{receipt.receipt_number}" (لوجود حركات مرتبطة)', 'warning')
         else:
-            # حذف القيود المحاسبية المرتبطة (تنظيف شامل)
-            from models import GLJournalEntry
-            GLJournalEntry.query.filter_by(reference_type='Receipt', reference_id=receipt.id).delete()
+            # حذف القيود المحاسبية المرتبطة (سطور→تدقيق→رؤوس بأمان FK)
+            from services.gl_service import GLService
+            GLService.purge_by_reference('Receipt', receipt.id)
+            for ref in ('cheque_receive', 'cheque_issue', 'cheque_cancel',
+                        'cheque_clear', 'cheque_bounce'):
+                GLService.purge_by_reference(ref, receipt.id)
 
             # حذف نهائي (Hard Delete)
             # حذف الشيكات المرتبطة أولاً لتجنب خطأ المفتاح الأجنبي
@@ -912,12 +915,15 @@ def delete_payment(id):
             db.session.commit()
             flash(f'تم أرشفة سند الصرف "{payment.payment_number}" (لوجود حركات مرتبطة)', 'warning')
         else:
-            # حذف القيود المحاسبية المرتبطة
-            from models import GLJournalEntry
-            GLJournalEntry.query.filter_by(reference_type='Payment', reference_id=payment.id).delete()
+            # حذف القيود المرتبطة (بأمان FK: سطور→تدقيق→رؤوس)
+            from services.gl_service import GLService
+            GLService.purge_by_reference('Payment', payment.id)
+            for ch in linked_cheques:
+                for ref in ('cheque_receive', 'cheque_issue', 'cheque_cancel',
+                            'cheque_clear', 'cheque_bounce'):
+                    GLService.purge_by_reference(ref, ch.id)
 
-            # حذف نهائي
-            # حذف الشيكات المرتبطة أولاً
+            # حذف الشيكات المرتبطة ثم السند
             for cheque in linked_cheques:
                 db.session.delete(cheque)
 

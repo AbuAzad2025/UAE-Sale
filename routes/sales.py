@@ -359,7 +359,7 @@ def archived():
 def delete(id):
     """حذف (أرشفة) فاتورة مبيعات"""
     from services.archive_service import ArchiveService
-    from models import Payment, Cheque, GLJournalEntry
+    from models import Payment, Cheque
     from services.gl_service import GLService
 
     sale = db.get_or_404(Sale, id)
@@ -410,8 +410,8 @@ def delete(id):
             # 1. حذف البنود (SaleLines) - يتم تلقائياً عادةً عبر cascade ولكن للأمان
             SaleLine.query.filter_by(sale_id=sale.id).delete()
 
-            # 2. حذف القيود المحاسبية
-            GLJournalEntry.query.filter_by(reference_type='Sale', reference_id=sale.id).delete()
+            # 2. حذف القيود المحاسبية (سطور ثم رؤوس — بأمان FK)
+            GLService.purge_by_reference('Sale', sale.id)
 
             # 3. حذف الفاتورة
             db.session.delete(sale)

@@ -344,7 +344,7 @@ def edit(id):  # noqa: C901
 @permission_required('manage_expenses')
 def delete(id):
     """حذف (أرشفة) المصروف"""
-    from models import Cheque, GLJournalEntry
+    from models import Cheque
     from services.archive_service import ArchiveService
 
     expense = db.get_or_404(Expense, id)
@@ -383,16 +383,13 @@ def delete(id):
         else:
             # حذف نهائي (Hard Delete)
             # 1. حذف القيود المحاسبية للمصروف
-            GLJournalEntry.query.filter_by(reference_type='Expense', reference_id=expense.id).delete()
+            GLService.purge_by_reference('Expense', expense.id)
 
-            # 2. حذف الشيك إذا كان معلقاً (وحذف قيوده إن وجدت)
+            # 2. حذف الشيك إن وجد وحذف قيوده بأمان FK
             if cheque:
-                # حذف قيود الشيك (نظرياً الشيك المعلق ليس له قيود، لكن للاحتياط)
-                ref_types = ['cheque_receive', 'cheque_issue', 'cheque_cancel', 'cheque_clear', 'cheque_bounce', 'Cheque']
-                GLJournalEntry.query.filter(
-                    GLJournalEntry.reference_type.in_(ref_types),
-                    GLJournalEntry.reference_id == cheque.id
-                ).delete(synchronize_session=False)
+                for ref in ('cheque_receive', 'cheque_issue', 'cheque_cancel',
+                            'cheque_clear', 'cheque_bounce', 'Cheque'):
+                    GLService.purge_by_reference(ref, cheque.id)
 
                 db.session.delete(cheque)
 
@@ -429,8 +426,14 @@ def create_category():
         else:
             data = request.form
 
+        name = (data.get('name') or '').strip()
+        if not name:
+            raise ValueError('اسم الفئة مطلوب')
+        if ExpenseCategory.query.filter_by(name=name).first():
+            raise ValueError(f'فئة المصروف "{name}" موجودة مسبقاً')
+
         category = ExpenseCategory(
-            name=data.get('name'),
+            name=name,
             name_ar=data.get('name_ar'),
             gl_account_code=data.get('gl_account_code')
         )

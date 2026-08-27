@@ -9,7 +9,9 @@ class JournalEntryAudit(db.Model):
     __tablename__ = 'journal_entry_audits'
 
     id = db.Column(db.Integer, primary_key=True)
-    journal_entry_id = db.Column(db.Integer, db.ForeignKey('gl_journal_entries.id'), nullable=False)
+    journal_entry_id = db.Column(db.Integer,
+                                 db.ForeignKey('gl_journal_entries.id', ondelete='CASCADE'),
+                                 nullable=False)
     action = db.Column(db.String(50), nullable=False)  # create, update, reverse, delete, approve
     old_values = db.Column(db.Text)  # JSON للقيم القديمة
     new_values = db.Column(db.Text)  # JSON للقيم الجديدة
@@ -204,17 +206,16 @@ class AdvancedJournalEntryManager:
         # حفظ القيم القديمة
         old_values = entry.to_dict()
 
-        # حذف السطور أولاً
-        GLJournalLine.query.filter_by(entry_id=entry_id).delete()
-
-        # حذف القيد
-        db.session.delete(entry)
-
-        # تسجيل التدقيق
+        # تسجيل التدقيق أولاً (يشير للقيد وهو ما زال موجوداً؛
+        # CASCADE يحافظ على السجل بعد الحذف)
         AdvancedJournalEntryManager._log_audit(
             entry_id, 'delete', old_values, None,
             f"حذف القيد - السبب: {reason}", deleted_by
         )
+
+        # حذف السطور ثم القيد
+        GLJournalLine.query.filter_by(entry_id=entry_id).delete()
+        db.session.delete(entry)
 
         db.session.commit()
         return True

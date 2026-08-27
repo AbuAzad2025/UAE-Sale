@@ -193,7 +193,8 @@ class FixedAsset(db.Model):
         )
         # تأكيد أن القيد مثبت قبل ربط جدول الإهلاك به (FK على PostgreSQL)
         db.session.flush()
-        if not db.session.get(entry.__class__, entry.id):
+        from models.gl import GLJournalEntry as _JE
+        if not db.session.get(_JE, entry.id):
             raise RuntimeError('فشل إنشاء قيد الإهلاك')
 
         # تحديث الأصل

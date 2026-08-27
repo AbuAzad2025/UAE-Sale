@@ -840,15 +840,15 @@ def delete_receipt(id):  # noqa: C901
             db.session.commit()
             flash(f'تم أرشفة سند القبض "{receipt.receipt_number}" (لوجود حركات مرتبطة)', 'warning')
         else:
-            # حذف القيود المحاسبية المرتبطة (سطور→تدقيق→رؤوس بأمان FK)
+            # حذف القيود المرتبطة بأمان FK: سطور→تدقيق→رؤوس لكل من السند وشيكاته
             from services.gl_service import GLService
             GLService.purge_by_reference('Receipt', receipt.id)
-            for ref in ('cheque_receive', 'cheque_issue', 'cheque_cancel',
-                        'cheque_clear', 'cheque_bounce'):
-                GLService.purge_by_reference(ref, receipt.id)
+            for ch in linked_cheques:
+                for ref in ('cheque_receive', 'cheque_issue', 'cheque_cancel',
+                            'cheque_clear', 'cheque_bounce', 'Cheque'):
+                    GLService.purge_by_reference(ref, ch.id)
 
-            # حذف نهائي (Hard Delete)
-            # حذف الشيكات المرتبطة أولاً لتجنب خطأ المفتاح الأجنبي
+            # حذف الشيكات المرتبطة ثم السند
             for cheque in linked_cheques:
                 db.session.delete(cheque)
 

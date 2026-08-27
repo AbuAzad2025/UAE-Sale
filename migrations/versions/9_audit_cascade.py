@@ -20,18 +20,13 @@ def upgrade():
     bind = op.get_bind()
     if bind.dialect.name != 'postgresql':
         return  # SQLite recreates schema from models (already CASCADE)
-    # الصياغة الأصلية باسم مقيد SQLAlchemy الافتراضي؛ نحاول إسقاطه مباشرة
-    # (لا حاجة لاستعلام pg_constraint الديناميكي الذي كسر SQLAlchemy 2.x)
-    try:
-        op.drop_constraint('journal_entry_audits_journal_entry_id_fkey',
-                           'journal_entry_audits', type_='foreignkey')
-    except Exception:
-        pass
-    try:
-        op.drop_constraint('fk_jea_entry_cascade', 'journal_entry_audits',
-                           type_='foreignkey')
-    except Exception:
-        pass
+    # CASCADE history: DROP IF EXISTS يتجنب إجهاض المعاملة عند غياب القيد
+    op.execute(sa.text(
+        'ALTER TABLE journal_entry_audits '
+        'DROP CONSTRAINT IF EXISTS journal_entry_audits_journal_entry_id_fkey'))
+    op.execute(sa.text(
+        'ALTER TABLE journal_entry_audits '
+        'DROP CONSTRAINT IF EXISTS fk_jea_entry_cascade'))
     op.create_foreign_key(
         'fk_jea_entry_cascade', 'journal_entry_audits',
         'gl_journal_entries', ['journal_entry_id'], ['id'],
@@ -43,11 +38,12 @@ def downgrade():
     bind = op.get_bind()
     if bind.dialect.name != 'postgresql':
         return
-    try:
-        op.drop_constraint('fk_jea_entry_cascade', 'journal_entry_audits',
-                           type_='foreignkey')
-    except Exception:
-        pass
+    op.execute(sa.text(
+        'ALTER TABLE journal_entry_audits '
+        'DROP CONSTRAINT IF EXISTS fk_jea_entry_cascade'))
+    op.execute(sa.text(
+        'ALTER TABLE journal_entry_audits '
+        'DROP CONSTRAINT IF EXISTS journal_entry_audits_journal_entry_id_fkey'))
     op.create_foreign_key(
         'journal_entry_audits_journal_entry_id_fkey',
         'journal_entry_audits', 'gl_journal_entries',

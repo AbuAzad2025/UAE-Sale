@@ -315,7 +315,12 @@ class DepreciationSchedule(db.Model):
 
     # Relationships
     asset = db.relationship('FixedAsset', back_populates='depreciation_schedules')
-    journal_entry = db.relationship('GLJournalEntry')
+    journal_entry = db.relationship(
+        'GLJournalEntry',
+        primaryjoin='DepreciationSchedule.journal_entry_id==GLJournalEntry.id',
+        foreign_keys='DepreciationSchedule.journal_entry_id',
+        viewonly=True,
+    )
 
     def __repr__(self):
         return f'<DepreciationSchedule {self.asset_id} - {self.period_date}>'

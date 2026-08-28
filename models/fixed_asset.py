@@ -306,8 +306,8 @@ class DepreciationSchedule(db.Model):
     accumulated_depreciation = db.Column(db.Numeric(18, 3), nullable=False)
     book_value = db.Column(db.Numeric(18, 3), nullable=False)
 
-    # الربط بالقيد المحاسبي
-    journal_entry_id = db.Column(db.Integer, db.ForeignKey('gl_journal_entries.id'))
+    # الربط بالقيد المحاسبي (بدون FK صارم — يسمح بإنشاء السجل حتى لو تأخر القيد أو حُذف لاحقاً)
+    journal_entry_id = db.Column(db.Integer)
 
     notes = db.Column(db.Text)
 

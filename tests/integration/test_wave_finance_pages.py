@@ -401,6 +401,7 @@ class TestChequesLifecycle:
 
         deleted = client.post(f'/cheques/{ch.id}/delete', data={}, follow_redirects=True)
         assert deleted.status_code == 200
+        db.session.expire_all()
         assert db.session.get(Cheque, ch.id) is None
         assert GLJournalEntry.query.filter_by(
             reference_type='cheque_receive', reference_id=ch.id).count() == 0

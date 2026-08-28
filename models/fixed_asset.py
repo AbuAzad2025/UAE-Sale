@@ -191,11 +191,7 @@ class FixedAsset(db.Model):
             reference_type='depreciation',
             reference_id=self.id
         )
-        # تأكيد أن القيد مثبت قبل ربط جدول الإهلاك به (FK على PostgreSQL)
         db.session.flush()
-        from models.gl import GLJournalEntry as _JE
-        if not db.session.get(_JE, entry.id):
-            raise RuntimeError('فشل إنشاء قيد الإهلاك')
 
         # تحديث الأصل
         self.accumulated_depreciation += depreciation_amount

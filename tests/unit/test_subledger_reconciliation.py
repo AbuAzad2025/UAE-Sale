@@ -434,3 +434,111 @@ class TestReconciliationSuite:
         assert report['subledger_sum'] == Decimal('60.00')
         assert report['control_balance'] == Decimal('0.00')
         assert report['balanced'] is False
+
+
+class TestChequeBounceSubledgerReconciliation:
+    """اختبارات مطابقة الذمم الفرعية بعد ارتداد الشيك"""
+
+    def _create_incoming_cheque(self, test_customer, owner_user):
+        from datetime import date
+        from models import Cheque
+        cheque = Cheque(
+            cheque_number='CH-TEST-001',
+            cheque_bank_number='123456',
+            cheque_type='incoming',
+            bank_name='Emirates NBD',
+            amount=Decimal('1000'),
+            currency='AED',
+            exchange_rate=Decimal('1'),
+            issue_date=date.today(),
+            due_date=date.today(),
+            status='pending',
+            customer_id=test_customer.id,
+            user_id=owner_user.id,
+        )
+        cheque.calculate_amount_base()
+        from extensions import db
+        db.session.add(cheque)
+        db.session.commit()
+        return cheque
+
+    def _create_outgoing_cheque(self, db, owner_user):
+        from datetime import date
+        from models import Cheque, Supplier
+        supplier = Supplier(name='مورد اختبار', is_active=True)
+        db.session.add(supplier)
+        db.session.flush()
+        cheque = Cheque(
+            cheque_number='CH-TEST-002',
+            cheque_bank_number='123457',
+            cheque_type='outgoing',
+            bank_name='Emirates NBD',
+            amount=Decimal('1000'),
+            currency='AED',
+            exchange_rate=Decimal('1'),
+            issue_date=date.today(),
+            due_date=date.today(),
+            status='pending',
+            supplier_id=supplier.id,
+            user_id=owner_user.id,
+        )
+        cheque.calculate_amount_base()
+        db.session.add(cheque)
+        db.session.commit()
+        return cheque
+
+    def test_bounce_cheque_customer_balance_restored(self, db, owner_user, test_customer):
+        """بعد ارتداد الشيك، يجب أن يسترد رصيد العميل"""
+        from services.cheque_accounting_integration import ChequeAccountingIntegration
+
+        cheque = self._create_incoming_cheque(test_customer, owner_user)
+        balance_before = test_customer.balance or Decimal('0')
+
+        # استلام الشيك
+        ChequeAccountingIntegration.receive_cheque(cheque.id, received_by=owner_user.id)
+        db.session.refresh(test_customer)
+
+        # ارتداد الشيك
+        ChequeAccountingIntegration.bounce_cheque(cheque.id, bounced_by=owner_user.id, bounce_reason='عدم كفاية الرصيد')
+        db.session.refresh(test_customer)
+
+        # التحقق من أن الرصيد زاد بمبلغ الشيك
+        assert test_customer.balance == balance_before + Decimal('1000.00')
+
+    def test_cancel_cheque_customer_balance_restored(self, db, owner_user, test_customer):
+        """بعد إلغاء الشيك، يجب أن يسترد رصيد العميل"""
+        from services.cheque_accounting_integration import ChequeAccountingIntegration
+
+        cheque = self._create_incoming_cheque(test_customer, owner_user)
+        balance_before = test_customer.balance or Decimal('0')
+
+        # استلام الشيك
+        ChequeAccountingIntegration.receive_cheque(cheque.id, received_by=owner_user.id)
+        db.session.refresh(test_customer)
+
+        # إلغاء الشيك
+        cheque.cancel_cheque(reason='إلغاء تجريبي')
+        db.session.refresh(test_customer)
+
+        # التحقق من أن الرصيد انخفض بمبلغ الشيك
+        assert test_customer.balance == balance_before - Decimal('1000.00')
+
+    def test_bounce_cheque_outgoing_supplier_balance_restored(self, db, owner_user):
+        """بعد ارتداد الشيك الصادر، يجب أن يسترد رصيد المورد"""
+        from services.cheque_accounting_integration import ChequeAccountingIntegration
+
+        cheque = self._create_outgoing_cheque(db, owner_user)
+        supplier = cheque.supplier
+        db.session.refresh(supplier)
+        balance_before = supplier.total_purchases_aed or Decimal('0')
+
+        # إصدار الشيك
+        ChequeAccountingIntegration.issue_cheque(cheque.id, issued_by=owner_user.id)
+        db.session.refresh(supplier)
+
+        # ارتداد الشيك
+        ChequeAccountingIntegration.bounce_cheque(cheque.id, bounced_by=owner_user.id, bounce_reason='عدم كفاية الرصيد')
+        db.session.refresh(supplier)
+
+        # التحقق من أن رصيد المورد انخفض بمبلغ الشيك
+        assert supplier.total_purchases_aed == balance_before - Decimal('1000.00')

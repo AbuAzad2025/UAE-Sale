@@ -141,7 +141,7 @@ class TestClearCheque:
 
 
 class TestBounceCheque:
-    def test_bounce_incoming_restores_ar(self, db, owner_user, incoming_pending):
+    def test_bounce_incoming_restores_ar(self, db, owner_user, incoming_pending, test_customer):
         ChequeAccountingIntegration.receive_cheque(incoming_pending.id)
         entry = ChequeAccountingIntegration.bounce_cheque(
             incoming_pending.id, bounced_by=owner_user.id, bounce_reason='عدم كفاية الرصيد')
@@ -156,8 +156,16 @@ class TestBounceCheque:
         assert incoming_pending.bounce_reason == 'عدم كفاية الرصيد'
         assert incoming_pending.bounced_date is not None
 
+        # التحقق من تحديث رصيد العميل عند الارتداد
+        db.session.refresh(test_customer)
+        assert test_customer.balance == Decimal('1000.00')
+
     def test_bounce_outgoing_restores_ap(self, db, owner_user, outgoing_pending):
         ChequeAccountingIntegration.issue_cheque(outgoing_pending.id)
+        supplier = outgoing_pending.supplier
+        db.session.refresh(supplier)
+        initial_total_purchases = supplier.total_purchases_aed
+
         entry = ChequeAccountingIntegration.bounce_cheque(outgoing_pending.id)
 
         codes = {ln.account.code for ln in entry.lines}
@@ -165,11 +173,75 @@ class TestBounceCheque:
         credit_line = next(ln for ln in entry.lines if ln.credit > 0)
         assert credit_line.account.code == '2110'
 
+        # التحقق من تحديث رصيد المورد عند الارتداد
+        db.session.refresh(supplier)
+        assert supplier.total_purchases_aed == initial_total_purchases - Decimal('1000.00')
+
     def test_bounce_cleared_rejected(self, db, incoming_pending):
         incoming_pending.status = 'cleared'
         db.session.commit()
         with pytest.raises(ValueError, match='ارتداده'):
             ChequeAccountingIntegration.bounce_cheque(incoming_pending.id)
+
+
+class TestCancelCheque:
+    def test_cancel_incoming_restores_customer_balance(self, db, owner_user, incoming_pending, test_customer):
+        """إلغاء الشيك الوارد يعيد رصيد العميل"""
+        # استلام الشيك يزيد رصيد العميل
+        ChequeAccountingIntegration.receive_cheque(incoming_pending.id, received_by=owner_user.id)
+        db.session.refresh(test_customer)
+        balance_after_receive = test_customer.balance
+
+        # إلغاء الشيك يعيد رصيد العميل
+        incoming_pending.cancel_cheque(reason='إلغاء تجريبي')
+        db.session.refresh(test_customer)
+        assert test_customer.balance == balance_after_receive - Decimal('1000.00')
+
+    def test_cancel_outgoing_restores_supplier_balance(self, db, owner_user, outgoing_pending):
+        """إلغاء الشيك الصادر يعيد رصيد المورد"""
+        # إصدار الشيك يزيد التزامات المورد
+        ChequeAccountingIntegration.issue_cheque(outgoing_pending.id, issued_by=owner_user.id)
+        supplier = outgoing_pending.supplier
+        db.session.refresh(supplier)
+        purchases_after_issue = supplier.total_purchases_aed
+
+        # إلغاء الشيك يعيد رصيد المورد
+        outgoing_pending.cancel_cheque(reason='إلغاء تجريبي')
+        db.session.refresh(supplier)
+        assert supplier.total_purchases_aed == purchases_after_issue - Decimal('1000.00')
+
+    def test_cancel_already_cancelled_noop(self, db, incoming_pending):
+        """إلغاء شيك ملغي مسبقاً لا يحدث تغيير"""
+        incoming_pending.cancel_cheque()
+        incoming_pending.cancel_cheque()  # استدعاء ثاني يجب أن يكون no-op
+        assert incoming_pending.status == 'cancelled'
+
+
+class TestArchiveCheque:
+    def test_archive_active_cheque_restores_balance(self, db, owner_user, incoming_pending, test_customer):
+        """أرشفة شيك نشط تعيد رصيد العميل"""
+        ChequeAccountingIntegration.receive_cheque(incoming_pending.id, received_by=owner_user.id)
+        db.session.refresh(test_customer)
+        balance_after_receive = test_customer.balance
+
+        # أرشفة الشيك النشط
+        incoming_pending.archive(reason='أرشفة تجريبية')
+        db.session.refresh(test_customer)
+        assert test_customer.balance == balance_after_receive - Decimal('1000.00')
+        assert incoming_pending.is_active is False
+        assert incoming_pending.archived_at is not None
+
+    def test_archive_cancelled_cheque_no_balance_change(self, db, owner_user, incoming_pending, test_customer):
+        """أرشفة شيك ملغي لا تؤثر على الرصيد (تم عكسه مسبقاً)"""
+        ChequeAccountingIntegration.receive_cheque(incoming_pending.id, received_by=owner_user.id)
+        incoming_pending.cancel_cheque()
+        db.session.refresh(test_customer)
+        balance_after_cancel = test_customer.balance
+
+        # أرشفة الشيك الملغي
+        incoming_pending.archive(reason='أرشفة بعد الإلغاء')
+        db.session.refresh(test_customer)
+        assert test_customer.balance == balance_after_cancel
 
 
 class TestSummary:

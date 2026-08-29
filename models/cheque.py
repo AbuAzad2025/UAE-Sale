@@ -402,6 +402,24 @@ class Cheque(TenantScopedMixin, db.Model):
         # إنشاء قيد محاسبي تلقائي للارتداد
         self._create_bounce_journal_entry()
 
+        # تحديث أرصدة العميل/المورد - الارتداد يعيد الدين/الالتزام
+        from decimal import Decimal
+        amount_base = self.amount_base or Decimal('0')
+
+        if self.cheque_type == 'incoming' and self.customer_id:
+            from models import Customer as _Cust
+            customer = _Cust.query.get(self.customer_id)
+            if customer:
+                customer.balance = (customer.balance or Decimal('0')) + amount_base
+                customer.update_classification()
+
+        elif self.cheque_type == 'outgoing' and self.supplier_id:
+            from models import Supplier as _Supp
+            supplier = _Supp.query.get(self.supplier_id)
+            if supplier:
+                # للارتداد الصادر: المورد يسترد التزامه (نقص من المورد = خصم)
+                supplier.total_purchases_aed = (supplier.total_purchases_aed or Decimal('0')) - amount_base
+
         # إلغاء الدفعة المرتبطة
         from models.payment import Payment, Receipt
         payment = Payment.query.filter_by(cheque_id=self.id).first()
@@ -478,6 +496,26 @@ class Cheque(TenantScopedMixin, db.Model):
         if self.status == 'cancelled':
             return
 
+        # تحديث أرصدة العميل/المورد قبل تغيير الحالة
+        # الإلغاء يعكس تأثير الاستلام/الإصدار
+        from decimal import Decimal
+        amount_base = self.amount_base or Decimal('0')
+
+        if self.cheque_type == 'incoming' and self.customer_id:
+            from models import Customer as _Cust
+            customer = _Cust.query.get(self.customer_id)
+            if customer:
+                # إلغاء الشيك الوارد: العميل لم يعد مدينًا بهذا المبلغ
+                customer.balance = (customer.balance or Decimal('0')) - amount_base
+                customer.update_classification()
+
+        elif self.cheque_type == 'outgoing' and self.supplier_id:
+            from models import Supplier as _Supp
+            supplier = _Supp.query.get(self.supplier_id)
+            if supplier:
+                # إلغاء الشيك الصادر: المورد لم يعد دائنًا بهذا المبلغ
+                supplier.total_purchases_aed = (supplier.total_purchases_aed or Decimal('0')) - amount_base
+
         self.status = 'cancelled'
         if reason:
             self.notes = (self.notes or '') + f'\nسبب الإلغاء: {reason}'
@@ -548,6 +586,24 @@ class Cheque(TenantScopedMixin, db.Model):
         # إذا كان الشيك نشطاً (معلق/مودع/تحت التحصيل) يجب عكس تأثيره المالي قبل الأرشفة
         if self.is_active and self.status in ['pending', 'deposited', 'under_collection']:
             # نعتبر الأرشفة للشيك النشط بمثابة إلغاء محاسبي
+            # تحديث أرصدة العميل/المورد
+            from decimal import Decimal
+            amount_base = self.amount_base or Decimal('0')
+
+            if self.cheque_type == 'incoming' and self.customer_id:
+                from models import Customer as _Cust
+                customer = _Cust.query.get(self.customer_id)
+                if customer:
+                    customer.balance = (customer.balance or Decimal('0')) - amount_base
+                    customer.update_classification()
+
+            elif self.cheque_type == 'outgoing' and self.supplier_id:
+                from models import Supplier as _Supp
+                supplier = _Supp.query.get(self.supplier_id)
+                if supplier:
+                    supplier.total_purchases_aed = (supplier.total_purchases_aed or Decimal('0')) - amount_base
+
+            # عكس القيد المحاسبي
             self._create_cancel_journal_entry()
 
         self.is_active = False

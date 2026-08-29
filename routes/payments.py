@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
@@ -397,7 +398,6 @@ def create_voucher_submit():  # noqa: C901
 
                 from models import Payment
                 from utils.helpers import generate_number
-                from decimal import Decimal
 
                 exchange_rate = CurrencyService.get_exchange_rate(currency, 'AED', user_rate=user_exchange_rate)
                 amount_decimal = Decimal(str(amount))
@@ -422,6 +422,32 @@ def create_voucher_submit():  # noqa: C901
                     user_id=current_user.id
                 )
                 db.session.add(payment)
+                db.session.flush()
+
+                try:
+                    from services.gl_service import GLService
+                    GLService.ensure_core_accounts()
+                    if payment_method == 'cash':
+                        debit_account = '1110'
+                    elif payment_method in ('bank_transfer', 'card'):
+                        debit_account = '1120'
+                    else:
+                        debit_account = '1110'
+                    lines = [
+                        {'account': debit_account, 'debit': amount_decimal, 'description': f'استرداد من المورد {supplier.name}'},
+                        {'account': '2110', 'credit': amount_decimal, 'description': f'سند قبض من مورد {payment.payment_number}'}
+                    ]
+                    GLService.post_entry(
+                        lines,
+                        description=f'Supplier Refund {payment.payment_number}',
+                        reference_type='Payment',
+                        reference_id=payment.id,
+                        currency=currency,
+                        exchange_rate=exchange_rate
+                    )
+                except Exception as e:
+                    current_app.logger.warning(f'GL posting failed for supplier refund: {e}')
+
                 db.session.commit()
                 flash('تم إنشاء سند قبض من مورد بنجاح', 'success')
                 return redirect(url_for('payments.receipts'))
@@ -430,7 +456,6 @@ def create_voucher_submit():  # noqa: C901
         elif direction == 'outgoing':
             from models import Payment
             from utils.helpers import generate_number
-            from decimal import Decimal
 
             exchange_rate = CurrencyService.get_exchange_rate(currency, 'AED', user_rate=user_exchange_rate)
             amount_decimal = Decimal(str(amount))
@@ -799,8 +824,10 @@ def delete_receipt(id):  # noqa: C901
                 if sale.paid_amount_base < 0:
                     sale.paid_amount_base = 0
 
-                # تحديث الرصيد المتبقي
-                sale.balance_due = sale.total_amount - sale.paid_amount
+                if sale.currency == 'ILS':
+                    sale.balance_due = sale.total_amount - sale.paid_amount_base
+                else:
+                    sale.balance_due = sale.amount_base - sale.paid_amount_base
 
                 # تحديث حالة الدفع
                 if sale.balance_due <= 0:
@@ -810,6 +837,13 @@ def delete_receipt(id):  # noqa: C901
                     sale.payment_status = 'partial'
                 else:
                     sale.payment_status = 'unpaid'
+
+                # استعادة رصيد العميل
+                from models import Customer as _CustDel
+                _cust_del = db.session.get(_CustDel, receipt.customer_id)
+                if _cust_del:
+                    _cust_del.balance = (_cust_del.balance or Decimal('0')) + receipt.amount_base
+                    _cust_del.update_classification()
 
         # 2. القرار: أرشفة أو حذف
         if has_links:
@@ -971,8 +1005,6 @@ def create_payment(purchase_id):  # noqa: C901
 
     if request.method == 'POST':
         try:
-            from decimal import Decimal
-
             amount = request.form.get('amount', type=float)
             payment_method_value = (request.form.get('payment_method') or '').strip()
             if not payment_method_value:
@@ -1071,8 +1103,8 @@ def create_payment(purchase_id):  # noqa: C901
                 GLService.ensure_core_accounts()
                 cash_or_bank = '1110' if payment_method_value == 'cash' else '1120'
                 lines = [
-                    {'account': '2110', 'debit': payment.amount_base, 'description': f'سداد للمورد {payment.supplier_name}'},
-                    {'account': cash_or_bank, 'credit': payment.amount_base, 'description': f'سند صرف {payment.payment_number}'}
+                    {'account': '2110', 'debit': payment.amount, 'description': f'سداد للمورد {payment.supplier_name}'},
+                    {'account': cash_or_bank, 'credit': payment.amount, 'description': f'سند صرف {payment.payment_number}'}
                 ]
                 GLService.post_entry(
                     lines,

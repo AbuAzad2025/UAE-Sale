@@ -288,6 +288,7 @@ class SaleService:
                 )
 
             customer.total_purchases += sale.amount_base
+            customer.balance += sale.amount_base
             customer.update_classification()
 
             # Post to General Ledger with proper decimal precision
@@ -522,6 +523,11 @@ class SaleService:
         except Exception as e:
             current_app.logger.warning(f'GL posting failed for payment: {e}')
 
+        from models import Customer as _Cust
+        _cust = db.session.get(_Cust, sale.customer_id)
+        if _cust:
+            _cust.balance = (_cust.balance or Decimal('0')) - amount_base
+
         return payment
 
     @staticmethod
@@ -556,6 +562,11 @@ class SaleService:
             raise ValueError('الفاتورة ملغاة بالفعل')
 
         sale.status = 'cancelled'
+
+        customer = sale.customer
+        if customer:
+            customer.balance = (customer.balance or Decimal('0')) - sale.amount_base
+            customer.update_classification()
 
         StockService.reverse_sale(sale)
 

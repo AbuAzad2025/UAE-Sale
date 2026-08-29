@@ -354,6 +354,21 @@ class ChequeAccountingIntegration:
                 notes=f'سبب الارتداد: {bounce_reason or "غير محدد"}'
             )
 
+            # تحديث أرصدة العميل/المورد - الارتداد يعيد الدين/الالتزام
+            from decimal import Decimal
+            if cheque.cheque_type == 'incoming' and cheque.customer_id:
+                from models import Customer as _Cust
+                customer = _Cust.query.get(cheque.customer_id)
+                if customer:
+                    customer.balance = (customer.balance or Decimal('0')) + amount_base
+                    customer.update_classification()
+
+            elif cheque.cheque_type == 'outgoing' and cheque.supplier_id:
+                from models import Supplier as _Supp
+                supplier = _Supp.query.get(cheque.supplier_id)
+                if supplier:
+                    supplier.total_purchases_aed = (supplier.total_purchases_aed or Decimal('0')) - amount_base
+
             # تحديث حالة الشيك
             cheque.status = 'bounced'
             cheque.bounced_date = datetime.now().date()

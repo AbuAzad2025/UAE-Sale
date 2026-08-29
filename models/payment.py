@@ -93,9 +93,26 @@ class Payment(TenantScopedMixin, db.Model):
             self.payment_confirmed = False
             self.rejection_reason = reason
 
-            # تحديث حالة الفاتورة
+            # تحديث حالة الفاتورة (خصم المبلغ من المدفوع)
             if self.sale:
                 self.sale.recalculate_payment_status()
+                # تحديث رصيد العميل
+                from decimal import Decimal
+                amount_base = self.amount_base or Decimal('0')
+                from models import Customer as _Cust
+                customer = _Cust.query.get(self.sale.customer_id)
+                if customer:
+                    customer.balance = (customer.balance or Decimal('0')) + amount_base
+                    customer.update_classification()
+
+            # تحديث حالة المشتريات إن وجدت
+            if self.purchase:
+                from decimal import Decimal
+                amount_base = self.amount_base or Decimal('0')
+                self.purchase.paid_amount = (self.purchase.paid_amount or Decimal('0')) - Decimal(str(self.amount or '0'))
+                self.purchase.paid_amount_base = (self.purchase.paid_amount_base or Decimal('0')) - amount_base
+                # تحديث حالة الدفع للمشتريات
+                self.purchase.balance_due = (Decimal(str(self.purchase.total_amount or '0')) - Decimal(str(self.purchase.paid_amount or '0'))).quantize(Decimal('0.001'))
 
     @property
     def is_pending(self):
@@ -211,6 +228,18 @@ class Receipt(TenantScopedMixin, db.Model):
         if self.payment_confirmed:
             self.payment_confirmed = False
             self.rejection_reason = reason
+
+            # تحديث حالة الفاتورة (خصم المبلغ من المدفوع)
+            if self.sale:
+                self.sale.recalculate_payment_status()
+                # تحديث رصيد العميل
+                from decimal import Decimal
+                amount_base = self.amount_base or Decimal('0')
+                from models import Customer as _Cust
+                customer = _Cust.query.get(self.sale.customer_id)
+                if customer:
+                    customer.balance = (customer.balance or Decimal('0')) + amount_base
+                    customer.update_classification()
 
     @property
     def is_pending(self):

@@ -271,6 +271,9 @@ class PaymentService:
 
             db.session.commit()
 
+            customer.balance = (customer.balance or Decimal('0')) - receipt.amount_base
+            customer.update_classification()
+
             current_app.logger.info(f'Receipt created: {receipt.receipt_number}')
 
             write_receipt_audit('receipt_create', receipt.id, {

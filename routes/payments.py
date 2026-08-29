@@ -844,6 +844,10 @@ def delete_receipt(id):  # noqa: C901
             from services.gl_service import GLService
             GLService.purge_by_reference('Receipt', receipt.id)
             for ch in linked_cheques:
+                ch.gl_journal_entry_id = None
+                ch.gl_clearing_entry_id = None
+                ch.gl_bounce_entry_id = None
+                db.session.flush()
                 for ref in ('cheque_receive', 'cheque_issue', 'cheque_cancel',
                             'cheque_clear', 'cheque_bounce', 'Cheque'):
                     GLService.purge_by_reference(ref, ch.id)
@@ -919,6 +923,10 @@ def delete_payment(id):
             from services.gl_service import GLService
             GLService.purge_by_reference('Payment', payment.id)
             for ch in linked_cheques:
+                ch.gl_journal_entry_id = None
+                ch.gl_clearing_entry_id = None
+                ch.gl_bounce_entry_id = None
+                db.session.flush()
                 for ref in ('cheque_receive', 'cheque_issue', 'cheque_cancel',
                             'cheque_clear', 'cheque_bounce'):
                     GLService.purge_by_reference(ref, ch.id)

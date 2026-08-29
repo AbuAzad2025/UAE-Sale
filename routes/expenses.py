@@ -387,6 +387,11 @@ def delete(id):
 
             # 2. حذف الشيك إن وجد وحذف قيوده بأمان FK
             if cheque:
+                cheque.gl_journal_entry_id = None
+                cheque.gl_clearing_entry_id = None
+                cheque.gl_bounce_entry_id = None
+                db.session.flush()
+
                 for ref in ('cheque_receive', 'cheque_issue', 'cheque_cancel',
                             'cheque_clear', 'cheque_bounce', 'Cheque'):
                     GLService.purge_by_reference(ref, cheque.id)

@@ -450,15 +450,18 @@ def delete(id):
             flash(f'✅ تم أرشفة الشيك {cheque.cheque_bank_number} (لوجود ارتباطات)', 'warning')
 
         else:
-            # حذف نهائي (Hard Delete) بأمان FK: سطور→تدقيق→رؤوس
+            # حذف نهائي (Hard Delete) بأمان FK: رأس→سطور→تدقيق→رؤوس
             from services.gl_service import GLService
+
+            # قطع روابط القيد المحاسبي أولاً (قبل حذف القيود نفسها)
+            cheque.gl_journal_entry_id = None
+            cheque.gl_clearing_entry_id = None
+            cheque.gl_bounce_entry_id = None
+            db.session.flush()
+
             for ref in ('cheque_receive', 'cheque_issue', 'cheque_cancel',
                         'cheque_clear', 'cheque_bounce', 'Cheque'):
                 GLService.purge_by_reference(ref, cheque.id)
-
-            # قطع رابط القيد المحاسبي قبل حذف الشيك (FK constraint)
-            cheque.gl_journal_entry_id = None
-            db.session.flush()
 
             db.session.delete(cheque)
             db.session.commit()

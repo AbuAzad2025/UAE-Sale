@@ -456,6 +456,10 @@ def delete(id):
                         'cheque_clear', 'cheque_bounce', 'Cheque'):
                 GLService.purge_by_reference(ref, cheque.id)
 
+            # قطع رابط القيد المحاسبي قبل حذف الشيك (FK constraint)
+            cheque.gl_journal_entry_id = None
+            db.session.flush()
+
             db.session.delete(cheque)
             db.session.commit()
 

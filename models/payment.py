@@ -105,15 +105,6 @@ class Payment(TenantScopedMixin, db.Model):
                     customer.balance = (customer.balance or Decimal('0')) + amount_base
                     customer.update_classification()
 
-            # تحديث حالة المشتريات إن وجدت
-            if self.purchase:
-                from decimal import Decimal
-                amount_base = self.amount_base or Decimal('0')
-                self.purchase.paid_amount = (self.purchase.paid_amount or Decimal('0')) - Decimal(str(self.amount or '0'))
-                self.purchase.paid_amount_base = (self.purchase.paid_amount_base or Decimal('0')) - amount_base
-                # تحديث حالة الدفع للمشتريات
-                self.purchase.balance_due = (Decimal(str(self.purchase.total_amount or '0')) - Decimal(str(self.purchase.paid_amount or '0'))).quantize(Decimal('0.001'))
-
     @property
     def is_pending(self):
         """هل الدفعة معلقة (شيك لم يُصرف)"""

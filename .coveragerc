@@ -9,7 +9,6 @@ omit =
     node_modules/*
     instance/*
     static/*
-    ai_knowledge/models/*
     scripts/*
     *.pyc
     __pycache__/*

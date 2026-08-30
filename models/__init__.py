@@ -47,6 +47,9 @@ from .erp_modules import (
     StockTake, StockTakeItem, DunningLetter, RecurringExpense,
     ProductLot, WarehouseBin, ProductBin, EInvoice,
 )
+from .validators import (
+    single_parent_validator, direction_fk_validator, tenant_consistency_validator,
+)
 
 # Register all tenant-scoped models for automatic filtering
 for _model_cls in [Sale, SaleLine, Purchase, PurchaseLine, Payment, Receipt,

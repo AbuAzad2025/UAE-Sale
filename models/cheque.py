@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 
 from flask import current_app
+from sqlalchemy.orm import validates
 
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
@@ -122,9 +123,65 @@ class Cheque(TenantScopedMixin, db.Model):
     customer = db.relationship('Customer', backref='cheques', foreign_keys=[customer_id])
     supplier = db.relationship('Supplier', backref='cheques', foreign_keys=[supplier_id])
     sale = db.relationship('Sale', backref='cheques', foreign_keys=[sale_id])
-    receipt = db.relationship('Receipt', backref='cheques', foreign_keys=[receipt_id])
+    receipt = db.relationship(
+        'Receipt', backref='cheques', foreign_keys=[receipt_id])
     expense = db.relationship('Expense', backref='cheques', foreign_keys=[expense_id])
     user = db.relationship('User', foreign_keys=[user_id])
+
+    # ------------------------------------------------------------------
+    # F-04 invariants: at most ONE parent-document FK per cheque.
+    # The parent can be exactly one of: sale, purchase, expense,
+    # payment, or receipt.  customer/supplier are party references
+    # (not parent documents) and are not part of the XOR.
+    # ------------------------------------------------------------------
+
+    _PARENT_FK_COLUMNS = (
+        'sale_id', 'purchase_id', 'expense_id', 'payment_id', 'receipt_id',
+    )
+
+    @validates('sale_id', 'purchase_id', 'expense_id', 'payment_id', 'receipt_id')
+    def _validate_single_parent_doc(self, key, value):
+        """At most one of the parent-document FKs may be set on a
+        single cheque.  All others must be NULL when this one is
+        set.  The application layer (here) is the primary guard;
+        the database has a CHECK constraint (see below) for
+        defence-in-depth."""
+        if value is None:
+            return value
+        others = [k for k in self._PARENT_FK_COLUMNS if k != key]
+        for other in others:
+            other_value = getattr(self, other, None)
+            if other_value is not None:
+                raise ValueError(
+                    f"Cheque.{key} and Cheque.{other} are mutually exclusive "
+                    f"parent-document references.  At most one may be set on "
+                    f"a single cheque.")
+        return value
+
+    @validates('cheque_type')
+    def _validate_cheque_type(self, key, value):
+        """cheque_type must be 'incoming' or 'outgoing'."""
+        if value not in ('incoming', 'outgoing'):
+            raise ValueError(
+                f"Cheque.cheque_type must be 'incoming' or 'outgoing', got {value!r}")
+        return value
+
+    # F-04 defence-in-depth at the DB level: at most one parent-doc
+    # FK may be set.  NULL columns are skipped by the OR-of-NULL
+    # construct so that an entirely-unlinked cheque is still legal
+    # (e.g. an audit-trail / placeholder row).
+    __table_args__ = (
+        db.CheckConstraint(
+            "("
+            "(CASE WHEN sale_id     IS NULL THEN 0 ELSE 1 END) + "
+            "(CASE WHEN purchase_id IS NULL THEN 0 ELSE 1 END) + "
+            "(CASE WHEN expense_id   IS NULL THEN 0 ELSE 1 END) + "
+            "(CASE WHEN payment_id   IS NULL THEN 0 ELSE 1 END) + "
+            "(CASE WHEN receipt_id   IS NULL THEN 0 ELSE 1 END)"
+            ") <= 1",
+            name='ck_cheque_single_parent_doc',
+        ),
+    )
 
     def __repr__(self):
         return f'<Cheque {self.cheque_number} - {self.cheque_type} - {self.status}>'

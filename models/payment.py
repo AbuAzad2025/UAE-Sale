@@ -1,4 +1,7 @@
 from datetime import datetime, timezone
+from decimal import Decimal
+from sqlalchemy.orm import validates
+from sqlalchemy.exc import IntegrityError
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
 
@@ -9,6 +12,17 @@ class Payment(TenantScopedMixin, db.Model):
     __table_args__ = (
         db.CheckConstraint('amount > 0', name='ck_payment_amount_positive'),
         db.CheckConstraint('amount_base > 0', name='ck_payment_amount_base_positive'),
+        # F-05 invariant: outgoing payments MUST link to a supplier;
+        # incoming payments MUST link to a customer.  sale_id is only
+        # valid for incoming.  The validator below enforces these
+        # rules at the Python level; this CHECK is a defence-in-depth
+        # backstop that matches the application-level invariants.
+        db.CheckConstraint(
+            "(direction = 'incoming' AND sale_id IS NOT NULL AND customer_id IS NOT NULL AND supplier_id IS NULL) "
+            "OR "
+            "(direction = 'outgoing' AND supplier_id IS NOT NULL AND sale_id IS NULL)",
+            name='ck_payment_direction_fk',
+        ),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -63,6 +77,36 @@ class Payment(TenantScopedMixin, db.Model):
     supplier = db.relationship('Supplier', foreign_keys=[supplier_id])
     user = db.relationship('User', foreign_keys=[user_id])
     cheque = db.relationship('Cheque', backref='payment_record', foreign_keys=[cheque_id])
+
+    # ------------------------------------------------------------------
+    # F-04 / F-05 validators: enforce direction-based FK invariants
+    # ------------------------------------------------------------------
+
+    @validates('direction')
+    def _validate_direction(self, key, value):
+        """Direction must be 'incoming' or 'outgoing'."""
+        if value not in ('incoming', 'outgoing'):
+            raise ValueError(
+                f"Payment.direction must be 'incoming' or 'outgoing', got {value!r}")
+        return value
+
+    @validates('sale_id')
+    def _validate_sale_id_for_direction(self, key, value):
+        """sale_id is only valid for incoming payments."""
+        if value is not None and getattr(self, 'direction', None) == 'outgoing':
+            raise ValueError(
+                "Payment.sale_id may only be set on incoming payments "
+                "(outgoing payments must link to a supplier, not a sale).")
+        return value
+
+    @validates('supplier_id')
+    def _validate_supplier_id_for_direction(self, key, value):
+        """supplier_id is only valid for outgoing payments."""
+        if value is not None and getattr(self, 'direction', None) == 'incoming':
+            raise ValueError(
+                "Payment.supplier_id may only be set on outgoing payments "
+                "(incoming payments must link to a customer, not a supplier).")
+        return value
 
     def __repr__(self):
         return f'<Payment {self.payment_number}>'
@@ -148,13 +192,42 @@ class Receipt(TenantScopedMixin, db.Model):
     __table_args__ = (
         db.CheckConstraint('amount > 0', name='ck_receipt_amount_positive'),
         db.CheckConstraint('amount_base > 0', name='ck_receipt_amount_base_positive'),
+        # F-01 invariant: a receipt links either to a sale OR to a
+        # purchase, never both, never neither.  The polymorphic
+        # source_type/source_id columns are kept for backward compat
+        # (read-only on the Python side) but new code MUST use the
+        # explicit FKs below.
+        db.CheckConstraint(
+            "(sale_id IS NOT NULL AND purchase_id IS NULL) "
+            "OR "
+            "(sale_id IS NULL AND purchase_id IS NOT NULL) "
+            "OR "
+            "(sale_id IS NULL AND purchase_id IS NULL)",
+            name='ck_receipt_xor_parent',
+        ),
     )
 
     id = db.Column(db.Integer, primary_key=True)
     tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     receipt_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
 
-    # تصنيف مصدر السند
+    # F-01: explicit FKs replace the polymorphic source_type/source_id.
+    # sale_id for incoming customer payments, purchase_id for supplier
+    # refunds / adjustments.  Exactly one is set (or neither for manual
+    # adjustments, which the CHECK constraint above allows).
+    sale_id = db.Column(
+        db.Integer,
+        db.ForeignKey('sales.id', ondelete='SET NULL'),
+        nullable=True, index=True,
+    )
+    purchase_id = db.Column(
+        db.Integer,
+        db.ForeignKey('purchases.id', ondelete='SET NULL'),
+        nullable=True, index=True,
+    )
+
+    # F-01: legacy polymorphic columns, kept read-only for backward
+    # compatibility.  New code must use sale_id / purchase_id above.
     source_type = db.Column(db.String(20), default='sale', index=True)  # sale, manual, refund, etc.
     source_id = db.Column(db.Integer, index=True)  # ID of the source (sale_id, etc.)
 
@@ -194,6 +267,25 @@ class Receipt(TenantScopedMixin, db.Model):
     customer = db.relationship('Customer', back_populates='receipts')
     user = db.relationship('User', foreign_keys=[user_id])
     cheque = db.relationship('Cheque', backref='receipt_record', foreign_keys=[cheque_id])
+    sale = db.relationship('Sale', backref='receipts')
+    purchase = db.relationship('Purchase', backref='receipts')
+
+    # ------------------------------------------------------------------
+    # F-01 / F-04 validators: enforce parent FK invariants
+    # ------------------------------------------------------------------
+
+    @validates('sale_id', 'purchase_id')
+    def _validate_single_parent(self, key, value):
+        """sale_id and purchase_id are mutually exclusive: at most one
+        may be set on a given receipt.  Both may be NULL (manual /
+        adjustment)."""
+        other_key = 'purchase_id' if key == 'sale_id' else 'sale_id'
+        other_value = getattr(self, other_key, None)
+        if value is not None and other_value is not None:
+            raise ValueError(
+                f"Receipt.{key} and Receipt.{other_key} are mutually exclusive; "
+                f"set one or neither, not both.")
+        return value
 
     def __repr__(self):
         return f'<Receipt {self.receipt_number}>'

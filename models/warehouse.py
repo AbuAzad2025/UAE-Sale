@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from sqlalchemy.orm import validates
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
 
@@ -7,6 +8,7 @@ class Warehouse(db.Model):
     __tablename__ = 'warehouses'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
     name_ar = db.Column(db.String(100))
     code = db.Column(db.String(50), unique=True)
@@ -22,6 +24,31 @@ class Warehouse(db.Model):
     parent = db.relationship('Warehouse', remote_side=[id], backref='sub_warehouses')
     manager = db.relationship('User', foreign_keys=[manager_id])
     stock_movements = db.relationship('StockMovement', back_populates='warehouse', lazy='dynamic')
+
+    # ------------------------------------------------------------------
+    # F-03: enforce that warehouse.tenant_id == branch (manager) tenant_id
+    # ------------------------------------------------------------------
+
+    @validates('manager_id', 'tenant_id')
+    def _validate_tenant_consistency(self, key, value):
+        """The warehouse's tenant must match its manager (branch
+        head) tenant.  We enforce this when both are known on the
+        same instance; cross-instance validation happens via
+        service-layer calls that compare loaded values."""
+        if value is None:
+            return value
+        manager_id = self.manager_id if key != 'manager_id' else value
+        tenant_id = self.tenant_id if key != 'tenant_id' else value
+        if manager_id is not None and tenant_id is not None:
+            from models import User as _User
+            mgr = _User.query.get(manager_id)
+            if mgr is not None and getattr(mgr, 'tenant_id', None) is not None \
+                    and mgr.tenant_id != tenant_id:
+                raise ValueError(
+                    f"Warehouse.tenant_id ({tenant_id}) must match the "
+                    f"manager's tenant_id ({mgr.tenant_id}); cross-tenant "
+                    f"warehouse managers are not allowed.")
+        return value
 
     def __repr__(self):
         return f'<Warehouse {self.name}>'

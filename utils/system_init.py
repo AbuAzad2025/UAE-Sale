@@ -7,7 +7,8 @@ from models import User, Role, Permission
 def ensure_system_integrity(app):
     """
     Ensure the system has the basic requirements to run:
-    1. Database tables exist (only if alembic hasn't run yet)
+    1. Database tables exist (only as a last-resort fallback when
+       alembic has not created them yet)
     2. Essential permissions exist
     3. Owner Role exists
     4. Owner User (Master Key) exists
@@ -20,25 +21,37 @@ def ensure_system_integrity(app):
     ``create_all()`` here would raise ``DuplicateTable`` on
     PostgreSQL — so we only invoke it when the schema is empty.
     """
+    # Detect whether we are running inside an alembic command.
+    # We must not run db.create_all() during ``flask db upgrade``
+    # because alembic creates the tables itself; running both would
+    # produce DuplicateTable errors on PostgreSQL.
+    import sys as _sys
+    _is_alembic_run = any(
+        (a or '').endswith('flask') and len(_sys.argv) > i + 1
+        and (_sys.argv[i + 1] == 'db')
+        for i, a in enumerate(_sys.argv[:-1])
+    )
+
     with app.app_context():
         # 1. Ensure Tables Exist (only if no tables yet)
         # The DB schema is created by alembic migrations; this is a
         # fallback for local-dev sqlite where migrations weren't run.
-        try:
-            inspector = db.inspect(db.engine)
-            existing = set(inspector.get_table_names())
-        except Exception:
-            existing = set()
-        if not existing:
-            db.create_all()
-        else:
-            # Make sure the SQLAlchemy metadata matches what's in the
-            # DB so subsequent queries don't complain about missing
-            # tables during this session.
+        if not _is_alembic_run:
             try:
-                db.metadata.reflect(bind=db.engine)
+                inspector = db.inspect(db.engine)
+                existing = set(inspector.get_table_names())
             except Exception:
-                pass
+                existing = set()
+            if not existing:
+                db.create_all()
+            else:
+                # Make sure the SQLAlchemy metadata matches what's in the
+                # DB so subsequent queries don't complain about missing
+                # tables during this session.
+                try:
+                    db.metadata.reflect(bind=db.engine)
+                except Exception:
+                    pass
 
         # 2. Ensure Permissions
         _ensure_permissions()

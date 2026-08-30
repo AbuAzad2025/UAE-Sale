@@ -4,7 +4,8 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Customer, Sale
-from utils.decorators import permission_required
+from utils.decorators import permission_required, get_owned_or_404
+
 from utils.helpers import create_audit_log
 from services.payment_service import PaymentService
 from decimal import Decimal
@@ -108,7 +109,7 @@ def create():
 @login_required
 @permission_required('manage_customers')
 def view(id):
-    customer = db.get_or_404(Customer, id)
+    customer = get_owned_or_404(Customer, id)
 
     sales = Sale.query.filter_by(customer_id=id).order_by(Sale.sale_date.desc()).limit(20).all()
 
@@ -127,7 +128,7 @@ def view(id):
 @login_required
 @permission_required('manage_customers')
 def edit(id):
-    customer = db.get_or_404(Customer, id)
+    customer = get_owned_or_404(Customer, id)
 
     if request.method == 'POST':
         try:
@@ -160,7 +161,7 @@ def edit(id):
 @login_required
 @permission_required('manage_customers')
 def delete(id):
-    customer = db.get_or_404(Customer, id)
+    customer = get_owned_or_404(Customer, id)
 
     try:
         # Check for related records preventing deletion
@@ -185,7 +186,7 @@ def delete(id):
         # Fallback to soft delete if hard delete fails (e.g. other constraints)
         try:
             # Re-fetch customer to ensure it's attached to the new session transaction
-            customer = db.session.get(Customer, id)
+            customer = get_owned_or_404(Customer, id)
             if customer:
                 customer.is_active = False
                 db.session.add(customer)
@@ -202,7 +203,7 @@ def delete(id):
 @login_required
 @permission_required('manage_customers')
 def statement(id):
-    customer = db.get_or_404(Customer, id)
+    customer = get_owned_or_404(Customer, id)
 
     date_from = request.args.get('date_from', type=str)
     date_to = request.args.get('date_to', type=str)
@@ -431,7 +432,7 @@ def api_search():
 @sales_or_customers_required
 def customer_balance(id):
     """Get customer balance and unpaid sales - API for payment receipts"""
-    customer = db.get_or_404(Customer, id)
+    customer = get_owned_or_404(Customer, id)
 
     # Get unpaid sales
     unpaid_sales = Sale.query.filter(
@@ -458,7 +459,7 @@ def customer_balance(id):
 @login_required
 @permission_required('manage_customers')
 def customer_sales(id):
-    _ = db.get_or_404(Customer, id)
+    _ = get_owned_or_404(Customer, id)
 
     sales = Sale.query.filter_by(
         customer_id=id,

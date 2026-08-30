@@ -2,28 +2,29 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Role
-from utils.decorators import admin_required
+from utils.decorators import admin_required, _role_level, _current_user_level, _enforce_target_role_not_higher, get_owned_or_404
 from utils.helpers import create_audit_log
 
 users_bp = Blueprint('users', __name__, url_prefix='/users')
 
 
-def _role_level(slug):
-    return {
-        'seller': 10,
-        'manager': 20,
-        'super_admin': 90,
-        'developer': 95,
-        'owner': 100
-    }.get(slug, 0)
+def _role_level_local(slug):
+    """Local role-level map for filtering the role dropdown.
+    Kept here so the filter is visible in one place; the canonical
+    ranking lives in ``utils.decorators._role_level``.
+    """
+    return _role_level(Role(slug=slug) if slug else None) if False else _role_level(_role_obj_for(slug))
 
 
-def _current_user_level():
-    if getattr(current_user, 'is_owner', False):
-        return 100
-    role = getattr(current_user, 'role', None)
-    slug = getattr(role, 'slug', None) if role else None
-    return _role_level(slug)
+def _role_obj_for(slug):
+    """Best-effort role stub for the local level map.  We only need the
+    slug to map to a level, so build a lightweight object that satisfies
+    ``_role_level``'s contract (``role.slug``)."""
+    class _R:
+        pass
+    r = _R()
+    r.slug = slug
+    return r
 
 
 @users_bp.route('/')
@@ -68,7 +69,9 @@ def create():
 
     current_level = _current_user_level()
     roles = Role.query.filter_by(is_active=True).all()
-    roles = [r for r in roles if _role_level(getattr(r, 'slug', None)) <= current_level]
+    # SECURITY: Never offer roles higher than the actor's own level —
+    # prevents a manager from creating a super_admin in the role dropdown.
+    roles = [r for r in roles if _role_level(r) <= current_level]
     default_form = {'is_active': '1'}
 
     if request.method == 'POST':
@@ -80,6 +83,16 @@ def create():
                 form_values['is_active'] = request.form.get('is_active', '1')
                 return render_template('users/create.html', roles=roles, form_data=form_values)
 
+            # SECURITY: Re-validate the chosen role server-side against the
+            # current user's privilege level. The dropdown is filtered, but
+            # body tampering must not be able to inject a higher role.
+            target_role = Role.query.get(role_id)
+            if target_role is None:
+                flash('⚠️ الدور المختار غير صالح.', 'danger')
+                return render_template('users/create.html', roles=roles,
+                                       form_data=request.form.to_dict())
+            _enforce_target_role_not_higher(target_role)
+
             is_active = request.form.get('is_active', '1') == '1'
 
             user = User(
@@ -89,7 +102,8 @@ def create():
                 full_name_ar=request.form.get('full_name_ar'),
                 phone=request.form.get('phone'),
                 role_id=role_id,
-                is_owner=False,
+                is_owner=False,  # SECURITY: never let non-owner routes create owners
+                tenant_id=getattr(current_user, 'tenant_id', None),  # SECURITY: same tenant
                 is_active=is_active
             )
 
@@ -133,7 +147,10 @@ def view(id):
     if not current_user.has_permission('manage_users'):
         abort(403)
 
-    user = User.query.filter_by(id=id, is_owner=False).first_or_404()
+    # SECURITY: cross-tenant check via get_owned_or_404.
+    user = get_owned_or_404(User, id, code=404)
+    if user.is_owner:
+        abort(404)
     return render_template('users/view.html', user=user)
 
 
@@ -141,7 +158,12 @@ def view(id):
 @login_required
 @admin_required
 def edit(id):
-    user = User.query.filter_by(id=id, is_owner=False).first_or_404()
+    # SECURITY: use get_owned_or_404 to enforce cross-tenant isolation
+    # in addition to the @admin_required role gate.
+    user = get_owned_or_404(User, id, code=404)
+    if user.is_owner:
+        # Owner accounts cannot be edited through this route.
+        abort(404)
 
     if request.method == 'POST':
         try:
@@ -149,11 +171,21 @@ def edit(id):
             user.full_name = request.form.get('full_name')
             user.full_name_ar = request.form.get('full_name_ar')
             user.phone = request.form.get('phone')
-            user.role_id = request.form.get('role_id', type=int)
+
+            # SECURITY: server-side role-level re-validation. The dropdown
+            # is filtered to ≤ current user's level, but body tampering
+            # could try to inject a higher role. Reject 403.
+            new_role_id = request.form.get('role_id', type=int)
+            if new_role_id and new_role_id != user.role_id:
+                new_role = Role.query.get(new_role_id)
+                if new_role is None:
+                    flash('⚠️ الدور المختار غير صالح.', 'danger')
+                    return redirect(url_for('users.edit', id=user.id))
+                _enforce_target_role_not_higher(new_role)
+                user.role_id = new_role_id
 
             new_password = request.form.get('new_password')
             if new_password:
-                # SECURITY: Enforce password strength policy on password changes
                 from utils.password_validator import PasswordValidator
                 is_valid, errors = PasswordValidator.validate(new_password)
                 if not is_valid:
@@ -175,7 +207,8 @@ def edit(id):
 
     current_level = _current_user_level()
     roles = Role.query.filter_by(is_active=True).all()
-    roles = [r for r in roles if _role_level(getattr(r, 'slug', None)) <= current_level]
+    # SECURITY: only offer roles at or below the actor's level.
+    roles = [r for r in roles if _role_level(r) <= current_level]
     return render_template('users/edit.html', user=user, roles=roles)
 
 
@@ -183,12 +216,14 @@ def edit(id):
 @login_required
 @admin_required
 def toggle_active(id):
-    user = User.query.filter_by(id=id, is_owner=False).first_or_404()
+    # SECURITY: cross-tenant check before mutating.
+    user = get_owned_or_404(User, id, code=404)
+    if user.is_owner:
+        abort(404)
 
     user.is_active = not user.is_active
     db.session.commit()
 
-    _ = 'تفعيل' if user.is_active else 'تعطيل'
     status_msg = 'تفعيل' if user.is_active else 'إلغاء تفعيل'
     flash(f'✅ تم {status_msg} المستخدم "{user.username}" بنجاح!', 'success')
 
@@ -200,13 +235,15 @@ def toggle_active(id):
 @users_bp.route('/<int:id>/delete', methods=['POST'])
 @login_required
 def delete(id):
-    # Check permission instead of is_owner
     if not current_user.has_permission('manage_users'):
         flash('⛔ ليس لديك صلاحية لحذف المستخدمين.', 'danger')
         return redirect(url_for('users.index'))
 
-    # Ensure target is NOT owner (double check, though filter handles it)
-    user = User.query.filter_by(id=id, is_owner=False).first_or_404()
+    # SECURITY: cross-tenant check before mutating.
+    user = get_owned_or_404(User, id, code=404)
+    if user.is_owner:
+        # Never allow owner account to be deleted through this route.
+        abort(404)
 
     if user.id == current_user.id:
         flash('⚠️ لا يمكنك حذف حسابك الخاص.\n💡 اطلب من مدير آخر حذف حسابك إذا لزم الأمر.', 'danger')

@@ -17,7 +17,8 @@ from services.erp_modules_service import (
     StockTransferService, StockTakeService, DunningService,
     EInvoiceService,
 )
-from utils.decorators import permission_required, admin_required
+from utils.decorators import permission_required, admin_required, get_owned_or_404
+
 from utils.helpers import create_audit_log
 
 erp_bp = Blueprint('erp_modules', __name__, url_prefix='/erp')

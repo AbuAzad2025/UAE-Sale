@@ -5,7 +5,8 @@ from models import Purchase, PurchaseLine, Product, Supplier, Warehouse
 from services.stock_service import StockService
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
-from utils.decorators import permission_required
+from utils.decorators import permission_required, get_owned_or_404
+
 from utils.helpers import create_audit_log, generate_number
 from decimal import Decimal
 
@@ -71,7 +72,7 @@ def create():  # noqa: C901
 
             # إذا تم اختيار مورد من القائمة
             if supplier_id:
-                supplier = db.session.get(Supplier, supplier_id)
+                supplier = get_owned_or_404(Supplier, supplier_id)
                 if supplier:
                     supplier_name = supplier.name
                     supplier_phone = supplier.phone or ''
@@ -133,7 +134,7 @@ def create():  # noqa: C901
                 current_app.logger.info(f"Processing line {i}: product_id={product_id}, qty={quantity}, cost={unit_cost}")
 
                 if product_id and quantity and quantity > 0 and unit_cost:
-                    product = db.session.get(Product, product_id)
+                    product = get_owned_or_404(Product, product_id)
 
                     if product:
                         line = PurchaseLine(
@@ -258,7 +259,7 @@ def create():  # noqa: C901
 @login_required
 @permission_required('manage_purchases')
 def view(id):
-    purchase = db.get_or_404(Purchase, id)
+    purchase = get_owned_or_404(Purchase, id)
     return render_template('purchases/view.html', purchase=purchase)
 
 
@@ -266,7 +267,7 @@ def view(id):
 @login_required
 @permission_required('manage_purchases')
 def print_purchase(id):
-    purchase = db.get_or_404(Purchase, id)
+    purchase = get_owned_or_404(Purchase, id)
     from flask import current_app
     company = {
         'name_ar': current_app.config.get('COMPANY_NAME_AR'),
@@ -281,7 +282,7 @@ def print_purchase(id):
 @permission_required('manage_purchases')
 def edit(id):
     """تعديل فاتورة شراء - الملاحظات والخصم فقط"""
-    purchase = db.get_or_404(Purchase, id)
+    purchase = get_owned_or_404(Purchase, id)
 
     # منع التعديل للفواتير المدفوعة
     if purchase.get_paid_amount() > 0:
@@ -315,7 +316,7 @@ def delete(id):
     from models import Cheque, GLJournalEntry, PurchaseLine
     from services.gl_service import GLService
 
-    purchase = db.get_or_404(Purchase, id)
+    purchase = get_owned_or_404(Purchase, id)
 
     # التحقق من الارتباطات
     has_links = False

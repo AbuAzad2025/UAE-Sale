@@ -8,7 +8,8 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Supplier, Purchase, Payment
-from utils.decorators import permission_required, admin_required
+from utils.decorators import permission_required, admin_required, get_owned_or_404
+
 from utils.helpers import create_audit_log
 from sqlalchemy import desc
 
@@ -133,7 +134,7 @@ def create():
 @permission_required('manage_suppliers')
 def view(id):
     """عرض تفاصيل المورد"""
-    supplier = db.get_or_404(Supplier, id)
+    supplier = get_owned_or_404(Supplier, id)
 
     # آخر المشتريات
     recent_purchases = supplier.purchases.filter_by(status='confirmed').order_by(
@@ -162,7 +163,7 @@ def view(id):
 @permission_required('manage_suppliers')
 def edit(id):
     """تعديل المورد"""
-    supplier = db.get_or_404(Supplier, id)
+    supplier = get_owned_or_404(Supplier, id)
 
     if request.method == 'POST':
         try:
@@ -209,7 +210,7 @@ def edit(id):
 @permission_required('manage_suppliers')
 def delete(id):
     """حذف (إلغاء تفعيل) المورد"""
-    supplier = db.get_or_404(Supplier, id)
+    supplier = get_owned_or_404(Supplier, id)
 
     try:
         # Check for related records preventing deletion
@@ -245,7 +246,7 @@ def delete(id):
 @admin_required
 def statement(id):
     """كشف حساب المورد"""
-    supplier = db.get_or_404(Supplier, id)
+    supplier = get_owned_or_404(Supplier, id)
 
     purchases = supplier.purchases.filter_by(status='confirmed').order_by(
         Purchase.purchase_date.desc()

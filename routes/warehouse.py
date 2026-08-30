@@ -3,7 +3,8 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import Product, StockMovement, Warehouse
 from services.stock_service import StockService
-from utils.decorators import permission_required, admin_required
+from utils.decorators import permission_required, admin_required, get_owned_or_404
+
 from decimal import Decimal
 
 warehouse_bp = Blueprint('warehouse', __name__, url_prefix='/warehouse')
@@ -122,7 +123,7 @@ def view_warehouse(id):
         # Convert quantity to float for comparison and display, handling None
         qty = float(quantity) if quantity is not None else 0.0
         if qty != 0:
-            product = db.session.get(Product, product_id)
+            product = get_owned_or_404(Product, product_id)
             if product:
                 warehouse_stock.append({
                     'product': product,
@@ -269,7 +270,7 @@ def delete_warehouse(id):
 @permission_required('manage_warehouse')
 def add_stock(product_id):
     try:
-        product = db.get_or_404(Product, product_id)
+        product = get_owned_or_404(Product, product_id)
         quantity = Decimal(request.form.get('quantity', 0))
         notes = request.form.get('notes', '').strip()
         warehouse_id = request.form.get('warehouse_id', type=int)

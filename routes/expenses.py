@@ -4,7 +4,8 @@ from extensions import db, limiter
 from models import Expense, ExpenseCategory, Cheque
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
-from utils.decorators import permission_required
+from utils.decorators import permission_required, get_owned_or_404
+
 from utils.helpers import create_audit_log, generate_number
 from decimal import Decimal
 from datetime import datetime

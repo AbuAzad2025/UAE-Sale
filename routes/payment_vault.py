@@ -1499,39 +1499,41 @@ def nowpayments_webhook():
         payload = request.data
         signature = request.headers.get('x-nowpayments-sig', '')
 
-        # التحقق من التوقيع
+        # SECURITY: Fail closed — refuse the webhook unless a secret is
+        # explicitly configured AND the signature is valid.  The previous
+        # code allowed unsigned requests when the secret was empty, which
+        # is exactly the moment an attacker would try to spoof webhooks.
         vault = PaymentVault.query.first()
-        if vault and vault.nowpayments_ipn_secret:
-            if not signature:
-                return jsonify({'error': 'Missing signature'}), 400
-            if not WebhookService.verify_nowpayments_signature(
-                payload,
-                signature,
-                vault.nowpayments_ipn_secret
-            ):
-                logger.warning('❌ NOWPayments webhook signature verification failed')
-                return jsonify({'error': 'Invalid signature'}), 403
+        secret = vault.nowpayments_ipn_secret if vault else None
+        if not secret:
+            logger.warning('NOWPayments webhook rejected: IPN secret not configured')
+            return jsonify({'error': 'Webhook not configured'}), 503
+        if not signature:
+            logger.warning('NOWPayments webhook rejected: missing signature')
+            return jsonify({'error': 'Missing signature'}), 400
+        if not WebhookService.verify_nowpayments_signature(payload, signature, secret):
+            logger.warning('NOWPayments webhook signature verification failed')
+            return jsonify({'error': 'Invalid signature'}), 403
 
         # معالجة الـ webhook
         data = request.get_json()
         result = WebhookService.process_nowpayments_webhook(data)
 
         # تسجيل
-        if vault:
-            PaymentLog.log_action(
-                vault_id=vault.id,
-                action='nowpayments_webhook_received',
-                description=f'Payment status: {data.get("payment_status")}',
-                level='info',
-                transaction_id=data.get('payment_id'),
-                ip_address=request.remote_addr,
-                user_agent=request.headers.get('User-Agent')
-            )
+        PaymentLog.log_action(
+            vault_id=vault.id,
+            action='nowpayments_webhook_received',
+            description=f'Payment status: {data.get("payment_status")}',
+            level='info',
+            transaction_id=data.get('payment_id'),
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent')
+        )
 
         return jsonify(result), 200 if result.get('success') else 400
 
     except Exception as e:
-        logger.error(f'❌ NOWPayments webhook error: {str(e)}')
+        logger.error(f'NOWPayments webhook error: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 
@@ -1547,36 +1549,35 @@ def stripe_webhook():
         payload = request.data
         signature = request.headers.get('Stripe-Signature', '')
 
-        # التحقق من التوقيع
+        # SECURITY: Fail closed — refuse the webhook unless a secret is
+        # explicitly configured AND the signature is valid.
         vault = PaymentVault.query.first()
-        if vault and vault.stripe_webhook_secret:
-            if not WebhookService.verify_stripe_signature(
-                payload,
-                signature,
-                vault.stripe_webhook_secret
-            ):
-                logger.warning('❌ Stripe webhook signature verification failed')
-                return jsonify({'error': 'Invalid signature'}), 403
+        secret = vault.stripe_webhook_secret if vault else None
+        if not secret:
+            logger.warning('Stripe webhook rejected: webhook secret not configured')
+            return jsonify({'error': 'Webhook not configured'}), 503
+        if not WebhookService.verify_stripe_signature(payload, signature, secret):
+            logger.warning('Stripe webhook signature verification failed')
+            return jsonify({'error': 'Invalid signature'}), 403
 
         # معالجة الـ webhook
         data = request.get_json()
         result = WebhookService.process_stripe_webhook(data)
 
         # تسجيل
-        if vault:
-            PaymentLog.log_action(
-                vault_id=vault.id,
-                action='stripe_webhook_received',
-                description=f'Event type: {data.get("type")}',
-                level='info',
-                ip_address=request.remote_addr,
-                user_agent=request.headers.get('User-Agent')
-            )
+        PaymentLog.log_action(
+            vault_id=vault.id,
+            action='stripe_webhook_received',
+            description=f'Event type: {data.get("type")}',
+            level='info',
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent')
+        )
 
         return jsonify(result), 200 if result.get('success') else 400
 
     except Exception as e:
-        logger.error(f'❌ Stripe webhook error: {str(e)}')
+        logger.error(f'Stripe webhook error: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 # ==================== Health & Monitoring Routes - المراقبة ====================

@@ -12,7 +12,7 @@ from models import (
 from models.login_history import LoginHistory
 from models.security_alert import SecurityAlert
 from models.api_key import APIKey
-from utils.decorators import owner_required, permission_required
+from utils.decorators import owner_required, permission_required, _role_level as _role_level_canon, _enforce_target_role_not_higher, get_owned_or_404
 from utils.db_safety import validate_table_name, validate_backup_filename
 from sqlalchemy import text, inspect
 
@@ -33,22 +33,29 @@ from datetime import datetime as dt  # noqa: E402
 owner_bp = Blueprint('owner', __name__, url_prefix='/owner')
 
 
-def _role_level(slug):
-    return {
-        'seller': 10,
-        'manager': 20,
-        'super_admin': 90,
-        'developer': 95,
-        'owner': 100
-    }.get(slug, 0)
+def _role_level(role_or_slug):
+    """Compatibility shim — accept either a Role model or a slug string.
+
+    The canonical implementation lives in ``utils.decorators``; we keep
+    this local version so existing call sites in owner.py continue to
+    work without rewrites.
+    """
+    if role_or_slug is None:
+        return 0
+    if isinstance(role_or_slug, str):
+        # Build a minimal role-like object
+        class _R:
+            pass
+        r = _R()
+        r.slug = role_or_slug
+        return _role_level_canon(r)
+    return _role_level_canon(role_or_slug)
 
 
 def _current_user_level():
     if getattr(current_user, 'is_owner', False):
         return 100
-    role = getattr(current_user, 'role', None)
-    slug = getattr(role, 'slug', None) if role else None
-    return _role_level(slug)
+    return _role_level_canon(getattr(current_user, 'role', None))
 
 
 @owner_bp.route('/dashboard')
@@ -374,6 +381,18 @@ def create_user():
                 flash('⚠️ يرجى اختيار الدور الوظيفي.', 'warning')
                 return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
 
+            # SECURITY: server-side re-validation of the chosen role.
+            target_role = Role.query.get(role_id)
+            if target_role is None:
+                flash('⚠️ الدور المختار غير صالح.', 'danger')
+                return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
+            _enforce_target_role_not_higher(target_role)
+
+            # SECURITY: only the platform owner may mint another owner.
+            if is_owner and not getattr(current_user, 'is_owner', False):
+                flash('⛔ لا يمكن إنشاء مالك جديد إلا من قِبل المالك الحالي.', 'danger')
+                return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
+
             # التحقق من قوة كلمة المرور
             is_valid, errors = PasswordValidator.validate(password)
             if not is_valid:
@@ -424,15 +443,34 @@ def edit_user(user_id):
     from models import Role
     from werkzeug.security import generate_password_hash
 
-    user = db.get_or_404(User, user_id)
+    # SECURITY: use get_owned_or_404 for cross-tenant safety.
+    user = get_owned_or_404(User, user_id)
 
     if request.method == 'POST':
         try:
             user.username = request.form.get('username', '').strip()
             user.email = request.form.get('email', '').strip()
             user.full_name = request.form.get('full_name', '').strip()
-            user.role_id = request.form.get('role_id', type=int)
-            user.is_owner = request.form.get('is_owner') == 'on'
+
+            # SECURITY: re-validate the new role level.  Even if the
+            # dropdown is filtered, body tampering could try to inject
+            # a higher role.  Owners can edit anyone, but only the
+            # owner is the owner.
+            new_role_id = request.form.get('role_id', type=int)
+            if new_role_id and new_role_id != user.role_id:
+                new_role = Role.query.get(new_role_id)
+                if new_role is None:
+                    flash('⚠️ الدور المختار غير صالح.', 'danger')
+                    return redirect(url_for('owner.edit_user', user_id=user_id))
+                _enforce_target_role_not_higher(new_role)
+                user.role_id = new_role_id
+
+            # SECURITY: only the platform owner may mint another owner.
+            new_is_owner = request.form.get('is_owner') == 'on'
+            if new_is_owner and not getattr(current_user, 'is_owner', False):
+                flash('⛔ لا يمكن منح صلاحية المالك لغير المالك الحالي.', 'danger')
+                return redirect(url_for('owner.edit_user', user_id=user_id))
+            user.is_owner = new_is_owner
             user.is_active = request.form.get('is_active') == 'on'
 
             # تغيير كلمة المرور إن وجدت
@@ -469,7 +507,8 @@ def edit_user(user_id):
 @owner_required
 def user_profile(user_id):
     """الملف الشخصي للمستخدم"""
-    user = db.get_or_404(User, user_id)
+    # SECURITY: cross-tenant safe lookup.
+    user = get_owned_or_404(User, user_id)
 
     # إحصائيات المستخدم
     from models import Sale, Payment  # noqa: F811  (local import intentional)
@@ -498,7 +537,8 @@ def user_profile(user_id):
 @owner_required
 def delete_user(user_id):
     """حذف مستخدم"""
-    user = db.get_or_404(User, user_id)
+    # SECURITY: cross-tenant check.
+    user = get_owned_or_404(User, user_id)
 
     # لا يمكن حذف المالك
     from utils.error_messages import ErrorMessages
@@ -648,7 +688,7 @@ def cards_vault():
 @login_required
 @owner_required
 def view_card(id):
-    card = db.get_or_404(CardVault, id)
+    card = get_owned_or_404(CardVault, id)
 
     card_data = card.to_dict(include_sensitive=True)
 
@@ -2053,7 +2093,7 @@ def security_alerts():
 @login_required
 @owner_required
 def resolve_alert(id):
-    alert = db.get_or_404(SecurityAlert, id)
+    alert = get_owned_or_404(SecurityAlert, id)
     alert.is_resolved = True
     alert.resolved_at = datetime.now(timezone.utc)
     alert.resolved_by = current_user.id
@@ -2132,7 +2172,7 @@ def api_keys():
 @login_required
 @owner_required
 def toggle_api_key(id):
-    key = db.get_or_404(APIKey, id)
+    key = get_owned_or_404(APIKey, id)
     key.is_active = not key.is_active
     db.session.commit()
 

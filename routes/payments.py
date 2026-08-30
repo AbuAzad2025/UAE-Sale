@@ -9,7 +9,7 @@ from extensions import db
 from models import Receipt, Customer, InvoiceSettings, Supplier
 from services.payment_service import PaymentService
 from services.currency_service import CurrencyService
-from utils.decorators import permission_required
+from utils.decorators import permission_required, get_owned_or_404
 from utils.helpers import create_audit_log
 
 payments_bp = Blueprint('payments', __name__, url_prefix='/payments')
@@ -153,7 +153,7 @@ def receipts():
 def view_payment(id):
     """عرض سند صرف - يستخدم نفس قالب سندات القبض"""
     from models import Payment
-    payment = db.get_or_404(Payment, id)
+    payment = get_owned_or_404(Payment, id)
     return render_template('payments/view_receipt.html', receipt=payment, is_payment=True)
 
 
@@ -163,7 +163,7 @@ def view_payment(id):
 def print_payment(id):
     """طباعة سند صرف - يستخدم نفس قالب طباعة سندات القبض"""
     from models import Payment
-    payment = db.get_or_404(Payment, id)
+    payment = get_owned_or_404(Payment, id)
     from flask import current_app
     company = {
         'name_ar': current_app.config.get('COMPANY_NAME_AR'),
@@ -181,7 +181,7 @@ def archive_payment(id):
     from models import Payment
     from services.archive_service import ArchiveService
 
-    payment = db.get_or_404(Payment, id)
+    payment = get_owned_or_404(Payment, id)
 
     try:
         archive_service = ArchiveService()
@@ -243,7 +243,7 @@ def create_from_sale(sale_id):
     """إنشاء سند دفع من فاتورة بيع معينة"""
     from models import Sale
 
-    sale = db.get_or_404(Sale, sale_id)
+    sale = get_owned_or_404(Sale, sale_id)
 
     if request.method == 'POST':
         try:
@@ -403,7 +403,7 @@ def create_voucher_submit():  # noqa: C901
                 amount_decimal = Decimal(str(amount))
                 amount_base = amount_decimal * exchange_rate
 
-                supplier = db.session.get(Supplier, party_id)
+                supplier = get_owned_or_404(Supplier, party_id)
                 payment = Payment(
                     payment_number=generate_number('PAY', Payment, 'payment_number'),  # ربما نحتاج تسلسل منفصل؟
                     payment_type='refund',  # استرداد
@@ -463,7 +463,7 @@ def create_voucher_submit():  # noqa: C901
 
             if party_type == 'supplier':
                 # دفع لمورد (المنطق المعتاد)
-                supplier = db.session.get(Supplier, party_id)
+                supplier = get_owned_or_404(Supplier, party_id)
                 payment = Payment(
                     payment_number=generate_number('PAY', Payment, 'payment_number'),
                     payment_type='bill_payment',
@@ -544,7 +544,7 @@ def create_voucher_submit():  # noqa: C901
             elif party_type == 'customer':
                 # دفع لعميل (استرداد أو تسوية أو سحب شريك)
                 # Payment model has customer_id field
-                customer = db.session.get(Customer, party_id)
+                customer = get_owned_or_404(Customer, party_id)
                 payment = Payment(
                     payment_number=generate_number('PAY', Payment, 'payment_number'),
                     payment_type='refund',
@@ -645,7 +645,7 @@ def create_receipt():
 @login_required
 @permission_required('manage_payments')
 def view_receipt(id):
-    receipt = db.get_or_404(Receipt, id)
+    receipt = get_owned_or_404(Receipt, id)
 
     if current_user.is_seller() and not current_user.is_owner and receipt.user_id != current_user.id:
         flash('ليس لديك صلاحية لعرض هذا السند', 'danger')
@@ -658,7 +658,7 @@ def view_receipt(id):
 @login_required
 @permission_required('manage_payments')
 def print_receipt(id):
-    receipt = db.get_or_404(Receipt, id)
+    receipt = get_owned_or_404(Receipt, id)
 
     if current_user.is_seller() and not current_user.is_owner and receipt.user_id != current_user.id:
         flash('ليس لديك صلاحية لطباعة هذا السند', 'danger')
@@ -754,7 +754,7 @@ def archive_receipt(id):
     """أرشفة سند قبض"""
     from services.archive_service import ArchiveService
 
-    receipt = db.get_or_404(Receipt, id)
+    receipt = get_owned_or_404(Receipt, id)
 
     try:
         archive_service = ArchiveService()
@@ -796,7 +796,7 @@ def delete_receipt(id):  # noqa: C901
     from models import Receipt
     from services.archive_service import ArchiveService
 
-    receipt = db.get_or_404(Receipt, id)
+    receipt = get_owned_or_404(Receipt, id)
     from models import Cheque
     linked_cheques = Cheque.query.filter_by(receipt_id=receipt.id).all()
 
@@ -813,7 +813,7 @@ def delete_receipt(id):  # noqa: C901
         # 1. عكس التخصيصات (إعادة الرصيد للفاتورة)
         if receipt.source_type == 'sale' and receipt.source_id:
             from models import Sale
-            sale = db.session.get(Sale, receipt.source_id)
+            sale = get_owned_or_404(Sale, receipt.source_id)
             if sale:
                 sale.paid_amount -= receipt.amount
                 sale.paid_amount_base -= receipt.amount_base
@@ -840,7 +840,7 @@ def delete_receipt(id):  # noqa: C901
 
                 # استعادة رصيد العميل
                 from models import Customer as _CustDel
-                _cust_del = db.session.get(_CustDel, receipt.customer_id)
+                _cust_del = get_owned_or_404(_CustDel, receipt.customer_id)
                 if _cust_del:
                     _cust_del.balance = (_cust_del.balance or Decimal('0')) + receipt.amount_base
                     _cust_del.update_classification()
@@ -911,7 +911,7 @@ def delete_payment(id):
     from models import Payment
     from services.archive_service import ArchiveService
 
-    payment = db.get_or_404(Payment, id)
+    payment = get_owned_or_404(Payment, id)
     from models import Cheque as _Cheque
     linked_cheques = _Cheque.query.filter_by(payment_id=payment.id).all()
 
@@ -991,8 +991,8 @@ def create_payment(purchase_id):  # noqa: C901
     from utils.helpers import generate_number
     from sqlalchemy import func
 
-    purchase = db.get_or_404(Purchase, purchase_id)
-    supplier = db.session.get(Supplier, purchase.supplier_id) if purchase.supplier_id else None
+    purchase = get_owned_or_404(Purchase, purchase_id)
+    supplier = get_owned_or_404(Supplier, purchase.supplier_id) if purchase.supplier_id else None
 
     # حساب المبلغ المدفوع من جدول payments
     paid_amount = db.session.query(func.sum(Payment.amount_base)).filter(
@@ -1136,8 +1136,12 @@ def create_payment(purchase_id):  # noqa: C901
 
 @payments_bp.route('/api/customer-balance/<int:customer_id>')
 @login_required
+@permission_required('manage_payments')
 def api_customer_balance(customer_id):
-    customer = db.get_or_404(Customer, customer_id)
+    # SECURITY: cross-tenant check on the customer before exposing
+    # financial state.  get_owned_or_404 403s on cross-tenant, 404s
+    # on missing — both leak no information.
+    customer = get_owned_or_404(Customer, customer_id, code=404)
 
     balance_aed = PaymentService.get_customer_balance_aed(customer)
     unpaid_sales = PaymentService.get_unpaid_sales(customer)

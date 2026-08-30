@@ -4,7 +4,8 @@ from datetime import datetime, date, timedelta
 from extensions import db
 from models import GLAccount, GLJournalEntry, GLJournalLine, CostCenter, Budget, BudgetLine, FixedAsset, DepreciationSchedule, BankReconciliation, BankReconciliationItem, Cheque, PaymentVault  # noqa: E501,F401
 from services.gl_service import GLService
-from utils.decorators import admin_required
+from utils.decorators import admin_required, get_owned_or_404
+
 from utils.helpers import create_audit_log
 
 admin_ledger_bp = Blueprint('admin_ledger', __name__, url_prefix='/admin/ledger')
@@ -259,7 +260,7 @@ def journals_management():
 @admin_required
 def view_journal(id):
     """عرض تفاصيل قيد محاسبي"""
-    entry = db.get_or_404(GLJournalEntry, id)
+    entry = get_owned_or_404(GLJournalEntry, id)
     return render_template('admin/ledger/view_journal.html', entry=entry)
 
 
@@ -268,7 +269,7 @@ def view_journal(id):
 @admin_required
 def reverse_journal(id):
     """عكس قيد محاسبي"""
-    entry = db.get_or_404(GLJournalEntry, id)
+    entry = get_owned_or_404(GLJournalEntry, id)
 
     try:
         _ = entry.reverse_entry()

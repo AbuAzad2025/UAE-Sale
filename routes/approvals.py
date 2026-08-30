@@ -2,12 +2,12 @@
 Approval Workflow Routes — مسارات سير عمل الموافقة
 List, view, approve, reject approval requests. Manage workflow definitions.
 """
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 from extensions import db
 from models import ApprovalWorkflow, ApprovalRequest, ApprovalLevel
 from services.approval_service import ApprovalService
-from utils.decorators import permission_required
+from utils.decorators import permission_required, get_owned_or_404
 
 approvals_bp = Blueprint('approvals', __name__, url_prefix='/approvals')
 
@@ -16,6 +16,7 @@ approvals_bp = Blueprint('approvals', __name__, url_prefix='/approvals')
 
 @approvals_bp.route('/')
 @login_required
+@permission_required('manage_approvals')
 def index():
     status = request.args.get('status', '', type=str)
     entity_type = request.args.get('entity_type', '', type=str)
@@ -25,7 +26,6 @@ def index():
         entity_type=entity_type or None,
     )
 
-    # Pending count for the badge
     pending = ApprovalRequest.query.filter_by(status='pending').count()
 
     return render_template('approvals/index.html',
@@ -37,8 +37,11 @@ def index():
 
 @approvals_bp.route('/<int:request_id>')
 @login_required
+@permission_required('manage_approvals')
 def view(request_id):
-    req = db.get_or_404(ApprovalRequest, request_id)
+    # SECURITY: get_owned_or_404 enforces cross-tenant isolation in
+    # addition to the manage_approvals permission.
+    req = get_owned_or_404(ApprovalRequest, request_id, code=404)
     workflow = req.workflow
     levels = ApprovalLevel.query.filter_by(request_id=request_id).order_by(ApprovalLevel.level).all()
     return render_template('approvals/view.html',
@@ -49,7 +52,11 @@ def view(request_id):
 
 @approvals_bp.route('/<int:request_id>/approve', methods=['POST'])
 @login_required
+@permission_required('manage_approvals')
 def approve(request_id):
+    # SECURITY: verify the request belongs to the caller's tenant (or is
+    # owner-visible) BEFORE mutating financial state.
+    get_owned_or_404(ApprovalRequest, request_id, code=404)
     notes = request.form.get('notes', '')
     success, message = ApprovalService.approve(request_id, current_user.id, notes=notes)
     flash(message, 'success' if success else 'danger')
@@ -60,7 +67,10 @@ def approve(request_id):
 
 @approvals_bp.route('/<int:request_id>/reject', methods=['POST'])
 @login_required
+@permission_required('manage_approvals')
 def reject(request_id):
+    # SECURITY: cross-tenant ownership check before mutating state.
+    get_owned_or_404(ApprovalRequest, request_id, code=404)
     notes = request.form.get('notes', '')
     success, message = ApprovalService.reject(request_id, current_user.id, notes=notes)
     flash(message, 'success' if success else 'danger')
@@ -71,7 +81,17 @@ def reject(request_id):
 
 @approvals_bp.route('/<int:request_id>/cancel', methods=['POST'])
 @login_required
+@permission_required('manage_approvals')
 def cancel(request_id):
+    # SECURITY: cross-tenant ownership check before mutating state.
+    req = get_owned_or_404(ApprovalRequest, request_id, code=404)
+    # Users may cancel their own requests; admins may cancel any in their
+    # tenant; only owner may cancel cross-tenant.
+    if req.requester_id != current_user.id and not (
+        getattr(current_user, 'is_owner', False) or
+        current_user.is_super_admin()
+    ):
+        abort(403)
     success, message = ApprovalService.cancel(request_id, current_user.id)
     flash(message, 'success' if success else 'danger')
     return redirect(url_for('approvals.index'))

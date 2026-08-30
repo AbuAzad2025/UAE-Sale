@@ -4,7 +4,8 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Product, ProductCategory, Customer, ProductPartner
-from utils.decorators import permission_required
+from utils.decorators import permission_required, get_owned_or_404
+
 from utils.helpers import create_audit_log, generate_sku, generate_barcode, save_uploaded_file
 from services.stock_service import StockService
 
@@ -266,7 +267,7 @@ def create():  # noqa: C901
 @login_required
 @permission_required('manage_products')
 def view(id):
-    product = db.get_or_404(Product, id)
+    product = get_owned_or_404(Product, id)
 
     movements = product.stock_movements.order_by(
         db.desc('created_at')
@@ -281,7 +282,7 @@ def view(id):
 @login_required
 @permission_required('manage_products')
 def edit(id):  # noqa: C901
-    product = db.get_or_404(Product, id)
+    product = get_owned_or_404(Product, id)
     from forms.product import ProductForm
     from models import Warehouse
     form = ProductForm(obj=product)
@@ -394,7 +395,7 @@ def edit(id):  # noqa: C901
 @permission_required('manage_products')
 def delete(id):
     """حذف (إلغاء تفعيل) المنتج - soft delete"""
-    product = db.get_or_404(Product, id)
+    product = get_owned_or_404(Product, id)
 
     try:
         # التحقق من وجود عمليات مرتبطة
@@ -544,7 +545,7 @@ def create_category():
 @login_required
 @permission_required('manage_products')
 def adjust_stock(id):
-    product = db.get_or_404(Product, id)
+    product = get_owned_or_404(Product, id)
 
     try:
         adjustment_type = request.form.get('adjustment_type')

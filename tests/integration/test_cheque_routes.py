@@ -158,3 +158,169 @@ class TestDeleteRestore:
         assert resp.status_code == 200
         db.session.refresh(pending_cheque)
         assert pending_cheque.is_active is True
+
+
+class TestIncomingOutgoingRoutes:
+    """اختبارات مسارات الوارد والصادر"""
+
+    def test_incoming_route_loads(self, client, login_owner, pending_cheque):
+        """مسار الشيكات الواردة يعمل"""
+        resp = client.get('/cheques/incoming')
+        assert resp.status_code == 200
+
+    def test_outgoing_route_loads(self, client, login_owner):
+        """مسار الشيكات الصادرة يعمل"""
+        resp = client.get('/cheques/outgoing')
+        assert resp.status_code == 200
+
+    def test_incoming_with_status_filter(self, client, login_owner, pending_cheque):
+        """فلترة الشيكات الواردة بالحالة"""
+        resp = client.get('/cheques/incoming?status=pending')
+        assert resp.status_code == 200
+
+    def test_outgoing_with_status_filter(self, client, login_owner):
+        """فلترة الشيكات الصادرة بالحالة"""
+        resp = client.get('/cheques/outgoing?status=cleared')
+        assert resp.status_code == 200
+
+
+class TestApiAlerts:
+    """اختبارات API التنبيهات"""
+
+    def test_api_alerts_returns_json(self, client, login_owner, pending_cheque):
+        """API التنبيهات يعيد JSON"""
+        resp = client.get('/cheques/api/alerts')
+        assert resp.status_code == 200
+        assert resp.is_json
+        data = resp.get_json()
+        assert 'due_soon' in data
+        assert 'overdue' in data
+        assert 'cheques_due_soon' in data
+        assert 'cheques_overdue' in data
+
+    def test_api_alerts_requires_login(self, client):
+        """API التنبيهات يتطلب تسجيل دخول"""
+        resp = client.get('/cheques/api/alerts', follow_redirects=False)
+        assert resp.status_code == 302
+
+    def test_api_stats_has_required_keys(self, client, login_owner):
+        """API الإحصائيات يحتوي على المفاتيح المطلوبة"""
+        resp = client.get('/cheques/api/stats')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert 'total_incoming' in data
+        assert 'total_outgoing' in data
+        assert 'bounced' in data
+
+
+class TestHttpInterfaceBalanceAdjustment:
+    """اختبارات واجهة HTTP لتعديل الأرصدة عند الارتداد/الإلغاء"""
+
+    def test_bounce_via_http_updates_customer_balance(
+        self, client, login_owner, pending_cheque, test_customer
+    ):
+        """ارتداد الشيك عبر HTTP يحدث رصيد العميل"""
+        from models import Customer as _Cust
+        db.session.refresh(test_customer)
+        balance_before = test_customer.balance or Decimal('0')
+
+        client.post(f'/cheques/{pending_cheque.id}/deposit', follow_redirects=True)
+        client.post(f'/cheques/{pending_cheque.id}/bounce',
+                    data={'bounce_reason': 'لا رصيد'}, follow_redirects=True)
+
+        db.session.refresh(test_customer)
+        assert test_customer.balance == balance_before + Decimal('800.00')
+
+    def test_cancel_via_http_updates_customer_balance(
+        self, client, login_owner, pending_cheque, test_customer
+    ):
+        """إلغاء الشيك عبر HTTP يحدث رصيد العميل"""
+        from models import Customer as _Cust
+        db.session.refresh(test_customer)
+        balance_before = test_customer.balance or Decimal('0')
+
+        client.post(f'/cheques/{pending_cheque.id}/cancel',
+                    data={'cancel_reason': 'خطأ إدخال'}, follow_redirects=True)
+
+        db.session.refresh(test_customer)
+        assert test_customer.balance == balance_before - Decimal('800.00')
+
+    def test_bounce_via_http_updates_status(self, client, login_owner, pending_cheque):
+        """ارتداد الشيك عبر HTTP يحدث الحالة"""
+        client.post(f'/cheques/{pending_cheque.id}/deposit', follow_redirects=True)
+        client.post(f'/cheques/{pending_cheque.id}/bounce',
+                    data={'bounce_reason': 'لا رصيد'}, follow_redirects=True)
+        db.session.refresh(pending_cheque)
+        assert pending_cheque.status == 'bounced'
+        assert pending_cheque.bounce_reason == 'لا رصيد'
+
+    def test_clear_via_http_works(self, client, login_owner, pending_cheque):
+        """صرف الشيك عبر HTTP يعمل"""
+        client.post(f'/cheques/{pending_cheque.id}/deposit', follow_redirects=True)
+        client.post(f'/cheques/{pending_cheque.id}/clear',
+                    data={'clearance_exchange_rate': '1'}, follow_redirects=True)
+        db.session.refresh(pending_cheque)
+        assert pending_cheque.status == 'cleared'
+
+    def test_cancel_already_cleared_shows_error(self, client, login_owner, pending_cheque):
+        """إلغاء شيك تم صرفه يعرض خطأ"""
+        pending_cheque.status = 'cleared'
+        db.session.commit()
+        resp = client.post(f'/cheques/{pending_cheque.id}/cancel',
+                           data={'cancel_reason': 'محاولة إلغاء'}, follow_redirects=True)
+        assert resp.status_code == 200
+        db.session.refresh(pending_cheque)
+        assert pending_cheque.status == 'cleared'
+
+    def test_deposit_via_http_works(self, client, login_owner, pending_cheque):
+        """إيداع الشيك عبر HTTP يعمل"""
+        resp = client.post(f'/cheques/{pending_cheque.id}/deposit', follow_redirects=True)
+        assert resp.status_code == 200
+        db.session.refresh(pending_cheque)
+        assert pending_cheque.status == 'deposited'
+        assert pending_cheque.deposit_date is not None
+
+    def test_view_after_bounce_works(self, client, login_owner, pending_cheque):
+        """عرض الشيك بعد ارتداده يعمل"""
+        client.post(f'/cheques/{pending_cheque.id}/deposit', follow_redirects=True)
+        client.post(f'/cheques/{pending_cheque.id}/bounce',
+                    data={'bounce_reason': 'لا رصيد'}, follow_redirects=True)
+        resp = client.get(f'/cheques/{pending_cheque.id}')
+        assert resp.status_code == 200
+
+
+class TestEditRoute:
+    """اختبارات مسار التعديل"""
+
+    def test_edit_get_renders_form(self, client, login_owner, pending_cheque):
+        """عرض نموذج التعديل يعمل"""
+        resp = client.get(f'/cheques/{pending_cheque.id}/edit')
+        assert resp.status_code == 200
+
+    def test_edit_post_updates_cheque(self, client, login_owner, pending_cheque):
+        """تحديث الشيك عبر التعديل يعمل"""
+        from datetime import date, timedelta
+        today = date.today()
+        edit_data = {
+            'cheque_bank_number': pending_cheque.cheque_bank_number,
+            'bank_name': 'بنك معدل',
+            'bank_branch': '',
+            'account_number': '',
+            'amount': str(pending_cheque.amount),
+            'currency': pending_cheque.currency,
+            'exchange_rate': '1',
+            'issue_date': (today - timedelta(days=5)).isoformat(),
+            'due_date': (today + timedelta(days=25)).isoformat(),
+        }
+        resp = client.post(f'/cheques/{pending_cheque.id}/edit',
+                           data=edit_data, follow_redirects=True)
+        assert resp.status_code == 200
+        db.session.refresh(pending_cheque)
+        assert pending_cheque.bank_name == 'بنك معدل'
+
+    def test_edit_cleared_redirects(self, client, login_owner, pending_cheque):
+        """تعديل شيك تم صرفه يعيد التوجيه"""
+        pending_cheque.status = 'cleared'
+        db.session.commit()
+        resp = client.get(f'/cheques/{pending_cheque.id}/edit', follow_redirects=False)
+        assert resp.status_code == 302

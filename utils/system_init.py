@@ -20,7 +20,15 @@ def ensure_system_integrity(app):
     yet.  When alembic has already created the tables, calling
     ``create_all()`` here would raise ``DuplicateTable`` on
     PostgreSQL — so we only invoke it when the schema is empty.
+
+    Skipped entirely under test mode (``APP_ENV=testing``) so the
+    test suite's own fixtures can set up the schema, roles and
+    users with their own seeds.
     """
+    import os as _os
+    if _os.environ.get('APP_ENV') == 'testing' or _os.environ.get('TESTING') == 'true':
+        return
+
     # Detect whether we are running inside an alembic command.
     # We must not run db.create_all() during ``flask db upgrade``
     # because alembic creates the tables itself; running both would

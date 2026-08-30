@@ -103,6 +103,15 @@ def create_app(config_class=Config):  # noqa: C901
     from extensions import login_manager  # noqa: F811  (local import intentional)
     from models.user import User
 
+    # Custom anonymous user with has_permission method
+    from flask_login import AnonymousUserMixin
+
+    class AnonymousUser(AnonymousUserMixin):
+        def has_permission(self, permission):
+            return False
+
+    login_manager.anonymous_user = AnonymousUser
+
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))

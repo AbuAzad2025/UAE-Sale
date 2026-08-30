@@ -22,6 +22,9 @@ def support():
 @limiter.limit("20 per minute", methods=["POST"])
 def login():
     if current_user.is_authenticated:
+        # Already logged in: send to the role-appropriate dashboard
+        if getattr(current_user, 'is_owner', False) or current_user.is_super_admin():
+            return redirect(url_for('owner.dashboard'))
         return redirect(url_for('main.dashboard'))
 
     if request.method == 'POST':
@@ -111,6 +114,11 @@ def login():
         if next_page and next_page.startswith('/') and not next_page.startswith('//'):
             return redirect(next_page)
 
+        # Role-based landing dashboard after login:
+        #   owner / super_admin -> /owner/dashboard
+        #   everyone else       -> /dashboard
+        if getattr(user, 'is_owner', False) or user.is_super_admin():
+            return redirect(url_for('owner.dashboard'))
         return redirect(url_for('main.dashboard'))
 
     return render_template('auth/login.html')
@@ -124,7 +132,9 @@ def logout():
         session.pop('last_activity', None)
         flash('✅ تم تسجيل الخروج بنجاح. نراك قريباً!', 'success')
 
-    return redirect(url_for('auth.login'))
+    # After logout, send the user back to the public landing page so
+    # they can browse marketing pages or sign back in cleanly.
+    return redirect(url_for('public.landing'))
 
 # Payment Routes
 

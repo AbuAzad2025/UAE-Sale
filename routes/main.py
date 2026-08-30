@@ -17,6 +17,17 @@ main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
 def index():
+    """Root URL entry point.
+
+    Behaviour depends on auth state:
+    - Logged-out visitor: show the public marketing landing page.
+    - Logged-in owner / super_admin: send to the platform owner console.
+    - Any other logged-in user: send to the main dashboard.
+    """
+    if not current_user.is_authenticated:
+        return render_template('public/landing.html')
+    if getattr(current_user, 'is_owner', False) or current_user.is_super_admin():
+        return redirect(url_for('owner.dashboard'))
     return redirect(url_for('main.dashboard'))
 
 

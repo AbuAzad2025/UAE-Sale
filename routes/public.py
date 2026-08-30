@@ -7,10 +7,15 @@ from flask_login import current_user
 public_bp = Blueprint('public', __name__)
 
 
-@public_bp.route('/')
+@public_bp.route('/welcome')
 def landing():
-    """Landing Page الفخمة"""
+    """Landing Page — for guests it renders the marketing page; for
+    authenticated users it redirects to the role-appropriate dashboard
+    (owner/super_admin -> /owner/dashboard, others -> /dashboard)."""
     if current_user.is_authenticated:
+        # Owner / super_admin get the platform owner console
+        if getattr(current_user, 'is_owner', False) or current_user.is_super_admin():
+            return redirect(url_for('owner.dashboard'))
         return redirect(url_for('main.dashboard'))
     return render_template('public/landing.html')
 

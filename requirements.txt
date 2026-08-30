@@ -54,7 +54,7 @@ joblib>=1.3.0
 
 # Reporting & Documents
 reportlab==4.0.7
-weasyprint>=62.4
+weasyprint>=65.0
 openpyxl==3.1.2
 xlsxwriter==3.2.5
 Pillow>=11.3.1

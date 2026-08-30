@@ -58,3 +58,29 @@ def register_cli_commands(app: Flask) -> None:
                 click.echo('Status: OUT OF SYNC')
         else:
             click.echo('Status: NOT MIGRATED (alembic_version table missing)')
+
+    @app.cli.command('init-db')
+    @with_appcontext
+    def init_db():
+        """One-shot local-dev bootstrap: create_all() + seed owner/permissions.
+
+        Production deployments should NOT use this command — they
+        should run ``flask db upgrade`` instead so the schema is
+        created by alembic migrations under version control.
+        """
+        from sqlalchemy import inspect
+        insp = inspect(db.engine)
+        if insp.get_table_names():
+            click.echo(
+                f"Database already has {len(insp.get_table_names())} tables; "
+                f"refusing to run init-db.  Use 'flask db upgrade' instead.")
+            raise SystemExit(1)
+        click.echo('Creating all tables via db.create_all() ...')
+        db.create_all()
+        click.echo('Seeding owner, roles, and permissions ...')
+        from utils.system_init import ensure_system_integrity
+        os.environ.pop('SYSTEM_INTEGRITY_FORCE', None)
+        os.environ['SYSTEM_INTEGRITY_FORCE'] = '1'
+        ensure_system_integrity(app)
+        click.echo('Done.  You can now log in with the OWNER_USERNAME / OWNER_PASSWORD '
+                   'env vars (default: owner / <OWNER_PASSWORD>).')

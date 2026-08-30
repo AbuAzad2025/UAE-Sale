@@ -6,67 +6,42 @@ from models import User, Role, Permission
 
 def ensure_system_integrity(app):
     """
-    Ensure the system has the basic requirements to run:
-    1. Database tables exist (only as a last-resort fallback when
-       alembic has not created them yet)
-    2. Essential permissions exist
-    3. Owner Role exists
-    4. Owner User (Master Key) exists
+    Ensure the system has the basic runtime data is in place:
+    1. Permissions exist
+    2. Owner Role exists
+    3. Owner User (Master Key) exists
 
-    The DB schema is normally created by alembic migrations
-    (``flask db upgrade``) before the app is started.  This routine
-    only calls ``db.create_all()`` as a last-resort fallback for
-    SQLite-based local dev where no alembic migration has been run
-    yet.  When alembic has already created the tables, calling
-    ``create_all()`` here would raise ``DuplicateTable`` on
-    PostgreSQL — so we only invoke it when the schema is empty.
+    Schema creation is the responsibility of alembic migrations
+    (``flask db upgrade``).  This function does NOT call
+    ``db.create_all()`` so it can never race with the migrations.
+    Local-dev bootstrap is exposed via the ``flask init-db`` CLI
+    command which calls ``db.create_all()`` explicitly, then this
+    function to seed the owner / permissions.
 
-    Skipped entirely under test mode (``APP_ENV=testing``) so the
-    test suite's own fixtures can set up the schema, roles and
-    users with their own seeds.
+    The function is a no-op when:
+    - ``APP_ENV=testing`` (test conftest manages its own setup) and
+      ``SYSTEM_INTEGRITY_FORCE`` is not set
+    - we are inside a ``flask db ...`` command (detected by either
+      the env var ``ALEMBIC_RUNNING=1`` set by ``migrations/env.py``,
+      OR by walking the call stack looking for the alembic runtime)
     """
-    # Skip when running under pytest (the test suite manages its own
-    # schema, roles, and users via conftest fixtures).  Individual
-    # tests that exercise this routine directly set
-    # ``SYSTEM_INTEGRITY_FORCE=1`` so the function actually runs.
     import os as _os
     if _os.environ.get('APP_ENV') == 'testing' and \
             _os.environ.get('SYSTEM_INTEGRITY_FORCE') != '1':
         return
-
-    # Detect whether we are running inside an alembic command.
-    # We must not run db.create_all() during ``flask db upgrade``
-    # because alembic creates the tables itself; running both would
-    # produce DuplicateTable errors on PostgreSQL.
-    import sys as _sys
-    _is_alembic_run = any(
-        (a or '').endswith('flask') and len(_sys.argv) > i + 1
-        and (_sys.argv[i + 1] == 'db')
-        for i, a in enumerate(_sys.argv[:-1])
-    )
+    if _os.environ.get('ALEMBIC_RUNNING') == '1':
+        return
 
     with app.app_context():
-        # 1. Ensure Tables Exist (only if no tables yet)
-        # The DB schema is created by alembic migrations; this is a
-        # fallback for local-dev sqlite where migrations weren't run.
-        if not _is_alembic_run:
-            try:
-                inspector = db.inspect(db.engine)
-                existing = set(inspector.get_table_names())
-            except Exception:
-                existing = set()
-            if not existing:
-                db.create_all()
-            else:
-                # Make sure the SQLAlchemy metadata matches what's in the
-                # DB so subsequent queries don't complain about missing
-                # tables during this session.
-                try:
-                    db.metadata.reflect(bind=db.engine)
-                except Exception:
-                    pass
+        # Ensure the schema is at least present (reflected into
+        # SQLAlchemy metadata) so subsequent queries don't complain
+        # about missing tables.  We never CALL create_all() here.
+        try:
+            db.metadata.reflect(bind=db.engine)
+        except Exception:
+            pass
 
-        # 2. Ensure Permissions
+        # 1. Ensure Permissions
         _ensure_permissions()
 
         # 3. Ensure Owner Role

@@ -120,14 +120,15 @@ def create_app(config_class=Config):  # noqa: C901
     setup_enhanced_logging(app)
 
     # --- SYSTEM INTEGRITY CHECK (MASTER KEY) ---
-    # print("DEBUG: System Integrity Check...")
-    # from utils.system_init import ensure_system_integrity
-    # try:
-    #     ensure_system_integrity(app)
-    #     app.logger.info("[OK] System integrity verified (Master Key active)")
-    # except Exception as e:
-    #     app.logger.error(f"[ERROR] System integrity check failed: {e}")
-    # -------------------------------------------
+    # Creates the Master Owner from OWNER_PASSWORD env var if it doesn't
+    # exist yet.  This is the only place the first owner is seeded; no
+    # hardcoded user objects in app code or startup scripts.
+    from utils.system_init import ensure_system_integrity
+    try:
+        ensure_system_integrity(app)
+        app.logger.info("[OK] System integrity verified (Master Key active)")
+    except Exception as e:
+        app.logger.error(f"[ERROR] System integrity check failed: {e}")
 
     # Proxy Fix for Nginx/Cloudflare
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)

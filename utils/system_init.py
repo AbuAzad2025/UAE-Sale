@@ -7,15 +7,38 @@ from models import User, Role, Permission
 def ensure_system_integrity(app):
     """
     Ensure the system has the basic requirements to run:
-    1. Database tables exist
+    1. Database tables exist (only if alembic hasn't run yet)
     2. Essential permissions exist
     3. Owner Role exists
     4. Owner User (Master Key) exists
+
+    The DB schema is normally created by alembic migrations
+    (``flask db upgrade``) before the app is started.  This routine
+    only calls ``db.create_all()`` as a last-resort fallback for
+    SQLite-based local dev where no alembic migration has been run
+    yet.  When alembic has already created the tables, calling
+    ``create_all()`` here would raise ``DuplicateTable`` on
+    PostgreSQL — so we only invoke it when the schema is empty.
     """
     with app.app_context():
-        # 1. Ensure Tables Exist
-        # This is critical if the DB file was deleted
-        db.create_all()
+        # 1. Ensure Tables Exist (only if no tables yet)
+        # The DB schema is created by alembic migrations; this is a
+        # fallback for local-dev sqlite where migrations weren't run.
+        try:
+            inspector = db.inspect(db.engine)
+            existing = set(inspector.get_table_names())
+        except Exception:
+            existing = set()
+        if not existing:
+            db.create_all()
+        else:
+            # Make sure the SQLAlchemy metadata matches what's in the
+            # DB so subsequent queries don't complain about missing
+            # tables during this session.
+            try:
+                db.metadata.reflect(bind=db.engine)
+            except Exception:
+                pass
 
         # 2. Ensure Permissions
         _ensure_permissions()

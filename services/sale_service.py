@@ -445,6 +445,8 @@ class SaleService:
         payment = Payment(
             payment_number=payment_number,
             payment_type='sale',
+            # F-05: customer payments for sales are INCOMING
+            direction='incoming',
             sale_id=sale.id,
             customer_id=sale.customer_id,
             amount=amount_decimal,

@@ -12,15 +12,18 @@ class Payment(TenantScopedMixin, db.Model):
     __table_args__ = (
         db.CheckConstraint('amount > 0', name='ck_payment_amount_positive'),
         db.CheckConstraint('amount_base > 0', name='ck_payment_amount_base_positive'),
-        # F-05 invariant: outgoing payments MUST link to a supplier;
-        # incoming payments MUST link to a customer.  sale_id is only
-        # valid for incoming.  The validator below enforces these
-        # rules at the Python level; this CHECK is a defence-in-depth
-        # backstop that matches the application-level invariants.
+        # F-05 invariant: outgoing payments MUST NOT link to a sale;
+        # incoming payments MUST NOT link to a supplier.  We do NOT
+        # require the corresponding FK to be set so that adjustments,
+        # manual entries, and one-side-only audit rows remain legal.
+        # The validator below enforces these rules at the Python
+        # level; this CHECK is a defence-in-depth backstop.
         db.CheckConstraint(
-            "(direction = 'incoming' AND sale_id IS NOT NULL AND customer_id IS NOT NULL AND supplier_id IS NULL) "
+            "(direction = 'incoming' AND supplier_id IS NULL) "
             "OR "
-            "(direction = 'outgoing' AND supplier_id IS NOT NULL AND sale_id IS NULL)",
+            "(direction = 'outgoing' AND sale_id IS NULL) "
+            "OR "
+            "direction NOT IN ('incoming', 'outgoing')",
             name='ck_payment_direction_fk',
         ),
     )

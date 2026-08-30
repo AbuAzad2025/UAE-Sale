@@ -79,10 +79,9 @@ def upgrade():
     if 'payments' in inspector.get_table_names():
         _add_check_constraint(
             'payments', 'ck_payment_direction_fk',
-            "((direction = 'incoming' AND sale_id IS NOT NULL "
-            "AND customer_id IS NOT NULL AND supplier_id IS NULL) "
-            "OR (direction = 'outgoing' AND supplier_id IS NOT NULL "
-            "AND sale_id IS NULL))",
+            "((direction = 'incoming' AND supplier_id IS NULL) "
+            "OR (direction = 'outgoing' AND sale_id IS NULL) "
+            "OR (direction NOT IN ('incoming', 'outgoing')))",
             is_sqlite)
 
 

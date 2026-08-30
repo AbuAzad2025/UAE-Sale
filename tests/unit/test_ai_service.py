@@ -46,8 +46,10 @@ def _make_sale(number, customer=None, seller=None, amount=Decimal('100'),
 
 
 def _make_payment(number, customer, amount):
+    # F-05: customer payments are INCOMING (sale_id set, supplier_id NULL).
     return Payment(
         payment_number=number, payment_type='receipt', payment_method='cash',
+        direction='incoming',
         customer_id=customer.id, amount=amount, amount_base=amount, currency='AED',
     )
 

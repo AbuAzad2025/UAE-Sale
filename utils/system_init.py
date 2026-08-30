@@ -25,8 +25,13 @@ def ensure_system_integrity(app):
     test suite's own fixtures can set up the schema, roles and
     users with their own seeds.
     """
+    # Skip when running under pytest (the test suite manages its own
+    # schema, roles, and users via conftest fixtures).  Individual
+    # tests that exercise this routine directly set
+    # ``SYSTEM_INTEGRITY_FORCE=1`` so the function actually runs.
     import os as _os
-    if _os.environ.get('APP_ENV') == 'testing' or _os.environ.get('TESTING') == 'true':
+    if _os.environ.get('APP_ENV') == 'testing' and \
+            _os.environ.get('SYSTEM_INTEGRITY_FORCE') != '1':
         return
 
     # Detect whether we are running inside an alembic command.

@@ -3,6 +3,10 @@ import os
 
 import pytest
 
+# These tests explicitly exercise ensure_system_integrity(), which
+# normally skips when APP_ENV=testing.  Force the function to run.
+os.environ['SYSTEM_INTEGRITY_FORCE'] = '1'
+
 import utils.telemetry
 from models import User, Role, Permission, SystemSettings, SecurityAlert
 from utils.system_init import (

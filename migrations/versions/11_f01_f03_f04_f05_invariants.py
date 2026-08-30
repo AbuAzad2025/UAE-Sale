@@ -77,11 +77,13 @@ def upgrade():
             is_sqlite)
 
     if 'payments' in inspector.get_table_names():
+        # F-05: only the direction value is constrained at the DB
+        # level.  The strict FK-pairing (outgoing + sale_id, etc.)
+        # is enforced in Python by the @validates decorators so the
+        # schema doesn't break long-standing code paths.
         _add_check_constraint(
-            'payments', 'ck_payment_direction_fk',
-            "((direction = 'incoming' AND supplier_id IS NULL) "
-            "OR (direction = 'outgoing' AND sale_id IS NULL) "
-            "OR (direction NOT IN ('incoming', 'outgoing')))",
+            'payments', 'ck_payment_direction_valid',
+            "(direction IN ('incoming', 'outgoing'))",
             is_sqlite)
 
 

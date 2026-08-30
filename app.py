@@ -164,7 +164,7 @@ def create_app(config_class=Config):  # noqa: C901
 
         # Fallback Blueprint to prevent url_for BuildError
         # This ensures the dashboard doesn't crash even if AI modules are missing
-        from flask import Blueprint, render_template, flash, redirect, url_for  # noqa: F401,F811(local import intentional)
+        from flask import Blueprint, flash, redirect, url_for  # noqa: F401,F811(local import intentional)
         ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
 
         @ai_bp.route('/assistant')
@@ -394,9 +394,6 @@ def create_app(config_class=Config):  # noqa: C901
     app.template_filter('money')(_format_money)
     app.template_filter('num')(_format_num)
     app.template_filter('status_badge')(_status_badge)
-
-    # Models Import (to ensure they are known to SQLAlchemy)
-    from models import User, Customer, ProductCategory  # noqa: F401,F811(local import intentional)
 
     # Initialize tenant filter events
     try:

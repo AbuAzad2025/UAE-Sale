@@ -4,7 +4,6 @@ from functools import wraps
 from flask import abort, flash, redirect, url_for, request
 from flask_login import current_user
 
-from models.tenant_scope import get_current_tenant_id
 
 # Local import to break circular dependency with routes.  Only used for
 # isinstance() check inside the tenant-scope helper.

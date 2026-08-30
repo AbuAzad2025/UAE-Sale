@@ -10,7 +10,7 @@ from services.advanced_journal_manager import AdvancedJournalEntryManager
 from services.cheque_accounting_integration import ChequeAccountingIntegration
 from services.real_time_listeners import accounting_event_stream
 from services.advanced_analytics import AdvancedFinancialAnalytics
-from utils.decorators import permission_required, admin_required, get_owned_or_404
+from utils.decorators import permission_required, admin_required
 
 from utils.helpers import create_audit_log
 

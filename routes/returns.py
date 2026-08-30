@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from services.return_service import ReturnService
 from models import ProductReturn
 from extensions import db
-from utils.decorators import permission_required, get_owned_or_404
+from utils.decorators import permission_required
 
 
 returns_bp = Blueprint('returns', __name__, url_prefix='/returns')

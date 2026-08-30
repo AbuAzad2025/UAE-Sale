@@ -1,8 +1,6 @@
 """Unit tests for ai_knowledge/ modules."""
 import os
-import pytest
 
-import ai_knowledge
 from ai_knowledge import (
     get_knowledge_path, AI_KNOWLEDGE_DIR,
 )
@@ -42,14 +40,12 @@ from ai_knowledge.vision_processor import get_vision_processor, VisionProcessor
 from ai_knowledge.transformers_brain import get_transformers_brain, TransformersBrain
 from ai_knowledge.code_generator import get_code_generator, CodeGenerator
 from ai_knowledge.master_brain import (
-    get_master_brain, ask_azad, quick_calc, explain_concept, MasterBrain,
+    get_master_brain, quick_calc, explain_concept, MasterBrain,
 )
 from ai_knowledge.auto_retraining import AutoRetrainingScheduler
 from ai_knowledge.beginners_mode import BeginnersGuide
-from ai_knowledge.code_generator import CodeGenerator
 from ai_knowledge.learning_system import AzadLearningSystem
 from ai_knowledge.knowledge_expansion import KnowledgeExpander
-from ai_knowledge.knowledge_sources import KnowledgeSourceManager
 from ai_knowledge.neural_engine import get_neural_engine, AzadNeuralEngine
 from ai_knowledge.reasoning_engine import get_reasoning_engine, ReasoningEngine
 from ai_knowledge.self_reflection import get_reflection_engine, SelfReflectionEngine
@@ -58,22 +54,16 @@ from ai_knowledge.global_knowledge import (
 )
 from ai_knowledge.multi_agent_system import (
     get_agent_coordinator, BaseAgent, SalesAgent, AccountingAgent,
-    InventoryAgent, MaintenanceAgent, MultiAgentCoordinator,
 )
 from ai_knowledge.memory_system import get_memory_system, LongTermMemory
 from ai_knowledge.data_analyzer import DataAnalyzer
 from ai_knowledge.document_generator import DocumentGenerator
-from ai_knowledge.intelligent_assistant import IntelligentAssistant
 from ai_knowledge.advanced_laws import AdvancedLaws
 from ai_knowledge.automotive_ecu_knowledge import (
     AutomotiveECUKnowledge, get_automotive_ecu_knowledge,
 )
 from ai_knowledge.azad_personality import AzadPersonality
 from ai_knowledge.context_engine import ContextEngine
-from ai_knowledge.continuous_learner import ContinuousLearner
-from ai_knowledge.conversation_manager import ConversationManager
-from ai_knowledge.dialects import DialectManager
-from ai_knowledge.external_learning import ExternalLearningSystem
 from ai_knowledge.system_integration import SystemIntegrator
 
 

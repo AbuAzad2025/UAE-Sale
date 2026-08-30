@@ -29,11 +29,12 @@ Coverage:
   19. Anonymous user cannot access approvals API
   20. Manager cannot promote a user to a role above their own level
 """
+# ruff: noqa: F841  (the ``actor = _make_user(...)`` calls populate the
+# test session but the local variable is intentionally never read; the
+# test only cares that the user was created and that the call returned
+# a usable instance).
 import os
 import pytest
-from datetime import datetime, timezone
-from decimal import Decimal
-import uuid
 
 os.environ.setdefault('FLASK_ENV', 'development')
 os.environ.setdefault('SECRET_KEY', 'audit-test-secret')
@@ -41,10 +42,8 @@ os.environ.setdefault('CARD_ENCRYPTION_KEY', 'card-key')
 os.environ.setdefault('OWNER_PASSWORD', 'AuditTestOwnerPass123!')
 os.environ.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///:memory:')
 
-import models
 from extensions import db
-from models import User, Role, Customer, Product, Sale, SaleLine, Cheque
-from models.tenant_scope import set_current_tenant_id, clear_current_tenant_id
+from models import User, Role, Customer
 
 STRONG_PW = 'AuditTest!Pass#1'
 
@@ -462,7 +461,7 @@ def test_customer_balance_api_anonymous_blocked(client):
 # =============================================================================
 def test_role_hierarchy_prevents_higher_assignment():
     """Direct test of the new _enforce_target_role_not_higher helper."""
-    from utils.decorators import _role_level, _enforce_target_role_not_higher
+    from utils.decorators import _role_level
     class _Role:
         def __init__(self, slug):
             self.slug = slug
@@ -481,9 +480,10 @@ def test_role_hierarchy_prevents_higher_assignment():
         class _Actor(AnonymousUserMixin):
             is_authenticated = True
             is_owner = False
-            is_super_admin = lambda self: False
+
+            def is_super_admin(self):
+                return False
             role = seller_role
-        from flask_login import current_user
         # We cannot easily swap current_user in unit tests, so we just
         # assert the level function returns the expected ranking.
         assert _role_level(super_role) == 90

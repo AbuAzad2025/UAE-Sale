@@ -4,7 +4,6 @@ Registers ``flask db ...`` and other management commands so that
 the standard Alembic workflow works without manual setup.
 """
 import os
-import sys
 import click
 from flask import Flask
 from flask.cli import with_appcontext
@@ -22,7 +21,6 @@ def register_cli_commands(app: Flask) -> None:
     # ``upgrade`` / ``downgrade`` / ``history`` / ``heads`` /
     # ``current`` / ``stamp`` / ``show`` / ``merge`` / ``check``
     # subcommands are all provided by Flask-Migrate out of the box.
-    from flask_migrate import Migrate
     from extensions import db, migrate
     # Re-attach the existing Migrate to the CLI so ``flask db`` works.
     migrations_dir = os.path.join(
@@ -36,9 +34,7 @@ def register_cli_commands(app: Flask) -> None:
     def db_status():
         """Show the current migration head and which revs are applied."""
         from alembic.config import Config
-        from alembic import command
         from alembic.script import ScriptDirectory
-        from alembic.runtime.migration import MigrationContext
         from sqlalchemy import inspect
 
         cfg = Config(os.path.join(

@@ -220,7 +220,6 @@ class TestHttpInterfaceBalanceAdjustment:
         self, client, login_owner, pending_cheque, test_customer
     ):
         """ارتداد الشيك عبر HTTP يحدث رصيد العميل"""
-        from models import Customer as _Cust
         db.session.refresh(test_customer)
         balance_before = test_customer.balance or Decimal('0')
 
@@ -235,7 +234,6 @@ class TestHttpInterfaceBalanceAdjustment:
         self, client, login_owner, pending_cheque, test_customer
     ):
         """إلغاء الشيك عبر HTTP يحدث رصيد العميل"""
-        from models import Customer as _Cust
         db.session.refresh(test_customer)
         balance_before = test_customer.balance or Decimal('0')
 

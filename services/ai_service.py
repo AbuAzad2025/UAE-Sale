@@ -842,7 +842,6 @@ class AIService:
         if use_groq:
             try:
                 import requests
-                import json  # noqa: F401,F811(local import intentional)
 
                 # تحديد المزود والنموذج
                 provider = AIService.get_provider()

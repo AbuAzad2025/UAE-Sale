@@ -17,7 +17,7 @@ from services.erp_modules_service import (
     StockTransferService, StockTakeService, DunningService,
     EInvoiceService,
 )
-from utils.decorators import permission_required, admin_required, get_owned_or_404
+from utils.decorators import permission_required, admin_required
 
 from utils.helpers import create_audit_log
 

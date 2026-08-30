@@ -10,9 +10,6 @@ F-05: direction-based parent FK invariants (e.g. outgoing Payment
 must link to a supplier, incoming must link to a customer).
 F-03: tenant_id must match the linked parent's tenant_id.
 """
-from typing import Any
-from sqlalchemy.orm import validates
-from sqlalchemy.exc import IntegrityError
 
 
 def single_parent_validator(*fk_columns):

@@ -51,6 +51,12 @@ from .validators import (
     single_parent_validator, direction_fk_validator, tenant_consistency_validator,
 )
 
+# Re-export validators so callers can do ``from models import
+# single_parent_validator`` etc. without reaching into models.validators.
+# Re-export validators so callers can do ``from models import
+# single_parent_validator`` etc. without reaching into models.validators.
+# (The final __all__ is declared at the end of this file.)
+
 # Register all tenant-scoped models for automatic filtering
 for _model_cls in [Sale, SaleLine, Purchase, PurchaseLine, Payment, Receipt,
                    Customer, Supplier, Product, StockMovement, Cheque, GLJournalEntry]:
@@ -93,4 +99,6 @@ __all__ = [
     'FiscalPeriod', 'StockTransfer', 'StockTransferLine',
     'StockTake', 'StockTakeItem', 'DunningLetter', 'RecurringExpense',
     'ProductLot', 'WarehouseBin', 'ProductBin', 'EInvoice',
+    'single_parent_validator', 'direction_fk_validator',
+    'tenant_consistency_validator',
 ]

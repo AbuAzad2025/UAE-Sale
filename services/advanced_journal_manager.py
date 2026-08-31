@@ -7,6 +7,7 @@ from models.gl import GLAccount, GLJournalEntry, GLJournalLine
 class JournalEntryAudit(db.Model):
     """سجل تدقيق القيود المحاسبية"""
     __tablename__ = 'journal_entry_audits'
+    __table_args__ = {'extend_existing': True}
 
     id = db.Column(db.Integer, primary_key=True)
     journal_entry_id = db.Column(db.Integer,

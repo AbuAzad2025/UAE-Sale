@@ -162,7 +162,7 @@ class TestGLServiceMigratedMappings:
         test_customer.customer_type = 'partner'
         assert GLService.get_customer_credit_account(test_customer) == '3350'
         test_customer.customer_type = 'merchant'
-        assert GLService.get_customer_credit_account(test_customer) == '2115'
+        assert GLService.get_customer_credit_account(test_customer) == '1130'
 
     def test_customer_credit_respects_tenant_override(self, db, test_customer, settings_row):
         settings_row.set_custom_setting('gl_role_map:5', {'PARTNERS_CURRENT': '3100'})

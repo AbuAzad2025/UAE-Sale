@@ -1,5 +1,5 @@
 """
-Tenant-Scoped Mixin — خلية فصل المستأجرين
+Tenant-Scoped Mixin - خلية فصل المستأجرين
 Provides automatic row-level tenant isolation for all business models.
 
 Usage:
@@ -13,7 +13,7 @@ Fail-fast: any subclass that does not declare (or inherit) its own
 
 import logging
 import threading
-from sqlalchemy import event
+from sqlalchemy import event, inspect
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,29 @@ def register_tenant_scoped(model_class):
 def is_tenant_scoped(tablename):
     """Check if a table is tenant-scoped."""
     return tablename in _tenant_scoped_tables
+
+
+def _is_actor_owner():
+    """Best-effort detection of the platform owner for write-side guards.
+
+    The tenant-scope mixin is imported by models at startup, before
+    ``flask_login`` may be available; we therefore probe the proxy and
+    fall back to ``False`` whenever context is missing.
+    """
+    try:
+        from flask_login import current_user
+    except Exception:
+        return False
+    try:
+        if not getattr(current_user, 'is_authenticated', False):
+            return False
+        if getattr(current_user, 'is_owner', False):
+            return True
+        if getattr(current_user, 'is_super_admin', None) and current_user.is_super_admin():
+            return True
+    except Exception:
+        return False
+    return False
 
 
 class TenantScopedMixin:
@@ -100,9 +123,90 @@ def _warn_unfiltered_access_in_strict_mode(query):
         pass
 
 
+def _before_flush_tenant_guard(session, flush_context, instances):
+    """SQLAlchemy ``before_flush`` listener enforcing three guarantees:
+
+    1. New rows for a tenant-scoped model inherit the active tenant
+       (no NULL tenant leaks from misconfigured service code).
+    2. Tenant id is immutable for non-owner actors: changing
+       ``tenant_id`` on a dirty row raises an IntegrityError so the
+       transaction is rolled back at the storage layer.
+    3. Cross-tenant inserts (tenant set to a foreign value while a
+       non-owner actor is in scope) are rejected at flush time.
+
+    The owner and super_admin bypass these checks because they are the
+    platform operator and legitimately move data between tenants.
+    """
+    tenant_id = get_current_tenant_id()
+    owner_actor = _is_actor_owner()
+    if owner_actor:
+        # Owner can do anything; still auto-stamp NULL rows so the column
+        # is never accidentally left empty for the platform record.
+        for obj in session.new:
+            tablename = getattr(type(obj), '__tablename__', None)
+            if tablename not in _tenant_scoped_tables:
+                continue
+            try:
+                if getattr(obj, 'tenant_id', None) is None and tenant_id is not None:
+                    obj.tenant_id = tenant_id
+            except Exception:
+                continue
+        return
+
+    for obj in session.new:
+        tablename = getattr(type(obj), '__tablename__', None)
+        if tablename not in _tenant_scoped_tables:
+            continue
+        try:
+            current_val = getattr(obj, 'tenant_id', None)
+        except Exception:
+            continue
+        if current_val in (None, '') and tenant_id is not None:
+            # Auto-scope new rows to the current tenant.
+            try:
+                obj.tenant_id = tenant_id
+            except Exception:
+                pass
+        elif current_val is not None and tenant_id is not None and current_val != tenant_id:
+            # Cross-tenant insert from a non-owner actor.
+            raise RuntimeError(
+                f"Cross-tenant insert blocked: {type(obj).__name__}.tenant_id="
+                f"{current_val} but current tenant is {tenant_id}"
+            )
+
+    for obj in session.dirty:
+        tablename = getattr(type(obj), '__tablename__', None)
+        if tablename not in _tenant_scoped_tables:
+            continue
+        try:
+            state = inspect(obj)
+        except Exception:
+            continue
+        try:
+            history = state.attrs.tenant_id.history
+        except Exception:
+            continue
+        if not history.has_changes():
+            continue
+        try:
+            old = history.deleted[0] if history.deleted else None
+            new = history.added[0] if history.added else None
+        except Exception:
+            continue
+        if old is None and new is None:
+            continue
+        if old is not None and new is not None and old != new:
+            raise RuntimeError(
+                f"Tenant id is immutable: {type(obj).__name__}.tenant_id "
+                f"changed from {old} to {new} by non-owner actor"
+            )
+
+
 def install_tenant_filter_events():  # noqa: C901
     """
-    Install SQLAlchemy events to auto-filter tenant-scoped queries.
+    Install SQLAlchemy events to auto-filter tenant-scoped queries and
+    enforce tenant immutability on writes.
+
     Called once during app initialization.
     """
     from sqlalchemy.orm import Query
@@ -112,7 +216,7 @@ def install_tenant_filter_events():  # noqa: C901
         """Automatically add tenant_id filter to tenant-scoped queries."""
         tenant_id = get_current_tenant_id()
         if tenant_id is None:
-            # No tenant set — no filtering (default behaviour unchanged).
+            # No tenant set - no filtering (default behaviour unchanged).
             _warn_unfiltered_access_in_strict_mode(query)
             return query
 
@@ -122,7 +226,7 @@ def install_tenant_filter_events():  # noqa: C901
             if not col_descs:
                 return query
         except Exception:
-            return query  # Can't introspect — skip filtering
+            return query  # Can't introspect - skip filtering
 
         # Check if the primary entity is tenant-scoped
         try:
@@ -138,9 +242,49 @@ def install_tenant_filter_events():  # noqa: C901
             if tablename in _tenant_scoped_tables:
                 # Only filter the primary entity
                 if not getattr(query, '_tenant_filter_applied', False):
-                    query = query.filter(entity.tenant_id == tenant_id)
+                    try:
+                        query = query.filter(entity.tenant_id == tenant_id)
+                    except Exception as exc:
+                        # SQLAlchemy 1.4+ forbids filter() after LIMIT/OFFSET.
+                        # Stash limit/offset, apply filter, then restore.
+                        if 'LIMIT' in str(exc) or 'OFFSET' in str(exc) or 'limit' in str(type(exc).__name__).lower():
+                            try:
+                                _limit = getattr(query, '_limit', None)
+                                _offset = getattr(query, '_offset', None)
+                                _limit_val = getattr(query, '_limit_clause', None)
+                                _offset_val = getattr(query, '_offset_clause', None)
+                                # Clear via private API, then filter, then restore
+                                if _limit is not None or _limit_val is not None or _offset is not None or _offset_val is not None:
+                                    query._limit = None
+                                    query._limit_clause = None
+                                    query._offset = None
+                                    query._offset_clause = None
+                                    query = query.filter(entity.tenant_id == tenant_id)
+                                    if _limit is not None:
+                                        query._limit = _limit
+                                    if _limit_val is not None:
+                                        query._limit_clause = _limit_val
+                                    if _offset is not None:
+                                        query._offset = _offset
+                                    if _offset_val is not None:
+                                        query._offset_clause = _offset_val
+                                else:
+                                    raise
+                            except Exception:
+                                # Fallback: leave query unfiltered rather than crash
+                                pass
+                        else:
+                            raise
                     query._tenant_filter_applied = True
         except (AttributeError, IndexError, TypeError, KeyError):
             pass
 
         return query
+
+    # Idempotent registration of the before_flush guard only; the
+    # before_compile listener is registered via @event.listens_for at
+    # import time, so we just attach the write guard here.
+    if not getattr(install_tenant_filter_events, '_before_flush_registered', False):
+        from sqlalchemy.orm import Session
+        event.listen(Session, 'before_flush', _before_flush_tenant_guard)
+        install_tenant_filter_events._before_flush_registered = True

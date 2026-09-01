@@ -59,7 +59,8 @@ from .validators import (
 
 # Register all tenant-scoped models for automatic filtering
 for _model_cls in [Sale, SaleLine, Purchase, PurchaseLine, Payment, Receipt,
-                   Customer, Supplier, Product, StockMovement, Cheque, GLJournalEntry]:
+                   Customer, Supplier, Product, StockMovement, Cheque,
+                   GLJournalEntry, Warehouse]:
     register_tenant_scoped(_model_cls)
 
 __all__ = [

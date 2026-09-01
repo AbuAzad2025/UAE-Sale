@@ -336,8 +336,12 @@ def archived():
 
     for archived in archived_sales_query.all():
         data = archived.data
-        # Get the actual sale to retrieve customer name
+        # SECURITY: resolve underlying sale with tenant check; skip cross-tenant archives
         sale = db.session.get(Sale, archived.record_id)
+        if sale is not None and not getattr(current_user, 'is_owner', False):
+            actor_tenant = getattr(current_user, 'tenant_id', None)
+            if actor_tenant is not None and getattr(sale, 'tenant_id', None) != actor_tenant:
+                continue
         archived_items.append({
             'id': archived.record_id,
             'sale_number': data.get('sale_number'),
@@ -462,6 +466,9 @@ def archive(id):
 def restore(id):
     """استعادة فاتورة من الأرشيف"""
     from models import ArchivedRecord
+
+    # SECURITY: verify the underlying sale belongs to the actor's tenant
+    get_owned_or_404(Sale, id, code=404)
 
     archived = ArchivedRecord.query.filter_by(
         table_name='sales',

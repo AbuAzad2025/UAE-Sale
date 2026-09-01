@@ -1,14 +1,16 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, abort
 from flask_login import login_required, current_user
 from extensions import limiter
 from utils.cache_decorators import cached_query
 from utils.query_optimizer import optimize_query, paginate_optimized
+from utils.decorators import permission_required, get_owned_or_404
 
 api_enhanced_bp = Blueprint('api_enhanced', __name__, url_prefix='/api/v2')
 
 
 @api_enhanced_bp.route('/sales', methods=['GET'])
 @login_required
+@permission_required('manage_sales')
 @limiter.limit("100 per minute")
 @cached_query(timeout=60, key_prefix='api_sales_list')
 def get_sales():
@@ -33,12 +35,12 @@ def get_sales():
 
 @api_enhanced_bp.route('/sales/<int:sale_id>', methods=['GET'])
 @login_required
+@permission_required('manage_sales')
 @cached_query(timeout=120, key_prefix='api_sale_detail')
 def get_sale(sale_id):
     from models import Sale
 
-    query = optimize_query(Sale, relationships=['customer', 'seller', 'lines'], strategy='joined')
-    sale = query.filter_by(id=sale_id).first_or_404()
+    sale = get_owned_or_404(Sale, sale_id, code=404)
 
     return jsonify({
         'success': True,
@@ -48,6 +50,7 @@ def get_sale(sale_id):
 
 @api_enhanced_bp.route('/customers', methods=['GET'])
 @login_required
+@permission_required('manage_customers')
 @limiter.limit("100 per minute")
 @cached_query(timeout=60, key_prefix='api_customers_list')
 def get_customers():
@@ -68,8 +71,19 @@ def get_customers():
     })
 
 
+@api_enhanced_bp.route('/customers/<int:customer_id>', methods=['GET'])
+@login_required
+@permission_required('manage_customers')
+def get_customer(customer_id):
+    from models import Customer
+
+    customer = get_owned_or_404(Customer, customer_id, code=404)
+    return jsonify({'success': True, 'customer': customer.to_dict()})
+
+
 @api_enhanced_bp.route('/products/search', methods=['GET'])
 @login_required
+@permission_required('manage_products')
 @limiter.limit("200 per minute")
 def search_products():
     from models import Product
@@ -79,7 +93,7 @@ def search_products():
     limit = request.args.get('limit', 20, type=int)
 
     if not query_text:
-        return jsonify({'success': False, 'error': 'Query required'})
+        return jsonify({'success': False, 'error': 'Query required'}), 400
 
     products = Product.query.filter(
         Product.is_active.is_(True),
@@ -98,8 +112,19 @@ def search_products():
     })
 
 
+@api_enhanced_bp.route('/products/<int:product_id>', methods=['GET'])
+@login_required
+@permission_required('manage_products')
+def get_product(product_id):
+    from models import Product
+
+    product = get_owned_or_404(Product, product_id, code=404)
+    return jsonify({'success': True, 'product': product.to_dict()})
+
+
 @api_enhanced_bp.route('/analytics/sales-forecast', methods=['GET'])
 @login_required
+@permission_required('view_reports')
 @cached_query(timeout=300, key_prefix='api_sales_forecast')
 def sales_forecast():
     from services.ai_service import AIService
@@ -112,6 +137,7 @@ def sales_forecast():
 
 @api_enhanced_bp.route('/analytics/profit-margins', methods=['GET'])
 @login_required
+@permission_required('view_reports')
 @cached_query(timeout=300, key_prefix='api_profit_margins')
 def profit_margins():
     from services.ai_service import AIService

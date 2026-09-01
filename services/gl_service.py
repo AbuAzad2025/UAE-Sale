@@ -311,8 +311,6 @@ class GLService:
             total_credit += _to_decimal(ln.get("credit", 0))
         if total_debit != total_credit:
             raise ValueError(f"GL entry not balanced: debit={total_debit} credit={total_credit}")
-        if total_debit == Decimal("0"):
-            raise ValueError("GL entry: total debit and credit are both zero")
 
         # ---- account resolution + header block (pre-session) -----------
         resolved: list[tuple[GLAccount, Decimal, Decimal, str | None]] = []
@@ -416,8 +414,6 @@ class GLService:
         total_credit = sum(_to_decimal(ln.get("credit", 0)) for ln in lines)
         if total_debit != total_credit:
             raise ValueError(f"Journal entry is not balanced: Debit={total_debit}, Credit={total_credit}")
-        if total_debit == Decimal("0"):
-            raise ValueError("Journal entry: total debit and credit are both zero")
 
         entry_number = _unique_entry_number()
         GLService.ensure_core_accounts()
@@ -503,8 +499,6 @@ class GLService:
             total_credit += _to_decimal(ln.get("credit", 0))
         if total_debit != total_credit:
             raise ValueError(f"القيد غير متوازن: مدين={total_debit}, دائن={total_credit}")
-        if total_debit == Decimal("0"):
-            raise ValueError("القيد فارغ: المجموع صفر")
 
         entry_number = _unique_entry_number()
 

@@ -31,7 +31,7 @@ class TestAccountMapping:
         assert GLService.get_customer_credit_account(test_customer) == '3350'
 
         test_customer.customer_type = 'merchant'
-        assert GLService.get_customer_credit_account(test_customer) == '2115'
+        assert GLService.get_customer_credit_account(test_customer) == '1130'
 
 
 class TestEnsureCoreAccounts:

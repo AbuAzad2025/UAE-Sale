@@ -6,7 +6,7 @@ from models import GLAccount, GLJournalEntry, GLJournalLine, Cheque, PaymentVaul
 from services.gl_service import GLService
 from services.cash_flow_service import CashFlowService
 from services.aging_analysis_service import AgingAnalysisService
-from utils.decorators import admin_required, permission_required
+from utils.decorators import admin_required, permission_required, get_owned_or_404
 from utils.helpers import create_audit_log
 from decimal import Decimal
 from datetime import datetime, date, timedelta
@@ -380,7 +380,7 @@ def manual_entry():  # noqa: C901
 @permission_required('view_ledger')
 def view_entry(id):
     """عرض تفاصيل القيد"""
-    entry = db.get_or_404(GLJournalEntry, id)
+    entry = get_owned_or_404(GLJournalEntry, id)
     lines = entry.lines.all()
 
     return render_template('ledger/view_entry.html', entry=entry, lines=lines)
@@ -392,7 +392,7 @@ def view_entry(id):
 def reverse_entry(id):
     """عكس القيد"""
     try:
-        entry = db.get_or_404(GLJournalEntry, id)
+        entry = get_owned_or_404(GLJournalEntry, id)
 
         description = request.form.get('description')
         reversed_entry = entry.reverse_entry(description)

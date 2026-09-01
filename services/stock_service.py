@@ -3,6 +3,7 @@ from flask import current_app
 from flask_login import current_user
 from extensions import db
 from models import Product, StockMovement, Warehouse
+from utils.decorators import get_owned_or_raise
 
 
 class StockService:
@@ -55,7 +56,7 @@ class StockService:
         # GL Integration for Adjustment
         try:
             from services.gl_service import GLService
-            product = db.session.get(Product, product_id)
+            product = get_owned_or_raise(Product, product_id, missing_message='المنتج غير موجود')
             if product and product.cost_price:
                 cost_value = abs(Decimal(str(quantity))) * Decimal(str(product.cost_price))
 
@@ -90,7 +91,8 @@ class StockService:
 
     @staticmethod
     def create_movement(product_id, quantity, movement_type, reference_type=None, reference_id=None, notes=None, warehouse_id=None):  # noqa: C901
-        product = db.session.get(Product, product_id)
+        product = get_owned_or_raise(Product, product_id,
+                                     missing_message=f'⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.')
 
         if not product:
             raise ValueError(f'⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.')
@@ -195,7 +197,7 @@ class StockService:
                 warehouse_id=warehouse_id
             )
 
-            product = db.session.get(Product, line.product_id)
+            product = get_owned_or_raise(Product, line.product_id, missing_message='المنتج غير موجود')
             if product:
                 # Update cost price in base currency (AED)
                 # Ensure we use Decimal for precision
@@ -222,7 +224,7 @@ class StockService:
 
     @staticmethod
     def check_availability(product_id, quantity):
-        product = db.session.get(Product, product_id)
+        product = get_owned_or_raise(Product, product_id, missing_message='المنتج غير موجود')
 
         if not product:
             return False, 'المنتج غير موجود'

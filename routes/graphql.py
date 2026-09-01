@@ -116,6 +116,15 @@ def graphql_query():
     if 'introspection' in query_lower or '__schema' in query_lower or '__type' in query_lower:
         return jsonify({'errors': ['Introspection is disabled']}), 403
 
+    # SECURITY: Block all mutations — the GraphQL layer is read-only in
+    # production. Cash/stock-affecting writes must go through the audited,
+    # permission-checked REST routes (sales.create, payment_service, etc.),
+    # which enforce double-entry + tenant invariants. The schema's
+    # CreateSale mutation would otherwise let any view_reports user create
+    # confirmed cross-tenant sales with hardcoded seller_id=1.
+    if query_lower.startswith('mutation'):
+        return jsonify({'errors': ['Mutations are not allowed via GraphQL']}), 403
+
     # SECURITY: Check field-level permissions
     perm_error = _check_graphql_permissions(query)
     if perm_error:

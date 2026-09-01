@@ -20,6 +20,7 @@ from decimal import Decimal
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from extensions import db
+from utils.decorators import get_owned_or_raise
 
 import logging
 logger = logging.getLogger(__name__)
@@ -421,8 +422,8 @@ class AIService:
         """توصية السعر الذكي حسب نوع العميل والسجل"""
         from models import Product, Customer, Sale, SaleLine
 
-        product = db.session.get(Product, product_id)
-        customer = db.session.get(Customer, customer_id)
+        product = get_owned_or_raise(Product, product_id)
+        customer = get_owned_or_raise(Customer, customer_id)
 
         if not product or not customer:
             return None
@@ -457,7 +458,7 @@ class AIService:
         """فحص المخزون وإطلاق تنبيهات"""
         from models import Product
 
-        product = db.session.get(Product, product_id)
+        product = get_owned_or_raise(Product, product_id)
         if not product:
             return None
 
@@ -483,7 +484,7 @@ class AIService:
         def _cached_analysis(cust_id):
             from models import Customer
 
-            customer = db.session.get(Customer, cust_id)
+            customer = get_owned_or_raise(Customer, cust_id)
             if not customer:
                 return None
 
@@ -1571,8 +1572,8 @@ class AIService:
             from models import Product, Customer
             from extensions import db
 
-            product = db.session.get(Product, product_id)
-            customer = db.session.get(Customer, customer_id) if customer_id else None
+            product = get_owned_or_raise(Product, product_id)
+            customer = get_owned_or_raise(Customer, customer_id) if customer_id else None
 
             if not product:
                 return {'error': 'Product not found'}

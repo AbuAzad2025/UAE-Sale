@@ -13,6 +13,7 @@
       </div>
       <div class="card-body">
         <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="form-group">
             <label>الاسم <span class="text-danger">*</span></label>
             <input type="text" name="name" class="form-control" value="{{ workflow.name if workflow else '' }}" required>

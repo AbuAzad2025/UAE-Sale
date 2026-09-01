@@ -6,7 +6,7 @@ from extensions import db
 from models import Receipt, Sale
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
-from utils.decorators import tx
+from utils.decorators import tx, get_owned_or_raise
 from utils.helpers import generate_number
 
 
@@ -106,7 +106,7 @@ class PaymentService:
         bank_name = payment_data.get('bank_name')
         allocate_to_sales = payment_data.get('allocate_to_sales')
 
-        customer = db.session.get(Customer, customer_id)
+        customer = get_owned_or_raise(Customer, customer_id, missing_message='العميل غير موجود')
         receipt = None
         gl_posted = None
         gl_entry_ref = None
@@ -235,7 +235,7 @@ class PaymentService:
                     if remaining_amount <= 0:
                         break
 
-                    sale = db.session.get(Sale, sale_id)
+                    sale = get_owned_or_raise(Sale, sale_id, missing_message='الفاتورة غير موجودة')
 
                     if not sale or sale.customer_id != customer.id:
                         continue

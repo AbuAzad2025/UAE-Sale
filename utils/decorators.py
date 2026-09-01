@@ -299,6 +299,54 @@ def get_owned_or_404(model, pk, *, code=404, message=None):
     return obj
 
 
+def assert_same_tenant(obj, exc_cls=ValueError, message=None):
+    """Non-aborting tenant check for service-layer lookups.
+
+    Like ``_enforce_same_tenant`` but raises *exc_cls* (default
+    ``ValueError``) instead of ``abort(403)`` so service code keeps its
+    friendly flash-message error handling while still failing closed on
+    cross-tenant access.  Owner / super_admin bypass as usual.
+    """
+    from flask_login import current_user
+    actor_tenant = getattr(current_user, 'tenant_id', None)
+    obj_tenant = getattr(obj, 'tenant_id', None)
+    if obj_tenant is None and actor_tenant is None:
+        return
+    if obj_tenant is None and actor_tenant is not None:
+        if not (current_user.is_owner or current_user.is_super_admin()):
+            raise exc_cls(message or 'Cross-tenant access denied')
+        return
+    if actor_tenant != obj_tenant:
+        if not (current_user.is_owner or current_user.is_super_admin()):
+            raise exc_cls(message or 'Cross-tenant access denied')
+
+
+def get_owned_or_raise(model, pk, exc_cls=ValueError, missing_message=None, tenant_message=None):
+    """Service-layer variant of ``get_owned_or_404``.
+
+    Returns ``None`` if the row is missing (caller keeps its own
+    not-found handling / message) and raises *exc_cls* on cross-tenant
+    access instead of aborting.  Owner / super_admin bypass the check.
+    """
+    from extensions import db
+    obj = db.session.get(model, pk)
+    if obj is None:
+        return None
+    from flask_login import current_user
+    actor_tenant = getattr(current_user, 'tenant_id', None)
+    obj_tenant = getattr(obj, 'tenant_id', None)
+    if obj_tenant is None and actor_tenant is None:
+        return obj
+    if obj_tenant is None and actor_tenant is not None:
+        if not (current_user.is_owner or current_user.is_super_admin()):
+            raise exc_cls(tenant_message or 'Cross-tenant access denied')
+        return obj
+    if actor_tenant != obj_tenant:
+        if not (current_user.is_owner or current_user.is_super_admin()):
+            raise exc_cls(tenant_message or 'Cross-tenant access denied')
+    return obj
+
+
 def require_csrf_for_state_change(view_func):
     """Decorator: deny the request unless a CSRF token is present.
 

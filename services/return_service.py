@@ -5,7 +5,7 @@ from models import Sale, SaleLine, ProductReturn, ProductReturnLine, Product
 from services.stock_service import StockService
 from services.gl_service import GLService
 from services.tax_engine import TaxEngine
-from utils.decorators import get_owned_or_404
+from utils.decorators import get_owned_or_404, get_owned_or_raise
 from utils.helpers import generate_number
 
 
@@ -31,8 +31,9 @@ class ReturnService:
         """
         try:
             # 1. Validate Sale
-            sale = get_owned_or_404(Sale, sale_id)
-
+            sale = get_owned_or_raise(Sale, sale_id)
+            if not sale:
+                raise ValueError(f"Sale with ID {sale_id} not found.")
             if sale.status == 'cancelled':
                 raise ValueError("Cannot create return for a cancelled sale.")
 
@@ -73,9 +74,9 @@ class ReturnService:
                 if quantity <= 0:
                     continue
 
-                sale_line = get_owned_or_404(SaleLine, sale_line_id)
-
-                if sale_line.sale_id != sale.id:
+                sale_line = get_owned_or_raise(SaleLine, sale_line_id)
+                if not sale_line:
+                    raise ValueError(f"Sale line {sale_line_id} not found.")
                     raise ValueError(f"Sale line {sale_line_id} does not belong to sale {sale.id}.")
 
                 # Validate Quantity (Cannot return more than sold)

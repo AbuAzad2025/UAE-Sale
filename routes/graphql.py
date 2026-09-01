@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 from services.graphql_service import schema
+from utils.decorators import permission_required
 
 graphql_bp = Blueprint('graphql', __name__, url_prefix='/graphql')
 
@@ -23,8 +24,73 @@ def _estimate_query_depth(query_str):
     return max_depth
 
 
+def _extract_query_types(query_str):
+    """Extract root field names from GraphQL query for permission mapping."""
+    import re
+    # Simple extraction of root fields (e.g., "sale", "sales", "customer", "customers", etc.)
+    # Matches patterns like "sale(id: 1) {", "sales {", "customer {", etc.
+    root_fields = re.findall(r'\b(\w+)\s*\([^)]*\)\s*\{', query_str)
+    root_fields += re.findall(r'\b(\w+)\s*\{', query_str)
+    return set(root_fields)
+
+
+_GRAPHQL_PERMISSION_MAP = {
+    'sale': 'manage_sales',
+    'sales': 'manage_sales',
+    'customer': 'manage_customers',
+    'customers': 'manage_customers',
+    'product': 'manage_products',
+    'products': 'manage_products',
+    'supplier': 'manage_suppliers',
+    'suppliers': 'manage_suppliers',
+    'purchase': 'manage_purchases',
+    'purchases': 'manage_purchases',
+    'payment': 'manage_payments',
+    'payments': 'manage_payments',
+    'receipt': 'manage_payments',
+    'receipts': 'manage_payments',
+    'cheque': 'manage_payments',
+    'cheques': 'manage_payments',
+    'expense': 'manage_expenses',
+    'expenses': 'manage_expenses',
+    'warehouse': 'manage_warehouse',
+    'stockMovement': 'manage_warehouse',
+    'stockMovements': 'manage_warehouse',
+    'user': 'manage_users',
+    'users': 'manage_users',
+    'role': 'manage_users',
+    'roles': 'manage_users',
+    'auditLog': 'view_reports',
+    'auditLogs': 'view_reports',
+    'report': 'view_reports',
+    'reports': 'view_reports',
+    'ledger': 'view_ledger',
+    'journalEntry': 'view_ledger',
+    'journalEntries': 'view_ledger',
+}
+
+
+def _check_graphql_permissions(query_str):
+    """Check if current user has required permissions for the GraphQL query fields."""
+    if current_user.is_owner or current_user.is_super_admin():
+        return None  # Owner/super_admin bypass all permission checks
+    
+    required_fields = _extract_query_types(query_str)
+    missing_perms = []
+    
+    for field in required_fields:
+        perm = _GRAPHQL_PERMISSION_MAP.get(field.lower())
+        if perm and not current_user.has_permission(perm):
+            missing_perms.append(f'{field} (requires {perm})')
+    
+    if missing_perms:
+        return f'Insufficient permissions for GraphQL fields: {", ".join(missing_perms)}'
+    return None
+
+
 @graphql_bp.route('', methods=['POST'])
 @login_required
+@permission_required('view_reports')  # Base permission to access GraphQL at all
 def graphql_query():
     data = request.get_json()
     if not data:
@@ -50,6 +116,11 @@ def graphql_query():
     if 'introspection' in query_lower or '__schema' in query_lower or '__type' in query_lower:
         return jsonify({'errors': ['Introspection is disabled']}), 403
 
+    # SECURITY: Check field-level permissions
+    perm_error = _check_graphql_permissions(query)
+    if perm_error:
+        return jsonify({'errors': [perm_error]}), 403
+
     result = schema.execute(query, variables=variables)
 
     response = {}
@@ -64,6 +135,7 @@ def graphql_query():
 
 @graphql_bp.route('/playground', methods=['GET'])
 @login_required
+@permission_required('view_reports')
 def graphql_playground():
     return '''
     <!DOCTYPE html>

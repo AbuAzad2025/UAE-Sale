@@ -71,7 +71,7 @@ def movements():
 
     if warehouse_id:
         query = query.filter_by(warehouse_id=warehouse_id)
-        current_warehouse = db.session.get(Warehouse, warehouse_id)
+        current_warehouse = get_owned_or_404(Warehouse, warehouse_id, code=404)
     else:
         current_warehouse = None
 
@@ -110,7 +110,7 @@ def out_of_stock():
 @login_required
 @permission_required('manage_warehouse')
 def view_warehouse(id):
-    warehouse = db.get_or_404(Warehouse, id)
+    warehouse = get_owned_or_404(Warehouse, id, code=404)
 
     # Calculate stock for this warehouse from movements
     stock_query = db.session.query(
@@ -180,13 +180,7 @@ def create_warehouse():  # noqa: C901
                                            form_data=request.form)
 
             if parent_id:
-                parent_warehouse = db.session.get(Warehouse, parent_id)
-                if not parent_warehouse:
-                    flash('المستودع الأب غير موجود', 'warning')
-                    return render_template('warehouse/create_warehouse.html',
-                                           parent_warehouses=parent_warehouses,
-                                           users=users,
-                                           form_data=request.form)
+                parent_warehouse = get_owned_or_404(Warehouse, parent_id, code=404)
                 if not parent_warehouse.is_active:
                     flash('المستودع الأب غير نشط', 'warning')
                     return render_template('warehouse/create_warehouse.html',
@@ -238,7 +232,7 @@ def list_warehouses():
 @admin_required
 def delete_warehouse(id):
     """حذف مستودع"""
-    warehouse = db.get_or_404(Warehouse, id)
+    warehouse = get_owned_or_404(Warehouse, id, code=404)
 
     # Check if main warehouse
     if warehouse.is_main:

@@ -50,8 +50,12 @@ def _parse_product_partners(form):  # noqa: C901
         if partner_id in seen_partner_ids:
             return None, '⚠️ لا يمكن تكرار نفس الشريك أكثر من مرة لنفس المنتج.'
 
-        partner_customer = Customer.query.filter_by(id=partner_id, is_active=True, customer_type='partner').first()
-        if not partner_customer:
+        from utils.decorators import get_owned_or_404 as _get_owned
+        try:
+            partner_customer = _get_owned(Customer, partner_id, code=404)
+        except Exception:
+            return None, '⚠️ الشريك المحدد غير موجود أو غير مُعرّف كـ شريك.'
+        if not partner_customer.is_active or partner_customer.customer_type != 'partner':
             return None, '⚠️ الشريك المحدد غير موجود أو غير مُعرّف كـ شريك.'
 
         seen_partner_ids.add(partner_id)
@@ -156,16 +160,16 @@ def create():  # noqa: C901
                     warehouses = Warehouse.query.filter_by(is_active=True).all()
                     return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)  # noqa: E501
 
-                warehouse = db.session.get(Warehouse, warehouse_id)
-                if not warehouse or not warehouse.is_active:
+                warehouse = get_owned_or_404(Warehouse, warehouse_id, code=404)
+                if not warehouse.is_active:
                     flash('⚠️ المستودع المحدد غير صالح', 'warning')
                     warehouses = Warehouse.query.filter_by(is_active=True).all()
                     return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)  # noqa: E501
 
                 merchant_customer_id = request.form.get('merchant_customer_id', type=int)
                 if merchant_customer_id:
-                    merchant_customer = Customer.query.filter_by(id=merchant_customer_id, is_active=True, customer_type='merchant').first()
-                    if not merchant_customer:
+                    merchant_customer = get_owned_or_404(Customer, merchant_customer_id, code=404)
+                    if merchant_customer.customer_type != 'merchant' or not merchant_customer.is_active:
                         flash('⚠️ التاجر المحدد غير موجود أو غير مُعرّف كتاجر.', 'warning')
                         warehouses = Warehouse.query.filter_by(is_active=True).all()
                         return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)  # noqa: E501
@@ -312,10 +316,12 @@ def edit(id):  # noqa: C901
                 return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)  # noqa: E501
 
             warehouse_id = request.form.get('warehouse_id', type=int)
+            if warehouse_id:
+                get_owned_or_404(Warehouse, warehouse_id, code=404)
             merchant_customer_id = request.form.get('merchant_customer_id', type=int)
             if merchant_customer_id:
-                merchant_customer = Customer.query.filter_by(id=merchant_customer_id, is_active=True, customer_type='merchant').first()
-                if not merchant_customer:
+                merchant_customer = get_owned_or_404(Customer, merchant_customer_id, code=404)
+                if merchant_customer.customer_type != 'merchant' or not merchant_customer.is_active:
                     flash('⚠️ التاجر المحدد غير موجود أو غير مُعرّف كتاجر.', 'warning')
                     return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)  # noqa: E501
 

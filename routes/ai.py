@@ -17,7 +17,7 @@ from ai_knowledge.data_analyzer import data_analyzer
 from ai_knowledge.knowledge_expansion import knowledge_expander
 from ai_knowledge.automotive_ecu_knowledge import get_automotive_ecu_knowledge
 from ai_knowledge.external_learning import get_external_learning, LEARNING_SOURCES_CATALOG
-from utils.decorators import permission_required, owner_required, admin_required
+from utils.decorators import permission_required, owner_required, admin_required, get_owned_or_404
 from datetime import datetime, timezone
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
@@ -509,7 +509,7 @@ def _process_user_action(message, user):  # noqa: C901
                     new_balance = float(message.strip().replace('درهم', '').strip())
 
                     from models.customer import Customer
-                    customer = db.session.get(Customer, data['customer_id'])
+                    customer = get_owned_or_404(Customer, data['customer_id'], code=404)
                     customer.balance = new_balance
                     db.session.commit()
 
@@ -1192,7 +1192,7 @@ def _process_user_action(message, user):  # noqa: C901
                     db.session.add(sale_item)
 
                     # تحديث المخزون
-                    product = db.session.get(Product, data['product_id'])
+                    product = get_owned_or_404(Product, data['product_id'], code=404)
                     product.current_stock -= data['quantity']
 
                     db.session.commit()
@@ -1336,7 +1336,7 @@ def _process_user_action(message, user):  # noqa: C901
                     db.session.add(payment)
 
                     # تحديث رصيد العميل
-                    customer = db.session.get(Customer, data['customer_id'])
+                    customer = get_owned_or_404(Customer, data['customer_id'], code=404)
                     customer.balance -= data['amount']
 
                     db.session.commit()
@@ -1479,7 +1479,7 @@ def _process_user_action(message, user):  # noqa: C901
                     db.session.add(payment)
 
                     # تحديث رصيد العميل (زيادة)
-                    customer = db.session.get(Customer, data['customer_id'])
+                    customer = get_owned_or_404(Customer, data['customer_id'], code=404)
                     customer.balance += data['amount']
 
                     db.session.commit()
@@ -1916,7 +1916,7 @@ def _process_user_action(message, user):  # noqa: C901
                     )
                     db.session.add(purchase_item)
 
-                    product = db.session.get(Product, data['product_id'])
+                    product = get_owned_or_404(Product, data['product_id'], code=404)
                     product.current_stock += data['quantity']
 
                     db.session.commit()
@@ -3202,9 +3202,9 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
                 'error': 'لم أستطع فهم هيكل الملف. تأكد من وجود أعمدة: الاسم، رقم القطعة، السعر'
             }
 
-        warehouse = db.session.get(Warehouse, warehouse_id)
-        if not warehouse:
-            return {'success': False, 'error': f'المستودع #{warehouse_id} غير موجود'}
+        warehouse = get_owned_or_404(Warehouse, warehouse_id, code=404)
+        if not warehouse.is_active:
+            return {'success': False, 'error': f'المستودع #{warehouse_id} غير نشط'}
 
         products_created = 0
         products_updated = 0

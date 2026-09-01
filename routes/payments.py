@@ -220,6 +220,10 @@ def archive_payment(id):
 def restore_payment(id):
     """استعادة سند صرف من الأرشيف"""
     from models import ArchivedRecord
+    from models import Payment
+
+    # SECURITY: verify underlying payment belongs to actor's tenant
+    get_owned_or_404(Payment, id, code=404)
 
     archived = ArchivedRecord.query.filter_by(
         table_name='payments',

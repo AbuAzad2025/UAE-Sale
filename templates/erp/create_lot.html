@@ -5,6 +5,7 @@
 <div class="row"><div class="col-lg-8">
 <div class="card"><div class="card-body">
   <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="row">
       <div class="col-md-6"><div class="form-group"><label>المنتج <span class="text-danger">*</span></label><select name="product_id" class="form-control" required><option value="">— اختر —</option>{% for p in products %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select></div></div>
       <div class="col-md-6"><div class="form-group"><label>رقم الدفعة <span class="text-danger">*</span></label><input type="text" name="lot_number" class="form-control" required></div></div>

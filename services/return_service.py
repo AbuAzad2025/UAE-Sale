@@ -5,6 +5,7 @@ from models import Sale, SaleLine, ProductReturn, ProductReturnLine, Product
 from services.stock_service import StockService
 from services.gl_service import GLService
 from services.tax_engine import TaxEngine
+from utils.decorators import get_owned_or_404
 from utils.helpers import generate_number
 
 
@@ -30,9 +31,7 @@ class ReturnService:
         """
         try:
             # 1. Validate Sale
-            sale = db.session.get(Sale, sale_id)
-            if not sale:
-                raise ValueError(f"Sale with ID {sale_id} not found.")
+            sale = get_owned_or_404(Sale, sale_id)
 
             if sale.status == 'cancelled':
                 raise ValueError("Cannot create return for a cancelled sale.")
@@ -74,9 +73,7 @@ class ReturnService:
                 if quantity <= 0:
                     continue
 
-                sale_line = db.session.get(SaleLine, sale_line_id)
-                if not sale_line:
-                    raise ValueError(f"Sale line {sale_line_id} not found.")
+                sale_line = get_owned_or_404(SaleLine, sale_line_id)
 
                 if sale_line.sale_id != sale.id:
                     raise ValueError(f"Sale line {sale_line_id} does not belong to sale {sale.id}.")
@@ -131,7 +128,7 @@ class ReturnService:
                 # Cost basis: the HISTORICAL cost captured on the sale line at
                 # sell time. Only legacy lines missing cost_price fall back to
                 # the product's current cost.
-                product = db.session.get(Product, sale_line.product_id)
+                product = get_owned_or_404(Product, sale_line.product_id)
                 cost_price = sale_line.cost_price
                 if cost_price is None and product is not None:
                     cost_price = product.cost_price

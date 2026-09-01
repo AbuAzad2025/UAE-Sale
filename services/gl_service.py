@@ -32,8 +32,8 @@ from extensions import db
 from models import GLAccount, GLJournalEntry, GLJournalLine
 from services.account_resolution import AccountResolver, AccountRole
 from services.currency_service import CurrencyService
-
-_JE_SEQ: dict[str, int] = {}
+from utils.decorators import get_owned_or_raise
+from utils.helpers import generate_number
 
 _PAYMENT_METHOD_ROLES = {
     "cash": AccountRole.CASH,
@@ -67,24 +67,14 @@ def _quantize_3(value: Decimal) -> Decimal:
 
 
 def _unique_entry_number() -> str:
-    """Year-scoped JE-YYYY-NNNN, monotonic across process restarts."""
-    y = datetime.now(timezone.utc).strftime("%Y")
-    latest = (
-        db.session.query(GLJournalEntry)
-        .filter(GLJournalEntry.entry_number.like(f"JE-{y}-%"))
-        .order_by(GLJournalEntry.entry_number.desc())
-        .first()
-    )
-    last_db = 0
-    if latest:
-        try:
-            last_db = int(latest.entry_number.split("-")[-1])
-        except Exception:
-            last_db = 0
-    last_mem = _JE_SEQ.get(y, last_db)
-    nxt = max(last_db, last_mem) + 1
-    _JE_SEQ[y] = nxt
-    return f"JE-{y}-{nxt:04d}"
+    """Year-scoped JE-YYYY-NNNN with distributed-lock atomicity.
+
+    Uses ``generate_number`` (Redis advisory lock + retry fallback) to
+    guarantee uniqueness across concurrent workers/processes.  The old
+    in-process ``_JE_SEQ`` counter was insufficient for multi-process
+    deployments (Gunicorn, uWSGI, etc.).
+    """
+    return generate_number("JE", GLJournalEntry, field_name="entry_number")
 
 
 def _current_tenant_id() -> int | None:
@@ -615,7 +605,8 @@ class GLService:
         if entry_or_id is None:
             raise TypeError("GLService.reverse_entry: first argument or reference_type+reference_id is required")
         if isinstance(entry_or_id, int):
-            entry = db.session.get(GLJournalEntry, entry_or_id)
+            entry = get_owned_or_raise(GLJournalEntry, entry_or_id,
+                                       missing_message=f"GL entry id={entry_or_id} not found")
             if entry is None:
                 raise ValueError(f"GL entry id={entry_or_id} not found")
         else:

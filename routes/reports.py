@@ -7,7 +7,7 @@ from werkzeug.exceptions import HTTPException
 from sqlalchemy import func
 from extensions import db
 from models import Sale, SaleLine, Purchase, Product, Customer, ProductPartner, StockMovement
-from utils.decorators import permission_required
+from utils.decorators import permission_required, get_owned_or_404
 
 reports_bp = Blueprint('reports', __name__, url_prefix='/reports')
 
@@ -533,7 +533,7 @@ def entity_report_fragment(type, id):  # noqa: C901
         }
 
         if type == 'supplier':
-            entity = db.get_or_404(Supplier, id)
+            entity = get_owned_or_404(Supplier, id)
             context['entity'] = entity
             context['type_label'] = 'مورد'
 
@@ -582,7 +582,7 @@ def entity_report_fragment(type, id):  # noqa: C901
             } for p in payments]
 
         else:  # Customer/Partner/Merchant
-            entity = db.get_or_404(Customer, id)
+            entity = get_owned_or_404(Customer, id)
             context['entity'] = entity
             context['type_label'] = {
                 'partner': 'شريك',

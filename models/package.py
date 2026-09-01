@@ -14,7 +14,7 @@ class Package(db.Model):
     name_en = db.Column(db.String(100), nullable=False)  # اسم الباقة بالإنجليزية
     slug = db.Column(db.String(50), unique=True, nullable=False)  # للرابط
     icon = db.Column(db.String(50), default='📦')  # أيقونة الباقة
-    price = db.Column(db.Float, nullable=False)  # السعر بالدولار
+    price = db.Column(db.Numeric(15, 3), nullable=False)  # السعر بالدولار
     currency = db.Column(db.String(10), default='USD')
 
     # وصف الباقة
@@ -103,7 +103,7 @@ class PackagePurchase(db.Model):
     # بيانات الدفع
     payment_method = db.Column(db.String(50), nullable=False)  # crypto, card, paypal, bank
     payment_status = db.Column(db.String(50), default='pending')  # pending, completed, failed, refunded
-    amount_paid = db.Column(db.Float, nullable=False)
+    amount_paid = db.Column(db.Numeric(15, 3), nullable=False)
     currency = db.Column(db.String(10), default='USD')
 
     # معلومات إضافية للدفع

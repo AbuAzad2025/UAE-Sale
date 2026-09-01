@@ -6,6 +6,7 @@ from models import Sale, SaleLine, Payment
 from services.stock_service import StockService
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
+from utils.decorators import get_owned_or_raise
 from utils.helpers import generate_number
 
 # Fallback account codes (must mirror GLService.ensure_core_accounts defaults).
@@ -112,7 +113,7 @@ class SaleService:
                 warehouse_id = warehouse.id
         else:
             # التحقق من صحة المستودع المحدد
-            warehouse = db.session.get(Warehouse, warehouse_id)
+            warehouse = get_owned_or_raise(Warehouse, warehouse_id, missing_message='المستودع غير موجود')
             if not warehouse:
                 raise ValueError('⚠️ المستودع المحدد غير موجود.\n💡 اختر مستودع موجود من القائمة.')
             if not warehouse.is_active:
@@ -405,7 +406,6 @@ class SaleService:
         Create a payment for a sale with proper validations
         Uses Decimal for accurate financial calculations
         """
-        from utils.helpers import generate_number
         from datetime import datetime
 
         # Validate payment amount
@@ -524,7 +524,7 @@ class SaleService:
             current_app.logger.warning(f'GL posting failed for payment: {e}')
 
         from models import Customer as _Cust
-        _cust = db.session.get(_Cust, sale.customer_id)
+        _cust = get_owned_or_raise(_Cust, sale.customer_id, missing_message='العميل غير موجود')
         if _cust:
             _cust.balance = (_cust.balance or Decimal('0')) - amount_base
 

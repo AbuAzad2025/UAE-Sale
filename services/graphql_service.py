@@ -1,6 +1,7 @@
 import graphene
 from models import Sale, Customer, Product
 from extensions import db
+from utils.decorators import get_owned_or_404
 
 
 class SaleType(graphene.ObjectType):
@@ -56,24 +57,30 @@ class Query(graphene.ObjectType):
         return [self._convert_sale_to_type(sale) for sale in sales]
 
     def resolve_sale(self, info, id):
-        sale = db.session.get(Sale, id)
-        return self._convert_sale_to_type(sale) if sale else None
+        try:
+            return self._convert_sale_to_type(get_owned_or_404(Sale, id))
+        except Exception:
+            return None
 
     def resolve_all_customers(self, info, limit=50):
         customers = Customer.query.limit(limit).all()
         return [self._convert_customer_to_type(customer) for customer in customers]
 
     def resolve_customer(self, info, id):
-        customer = db.session.get(Customer, id)
-        return self._convert_customer_to_type(customer) if customer else None
+        try:
+            return self._convert_customer_to_type(get_owned_or_404(Customer, id))
+        except Exception:
+            return None
 
     def resolve_all_products(self, info, limit=50):
         products = Product.query.limit(limit).all()
         return [self._convert_product_to_type(product) for product in products]
 
     def resolve_product(self, info, id):
-        product = db.session.get(Product, id)
-        return self._convert_product_to_type(product) if product else None
+        try:
+            return self._convert_product_to_type(get_owned_or_404(Product, id))
+        except Exception:
+            return None
 
     def _convert_sale_to_type(self, sale):
         return SaleType(

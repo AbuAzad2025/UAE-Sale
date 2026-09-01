@@ -320,7 +320,7 @@ def search_market_price(product_id):
     """API: البحث عن سعر القطعة في الأسواق العالمية"""
     from models import Product
 
-    product = db.get_or_404(Product, product_id)
+    product = get_owned_or_404(Product, product_id)
 
     return jsonify({
         'success': True,
@@ -336,7 +336,7 @@ def find_compatible(product_id):
     """API: البحث عن السيارات المتوافقة"""
     from models import Product
 
-    product = db.get_or_404(Product, product_id)
+    product = get_owned_or_404(Product, product_id)
 
     return jsonify({
         'success': True,

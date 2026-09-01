@@ -1107,7 +1107,7 @@ class TestAdminLedger:
             f"/admin/ledger/api/account-statement/"
             f"{GLAccount.query.filter_by(code='1110').first().id}?date_from=2000-01-01"
         ).get_json()
-        assert stmt_api['statement']['total_debit'] == 1000.0
+        assert float(stmt_api['statement']['total_debit']) == 1000.0
 
 
 # ---------------------------------------------------------------- advanced ledger

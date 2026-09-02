@@ -159,7 +159,7 @@ jobs:
           RATELIMIT_ENABLED: "false"
           CACHE_TYPE: simple
         run: |
-          pytest tests/unit/ -v --tb=short --cov=. --cov-config=.coveragerc --cov-report=term --cov-report=xml:coverage-unit.xml
+          pytest tests/unit/ tests/security/ -v --tb=short --cov=. --cov-config=.coveragerc --cov-report=term --cov-report=xml:coverage-unit.xml
       - name: Coverage summary on run page
         if: always()
         run: |

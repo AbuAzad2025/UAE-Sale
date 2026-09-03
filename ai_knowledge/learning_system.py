@@ -7,7 +7,6 @@ import json
 import os
 from datetime import datetime
 from collections import defaultdict, Counter
-import pickle
 
 
 class AzadLearningSystem:
@@ -18,7 +17,7 @@ class AzadLearningSystem:
 
         self.knowledge_file = get_knowledge_path('learned_knowledge.json')
         self.interactions_file = get_knowledge_path('interactions_log.json')
-        self.patterns_file = get_knowledge_path('patterns.pkl')
+        self.patterns_file = get_knowledge_path('patterns.json')
         self.feedback_file = get_knowledge_path('feedback_log.json')
 
         # تحميل المعرفة المكتسبة
@@ -68,8 +67,15 @@ class AzadLearningSystem:
         """تحميل الأنماط المكتشفة"""
         if os.path.exists(self.patterns_file):
             try:
-                with open(self.patterns_file, 'rb') as f:
-                    return pickle.load(f)
+                with open(self.patterns_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                return {
+                    'question_patterns': defaultdict(list, data.get('question_patterns', {})),
+                    'response_patterns': defaultdict(list, data.get('response_patterns', {})),
+                    'success_patterns': defaultdict(float, data.get('success_patterns', {})),
+                    'time_patterns': defaultdict(int, data.get('time_patterns', {})),
+                    'user_behavior': defaultdict(dict, data.get('user_behavior', {})),
+                }
             except Exception:
                 pass
         return {
@@ -226,9 +232,9 @@ class AzadLearningSystem:
             with open(self.interactions_file, 'w', encoding='utf-8') as f:
                 json.dump(recent_interactions, f, ensure_ascii=False, indent=2)
 
-            # حفظ الأنماط
-            with open(self.patterns_file, 'wb') as f:
-                pickle.dump(self.patterns, f)
+            # حفظ الأنماط (JSON - non-pickled to avoid unsafe deserialization)
+            with open(self.patterns_file, 'w', encoding='utf-8') as f:
+                json.dump(dict(self.patterns), f, ensure_ascii=False, indent=2)
 
         except Exception as e:
             print(f"Error saving learning data: {e}")

@@ -232,9 +232,12 @@ def system_stats():
         result = db.session.execute(text("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname='public'"))
         tables = result.fetchall()
 
+        allowed = get_allowed_table_names_safe()
         for row in tables:
             table_name = row[0]
-            count_result = db.session.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
+            if table_name not in allowed:
+                continue
+            count_result = db.session.execute(text(f"SELECT COUNT(*) FROM {table_name}"))  # nosec B608 - table_name allowlist-validated
             count = count_result.scalar()
             db_stats[table_name] = count
 
@@ -706,10 +709,12 @@ def database_tools():
     tables_info = []
 
     for tbl_name in inspector.get_table_names():
+        if tbl_name not in get_allowed_table_names_safe():
+            continue
         columns = inspector.get_columns(tbl_name)
         indexes = inspector.get_indexes(tbl_name)
 
-        row_count = db.session.execute(text(f"SELECT COUNT(*) FROM {tbl_name}")).scalar()
+        row_count = db.session.execute(text(f"SELECT COUNT(*) FROM {tbl_name}")).scalar()  # nosec B608 - table allowlist-validated
 
         tables_info.append({
             'name': tbl_name,
@@ -768,7 +773,7 @@ def execute_query():
             return jsonify({'error': f'Table not accessible: {tbl}'}), 400
 
     try:
-        result = db.session.execute(text(query_text))
+        result = db.session.execute(text(query_text))  # nosec B608 - owner-only SELECT console; SELECT-gated + dangerous-pattern blocklist + table allowlist (get_allowed_table_names_safe)
         rows = result.fetchall()
         columns = result.keys()
 
@@ -1202,7 +1207,7 @@ def truncate_table():
         return redirect(url_for('owner.database_tools'))
 
     try:
-        db.session.execute(text(f"DELETE FROM {table_name}"))
+        db.session.execute(text(f"DELETE FROM {table_name}"))  # nosec B608 - table_name validated by validate_table_name() allowlist
         db.session.commit()
 
         from utils.helpers import create_audit_log
@@ -1238,12 +1243,12 @@ def browse_table(table_name):
         return redirect(url_for('owner.database_tools'))
 
     try:
-        count_result = db.session.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
+        count_result = db.session.execute(text(f"SELECT COUNT(*) FROM {table_name}"))  # nosec B608 - table_name validated by validate_table_name() allowlist
         total = count_result.scalar()
 
         offset = (page - 1) * per_page
         result = db.session.execute(
-            text(f"SELECT * FROM {table_name} LIMIT {per_page} OFFSET {offset}")
+            text(f"SELECT * FROM {table_name} LIMIT {per_page} OFFSET {offset}")  # nosec B608 - table_name validated by validate_table_name() allowlist
         )
 
         rows = result.fetchall()
@@ -1278,7 +1283,7 @@ def edit_table_data(table_name):
 
     try:
         # جلب بيانات الجدول
-        result = db.session.execute(text(f"SELECT * FROM {table_name} LIMIT 100"))
+        result = db.session.execute(text(f"SELECT * FROM {table_name} LIMIT 100"))  # nosec B608 - table_name validated by validate_table_name() allowlist
         rows = result.fetchall()
         columns = result.keys()
 
@@ -1318,7 +1323,7 @@ def sql_console():
             error = '❌ استعلام خطير! غير مسموح.'
         else:
             try:
-                result = db.session.execute(text(sql_query))
+                result = db.session.execute(text(sql_query))  # nosec B608 - owner-only SELECT console; SELECT-gated + single-statement + keyword blocklist + audited
                 rows = result.fetchall()
                 columns = result.keys()
                 result_data = {
@@ -1378,8 +1383,11 @@ def export_database():
             inspector = inspect(db.engine)
 
             # SECURITY: Use validated table names from inspector (not user input)
+            allowed_tables = get_allowed_table_names_safe()
             for tbl_name in inspector.get_table_names(schema='public'):
-                result = db.session.execute(text(f"SELECT * FROM {tbl_name}"))
+                if tbl_name not in allowed_tables:
+                    continue
+                result = db.session.execute(text(f"SELECT * FROM {tbl_name}"))  # nosec B608 - source is DB schema catalog + allowlist re-check
                 rows = result.fetchall()
                 columns = result.keys()
 
@@ -1424,15 +1432,18 @@ def convert_database():
             target_engine = create_engine(new_uri)
 
             inspector = inspect(db.engine)
+            allowed_tables = get_allowed_table_names_safe()
 
             for table_name in inspector.get_table_names():
-                result = db.session.execute(text(f"SELECT * FROM {table_name}"))
+                if table_name not in allowed_tables:
+                    continue
+                result = db.session.execute(text(f"SELECT * FROM {table_name}"))  # nosec B608 - source is DB schema catalog + allowlist re-check
                 rows = result.fetchall()
                 columns = result.keys()
 
                 if rows:
                     placeholders = ', '.join([f':{col}' for col in columns])
-                    insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
+                    insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"  # nosec B608 - table_name allowlist-validated; column names from DB result keys
 
                     with target_engine.connect() as conn:
                         for row in rows:

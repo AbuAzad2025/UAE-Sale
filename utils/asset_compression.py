@@ -52,7 +52,7 @@ class AssetCompressor:
 
     @staticmethod
     def get_file_hash(content):
-        return hashlib.md5(content.encode()).hexdigest()[:8]
+        return hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()[:8]
 
     @classmethod
     def process_css_files(cls, base_dir='static/css'):

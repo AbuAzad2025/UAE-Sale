@@ -58,7 +58,7 @@ class Config:
                 pass
         logging.info("[Dev] SECRET_KEY loaded/generated for development (set SECRET_KEY env in production)")
 
-    HOST = os.environ.get("HOST", "0.0.0.0")
+    HOST = os.environ.get("HOST", "0.0.0.0")  # nosec B104 - bind address is operator-controlled via HOST env; container/reverse-proxy deployment for multi-branch access
     PORT = _int("PORT", 5000)
 
     WTF_CSRF_EXEMPT_LIST = [

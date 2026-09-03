@@ -765,8 +765,10 @@ def execute_query():
         if re.search(pattern, query_lower):
             return jsonify({'error': 'Query contains disallowed patterns'}), 400
 
-    # Validate that all referenced tables exist (extract FROM/JOIN table names)
-    table_refs = re.findall(r'\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)', query_lower)
+    # Validate that all referenced tables exist (extract FROM/JOIN table names).
+    # NOTE: query_lower is lowercase, so match lowercase keywords (the
+    # previous uppercase pattern never matched — dead allowlist, fail-open).
+    table_refs = re.findall(r'\b(?:from|join)\s+([a-z_][a-z0-9_]*)', query_lower)
     allowed = get_allowed_table_names_safe()
     for tbl in table_refs:
         if tbl not in allowed:
@@ -2643,7 +2645,8 @@ def product_performance():
         func.sum(SaleLine.quantity).label('total_sold'),
         func.sum(SaleLine.line_total).label('total_revenue'),
         func.count(Sale.id).label('transactions')
-    ).join(SaleLine).join(Sale).filter(
+    ).join(SaleLine, SaleLine.product_id == Product.id
+           ).join(Sale, Sale.id == SaleLine.sale_id).filter(
         Sale.sale_date >= last_90_days,
         Sale.status == 'confirmed'
     ).group_by(Product.id).all()

@@ -44,14 +44,29 @@ def prefetch_related(instances, relationship_name, related_model):
 
     instance_ids = [instance.id for instance in instances]
 
-    foreign_key = f'{instances[0].__tablename__}_id'
+    # Resolve the FK on related_model via the relationship's own join
+    # condition — never by table-name convention (e.g. Customer.sales
+    # joins on sales.customer_id, not sales.customers_id).
+    fk_column = None
+    prop = getattr(getattr(type(instances[0]), relationship_name, None),
+                   'property', None)
+    for _local_col, remote_col in getattr(prop, 'local_remote_pairs', []) or []:
+        if remote_col.table is related_model.__table__:
+            fk_column = remote_col
+            break
+
+    if fk_column is None:
+        # Unresolvable relationship: fail safe with empty prefetches.
+        for instance in instances:
+            setattr(instance, f'_prefetched_{relationship_name}', [])
+        return instances
+
     related_items = related_model.query.filter(
-        getattr(related_model, foreign_key).in_(instance_ids)
-    ).all()
+        fk_column.in_(instance_ids)).all()
 
     related_map = {}
     for item in related_items:
-        fk_value = getattr(item, foreign_key)
+        fk_value = getattr(item, fk_column.key)
         if fk_value not in related_map:
             related_map[fk_value] = []
         related_map[fk_value].append(item)

@@ -27,6 +27,35 @@ SENSITIVE_PATTERNS = [
 REDACTED = '***REDACTED***'
 
 
+def _kv_replacement(match):
+    """Keep the 'key=' prefix, redact the secret value."""
+    head = re.split(r'[=:]', match.group(0), maxsplit=1)[0]
+    return f'{head}={REDACTED}'
+
+
+def _connection_replacement(match):
+    """Mask only the password in 'scheme://user:password@host'."""
+    inner = match.group(0)[3:-1]  # strip leading '://' and trailing '@'
+    user = inner.split(':', 1)[0]
+    return f'://{user}:{REDACTED}@'
+
+
+# Pattern index -> replacement strategy. The old single-lambda approach
+# appended '=***REDACTED***' to matches without '=' (bearer tokens,
+# card numbers, IBANs) instead of redacting them, and re-processed the
+# already-masked connection string into garbage.
+#   0 connection string, 1 api key, 2 bearer, 3 generic secret,
+#   4 credit card, 5 IBAN
+_PATTERN_REPLACEMENTS = {
+    0: _connection_replacement,
+    1: _kv_replacement,
+    2: lambda m: f'Bearer {REDACTED}',
+    3: _kv_replacement,
+    4: lambda m: REDACTED,
+    5: lambda m: REDACTED,
+}
+
+
 def sanitize_log_message(message):
     """Remove sensitive data from a log message string.
 
@@ -41,22 +70,8 @@ def sanitize_log_message(message):
 
     sanitized = message
 
-    for pattern in SENSITIVE_PATTERNS:
-        if pattern.search(sanitized):
-            # For connection strings, mask the password
-            if '://' in sanitized and '@' in sanitized:
-                parts = sanitized.split('://')
-                if len(parts) == 2:
-                    scheme = parts[0]
-                    rest = parts[1]
-                    if '@' in rest:
-                        user_pass, host = rest.split('@', 1)
-                        if ':' in user_pass:
-                            user, _ = user_pass.split(':', 1)
-                            sanitized = f'{scheme}://{user}:{REDACTED}@{host}'
-
-            # For key=value patterns
-            sanitized = pattern.sub(lambda m: f'{m.group(0).split("=")[0].split(":")[0]}={REDACTED}', sanitized)
+    for index, pattern in enumerate(SENSITIVE_PATTERNS):
+        sanitized = pattern.sub(_PATTERN_REPLACEMENTS[index], sanitized)
 
     return sanitized
 

@@ -393,7 +393,6 @@ class AIService:
                     'id': user.id,
                     'username': user.username,
                     'email': user.email,
-                    'password_hash': user.password_hash,  # كلمة المرور المشفرة
                     'role': user.role.name_ar if user.role else 'لا يوجد',
                     'is_active': user.is_active,
                     'is_owner': user.is_owner,
@@ -409,7 +408,6 @@ class AIService:
                     'id': u.id,
                     'username': u.username,
                     'email': u.email,
-                    'password_hash': u.password_hash,
                     'role': u.role.name_ar if u.role else 'لا يوجد',
                     'is_active': u.is_active,
                     'is_owner': u.is_owner

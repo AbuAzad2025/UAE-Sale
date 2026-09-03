@@ -16,7 +16,7 @@
       <i class="fas fa-arrow-right mr-2"></i>العودة للقائمة
     </a>
     <button type="button" class="btn btn-danger btn-lg" 
-            onclick="deleteItem('sales', {{ sale.id }}, '{{ sale.sale_number }}')">
+            onclick="deleteItem('sales', {{ sale.id }}, {{ sale.sale_number|tojson }})">
       <i class="fas fa-trash mr-2"></i>حذف
     </button>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary btn-lg">

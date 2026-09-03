@@ -932,7 +932,7 @@ def backup_now():
             flash(f'✅ تم إنشاء نسخة احتياطية: {backup["filename"]} ({backup["size_mb"]} MB)', 'success')
         else:
             flash('❌ فشل إنشاء النسخة الاحتياطية', 'danger')
-        return redirect(request.referrer or url_for('owner.dashboard'))
+        return redirect(url_for('owner.dashboard'))
 
 
 @owner_bp.route('/backups/list')

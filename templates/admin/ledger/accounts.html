@@ -89,7 +89,7 @@
                 <a href="{{ url_for('ledger.account_statement', id=account.id) }}" class="btn btn-outline-info btn-sm">
                   <i class="fas fa-file-alt"></i>
                 </a>
-                <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteAccount({{ account.id }}, '{{ account.full_name }}')">
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteAccount({{ account.id }}, {{ account.full_name|tojson }})">
                   <i class="fas fa-trash"></i>
                 </button>
               </div>

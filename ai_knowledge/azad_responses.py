@@ -168,32 +168,30 @@ class AzadResponses:
 
                 if user_info['success']:
                     if 'user' in user_info:
-                        # مستخدم واحد
-                        _ = user_info['user']
-                        return """🔐 **معلومات المستخدم** (مالك فقط)
-
-**الاسم**: {u['username']}
-**البريد**: {u['email']}
-**كلمة المرور المشفرة**: `{u['password_hash']}`
-**الدور**: {u['role']}
-**نشط**: {'✅ نعم' if u['is_active'] else '❌ لا'}
-**مالك**: {'✅ نعم' if u['is_owner'] else '❌ لا'}
-**تاريخ الإنشاء**: {u['created_at'] or 'غير محدد'}
-
-⚠️ **تنبيه**: هذه المعلومات سرية ومتاحة لك فقط كمالك للنظام."""
+                        # مستخدم واحد (بدون كشف أي تجزئة كلمة مرور)
+                        u = user_info['user']
+                        return (
+                            "🔐 **معلومات المستخدم** (مالك فقط)\n\n"
+                            f"**الاسم**: {u.get('username')}\n"
+                            f"**البريد**: {u.get('email')}\n"
+                            f"**الدور**: {u.get('role')}\n"
+                            f"**نشط**: {'✅ نعم' if u.get('is_active') else '❌ لا'}\n"
+                            f"**مالك**: {'✅ نعم' if u.get('is_owner') else '❌ لا'}\n"
+                            f"**تاريخ الإنشاء**: {u.get('created_at') or 'غير محدد'}\n\n"
+                            "⚠️ **تنبيه**: هذه المعلومات سرية ومتاحة لك فقط كمالك للنظام."
+                        )
                     else:
-                        # جميع المستخدمين
-                        _ = '\n'.join([
-                            f"- **{u['username']}** ({u['email']}) - {u['role']} - Hash: `{u['password_hash'][:20]}...`"
+                        # جميع المستخدمين (بدون كشف أي تجزئة كلمة مرور)
+                        lines = [
+                            f"- **{u.get('username')}** ({u.get('email')}) - {u.get('role')}"
                             for u in user_info['users']
-                        ])
-                        return """🔐 **قائمة المستخدمين** (مالك فقط)
-
-**إجمالي المستخدمين**: {user_info['count']}
-
-{users_list}
-
-⚠️ **تنبيه**: هذه المعلومات سرية ومتاحة لك فقط كمالك للنظام."""
+                        ]
+                        return (
+                            "🔐 **قائمة المستخدمين** (مالك فقط)\n\n"
+                            f"**إجمالي المستخدمين**: {user_info.get('count')}\n\n"
+                            + "\n".join(lines) +
+                            "\n\n⚠️ **تنبيه**: هذه المعلومات سرية ومتاحة لك فقط كمالك للنظام."
+                        )
                 else:
                     return user_info['message']
 

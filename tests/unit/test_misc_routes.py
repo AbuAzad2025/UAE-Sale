@@ -82,6 +82,23 @@ class TestLanguageSwitch:
         with client.session_transaction() as sess:
             assert sess.get('language') != 'xx'
 
+    def test_no_open_redirect_via_next_or_referrer(self, client):
+        # External 'next' (or attacker-set Referer) must never redirect off-site
+        resp = client.get('/language/set/en?next=https://evil.example')
+        assert resp.status_code == 302
+        loc = resp.headers.get('Location', '')
+        assert not loc.startswith('https://evil.example')
+
+        resp2 = client.get('/language/set/en',
+                           headers={'Referer': 'https://evil.example/phish'})
+        loc2 = resp2.headers.get('Location', '')
+        assert not loc2.startswith('https://evil.example')
+
+    def test_relative_next_allowed(self, client):
+        resp = client.get('/language/set/en?next=/dashboard')
+        assert resp.status_code == 302
+        assert resp.headers.get('Location', '').startswith('/dashboard')
+
 
 # ── API docs (public spec UI) ─────────────────────────────────────────────────
 

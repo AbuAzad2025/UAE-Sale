@@ -212,13 +212,17 @@ def print_invoice(id):
     from config import Config
     settings = InvoiceSettings.get_active()
 
-    # استخدام القالب النشط من الإعدادات
+    # استخدام القالب النشط من الإعدادات (allowlist لمنع حقن اسم القالب)
+    import re
+    _ALLOWED_TEMPLATES = ('modern', 'classic', 'gulf', 'minimal', 'simple')
     template = settings.active_template if settings and settings.active_template else 'modern'
-    template_path = f'invoices/{template}.html'
+    if template not in _ALLOWED_TEMPLATES and not re.fullmatch(r'[A-Za-z0-9_-]+', template or ''):
+        template = 'modern'
+    if template not in _ALLOWED_TEMPLATES:
+        template = 'modern'
 
-    # التحقق من وجود القالب، وإلا استخدام القالب الافتراضي
     try:
-        return render_template(template_path, sale=sale, settings=settings, config=Config)
+        return render_template(f'invoices/{template}.html', sale=sale, settings=settings, config=Config)
     except Exception:
         # إذا لم يوجد القالب، استخدام modern كافتراضي
         return render_template('invoices/modern.html', sale=sale, settings=settings, config=Config)

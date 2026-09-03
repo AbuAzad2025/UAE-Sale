@@ -259,3 +259,36 @@ class TestTransformersBrain:
 
     def test_generate_response(self, tbridge):
         assert isinstance(tbridge.generate_response('test', max_length=5), str)
+
+
+# ── KnowledgeExpander SSRF guard ──────────────────────────────────────────────
+
+class TestKnowledgeExpansionSsrf:
+    def _expander(self, tmp_path, monkeypatch):
+        # Avoid writing to the real knowledge dir: build with a stub dir.
+        from ai_knowledge.knowledge_expansion import KnowledgeExpander
+        # Prevent the constructor's os.makedirs / file touch by monkeypatching
+        # get_knowledge_path to point at tmp_path.
+        import ai_knowledge
+        monkeypatch.setattr(ai_knowledge, 'get_knowledge_path',
+                            lambda name: str(tmp_path / name))
+        return KnowledgeExpander()
+
+    @pytest.mark.parametrize('url', [
+        'http://127.0.0.1/x',
+        'http://169.254.169.254/meta',
+        'http://10.0.0.1/internal',
+        'http://192.168.1.1/admin',
+        'file:///etc/passwd',
+        'ftp://example.com',
+        'gopher://localhost/',
+    ])
+    def test_private_and_non_http_rejected(self, tmp_path, monkeypatch, url):
+        k = self._expander(tmp_path, monkeypatch)
+        ok, _ = k._validate_public_url(url)
+        assert ok is False
+
+    def test_public_https_ok(self, tmp_path, monkeypatch):
+        k = self._expander(tmp_path, monkeypatch)
+        ok, host = k._validate_public_url('https://example.com/page')
+        assert ok is True and host == 'example.com'

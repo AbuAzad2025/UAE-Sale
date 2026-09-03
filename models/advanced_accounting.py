@@ -217,12 +217,15 @@ class TaxCalculationRule(db.Model):
         return False
 
     def _check_expense_condition(self, expense):
-        """فحص شروط المصروف"""
         if self.condition_field == 'category_id':
             return str(expense.category_id) == self.condition_value
         elif self.condition_field == 'amount':
-            amount = float(expense.amount_base)
-            value = float(self.condition_value)
+            from decimal import Decimal, InvalidOperation
+            try:
+                amount = Decimal(str(expense.amount_base))
+                value = Decimal(str(self.condition_value))
+            except (InvalidOperation, ValueError):
+                return False
 
             if self.condition_operator == '>':
                 return amount > value

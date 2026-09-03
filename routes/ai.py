@@ -3020,7 +3020,7 @@ http://localhost:5000/ai/assistant
                 if len(parts) >= 3:
                     customer_name = parts[0]
                     amount = float(parts[1].replace('درهم', '').replace('د.إ', '').strip())
-                    _ = parts[2]
+                    reason = parts[2]
 
                     customer = Customer.query.filter_by(name=customer_name, is_active=True).first()
                     if not customer:

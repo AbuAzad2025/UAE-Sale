@@ -289,6 +289,6 @@ class TestTenantScopedRegistered:
             'sales', 'sale_lines', 'purchases', 'purchase_lines',
             'payments', 'receipts', 'customers', 'suppliers',
             'products', 'stock_movements', 'cheques', 'gl_journal_entries',
-            'warehouses',
+            'gl_journal_lines', 'warehouses',
         }
         assert expected == _tenant_scoped_tables

@@ -75,9 +75,8 @@ jobs:
           echo "=== Current version ==="
           flask db current
 
-      - name: Best-effort downgrade one revision then re-upgrade
+      - name: Downgrade one revision then re-upgrade (reversibility gate)
         if: always()
-        continue-on-error: true
         env:
           DATABASE_URL: postgresql://azad_test:azad_test@localhost:5432/azad_test
           SECRET_KEY: test-secret-key-not-for-production

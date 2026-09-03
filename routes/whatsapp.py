@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, flash
 from flask_login import login_required
 from services.whatsapp_service import WhatsAppService
-from utils.decorators import admin_required, get_owned_or_404
+from utils.decorators import admin_required, permission_required, get_owned_or_404
 from extensions import db
 
 whatsapp_bp = Blueprint('whatsapp', __name__, url_prefix='/whatsapp')
@@ -9,6 +9,7 @@ whatsapp_bp = Blueprint('whatsapp', __name__, url_prefix='/whatsapp')
 
 @whatsapp_bp.route('/send-invoice/<int:sale_id>', methods=['POST'])
 @login_required
+@permission_required('manage_sales')
 def send_invoice(sale_id):
     from models import Sale
 

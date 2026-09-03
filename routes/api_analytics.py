@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_login import login_required
 from extensions import limiter
 from utils.cache_decorators import cached_query
+from utils.decorators import permission_required
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -10,6 +11,7 @@ api_analytics_bp = Blueprint('api_analytics', __name__, url_prefix='/api/analyti
 
 @api_analytics_bp.route('/overdue-payments')
 @login_required
+@permission_required('view_reports')
 @limiter.limit("50 per minute")
 @cached_query(timeout=300, key_prefix='overdue_payments')
 def overdue_payments():
@@ -28,6 +30,7 @@ def overdue_payments():
 
 @api_analytics_bp.route('/daily-stats')
 @login_required
+@permission_required('view_reports')
 @cached_query(timeout=60, key_prefix='daily_stats')
 def daily_stats():
     from models import Sale, Payment
@@ -59,6 +62,7 @@ def daily_stats():
 
 @api_analytics_bp.route('/top-customers')
 @login_required
+@permission_required('view_reports')
 @cached_query(timeout=600, key_prefix='top_customers')
 def top_customers():
     from models import Customer
@@ -83,6 +87,7 @@ def top_customers():
 
 @api_analytics_bp.route('/low-stock-products')
 @login_required
+@permission_required('view_reports')
 @cached_query(timeout=120, key_prefix='low_stock_products')
 def low_stock_products():
     from models import Product
@@ -107,6 +112,7 @@ def low_stock_products():
 
 @api_analytics_bp.route('/revenue-trend')
 @login_required
+@permission_required('view_reports')
 @cached_query(timeout=300, key_prefix='revenue_trend')
 def revenue_trend():
     from models import Sale

@@ -69,7 +69,7 @@ cross-tenant/branch isolation, Master Key scoping, no privilege leakage or UI cl
 
 | Suite | File | Tests | What it proves |
 |---|---|---|---|
-| Role isolation | `tests/unit/test_erp_role_isolation.py` | **101** | Phases 1–5: permission completeness; route isolation for seller/manager/accountant/cashier/inventory/hr/viewer (allowed → 200/302, denied → 403/404/302); cross-tenant blocks; per-role dashboard render; palette + quick-action URL absence for unpermitted modules; Master Key scoping; decorator fail-closed behavior. |
+| Role isolation | `tests/unit/test_erp_role_isolation.py` | **109** | Phases 1–5: permission completeness; route isolation for seller/manager/accountant/cashier/inventory/hr/viewer (allowed → 200/302, denied → 403/404/302); cross-tenant blocks; per-role dashboard render; palette + quick-action URL absence for unpermitted modules; **dashboard DATA scoping** (aggregates/PII per section, tenant-scoped cache regression); Master Key scoping; decorator fail-closed behavior. |
 | Zero-trust | `tests/security/test_zero_trust_isolation.py` | 18 | Tenant immutability, owner cross-tenant read/insert semantics. |
 | Remediation | `tests/unit/test_security_remediation.py` | — | Mixin fail-fast, `TENANT_STRICT` warn path, exact registry match. |
 | Seed safety | `tests/unit/test_system_init_db_safety.py` | — | 19 expected permission codes; DB-safe seeding. |
@@ -93,7 +93,12 @@ CI gate: `bandit -c .bandit.yml -r . -ll -ii` — fails only on real MEDIUM/HIGH
 
 ## 7. Residual risks / follow-ups
 
-- Dashboard data sections (e.g. Recent Sales table) render for any authenticated role; only *actions* are gated.
-  Tenant filtering still applies, but role-based data hiding beyond actions is a product decision, not yet specified.
+- Dashboard data sections are now permission-gated per §3/§4 design (sales card:
+  `manage_sales`/`view_reports`; customers: `manage_customers`/`view_reports`;
+  receivables: `manage_payments`/`view_reports`/`view_ledger`; products:
+  `manage_products`/`view_products`/`manage_warehouse`; recent-sales PII table:
+  `manage_sales` only) and the aggregates cache key includes the effective tenant
+  (`dashboard:{tenant}:{day}` — previously tenant-agnostic, leaking one tenant's
+  numbers to another for 60s; proven by regression test).
 - `developer` holds all permissions by seed; restrict in production if developers should not see finance data.
 - LOW bandit findings (B110/B311/…) accepted; revisit if CI policy ever gates on LOW.

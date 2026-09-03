@@ -13,6 +13,7 @@
 {% block content %}
 <!-- Modern Stats Cards -->
 <div class="row mb-4">
+  {% if current_user.has_permission('manage_sales') or current_user.has_permission('view_reports') %}
   <div class="col-lg-3 col-md-6 mb-4">
     <div class="stat-card">
       <div class="stat-icon" style="background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%);">
@@ -26,12 +27,16 @@
         </strong>
         <small class="text-muted"> {{ base_currency_name }}</small>
       </div>
+      {% if current_user.has_permission('manage_sales') %}
       <a href="{{ url_for('sales.index') }}" class="btn btn-sm btn-primary mt-2 w-100">
         <i class="fas fa-arrow-left ml-2"></i> عرض الكل
       </a>
+      {% endif %}
     </div>
   </div>
+  {% endif %}
 
+  {% if current_user.has_permission('manage_customers') or current_user.has_permission('view_reports') %}
   <div class="col-lg-3 col-md-6 mb-4">
     <div class="stat-card">
       <div class="stat-icon" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
@@ -42,12 +47,16 @@
       <div class="mt-2">
         <small class="text-muted">زبائن نشطون</small>
       </div>
+      {% if current_user.has_permission('manage_customers') %}
       <a href="{{ url_for('customers.index') }}" class="btn btn-sm btn-success mt-2 w-100 stretched-link">
         <i class="fas fa-arrow-left ml-2"></i> عرض الكل
       </a>
+      {% endif %}
     </div>
   </div>
+  {% endif %}
 
+  {% if current_user.has_permission('manage_payments') or current_user.has_permission('view_reports') or current_user.has_permission('view_ledger') %}
   <div class="col-lg-3 col-md-6 mb-4">
     <div class="stat-card">
       <div class="stat-icon" style="background: linear-gradient(135deg, #D4AF37 0%, #C19A6B 100%);">
@@ -58,12 +67,16 @@
       <div class="mt-2">
         <small class="text-muted">{{ base_currency_name }} ({{ base_currency }})</small>
       </div>
+      {% if current_user.has_permission('view_reports') %}
       <a href="{{ url_for('reports.receivables') }}" class="btn btn-sm btn-warning mt-2 w-100 stretched-link">
         <i class="fas fa-arrow-left ml-2"></i> عرض التفاصيل
       </a>
+      {% endif %}
     </div>
   </div>
+  {% endif %}
 
+  {% if current_user.has_permission('manage_products') or current_user.has_permission('view_products') or current_user.has_permission('manage_warehouse') %}
   <div class="col-lg-3 col-md-6 mb-4">
     <div class="stat-card">
       <div class="stat-icon" style="background: linear-gradient(135deg, #CE1126 0%, #dc3545 100%);">
@@ -74,11 +87,14 @@
       <div class="mt-2">
         <small class="text-muted">منتجات نشطة</small>
       </div>
+      {% if current_user.has_permission('manage_products') %}
       <a href="{{ url_for('products.index') }}" class="btn btn-sm btn-danger mt-2 w-100 stretched-link">
         <i class="fas fa-arrow-left ml-2"></i> عرض الكل
       </a>
+      {% endif %}
     </div>
   </div>
+  {% endif %}
 </div>
 
 {% if current_user.can_see_costs() and stats.cash_balance is defined %}
@@ -131,6 +147,7 @@
 </div>
 {% endif %}
 
+{% if current_user.has_permission('manage_sales') %}
 <!-- Recent Sales - Modern Table -->
 <div class="row">
   <div class="col-12">
@@ -248,6 +265,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 <!-- Quick Actions -->
 <div class="row">

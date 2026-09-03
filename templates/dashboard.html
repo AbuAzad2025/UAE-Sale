@@ -247,6 +247,7 @@
 
 <!-- Quick Actions -->
 <div class="row">
+  {% if current_user.has_permission('manage_sales') %}
   <div class="col-md-3 mb-3">
     <a href="{{ url_for('sales.create') }}" class="card text-center text-decoration-none hover-card">
       <div class="card-body">
@@ -255,6 +256,8 @@
       </div>
     </a>
   </div>
+  {% endif %}
+  {% if current_user.has_permission('manage_customers') %}
   <div class="col-md-3 mb-3">
     <a href="{{ url_for('customers.create') }}" class="card text-center text-decoration-none hover-card">
       <div class="card-body">
@@ -263,6 +266,8 @@
       </div>
     </a>
   </div>
+  {% endif %}
+  {% if current_user.has_permission('manage_products') %}
   <div class="col-md-3 mb-3">
     <a href="{{ url_for('products.create') }}" class="card text-center text-decoration-none hover-card">
       <div class="card-body">
@@ -271,6 +276,8 @@
       </div>
     </a>
   </div>
+  {% endif %}
+  {% if current_user.has_permission('view_reports') %}
   <div class="col-md-3 mb-3">
     <a href="{{ url_for('reports.sales') }}" class="card text-center text-decoration-none hover-card">
       <div class="card-body">
@@ -279,6 +286,7 @@
       </div>
     </a>
   </div>
+  {% endif %}
 </div>
 
 <style>

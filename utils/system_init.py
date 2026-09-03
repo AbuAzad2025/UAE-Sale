@@ -89,7 +89,12 @@ def _ensure_permissions():
         {'code': 'view_ledger', 'name': 'View Ledger', 'name_ar': 'عرض دفتر الأستاذ', 'category': 'finance'},
         {'code': 'manage_ledger', 'name': 'Manage Ledger', 'name_ar': 'إدارة دفتر الأستاذ', 'category': 'finance'},
         {'code': 'admin', 'name': 'Admin Dashboard', 'name_ar': 'لوحة التحكم الإدارية', 'category': 'admin'},
-        {'code': 'manage_backups', 'name': 'Manage Backups', 'name_ar': 'إدارة النسخ الاحتياطي', 'category': 'admin'}
+        {'code': 'manage_backups', 'name': 'Manage Backups', 'name_ar': 'إدارة النسخ الاحتياطي', 'category': 'admin'},
+        {'code': 'manage_hr', 'name': 'Manage HR', 'name_ar': 'إدارة الموارد البشرية', 'category': 'hr'},
+        {'code': 'manage_approvals', 'name': 'Manage Approvals', 'name_ar': 'إدارة الموافقات', 'category': 'admin'},
+        {'code': 'manage_settings', 'name': 'Manage Settings', 'name_ar': 'إدارة الإعدادات', 'category': 'admin'},
+        {'code': 'view_products', 'name': 'View Products', 'name_ar': 'عرض المنتجات', 'category': 'products'},
+        {'code': 'view_costs', 'name': 'View Costs', 'name_ar': 'عرض التكاليف', 'category': 'finance'},
     ]
 
     added = 0

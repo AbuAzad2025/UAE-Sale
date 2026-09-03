@@ -891,16 +891,17 @@ document.addEventListener('keydown', function(e){
   if (e.key==='?' && !e.ctrlKey && e.target.tagName!=='INPUT' && e.target.tagName!=='TEXTAREA'){ e.preventDefault(); $('#commandPalette').modal('show'); }
 });
 (function(){
-  const commands=[
-    {label:'فاتورة جديدة', icon:'fa-file-invoice', url:"{{ url_for('sales.create') }}", keys:'فاتورة بيع sale'},
-    {label:'قائمة الفواتير', icon:'fa-list', url:"{{ url_for('sales.index') }}", keys:'فواتير sales'},
-    {label:'زبون جديد', icon:'fa-user-plus', url:"{{ url_for('customers.create') }}", keys:'زبون customer'},
-    {label:'قائمة الزبائن', icon:'fa-users', url:"{{ url_for('customers.index') }}", keys:'زبائن customers'},
-    {label:'منتج جديد', icon:'fa-box', url:"{{ url_for('products.create') }}", keys:'منتج product'},
-    {label:'سند قبض جديد', icon:'fa-money-bill-wave', url:"{{ url_for('payments.create_receipt') }}", keys:'سند قبض payment'},
-    {label:'كشف حساب', icon:'fa-book', url:"{{ url_for('ledger.index') }}", keys:'كشف حساب ledger'},
-    {label:'ميزان المراجعة', icon:'fa-balance-scale', url:"{{ url_for('ledger.trial_balance') }}", keys:'ميزان trial'},
+  const raw=[
+    {% if current_user.has_permission('manage_sales') %}{label:'فاتورة جديدة', icon:'fa-file-invoice', url:"{{ url_for('sales.create') }}", keys:'فاتورة بيع sale'},{% endif %}
+    {% if current_user.has_permission('manage_sales') %}{label:'قائمة الفواتير', icon:'fa-list', url:"{{ url_for('sales.index') }}", keys:'فواتير sales'},{% endif %}
+    {% if current_user.has_permission('manage_customers') %}{label:'زبون جديد', icon:'fa-user-plus', url:"{{ url_for('customers.create') }}", keys:'زبون customer'},{% endif %}
+    {% if current_user.has_permission('manage_customers') %}{label:'قائمة الزبائن', icon:'fa-users', url:"{{ url_for('customers.index') }}", keys:'زبائن customers'},{% endif %}
+    {% if current_user.has_permission('manage_products') %}{label:'منتج جديد', icon:'fa-box', url:"{{ url_for('products.create') }}", keys:'منتج product'},{% endif %}
+    {% if current_user.has_permission('manage_payments') %}{label:'سند قبض جديد', icon:'fa-money-bill-wave', url:"{{ url_for('payments.create_receipt') }}", keys:'سند قبض payment'},{% endif %}
+    {% if current_user.has_permission('view_ledger') %}{label:'كشف حساب', icon:'fa-book', url:"{{ url_for('ledger.index') }}", keys:'كشف حساب ledger'},{% endif %}
+    {% if current_user.has_permission('view_ledger') %}{label:'ميزان المراجعة', icon:'fa-balance-scale', url:"{{ url_for('ledger.trial_balance') }}", keys:'ميزان trial'},{% endif %}
   ];
+  const commands=raw;
   const input=document.getElementById('commandInput');
   const results=document.getElementById('commandResults');
   function render(q){

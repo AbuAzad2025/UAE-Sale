@@ -181,10 +181,9 @@ class TestAuthAndPermissions:
         resp = client.get('/api/analytics/daily-stats', follow_redirects=False)
         assert resp.status_code in (302, 403)
 
-    def test_api_analytics_open_to_seller(self, client, login_seller):
+    def test_api_analytics_requires_view_reports(self, client, login_seller):
         resp = client.get('/api/analytics/top-customers')
-        assert resp.status_code == 200
-        assert resp.is_json
+        assert resp.status_code == 403
 
 
 class TestDashboardPages:

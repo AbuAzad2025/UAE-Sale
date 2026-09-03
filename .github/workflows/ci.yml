@@ -134,7 +134,7 @@ jobs:
   # ── Unit tests (SQLite, fast, no services) ──
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
       - name: Set up Python

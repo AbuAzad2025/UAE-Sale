@@ -726,71 +726,6 @@ def database_tools():
     return render_template('owner/database_tools.html', tables=tables_info)
 
 
-@owner_bp.route('/execute-query', methods=['POST'])
-@login_required
-@owner_required
-def execute_query():
-    """Execute a safe, parameterized SQL query.
-
-    SECURITY: Only allows SELECT queries on whitelisted tables.
-    UPDATE/INSERT/DELETE are blocked — use the application's normal
-    CRUD routes for data modifications.
-    """
-    from sqlalchemy import text
-    import re
-
-    query_text = request.form.get('query', '').strip()
-
-    if not query_text:
-        return jsonify({'error': 'Query is empty'}), 400
-
-    query_lower = query_text.lower()
-
-    # Only allow SELECT queries
-    if not query_lower.lstrip().startswith('select'):
-        return jsonify({'error': 'Only SELECT queries are allowed via this endpoint'}), 400
-
-    # Block dangerous SQL patterns
-    dangerous_patterns = [
-        r'\b(drop\b)', r'\b(alter\b)', r'\b(create\b)', r'\b(truncate\b)',
-        r'\b(grant\b)', r'\b(revoke\b)', r'\b(exec\b)', r'\b(execute\b)',
-        r'\b(into\s+outfile\b)', r'\b(load_file\b)', r'\b(pg_read_file\b)',
-        r'\b(pg_write_file\b)', r'\b\\x[0-9a-f]',
-        r';\s*\w',  # stacked queries
-        r'\bunion\b.*\bselect\b',  # UNION-based injection
-        r'\binformation_schema\b', r'\bpg_catalog\b',
-        r'\bpg_tables\b', r'\bpg_class\b',
-    ]
-    for pattern in dangerous_patterns:
-        if re.search(pattern, query_lower):
-            return jsonify({'error': 'Query contains disallowed patterns'}), 400
-
-    # Validate that all referenced tables exist (extract FROM/JOIN table names).
-    # NOTE: query_lower is lowercase, so match lowercase keywords (the
-    # previous uppercase pattern never matched — dead allowlist, fail-open).
-    table_refs = re.findall(r'\b(?:from|join)\s+([a-z_][a-z0-9_]*)', query_lower)
-    allowed = get_allowed_table_names_safe()
-    for tbl in table_refs:
-        if tbl not in allowed:
-            return jsonify({'error': f'Table not accessible: {tbl}'}), 400
-
-    try:
-        result = db.session.execute(text(query_text))  # nosec B608 - owner-only SELECT console; SELECT-gated + dangerous-pattern blocklist + table allowlist (get_allowed_table_names_safe)
-        rows = result.fetchall()
-        columns = result.keys()
-
-        data = [dict(zip(columns, row)) for row in rows]
-
-        return jsonify({
-            'success': True,
-            'rows': data[:500],  # Limit to 500 rows max
-            'count': len(data)
-        })
-    except Exception:
-        db.session.rollback()
-        return jsonify({'error': 'Query execution failed'}), 400
-
-
 @owner_bp.route('/integrations')
 @login_required
 @owner_required
@@ -1297,59 +1232,6 @@ def edit_table_data(table_name):
     except Exception as e:
         flash(f'❌ خطأ: {str(e)}', 'danger')
         return redirect(url_for('owner.database_tools'))
-
-
-@owner_bp.route('/sql-console', methods=['GET', 'POST'])
-@login_required
-@owner_required
-def sql_console():
-    """SQL Console - READ-ONLY queries only.
-
-    SECURITY: Only SELECT queries allowed. Write operations must use
-    the application's normal CRUD routes.
-    """
-    result_data = None
-    error = None
-
-    if request.method == 'POST':
-        sql_query = request.form.get('sql_query', '').strip()
-
-        # Only allow SELECT queries
-        query_upper = sql_query.upper().strip()
-        if not query_upper.startswith('SELECT'):
-            error = '❌ فقط الاستعلامات SELECT مسموح بها عبر وحدة التحكم'
-        # SECURITY: exactly one statement — reject any ';' beyond a trailing one
-        elif ';' in query_upper.rstrip(';').rstrip():
-            error = '❌ يُسمح بعبارة واحدة فقط (لا يجوز استخدام الفاصلة المنقوطة داخل الاستعلام)'
-        elif any(kw in query_upper for kw in ['DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'GRANT', 'REVOKE', 'EXEC', 'INTO OUTFILE', 'LOAD_FILE', 'PG_READ_FILE', 'PG_WRITE_FILE']):  # noqa: E501
-            error = '❌ استعلام خطير! غير مسموح.'
-        else:
-            try:
-                result = db.session.execute(text(sql_query))  # nosec B608 - owner-only SELECT console; SELECT-gated + single-statement + keyword blocklist + audited
-                rows = result.fetchall()
-                columns = result.keys()
-                result_data = {
-                    'columns': list(columns),
-                    'rows': [list(row) for row in rows[:500]],  # Limit 500 rows
-                    'count': len(rows)
-                }
-
-                from utils.helpers import create_audit_log
-                create_audit_log(
-                    action='sql_execute',
-                    entity_type='database',
-                    entity_id=0,
-                    details={'query': sql_query[:200]},
-                    user_id=current_user.id
-                )
-
-            except Exception as e:
-                error = str(e)
-                db.session.rollback()
-
-    return render_template('owner/sql_console.html',
-                           result=result_data,
-                           error=error)
 
 
 @owner_bp.route('/export-database', methods=['POST'])

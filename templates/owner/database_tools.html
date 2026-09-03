@@ -150,11 +150,6 @@
                      title="تعديل مرئي سهل - متوسط الخطورة">
                     <i class="fas fa-edit"></i> تعديل مرئي
                   </a>
-                  <a href="{{ url_for('owner.sql_console') }}" 
-                     class="btn btn-sm btn-sql"
-                     title="تعديل متقدم بـ SQL - خطير!">
-                    <i class="fas fa-code"></i> SQL
-                  </a>
                   {% endif %}
                   {% if table.name not in ['users', 'alembic_version', 'system_settings'] %}
                   <button class="btn btn-sm btn-danger" 
@@ -173,11 +168,6 @@
         <hr>
 
         <div class="row mt-4">
-          <div class="col-md-4">
-            <a href="{{ url_for('owner.sql_console') }}" class="btn btn-primary btn-block btn-lg">
-              <i class="fas fa-terminal"></i> SQL Console
-            </a>
-          </div>
           <div class="col-md-4">
             <form action="{{ url_for('owner.export_database') }}" method="POST" style="display: inline;">
               <input type="hidden" name="format" value="json">

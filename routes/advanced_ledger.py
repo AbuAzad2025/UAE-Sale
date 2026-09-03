@@ -5,6 +5,8 @@ from decimal import Decimal
 from extensions import db
 from models import GLAccount, GLJournalEntry, Cheque
 from models.advanced_accounting import CustomsTax, AdvancedExpense
+from models.customer import Customer
+from models.supplier import Supplier
 from models.expense import ExpenseCategory
 from services.advanced_journal_manager import AdvancedJournalEntryManager
 from services.cheque_accounting_integration import ChequeAccountingIntegration
@@ -226,7 +228,7 @@ def add_advanced_expense():
 
     # الحصول على البيانات المطلوبة
     categories = ExpenseCategory.query.filter_by(is_active=True).all()
-    suppliers = db.session.execute(db.text("SELECT id, name FROM suppliers")).all()
+    suppliers = Supplier.query.filter_by(is_active=True).all()
 
     return render_template('ledger/advanced/add_advanced_expense.html',
                            categories=categories, suppliers=suppliers)

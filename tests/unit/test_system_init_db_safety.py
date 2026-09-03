@@ -25,6 +25,8 @@ EXPECTED_PERMS = {
     'manage_suppliers', 'manage_payments', 'manage_expenses', 'view_reports',
     'manage_users', 'manage_warehouse', 'view_ledger', 'manage_ledger',
     'admin', 'manage_backups',
+    'manage_hr', 'manage_approvals', 'manage_settings', 'view_products',
+    'view_costs',
 }
 
 

@@ -81,6 +81,22 @@ OWNER_READ_PAGES = [
     '/owner/config',
     '/owner/integrations',
     '/owner/browse-table/customers',
+    # settings pages (probed 200)
+    '/owner/api-keys',
+    '/owner/ip-whitelist',
+    '/owner/tax-settings',
+    '/owner/currency-settings',
+    '/owner/payment-gateways',
+    '/owner/email-settings',
+    '/owner/sms-settings',
+    '/owner/whatsapp-settings',
+    '/owner/notification-templates',
+    '/owner/company-info',
+    '/owner/system-config',
+    '/owner/invoice-settings',
+    '/owner/data-cleanup',
+    '/owner/cards-vault',
+    '/owner/financial-dashboard-advanced',
 ]
 
 
@@ -165,3 +181,46 @@ class TestOwnerConsolesRefuseAbuse:
                            data={'sql_query': 'DELETE FROM customers'})
         assert resp.status_code == 200
         assert Customer.query.count() == before
+
+
+class TestOwnerTemplatePreview:
+    @pytest.mark.parametrize('url', [
+        '/owner/preview-invoice/modern',
+        '/owner/preview-invoice/classic',
+        '/owner/preview-receipt/modern',
+        '/owner/preview-receipt/gulf',
+    ])
+    def test_valid_template_renders(self, client, owner_client_user, url):
+        _login(client, owner_client_user)
+        assert client.get(url).status_code == 200
+
+    @pytest.mark.parametrize('url', [
+        '/owner/preview-invoice/default',
+        '/owner/preview-invoice/nope',
+        '/owner/preview-receipt/default',
+        '/owner/preview-invoice/....',
+        '/owner/preview-receipt/a%20b',
+    ])
+    def test_unknown_or_malicious_template_404(self, client, owner_client_user, url):
+        _login(client, owner_client_user)
+        assert client.get(url).status_code == 404
+
+
+class TestOwnerPaymentGateways:
+    def test_autocreates_valid_vault_row(self, client, owner_client_user, db):
+        from models import PaymentVault
+        _login(client, owner_client_user)
+        assert PaymentVault.query.count() == 0
+        assert client.get('/owner/payment-gateways').status_code == 200
+        vault = PaymentVault.query.first()
+        assert vault is not None
+        assert vault.vault_password_hash  # NOT NULL satisfied
+        assert vault.is_locked is not False  # stays locked
+
+    def test_post_updates_keys(self, client, owner_client_user, db):
+        _login(client, owner_client_user)
+        resp = client.post('/owner/payment-gateways', data={
+            'stripe_publishable_key': 'pk_test_123'})
+        assert resp.status_code == 302
+        from models import PaymentVault
+        assert PaymentVault.query.first().stripe_publishable_key == 'pk_test_123'

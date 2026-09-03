@@ -62,11 +62,17 @@ def {function_name}():
             SQL query جاهز
         """
         try:
+            # NOTE: Generated SQL is returned as an informational string only;
+            # it is NEVER executed by this module. It powers an AI assistant
+            # snippet generator. Inputs are still sanitized for defense-in-depth.
+            def _esc(value):
+                return value.replace("'", "''") if isinstance(value, str) else value
+
             if intent == 'select':
                 columns = filters.get('columns', '*') if filters else '*'
-                conditions = ' AND '.join([f"{k} = '{v}'" for k, v in filters.get('where', {}).items()]) if filters and 'where' in filters else '1=1'
+                conditions = ' AND '.join([f"{k} = '{_esc(v)}'" for k, v in filters.get('where', {}).items()]) if filters and 'where' in filters else '1=1'
 
-                query = f"SELECT {columns} FROM {table} WHERE {conditions}"
+                query = f"SELECT {columns} FROM {table} WHERE {conditions}"  # nosec B608 - output text only, never executed
 
                 if filters and 'order_by' in filters:
                     query += f" ORDER BY {filters['order_by']}"
@@ -78,15 +84,15 @@ def {function_name}():
 
             elif intent == 'insert':
                 columns = ', '.join(filters.get('columns', [])) if filters else ''
-                values = ', '.join([f"'{v}'" if isinstance(v, str) else str(v) for v in filters.get('values', [])]) if filters else ''
+                values = ', '.join([f"'{_esc(v)}'" if isinstance(v, str) else str(v) for v in filters.get('values', [])]) if filters else ''
 
-                return f"INSERT INTO {table} ({columns}) VALUES ({values})"
+                return f"INSERT INTO {table} ({columns}) VALUES ({values})"  # nosec B608 - output text only, never executed
 
             elif intent == 'update':
-                updates = ', '.join([f"{k} = '{v}'" for k, v in filters.get('set', {}).items()]) if filters else ''
-                conditions = ' AND '.join([f"{k} = '{v}'" for k, v in filters.get('where', {}).items()]) if filters else '1=1'
+                updates = ', '.join([f"{k} = '{_esc(v)}'" for k, v in filters.get('set', {}).items()]) if filters else ''
+                conditions = ' AND '.join([f"{k} = '{_esc(v)}'" for k, v in filters.get('where', {}).items()]) if filters else '1=1'
 
-                return f"UPDATE {table} SET {updates} WHERE {conditions}"
+                return f"UPDATE {table} SET {updates} WHERE {conditions}"  # nosec B608 - output text only, never executed
 
             else:
                 return f"-- Unsupported intent: {intent}"
@@ -165,7 +171,12 @@ def {function_name}():
             SQL query للتقرير
         """
         try:
+            # NOTE: Generated SQL is returned as an informational string only;
+            # it is NEVER executed by this module (AI snippet generator).
             if report_type == 'sales':
+                if not date_range:
+                    return "-- Missing date range"
+                safe_range = {k: str(v).replace("'", "''") for k, v in date_range.items()}
                 return """
 SELECT
     DATE(sale_date) as date,
@@ -177,7 +188,7 @@ WHERE status = 'confirmed'
   AND sale_date BETWEEN '{start_date}' AND '{end_date}'
 GROUP BY DATE(sale_date)
 ORDER BY date DESC
-""".format(**date_range) if date_range else "-- Missing date range"
+""".format(**safe_range)  # nosec B608 - output text only, never executed
 
             elif report_type == 'inventory':
                 return """

@@ -76,13 +76,18 @@ def _format_num(value):
 
 
 def _status_badge(status):
-    """Map payment status to a Bootstrap badge with Arabic label."""
+    """Map payment status to a Bootstrap badge with Arabic label.
+
+    Markup() here is safe: the label is passed through escape() and the
+    badge class comes from a hardcoded allowlist map (never user input),
+    so there is no XSS vector. nosec B704.
+    """
     key = str(status or '').strip().lower()
     cls, label = _STATUS_BADGE_MAP.get(key, (None, None))
     if cls is None:
         cls, label = 'secondary', str(status or '')
-    return Markup('<span class="badge badge-{}">{}</span>'.format(
-        cls, escape(label)))
+    return Markup('<span class="badge badge-{}">{}</span>'.format(  # nosec B704
+        escape(cls), escape(label)))
 
 
 def create_app(config_class=Config):  # noqa: C901
@@ -515,7 +520,7 @@ if __name__ == '__main__':  # noqa: C901
         app.logger.info("ENABLE_SCHEDULERS=0 — automatic backup scheduler disabled")
 
     port = int(os.environ.get('PORT', 5000))
-    host = os.environ.get('HOST', '0.0.0.0')
+    host = os.environ.get('HOST', '0.0.0.0')  # nosec B104 - bind address is operator-controlled via HOST env; deployed behind reverse proxy/container for multi-branch access
     debug_mode = os.environ.get('DEBUG', 'false').lower() in ('true', '1', 'yes')
 
     app.logger.info("Starting UAE-Sale System")

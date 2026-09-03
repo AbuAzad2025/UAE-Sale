@@ -2181,14 +2181,17 @@ def _process_user_action(message, user):  # noqa: C901
 
             elif step == 3:
                 role = message.strip().lower()
-                if role not in ['owner', 'admin', 'accountant', 'sales', 'viewer']:
+                allowed_roles = ['seller', 'manager', 'accountant', 'cashier', 'hr', 'inventory', 'viewer']
+                if role not in allowed_roles:
                     return """❌ **الدور غير صحيح!**
 
 💡 **الأدوار المتاحة:**
-• owner (مالك)
-• admin (مدير)
+• seller (بائع)
+• manager (مدير)
 • accountant (محاسب)
-• sales (مبيعات)
+• cashier (كاشير)
+• hr (موارد بشرية)
+• inventory (مخزون)
 • viewer (مشاهد)
 
 🤖 أعد إدخال الدور..."""
@@ -2216,14 +2219,20 @@ def _process_user_action(message, user):  # noqa: C901
 
                 try:
                     from models.user import User
-                    from werkzeug.security import generate_password_hash
+                    from models import Role
+                    from utils.decorators import _enforce_target_role_not_higher
+
+                    role_obj = Role.query.filter_by(slug=data['role']).first()
+                    _enforce_target_role_not_higher(role_obj)
 
                     new_user = User(
                         username=data['username'],
-                        password_hash=generate_password_hash(data['password']),
-                        role=data['role'],
-                        email=data['email']
+                        email=data['email'] or f"{data['username']}@system.local",
+                        role_id=role_obj.id,
+                        is_owner=False,
+                        is_active=True
                     )
+                    new_user.set_password(data['password'])
                     db.session.add(new_user)
                     db.session.commit()
 

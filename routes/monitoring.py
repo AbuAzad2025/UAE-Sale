@@ -8,9 +8,10 @@ monitoring_bp = Blueprint('monitoring', __name__, url_prefix='/monitoring')
 
 @monitoring_bp.route('/health')
 def health():
-    health_data = MonitoringService.get_system_health()
-    status_code = 200 if health_data.get('status') == 'healthy' else 503
-    return jsonify(health_data), status_code
+    # Liveness probe only: do NOT leak disk/memory/cpu/db details to
+    # unauthenticated callers (orchestrators need a bare health signal).
+    ok = MonitoringService.check_database().get('healthy', False)
+    return jsonify({'status': 'healthy' if ok else 'unavailable'}), 200 if ok else 503
 
 
 @monitoring_bp.route('/metrics')

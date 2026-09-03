@@ -5,7 +5,7 @@ from flask_login import login_required, current_user
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from extensions import db, cache
-from models import Sale, Customer, Product, GLAccount, GLJournalLine
+from models import Sale, Customer, Product, GLAccount, GLJournalLine, get_current_tenant_id
 from services.stock_service import StockService
 
 # Dashboard cache TTL in seconds (60s = short enough to stay fresh,
@@ -41,9 +41,33 @@ def dashboard():  # noqa: C901
 
         stats = {}
 
+        # ── Per-role data visibility ────────────────────────────────────
+        # Each aggregate below is computed ONLY for roles allowed to see it
+        # (defense in depth: the template gates sections too, but sensitive
+        # numbers never even enter `stats` for unauthorized roles).
+        can_sales = current_user.has_permission('manage_sales')
+        can_reports = current_user.has_permission('view_reports')
+        can_customers = current_user.has_permission('manage_customers')
+        can_products = current_user.has_permission('manage_products')
+        can_view_products = current_user.has_permission('view_products')
+        can_warehouse = current_user.has_permission('manage_warehouse')
+        can_payments = current_user.has_permission('manage_payments')
+        can_ledger = current_user.has_permission('view_ledger')
+
+        show_sales_card = can_sales or can_reports
+        show_customers_card = can_customers or can_reports
+        show_receivables_card = can_payments or can_reports or can_ledger
+        show_products_card = can_products or can_view_products or can_warehouse
+        # Recent-sales rows carry customer PII (names + phones): sales staff only.
+        show_recent_table = can_sales
+
         # ── Cached aggregate queries ──────────────────────────────────
         # Cache per-day key so stats refresh at midnight automatically.
-        cache_key_prefix = f'dashboard:{today}'
+        # SECURITY: the key MUST include the effective tenant — aggregates are
+        # tenant-filtered at query time, so a tenant-agnostic key would serve
+        # one tenant's numbers to another (cache bleed). None = owner/global.
+        tenant_key = get_current_tenant_id()
+        cache_key_prefix = f'dashboard:{tenant_key}:{today}'
 
         def _cached(key, fn):
             """Return cached value or compute, store, and return."""
@@ -55,38 +79,41 @@ def dashboard():  # noqa: C901
             cache.set(full_key, val, timeout=DASHBOARD_CACHE_TTL)
             return val
 
-        stats['customers_count'] = _cached('customers',
-                                           lambda: Customer.query.filter_by(is_active=True).count())
+        if show_customers_card:
+            stats['customers_count'] = _cached('customers',
+                                               lambda: Customer.query.filter_by(is_active=True).count())
 
-        stats['products_count'] = _cached('products',
-                                          lambda: Product.query.filter_by(is_active=True).count())
+        if show_products_card:
+            stats['products_count'] = _cached('products',
+                                              lambda: Product.query.filter_by(is_active=True).count())
 
-        low_stock = _cached('low_stock', lambda: [] if not hasattr(StockService, 'get_low_stock_products') else StockService.get_low_stock_products(limit=10))
-        stats['low_stock_count'] = len(low_stock)
-        stats['low_stock_products'] = low_stock
+            low_stock = _cached('low_stock', lambda: [] if not hasattr(StockService, 'get_low_stock_products') else StockService.get_low_stock_products(limit=10))
+            stats['low_stock_count'] = len(low_stock)
+            stats['low_stock_products'] = low_stock
 
-        out_of_stock = _cached('out_of_stock', lambda: [] if not hasattr(StockService, 'get_out_of_stock_products') else StockService.get_out_of_stock_products())  # noqa: E501
-        stats['out_of_stock_count'] = len(out_of_stock)
+            out_of_stock = _cached('out_of_stock', lambda: [] if not hasattr(StockService, 'get_out_of_stock_products') else StockService.get_out_of_stock_products())  # noqa: E501
+            stats['out_of_stock_count'] = len(out_of_stock)
 
-        def _today_sales():
-            return db.session.query(
-                func.count(Sale.id), func.sum(Sale.amount_base)
-            ).filter(func.date(Sale.sale_date) == today,
-                     Sale.status == 'confirmed').first()
+        if show_sales_card:
+            def _today_sales():
+                return db.session.query(
+                    func.count(Sale.id), func.sum(Sale.amount_base)
+                ).filter(func.date(Sale.sale_date) == today,
+                         Sale.status == 'confirmed').first()
 
-        today_sales = _cached('today_sales', _today_sales)
-        stats['today_sales_count'] = today_sales[0] or 0
-        stats['today_sales_amount'] = float(today_sales[1] or 0)
+            today_sales = _cached('today_sales', _today_sales)
+            stats['today_sales_count'] = today_sales[0] or 0
+            stats['today_sales_amount'] = float(today_sales[1] or 0)
 
-        def _month_sales():
-            return db.session.query(
-                func.count(Sale.id), func.sum(Sale.amount_base)
-            ).filter(func.date(Sale.sale_date) >= month_start,
-                     Sale.status == 'confirmed').first()
+            def _month_sales():
+                return db.session.query(
+                    func.count(Sale.id), func.sum(Sale.amount_base)
+                ).filter(func.date(Sale.sale_date) >= month_start,
+                         Sale.status == 'confirmed').first()
 
-        month_sales = _cached('month_sales', _month_sales)
-        stats['month_sales_count'] = month_sales[0] or 0
-        stats['month_sales_amount'] = float(month_sales[1] or 0)
+            month_sales = _cached('month_sales', _month_sales)
+            stats['month_sales_count'] = month_sales[0] or 0
+            stats['month_sales_amount'] = float(month_sales[1] or 0)
 
         if current_user.can_see_costs():
             def _month_profit():
@@ -110,13 +137,14 @@ def dashboard():  # noqa: C901
                     return Decimal('0')
             stats['month_profit'] = float(_cached('month_profit', _month_profit))
 
-        def _receivables():
-            return db.session.query(
-                func.sum(Sale.amount_base - Sale.paid_amount_base)
-            ).filter(Sale.status == 'confirmed',
-                     Sale.balance_due > 0).scalar() or Decimal('0')
+        if show_receivables_card:
+            def _receivables():
+                return db.session.query(
+                    func.sum(Sale.amount_base - Sale.paid_amount_base)
+                ).filter(Sale.status == 'confirmed',
+                         Sale.balance_due > 0).scalar() or Decimal('0')
 
-        stats['total_receivables'] = float(_cached('receivables', _receivables))
+            stats['total_receivables'] = float(_cached('receivables', _receivables))
 
         # GL balances (cost-sensitive, cached per user role)
         if current_user.can_see_costs():
@@ -133,19 +161,21 @@ def dashboard():  # noqa: C901
             gl_balances = _cached('gl_balances', _gl_balances)
             stats.update(gl_balances)
 
-        # Recent sales (small query, cached for consistency)
-        def _recent_sales():
-            return [s.to_dict() if hasattr(s, 'to_dict') else {
-                'id': s.id, 'sale_number': s.sale_number,
-                'amount': float(s.amount_base or 0),
-                'date': s.sale_date.strftime('%Y-%m-%d') if s.sale_date else '',
-                'customer': s.customer.name if s.customer else 'عميل نقدي',
-                'seller': s.seller.username if s.seller else '',
-            } for s in Sale.query.options(
-                joinedload(Sale.customer), joinedload(Sale.seller)
-            ).filter_by(status='confirmed').order_by(Sale.sale_date.desc()).limit(10).all()]
+        # Recent sales (small query, cached for consistency).
+        # Gated on manage_sales: rows expose customer PII (names + phones).
+        if show_recent_table:
+            def _recent_sales():
+                return [s.to_dict() if hasattr(s, 'to_dict') else {
+                    'id': s.id, 'sale_number': s.sale_number,
+                    'amount': float(s.amount_base or 0),
+                    'date': s.sale_date.strftime('%Y-%m-%d') if s.sale_date else '',
+                    'customer': s.customer.name if s.customer else 'عميل نقدي',
+                    'seller': s.seller.username if s.seller else '',
+                } for s in Sale.query.options(
+                    joinedload(Sale.customer), joinedload(Sale.seller)
+                ).filter_by(status='confirmed').order_by(Sale.sale_date.desc()).limit(10).all()]
 
-        stats['recent_sales_data'] = _cached('recent_sales', _recent_sales)
+            stats['recent_sales_data'] = _cached('recent_sales', _recent_sales)
 
         if current_user.is_seller():
             def _my_today():
@@ -159,10 +189,12 @@ def dashboard():  # noqa: C901
             stats['my_today_sales_count'] = my_today[0] or 0
             stats['my_today_sales_amount'] = float(my_today[1] or 0)
 
-        # Pass raw ORM objects for template rendering (un-cached per-request)
-        stats['recent_sales'] = Sale.query.options(
-            joinedload(Sale.customer), joinedload(Sale.seller)
-        ).filter_by(status='confirmed').order_by(Sale.sale_date.desc()).limit(10).all()
+        # Pass raw ORM objects for template rendering (un-cached per-request).
+        # Same PII gate as above.
+        if show_recent_table:
+            stats['recent_sales'] = Sale.query.options(
+                joinedload(Sale.customer), joinedload(Sale.seller)
+            ).filter_by(status='confirmed').order_by(Sale.sale_date.desc()).limit(10).all()
 
         return render_template('dashboard.html', stats=stats)
 

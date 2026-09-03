@@ -189,6 +189,25 @@ def hr_user(db, all_permissions):
 
 
 @pytest.fixture(scope='function')
+def tenant1_seller_user(db, all_permissions):
+    """Seller bound to tenant 1 (for cross-tenant cache-bleed tests)."""
+    role = Role(name='T1Seller', name_ar='بائع 1', slug='seller_t1', permissions=[
+        all_permissions['manage_sales'],
+        all_permissions['manage_customers'],
+        all_permissions['manage_products'],
+    ])
+    db.session.add(role)
+    db.session.flush()
+    user = User(username='t1_seller_iso', email='t1_seller_iso@test.com',
+                full_name='T1 Seller', is_owner=False, is_active=True,
+                role_id=role.id, tenant_id=1)
+    user.set_password('Pass123!')
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+@pytest.fixture(scope='function')
 def other_tenant_user(db, all_permissions):
     """A user in a DIFFERENT tenant for cross-tenant isolation tests."""
     role = Role(name='OtherTenant', name_ar='مستأجر آخر', slug='manager',
@@ -678,6 +697,114 @@ class TestDashboardQuickActionsIsolation:
         for url in ['/sales/create', '/customers/create',
                     '/products/create', '/reports/sales']:
             assert url not in data, f"HR sees card URL {url}"
+
+
+# ── Phase 4b: Dashboard DATA Scoping ──────────────────────────────────────────
+
+class TestDashboardDataScoping:
+    """Financial aggregates and PII rows render only for in-scope roles.
+
+    Section markers (hardcoded Arabic strings, locale-independent):
+      sales card 'مبيعات اليوم' · customers 'إجمالي الزبائن' ·
+      receivables 'الذمم المدينة' · products 'منتجات نشطة' ·
+      recent-sales table 'آخر المبيعات'.
+    """
+
+    def test_seller_sees_sales_data_not_receivables(self, client, seller_user):
+        _login(client, seller_user)
+        data = client.get('/dashboard').data.decode()
+        assert 'مبيعات اليوم' in data
+        assert 'إجمالي الزبائن' in data
+        assert 'منتجات نشطة' in data
+        assert 'آخر المبيعات' in data
+        assert 'الذمم المدينة' not in data
+
+    def test_manager_sees_all_sections(self, client, manager_user):
+        _login(client, manager_user)
+        data = client.get('/dashboard').data.decode()
+        for marker in ['مبيعات اليوم', 'إجمالي الزبائن', 'الذمم المدينة',
+                       'منتجات نشطة', 'آخر المبيعات']:
+            assert marker in data, f"Manager missing section {marker}"
+
+    def test_accountant_sees_receivables_not_pii_table(self, client, accountant_user):
+        _login(client, accountant_user)
+        data = client.get('/dashboard').data.decode()
+        assert 'الذمم المدينة' in data
+        assert 'مبيعات اليوم' in data  # via view_reports
+        assert 'آخر المبيعات' not in data  # customer PII: manage_sales only
+
+    def test_cashier_sees_cards_not_pii_table(self, client, cashier_user):
+        _login(client, cashier_user)
+        data = client.get('/dashboard').data.decode()
+        assert 'مبيعات اليوم' in data
+        assert 'الذمم المدينة' in data
+        assert 'آخر المبيعات' not in data
+
+    def test_viewer_sees_cards_not_pii_table(self, client, viewer_user):
+        _login(client, viewer_user)
+        data = client.get('/dashboard').data.decode()
+        assert 'مبيعات اليوم' in data
+        assert 'آخر المبيعات' not in data
+
+    def test_inventory_sees_products_only(self, client, inventory_user):
+        _login(client, inventory_user)
+        data = client.get('/dashboard').data.decode()
+        assert 'منتجات نشطة' in data
+        for marker in ['مبيعات اليوم', 'إجمالي الزبائن', 'الذمم المدينة',
+                       'آخر المبيعات']:
+            assert marker not in data, f"Inventory sees section {marker}"
+
+    def test_hr_sees_no_business_data(self, client, hr_user):
+        _login(client, hr_user)
+        resp = client.get('/dashboard')
+        assert resp.status_code == 200
+        data = resp.data.decode()
+        for marker in ['مبيعات اليوم', 'إجمالي الزبائن', 'الذمم المدينة',
+                       'منتجات نشطة', 'آخر المبيعات']:
+            assert marker not in data, f"HR sees section {marker}"
+
+    def test_dashboard_cache_is_tenant_scoped(
+        self, client, seller_user, tenant1_seller_user, db
+    ):
+        """Regression: dashboard aggregates cached for one tenant must never
+        leak into another tenant's dashboard (cache key includes tenant).
+
+        NOTE: the template renders aggregates (today_sales_amount, counts)
+        from the CACHE, but recent-sales rows from a fresh ORM query. So the
+        bleed vector is the aggregate: seed a tenant-9999 sale big enough to
+        move today_sales_amount, prime the cache, then assert the other
+        tenant's page does not show it.
+        """
+        # Seed a confirmed TODAY sale + customer in tenant 9999
+        other = Customer(
+            name='T9999 Cache Customer', name_ar='عميل كاش 9999',
+            phone='+971500000001', is_active=True, tenant_id=9999,
+        )
+        db.session.add(other)
+        db.session.flush()
+        sale = Sale(
+            sale_number='S-CACHE-9999', customer_id=other.id,
+            total_amount=Decimal('7777'), amount_base=Decimal('7777'),
+            paid_amount=Decimal('0'), paid_amount_base=Decimal('0'),
+            balance_due=Decimal('7777'), currency='AED',
+            exchange_rate=Decimal('1'), payment_status='unpaid',
+            status='confirmed', is_active=True, tenant_id=9999,
+        )
+        db.session.add(sale)
+        db.session.commit()
+
+        # Prime the cache as the tenant-less seller (unfiltered context):
+        # page shows the 7,777 aggregate.
+        _login(client, seller_user)
+        assert '7,777' in client.get('/dashboard').data.decode()
+        client.get('/auth/logout', follow_redirects=True)
+
+        # Tenant-1 seller has no sales: must see 0, never the cached 7,777.
+        # (On the old tenant-agnostic cache key this fails: the 7,777 bleeds.)
+        _login(client, tenant1_seller_user)
+        data = client.get('/dashboard').data.decode()
+        assert '7,777' not in data
+        assert 'T9999 Cache Customer' not in data
 
 
 # ── Phase 5: Master Key / Super Admin Scoping ───────────────────────────────

@@ -1,9 +1,6 @@
 # Bandit security scanner configuration
 # Excludes directories that are not production code
 
-tests:
-  - ALL
-
 skips:
   # B101: assert used — common in Flask/Django, low risk in web apps
   - B101

@@ -136,6 +136,59 @@ def viewer_user(db, all_permissions):
 
 
 @pytest.fixture(scope='function')
+def cashier_user(db, all_permissions):
+    """Cashier: manage_payments + view_reports ONLY."""
+    role = Role(name='Cashier', name_ar='كاشير', slug='cashier', permissions=[
+        all_permissions['manage_payments'],
+        all_permissions['view_reports'],
+    ])
+    db.session.add(role)
+    db.session.flush()
+    user = User(username='cashier_iso', email='cashier_iso@test.com',
+                full_name='Cashier', is_owner=False, is_active=True,
+                role_id=role.id)
+    user.set_password('Pass123!')
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+@pytest.fixture(scope='function')
+def inventory_user(db, all_permissions):
+    """Inventory: manage_warehouse + view_products ONLY."""
+    role = Role(name='Inventory', name_ar='مخازن', slug='inventory', permissions=[
+        all_permissions['manage_warehouse'],
+        all_permissions['view_products'],
+    ])
+    db.session.add(role)
+    db.session.flush()
+    user = User(username='inventory_iso', email='inventory_iso@test.com',
+                full_name='Inventory', is_owner=False, is_active=True,
+                role_id=role.id)
+    user.set_password('Pass123!')
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+@pytest.fixture(scope='function')
+def hr_user(db, all_permissions):
+    """HR: manage_hr ONLY."""
+    role = Role(name='HR', name_ar='موارد بشرية', slug='hr', permissions=[
+        all_permissions['manage_hr'],
+    ])
+    db.session.add(role)
+    db.session.flush()
+    user = User(username='hr_iso', email='hr_iso@test.com',
+                full_name='HR', is_owner=False, is_active=True,
+                role_id=role.id)
+    user.set_password('Pass123!')
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+@pytest.fixture(scope='function')
 def other_tenant_user(db, all_permissions):
     """A user in a DIFFERENT tenant for cross-tenant isolation tests."""
     role = Role(name='OtherTenant', name_ar='مستأجر آخر', slug='manager',
@@ -313,6 +366,105 @@ class TestViewerRouteIsolation:
         )
 
 
+class TestCashierRouteIsolation:
+    """Cashier can access payments and reports, but nothing else."""
+
+    @pytest.mark.parametrize('url', [
+        '/payments/receipts',
+    ])
+    def test_cashier_can_access_payments(self, client, cashier_user, url):
+        _login(client, cashier_user)
+        resp = client.get(url)
+        assert resp.status_code in (200, 302), (
+            f"Cashier should access {url}, got {resp.status_code}"
+        )
+
+    @pytest.mark.parametrize('url', [
+        '/sales/',
+        '/customers/',
+        '/products/',
+        '/purchases/',
+        '/ledger/',
+        '/hr/',
+        '/warehouse/',
+        '/expenses/',
+        '/owner/dashboard',
+        '/users/',
+    ])
+    def test_cashier_blocked_from_non_permitted_routes(self, client, cashier_user, url):
+        _login(client, cashier_user)
+        resp = client.get(url)
+        assert resp.status_code in (403, 404, 302), (
+            f"Cashier should be blocked from {url}, got {resp.status_code}"
+        )
+
+
+class TestInventoryRouteIsolation:
+    """Inventory can access warehouse, but nothing else."""
+
+    @pytest.mark.parametrize('url', [
+        '/warehouse/',
+    ])
+    def test_inventory_can_access_warehouse(self, client, inventory_user, url):
+        _login(client, inventory_user)
+        resp = client.get(url)
+        assert resp.status_code in (200, 302), (
+            f"Inventory should access {url}, got {resp.status_code}"
+        )
+
+    @pytest.mark.parametrize('url', [
+        '/sales/',
+        '/customers/',
+        '/products/',
+        '/purchases/',
+        '/ledger/',
+        '/hr/',
+        '/payments/',
+        '/expenses/',
+        '/owner/dashboard',
+        '/users/',
+    ])
+    def test_inventory_blocked_from_non_permitted_routes(self, client, inventory_user, url):
+        _login(client, inventory_user)
+        resp = client.get(url)
+        assert resp.status_code in (403, 404, 302), (
+            f"Inventory should be blocked from {url}, got {resp.status_code}"
+        )
+
+
+class TestHRRouteIsolation:
+    """HR can access HR module, but nothing else."""
+
+    @pytest.mark.parametrize('url', [
+        '/hr/',
+    ])
+    def test_hr_can_access_hr_module(self, client, hr_user, url):
+        _login(client, hr_user)
+        resp = client.get(url)
+        assert resp.status_code in (200, 302), (
+            f"HR should access {url}, got {resp.status_code}"
+        )
+
+    @pytest.mark.parametrize('url', [
+        '/sales/',
+        '/customers/',
+        '/products/',
+        '/purchases/',
+        '/ledger/',
+        '/warehouse/',
+        '/payments/',
+        '/expenses/',
+        '/owner/dashboard',
+        '/users/',
+    ])
+    def test_hr_blocked_from_non_permitted_routes(self, client, hr_user, url):
+        _login(client, hr_user)
+        resp = client.get(url)
+        assert resp.status_code in (403, 404, 302), (
+            f"HR should be blocked from {url}, got {resp.status_code}"
+        )
+
+
 # ── Phase 3: Tenant Isolation ───────────────────────────────────────────────
 
 class TestCrossTenantIsolation:
@@ -389,6 +541,36 @@ class TestDashboardRendering:
         resp = client.get('/owner/dashboard')
         assert resp.status_code in (403, 404, 302)
 
+    def test_cashier_dashboard_accessible(self, client, cashier_user):
+        _login(client, cashier_user)
+        resp = client.get('/dashboard')
+        assert resp.status_code == 200
+
+    def test_inventory_dashboard_accessible(self, client, inventory_user):
+        _login(client, inventory_user)
+        resp = client.get('/dashboard')
+        assert resp.status_code == 200
+
+    def test_hr_dashboard_accessible(self, client, hr_user):
+        _login(client, hr_user)
+        resp = client.get('/dashboard')
+        assert resp.status_code == 200
+
+    def test_cashier_cannot_access_owner_dashboard(self, client, cashier_user):
+        _login(client, cashier_user)
+        resp = client.get('/owner/dashboard')
+        assert resp.status_code in (403, 404, 302)
+
+    def test_inventory_cannot_access_owner_dashboard(self, client, inventory_user):
+        _login(client, inventory_user)
+        resp = client.get('/owner/dashboard')
+        assert resp.status_code in (403, 404, 302)
+
+    def test_hr_cannot_access_owner_dashboard(self, client, hr_user):
+        _login(client, hr_user)
+        resp = client.get('/owner/dashboard')
+        assert resp.status_code in (403, 404, 302)
+
 
 class TestCommandPaletteIsolation:
     """Command palette (Ctrl+K) must only show permitted links."""
@@ -411,6 +593,40 @@ class TestCommandPaletteIsolation:
                         'purchases.create']:
                 assert cmd not in data, f"Viewer sees write command {cmd}"
 
+    def test_cashier_palette_excludes_ledger_and_sales(self, client, cashier_user):
+        # Cashier has manage_payments + view_reports only.
+        # Palette/nav entries render resolved URLs (url_for output), so we
+        # assert those URLs are absent from the whole dashboard page.
+        _login(client, cashier_user)
+        resp = client.get('/dashboard')
+        data = resp.data.decode()
+        if 'commandPalette' in data:
+            for url in ['/sales/create', '/ledger/', '/products/create',
+                        '/purchases/create']:
+                assert url not in data, f"Cashier sees command URL {url}"
+            # But the permitted payments entry must be present
+            assert '/payments/receipts/create' in data or 'payments' in data.lower()
+
+    def test_inventory_palette_excludes_ledger_and_sales(self, client, inventory_user):
+        # Inventory has manage_warehouse + view_products only
+        _login(client, inventory_user)
+        resp = client.get('/dashboard')
+        data = resp.data.decode()
+        if 'commandPalette' in data:
+            for url in ['/sales/create', '/ledger/',
+                        '/payments/receipts/create', '/products/create']:
+                assert url not in data, f"Inventory sees command URL {url}"
+
+    def test_hr_palette_has_no_finance_commands(self, client, hr_user):
+        # HR has manage_hr only
+        _login(client, hr_user)
+        resp = client.get('/dashboard')
+        data = resp.data.decode()
+        if 'commandPalette' in data:
+            for url in ['/sales/create', '/ledger/',
+                        '/payments/receipts/create']:
+                assert url not in data, f"HR sees finance command URL {url}"
+
 
 class TestDashboardQuickActionsIsolation:
     """Quick action cards must only appear for permitted roles."""
@@ -432,6 +648,36 @@ class TestDashboardQuickActionsIsolation:
         # should NOT render for a viewer (they have no manage_* perms)
         # We verify by checking the template conditionals are present
         assert 'has_permission' in data or 'New Invoice' not in data
+
+    def test_cashier_sees_reports_card_only(self, client, cashier_user):
+        # Cashier has manage_payments + view_reports: only the reports
+        # quick-action card may render; no sales/customers/products cards.
+        _login(client, cashier_user)
+        resp = client.get('/dashboard')
+        data = resp.data.decode()
+        assert '/reports/sales' in data
+        for url in ['/sales/create', '/customers/create',
+                    '/products/create']:
+            assert url not in data, f"Cashier sees card URL {url}"
+
+    def test_inventory_sees_no_quick_action_cards(self, client, inventory_user):
+        # Inventory has manage_warehouse + view_products: none of the four
+        # card gates (manage_sales/customers/products, view_reports) pass.
+        _login(client, inventory_user)
+        resp = client.get('/dashboard')
+        data = resp.data.decode()
+        for url in ['/sales/create', '/customers/create',
+                    '/products/create', '/reports/sales']:
+            assert url not in data, f"Inventory sees card URL {url}"
+
+    def test_hr_sees_no_quick_action_cards(self, client, hr_user):
+        # HR has manage_hr only: no quick-action card may render.
+        _login(client, hr_user)
+        resp = client.get('/dashboard')
+        data = resp.data.decode()
+        for url in ['/sales/create', '/customers/create',
+                    '/products/create', '/reports/sales']:
+            assert url not in data, f"HR sees card URL {url}"
 
 
 # ── Phase 5: Master Key / Super Admin Scoping ───────────────────────────────

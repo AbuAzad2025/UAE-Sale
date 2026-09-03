@@ -286,10 +286,11 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
         return reversed_entry
 
 
-class GLJournalLine(db.Model):
+class GLJournalLine(TenantScopedMixin, db.Model):
     __tablename__ = 'gl_journal_lines'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     entry_id = db.Column(db.Integer, db.ForeignKey('gl_journal_entries.id'), nullable=False, index=True)
     account_id = db.Column(db.Integer, db.ForeignKey('gl_accounts.id'), nullable=False, index=True)
     description = db.Column(db.String(255))

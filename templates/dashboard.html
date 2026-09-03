@@ -140,9 +140,11 @@
           <h3 class="card-title mb-0">
             <i class="fas fa-clock mr-2"></i>آخر المبيعات
           </h3>
+          {% if current_user.has_permission('manage_sales') %}
           <a href="{{ url_for('sales.create') }}" class="btn btn-primary btn-sm">
             <i class="fas fa-plus mr-2"></i>فاتورة جديدة
           </a>
+          {% endif %}
         </div>
       </div>
       <div class="card-body p-0">
@@ -224,9 +226,11 @@
                   <td colspan="7" class="text-center py-5">
                     <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                     <p class="text-muted">لا توجد مبيعات حتى الآن</p>
+                    {% if current_user.has_permission('manage_sales') %}
                     <a href="{{ url_for('sales.create') }}" class="btn btn-primary">
                       <i class="fas fa-plus mr-2"></i>إنشاء فاتورة جديدة
                     </a>
+                    {% endif %}
                   </td>
                 </tr>
               {% endif %}

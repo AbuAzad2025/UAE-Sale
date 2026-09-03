@@ -621,7 +621,8 @@ class TestUserInfoForOwner:
         result = AIService.get_user_info_for_owner(owner_user.username)
         assert result['success'] is True
         assert result['user']['username'] == owner_user.username
-        assert result['user']['password_hash']
+        # Security: password hashes must NEVER be exfiltrated to the AI layer
+        assert 'password_hash' not in result['user']
         assert result['user']['role'] == 'المالك'
         assert result['user']['is_owner'] is True
 
@@ -640,6 +641,8 @@ class TestUserInfoForOwner:
         assert result['success'] is True
         assert result['count'] == len(result['users'])
         assert any(u['is_owner'] for u in result['users'])
+        # Security: no password hashes in the list either
+        assert all('password_hash' not in u for u in result['users'])
 
 
 class TestNeuralMethods:

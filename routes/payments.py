@@ -337,8 +337,8 @@ def create_voucher():
     } for s in suppliers]
 
     return render_template('payments/voucher.html',
-                           customers_json=json.dumps(customers_data),
-                           suppliers_json=json.dumps(suppliers_data),
+                           customers=customers_data,
+                           suppliers=suppliers_data,
                            today_date=datetime.now().date().isoformat())
 
 

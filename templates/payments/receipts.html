@@ -230,7 +230,7 @@
                 <i class="fas fa-archive"></i>
               </button>
               <button type="button" class="btn btn-danger" 
-                      onclick="deleteItem('{{ item.type }}s', {{ item.id }}, '{{ item.number }}')" 
+                      onclick="deleteItem('{{ item.type }}s', {{ item.id }}, {{ item.number|tojson }})" 
                       title="حذف">
                 <i class="fas fa-trash"></i>
               </button>

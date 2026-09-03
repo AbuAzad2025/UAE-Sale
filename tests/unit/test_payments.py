@@ -5,6 +5,10 @@ Tests the payment workflow and financial calculations.
 """
 
 from decimal import Decimal
+import pytest
+
+from models import Customer
+from extensions import db as _db
 
 
 class TestReceiptCreation:
@@ -145,3 +149,23 @@ class TestPaymentStatus:
         db.session.commit()
         assert test_sale.payment_status == 'partial'
         assert test_sale.paid_amount_base == Decimal('75.000')
+
+class TestVoucherXssHardening:
+    """Regression: customer/supplier names must not break out of the JSON
+    <script> island in voucher.html (stored XSS)."""
+
+    def test_voucher_json_escapes_html(self, client, login_owner, db):
+        payload = '</div><img src=x onerror=alert(1)>'
+        c = Customer(name=payload, name_ar=payload, phone='+971500000001',
+                     customer_type='regular', is_active=True)
+        _db.session.add(c)
+        _db.session.commit()
+
+        resp = client.get('/payments/voucher/create')
+        assert resp.status_code == 200
+        html = resp.data.decode()
+        # The raw <img ...> must never appear unescaped inside the JSON island
+        assert '<img src=x onerror=alert(1)>' not in html
+        # tojson escapes '<' as \u003c and '>' as \u003e; ensure the escaped
+        # form is present (proof it went through tojson, not |safe)
+        assert '\\u003c' in html or '&lt;' in html

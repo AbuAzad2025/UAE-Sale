@@ -261,7 +261,7 @@
                   <i class="fas fa-file-invoice"></i>
                 </a>
                 <button type="button" class="btn btn-danger" 
-                        onclick="deleteItem('suppliers', {{ supplier.id }}, '{{ supplier.name }}')" 
+                        onclick="deleteItem('suppliers', {{ supplier.id }}, {{ supplier.name|tojson }})" 
                         title="حذف">
                   <i class="fas fa-trash"></i>
                 </button>

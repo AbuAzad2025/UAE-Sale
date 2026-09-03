@@ -7,6 +7,8 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import os
+import socket
+import ipaddress
 from datetime import datetime
 from urllib.parse import urlparse
 
@@ -49,6 +51,33 @@ class KnowledgeExpander:
         except Exception as e:
             print(f"Error saving sources: {e}")
 
+    def _validate_public_url(self, url):
+        """SSRF guard: allow only http/https to public (non-private) hosts."""
+        parsed = urlparse(url)
+        if parsed.scheme not in ('http', 'https'):
+            return False, 'يُسمح فقط بالروابط http/https'
+        host = parsed.hostname
+        if not host:
+            return False, 'رابط غير صحيح'
+        try:
+            ip = ipaddress.ip_address(host)
+        except ValueError:
+            # Not a literal IP — resolve DNS and reject private/loopback/reserved
+            try:
+                resolved = socket.getaddrinfo(host, None)
+                for r in resolved:
+                    cand = ipaddress.ip_address(r[4][0])
+                    if cand.is_private or cand.is_loopback or cand.is_link_local \
+                            or cand.is_reserved or cand.is_multicast:
+                        return False, 'الرابط يشير إلى عنوان داخلي/محجوز'
+            except socket.gaierror:
+                return False, 'تعذر التحقق من الرابط'
+        else:
+            if ip.is_private or ip.is_loopback or ip.is_link_local \
+                    or ip.is_reserved or ip.is_multicast:
+                return False, 'الرابط يشير إلى عنوان داخلي/محجوز'
+        return True, host
+
     def add_website(self, url, category='general', description=''):
         """إضافة موقع ويب كمصدر معرفة"""
         try:
@@ -63,6 +92,10 @@ class KnowledgeExpander:
                     'success': False,
                     'error': 'رابط غير صحيح'
                 }
+
+            ok, err = self._validate_public_url(url)
+            if not ok:
+                return {'success': False, 'error': err}
 
             # جلب المحتوى
             content = self._fetch_website_content(url)
@@ -118,7 +151,8 @@ class KnowledgeExpander:
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
 
-            response = requests.get(url, headers=headers, timeout=30)
+            response = requests.get(url, headers=headers, timeout=30,
+                                    allow_redirects=False)
             response.raise_for_status()
 
             # تحليل المحتوى

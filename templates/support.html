@@ -699,7 +699,7 @@
                 <div class="package-grid">
                     {% if packages %}
                         {% for package in packages %}
-                        <div class="package-card" onclick="selectPackage('{{ package.slug }}', {{ package.price }}, event)" data-package-id="{{ package.id }}">
+                        <div class="package-card" onclick="selectPackage({{ package.slug|tojson }}, {{ package.price }}, event)" data-package-id="{{ package.id }}">
                             <div class="package-name">{{ package.icon }} {{ package.name_ar }}</div>
                             <div class="package-price">${{ package.price }}</div>
                             {% if package.badge_text %}

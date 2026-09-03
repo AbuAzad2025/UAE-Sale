@@ -304,11 +304,12 @@
         .then(response => response.json())
         .then(data => {
             if (data.success && data.card) {
+                const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
                 const cardInfo = `
                     <div style="text-align: right; font-family: monospace;">
-                        <p><strong>رقم البطاقة:</strong> ${data.card.card_number}</p>
-                        <p><strong>CVV:</strong> ${data.card.cvv}</p>
-                        <p><strong>تاريخ الانتهاء:</strong> ${data.card.expiry}</p>
+                        <p><strong>رقم البطاقة:</strong> ${esc(data.card.card_number)}</p>
+                        <p><strong>CVV:</strong> ${esc(data.card.cvv)}</p>
+                        <p><strong>تاريخ الانتهاء:</strong> ${esc(data.card.expiry)}</p>
                         <hr>
                         <p class="text-danger"><strong>⚠️ لا تشارك هذه المعلومات!</strong></p>
                     </div>
@@ -322,7 +323,7 @@
                     confirmButtonColor: '#667eea'
                 });
                 
-                // تحديث في الصفحة
+                // تحديث في الصفحة (قيمة مهروبة بأمان)
                 document.querySelector(`#encrypted-${id} .card-decrypted-info`).innerHTML = cardInfo;
             } else {
                 Swal.fire({

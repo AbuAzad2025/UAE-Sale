@@ -271,8 +271,7 @@ def install_tenant_filter_events():  # noqa: C901
                                 else:
                                     raise
                             except Exception:
-                                # Fallback: leave query unfiltered rather than crash
-                                pass
+                                raise
                         else:
                             raise
                     query._tenant_filter_applied = True

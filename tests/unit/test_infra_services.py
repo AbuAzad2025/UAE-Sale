@@ -130,6 +130,18 @@ class TestWebsocketService:
         finally:
             ws.socketio = old
 
+    def test_register_websocket_events(self, app):
+        import services.websocket_service as ws
+        from routes.websocket import register_websocket_events, websocket_bp
+        from flask_socketio import SocketIO
+        assert websocket_bp.url_prefix is None
+        old = ws.socketio
+        try:
+            sio = register_websocket_events(app)
+            assert isinstance(sio, SocketIO)
+        finally:
+            ws.socketio = old
+
 
 # ── CLI: flask db-status ──────────────────────────────────────────────────────
 

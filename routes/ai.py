@@ -435,13 +435,12 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         if msg_lower.strip() == '4' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'رصيد':
-            # عرض رصيد العميل
-            from models.customer import Customer  # noqa: F811  (local import intentional)
+            from models.customer import Customer  # noqa: F811
             customers = Customer.query.filter_by(is_active=True).all()
+            del conversation_context[user_id]
             if customers:
-                _ = "\n".join([f"• {c.name}: {c.balance} درهم" for c in customers[:10]])
-                del conversation_context[user_id]
-                return """📊 **أرصدة العملاء:**
+                customers_list = "\n".join([f"• {c.name}: {c.balance} درهم" for c in customers[:10]])
+                return f"""📊 **أرصدة العملاء:**
 
 {customers_list}
 
@@ -450,7 +449,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
             else:
-                del conversation_context[user_id]
                 return """❌ **لا يوجد عملاء في النظام**
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
@@ -490,7 +488,7 @@ def _process_user_action(message, user):  # noqa: C901
                 data['current_balance'] = customer.balance
                 conversation_context[user_id]['data'] = data
                 conversation_context[user_id]['step'] = 2
-                return """✅ **تم العثور على العميل:** {customer.name}
+                return f"""✅ **تم العثور على العميل:** {customer.name}
 💰 **الرصيد الحالي:** {customer.balance} درهم
 
 📝 **الخطوة 2: الرصيد الجديد**
@@ -517,7 +515,7 @@ def _process_user_action(message, user):  # noqa: C901
 
                     del conversation_context[user_id]
 
-                    return """✅ **تم تعديل رصيد العميل بنجاح!**
+                    return f"""✅ **تم تعديل رصيد العميل بنجاح!**
 
 📋 **التفاصيل:**
 - العميل: {data['customer_name']}
@@ -749,15 +747,15 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
             if listener_response == 'help':
-                _ = ""
+                current_step_text = ""
                 if step == 1:
-                    _ = "اسم العميل"
+                    current_step_text = "اسم العميل"
                 elif step == 2:
-                    _ = "رقم الهاتف"
+                    current_step_text = "رقم الهاتف"
                 elif step == 3:
-                    _ = "العنوان"
+                    current_step_text = "العنوان"
 
-                return """💡 **مساعدة - الخطوة {step}:**
+                return f"""💡 **مساعدة - الخطوة {step}:**
 
 📝 **المطلوب حالياً:** {current_step_text}
 
@@ -844,7 +842,7 @@ def _process_user_action(message, user):  # noqa: C901
                     # مسح السياق
                     del conversation_context[user_id]
 
-                    return """✅ **تم إنشاء العميل بنجاح!**
+                    return f"""✅ **تم إنشاء العميل بنجاح!**
 
 📋 **التفاصيل:**
 - الاسم: {data['name']}
@@ -869,7 +867,7 @@ def _process_user_action(message, user):  # noqa: C901
 
                     # مسح السياق في حالة الخطأ
                     del conversation_context[user_id]
-                    return """❌ **خطأ في إنشاء العميل:**
+                    return f"""❌ **خطأ في إنشاء العميل:**
 
 {str(e)}
 
@@ -911,8 +909,8 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
             if listener_response == 'help':
-                _ = {1: "اسم المنتج", 2: "رقم القطعة", 3: "السعر", 4: "الكمية"}
-                return """💡 **مساعدة - الخطوة {step}:**
+                steps_text = {1: "اسم المنتج", 2: "رقم القطعة", 3: "السعر", 4: "الكمية"}
+                return f"""💡 **مساعدة - الخطوة {step}:**
 
 📝 **المطلوب حالياً:** {steps_text.get(step, 'غير معروف')}
 
@@ -999,7 +997,7 @@ def _process_user_action(message, user):  # noqa: C901
                     # مسح السياق
                     del conversation_context[user_id]
 
-                    return """✅ **تم إنشاء المنتج بنجاح!**
+                    return f"""✅ **تم إنشاء المنتج بنجاح!**
 
 📋 **التفاصيل:**
 - الاسم: {data['name']}
@@ -1024,7 +1022,7 @@ def _process_user_action(message, user):  # noqa: C901
 
                     # مسح السياق في حالة الخطأ
                     del conversation_context[user_id]
-                    return """❌ **خطأ في إنشاء المنتج:**
+                    return f"""❌ **خطأ في إنشاء المنتج:**
 
 {str(e)}
 
@@ -1063,8 +1061,8 @@ def _process_user_action(message, user):  # noqa: C901
                     from models.customer import Customer
                     customers = Customer.query.filter_by(is_active=True).limit(10).all()
                     if customers:
-                        _ = "\n".join([f"• {c.name} ({c.phone or 'لا يوجد هاتف'})" for c in customers])
-                        return """📋 **قائمة العملاء المتاحين:**
+                        customers_list = "\n".join([f"• {c.name} ({c.phone or 'لا يوجد هاتف'})" for c in customers])
+                        return f"""📋 **قائمة العملاء المتاحين:**
 
 {customers_list}
 
@@ -1113,8 +1111,8 @@ def _process_user_action(message, user):  # noqa: C901
                     from models.product import Product
                     products = Product.query.filter_by(is_active=True).limit(10).all()
                     if products:
-                        _ = "\n".join([f"• {p.name} - {p.regular_price} درهم (متوفر: {p.current_stock})" for p in products])
-                        return """📋 **قائمة المنتجات المتاحة:**
+                        products_list = "\n".join([f"• {p.name} - {p.regular_price} درهم (متوفر: {p.current_stock})" for p in products])
+                        return f"""📋 **قائمة المنتجات المتاحة:**
 
 {products_list}
 
@@ -1203,9 +1201,9 @@ def _process_user_action(message, user):  # noqa: C901
                     # مسح السياق
                     del conversation_context[user_id]
 
-                    _ = create_final_options('فاتورة', data['customer_name'], sale.id)
+                    final_options = create_final_options('فاتورة', data['customer_name'], sale.id)
 
-                    return """✅ **تم إنشاء الفاتورة بنجاح!**
+                    return f"""✅ **تم إنشاء الفاتورة بنجاح!**
 
 📋 **التفاصيل:**
 - العميل: {data['customer_name']}
@@ -1222,12 +1220,10 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
                 except Exception as e:
-                    # تدريب الذكاء المحلي من الخطأ
                     train_local_ai('create_sale', data, {'success': False, 'error': str(e)})
 
-                    # مسح السياق في حالة الخطأ
                     del conversation_context[user_id]
-                    return """❌ **خطأ في إنشاء الفاتورة:**
+                    return f"""❌ **خطأ في إنشاء الفاتورة:**
 
 {str(e)}
 
@@ -1347,9 +1343,9 @@ def _process_user_action(message, user):  # noqa: C901
                     # مسح السياق
                     del conversation_context[user_id]
 
-                    _ = create_final_options('استلام', data['customer_name'], payment.id)
+                    final_options = create_final_options('استلام', data['customer_name'], payment.id)
 
-                    return """✅ **تم استلام الدفعة بنجاح!**
+                    return f"""✅ **تم استلام الدفعة بنجاح!**
 
 📋 **التفاصيل:**
 - العميل: {data['customer_name']}
@@ -1365,12 +1361,10 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
                 except Exception as e:
-                    # تدريب الذكاء المحلي من الخطأ
                     train_local_ai('receive_payment', data, {'success': False, 'error': str(e)})
 
-                    # مسح السياق في حالة الخطأ
                     del conversation_context[user_id]
-                    return """❌ **خطأ في تسجيل الدفعة:**
+                    return f"""❌ **خطأ في تسجيل الدفعة:**
 
 {str(e)}
 
@@ -1490,9 +1484,9 @@ def _process_user_action(message, user):  # noqa: C901
                     # مسح السياق
                     del conversation_context[user_id]
 
-                    _ = create_final_options('إعطاء', data['customer_name'], payment.id)
+                    final_options = create_final_options('إعطاء', data['customer_name'], payment.id)
 
-                    return """✅ **تم إعطاء الدفعة بنجاح!**
+                    return f"""✅ **تم إعطاء الدفعة بنجاح!**
 
 📋 **التفاصيل:**
 - العميل: {data['customer_name']}
@@ -1508,12 +1502,10 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
                 except Exception as e:
-                    # تدريب الذكاء المحلي من الخطأ
                     train_local_ai('give_payment', data, {'success': False, 'error': str(e)})
 
-                    # مسح السياق في حالة الخطأ
                     del conversation_context[user_id]
-                    return """❌ **خطأ في تسجيل الدفعة:**
+                    return f"""❌ **خطأ في تسجيل الدفعة:**
 
 {str(e)}
 
@@ -1610,9 +1602,9 @@ def _process_user_action(message, user):  # noqa: C901
                     # مسح السياق
                     del conversation_context[user_id]
 
-                    _ = create_final_options('مصروف', data['description'], expense.id)
+                    final_options = create_final_options('مصروف', data['description'], expense.id)
 
-                    return """✅ **تم إنشاء المصروف بنجاح!**
+                    return f"""✅ **تم إنشاء المصروف بنجاح!**
 
 📋 **التفاصيل:**
 - الوصف: {data['description']}
@@ -1628,12 +1620,10 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
                 except Exception as e:
-                    # تدريب الذكاء المحلي من الخطأ
                     train_local_ai('create_expense', data, {'success': False, 'error': str(e)})
 
-                    # مسح السياق في حالة الخطأ
                     del conversation_context[user_id]
-                    return """❌ **خطأ في إنشاء المصروف:**
+                    return f"""❌ **خطأ في إنشاء المصروف:**
 
 {str(e)}
 
@@ -1763,10 +1753,10 @@ def _process_user_action(message, user):  # noqa: C901
 
                     del conversation_context[user_id]
 
-                    _ = f"- الرصيد الابتدائي: {data['initial_balance']} درهم" if data['initial_balance'] > 0 else "- لا يوجد رصيد مستحق"
-                    _ = f"- الرقم الضريبي: {data['tax_number']}" if data.get('tax_number') else ""
+                    balance_info = f"- الرصيد الابتدائي: {data['initial_balance']} درهم" if data['initial_balance'] > 0 else "- لا يوجد رصيد مستحق"
+                    tax_info = f"- الرقم الضريبي: {data['tax_number']}" if data.get('tax_number') else ""
 
-                    return """✅ **تم إنشاء المورد بنجاح!**
+                    return f"""✅ **تم إنشاء المورد بنجاح!**
 
 📋 **التفاصيل:**
 - الاسم: {data['name']}
@@ -1789,7 +1779,7 @@ def _process_user_action(message, user):  # noqa: C901
                 except Exception as e:
                     train_local_ai('create_supplier', data, {'success': False, 'error': str(e)})
                     del conversation_context[user_id]
-                    return """❌ **خطأ في إنشاء المورد:** {str(e)}
+                    return f"""❌ **خطأ في إنشاء المورد:** {str(e)}
 
 💡 **حاول مرة أخرى:** اكتب "مورد" ثم "1"
 
@@ -1925,7 +1915,7 @@ def _process_user_action(message, user):  # noqa: C901
 
                     del conversation_context[user_id]
 
-                    return """✅ **تم إنشاء المشتريات بنجاح!**
+                    return f"""✅ **تم إنشاء المشتريات بنجاح!**
 
 📋 **التفاصيل:**
 - المورد: {data['supplier_name']}
@@ -1947,7 +1937,7 @@ def _process_user_action(message, user):  # noqa: C901
                 except Exception as e:
                     train_local_ai('create_purchase', data, {'success': False, 'error': str(e)})
                     del conversation_context[user_id]
-                    return """❌ **خطأ في إنشاء المشتريات:** {str(e)}
+                    return f"""❌ **خطأ في إنشاء المشتريات:** {str(e)}
 
 💡 **حاول مرة أخرى:** اكتب "مشتريات" ثم "1"
 
@@ -2058,7 +2048,7 @@ def _process_user_action(message, user):  # noqa: C901
 
                     del conversation_context[user_id]
 
-                    return """✅ **تم إنشاء الشيك بنجاح!**
+                    return f"""✅ **تم إنشاء الشيك بنجاح!**
 
 📋 **التفاصيل:**
 - رقم الشيك: {data['cheque_number']}
@@ -2079,7 +2069,7 @@ def _process_user_action(message, user):  # noqa: C901
                 except Exception as e:
                     train_local_ai('create_cheque', data, {'success': False, 'error': str(e)})
                     del conversation_context[user_id]
-                    return """❌ **خطأ في إنشاء الشيك:** {str(e)}
+                    return f"""❌ **خطأ في إنشاء الشيك:** {str(e)}
 
 💡 **حاول مرة أخرى:** اكتب "شيك" ثم "1"
 
@@ -2093,8 +2083,8 @@ def _process_user_action(message, user):  # noqa: C901
             del conversation_context[user_id]
 
             if gl_entries:
-                _ = "\n".join([f"• #{g.id} - {g.description} - {g.debit_amount} درهم - {g.entry_date.strftime('%Y-%m-%d')}" for g in gl_entries])
-                return """✅ **دفتر الأستاذ (آخر 20 قيد):**
+                gl_list = "\n".join([f"• #{g.id} - {g.description} - {g.debit_amount} درهم - {g.entry_date.strftime('%Y-%m-%d')}" for g in gl_entries])
+                return f"""✅ **دفتر الأستاذ (آخر 20 قيد):**
 
 {gl_list}
 
@@ -2120,8 +2110,8 @@ def _process_user_action(message, user):  # noqa: C901
             del conversation_context[user_id]
 
             if warehouses:
-                _ = "\n".join([f"• {w.name} - {w.location or 'لا يوجد موقع'}" for w in warehouses])
-                return """✅ **جميع المستودعات ({len(warehouses)} مستودع):**
+                wh_list = "\n".join([f"• {w.name} - {w.location or 'لا يوجد موقع'}" for w in warehouses])
+                return f"""✅ **جميع المستودعات ({len(warehouses)} مستودع):**
 
 {wh_list}
 
@@ -2241,7 +2231,7 @@ def _process_user_action(message, user):  # noqa: C901
 
                     del conversation_context[user_id]
 
-                    return """✅ **تم إنشاء المستخدم بنجاح!**
+                    return f"""✅ **تم إنشاء المستخدم بنجاح!**
 
 📋 **التفاصيل:**
 - اسم المستخدم: {data['username']}
@@ -2261,7 +2251,7 @@ def _process_user_action(message, user):  # noqa: C901
                 except Exception as e:
                     train_local_ai('create_user', data, {'success': False, 'error': str(e)})
                     del conversation_context[user_id]
-                    return """❌ **خطأ في إنشاء المستخدم:** {str(e)}
+                    return f"""❌ **خطأ في إنشاء المستخدم:** {str(e)}
 
 💡 **حاول مرة أخرى:** اكتب "مستخدم" ثم "1"
 
@@ -2272,9 +2262,9 @@ def _process_user_action(message, user):  # noqa: C901
             from models.customer import Customer
             customers = Customer.query.filter_by(is_active=True).all()
             if customers:
-                _ = "\n".join([f"• {c.name} - {c.phone or 'لا يوجد هاتف'}" for c in customers[:10]])
+                customers_list = "\n".join([f"• {c.name} - {c.phone or 'لا يوجد هاتف'}" for c in customers[:10]])
                 more_text = f"\n\n... و {len(customers) - 10} عميل آخر" if len(customers) > 10 else ""
-                return """✅ **جميع العملاء ({len(customers)} عميل):**
+                return f"""✅ **جميع العملاء ({len(customers)} عميل):**
 
 {customers_list}{more_text}
 
@@ -2292,9 +2282,9 @@ def _process_user_action(message, user):  # noqa: C901
             from models.product import Product
             products = Product.query.filter_by(is_active=True).all()
             if products:
-                _ = "\n".join([f"• {p.name} - {p.part_number} - {p.current_stock} {p.unit}" for p in products[:10]])
+                products_list = "\n".join([f"• {p.name} - {p.part_number} - {p.current_stock} {p.unit}" for p in products[:10]])
                 more_text = f"\n\n... و {len(products) - 10} منتج آخر" if len(products) > 10 else ""
-                return """✅ **جميع المنتجات ({len(products)} منتج):**
+                return f"""✅ **جميع المنتجات ({len(products)} منتج):**
 
 {products_list}{more_text}
 
@@ -2332,9 +2322,9 @@ def _process_user_action(message, user):  # noqa: C901
             from models.expense import Expense
             expenses = Expense.query.filter_by(is_active=True).all()
             if expenses:
-                _ = "\n".join([f"• {e.description} - {e.amount} درهم - {e.category}" for e in expenses[:10]])
-                _ = f"\n\n... و {len(expenses) - 10} مصروف آخر" if len(expenses) > 10 else ""
-                return """✅ **جميع المصروفات ({len(expenses)} مصروف):**
+                expenses_list = "\n".join([f"• {e.description} - {e.amount} درهم - {e.category}" for e in expenses[:10]])
+                more_text = f"\n\n... و {len(expenses) - 10} مصروف آخر" if len(expenses) > 10 else ""
+                return f"""✅ **جميع المصروفات ({len(expenses)} مصروف):**
 
 {expenses_list}{more_text}
 
@@ -2353,9 +2343,9 @@ def _process_user_action(message, user):  # noqa: C901
             suppliers = Supplier.query.filter_by(is_active=True).all()
             del conversation_context[user_id]
             if suppliers:
-                _ = "\n".join([f"• {s.name} - {s.phone or 'لا يوجد هاتف'}" for s in suppliers[:10]])
-                _ = f"\n\n... و {len(suppliers) - 10} مورد آخر" if len(suppliers) > 10 else ""
-                return """✅ **جميع الموردين ({len(suppliers)} مورد):**
+                suppliers_list = "\n".join([f"• {s.name} - {s.phone or 'لا يوجد هاتف'}" for s in suppliers[:10]])
+                more_text = f"\n\n... و {len(suppliers) - 10} مورد آخر" if len(suppliers) > 10 else ""
+                return f"""✅ **جميع الموردين ({len(suppliers)} مورد):**
 
 {suppliers_list}{more_text}
 
@@ -2370,9 +2360,9 @@ def _process_user_action(message, user):  # noqa: C901
             purchases = Purchase.query.filter_by(is_active=True).all()
             del conversation_context[user_id]
             if purchases:
-                _ = "\n".join([f"• #{p.id} - {p.supplier.name if p.supplier else 'غير محدد'} - {p.total_amount} درهم" for p in purchases[:10]])
-                _ = f"\n\n... و {len(purchases) - 10} مشتريات أخرى" if len(purchases) > 10 else ""
-                return """✅ **جميع المشتريات ({len(purchases)} مشتريات):**
+                purchases_list = "\n".join([f"• #{p.id} - {p.supplier.name if p.supplier else 'غير محدد'} - {p.total_amount} درهم" for p in purchases[:10]])
+                more_text = f"\n\n... و {len(purchases) - 10} مشتريات أخرى" if len(purchases) > 10 else ""
+                return f"""✅ **جميع المشتريات ({len(purchases)} مشتريات):**
 
 {purchases_list}{more_text}
 
@@ -2387,9 +2377,9 @@ def _process_user_action(message, user):  # noqa: C901
             cheques = Cheque.query.filter_by(is_active=True).all()
             del conversation_context[user_id]
             if cheques:
-                _ = "\n".join([f"• #{c.id} - {c.cheque_number} - {c.amount} درهم - {c.status}" for c in cheques[:10]])
-                _ = f"\n\n... و {len(cheques) - 10} شيك آخر" if len(cheques) > 10 else ""
-                return """✅ **جميع الشيكات ({len(cheques)} شيك):**
+                cheques_list = "\n".join([f"• #{c.id} - {c.cheque_number} - {c.amount} درهم - {c.status}" for c in cheques[:10]])
+                more_text = f"\n\n... و {len(cheques) - 10} شيك آخر" if len(cheques) > 10 else ""
+                return f"""✅ **جميع الشيكات ({len(cheques)} شيك):**
 
 {cheques_list}{more_text}
 
@@ -2404,9 +2394,9 @@ def _process_user_action(message, user):  # noqa: C901
             users = User.query.filter_by(is_active=True).all()
             del conversation_context[user_id]
             if users:
-                _ = "\n".join([f"• {u.username} - {u.role}" for u in users[:10]])
-                _ = f"\n\n... و {len(users) - 10} مستخدم آخر" if len(users) > 10 else ""
-                return """✅ **جميع المستخدمين ({len(users)} مستخدم):**
+                users_list = "\n".join([f"• {u.username} - {u.role}" for u in users[:10]])
+                more_text = f"\n\n... و {len(users) - 10} مستخدم آخر" if len(users) > 10 else ""
+                return f"""✅ **جميع المستخدمين ({len(users)} مستخدم):**
 
 {users_list}{more_text}
 
@@ -2421,8 +2411,8 @@ def _process_user_action(message, user):  # noqa: C901
             gl_entries = GL.query.filter_by(is_active=True).order_by(GL.entry_date.desc()).limit(20).all()
             del conversation_context[user_id]
             if gl_entries:
-                _ = "\n".join([f"• #{g.id} - {g.description} - {g.debit_amount} درهم - {g.entry_date.strftime('%Y-%m-%d')}" for g in gl_entries])
-                return """✅ **القيود المحاسبية (آخر 20 قيد):**
+                gl_list = "\n".join([f"• #{g.id} - {g.description} - {g.debit_amount} درهم - {g.entry_date.strftime('%Y-%m-%d')}" for g in gl_entries])
+                return f"""✅ **القيود المحاسبية (آخر 20 قيد):**
 
 {gl_list}
 
@@ -2437,9 +2427,9 @@ def _process_user_action(message, user):  # noqa: C901
             products = Product.query.filter_by(is_active=True).all()
             del conversation_context[user_id]
             if products:
-                _ = "\n".join([f"• {p.name} - {p.current_stock} {p.unit}" for p in products[:15]])
-                _ = f"\n\n... و {len(products) - 15} منتج آخر" if len(products) > 15 else ""
-                return """✅ **المخزون الكامل ({len(products)} منتج):**
+                stock_list = "\n".join([f"• {p.name} - {p.current_stock} {p.unit}" for p in products[:15]])
+                more_text = f"\n\n... و {len(products) - 15} منتج آخر" if len(products) > 15 else ""
+                return f"""✅ **المخزون الكامل ({len(products)} منتج):**
 
 {stock_list}{more_text}
 
@@ -2653,7 +2643,7 @@ http://localhost:5000/ai/assistant
                     db.session.add(customer)
                     db.session.commit()
 
-                    return """✅ تم إنشاء العميل بنجاح!
+                    return f"""✅ تم إنشاء العميل بنجاح!
 
 📋 التفاصيل:
 - الاسم: {name}
@@ -2691,7 +2681,7 @@ http://localhost:5000/ai/assistant
                     db.session.add(product)
                     db.session.commit()
 
-                    return """✅ تم إنشاء المنتج بنجاح!
+                    return f"""✅ تم إنشاء المنتج بنجاح!
 
 📋 التفاصيل:
 - الاسم: {name}
@@ -2730,7 +2720,7 @@ http://localhost:5000/ai/assistant
                     db.session.add(supplier)
                     db.session.commit()
 
-                    return """✅ تم إنشاء المورد بنجاح!
+                    return f"""✅ تم إنشاء المورد بنجاح!
 
 📋 التفاصيل:
 - الاسم: {name}
@@ -2794,7 +2784,7 @@ http://localhost:5000/ai/assistant
 
                     db.session.commit()
 
-                    return """✅ تم إنشاء الفاتورة بنجاح!
+                    return f"""✅ تم إنشاء الفاتورة بنجاح!
 
 📋 تفاصيل الفاتورة:
 - رقم الفاتورة: {sale.sale_number}
@@ -2833,7 +2823,7 @@ http://localhost:5000/ai/assistant
                     db.session.add(expense)
                     db.session.commit()
 
-                    return """✅ تم إضافة المصروف بنجاح!
+                    return f"""✅ تم إضافة المصروف بنجاح!
 
 📋 التفاصيل:
 - الوصف: {description}
@@ -2881,7 +2871,7 @@ http://localhost:5000/ai/assistant
 
                     db.session.commit()
 
-                    return """✅ تم تسجيل الدفعة بنجاح!
+                    return f"""✅ تم تسجيل الدفعة بنجاح!
 
 📋 التفاصيل:
 - العميل: {customer.name}
@@ -2911,12 +2901,12 @@ http://localhost:5000/ai/assistant
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
-                    _ = customer.balance
+                    old_balance = customer.balance
                     customer.balance = new_balance
 
                     db.session.commit()
 
-                    return """✅ تم تعديل رصيد العميل بنجاح!
+                    return f"""✅ تم تعديل رصيد العميل بنجاح!
 
 📋 التفاصيل:
 - العميل: {customer.name}
@@ -2964,7 +2954,7 @@ http://localhost:5000/ai/assistant
 
                     db.session.commit()
 
-                    return """✅ تم استلام الدفعة بنجاح!
+                    return f"""✅ تم استلام الدفعة بنجاح!
 
 📋 التفاصيل:
 - العميل: {customer.name}
@@ -2997,7 +2987,7 @@ http://localhost:5000/ai/assistant
                     for payment in recent_payments:
                         payments_info += f"• {payment.payment_date.strftime('%Y-%m-%d')}: {payment.amount_base} درهم ({payment.payment_method})\n"
 
-                return """✅ رصيد العميل:
+                return f"""✅ رصيد العميل:
 
 📋 **التفاصيل:**
 - العميل: {customer.name}
@@ -3042,7 +3032,7 @@ http://localhost:5000/ai/assistant
 
                     db.session.commit()
 
-                    return """✅ تم إعطاء الدفعة للعميل بنجاح!
+                    return f"""✅ تم إعطاء الدفعة للعميل بنجاح!
 
 📋 التفاصيل:
 - العميل: {customer.name}

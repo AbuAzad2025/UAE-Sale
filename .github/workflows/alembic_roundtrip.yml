@@ -85,7 +85,9 @@ jobs:
           DEBUG: "true"
         run: |
           echo "=== Downgrade one revision (reversibility probe) ==="
-          flask db downgrade -1
+          PREV_REV=$(flask db history 2>/dev/null | grep "(head)" | tail -1 | awk '{print $1}')
+          echo "Previous revision (head's down_revision): ${PREV_REV}"
+          flask db downgrade "${PREV_REV}"
           echo "=== Current version after downgrade ==="
           flask db current
           echo "=== Re-upgrade back to head ==="

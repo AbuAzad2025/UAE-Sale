@@ -151,7 +151,7 @@ class AdvancedLaws:  # noqa: E303
         elif country.lower() in ['saudi', 'السعودية']:
             laws = AdvancedLaws.GULF_TAX_LAWS['saudi']
         else:
-            return None
+            return "معلومات ضريبية غير متاحة لهذه الدولة"
 
         if tax_type.lower() == 'vat':
             return f"ضريبة القيمة المضافة: {laws['vat_rate']}%"

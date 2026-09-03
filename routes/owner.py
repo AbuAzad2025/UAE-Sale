@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app, abort
 from flask_login import login_required, current_user
 from sqlalchemy import func, desc
 from extensions import db, limiter
@@ -1813,10 +1813,17 @@ def preview_invoice(template):
         notes = 'فاتورة تجريبية للمعاينة'
         payments = [SamplePayment()]
 
-    return render_template(f'invoices/{template}.html',
-                           sale=SampleSale(),
-                           settings=settings,
-                           preview=True)
+    import re
+    from jinja2 import TemplateNotFound
+    if not re.fullmatch(r'[A-Za-z0-9_-]+', template or ''):
+        abort(404)
+    try:
+        return render_template(f'invoices/{template}.html',
+                               sale=SampleSale(),
+                               settings=settings,
+                               preview=True)
+    except TemplateNotFound:
+        abort(404)
 
 
 @owner_bp.route('/preview-receipt/<template>')
@@ -1876,10 +1883,17 @@ def preview_receipt(template):
                 'id': 1
             }
 
-    return render_template(f'receipts/{template}.html',
-                           receipt=SampleReceipt(),
-                           settings=settings,
-                           preview=True)
+    import re
+    from jinja2 import TemplateNotFound
+    if not re.fullmatch(r'[A-Za-z0-9_-]+', template or ''):
+        abort(404)
+    try:
+        return render_template(f'receipts/{template}.html',
+                               receipt=SampleReceipt(),
+                               settings=settings,
+                               preview=True)
+    except TemplateNotFound:
+        abort(404)
 
 
 @owner_bp.route('/system-health')
@@ -2299,7 +2313,13 @@ def payment_gateways():
 
     vault = PaymentVault.query.first()
     if not vault:
+        import secrets
         vault = PaymentVault()
+        # vault_password_hash is NOT NULL: seed an unusable random secret so
+        # the row is valid. The vault stays locked (is_locked defaults True)
+        # until the owner sets a real password via the vault setup flow,
+        # which overwrites this hash.
+        vault.set_vault_password(secrets.token_urlsafe(48))
         db.session.add(vault)
         db.session.commit()
 

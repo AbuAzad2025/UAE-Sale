@@ -855,6 +855,16 @@ class AIService:
                     url = "https://api.openai.com/v1/chat/completions"
                     model = "gpt-4"
 
+                # GROQ cost optimization: check cache before remote call
+                try:
+                    from services.ai_cache import get as _cache_get, set_value as _cache_set
+                    _cached = _cache_get(provider, model, message, knowledge_context or "")
+                    if _cached:
+                        return _cached
+                except Exception:
+                    _cache_get = None
+                    _cache_set = None
+
                 # Groq مع صلاحيات كاملة
                 expert_prompt = """أنت أزاد - مساعد ذكي تفاعلي لنظام إدارة كراجات.
 
@@ -916,7 +926,16 @@ class AIService:
                         print(f"Training skipped: {e}")
 
                     provider = AIService.get_provider()
-                    return f"{groq_response}\n\n<sub>🤖 المصدر: {provider.upper()} API + التحليل المحلي</sub>"
+                    final_answer = f"{groq_response}\n\n<sub>🤖 المصدر: {provider.upper()} API + التحليل المحلي</sub>"
+
+                    # Store in cache for future identical prompts (cost saving)
+                    try:
+                        if _cache_set is not None:
+                            _cache_set(provider, model, message, knowledge_context or "", final_answer)
+                    except Exception:
+                        pass
+
+                    return final_answer
 
             except Exception as e:
                 print(f"Groq collaboration failed: {str(e)}")

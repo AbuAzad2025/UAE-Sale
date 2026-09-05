@@ -824,22 +824,13 @@ def _process_user_action(message, user):  # noqa: C901
                     return _denial
 
                 try:
-                    from models.customer import Customer
+                    from services import ai_commands as cmd
 
-                    # إنشاء العميل الجديد
-                    customer = Customer(
-                        name=data['name'],
-                        phone=data['phone'],
-                        address=data['address'],
-                        balance=0
-                    )
-                    db.session.add(customer)
-                    db.session.commit()
+                    customer = cmd.create_customer(data['name'], data['phone'], data['address'])
 
-                    # تدريب الذكاء المحلي
                     train_local_ai('create_customer', data, {'success': True, 'customer_id': customer.id})
 
-                    # مسح السياق
+                    del conversation_context[user_id]
                     del conversation_context[user_id]
 
                     return f"""✅ **تم إنشاء العميل بنجاح!**
@@ -978,26 +969,16 @@ def _process_user_action(message, user):  # noqa: C901
                 try:
                     data['quantity'] = float(message.strip().replace('قطعة', '').strip())
 
-                    from models.product import Product  # noqa: F811  (local import intentional)
+                    try:
+                        from services import ai_commands as cmd
 
-                    # إنشاء المنتج الجديد
-                    product = Product(
-                        name=data['name'],
-                        part_number=data['part_number'],
-                        regular_price=data['price'],
-                        current_stock=data['quantity'],
-                        unit='قطعة'
-                    )
-                    db.session.add(product)
-                    db.session.commit()
+                        product = cmd.create_product(data['name'], data['part_number'], data['price'], data['quantity'])
 
-                    # تدريب الذكاء المحلي
-                    train_local_ai('create_product', data, {'success': True, 'product_id': product.id})
+                        train_local_ai('create_product', data, {'success': True, 'product_id': product.id})
 
-                    # مسح السياق
-                    del conversation_context[user_id]
+                        del conversation_context[user_id]
 
-                    return f"""✅ **تم إنشاء المنتج بنجاح!**
+                        return f"""✅ **تم إنشاء المنتج بنجاح!**
 
 📋 **التفاصيل:**
 - الاسم: {data['name']}
@@ -1015,12 +996,21 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب رقم الخيار أو اكتب "عودة"
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
+                    except Exception as e:
+                        train_local_ai('create_product', data, {'success': False, 'error': str(e)})
 
+                        del conversation_context[user_id]
+                        return f"""❌ **خطأ في إنشاء المنتج:**
+
+{str(e)}
+
+💡 **حاول مرة أخرى:** اكتب "منتج" ثم "1"
+
+🤖 المصدر: GROQ API + التحليل المحلي"""
                 except Exception as e:
-                    # تدريب الذكاء المحلي من الخطأ
+                    #Outer exception handler
                     train_local_ai('create_product', data, {'success': False, 'error': str(e)})
 
-                    # مسح السياق في حالة الخطأ
                     del conversation_context[user_id]
                     return f"""❌ **خطأ في إنشاء المنتج:**
 
@@ -1166,39 +1156,11 @@ def _process_user_action(message, user):  # noqa: C901
                     data['quantity'] = float(message.strip())
                     total_amount = data['product_price'] * data['quantity']
 
-                    from models.sale import Sale  # noqa: F811  (local import intentional)
-                    from models.sale_item import SaleItem
+                    from services import ai_commands as cmd
+                    sale = cmd.create_sale(data['customer_id'], data['product_id'], data['quantity'], user.id)
 
-                    # إنشاء الفاتورة
-                    sale = Sale(
-                        customer_id=data['customer_id'],
-                        total_amount=total_amount,
-                        payment_method='نقد',
-                        user_id=user.id
-                    )
-                    db.session.add(sale)
-                    db.session.flush()  # للحصول على ID
-
-                    # إضافة عنصر الفاتورة
-                    sale_item = SaleItem(
-                        sale_id=sale.id,
-                        product_id=data['product_id'],
-                        quantity=data['quantity'],
-                        unit_price=data['product_price'],
-                        total_price=total_amount
-                    )
-                    db.session.add(sale_item)
-
-                    # تحديث المخزون
-                    product = get_owned_or_404(Product, data['product_id'], code=404)
-                    product.current_stock -= data['quantity']
-
-                    db.session.commit()
-
-                    # تدريب الذكاء المحلي
                     train_local_ai('create_sale', data, {'success': True, 'sale_id': sale.id})
 
-                    # مسح السياق
                     del conversation_context[user_id]
 
                     final_options = create_final_options('فاتورة', data['customer_name'], sale.id)
@@ -1313,34 +1275,17 @@ def _process_user_action(message, user):  # noqa: C901
                     return _denial
 
                 try:
-                    from models.payment import Payment  # noqa: F811  (local import intentional)
                     from models.customer import Customer
+                    from services import ai_commands as cmd
 
-                    # تسجيل الدفعة
-                    from utils.helpers import generate_number
-                    payment_number = generate_number('PAY', Payment, 'payment_number')
-                    payment = Payment(
-                        payment_number=payment_number,
-                        customer_id=data['customer_id'],
-                        amount_base=data['amount'],
-                        payment_date=datetime.now(timezone.utc),
-                        payment_method=data['payment_method'],
-                        user_id=user.id,
-                        direction='incoming',
-                        payment_type='customer_payment'
-                    )
-                    db.session.add(payment)
+                    payment = cmd.record_payment(data['customer_id'], data['amount'], data['payment_method'], 'incoming', user.id, 'customer_payment')
 
-                    # تحديث رصيد العميل
                     customer = get_owned_or_404(Customer, data['customer_id'], code=404)
                     customer.balance -= data['amount']
-
                     db.session.commit()
 
-                    # تدريب الذكاء المحلي
                     train_local_ai('receive_payment', data, {'success': True, 'payment_id': payment.id})
 
-                    # مسح السياق
                     del conversation_context[user_id]
 
                     final_options = create_final_options('استلام', data['customer_name'], payment.id)
@@ -1454,34 +1399,17 @@ def _process_user_action(message, user):  # noqa: C901
                     return _denial
 
                 try:
-                    from models.payment import Payment
                     from models.customer import Customer
+                    from services import ai_commands as cmd
 
-                    # تسجيل الدفعة (سالبة لأننا نعطي للعميل)
-                    from utils.helpers import generate_number
-                    payment_number = generate_number('PAY', Payment, 'payment_number')
-                    payment = Payment(
-                        payment_number=payment_number,
-                        customer_id=data['customer_id'],
-                        amount_base=-data['amount'],  # سالب لأننا نعطي للعميل
-                        payment_date=datetime.now(timezone.utc),
-                        payment_method='refund',
-                        user_id=user.id,
-                        direction='outgoing',
-                        payment_type='refund'
-                    )
-                    db.session.add(payment)
+                    payment = cmd.record_payment(data['customer_id'], data['amount'], 'refund', 'outgoing', user.id, 'refund')
 
-                    # تحديث رصيد العميل (زيادة)
                     customer = get_owned_or_404(Customer, data['customer_id'], code=404)
                     customer.balance += data['amount']
-
                     db.session.commit()
 
-                    # تدريب الذكاء المحلي
                     train_local_ai('give_payment', data, {'success': True, 'payment_id': payment.id})
 
-                    # مسح السياق
                     del conversation_context[user_id]
 
                     final_options = create_final_options('إعطاء', data['customer_name'], payment.id)
@@ -1583,23 +1511,12 @@ def _process_user_action(message, user):  # noqa: C901
                     return _denial
 
                 try:
-                    from models.expense import Expense  # noqa: F811  (local import intentional)
+                    from services import ai_commands as cmd
 
-                    # إنشاء المصروف الجديد
-                    expense = Expense(
-                        description=data['description'],
-                        amount=data['amount'],
-                        category=data['category'],
-                        expense_date=datetime.now(timezone.utc),
-                        user_id=user.id
-                    )
-                    db.session.add(expense)
-                    db.session.commit()
+                    expense = cmd.create_expense(data['description'], data['amount'], user.id)
 
-                    # تدريب الذكاء المحلي
                     train_local_ai('create_expense', data, {'success': True, 'expense_id': expense.id})
 
-                    # مسح السياق
                     del conversation_context[user_id]
 
                     final_options = create_final_options('مصروف', data['description'], expense.id)
@@ -1734,48 +1651,16 @@ def _process_user_action(message, user):  # noqa: C901
                 if _denial:
                     del conversation_context[user_id]
                     return _denial
-
                 try:
                     from models.supplier import Supplier  # noqa: F811  (local import intentional)
 
-                    supplier = Supplier(
-                        name=data['name'],
-                        phone=data['phone'],
-                        address=data['address'],
-                        tax_number=data.get('tax_number'),
-                        total_purchases_aed=data['initial_balance'],
-                        total_paid_aed=0
-                    )
-                    db.session.add(supplier)
-                    db.session.commit()
+                    from services import ai_commands as cmd
+
+                    supplier = cmd.create_supplier(data['name'], data['phone'], data['address'], data.get('tax_number'), data.get('initial_balance'))
 
                     train_local_ai('create_supplier', data, {'success': True, 'supplier_id': supplier.id})
 
                     del conversation_context[user_id]
-
-                    balance_info = f"- الرصيد الابتدائي: {data['initial_balance']} درهم" if data['initial_balance'] > 0 else "- لا يوجد رصيد مستحق"
-                    tax_info = f"- الرقم الضريبي: {data['tax_number']}" if data.get('tax_number') else ""
-
-                    return f"""✅ **تم إنشاء المورد بنجاح!**
-
-📋 **التفاصيل:**
-- الاسم: {data['name']}
-- الهاتف: {data['phone']}
-- العنوان: {data['address']}
-{balance_info}
-{tax_info}
-- الرقم: #{supplier.id}
-
-💡 **ماذا تريد أن تفعل الآن؟**
-1️⃣ إضافة مورد آخر
-2️⃣ عرض جميع الموردين
-3️⃣ إضافة مشتريات من هذا المورد
-4️⃣ العودة للقائمة الرئيسية
-
-🤖 اكتب رقم الخيار أو اكتب "عودة"
-
-🤖 المصدر: GROQ API + التحليل المحلي"""
-
                 except Exception as e:
                     train_local_ai('create_supplier', data, {'success': False, 'error': str(e)})
                     del conversation_context[user_id]
@@ -1885,31 +1770,8 @@ def _process_user_action(message, user):  # noqa: C901
                     data['unit_price'] = float(message.strip().replace('درهم', '').strip())
                     total_amount = data['unit_price'] * data['quantity']
 
-                    from models.purchase import Purchase  # noqa: F811  (local import intentional)
-                    from models.purchase_item import PurchaseItem
-                    from models.product import Product
-
-                    purchase = Purchase(
-                        supplier_id=data['supplier_id'],
-                        total_amount=total_amount,
-                        user_id=user.id
-                    )
-                    db.session.add(purchase)
-                    db.session.flush()
-
-                    purchase_item = PurchaseItem(
-                        purchase_id=purchase.id,
-                        product_id=data['product_id'],
-                        quantity=data['quantity'],
-                        unit_price=data['unit_price'],
-                        total_price=total_amount
-                    )
-                    db.session.add(purchase_item)
-
-                    product = get_owned_or_404(Product, data['product_id'], code=404)
-                    product.current_stock += data['quantity']
-
-                    db.session.commit()
+                    from services import ai_commands as cmd
+                    purchase = cmd.create_purchase(data['supplier_id'], data['product_id'], data['quantity'], data['unit_price'], user.id)
 
                     train_local_ai('create_purchase', data, {'success': True, 'purchase_id': purchase.id})
 
@@ -2028,21 +1890,12 @@ def _process_user_action(message, user):  # noqa: C901
                     del conversation_context[user_id]
                     return _denial
                 try:
-                    from models.cheque import Cheque  # noqa: F811  (local import intentional)
                     from datetime import datetime as dt
+                    from services import ai_commands as cmd
 
-                    due_date = dt.strptime(message.strip(), '%Y-%m-%d')
+                    due_date = dt.strptime(message.strip(), '%Y-%m-%d').date()
 
-                    cheque = Cheque(
-                        cheque_number=data['cheque_number'],
-                        amount=data['amount'],
-                        due_date=due_date,
-                        cheque_type=data['cheque_type'],
-                        status='pending',
-                        user_id=user.id
-                    )
-                    db.session.add(cheque)
-                    db.session.commit()
+                    cheque = cmd.create_cheque(data['cheque_number'], data['amount'], due_date, data['cheque_type'], user.id)
 
                     train_local_ai('create_cheque', data, {'success': True, 'cheque_id': cheque.id})
 
@@ -2680,19 +2533,13 @@ http://localhost:5000/ai/assistant
                     price_str = parts[2].replace('درهم', '').replace('د.إ', '').strip()
                     quantity = int(parts[3].replace('قطعة', '').replace('قطعه', '').strip()) if len(parts) > 3 else 0
 
-                    product = Product(
-                        name=name,
-                        part_number=part_number,
-                        regular_price=float(price_str),
-                        current_stock=quantity,
-                        is_active=True
-                    )
-                    db.session.add(product)
-                    db.session.commit()
+                    from services import ai_commands as cmd
+
+                    product = cmd.create_product(name, part_number, float(price_str), quantity)
 
                     return f"""✅ تم إنشاء المنتج بنجاح!
 
-📋 التفاصيل:
+📋 **التفاصيل:**
 - الاسم: {name}
 - رقم القطعة: {part_number}
 - السعر: {price_str} درهم
@@ -2822,15 +2669,8 @@ http://localhost:5000/ai/assistant
                     amount = float(parts[1].replace('درهم', '').replace('د.إ', '').strip())
                     category = parts[2] if len(parts) > 2 else 'عام'
 
-                    expense = Expense(
-                        description=description,
-                        amount_base=amount,
-                        expense_date=datetime.now(timezone.utc),
-                        category=category,
-                        user_id=user.id
-                    )
-                    db.session.add(expense)
-                    db.session.commit()
+                    from services import ai_commands as cmd
+                    expense = cmd.create_expense(description, amount, user.id)
 
                     return f"""✅ تم إضافة المصروف بنجاح!
 
@@ -2862,22 +2702,10 @@ http://localhost:5000/ai/assistant
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
-                    from utils.helpers import generate_number
-                    payment_number = generate_number('PAY', Payment, 'payment_number')
-                    payment = Payment(
-                        payment_number=payment_number,
-                        customer_id=customer.id,
-                        amount_base=amount,
-                        payment_date=datetime.now(timezone.utc),
-                        payment_method=payment_method,
-                        user_id=user.id,
-                        direction='incoming',
-                        payment_type='customer_payment'
-                    )
-                    db.session.add(payment)
+                    from services import ai_commands as cmd
+                    payment = cmd.record_payment(customer.id, amount, payment_method, 'incoming', user.id, 'customer_payment')
 
                     customer.balance -= amount
-
                     db.session.commit()
 
                     return f"""✅ تم تسجيل الدفعة بنجاح!
@@ -2945,22 +2773,10 @@ http://localhost:5000/ai/assistant
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
-                    from utils.helpers import generate_number
-                    payment_number = generate_number('PAY', Payment, 'payment_number')
-                    payment = Payment(
-                        payment_number=payment_number,
-                        customer_id=customer.id,
-                        amount_base=amount,
-                        payment_date=datetime.now(timezone.utc),
-                        payment_method=payment_method,
-                        user_id=user.id,
-                        direction='incoming',
-                        payment_type='customer_payment'
-                    )
-                    db.session.add(payment)
+                    from services import ai_commands as cmd
+                    payment = cmd.record_payment(customer.id, amount, payment_method, 'incoming', user.id, 'customer_payment')
 
                     customer.balance -= amount
-
                     db.session.commit()
 
                     return f"""✅ تم استلام الدفعة بنجاح!
@@ -3026,19 +2842,10 @@ http://localhost:5000/ai/assistant
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
-                    # إضافة المبلغ للرصيد (زيادة)
+                    from services import ai_commands as cmd
+                    payment = cmd.record_payment(customer.id, amount, 'refund', 'outgoing', user.id, 'refund')
+
                     customer.balance += amount
-
-                    # تسجيل العملية كدفعة سالبة
-                    payment = Payment(
-                        customer_id=customer.id,
-                        amount_base=-amount,  # سالب لأننا نعطي للعميل
-                        payment_date=datetime.now(timezone.utc),
-                        payment_method='refund',
-                        user_id=user.id
-                    )
-                    db.session.add(payment)
-
                     db.session.commit()
 
                     return f"""✅ تم إعطاء الدفعة للعميل بنجاح!

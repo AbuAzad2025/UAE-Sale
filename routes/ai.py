@@ -44,9 +44,11 @@ def _validate_csrf_token():
     if api_key and api_key == current_app.config.get('INTERNAL_API_KEY'):
         return True
     
-    # For AJAX requests, check custom header
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        csrf_token = request.headers.get('X-CSRF-Token')
+    # For AJAX requests, check custom header.
+    # NOTE: the shipped frontend (templates/ai/assistant.html) sends
+    # 'X-CSRFToken' (Flask-WTF default); accept both spellings.
+    for header_name in ('X-CSRFToken', 'X-CSRF-Token'):
+        csrf_token = request.headers.get(header_name)
         if csrf_token:
             try:
                 validate_csrf_token(csrf_token)
@@ -63,7 +65,41 @@ def _validate_csrf_token():
         except Exception:
             pass
 
+    # JSON body token (some clients embed it in the payload)
+    try:
+        body = request.get_json(silent=True) or {}
+        csrf_token = body.get('csrf_token')
+    except Exception:
+        csrf_token = None
+    if csrf_token:
+        try:
+            validate_csrf_token(csrf_token)
+            return True
+        except Exception:
+            pass
+
     return False
+
+
+def _validate_origin():
+    """Origin/Referer check — real CSRF defense for cookie-authed JSON APIs.
+
+    Returns True when the request is same-origin or carries no Origin/Referer
+    (non-browser clients, curl, tests). Returns False on explicit mismatch.
+    """
+    try:
+        host = (request.host or '').split(':')[0].lower()
+        for header_name in ('Origin', 'Referer'):
+            value = request.headers.get(header_name)
+            if not value:
+                continue
+            from urllib.parse import urlparse
+            origin_host = (urlparse(value).hostname or '').lower()
+            if origin_host and origin_host != host:
+                return False
+        return True
+    except Exception:
+        return True
 
 
 def _log_security_event(event_type, details=None):
@@ -80,19 +116,62 @@ def _log_security_event(event_type, details=None):
 
 
 def _require_csrf_for_sensitive_ops():
-    """Apply CSRF protection to sensitive AI operations that modify data"""
+    """Apply CSRF protection to sensitive AI operations that modify data.
+
+    Defense in depth (non-breaking):
+    1. Valid CSRF token -> allow.
+    2. Explicit Origin/Referer mismatch -> 403 + audit log.
+    3. No token and no verifiable origin (API clients, tests) -> allow.
+    """
     sensitive_operations = {
         'create_product', 'create_sale', 'create_expense', 'create_cheque',
-        'record_payment', 'update_customer', 'update_supplier', 'delete_*'
+        'create_purchase', 'record_payment', 'update_customer',
+        'update_supplier', 'delete_',
     }
-    
+
     # Check if the operation is in the sensitive list
     operation = getattr(request, 'ai_operation', None)
     if operation and any(op in operation for op in sensitive_operations):
-        if not _validate_csrf_token():
+        if _validate_csrf_token():
+            return None
+        if not _validate_origin():
             _log_security_event('CSRF_VIOLATION', f'Operation: {operation}')
             return jsonify({'error': 'CSRF token validation failed'}), 403
     return None
+
+
+def _detect_ai_operation(message):
+    """Map a chat message to a sensitive operation name (or 'chat_ai').
+
+    Creation-style shortcuts carry ':' + entity keyword. Read-only queries
+    stay 'chat_ai' so they are never gated.
+    """
+    try:
+        msg = (message or '').lower()
+        if ':' not in (message or ''):
+            return 'chat_ai'
+        # Read-only queries are never gated, even with ':' present
+        read_only_markers = (
+            'عرض رصيد', 'رصيد العميل', 'رصيد عميل', 'استعلام', 'كشف حساب',
+        )
+        if any(m in msg for m in read_only_markers):
+            return 'chat_ai'
+        mapping = [
+            (('منتج', 'product'), 'create_product'),
+            (('فاتورة', 'بيع', 'مبيعات'), 'create_sale'),
+            (('مصروف',), 'create_expense'),
+            (('دفعة', 'استلام', 'استلم', 'إعطاء', 'أعطى'), 'record_payment'),
+            (('مورد',), 'create_supplier'),
+            (('مشتريات', 'مشترى'), 'create_purchase'),
+            (('شيك',), 'create_cheque'),
+            (('عميل', 'رصيد'), 'update_customer'),
+        ]
+        for keywords, op in mapping:
+            if any(k in msg for k in keywords):
+                return op
+    except Exception:
+        pass
+    return 'chat_ai'
 
 
 class ConversationContextStore(threading.local):
@@ -431,21 +510,18 @@ def find_compatible(product_id):
 @login_required
 def chat():
     """API: الدردشة مع المساعد الذكي"""
-    # Security: Track operation type for CSRF audit
-    request.ai_operation = 'chat_ai'
-    
-    # Security: Validate CSRF for this state-changing operation
-    csrf_check = _require_csrf_for_sensitive_ops()
-    if csrf_check:
-        return csrf_check
-    
     start_time = time.time()
-    ai_mode = 'groq'  # Default mode
 
     data = request.get_json() or {}
     message = data.get('message', '').strip()
     ai_mode = data.get('ai_mode', 'groq')
     context = data.get('context', {})
+
+    # Security: detect sensitive shortcut operations, then enforce CSRF/Origin
+    request.ai_operation = _detect_ai_operation(message)
+    csrf_check = _require_csrf_for_sensitive_ops()
+    if csrf_check:
+        return csrf_check
 
     if 'dialect' not in context:
         context['dialect'] = 'palestinian'

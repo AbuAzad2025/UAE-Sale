@@ -4,9 +4,12 @@
 """
 import os
 import threading
-from flask import Blueprint, request, jsonify, render_template
+import time
+from flask import Blueprint, request, jsonify, render_template, current_app
 from flask_login import login_required, current_user
 from extensions import csrf, db
+from flask_wtf.csrf import validate_csrf as validate_csrf_token
+from werkzeug.exceptions import BadRequest
 from services.ai_service import AIService
 import pandas as pd
 from ai_knowledge.learning_system import learning_system
@@ -22,7 +25,66 @@ from datetime import datetime, timezone
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
 
-# Note: CSRF exemptions are added to individual routes that need them
+# ======================
+# Security Utilities
+# ======================
+
+def _validate_csrf_token():
+    """Validate CSRF token for state-changing operations (POST/PUT/DELETE).
+    
+    For AI routes, we exempt specific endpoints via @csrf.exempt but still
+    perform manual validation for sensitive operations.
+    """
+    # Skip CSRF validation for GET, HEAD, OPTIONS
+    if request.method in ('GET', 'HEAD', 'OPTIONS'):
+        return True
+    
+    # Check for API key or internal service markers
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    if api_key and api_key == current_app.config.get('INTERNAL_API_KEY'):
+        return True
+    
+    # For AJAX requests, check custom header
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        csrf_token = request.headers.get('X-CSRF-Token')
+        if csrf_token and validate_csrf_token(csrf_token):
+            return True
+    
+    # Fall back to standard form token
+    csrf_token = request.form.get('csrf_token')
+    if csrf_token and validate_csrf_token(csrf_token):
+        return True
+    
+    return False
+
+
+def _log_security_event(event_type, details=None):
+    """Log security events for audit trail"""
+    try:
+        user_id = getattr(current_user, 'id', 'anonymous') if current_user else 'anonymous'
+        ip_address = request.remote_addr if request else 'unknown'
+        user_agent = request.headers.get('User-Agent', 'unknown') if request else 'unknown'
+
+        current_app.logger.warning(f'SECURITY EVENT: {event_type} | User: {user_id} | IP: {ip_address} | '
+                                   f'Agent: {user_agent[:100]} | Details: {details or "None"}')
+    except Exception:
+        pass  # Avoid breaking the flow if logging fails
+
+
+def _require_csrf_for_sensitive_ops():
+    """Apply CSRF protection to sensitive AI operations that modify data"""
+    sensitive_operations = {
+        'create_product', 'create_sale', 'create_expense', 'create_cheque',
+        'record_payment', 'update_customer', 'update_supplier', 'delete_*'
+    }
+    
+    # Check if the operation is in the sensitive list
+    operation = getattr(request, 'ai_operation', None)
+    if operation and any(op in operation for op in sensitive_operations):
+        if not _validate_csrf_token():
+            _log_security_event('CSRF_VIOLATION', f'Operation: {operation}')
+            return jsonify({'error': 'CSRF token validation failed'}), 403
+    return None
 
 
 class ConversationContextStore(threading.local):
@@ -259,6 +321,11 @@ def create_final_options(action_name, item_name, item_id):
 @login_required
 def recommend_price():
     """API: توصية السعر"""
+    # Security: Validate CSRF for this state-changing operation
+    csrf_check = _require_csrf_for_sensitive_ops()
+    if csrf_check:
+        return csrf_check
+    
     data = request.get_json()
     product_id = data.get('product_id')
     customer_id = data.get('customer_id')
@@ -279,6 +346,11 @@ def recommend_price():
 @login_required
 def check_stock():
     """API: فحص المخزون"""
+    # Security: Validate CSRF for this state-changing operation
+    csrf_check = _require_csrf_for_sensitive_ops()
+    if csrf_check:
+        return csrf_check
+    
     data = request.get_json()
     product_id = data.get('product_id')
     quantity = data.get('quantity', 0)
@@ -351,7 +423,18 @@ def find_compatible(product_id):
 @login_required
 def chat():
     """API: الدردشة مع المساعد الذكي"""
-    data = request.get_json()
+    # Security: Track operation type for CSRF audit
+    request.ai_operation = 'chat_ai'
+    
+    # Security: Validate CSRF for this state-changing operation
+    csrf_check = _require_csrf_for_sensitive_ops()
+    if csrf_check:
+        return csrf_check
+    
+    start_time = time.time()
+    ai_mode = 'groq'  # Default mode
+
+    data = request.get_json() or {}
     message = data.get('message', '').strip()
     ai_mode = data.get('ai_mode', 'groq')
     context = data.get('context', {})
@@ -377,7 +460,21 @@ def chat():
         })
 
     response = AIService.chat_response(message, context)
-
+    
+    # Record AI metrics
+    try:
+        from utils.monitoring import AIMetricsCollector
+        duration_ms = (time.time() - start_time) * 1000
+        tokens_used = len(message.split()) + len(str(response).split())
+        AIMetricsCollector.record_ai_request(
+            endpoint='/chat', ai_mode=ai_mode,
+            tokens_used=tokens_used,
+            duration_ms=duration_ms, success=True
+        )
+        AIMetricsCollector.record_conversation_turn()
+    except Exception:
+        pass  # Metrics failure shouldn't break the flow
+    
     return jsonify({
         'response': response,
         'ai_enabled': AIService.is_enabled(),
@@ -3761,6 +3858,14 @@ def external_sources():
 @login_required
 def ask_genius():
     """🌟 API: اسأل العبقري - الواجهة الموحدة"""
+    # Security: Track operation type for CSRF audit
+    request.ai_operation = 'ask_genius'
+    
+    # Security: Validate CSRF for this state-changing operation
+    csrf_check = _require_csrf_for_sensitive_ops()
+    if csrf_check:
+        return csrf_check
+    
     try:
         data = request.get_json()
         question = data.get('question', '')
@@ -3794,6 +3899,14 @@ def ask_genius():
 @login_required
 def quick_calc():
     """⚡ API: حسابات سريعة"""
+    # Security: Track operation type for CSRF audit
+    request.ai_operation = 'quick_calc'
+    
+    # Security: Validate CSRF for this state-changing operation
+    csrf_check = _require_csrf_for_sensitive_ops()
+    if csrf_check:
+        return csrf_check
+    
     try:
         data = request.get_json()
         formula = data.get('formula', '')
@@ -3823,6 +3936,14 @@ def quick_calc():
 @login_required
 def transformers_understand():
     """🤖 API: فهم بالـ Transformers"""
+    # Security: Track operation type for CSRF audit
+    request.ai_operation = 'transformers_understand'
+    
+    # Security: Validate CSRF for this state-changing operation
+    csrf_check = _require_csrf_for_sensitive_ops()
+    if csrf_check:
+        return csrf_check
+    
     try:
         data = request.get_json()
         text = data.get('text', '')

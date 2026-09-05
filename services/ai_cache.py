@@ -16,6 +16,27 @@ _lock = threading.Lock()
 _store = {}  # key -> (expires_at, value)
 
 
+def enabled() -> bool:
+    """Is the LLM cache active?
+
+    Disabled when tests run (APP_ENV=testing or Flask TESTING) so mocked
+    HTTP layers stay deterministic, or explicitly via AI_CACHE_ENABLED=0.
+    Production behaviour is unchanged (enabled by default).
+    """
+    import os
+    if os.environ.get("AI_CACHE_ENABLED", "").lower() in ("0", "false", "no", "off"):
+        return False
+    if os.environ.get("APP_ENV", "").lower() == "testing":
+        return False
+    try:
+        from flask import current_app, has_app_context
+        if has_app_context() and current_app.config.get("TESTING"):
+            return False
+    except Exception:
+        pass
+    return True
+
+
 def _normalize(text: str) -> str:
     if not text:
         return ""

@@ -857,13 +857,15 @@ class AIService:
 
                 # GROQ cost optimization: check cache before remote call
                 try:
-                    from services.ai_cache import get as _cache_get, set_value as _cache_set
-                    _cached = _cache_get(provider, model, message, knowledge_context or "")
+                    from services import ai_cache as _ai_cache_mod
+                    _cache_on = _ai_cache_mod.enabled()
+                except Exception:
+                    _ai_cache_mod = None
+                    _cache_on = False
+                if _cache_on:
+                    _cached = _ai_cache_mod.get(provider, model, message, knowledge_context or "")
                     if _cached:
                         return _cached
-                except Exception:
-                    _cache_get = None
-                    _cache_set = None
 
                 # Groq مع صلاحيات كاملة
                 expert_prompt = """أنت أزاد - مساعد ذكي تفاعلي لنظام إدارة كراجات.
@@ -930,8 +932,8 @@ class AIService:
 
                     # Store in cache for future identical prompts (cost saving)
                     try:
-                        if _cache_set is not None:
-                            _cache_set(provider, model, message, knowledge_context or "", final_answer)
+                        if _cache_on and _ai_cache_mod is not None:
+                            _ai_cache_mod.set_value(provider, model, message, knowledge_context or "", final_answer)
                     except Exception:
                         pass
 

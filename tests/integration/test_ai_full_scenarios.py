@@ -180,3 +180,12 @@ class TestGroqCache:
         cache_clear()
         cache_set("groq", "m", "  مرحبا   بالعالم ", "", "hi")
         assert cache_get("groq", "m", "مرحبا بالعالم", "") == "hi"
+
+    def test_cache_disabled_in_testing_env(self, monkeypatch):
+        from services import ai_cache
+        assert ai_cache.enabled() is False  # APP_ENV=testing in test runs
+        monkeypatch.setenv("APP_ENV", "production")
+        monkeypatch.delenv("AI_CACHE_ENABLED", raising=False)
+        assert ai_cache.enabled() is True
+        monkeypatch.setenv("AI_CACHE_ENABLED", "0")
+        assert ai_cache.enabled() is False

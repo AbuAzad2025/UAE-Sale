@@ -47,14 +47,22 @@ def _validate_csrf_token():
     # For AJAX requests, check custom header
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         csrf_token = request.headers.get('X-CSRF-Token')
-        if csrf_token and validate_csrf_token(csrf_token):
-            return True
-    
+        if csrf_token:
+            try:
+                validate_csrf_token(csrf_token)
+                return True
+            except Exception:
+                pass
+
     # Fall back to standard form token
     csrf_token = request.form.get('csrf_token')
-    if csrf_token and validate_csrf_token(csrf_token):
-        return True
-    
+    if csrf_token:
+        try:
+            validate_csrf_token(csrf_token)
+            return True
+        except Exception:
+            pass
+
     return False
 
 

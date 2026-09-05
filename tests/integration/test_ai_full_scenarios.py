@@ -89,6 +89,46 @@ class TestSecurityAudit:
             # No valid token supplied -> 403 tuple or None if fallback allows
             assert result is None or result[1] == 403
 
+    def test_detect_ai_operation_mapping(self):
+        from routes.ai import _detect_ai_operation
+        assert _detect_ai_operation("منتج: فلتر، FZ-1، 45، 10") == "create_product"
+        assert _detect_ai_operation("فاتورة: أحمد، فلتر، 2") == "create_sale"
+        assert _detect_ai_operation("مصروف: وقود، 200") == "create_expense"
+        assert _detect_ai_operation("دفعة: أحمد، 100، كاش") == "record_payment"
+        assert _detect_ai_operation("مرحبا كيف حالك") == "chat_ai"
+        assert _detect_ai_operation("عرض رصيد العميل: أحمد") == "chat_ai"
+
+    def test_origin_mismatch_blocked_for_sensitive_op(self, app):
+        from routes.ai import _require_csrf_for_sensitive_ops
+        with app.test_request_context(
+            "/ai/chat", method="POST",
+            headers={"Origin": "https://evil.example.com"},
+            base_url="http://localhost",
+        ):
+            from flask import request as req
+            req.ai_operation = "create_sale"
+            result = _require_csrf_for_sensitive_ops()
+            assert result is not None and result[1] == 403
+
+    def test_same_origin_allowed_without_token(self, app):
+        from routes.ai import _require_csrf_for_sensitive_ops
+        with app.test_request_context(
+            "/ai/chat", method="POST",
+            headers={"Origin": "http://localhost"},
+            base_url="http://localhost",
+        ):
+            from flask import request as req
+            req.ai_operation = "create_product"
+            assert _require_csrf_for_sensitive_ops() is None
+
+    def test_cross_site_chat_shortcut_blocked(self, client, login_owner):
+        resp = client.post(
+            "/ai/chat",
+            json={"message": "منتج: فلتر، FZ-9، 10، 5", "ai_mode": "local"},
+            headers={"Origin": "https://evil.example.com"},
+        )
+        assert resp.status_code == 403
+
     def test_security_endpoints_require_login(self, client):
         assert client.post("/ai/chat", json={"message": "x"}).status_code in (302, 401)
 

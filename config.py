@@ -123,6 +123,16 @@ class Config:
     WTF_CSRF_ENABLED = _bool(os.environ.get("WTF_CSRF_ENABLED"), True)
     WTF_CSRF_TIME_LIMIT = None
 
+    # Internal service-to-service key (optional). When set, AI JSON endpoints
+    # accept it via X-API-Key header / api_key param as a CSRF alternative.
+    INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
+
+    # Sentry error tracking (optional). Leave SENTRY_DSN empty to disable.
+    SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+    SENTRY_ENVIRONMENT = os.environ.get("SENTRY_ENVIRONMENT", os.environ.get("APP_ENV", "production"))
+    SENTRY_TRACES_SAMPLE_RATE = float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1"))
+    SENTRY_PROFILES_SAMPLE_RATE = float(os.environ.get("SENTRY_PROFILES_SAMPLE_RATE", "0.1"))
+
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:5000,http://127.0.0.1:5000").split(",")
     CORS_SUPPORTS_CREDENTIALS = True
 

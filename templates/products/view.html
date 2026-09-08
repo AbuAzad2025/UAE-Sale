@@ -88,8 +88,10 @@
           </dd>
           {% endif %}
           
+          {% if current_user.can_see_costs() %}
           <dt class="col-sm-4">سعر التكلفة:</dt>
           <dd class="col-sm-8">{{ "{:,.2f}".format(product.cost_price or 0) }} AED</dd>
+          {% endif %}
           
           <dt class="col-sm-4">خصم التاجر:</dt>
           <dd class="col-sm-8">

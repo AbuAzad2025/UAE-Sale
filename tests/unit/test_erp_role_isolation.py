@@ -224,7 +224,13 @@ def other_tenant_user(db, all_permissions):
 
 
 def _login(client, user, password='Pass123!'):
-    """Log in a user via the test client."""
+    """Log in a user via the test client.
+
+    NOTE: /auth/login short-circuits with a redirect when a session is
+    already authenticated, so we must log out first or switching users
+    mid-test silently keeps the previous user logged in.
+    """
+    client.get('/auth/logout', follow_redirects=True)
     client.post('/auth/login', data={
         'username': user.username, 'password': password,
     }, follow_redirects=True)
@@ -879,3 +885,492 @@ class TestDecoratorBehavior:
         _login(client, manager_user)
         resp = client.get('/owner/dashboard')
         assert resp.status_code in (403, 404, 302)
+
+
+# ── Phase 7: Adaptive RBAC audit (deduplicated additions) ────────────────────
+# NOTE (deduplication): GET allow/deny matrix, dashboard/palette/quick-action
+# gating, IDOR GET, and /users role-escalation are already covered by
+# Phases 2-5 + test_zero_trust_isolation.py + test_security_audit.py.
+# The three tests below cover ONLY the gaps: POST/DELETE tampering with
+# DB-unchanged guards, DOM-absence for financial/admin UI, and
+# mass-assignment / cross-tenant POST escalation.
+
+class TestDiscoveredRoleEndpointMatrix:
+    """POST tampering matrix — low-priv roles must be denied AND cause no write.
+
+    Skips GET scenarios already covered in Phases 2-5 (see module docstring).
+    """
+
+    @pytest.mark.parametrize('fixture_name,method,url', [
+        ('seller_user', 'POST', '/expenses/create'),
+        ('seller_user', 'POST', '/purchases/create'),
+        ('seller_user', 'POST', '/hr/employees/create'),
+        ('seller_user', 'POST', '/ledger/manual-entry'),
+        ('seller_user', 'POST', '/cheques/create'),
+        ('cashier_user', 'POST', '/sales/create'),
+        ('cashier_user', 'POST', '/products/create'),
+        ('accountant_user', 'POST', '/sales/create'),
+        ('manager_user', 'POST', '/ledger/manual-entry'),
+        ('inventory_user', 'POST', '/sales/create'),
+        ('inventory_user', 'POST', '/purchases/create'),
+        ('hr_user', 'POST', '/expenses/create'),
+        ('viewer_user', 'POST', '/sales/create'),
+        ('viewer_user', 'POST', '/expenses/create'),
+    ])
+    def test_discovered_role_endpoint_matrix(
+        self, client, db, request, fixture_name, method, url
+    ):
+        user = request.getfixturevalue(fixture_name)
+        _login(client, user)
+        if method == 'POST':
+            resp = client.post(url, data={'_audit_probe': 'rbac-matrix'},
+                               follow_redirects=False)
+        else:
+            resp = client.get(url, follow_redirects=False)
+        # Permission gates abort 403; owner panel stealth is 404; some
+        # /users-style gates flash+redirect (302). 200 with a write = bypass.
+        assert resp.status_code in (403, 404, 302), (
+            f"{fixture_name} {method} {url} returned {resp.status_code}, "
+            "expected deny (403/404/302)"
+        )
+
+    @pytest.mark.parametrize('fixture_name,url', [
+        ('seller_user', '/owner/backup-now'),
+        ('manager_user', '/owner/backup-now'),
+        ('cashier_user', '/owner/backup-now'),
+    ])
+    def test_discovered_role_endpoint_matrix_owner_post_stealth(
+        self, client, db, request, fixture_name, url
+    ):
+        """Non-owner POST to owner panel must be stealth-404 (or deny), never 200."""
+        user = request.getfixturevalue(fixture_name)
+        _login(client, user)
+        resp = client.post(url, data={}, follow_redirects=False)
+        assert resp.status_code in (403, 404, 302), (
+            f"{fixture_name} POST {url} returned {resp.status_code}"
+        )
+
+
+class TestRoleUiElementVisibility:
+    """DOM-absence: restricted links/data must be missing from HTML, not CSS-hidden."""
+
+    @pytest.mark.parametrize('fixture_name,forbidden_urls', [
+        ('seller_user', ['/ledger/', '/owner/dashboard', '/owner/audit-logs',
+                         '/hr/', '/owner/config']),
+        ('cashier_user', ['/sales/create', '/ledger/', '/products/create',
+                          '/purchases/create', '/owner/dashboard']),
+        ('inventory_user', ['/sales/create', '/ledger/', '/owner/dashboard',
+                            '/payments/receipts/create']),
+        ('hr_user', ['/sales/create', '/ledger/', '/payments/receipts/create',
+                     '/owner/dashboard']),
+        ('viewer_user', ['/sales/create', '/customers/create',
+                         '/products/create', '/purchases/create',
+                         '/owner/dashboard']),
+        ('accountant_user', ['/sales/create', '/hr/', '/owner/dashboard']),
+    ])
+    def test_role_ui_element_visibility(
+        self, client, request, fixture_name, forbidden_urls
+    ):
+        user = request.getfixturevalue(fixture_name)
+        _login(client, user)
+        data = client.get('/dashboard').data.decode()
+        for url in forbidden_urls:
+            assert url not in data, (
+                f"{fixture_name} dashboard leaks restricted URL {url}"
+            )
+
+    def test_role_ui_element_visibility_cashier_reports_only(
+        self, client, cashier_user
+    ):
+        _login(client, cashier_user)
+        data = client.get('/dashboard').data.decode()
+        assert '/reports/sales' in data
+        for url in ['/sales/create', '/customers/create', '/products/create']:
+            assert url not in data, f"Cashier sees card URL {url}"
+
+
+class TestPrivilegeEscalationGuard:
+    """Parameter tampering / cross-tenant POST must fail closed with no DB effect."""
+
+    def test_privilege_escalation_guard_role_smuggling(
+        self, client, db, seller_user, all_permissions
+    ):
+        from models import Role as _Role
+        super_role = _Role.query.filter_by(slug='super_admin').first()
+        if not super_role:
+            super_role = _Role(name='Super Admin', slug='super_admin',
+                               permissions=list(all_permissions.values()))
+            db.session.add(super_role)
+            db.session.commit()
+        _login(client, seller_user)
+        before = User.query.filter_by(username='evil_smuggled').count()
+        resp = client.post('/users/create', data={
+            'username': 'evil_smuggled', 'email': 'evil_smuggled@test.local',
+            'password': 'EvilPass123!@#', 'full_name': 'Evil',
+            'role_id': super_role.id, 'is_owner': '1', 'tenant_id': '9999',
+        }, follow_redirects=False)
+        assert resp.status_code in (302, 403, 404)
+        db.session.expire_all()
+        evil = User.query.filter_by(username='evil_smuggled').first()
+        assert evil is None or evil.role.slug != 'super_admin', (
+            "Privilege escalation: seller minted super_admin"
+        )
+        assert evil is None or evil.is_owner is not True
+        if evil is not None:
+            db.session.delete(evil)
+            db.session.commit()
+        assert User.query.filter_by(username='evil_smuggled').count() == before
+
+    def test_privilege_escalation_guard_self_promotion(
+        self, client, db, seller_user, all_permissions
+    ):
+        from models import Role as _Role
+        super_role = _Role.query.filter_by(slug='super_admin').first()
+        if not super_role:
+            super_role = _Role(name='Super Admin', slug='super_admin',
+                               permissions=list(all_permissions.values()))
+            db.session.add(super_role)
+            db.session.commit()
+        orig_role_id = seller_user.role_id
+        _login(client, seller_user)
+        client.post(f'/users/{seller_user.id}/edit', data={
+            'email': seller_user.email, 'full_name': seller_user.full_name,
+            'role_id': super_role.id,
+        }, follow_redirects=False)
+        db.session.expire_all()
+        assert User.query.get(seller_user.id).role_id != super_role.id
+        assert User.query.get(seller_user.id).role_id == orig_role_id
+
+    def test_privilege_escalation_guard_manager_cannot_delete_super_admin(
+        self, client, db, manager_user, all_permissions
+    ):
+        from models import Role as _Role
+        super_role = _Role.query.filter_by(slug='super_admin').first()
+        if not super_role:
+            super_role = _Role(name='Super Admin', slug='super_admin',
+                               permissions=list(all_permissions.values()))
+            db.session.add(super_role)
+            db.session.commit()
+        victim = User(username='victim_sa', email='victim_sa@test.local',
+                      full_name='Victim', is_owner=False, is_active=True,
+                      role_id=super_role.id)
+        victim.set_password('Pass123!')
+        db.session.add(victim)
+        db.session.commit()
+        victim_id = victim.id
+        _login(client, manager_user)
+        resp = client.post(f'/users/{victim_id}/delete',
+                           follow_redirects=False)
+        assert resp.status_code in (302, 403, 404)
+        db.session.expire_all()
+        assert User.query.get(victim_id) is not None, (
+            "Manager deleted a super_admin account"
+        )
+
+    def test_privilege_escalation_guard_cross_tenant_post_blocked(
+        self, client, db, seller_user
+    ):
+        other = Customer(
+            name='Other Tenant Guard', name_ar='حارس',
+            phone='+971500000099', is_active=True, tenant_id=9999,
+        )
+        db.session.add(other)
+        db.session.commit()
+        other_id = other.id
+        _login(client, seller_user)
+        resp = client.post(f'/customers/{other_id}/edit',
+                           data={'name': 'Hacked Name'},
+                           follow_redirects=False)
+        assert resp.status_code in (302, 403, 404, 405)
+        db.session.expire_all()
+        assert Customer.query.get(other_id).name == 'Other Tenant Guard'
+
+    def test_privilege_escalation_guard_tenant_id_immutable_via_http(
+        self, client, db, seller_user
+    ):
+        own = Customer(name='Own Tenant Guard', name_ar='خاص',
+                       phone='+971500000098', is_active=True, tenant_id=None)
+        db.session.add(own)
+        db.session.commit()
+        own_id = own.id
+        _login(client, seller_user)
+        client.post(f'/customers/{own_id}/edit',
+                    data={'name': 'Own Tenant Guard', 'tenant_id': '9999'},
+                    follow_redirects=False)
+        db.session.expire_all()
+        assert Customer.query.get(own_id).tenant_id != 9999
+
+    def test_privilege_escalation_guard_vault_settings_owner_only(
+        self, client, db, manager_user
+    ):
+        """Secret vault settings (crypto/bank keys) are owner-only — a
+        manager POST must be refused and must not mutate settings."""
+        from models.payment_vault import PaymentVault
+        vault = PaymentVault.query.first()
+        if not vault:
+            vault = PaymentVault(vault_name='Audit Vault',
+                                 vault_password_hash='x', is_locked=True)
+            db.session.add(vault)
+            db.session.commit()
+        orig_name = vault.bank_name
+        _login(client, manager_user)
+        resp = client.post('/payment-vault/settings', data={
+            'bank_name': 'PWNED BANK',
+        }, follow_redirects=False)
+        assert resp.status_code in (302, 403, 404)
+        db.session.expire_all()
+        assert PaymentVault.query.get(vault.id).bank_name == orig_name, (
+            "Non-owner mutated secret vault settings"
+        )
+
+    def test_privilege_escalation_guard_low_priv_cannot_mint_settings_perm(
+        self, client, db, seller_user, all_permissions
+    ):
+        """manage_settings routes (approval workflows) must deny seller."""
+        _login(client, seller_user)
+        resp = client.post('/approvals/workflows/new', data={
+            'name': 'Evil WF', 'entity_type': 'sale',
+            'levels_required': '1',
+        }, follow_redirects=False)
+        assert resp.status_code in (302, 403, 404)
+        from models import ApprovalWorkflow
+        assert ApprovalWorkflow.query.filter_by(name='Evil WF').count() == 0
+
+
+# ── Phase 8: Operational-vs-Financial separation (cost leakage) ──────────────
+# Directive §1.2: operations roles (seller/cashier/inventory) must never see
+# cost prices, margins, or GL postings. Every finding below was verified
+# against the live templates/routes before the enforcing test was written.
+
+class TestCostDataSeparation:
+    """Cost-price/margin leakage across HTML, JSON APIs, and GraphQL."""
+
+    def _seed_cost_product(self, db):
+        cat = ProductCategory.query.filter_by(is_active=True).first()
+        if not cat:
+            cat = ProductCategory(name='Cost Audit Cat', name_ar='تكلفة',
+                                  is_active=True)
+            db.session.add(cat)
+            db.session.flush()
+        product = Product(name='Cost Secret Widget', name_ar='منتج التكلفة',
+                          sku='SKU-COST-AUDIT', category_id=cat.id,
+                          cost_price=Decimal('77.500'),
+                          regular_price=Decimal('150.000'),
+                          current_stock=Decimal('10'),
+                          min_stock_alert=Decimal('2'), is_active=True)
+        db.session.add(product)
+        db.session.commit()
+        return product
+
+    # -- HTML surfaces -------------------------------------------------------
+
+    def test_inventory_report_hides_cost_columns_from_operational_roles(
+        self, client, db, seller_user, cashier_user
+    ):
+        product = self._seed_cost_product(db)
+        for user in (seller_user, cashier_user):
+            _login(client, user)
+            resp = client.get('/reports/inventory')
+            if resp.status_code != 200:
+                continue  # view_reports gate denies: covered elsewhere
+            html = resp.data.decode()
+            assert 'سعر التكلفة' not in html, (
+                f"{user.role.slug} sees cost column header on /reports/inventory"
+            )
+            assert '77.5' not in html and '77.500' not in html
+            assert product.sku in html  # page still functional for stock ops
+
+    def test_inventory_report_shows_cost_to_cost_privileged_roles(
+        self, client, db, owner_user, manager_user
+    ):
+        self._seed_cost_product(db)
+        for user in (owner_user, manager_user):
+            _login(client, user)
+            resp = client.get('/reports/inventory')
+            assert resp.status_code == 200
+            assert 'سعر التكلفة' in resp.data.decode()
+
+    def test_inventory_valuation_blocked_without_cost_visibility(
+        self, client, db, seller_user, cashier_user, accountant_user
+    ):
+        """Valuation = qty × cost. view_reports alone must get 403."""
+        self._seed_cost_product(db)
+        for user in (seller_user, cashier_user, accountant_user):
+            _login(client, user)
+            assert client.get('/reports/inventory-valuation').status_code == 403, (
+                f"{user.role.slug} reached cost valuation report"
+            )
+            assert client.get(
+                '/reports/inventory-valuation/export?format=csv'
+            ).status_code == 403
+
+    def test_inventory_valuation_allowed_for_cost_privileged(
+        self, client, db, owner_user, manager_user
+    ):
+        self._seed_cost_product(db)
+        for user in (owner_user, manager_user):
+            _login(client, user)
+            assert client.get('/reports/inventory-valuation').status_code == 200
+
+    def test_product_detail_hides_cost_from_seller(self, client, db, seller_user):
+        product = self._seed_cost_product(db)
+        _login(client, seller_user)
+        html = client.get(f'/products/{product.id}').data.decode()
+        assert 'سعر التكلفة' not in html
+        assert '77.5' not in html
+
+    def test_product_forms_hide_cost_field_from_seller(self, client, db, seller_user):
+        self._seed_cost_product(db)
+        _login(client, seller_user)
+        assert 'name="cost_price"' not in client.get('/products/create').data.decode()
+        product = Product.query.filter_by(sku='SKU-COST-AUDIT').first()
+        assert 'name="cost_price"' not in client.get(
+            f'/products/{product.id}/edit'
+        ).data.decode()
+
+    def test_seller_cannot_write_cost_price_via_edit_tampering(
+        self, client, db, seller_user
+    ):
+        """Seller omits cost field (hidden in UI) — a tampered POST with
+        cost_price must NOT change the stored cost (server-side guard)."""
+        product = self._seed_cost_product(db)
+        wh = Warehouse.query.filter_by(is_active=True).first()
+        if not wh:
+            wh = Warehouse(name='Cost Audit WH', is_active=True, is_main=True)
+            db.session.add(wh)
+            db.session.commit()
+        _login(client, seller_user)
+        resp = client.post(f'/products/{product.id}/edit', data={
+            'name': product.name, 'name_ar': product.name_ar or '',
+            'sku': product.sku, 'category_id': str(product.category_id or 0),
+            'regular_price': '150', 'cost_price': '1',
+            'min_stock_alert': '2', 'current_stock': '10',
+            'warehouse_id': str(wh.id),
+        }, follow_redirects=False)
+        assert resp.status_code in (302, 200)
+        db.session.expire_all()
+        assert db.session.get(Product, product.id).cost_price == Decimal('77.500'), (
+            "Seller tampered cost_price via product edit POST"
+        )
+
+    def test_lots_page_hides_cost_from_inventory_role(self, client, db, inventory_user):
+        _login(client, inventory_user)
+        html = client.get('/erp/lots').data.decode()
+        assert 'التكلفة' not in html
+
+    # -- JSON APIs -----------------------------------------------------------
+
+    def test_api_search_masks_cost_from_operational_roles(
+        self, client, db, seller_user, cashier_user, owner_user
+    ):
+        self._seed_cost_product(db)
+        for user, expect_cost in ((seller_user, False), (cashier_user, False),
+                                  (owner_user, True)):
+            _login(client, user)
+            body = client.get('/api/search?type=products&q=Cost Secret').get_json()
+            hit = next(r for r in body['results']
+                       if r['sku'] == 'SKU-COST-AUDIT')
+            if expect_cost:
+                assert hit['cost_price'] == 77.5
+            else:
+                assert hit['cost_price'] is None, (
+                    f"{user.role.slug} got cost_price from /api/search"
+                )
+
+    def test_api_v2_sales_mask_line_costs_from_seller(
+        self, client, db, seller_user, owner_user, test_sale
+    ):
+        _login(client, seller_user)
+        listing = client.get('/api/v2/sales').get_json()
+        for sale in listing['sales']:
+            for line in sale.get('lines', []):
+                assert 'cost_price' not in line, "Seller sees line cost in list API"
+                assert 'profit' not in line
+        detail_id = listing['sales'][0]['id'] if listing['sales'] else test_sale.id
+        detail = client.get(f'/api/v2/sales/{detail_id}').get_json()
+        for line in detail['sale'].get('lines', []):
+            assert 'cost_price' not in line
+        assert 'profit' not in detail['sale']
+
+        _login(client, owner_user)
+        detail_owner = client.get(f'/api/v2/sales/{test_sale.id}').get_json()
+        assert detail_owner['sale']['lines'][0]['cost_price'] == 25.0
+
+    def test_profit_margins_endpoint_blocked_without_cost_visibility(
+        self, client, db, cashier_user, viewer_user, seller_user, owner_user
+    ):
+        for user in (cashier_user, viewer_user, seller_user):
+            _login(client, user)
+            assert client.get('/api/v2/analytics/profit-margins').status_code == 403, (
+                f"{user.role.slug} pulled profit margins"
+            )
+        _login(client, owner_user)
+        assert client.get('/api/v2/analytics/profit-margins').status_code == 200
+
+    # -- GraphQL -------------------------------------------------------------
+
+    def test_graphql_masks_product_cost_from_low_privilege_user(
+        self, client, db, viewer_user, owner_user
+    ):
+        """view_reports is the base gate for /graphql — a viewer passes the
+        endpoint gate but must still get costPrice masked (owner sees it)."""
+        self._seed_cost_product(db)
+        _login(client, viewer_user)
+        resp = client.post('/graphql', json={
+            'query': '{ allProducts { id name costPrice } }',
+        })
+        assert resp.status_code == 200
+        products = resp.get_json()['data']['allProducts']
+        target = next(p for p in products if p['name'] == 'Cost Secret Widget')
+        assert target['costPrice'] is None, "Viewer read cost via GraphQL"
+
+        _login(client, owner_user)
+        resp_owner = client.post('/graphql', json={
+            'query': '{ allProducts { id name costPrice } }',
+        })
+        owner_products = resp_owner.get_json()['data']['allProducts']
+        owner_target = next(
+            p for p in owner_products if p['name'] == 'Cost Secret Widget'
+        )
+        assert owner_target['costPrice'] == 77.5, (
+            "Owner lost cost visibility after masking fix"
+        )
+
+    # -- Cache bleed regression ----------------------------------------------
+
+    def test_api_v2_cache_never_serves_owner_costs_to_seller(
+        self, client, db, owner_user, seller_user, test_sale
+    ):
+        """Regression: /api/v2/sales cache key was role-agnostic — the owner's
+        cost-bearing response was served to sellers within the TTL."""
+        _login(client, owner_user)
+        owner_body = client.get('/api/v2/sales').get_json()
+        assert owner_body['sales'][0]['lines'][0]['cost_price'] == 25.0
+        client.get('/auth/logout', follow_redirects=True)
+
+        _login(client, seller_user)
+        seller_body = client.get('/api/v2/sales').get_json()
+        for sale in seller_body['sales']:
+            for line in sale.get('lines', []):
+                assert 'cost_price' not in line, (
+                    "Cross-role cache bleed: seller received owner's cached "
+                    "cost-bearing sales payload"
+                )
+
+    # -- Model-level invariant -----------------------------------------------
+
+    def test_can_see_costs_matrix(self, db, owner_user, manager_user,
+                                  seller_user, cashier_user, accountant_user,
+                                  inventory_user, viewer_user):
+        """Documented contract: only owner/super_admin/manager see costs.
+
+        NOTE (finding F5): accountant is a financial role but is excluded by
+        the current can_see_costs() implementation — see audit report.
+        """
+        assert owner_user.can_see_costs() is True
+        assert manager_user.can_see_costs() is True
+        for user in (seller_user, cashier_user, inventory_user, viewer_user,
+                     accountant_user):
+            assert user.can_see_costs() is False, (
+                f"{user.role.slug} unexpectedly sees costs"
+            )

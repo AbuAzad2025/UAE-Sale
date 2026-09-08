@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from flask_login import login_required
+from flask_login import login_required, current_user
 from extensions import db
 from models import Customer, Supplier, Product, User
 
@@ -131,7 +131,11 @@ def api_search():
             'regular_price': float(p.regular_price or 0),
             'merchant_price': float(p.merchant_price) if p.merchant_price else None,
             'partner_price': float(p.partner_price) if p.partner_price else None,
-            'cost_price': float(p.cost_price) if p.cost_price else 0,
+            # SECURITY: cost data only for roles allowed to see costs
+            # (owner / super_admin / manager). Cashiers and sellers use this
+            # endpoint from the POS screen — never expose cost to them.
+            'cost_price': (float(p.cost_price) if p.cost_price else 0)
+                          if current_user.can_see_costs() else None,
             'unit': p.unit,
             'is_low_stock': p.is_low_stock(),
         } for p in products]

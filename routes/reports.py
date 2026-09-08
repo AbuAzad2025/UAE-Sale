@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 from io import BytesIO
-from flask import Blueprint, render_template, request, jsonify, make_response
+from flask import Blueprint, render_template, request, jsonify, make_response, abort
 from flask_login import login_required, current_user
 from werkzeug.exceptions import HTTPException
 from sqlalchemy import func
@@ -458,9 +458,11 @@ def inventory():
         'total_value': float(total_value) if current_user.can_see_costs() else None
     }
 
+    # SECURITY: cost columns in the template are gated on can_see_costs()
     return render_template('reports/inventory.html',
                            products=products,
-                           summary=summary)
+                           summary=summary,
+                           can_see_costs=current_user.can_see_costs())
 
 
 @reports_bp.route('/api/entity-search')
@@ -768,7 +770,12 @@ def inventory_valuation():
     """
     تقرير تقييم المخزون — Inventory Valuation
     Per warehouse/category, qty × cost, totals.
+
+    SECURITY: valuation exposes qty × cost — owner/super_admin/manager only.
+    view_reports alone must never reveal cost-based inventory value.
     """
+    if not current_user.can_see_costs():
+        abort(403)
     from models import Warehouse, ProductCategory
 
     warehouse_id = request.args.get('warehouse_id', type=int)
@@ -1158,6 +1165,9 @@ def _send_export(export_func, filename, format_type):
 @permission_required('view_reports')
 def export_inventory_valuation():
     from services.export_service import ExportService
+    # SECURITY: export carries the same cost columns as the valuation page.
+    if not current_user.can_see_costs():
+        abort(403)
     fmt = request.args.get('format', 'xlsx')
 
     products = Product.query.filter(Product.is_active == True, Product.current_stock > 0).order_by(Product.name).all()  # noqa: E712

@@ -25,7 +25,13 @@ def _cache_scope_token():
             return 'owner'
         role_slug = getattr(getattr(current_user, 'role', None), 'slug', None) or 'norole'
         tenant = getattr(current_user, 'tenant_id', None) or '0'
-        return f'{role_slug}:t{tenant}'
+        # Cost visibility is permission-driven; include the effective bit so a
+        # same-slug role with divergent view_costs grants never shares a body.
+        try:
+            costs = 'c1' if current_user.can_see_costs() else 'c0'
+        except Exception:
+            costs = 'cx'
+        return f'{role_slug}:{costs}:t{tenant}'
     except Exception:
         # Fail closed: never share a cached body across unknown scopes.
         return 'unknown'

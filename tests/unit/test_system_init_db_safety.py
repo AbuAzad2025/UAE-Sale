@@ -106,6 +106,38 @@ class TestRolesSeeding:
         assert Role.query.filter_by(slug='owner').count() == 1
 
 
+class TestCostPermissionGrants:
+    """Cost visibility is permission-driven (models.User.can_see_costs):
+    boot must (re-)grant view_costs to seeded privileged roles, and never
+    to operator-created roles like manager (migration 14 handles backfill).
+    """
+
+    def test_boot_grants_view_costs_to_privileged_roles(self, db, app, no_telemetry):
+        _run_init(app)
+        for slug in ('owner', 'super_admin', 'developer'):
+            role = Role.query.filter_by(slug=slug).first()
+            assert role.has_permission('view_costs'), (
+                f"{slug} missing view_costs after boot"
+            )
+
+    def test_boot_does_not_touch_operator_roles(self, db, app, no_telemetry):
+        _run_init(app)
+        mgr = Role(name='OpsManager', name_ar='مدير', slug='manager',
+                   description='operator-created')
+        db.session.add(mgr)
+        db.session.commit()
+        _run_init(app)
+        assert Role.query.filter_by(slug='manager').first() \
+            .has_permission('view_costs') is False
+
+    def test_boot_grant_is_idempotent(self, db, app, no_telemetry):
+        _run_init(app)
+        before = Role.query.filter_by(slug='owner').first().permissions
+        _run_init(app)
+        after = Role.query.filter_by(slug='owner').first().permissions
+        assert len(before) == len(after)
+
+
 class TestOwnerUser:
     def test_creates_master_owner_with_config_credentials(self, db, app, no_telemetry):
         app.config['OWNER_EMAIL'] = 'corp.owner@example.com'

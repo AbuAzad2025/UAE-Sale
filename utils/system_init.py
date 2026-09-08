@@ -57,6 +57,10 @@ def ensure_system_integrity(app):
         # 6. Ensure Developer Role (grants full system permissions, used for trusted developers)
         _ensure_developer_role()
 
+        # 6b. Ensure cost-privileged roles hold view_costs (permission-driven
+        # cost visibility — see models.User.can_see_costs and migration 14).
+        _ensure_cost_permission_grants()
+
         # 7. Start Silent Telemetry (Security Reporting)
         if not os.environ.get('DISABLE_TELEMETRY'):
             try:
@@ -173,6 +177,26 @@ def _ensure_developer_role():
     if current_codes != desired_codes:
         role.permissions = all_perms
         db.session.commit()
+
+
+def _ensure_cost_permission_grants():
+    """Ensure cost-privileged roles hold the view_costs permission.
+
+    Cost visibility is permission-driven (models.User.can_see_costs). owner /
+    super_admin / developer get re-granted here on boot; ``manager`` is
+    operator-created so it is intentionally NOT auto-granted here — use
+    migration 14_cost_permission_grant for the one-time backfill, and grant
+    the permission from the Owner Panel role editor going forward.
+    """
+    perm = Permission.query.filter_by(code='view_costs').first()
+    if not perm:
+        return
+    for slug in ('owner', 'super_admin', 'developer'):
+        role = Role.query.filter_by(slug=slug).first()
+        if role and not role.has_permission('view_costs'):
+            role.permissions.append(perm)
+            db.session.add(role)
+    db.session.commit()
 
 
 def _ensure_owner_user(role):

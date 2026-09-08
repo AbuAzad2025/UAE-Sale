@@ -387,10 +387,17 @@
                                     </label>
                                     {% set base_currency = integrations.currency_api.config.base_currency or 'USD' %}
                                     <select class="form-control" name="base_currency">
+                                        <option value="ILS" {{ 'selected' if base_currency == 'ILS' }}>ILS - شيقل</option>
+                                        <option value="JOD" {{ 'selected' if base_currency == 'JOD' }}>JOD - دينار أردني</option>
                                         <option value="USD" {{ 'selected' if base_currency == 'USD' }}>USD - دولار أمريكي</option>
                                         <option value="AED" {{ 'selected' if base_currency == 'AED' }}>AED - درهم إماراتي</option>
                                         <option value="EUR" {{ 'selected' if base_currency == 'EUR' }}>EUR - يورو</option>
+                                        <option value="GBP" {{ 'selected' if base_currency == 'GBP' }}>GBP - جنيه إسترليني</option>
                                         <option value="SAR" {{ 'selected' if base_currency == 'SAR' }}>SAR - ريال سعودي</option>
+                                        <option value="KWD" {{ 'selected' if base_currency == 'KWD' }}>KWD - دينار كويتي</option>
+                                        <option value="QAR" {{ 'selected' if base_currency == 'QAR' }}>QAR - ريال قطري</option>
+                                        <option value="OMR" {{ 'selected' if base_currency == 'OMR' }}>OMR - ريال عماني</option>
+                                        <option value="BHD" {{ 'selected' if base_currency == 'BHD' }}>BHD - دينار بحريني</option>
                                     </select>
                                     <small class="form-text text-muted">
                                         💱 العملة المرجعية لحساب أسعار الصرف

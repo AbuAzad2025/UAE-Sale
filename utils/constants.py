@@ -50,6 +50,8 @@ USER_ROLES = [
 ]
 
 CURRENCIES = [
+    ('ILS', {'ar': 'شيقل', 'en': 'Israeli Shekel', 'symbol': '₪'}),
+    ('JOD', {'ar': 'دينار أردني', 'en': 'Jordanian Dinar', 'symbol': 'د.أ'}),
     ('AED', {'ar': 'درهم إماراتي', 'en': 'UAE Dirham', 'symbol': 'د.إ'}),
     ('USD', {'ar': 'دولار أمريكي', 'en': 'US Dollar', 'symbol': '$'}),
     ('EUR', {'ar': 'يورو', 'en': 'Euro', 'symbol': '€'}),

@@ -225,25 +225,37 @@ class TestGraphqlService:
         assert len(Query().resolve_all_sales(None)) >= 1
 
     def test_resolve_sale_missing(self, db):
+        """Missing IDs now surface as errors (werkzeug NotFound) instead of
+        the old silent-None contract that masked a broken resolver layer."""
+        import pytest
+        from werkzeug.exceptions import NotFound
         from services.graphql_service import Query
-        assert Query().resolve_sale(None, id=999999) is None
+        with pytest.raises(NotFound):
+            Query().resolve_sale(None, id=999999)
 
     def test_resolve_customers_products(self, db):
+        import pytest
+        from werkzeug.exceptions import NotFound
         from services.graphql_service import Query
         _seed_sale(db)
         q = Query()
         assert len(q.resolve_all_customers(None)) >= 1
         assert len(q.resolve_all_products(None)) >= 1
-        assert q.resolve_customer(None, id=999999) is None
-        assert q.resolve_product(None, id=999999) is None
+        with pytest.raises(NotFound):
+            q.resolve_customer(None, id=999999)
+        with pytest.raises(NotFound):
+            q.resolve_product(None, id=999999)
 
     def test_converters(self, db):
-        from services.graphql_service import Query
+        """Converters are module-level functions (graphene root_value is None,
+        so methods on Query could never be reached by resolvers)."""
+        from services.graphql_service import (
+            _convert_sale_to_type, _convert_customer_to_type,
+        )
         s = _seed_sale(db)
-        q = Query()
-        sale_t = q._convert_sale_to_type(s)
+        sale_t = _convert_sale_to_type(s)
         assert sale_t is not None
-        assert q._convert_customer_to_type(s.customer) is not None
+        assert _convert_customer_to_type(s.customer) is not None
 
 
 # ── dialects ──────────────────────────────────────────────────────────────────

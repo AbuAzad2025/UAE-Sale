@@ -152,7 +152,14 @@ class TestCliDbStatus:
         result = runner.invoke(args=['db-status'])
         assert result.exit_code == 0
         assert 'Heads:' in result.output
-        assert '13_add_gl_line_tenant' in result.output
+        # Resolve the actual head dynamically so adding migration 15+ does
+        # not require touching this test again.
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+        cfg = Config('migrations/alembic.ini')
+        cfg.set_main_option('script_location', 'migrations')
+        head = ScriptDirectory.from_config(cfg).get_current_head()
+        assert head in result.output
         assert 'NOT MIGRATED' in result.output
 
     def test_register_cli_commands_wires_db(self, app):

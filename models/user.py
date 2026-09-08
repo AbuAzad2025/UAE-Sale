@@ -155,7 +155,17 @@ class User(UserMixin, db.Model):
         return self.role and self.role.has_permission(permission_code)
 
     def can_see_costs(self):
-        return self.is_owner or self.is_super_admin() or self.is_manager()
+        """Cost visibility is now the ``view_costs`` permission (finance category).
+
+        Owner and super_admin bypass (they hold every permission anyway, but the
+        bypass keeps them working even if their role record is missing the grant).
+        Privileged roles (manager / super_admin / developer) receive ``view_costs``
+        via system_init and migration 14_cost_permission_grant; revoking the
+        permission from a role now revokes cost visibility for its users.
+        """
+        if self.is_owner or self.is_super_admin():
+            return True
+        return self.has_permission('view_costs')
 
     def get_display_name(self, lang='ar'):
         """Get display name in specified language"""

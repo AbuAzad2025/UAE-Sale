@@ -105,11 +105,17 @@ CI gate: `bandit -c .bandit.yml -r . -ll -ii` — fails only on real MEDIUM/HIGH
 
 ## 8. Cost-data separation audit (Phase 2, 2026-09-08)
 
-**Contract:** `can_see_costs()` (`models/user.py:157`) — only `owner` / `super_admin` / `manager`.
-Note: `view_costs` permission exists but is **not** consulted by `can_see_costs()`; `accountant`
-(a financial role) is excluded by design decision F5 below. Server-side gates are authoritative;
-template gating (`{% if can_see_costs %}` / `{% if current_user.can_see_costs() %}`) removes the
-DOM entirely rather than hiding it.
+**Contract:** `can_see_costs()` (`models/user.py:157`) — **permission-driven**: true iff the user's
+role holds the `view_costs` permission (finance category), with `owner` / `super_admin` bypass.
+Privileged roles (`manager`, `super_admin`, `developer`) receive `view_costs` via `system_init`
+boot re-grant (idempotent) and migration `14_cost_permission_grant` (one-time backfill for
+operator-created manager roles). Revoking `view_costs` from a role now revokes cost visibility
+for its users — enforceable from the Owner Panel role editor without code changes. `accountant`
+(a financial role) is excluded by default (finding F5) — grant it `view_costs` deliberately if
+business policy changes. Server-side gates are authoritative; template gating
+(`{% if can_see_costs %}` / `{% if current_user.can_see_costs() %}`) removes the DOM entirely
+rather than hiding it. Cache keys embed the effective cost bit (`c0`/`c1`), so roles with
+divergent grants never share a cached body.
 
 ### 8.1 Gaps found → fixed
 
@@ -119,7 +125,7 @@ DOM entirely rather than hiding it.
 | F2 | `/api/v2/sales` list + detail | line `cost_price`/`profit` to any `manage_sales` user | `Sale.to_dict(include_cost=…)` |
 | F3 | `/api/v2/analytics/profit-margins` | company-wide cost/profit to any `view_reports` user | `403` unless `can_see_costs()` |
 | F4 | `/reports/inventory` + template | cost & value columns rendered to `view_reports` | `summary.total_value=None` + columns omitted from DOM |
-| F5 | `/reports/inventory-valuation` (+export) | qty × cost to any `view_reports` user | `403` unless `can_see_costs()`; `accountant` exclusion documented as deliberate (real-world: operational-vs-financial separation, but flag for business confirmation) |
+| F5 | `/reports/inventory-valuation` (+export) | qty × cost to any `view_reports` user | `403` unless `can_see_costs()`; `accountant` excluded by default — grant `view_costs` to its role if policy changes (no code change needed since the permission now drives visibility) |
 | F6 | `products/view|create|edit.html` | cost field visible/editable to `seller` (`manage_products`) | hidden in DOM; edit POST ignores tampered `cost_price` for non-cost roles |
 | F7 | `/erp/lots`, `/erp/lots/new` | lot cost rendered to `inventory` role | cost column/field omitted from DOM |
 | F8 | GraphQL `allProducts`/`product` | `costPrice` after passing `manage_products` field check | masked to `None` unless `can_see_costs()` |

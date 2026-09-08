@@ -105,6 +105,7 @@ def owner_user(db):
         Permission(code='view_ledger', name='View Ledger', category='ledger'),
         Permission(code='view_reports', name='View Reports', category='reports'),
         Permission(code='manage_backups', name='Manage Backups', category='backups'),
+        Permission(code='view_costs', name='View Costs', category='finance'),
     ]
     db.session.add_all(perms)
     db.session.flush()
@@ -161,6 +162,9 @@ def manager_user(db, owner_user):
         Permission.query.filter_by(code='manage_purchases').first(),
         Permission.query.filter_by(code='manage_payments').first(),
         Permission.query.filter_by(code='view_reports').first(),
+        # Cost visibility is permission-driven now (migration 14 backfills
+        # production manager roles; fixtures must mirror that grant).
+        Permission.query.filter_by(code='view_costs').first(),
     ]
     manager_perms = [p for p in manager_perms if p is not None]
 

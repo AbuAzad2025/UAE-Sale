@@ -87,6 +87,7 @@ def manager_user(db, all_permissions):
         all_permissions['manage_products'], all_permissions['manage_purchases'],
         all_permissions['manage_payments'], all_permissions['view_reports'],
         all_permissions['manage_expenses'], all_permissions['manage_warehouse'],
+        all_permissions['view_costs'],
     ])
     db.session.add(role)
     db.session.flush()
@@ -1362,13 +1363,26 @@ class TestCostDataSeparation:
     def test_can_see_costs_matrix(self, db, owner_user, manager_user,
                                   seller_user, cashier_user, accountant_user,
                                   inventory_user, viewer_user):
-        """Documented contract: only owner/super_admin/manager see costs.
+        """Cost visibility = the view_costs permission (owner/super_admin bypass).
 
-        NOTE (finding F5): accountant is a financial role but is excluded by
-        the current can_see_costs() implementation — see audit report.
+        Privileged roles carry view_costs (seeded via system_init + migration 14);
+        operational roles must never have it. Revoking view_costs from a role
+        revokes cost visibility for its users.
         """
-        assert owner_user.can_see_costs() is True
-        assert manager_user.can_see_costs() is True
+        assert owner_user.can_see_costs() is True  # bypass
+        assert manager_user.can_see_costs() is True  # via view_costs grant
+
+        # Permission is authoritative: removing it from manager's role
+        # immediately removes cost visibility for manager users.
+        manager_user.role.permissions = [
+            p for p in manager_user.role.permissions if p.code != 'view_costs'
+        ]
+        db.session.commit()
+        db.session.expire_all()
+        assert manager_user.can_see_costs() is False, (
+            "view_costs revocation did not revoke cost visibility"
+        )
+
         for user in (seller_user, cashier_user, inventory_user, viewer_user,
                      accountant_user):
             assert user.can_see_costs() is False, (

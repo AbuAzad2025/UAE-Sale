@@ -41,8 +41,14 @@ def upgrade():
 
     roles = sa.table('roles', sa.column('id', sa.Integer),
                      sa.column('slug', sa.String))
-    permissions = sa.table('permissions', sa.column('id', sa.Integer),
-                           sa.column('code', sa.String))
+    permissions = sa.table(
+        'permissions',
+        sa.column('id', sa.Integer),
+        sa.column('code', sa.String),
+        sa.column('name', sa.String),
+        sa.column('name_ar', sa.String),
+        sa.column('category', sa.String),
+    )
     role_permissions = sa.table(
         'role_permissions', sa.column('role_id', sa.Integer),
         sa.column('permission_id', sa.Integer),
@@ -54,12 +60,17 @@ def upgrade():
         sa.select(permissions.c.id).where(permissions.c.code == 'view_costs')
     ).scalar()
     if perm is None:
-        perm = bind.execute(
+        bind.execute(
             permissions.insert().values(
                 code='view_costs', name='View Costs',
                 name_ar='عرض التكاليف', category='finance',
             )
-        ).inserted_primary_key[0]
+        )
+        # Portable id recovery: lightweight sa.table constructs don't carry
+        # PK metadata, so inserted_primary_key is unreliable across dialects.
+        perm = bind.execute(
+            sa.select(permissions.c.id).where(permissions.c.code == 'view_costs')
+        ).scalar()
 
     for slug in COST_PRIVILEGED_ROLE_SLUGS:
         role_id = bind.execute(

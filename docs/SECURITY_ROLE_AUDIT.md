@@ -102,3 +102,42 @@ CI gate: `bandit -c .bandit.yml -r . -ll -ii` — fails only on real MEDIUM/HIGH
   numbers to another for 60s; proven by regression test).
 - `developer` holds all permissions by seed; restrict in production if developers should not see finance data.
 - LOW bandit findings (B110/B311/…) accepted; revisit if CI policy ever gates on LOW.
+
+## 8. Cost-data separation audit (Phase 2, 2026-09-08)
+
+**Contract:** `can_see_costs()` (`models/user.py:157`) — only `owner` / `super_admin` / `manager`.
+Note: `view_costs` permission exists but is **not** consulted by `can_see_costs()`; `accountant`
+(a financial role) is excluded by design decision F5 below. Server-side gates are authoritative;
+template gating (`{% if can_see_costs %}` / `{% if current_user.can_see_costs() %}`) removes the
+DOM entirely rather than hiding it.
+
+### 8.1 Gaps found → fixed
+
+| # | Surface | Was | Now |
+|---|---|---|---|
+| F1 | `/api/search?type=products` | `cost_price` to any logged-in user (POS-facing) | masked via `Product.to_dict(include_cost=can_see_costs())` |
+| F2 | `/api/v2/sales` list + detail | line `cost_price`/`profit` to any `manage_sales` user | `Sale.to_dict(include_cost=…)` |
+| F3 | `/api/v2/analytics/profit-margins` | company-wide cost/profit to any `view_reports` user | `403` unless `can_see_costs()` |
+| F4 | `/reports/inventory` + template | cost & value columns rendered to `view_reports` | `summary.total_value=None` + columns omitted from DOM |
+| F5 | `/reports/inventory-valuation` (+export) | qty × cost to any `view_reports` user | `403` unless `can_see_costs()`; `accountant` exclusion documented as deliberate (real-world: operational-vs-financial separation, but flag for business confirmation) |
+| F6 | `products/view|create|edit.html` | cost field visible/editable to `seller` (`manage_products`) | hidden in DOM; edit POST ignores tampered `cost_price` for non-cost roles |
+| F7 | `/erp/lots`, `/erp/lots/new` | lot cost rendered to `inventory` role | cost column/field omitted from DOM |
+| F8 | GraphQL `allProducts`/`product` | `costPrice` after passing `manage_products` field check | masked to `None` unless `can_see_costs()` |
+| F9 | `cached_query` (`utils/cache_decorators.py`) | cache key was args-only → **cross-role cache bleed**: owner's cost-bearing `/api/v2/sales` response served to sellers within TTL (same class as the fixed dashboard tenant bleed) | keys scoped by role + tenant; defensive `cache.get` guard |
+
+### 8.2 Latent bugs surfaced by the new tests (fixed)
+
+- **GraphQL resolvers were dead for all top-level queries**: graphene passes `root=None` as `self`,
+  so `self._convert_*_to_type` raised `AttributeError` — swallowed by `except Exception: return None`
+  in the single-item resolvers. Converters moved to module level; missing IDs now raise
+  `werkzeug NotFound` (mapped to a GraphQL error) instead of silent `None`.
+- **Owner dashboard 500**: naive `datetime.now()` cutoff vs timezone-aware `sale.sale_date`
+  (`routes/owner.py`) crashed whenever a confirmed unpaid sale existed.
+- **Test infra**: `/auth/login` short-circuits for authenticated sessions, so `_login` now logs out
+  first — user switching mid-test previously kept the first user's session.
+
+### 8.3 Regression coverage
+
+14 tests appended to `tests/unit/test_erp_role_isolation.py::TestCostDataSeparation`
+(endpoints, DOM-level template gating, GraphQL masking, cache-bleed regression, escalation
+(POST tamper), `can_see_costs` matrix). CI: all 7 jobs green — 2,113 tests passing.

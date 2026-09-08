@@ -127,6 +127,7 @@
       <hr>
       <h5 class="text-success"><i class="fas fa-money-bill-wave"></i> الأسعار</h5>
       <div class="row">
+        {% if current_user.can_see_costs() %}
         <div class="col-md-3">
           <div class="form-group">
             <label for="product_cost_price">
@@ -137,6 +138,7 @@
             <input type="number" id="product_cost_price" name="cost_price" class="form-control" step="0.01" min="0" value="0" placeholder="0.00" required autocomplete="off">
           </div>
         </div>
+        {% endif %}
         <div class="col-md-3">
           <div class="form-group">
             <label for="product_regular_price">

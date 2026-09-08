@@ -1,4 +1,5 @@
 import graphene
+from flask_login import current_user
 from models import Sale, Customer, Product
 from extensions import db
 from utils.decorators import get_owned_or_404
@@ -54,65 +55,68 @@ class Query(graphene.ObjectType):
 
     def resolve_all_sales(self, info, limit=50, offset=0):
         sales = Sale.query.limit(limit).offset(offset).all()
-        return [self._convert_sale_to_type(sale) for sale in sales]
+        return [_convert_sale_to_type(sale) for sale in sales]
 
     def resolve_sale(self, info, id):
-        try:
-            return self._convert_sale_to_type(get_owned_or_404(Sale, id))
-        except Exception:
-            return None
+        sale = get_owned_or_404(Sale, id, code=404)
+        return _convert_sale_to_type(sale)
 
     def resolve_all_customers(self, info, limit=50):
         customers = Customer.query.limit(limit).all()
-        return [self._convert_customer_to_type(customer) for customer in customers]
+        return [_convert_customer_to_type(customer) for customer in customers]
 
     def resolve_customer(self, info, id):
-        try:
-            return self._convert_customer_to_type(get_owned_or_404(Customer, id))
-        except Exception:
-            return None
+        customer = get_owned_or_404(Customer, id, code=404)
+        return _convert_customer_to_type(customer)
 
     def resolve_all_products(self, info, limit=50):
         products = Product.query.limit(limit).all()
-        return [self._convert_product_to_type(product) for product in products]
+        return [_convert_product_to_type(product) for product in products]
 
     def resolve_product(self, info, id):
-        try:
-            return self._convert_product_to_type(get_owned_or_404(Product, id))
-        except Exception:
-            return None
+        product = get_owned_or_404(Product, id, code=404)
+        return _convert_product_to_type(product)
 
-    def _convert_sale_to_type(self, sale):
-        return SaleType(
-            id=sale.id,
-            sale_number=sale.sale_number,
-            customer_id=sale.customer_id,
-            total_amount=float(sale.total_amount) if sale.total_amount else 0,
-            amount_base=float(sale.amount_base) if sale.amount_base else 0,
-            status=sale.status,
-            created_at=sale.created_at
-        )
 
-    def _convert_customer_to_type(self, customer):
-        return CustomerType(
-            id=customer.id,
-            name=customer.name,
-            phone=customer.phone,
-            email=customer.email,
-            address=customer.address,
-            balance=float(customer.balance) if customer.balance else 0
-        )
+def _convert_sale_to_type(sale):
+    return SaleType(
+        id=sale.id,
+        sale_number=sale.sale_number,
+        customer_id=sale.customer_id,
+        total_amount=float(sale.total_amount) if sale.total_amount else 0,
+        amount_base=float(sale.amount_base) if sale.amount_base else 0,
+        status=sale.status,
+        created_at=sale.created_at
+    )
 
-    def _convert_product_to_type(self, product):
-        return ProductType(
-            id=product.id,
-            name=product.name,
-            part_number=product.part_number,
-            regular_price=float(product.regular_price) if product.regular_price else 0,
-            cost_price=float(product.cost_price) if product.cost_price else 0,
-            current_stock=product.current_stock,
-            is_active=product.is_active
-        )
+
+def _convert_customer_to_type(customer):
+    return CustomerType(
+        id=customer.id,
+        name=customer.name,
+        phone=customer.phone,
+        email=customer.email,
+        address=customer.address,
+        balance=float(customer.balance) if customer.balance else 0
+    )
+
+
+def _convert_product_to_type(product):
+    # SECURITY: cost_price is financial data — mask it for roles without
+    # cost visibility (seller/inventory pass the manage_products field
+    # check but must never read cost via GraphQL).
+    show_cost = bool(getattr(current_user, 'is_authenticated', False)) \
+        and current_user.can_see_costs()
+    return ProductType(
+        id=product.id,
+        name=product.name,
+        part_number=product.part_number,
+        regular_price=float(product.regular_price) if product.regular_price else 0,
+        cost_price=(float(product.cost_price) if product.cost_price else 0)
+                   if show_cost else None,
+        current_stock=product.current_stock,
+        is_active=product.is_active
+    )
 
 
 class CreateSale(graphene.Mutation):

@@ -68,7 +68,9 @@ def dashboard():
     today = datetime.now().date()
     month_start = today.replace(day=1)
     year_start = today.replace(month=1, day=1)
-    cutoff_date = datetime.now() - timedelta(days=30)
+    # SECURITY/BUGFIX: sale_date is stored timezone-aware; a naive cutoff
+    # crashed the owner dashboard (500) whenever an unpaid confirmed sale existed.
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=30)
 
     stats['total_users'] = User.query.filter_by(is_active=True, is_owner=False).count()
     stats['total_customers'] = Customer.query.filter_by(is_active=True).count()

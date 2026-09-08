@@ -11,7 +11,7 @@
       <div class="col-md-6"><div class="form-group"><label>رقم الدفعة <span class="text-danger">*</span></label><input type="text" name="lot_number" class="form-control" required></div></div>
       <div class="col-md-4"><div class="form-group"><label>المستودع</label><select name="warehouse_id" class="form-control"><option value="">— اختر —</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div></div>
       <div class="col-md-4"><div class="form-group"><label>الكمية</label><input type="number" name="quantity" class="form-control" step="0.01" value="0"></div></div>
-      <div class="col-md-4"><div class="form-group"><label>تكلفة الوحدة</label><input type="number" name="cost_price" class="form-control" step="0.01" value="0"></div></div>
+      {% if current_user.can_see_costs() %}<div class="col-md-4"><div class="form-group"><label>تكلفة الوحدة</label><input type="number" name="cost_price" class="form-control" step="0.01" value="0"></div></div>{% endif %}
       <div class="col-md-4"><div class="form-group"><label>تاريخ الإنتاج</label><input type="date" name="manufacture_date" class="form-control"></div></div>
       <div class="col-md-4"><div class="form-group"><label>تاريخ الانتهاء</label><input type="date" name="expiry_date" class="form-control"></div></div>
     </div>

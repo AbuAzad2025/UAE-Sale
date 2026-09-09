@@ -1502,6 +1502,337 @@ def system_config():
     return render_template('owner/system_config.html', settings=settings)
 
 
+# ── Tenant management (multi-tenant administration) ──────────────────────
+# Owner-only CRUD + suspend/activate + per-tenant stats.  Isolation-safe by
+# construction:
+#   * the owner bypasses the automatic tenant filter (thread-local tenant
+#     is None for owners — see app.before_request), and every aggregate
+#     below filters EXPLICITLY by tenant_id, so rows can never leak across
+#     tenants through this panel;
+#   * no hard delete is offered: tenant rows are FK targets for every
+#     business table, and suspension preserves referential + audit
+#     integrity;
+#   * deactivating/suspending the last active tenant is refused, because
+#     Tenant.get_current() auto-creates a "Default Garage" when none is
+#     active — refusing keeps that bootstrap path from firing by surprise.
+_VALID_TENANT_PLANS = ('basic', 'pro', 'enterprise')
+
+
+def _valid_tenant_slug(slug):
+    """Normalize + validate a tenant slug.
+
+    Rules: 2-100 chars, lowercase latin letters/digits/hyphens only, no
+    leading/trailing/double hyphens.  Returns the normalized slug or None.
+    """
+    s = (slug or '').strip().lower()
+    if not (2 <= len(s) <= 100):
+        return None
+    if s.startswith('-') or s.endswith('-') or '--' in s:
+        return None
+    if not all(ch.isascii() and (ch.isalnum() or ch == '-') for ch in s):
+        return None
+    return s
+
+
+def _tenant_to_int(value, default):
+    try:
+        v = int(value)
+    except (TypeError, ValueError):
+        return default
+    return v if v >= 0 else default
+
+
+def _tenant_stats(tenant_id):
+    """Explicit per-tenant aggregates (never relies on ambient filtering)."""
+    return {
+        'users': User.query.filter_by(tenant_id=tenant_id).count(),
+        'customers': Customer.query.filter_by(tenant_id=tenant_id).count(),
+        'products': Product.query.filter_by(tenant_id=tenant_id).count(),
+        'sales': Sale.query.filter_by(tenant_id=tenant_id).count(),
+        'purchases': Purchase.query.filter_by(tenant_id=tenant_id).count(),
+    }
+
+
+def _tenant_form_values(tenant=None):
+    """Build template values: tenant attrs on GET, posted values on POST."""
+    from utils.constants import CURRENCIES
+    currencies = list(CURRENCIES)
+    if tenant is None:
+        base = {
+            'name_ar': '', 'name_en': '', 'slug': '',
+            'business_type': 'garage', 'industry': 'automotive',
+            'city': '', 'country': 'UAE',
+            'phone_1': '', 'phone_2': '', 'mobile': '',
+            'email': '', 'website': '',
+            'tax_number': '', 'commercial_register': '', 'license_number': '',
+            'default_currency': 'ILS', 'default_language': 'ar',
+            'timezone': 'Asia/Dubai',
+            'subscription_plan': 'basic', 'is_trial': False,
+            'max_users': 5, 'max_products': 1000, 'max_customers': 500,
+            'is_active': True, 'is_suspended': False, 'suspension_reason': '',
+        }
+    else:
+        base = {
+            'name_ar': tenant.name_ar or '', 'name_en': tenant.name_en or '',
+            'slug': tenant.slug or '',
+            'business_type': tenant.business_type or 'garage',
+            'industry': tenant.industry or 'automotive',
+            'city': tenant.city or '', 'country': tenant.country or 'UAE',
+            'phone_1': tenant.phone_1 or '', 'phone_2': tenant.phone_2 or '',
+            'mobile': tenant.mobile or '',
+            'email': tenant.email or '', 'website': tenant.website or '',
+            'tax_number': tenant.tax_number or '',
+            'commercial_register': tenant.commercial_register or '',
+            'license_number': tenant.license_number or '',
+            'default_currency': tenant.default_currency or 'ILS',
+            'default_language': tenant.default_language or 'ar',
+            'timezone': tenant.timezone or 'Asia/Dubai',
+            'subscription_plan': tenant.subscription_plan or 'basic',
+            'is_trial': bool(tenant.is_trial),
+            'max_users': tenant.max_users if tenant.max_users is not None else 5,
+            'max_products': tenant.max_products if tenant.max_products is not None else 1000,
+            'max_customers': tenant.max_customers if tenant.max_customers is not None else 500,
+            'is_active': bool(tenant.is_active),
+            'is_suspended': bool(tenant.is_suspended),
+            'suspension_reason': tenant.suspension_reason or '',
+        }
+    if request.method == 'POST':
+        posted = request.form.to_dict()
+        base.update({k: posted[k] for k in base if k in posted})
+        base['is_trial'] = request.form.get('is_trial') == 'on'
+        base['is_active'] = request.form.get('is_active') == 'on'
+        base['is_suspended'] = request.form.get('is_suspended') == 'on'
+    return base, currencies
+
+
+def _validate_tenant_form(form, currencies, exclude_id=None):
+    """Server-side validation. Returns (cleaned_dict, errors_list)."""
+    codes = {code for code, _ in currencies}
+    errors = []
+    name_ar = (form.get('name_ar') or '').strip()
+    name_en = (form.get('name_en') or '').strip()
+    if not name_ar:
+        errors.append('اسم المستأجر بالعربية مطلوب.')
+    name = name_en or name_ar
+    slug = _valid_tenant_slug(form.get('slug'))
+    if slug is None:
+        errors.append('المعرف (slug) غير صالح: أحرف لاتينية صغيرة/أرقام/شرطات فقط (2-100).')
+    plan = (form.get('subscription_plan') or 'basic').strip()
+    if plan not in _VALID_TENANT_PLANS:
+        errors.append('الخطة غير صالحة.')
+        plan = 'basic'
+    currency = (form.get('default_currency') or 'ILS').strip().upper()
+    if currency not in codes:
+        errors.append('العملة الافتراضية غير مدعومة.')
+        currency = 'ILS'
+    language = (form.get('default_language') or 'ar').strip()
+    if language not in ('ar', 'en'):
+        language = 'ar'
+    if slug is not None:
+        q = Tenant.query.filter_by(slug=slug)
+        if exclude_id is not None:
+            q = q.filter(Tenant.id != exclude_id)
+        if q.first() is not None:
+            errors.append(f'المعرف "{slug}" مستخدم بالفعل.')
+    if name:
+        q = Tenant.query.filter_by(name=name)
+        if exclude_id is not None:
+            q = q.filter(Tenant.id != exclude_id)
+        if q.first() is not None:
+            errors.append(f'الاسم "{name}" مستخدم بالفعل.')
+    email = (form.get('email') or '').strip()
+    if email and ('@' not in email or '.' not in email):
+        errors.append('البريد الإلكتروني غير صالح.')
+    cleaned = {
+        'name': name, 'name_ar': name_ar, 'name_en': name_en or None,
+        'slug': slug,
+        'business_type': (form.get('business_type') or 'garage').strip() or 'garage',
+        'industry': (form.get('industry') or 'automotive').strip() or 'automotive',
+        'city': (form.get('city') or '').strip() or None,
+        'country': (form.get('country') or 'UAE').strip() or 'UAE',
+        'phone_1': (form.get('phone_1') or '').strip() or None,
+        'phone_2': (form.get('phone_2') or '').strip() or None,
+        'mobile': (form.get('mobile') or '').strip() or None,
+        'email': email or None,
+        'website': (form.get('website') or '').strip() or None,
+        'tax_number': (form.get('tax_number') or '').strip() or None,
+        'commercial_register': (form.get('commercial_register') or '').strip() or None,
+        'license_number': (form.get('license_number') or '').strip() or None,
+        'default_currency': currency,
+        'default_language': language,
+        'timezone': (form.get('timezone') or 'Asia/Dubai').strip() or 'Asia/Dubai',
+        'subscription_plan': plan,
+        'is_trial': form.get('is_trial') == 'on',
+        'max_users': _tenant_to_int(form.get('max_users'), 5),
+        'max_products': _tenant_to_int(form.get('max_products'), 1000),
+        'max_customers': _tenant_to_int(form.get('max_customers'), 500),
+    }
+    return cleaned, errors
+
+
+@owner_bp.route('/tenants')
+@login_required
+@owner_required
+def tenants_list():
+    """قائمة المستأجرين مع بحث وفلترة حالة."""
+    q = (request.args.get('q') or '').strip()
+    status = (request.args.get('status') or 'all').strip()
+    query = Tenant.query
+    if q:
+        like = f'%{q}%'
+        query = query.filter(db.or_(
+            Tenant.name.ilike(like),
+            Tenant.name_ar.ilike(like),
+            Tenant.slug.ilike(like),
+        ))
+    if status == 'active':
+        query = query.filter_by(is_active=True, is_suspended=False)
+    elif status == 'suspended':
+        query = query.filter_by(is_suspended=True)
+    elif status == 'inactive':
+        query = query.filter_by(is_active=False)
+    tenants = query.order_by(Tenant.id.asc()).all()
+    rows = []
+    for t in tenants:
+        stats = _tenant_stats(t.id)
+        rows.append({'tenant': t, 'users': stats['users'], 'sales': stats['sales']})
+    return render_template('owner/tenants_list.html', rows=rows, q=q, status=status)
+
+
+@owner_bp.route('/tenants/new', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def tenant_new():
+    """إنشاء مستأجر جديد."""
+    form, currencies = _tenant_form_values()
+    if request.method == 'POST':
+        cleaned, errors = _validate_tenant_form(request.form, currencies)
+        if errors:
+            for e in errors:
+                flash(e, 'danger')
+            return render_template('owner/tenant_form.html', form=form,
+                                   currencies=currencies, tenant=None, is_new=True)
+        try:
+            tenant = Tenant(**cleaned, is_active=True, is_suspended=False)
+            db.session.add(tenant)
+            db.session.commit()
+            from utils.helpers import create_audit_log
+            create_audit_log('create', 'tenants', tenant.id)
+            flash(f'تم إنشاء المستأجر "{tenant.name_ar}" بنجاح', 'success')
+            return redirect(url_for('owner.tenant_detail', id=tenant.id))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Tenant create error: {e}')
+            flash('حدث خطأ في إنشاء المستأجر. يرجى المحاولة مرة أخرى.', 'danger')
+    return render_template('owner/tenant_form.html', form=form,
+                           currencies=currencies, tenant=None, is_new=True)
+
+
+@owner_bp.route('/tenants/<int:id>')
+@login_required
+@owner_required
+def tenant_detail(id):
+    """بطاقة المستأجر: البيانات + إحصائيات + مستخدموه."""
+    tenant = Tenant.query.get_or_404(id)
+    stats = _tenant_stats(tenant.id)
+    users = User.query.filter_by(tenant_id=tenant.id).order_by(
+        User.username.asc()).limit(50).all()
+    return render_template('owner/tenant_detail.html', tenant=tenant,
+                           stats=stats, users=users)
+
+
+@owner_bp.route('/tenants/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def tenant_edit(id):
+    """تعديل بيانات المستأجر."""
+    tenant = Tenant.query.get_or_404(id)
+    form, currencies = _tenant_form_values(tenant)
+    if request.method == 'POST':
+        cleaned, errors = _validate_tenant_form(request.form, currencies,
+                                                exclude_id=tenant.id)
+        wants_active = request.form.get('is_active') == 'on'
+        if tenant.is_active and not wants_active:
+            others_active = Tenant.query.filter(
+                Tenant.id != tenant.id, Tenant.is_active.is_(True)).count()
+            if others_active == 0:
+                errors.append('لا يمكن إلغاء تفعيل آخر مستأجر نشط.')
+        if errors:
+            for e in errors:
+                flash(e, 'danger')
+            return render_template('owner/tenant_form.html', form=form,
+                                   currencies=currencies, tenant=tenant, is_new=False)
+        try:
+            for key, value in cleaned.items():
+                setattr(tenant, key, value)
+            tenant.is_active = wants_active
+            tenant.is_suspended = request.form.get('is_suspended') == 'on'
+            tenant.suspension_reason = (
+                request.form.get('suspension_reason') or '').strip() or None
+            tenant.updated_by = current_user.id
+            db.session.commit()
+            from utils.helpers import create_audit_log
+            create_audit_log('update', 'tenants', tenant.id)
+            flash(f'تم حفظ بيانات المستأجر "{tenant.name_ar}" بنجاح', 'success')
+            return redirect(url_for('owner.tenant_detail', id=tenant.id))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Tenant edit error: {e}')
+            flash('حدث خطأ في حفظ البيانات. يرجى المحاولة مرة أخرى.', 'danger')
+    return render_template('owner/tenant_form.html', form=form,
+                           currencies=currencies, tenant=tenant, is_new=False)
+
+
+@owner_bp.route('/tenants/<int:id>/suspend', methods=['POST'])
+@login_required
+@owner_required
+def tenant_suspend(id):
+    """إيقاف مستأجر (تعليق + إلغاء تفعيل) — ممنوع لآخر مستأجر نشط."""
+    tenant = Tenant.query.get_or_404(id)
+    others_active = Tenant.query.filter(
+        Tenant.id != tenant.id, Tenant.is_active.is_(True)).count()
+    if tenant.is_active and others_active == 0:
+        flash('لا يمكن إيقاف آخر مستأجر نشط.', 'danger')
+        return redirect(url_for('owner.tenant_detail', id=tenant.id))
+    try:
+        reason = (request.form.get('suspension_reason') or '').strip() or None
+        tenant.is_active = False
+        tenant.is_suspended = True
+        tenant.suspension_reason = reason
+        tenant.updated_by = current_user.id
+        db.session.commit()
+        from utils.helpers import create_audit_log
+        create_audit_log('suspend', 'tenants', tenant.id)
+        flash(f'تم إيقاف المستأجر "{tenant.name_ar}"', 'warning')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Tenant suspend error: {e}')
+        flash('حدث خطأ أثناء الإيقاف.', 'danger')
+    return redirect(url_for('owner.tenant_detail', id=tenant.id))
+
+
+@owner_bp.route('/tenants/<int:id>/activate', methods=['POST'])
+@login_required
+@owner_required
+def tenant_activate(id):
+    """إعادة تفعيل مستأجر موقوف."""
+    tenant = Tenant.query.get_or_404(id)
+    try:
+        tenant.is_active = True
+        tenant.is_suspended = False
+        tenant.suspension_reason = None
+        tenant.updated_by = current_user.id
+        db.session.commit()
+        from utils.helpers import create_audit_log
+        create_audit_log('activate', 'tenants', tenant.id)
+        flash(f'تم تفعيل المستأجر "{tenant.name_ar}"', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Tenant activate error: {e}')
+        flash('حدث خطأ أثناء التفعيل.', 'danger')
+    return redirect(url_for('owner.tenant_detail', id=tenant.id))
+
+
 @owner_bp.route('/invoice-settings', methods=['GET', 'POST'])
 @login_required
 @owner_required

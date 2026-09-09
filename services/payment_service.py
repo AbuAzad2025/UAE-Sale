@@ -328,7 +328,17 @@ class PaymentService:
             Sale.status == 'confirmed'
         ).scalar() or Decimal('0')
 
-        return total_sales_aed
+        # LEAK-GUARD: approved returns settle debt (same formula as the
+        # Sale listener and balance_checker).
+        from models import ProductReturn
+        returns_aed = db.session.query(
+            db.func.sum(ProductReturn.refund_amount * ProductReturn.exchange_rate)
+        ).filter(
+            ProductReturn.customer_id == customer.id,
+            ProductReturn.status == 'approved'
+        ).scalar() or Decimal('0')
+
+        return total_sales_aed - returns_aed
 
     @staticmethod
     def get_unpaid_sales(customer):

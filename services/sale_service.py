@@ -521,7 +521,12 @@ class SaleService:
                 exchange_rate=exchange_rate_decimal
             )
         except Exception as e:
-            current_app.logger.warning(f'GL posting failed for payment: {e}')
+            # LEAK-GUARD (fail-closed): a payment row + customer-balance
+            # update must never commit without its GL trace.  Roll the
+            # whole thing back and let the caller surface the error, so a
+            # cash movement can never exist off-ledger.
+            db.session.rollback()
+            raise
 
         from models import Customer as _Cust
         _cust = get_owned_or_raise(_Cust, sale.customer_id, missing_message='العميل غير موجود')
@@ -560,6 +565,25 @@ class SaleService:
     def cancel_sale(sale):
         if sale.status == 'cancelled':
             raise ValueError('الفاتورة ملغاة بالفعل')
+
+        # LEAK-GUARD: cancelling a paid/partially-paid invoice orphans the
+        # cash postings — Payment/Receipt entries are never reversed here —
+        # leaving negative AR, a phantom customer credit and the cash in the
+        # drawer while the goods return to stock.  Refund through the return
+        # flow first, then cancel the (now unpaid) invoice.
+        from models import Receipt
+        paid_base = Decimal(str(sale.paid_amount_base or 0))
+        has_payments = (
+            paid_base > Decimal('0')
+            or (sale.payment_status or '') in ('paid', 'partial')
+            or Payment.query.filter_by(sale_id=sale.id).count() > 0
+            or Receipt.query.filter_by(
+                source_type='sale', source_id=sale.id).count() > 0
+        )
+        if has_payments:
+            raise ValueError(
+                'لا يمكن إلغاء فاتورة مدفوعة (كلياً أو جزئياً).\n'
+                'استرد المبلغ عبر المرتجع/سند الصرف أولاً ثم ألغِ الفاتورة.')
 
         sale.status = 'cancelled'
 

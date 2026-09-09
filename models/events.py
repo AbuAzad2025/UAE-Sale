@@ -105,6 +105,20 @@ def register_sale_listeners():  # noqa: C901
                 paid = sale_row.paid_amount_base or Decimal('0')
                 new_balance += (amount - paid)
 
+            # LEAK-GUARD: approved returns settle debt (gross refund in base
+            # currency).  Without this, a returned invoice keeps inflating
+            # the customer balance forever.
+            from models import ProductReturn
+            returns_result = connection.execute(
+                ProductReturn.__table__.select().where(
+                    ProductReturn.customer_id == target.customer_id,
+                    ProductReturn.status == 'approved',
+                )
+            )
+            for ret_row in returns_result:
+                rate = ret_row.exchange_rate or Decimal('1')
+                new_balance -= (Decimal(str(ret_row.refund_amount or 0)) * Decimal(str(rate)))
+
             # تحديث رصيد العميل في قاعدة البيانات
             connection.execute(
                 Customer.__table__.update().where(

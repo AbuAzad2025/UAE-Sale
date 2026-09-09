@@ -68,7 +68,7 @@ def check_customer_balance(customer_id=None):
     Returns:
         list of dicts with drift details
     """
-    from models import Customer, Sale
+    from models import Customer, Sale, ProductReturn
 
     drifts = []
 
@@ -89,6 +89,14 @@ def check_customer_balance(customer_id=None):
             amount = Decimal(str(sale.amount_base or 0))
             paid = Decimal(str(sale.paid_amount_base or 0))
             calculated += (amount - paid)
+
+        # LEAK-GUARD: mirror the Sale listener formula exactly (see
+        # models/events.py) — approved returns settle debt.
+        returns = ProductReturn.query.filter_by(
+            customer_id=customer.id, status='approved').all()
+        for ret in returns:
+            rate = Decimal(str(ret.exchange_rate or 1))
+            calculated -= Decimal(str(ret.refund_amount or 0)) * rate
 
         stored = Decimal(str(customer.balance or 0))
         drift = abs(stored - calculated)

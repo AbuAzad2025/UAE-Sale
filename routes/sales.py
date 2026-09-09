@@ -251,6 +251,12 @@ def edit(id):
 
     if request.method == 'POST':
         try:
+            from decimal import Decimal as _Dec
+            from services.sale_service import resolve_account as _resolve_account
+            from services.gl_service import GLService as _GLService
+            old_discount = _Dec(str(sale.discount_amount or 0))
+            old_total = _Dec(str(sale.total_amount or 0))
+            old_tax = _Dec(str(sale.tax_amount or 0))
             # السماح فقط بتعديل الملاحظات والخصم
             sale.notes = request.form.get('notes', '')
             discount_amount = request.form.get('discount_amount', type=float, default=0)
@@ -258,6 +264,58 @@ def edit(id):
 
             # إعادة حساب الإجماليات
             sale.calculate_totals()
+
+            # LEAK-GUARD: the sale was already posted at creation, so a
+            # discount change moves revenue/AR.  Post a balancing adjusting
+            # entry in the SAME atomic transaction (rolls back with the edit
+            # on any failure) instead of leaving GL stale.
+            d_disc = _Dec(str(sale.discount_amount or 0)) - old_discount
+            d_tax = _Dec(str(sale.tax_amount or 0)) - old_tax
+            d_total = _Dec(str(sale.total_amount or 0)) - old_total
+            if d_total != 0:
+                _adj = []
+                if d_disc > 0:
+                    _adj.append({'account': _resolve_account('DISCOUNTS_GIVEN'),
+                                 'debit': d_disc,
+                                 'description': f'تسوية خصم {sale.sale_number}'})
+                elif d_disc < 0:
+                    _adj.append({'account': _resolve_account('DISCOUNTS_GIVEN'),
+                                 'credit': -d_disc,
+                                 'description': f'تسوية خصم {sale.sale_number}'})
+                if d_tax > 0:
+                    _adj.append({'account': _resolve_account('TAX_PAYABLE'),
+                                 'credit': d_tax,
+                                 'description': f'تسوية ضريبة {sale.sale_number}'})
+                elif d_tax < 0:
+                    _adj.append({'account': _resolve_account('TAX_PAYABLE'),
+                                 'debit': -d_tax,
+                                 'description': f'تسوية ضريبة {sale.sale_number}'})
+                # AR side plugs the entry so it balances EXACTLY by
+                # construction (absorbs ≤0.005 rounding dust); sanity-bound
+                # against the invoice delta.
+                _signed = sum(
+                    (_Dec(str(ln.get('debit', 0))) - _Dec(str(ln.get('credit', 0))))
+                    for ln in _adj)
+                _plug = -_signed
+                if abs(_plug - d_total) > _Dec('0.01'):
+                    raise ValueError('تسوية الخصم غير متسقة محاسبياً.')
+                _ar = _resolve_account('AR_CONTROL')
+                if sale.customer:
+                    if sale.customer.customer_type == 'partner':
+                        _ar = _resolve_account('PARTNER_CURRENT')
+                    elif sale.customer.customer_type == 'merchant':
+                        _ar = _resolve_account('MERCHANTS_PAYABLE')
+                if _plug >= 0:
+                    _adj.append({'account': _ar, 'debit': _plug,
+                                 'description': f'تسوية ذمم {sale.sale_number}'})
+                else:
+                    _adj.append({'account': _ar, 'credit': -_plug,
+                                 'description': f'تسوية ذمم {sale.sale_number}'})
+                _GLService.post_entry(
+                    _adj,
+                    description=f'Discount adjustment {sale.sale_number}',
+                    reference_type='Sale', reference_id=sale.id,
+                    currency=sale.currency, exchange_rate=sale.exchange_rate)
 
             db.session.commit()
             create_audit_log('update', 'sales', id)
@@ -291,6 +349,8 @@ def cancel(id):
 
         flash('✅ تم إلغاء الفاتورة بنجاح!', 'success')
 
+    except ValueError as e:
+        flash(f'⚠️ تعذر الإلغاء: {str(e)}', 'danger')
     except Exception as e:
         current_app.logger.error(f'Sale cancel error: {e}')
         flash('❌ حدث خطأ في إلغاء الفاتورة. يرجى المحاولة مرة أخرى.', 'danger')

@@ -207,6 +207,69 @@ class ReturnService:
                     exchange_rate=sale.exchange_rate
                 )
 
+            # 5. Settlement (LEAK-GUARD): the lines above always credit AR,
+            # but when the invoice was already (fully or partially) paid in
+            # cash, that credit would sit as negative AR with no recorded
+            # cash outflow and no customer-balance movement.  Split the
+            # refund into a cash-out part (Dr AR / Cr Cash + an outgoing
+            # refund Payment row) and an AR-credit remainder, then keep
+            # paid/balance_due/customer.balance consistent.
+            from services.currency_service import CurrencyService
+            from models import Payment
+            _rate = Decimal(str(sale.exchange_rate or 1))
+            if _rate <= 0:
+                _rate = Decimal('1')
+            refund_base = (gross_return_amount * _rate).quantize(
+                Decimal('0.001'), rounding=ROUND_HALF_UP)
+            paid_base = Decimal(str(sale.paid_amount_base or 0))
+            cash_out_base = min(paid_base, refund_base)
+            ar_part_base = refund_base - cash_out_base
+            if cash_out_base > 0:
+                _ar_acct = GLService.get_customer_credit_account(sale.customer)
+                _cash_acct = GLService.get_payment_debit_account('cash')
+                GLService.post_entry(
+                    [{'account': _ar_acct, 'debit': cash_out_base,
+                      'description': f'تسوية مرتجع نقدي {product_return.return_number}'},
+                     {'account': _cash_acct, 'credit': cash_out_base,
+                      'description': f'صرف مسترد {product_return.return_number}'}],
+                    description=f'Cash refund {product_return.return_number} for Sale {sale.sale_number}',
+                    reference_type='ProductReturn',
+                    reference_id=product_return.id,
+                    currency=CurrencyService.get_base_currency(),
+                    exchange_rate=1)
+                cash_out_txn = (cash_out_base / _rate).quantize(
+                    Decimal('0.001'), rounding=ROUND_HALF_UP)
+                db.session.add(Payment(
+                    payment_number=generate_number('PAY', Payment, 'payment_number'),
+                    payment_type='refund', direction='outgoing',
+                    sale_id=sale.id, customer_id=sale.customer_id,
+                    amount=cash_out_txn, currency=sale.currency,
+                    exchange_rate=_rate, amount_base=cash_out_base,
+                    payment_method='cash',
+                    notes=f'استرداد نقدي للمرتجع {product_return.return_number}',
+                    user_id=user_id))
+                sale.paid_amount_base = max(
+                    Decimal('0'), paid_base - cash_out_base)
+                sale.paid_amount = max(
+                    Decimal('0'), (Decimal(str(sale.paid_amount or 0))
+                                   - cash_out_txn).quantize(
+                        Decimal('0.001'), rounding=ROUND_HALF_UP))
+            # NOTE: customer.balance is NOT touched here on purpose — it is
+            # derived by the Sale after_insert/after_update listener as
+            # Σ(amount_base − paid_base) − Σ(approved refunds), which this
+            # method keeps consistent via paid_amount_base/balance_due above.
+            sale.balance_due = max(
+                Decimal('0'), (Decimal(str(sale.balance_due or 0))
+                               - ar_part_base).quantize(
+                    Decimal('0.001'), rounding=ROUND_HALF_UP))
+            _paid_now = Decimal(str(sale.paid_amount_base or 0))
+            if sale.balance_due <= 0:
+                sale.payment_status = 'paid'
+            elif _paid_now > 0:
+                sale.payment_status = 'partial'
+            else:
+                sale.payment_status = 'unpaid'
+
             db.session.commit()
             return product_return
 

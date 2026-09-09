@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ 'مستأجر جديد' if is_new else 'تعديل مستأجر' }}{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col-12">
+    <h3 class="mb-0">
+      <i class="fas fa-building mr-2"></i>{{ 'مستأجر جديد' if is_new else 'تعديل: ' + (tenant.name_ar or '') }}
+    </h3>
+  </div>
+</div>
+
+<form method="POST" action="">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-header bg-gradient-primary text-white"><h5 class="mb-0">البيانات الأساسية</h5></div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>الاسم بالعربية *</label>
+            <input type="text" name="name_ar" value="{{ form.name_ar }}" class="form-control" required maxlength="200">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>الاسم بالإنجليزية</label>
+            <input type="text" name="name_en" value="{{ form.name_en }}" class="form-control" maxlength="200">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>المعرف (slug) *</label>
+            <input type="text" name="slug" value="{{ form.slug }}" class="form-control" required maxlength="100" dir="ltr" placeholder="branch-dubai">
+            <small class="form-text text-muted">أحرف لاتينية صغيرة وأرقام وشرطات فقط، ويجب أن يكون فريداً.</small>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>نوع النشاط</label>
+            <input type="text" name="business_type" value="{{ form.business_type }}" class="form-control" maxlength="50">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>المجال</label>
+            <input type="text" name="industry" value="{{ form.industry }}" class="form-control" maxlength="100">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>المدينة</label>
+            <input type="text" name="city" value="{{ form.city }}" class="form-control" maxlength="100">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>الدولة</label>
+            <input type="text" name="country" value="{{ form.country }}" class="form-control" maxlength="100">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-header bg-gradient-info text-white"><h5 class="mb-0">التواصل والبيانات القانونية</h5></div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>هاتف 1</label>
+            <input type="text" name="phone_1" value="{{ form.phone_1 }}" class="form-control" maxlength="50" dir="ltr">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>هاتف 2</label>
+            <input type="text" name="phone_2" value="{{ form.phone_2 }}" class="form-control" maxlength="50" dir="ltr">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>جوال</label>
+            <input type="text" name="mobile" value="{{ form.mobile }}" class="form-control" maxlength="50" dir="ltr">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>البريد الإلكتروني</label>
+            <input type="email" name="email" value="{{ form.email }}" class="form-control" maxlength="120" dir="ltr">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>الموقع</label>
+            <input type="text" name="website" value="{{ form.website }}" class="form-control" maxlength="200" dir="ltr">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>الرقم الضريبي</label>
+            <input type="text" name="tax_number" value="{{ form.tax_number }}" class="form-control" maxlength="100" dir="ltr">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>السجل التجاري</label>
+            <input type="text" name="commercial_register" value="{{ form.commercial_register }}" class="form-control" maxlength="100">
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="form-group">
+            <label>رقم الرخصة</label>
+            <input type="text" name="license_number" value="{{ form.license_number }}" class="form-control" maxlength="100">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-header bg-gradient-warning text-white"><h5 class="mb-0">التفضيلات والاشتراك</h5></div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>العملة الافتراضية</label>
+            <select name="default_currency" class="form-control">
+              {% for code, meta in currencies %}
+              <option value="{{ code }}" {{ 'selected' if form.default_currency == code }}>{{ code }} - {{ meta.ar }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>اللغة الافتراضية</label>
+            <select name="default_language" class="form-control">
+              <option value="ar" {{ 'selected' if form.default_language == 'ar' }}>العربية</option>
+              <option value="en" {{ 'selected' if form.default_language == 'en' }}>English</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>المنطقة الزمنية</label>
+            <input type="text" name="timezone" value="{{ form.timezone }}" class="form-control" maxlength="50" dir="ltr">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>الخطة</label>
+            <select name="subscription_plan" class="form-control">
+              <option value="basic" {{ 'selected' if form.subscription_plan == 'basic' }}>basic</option>
+              <option value="pro" {{ 'selected' if form.subscription_plan == 'pro' }}>pro</option>
+              <option value="enterprise" {{ 'selected' if form.subscription_plan == 'enterprise' }}>enterprise</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>حد المستخدمين</label>
+            <input type="number" name="max_users" value="{{ form.max_users }}" class="form-control" min="0" dir="ltr">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>حد المنتجات</label>
+            <input type="number" name="max_products" value="{{ form.max_products }}" class="form-control" min="0" dir="ltr">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>حد العملاء</label>
+            <input type="number" name="max_customers" value="{{ form.max_customers }}" class="form-control" min="0" dir="ltr">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <div class="custom-control custom-checkbox">
+              <input type="checkbox" class="custom-control-input" id="is_trial" name="is_trial" {% if form.is_trial %}checked{% endif %}>
+              <label class="custom-control-label" for="is_trial">فترة تجريبية</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if not is_new %}
+  <div class="card shadow-sm mb-3">
+    <div class="card-header bg-gradient-danger text-white"><h5 class="mb-0">الحالة</h5></div>
+    <div class="card-body">
+      <div class="alert alert-warning">لا يمكن إلغاء تفعيل آخر مستأجر نشط — النظام يرفض ذلك لحماية مسار التهيئة.</div>
+      <div class="row">
+        <div class="col-md-3">
+          <div class="custom-control custom-checkbox">
+            <input type="checkbox" class="custom-control-input" id="is_active" name="is_active" {% if form.is_active %}checked{% endif %}>
+            <label class="custom-control-label" for="is_active">نشط</label>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="custom-control custom-checkbox">
+            <input type="checkbox" class="custom-control-input" id="is_suspended" name="is_suspended" {% if form.is_suspended %}checked{% endif %}>
+            <label class="custom-control-label" for="is_suspended">موقوف</label>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>سبب الإيقاف</label>
+            <input type="text" name="suspension_reason" value="{{ form.suspension_reason }}" class="form-control">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="mb-4">
+    <button type="submit" class="btn btn-success"><i class="fas fa-save mr-1"></i>حفظ</button>
+    {% if is_new %}
+    <a href="{{ url_for('owner.tenants_list') }}" class="btn btn-secondary">إلغاء</a>
+    {% else %}
+    <a href="{{ url_for('owner.tenant_detail', id=tenant.id) }}" class="btn btn-secondary">إلغاء</a>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}

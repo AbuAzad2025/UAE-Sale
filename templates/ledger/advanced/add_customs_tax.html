@@ -45,11 +45,10 @@
                 <div class="form-group">
                   <label>نوع الحساب *</label>
                   {% set selected_tax_type = form_data.get('tax_type', 'customs') %}
-                  <select name="tax_type" class="form-control" required>
-                    <option value="customs" {% if selected_tax_type == 'customs' %}selected{% endif %}>جمارك</option>
-                    <option value="vat" {% if selected_tax_type == 'vat' %}selected{% endif %}>ضريبة القيمة المضافة</option>
-                    <option value="excise" {% if selected_tax_type == 'excise' %}selected{% endif %}>ضريبة انتقائية</option>
-                    <option value="other" {% if selected_tax_type == 'other' %}selected{% endif %}>أخرى</option>
+                  <select name="tax_type" class="form-control select2" required>
+                    {% for code, meta in lookups.tax_types %}
+                    <option value="{{ code }}" {% if selected_tax_type == code %}selected{% endif %}>{{ meta.ar }}</option>
+                    {% endfor %}
                   </select>
                 </div>
               </div>

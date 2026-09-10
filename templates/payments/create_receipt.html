@@ -194,22 +194,9 @@
             <label>
               <i class="fas fa-dollar-sign text-warning"></i> العملة
             </label>
-            <select name="currency" id="currency" class="form-control">
-              {% set currency_options = [
-                ('ILS', 'ILS - شيقل'),
-                ('JOD', 'JOD - دينار أردني'),
-                ('AED', 'AED - درهم إماراتي'),
-                ('SAR', 'SAR - ريال سعودي'),
-                ('USD', 'USD - دولار أمريكي'),
-                ('EUR', 'EUR - يورو'),
-                ('GBP', 'GBP - جنيه إسترليني'),
-                ('KWD', 'KWD - دينار كويتي'),
-                ('QAR', 'QAR - ريال قطري'),
-                ('OMR', 'OMR - ريال عماني'),
-                ('BHD', 'BHD - دينار بحريني')
-              ] %}
-              {% for value, label in currency_options %}
-              <option value="{{ value }}" {% if selected_currency == value %}selected{% endif %}>{{ label }}</option>
+            <select name="currency" id="currency" class="form-control select2">
+              {% for code, meta in lookups.currencies %}
+              <option value="{{ code }}" {% if selected_currency == code %}selected{% endif %}>{{ code }} - {{ meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
@@ -241,12 +228,10 @@
             <label>
               <i class="fas fa-credit-card text-info"></i> طريقة الدفع
             </label>
-            <select name="payment_method" id="payment_method" class="form-control" required>
-              <option value="cash" {% if selected_payment_method == 'cash' %}selected{% endif %}>نقداً</option>
-              <option value="bank_transfer" {% if selected_payment_method == 'bank_transfer' %}selected{% endif %}>تحويل بنكي</option>
-              <option value="cheque" {% if selected_payment_method == 'cheque' %}selected{% endif %}>شيك</option>
-              <option value="card" {% if selected_payment_method == 'card' %}selected{% endif %}>بطاقة ائتمان</option>
-              <option value="e_wallet" {% if selected_payment_method == 'e_wallet' %}selected{% endif %}>محفظة إلكترونية</option>
+            <select name="payment_method" id="payment_method" class="form-control select2" required>
+              {% for code, meta in lookups.payment_methods %}
+              <option value="{{ code }}" {% if selected_payment_method == code %}selected{% endif %}>{{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
         </div>
@@ -322,13 +307,11 @@
         <div class="col-md-6">
           <div class="form-group">
             <label><i class="fas fa-wallet"></i> اسم المحفظة</label>
-            <select name="ewallet_name" class="form-control">
+            <select name="ewallet_name" class="form-control select2">
               <option value="" {% if not selected_ewallet %}selected{% endif %}>بلا</option>
-              <option value="paypal" {% if selected_ewallet == 'paypal' %}selected{% endif %}>PayPal</option>
-              <option value="apple_pay" {% if selected_ewallet == 'apple_pay' %}selected{% endif %}>Apple Pay</option>
-              <option value="google_pay" {% if selected_ewallet == 'google_pay' %}selected{% endif %}>Google Pay</option>
-              <option value="samsung_pay" {% if selected_ewallet == 'samsung_pay' %}selected{% endif %}>Samsung Pay</option>
-              <option value="other">أخرى</option>
+              {% for code, meta in lookups.ewallets %}
+              <option value="{{ code }}" {% if selected_ewallet == code %}selected{% endif %}>{{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
         </div>

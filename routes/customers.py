@@ -74,6 +74,18 @@ def index():
 def create():
     from forms.customer import CustomerForm
     form = CustomerForm()
+    # Live lookup lists (single source of truth); the class-level WTForms
+    # choices remain as offline fallback.
+    try:
+        from services.lookup_service import get_lookup
+        form.customer_type.choices = [
+            (c, m.get('ar', c)) for c, m in get_lookup('customer_types')]
+        form.preferred_currency.choices = [
+            (c, m.get('ar', c)) for c, m in get_lookup('currencies')]
+        form.is_active.choices = [
+            (c, m.get('ar', c)) for c, m in get_lookup('active_flags')]
+    except Exception:
+        pass
 
     if form.validate_on_submit():
         try:

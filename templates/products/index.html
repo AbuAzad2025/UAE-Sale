@@ -260,11 +260,11 @@
           </div>
           <div class="form-group">
             <label for="adjustmentType">نوع التعديل</label>
-            <select id="adjustmentType" name="adjustment_type" class="form-control" required autocomplete="off">
+            <select id="adjustmentType" name="adjustment_type" class="form-control select2" required autocomplete="off">
               <option value="" selected>بلا</option>
-              <option value="add">{{ t('Add') }}</option>
-              <option value="subtract">خصم</option>
-              <option value="set">تعيين</option>
+              {% for code, meta in lookups.stock_adjustment_types %}
+              <option value="{{ code }}">{{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
           <div class="form-group">
@@ -273,13 +273,11 @@
           </div>
           <div class="form-group">
             <label for="adjustmentReason">السبب</label>
-            <select id="adjustmentReason" name="adjustment_reason" class="form-control" required autocomplete="off">
+            <select id="adjustmentReason" name="adjustment_reason" class="form-control select2" required autocomplete="off">
               <option value="" selected>بلا</option>
-              <option value="purchase">شراء</option>
-              <option value="return">إرجاع</option>
-              <option value="adjustment">{{ t('Edit') }}</option>
-              <option value="damage">تلف</option>
-              <option value="other">{{ t('Other') }}</option>
+              {% for code, meta in lookups.stock_adjustment_reasons %}
+              <option value="{{ code }}">{{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
           <div class="form-group">

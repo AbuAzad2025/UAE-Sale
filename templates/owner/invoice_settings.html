@@ -339,12 +339,10 @@
                 <label>
                   <i class="fas fa-file-invoice text-primary"></i> القالب النشط
                 </label>
-                <select class="form-control" name="active_template">
-                  <option value="modern" {% if settings.active_template == 'modern' %}selected{% endif %}>🎨 عصري (Modern) - ملون وحديث</option>
-                  <option value="classic" {% if settings.active_template == 'classic' %}selected{% endif %}>📄 كلاسيكي (Classic) - تقليدي بسيط</option>
-                  <option value="minimal" {% if settings.active_template == 'minimal' %}selected{% endif %}>✨ بسيط (Minimal) - أنيق ونظيف</option>
-                  <option value="gulf" {% if settings.active_template == 'gulf' %}selected{% endif %}>⭐ خليجي (Gulf) - بطابع خليجي</option>
-                  <option value="simple" {% if settings.active_template == 'simple' %}selected{% endif %}>📝 مبسط (Simple) - أساسيات فقط</option>
+                <select class="form-control select2" name="active_template">
+                  {% for code, meta in lookups.invoice_templates %}
+                  <option value="{{ code }}" {% if settings.active_template == code %}selected{% endif %}>{{ meta.ar }} ({{ meta.en }})</option>
+                  {% endfor %}
                 </select>
                 <small class="form-text text-muted">
                   🎭 اختر شكل الفاتورة المفضل - يمكن معاينته من الأسفل
@@ -483,10 +481,10 @@
                 <label>
                   <i class="fas fa-file-alt text-info"></i> حجم الورق
                 </label>
-                <select class="form-control" name="paper_size">
-                  <option value="A4" {% if settings.paper_size == 'A4' %}selected{% endif %}>📄 A4 (210 × 297 مم) - الأكثر شيوعاً</option>
-                  <option value="A5" {% if settings.paper_size == 'A5' %}selected{% endif %}>📃 A5 (148 × 210 مم) - نصف A4</option>
-                  <option value="Letter" {% if settings.paper_size == 'Letter' %}selected{% endif %}>📋 Letter (216 × 279 مم) - أمريكي</option>
+                <select class="form-control select2" name="paper_size">
+                  {% for code, meta in lookups.paper_sizes %}
+                  <option value="{{ code }}" {% if settings.paper_size == code %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
+                  {% endfor %}
                 </select>
                 <small class="form-text text-muted">
                   📏 حجم الورقة المستخدمة في الطباعة
@@ -497,9 +495,10 @@
                 <label>
                   <i class="fas fa-arrows-alt-h text-warning"></i> الاتجاه
                 </label>
-                <select class="form-control" name="orientation">
-                  <option value="portrait" {% if settings.orientation == 'portrait' %}selected{% endif %}>⬆️ عمودي (Portrait) - الافتراضي</option>
-                  <option value="landscape" {% if settings.orientation == 'landscape' %}selected{% endif %}>↔️ أفقي (Landscape) - عريض</option>
+                <select class="form-control select2" name="orientation">
+                  {% for code, meta in lookups.orientations %}
+                  <option value="{{ code }}" {% if settings.orientation == code %}selected{% endif %}>{{ meta.ar }} ({{ meta.en }})</option>
+                  {% endfor %}
                 </select>
                 <small class="form-text text-muted">
                   🔄 اتجاه الورقة عند الطباعة
@@ -510,10 +509,10 @@
                 <label>
                   <i class="fas fa-language text-primary"></i> اللغة الافتراضية
                 </label>
-                <select class="form-control" name="default_language">
-                  <option value="ar" {% if settings.default_language == 'ar' %}selected{% endif %}>🇦🇪 عربي - Arabic</option>
-                  <option value="en" {% if settings.default_language == 'en' %}selected{% endif %}>🇬🇧 English - إنجليزي</option>
-                  <option value="both" {% if settings.default_language == 'both' %}selected{% endif %}>🌍 ثنائي اللغة - Bilingual</option>
+                <select class="form-control select2" name="default_language">
+                  {% for code, meta in lookups.invoice_languages %}
+                  <option value="{{ code }}" {% if settings.default_language == code %}selected{% endif %}>{{ meta.ar }} - {{ meta.en }}</option>
+                  {% endfor %}
                 </select>
                 <small class="form-text text-muted">
                   🗣️ لغة عرض الفواتير الافتراضية

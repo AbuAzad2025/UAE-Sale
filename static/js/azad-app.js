@@ -40,6 +40,8 @@ function initializeSelect2() {
             language: 'ar',
             dir: 'rtl',
             width: '100%',
+            // Same uniform rule as app.js: search box only for long lists.
+            minimumResultsForSearch: 6,
             placeholder: 'اختر...'
         });
     }
@@ -87,12 +89,17 @@ function initializeTooltips() {
 }
 
 /**
- * Auto-hide alerts after 5 seconds
+ * Auto-hide alerts after 5 seconds.
+ * Flash messages (server feedback) fade after 8s and are REMOVED from
+ * the DOM so they can never cover page content or swallow clicks.
+ * `.alert-permanent` is the only opt-out.
  */
 function initializeAlerts() {
     setTimeout(function() {
-        $('.alert:not(.flash-message):not(.alert-permanent)').fadeOut('slow');
-    }, 5000);
+        $('.alert:not(.alert-permanent)').fadeOut('slow', function() {
+            $(this).remove();
+        });
+    }, 8000);
 }
 
 /**

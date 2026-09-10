@@ -86,11 +86,11 @@
             <form method="GET" class="row" action="">
                 <div class="col-md-3">
                     <label>الحالة</label>
-                    <select name="status" class="form-control" onchange="this.form.submit()">
+                    <select name="status" class="form-control select2" onchange="this.form.submit()">
                         <option value="">بلا</option>
-                        <option value="completed" {% if request.args.get('status') == 'completed' %}selected{% endif %}>مكتملة</option>
-                        <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>قيد الانتظار</option>
-                        <option value="failed" {% if request.args.get('status') == 'failed' %}selected{% endif %}>فاشلة</option>
+                        {% for code, meta in lookups.donation_statuses %}
+                        <option value="{{ code }}" {% if request.args.get('status') == code %}selected{% endif %}>{{ meta.ar }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 

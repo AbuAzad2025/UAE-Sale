@@ -5,6 +5,23 @@
 
 (function($) {
   'use strict';
+
+  // Unified lookups (window.SYSTEM_LOOKUPS rendered by base.html from
+  // LookupService); inline defaults keep the module working standalone.
+  function lookupOptions(key, fallback, blankLabel) {
+    let opts;
+    try {
+      const rows = (window.SYSTEM_LOOKUPS || {})[key];
+      if (Array.isArray(rows) && rows.length) {
+        opts = rows.map(function (row) {
+          return { value: row[0], label: (row[1] && row[1].ar) || row[0] };
+        });
+      }
+    } catch (e) { /* fall through to defaults */ }
+    if (!opts) { opts = fallback; }
+    if (blankLabel) { opts = [{ value: '', label: blankLabel }].concat(opts); }
+    return opts;
+  }
   
   // =====================================
   // تعريف حقول كل طريقة دفع
@@ -40,13 +57,12 @@
           label_ar: 'نوع البطاقة',
           label_en: 'Card Type',
           required: false,
-          options: [
-            { value: '', label: 'اختر...' },
+          options: lookupOptions('card_types', [
             { value: 'visa', label: 'Visa' },
             { value: 'mastercard', label: 'Mastercard' },
             { value: 'amex', label: 'American Express' },
             { value: 'other', label: 'أخرى' }
-          ]
+          ], 'اختر...')
         },
         {
           name: 'reference_number',
@@ -126,11 +142,11 @@
           label_ar: 'حالة الشيك',
           label_en: 'Cheque Status',
           required: false,
-          options: [
+          options: lookupOptions('cheque_statuses', [
             { value: 'pending', label: 'معلق' },
             { value: 'cleared', label: 'تم الصرف' },
             { value: 'bounced', label: 'مرتد' }
-          ]
+          ])
         }
       ]
     },
@@ -147,14 +163,13 @@
           label_ar: 'مزود المحفظة',
           label_en: 'Wallet Provider',
           required: true,
-          options: [
-            { value: '', label: 'اختر...' },
+          options: lookupOptions('ewallets', [
             { value: 'apple_pay', label: 'Apple Pay' },
             { value: 'google_pay', label: 'Google Pay' },
             { value: 'samsung_pay', label: 'Samsung Pay' },
             { value: 'paypal', label: 'PayPal' },
             { value: 'other', label: 'أخرى' }
-          ]
+          ], 'اختر...')
         },
         {
           name: 'reference_number',

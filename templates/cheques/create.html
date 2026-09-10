@@ -87,10 +87,11 @@
         <div class="col-md-6">
           <div class="form-group">
             <label><i class="fas fa-exchange-alt"></i> نوع الشيك: <span class="text-danger">*</span></label>
-            <select name="cheque_type" id="cheque_type" class="form-control" required>
+            <select name="cheque_type" id="cheque_type" class="form-control select2" required>
               <option value="">بلا</option>
-              <option value="incoming">وارد (من عميل)</option>
-              <option value="outgoing">صادر (لمورد)</option>
+              {% for code, meta in lookups.cheque_types %}
+              <option value="{{ code }}">{{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
         </div>
@@ -144,13 +145,10 @@
         <div class="col-md-4">
           <div class="form-group">
             <label><i class="fas fa-dollar-sign"></i> العملة:</label>
-            <select name="currency" id="currency" class="form-control">
-              <option value="ILS" selected>ILS - شيقل</option>
-              <option value="JOD">JOD - دينار أردني</option>
-              <option value="AED">AED - درهم إماراتي</option>
-              <option value="SAR">SAR - ريال سعودي</option>
-              <option value="USD">USD - دولار أمريكي</option>
-              <option value="EUR">EUR - يورو</option>
+            <select name="currency" id="currency" class="form-control select2">
+              {% for code, meta in lookups.currencies %}
+              <option value="{{ code }}" {% if code == 'ILS' %}selected{% endif %}>{{ code }} - {{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
         </div>

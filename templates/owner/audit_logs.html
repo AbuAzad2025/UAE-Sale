@@ -119,15 +119,11 @@
               <label>
                 <i class="fas fa-tasks text-primary mr-1"></i> العملية
               </label>
-              <select name="action" class="form-control">
+              <select name="action" class="form-control select2">
                 <option value="">بلا</option>
-                <option value="create" {{ 'selected' if request.args.get('action') == 'create' }}>إنشاء</option>
-                <option value="update" {{ 'selected' if request.args.get('action') == 'update' }}>تعديل</option>
-                <option value="delete" {{ 'selected' if request.args.get('action') == 'delete' }}>حذف</option>
-                <option value="archive" {{ 'selected' if request.args.get('action') == 'archive' }}>أرشفة</option>
-                <option value="restore" {{ 'selected' if request.args.get('action') == 'restore' }}>استعادة</option>
-                <option value="login" {{ 'selected' if request.args.get('action') == 'login' }}>دخول</option>
-                <option value="logout" {{ 'selected' if request.args.get('action') == 'logout' }}>خروج</option>
+                {% for code, meta in lookups.audit_actions %}
+                <option value="{{ code }}" {{ 'selected' if request.args.get('action') == code }}>{{ meta.ar }}</option>
+                {% endfor %}
               </select>
             </div>
 

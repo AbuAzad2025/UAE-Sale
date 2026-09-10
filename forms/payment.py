@@ -7,9 +7,17 @@ class ReceiptForm(FlaskForm):
     customer_id = SelectField('الزبون', coerce=int, validators=[DataRequired()])
     amount = DecimalField('المبلغ', validators=[DataRequired(), NumberRange(min=0.01)])
     currency = SelectField('العملة', choices=[
-        ('AED', 'درهم'),
-        ('USD', 'دولار'),
-        ('EUR', 'يورو')
+        ('ILS', 'شيقل'),
+        ('JOD', 'دينار أردني'),
+        ('AED', 'درهم إماراتي'),
+        ('SAR', 'ريال سعودي'),
+        ('USD', 'دولار أمريكي'),
+        ('EUR', 'يورو'),
+        ('GBP', 'جنيه إسترليني'),
+        ('KWD', 'دينار كويتي'),
+        ('QAR', 'ريال قطري'),
+        ('OMR', 'ريال عماني'),
+        ('BHD', 'دينار بحريني'),
     ], default='AED', validators=[DataRequired()])
     exchange_rate = DecimalField('سعر الصرف (اختياري)', validators=[Optional(), NumberRange(min=0)])
     payment_method = SelectField('طريقة الدفع', choices=[

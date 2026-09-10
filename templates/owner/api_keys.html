@@ -54,11 +54,10 @@
             <div class="col-md-5">
               <div class="form-group">
                 <label>الخدمة</label>
-                <select name="service" class="form-control" required>
-                  <option value="api">API عام</option>
-                  <option value="integration">Integration</option>
-                  <option value="webhook">Webhook</option>
-                  <option value="mobile">Mobile App</option>
+                <select name="service" class="form-control select2" required>
+                  {% for code, meta in lookups.api_key_services %}
+                  <option value="{{ code }}">{{ meta.ar }} ({{ meta.en }})</option>
+                  {% endfor %}
                 </select>
                 <small class="form-text text-muted">حدد الغرض من المفتاح لضبط الصلاحيات المناسبة.</small>
               </div>

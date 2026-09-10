@@ -10,7 +10,7 @@ $env:CACHE_TYPE = 'SimpleCache'
 $env:RATELIMIT_STORAGE_URI = 'memory://'
 $env:RATELIMIT_ENABLED = 'false'
 $env:MASTER_KEY_SEED = 'Azad@1983'
-$env:PORT = '8000'
+if (-not $env:PORT) { $env:PORT = '8000' }
 $env:HOST = '0.0.0.0'
 
 $today = Get-Date -Format 'yyyy@MM@dd'
@@ -20,9 +20,9 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  UAE-Sale ERP - DEV SERVER" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Server:    http://localhost:8000" -ForegroundColor Green
-Write-Host "Landing:   http://localhost:8000/" -ForegroundColor Green
-Write-Host "Login:     http://localhost:8000/auth/login" -ForegroundColor Green
+Write-Host "Server:    http://localhost:$env:PORT" -ForegroundColor Green
+Write-Host "Landing:   http://localhost:$env:PORT/" -ForegroundColor Green
+Write-Host "Login:     http://localhost:$env:PORT/auth/login" -ForegroundColor Green
 Write-Host ""
 Write-Host "Owner account (auto-created on first run):" -ForegroundColor Yellow
 Write-Host "  Username: owner" -ForegroundColor White

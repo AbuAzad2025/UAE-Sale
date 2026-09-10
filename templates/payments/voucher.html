@@ -79,9 +79,10 @@
         <div class="col-md-4">
           <div class="form-group">
             <label class="font-weight-bold">نوع الجهة</label>
-            <select class="form-control" name="party_type" id="party_type" onchange="updatePartyList()">
-              <option value="customer">عميل / شريك / تاجر</option>
-              <option value="supplier">مورد</option>
+            <select class="form-control select2" name="party_type" id="party_type" onchange="updatePartyList()">
+              {% for code, meta in lookups.party_types %}
+              <option value="{{ code }}">{{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
         </div>
@@ -111,11 +112,10 @@
         <div class="col-md-4">
           <div class="form-group">
             <label class="font-weight-bold">طريقة الدفع</label>
-            <select class="form-control" name="payment_method" id="payment_method" onchange="toggleChequeFields()">
-              <option value="cash">نقدي</option>
-              <option value="bank_transfer">تحويل بنكي</option>
-              <option value="cheque">شيك</option>
-              <option value="card">بطاقة</option>
+            <select class="form-control select2" name="payment_method" id="payment_method" onchange="toggleChequeFields()">
+              {% for code, meta in lookups.payment_methods %}
+              <option value="{{ code }}">{{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
         </div>

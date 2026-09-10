@@ -72,9 +72,10 @@
           
           <div class="form-group">
             <label>نوع المزود</label>
-            <select name="provider" id="other_provider" class="form-control">
-              <option value="openai">OpenAI (GPT-4)</option>
-              <option value="gemini">Google Gemini</option>
+            <select name="provider" id="other_provider" class="form-control select2">
+              {% for code, meta in lookups.ai_providers %}
+              <option value="{{ code }}">{{ meta.ar }} ({{ meta.en }})</option>
+              {% endfor %}
             </select>
           </div>
           

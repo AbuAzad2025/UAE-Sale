@@ -125,13 +125,11 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>نوع المورد</label>
-            <select name="supplier_type" class="form-control">
+            <select name="supplier_type" class="form-control select2">
               <option value="" {% if not supplier.supplier_type %}selected{% endif %}>بلا</option>
-              <option value="parts" {% if supplier.supplier_type == 'parts' %}selected{% endif %}>قطع غيار</option>
-              <option value="equipment" {% if supplier.supplier_type == 'equipment' %}selected{% endif %}>معدات</option>
-              <option value="services" {% if supplier.supplier_type == 'services' %}selected{% endif %}>خدمات</option>
-              <option value="materials" {% if supplier.supplier_type == 'materials' %}selected{% endif %}>مواد خام</option>
-              <option value="other" {% if supplier.supplier_type == 'other' %}selected{% endif %}>{{ t('Other') }}</option>
+              {% for code, meta in lookups.supplier_types %}
+              <option value="{{ code }}" {% if supplier.supplier_type == code %}selected{% endif %}>{{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
         </div>
@@ -139,13 +137,11 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>التقييم</label>
-            <select name="rating" class="form-control">
+            <select name="rating" class="form-control select2">
               <option value="" {% if supplier.rating is none %}selected{% endif %}>بلا</option>
-              <option value="1" {% if supplier.rating == 1 %}selected{% endif %}>⭐ نجمة واحدة</option>
-              <option value="2" {% if supplier.rating == 2 %}selected{% endif %}>⭐⭐ نجمتان</option>
-              <option value="3" {% if supplier.rating == 3 %}selected{% endif %}>⭐⭐⭐ 3 نجوم</option>
-              <option value="4" {% if supplier.rating == 4 %}selected{% endif %}>⭐⭐⭐⭐ 4 نجوم</option>
-              <option value="5" {% if supplier.rating == 5 %}selected{% endif %}>⭐⭐⭐⭐⭐ 5 نجوم</option>
+              {% for code, meta in lookups.supplier_ratings %}
+              <option value="{{ code }}" {% if supplier.rating|string == code %}selected{% endif %}>{{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
         </div>
@@ -153,13 +149,10 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>العملة المفضلة</label>
-            <select name="preferred_currency" class="form-control">
-              <option value="ILS" {% if supplier.preferred_currency == 'ILS' %}selected{% endif %}>ILS - شيقل</option>
-              <option value="JOD" {% if supplier.preferred_currency == 'JOD' %}selected{% endif %}>JOD - دينار أردني</option>
-              <option value="AED" {% if supplier.preferred_currency == 'AED' %}selected{% endif %}>AED - درهم</option>
-              <option value="USD" {% if supplier.preferred_currency == 'USD' %}selected{% endif %}>USD - دولار</option>
-              <option value="EUR" {% if supplier.preferred_currency == 'EUR' %}selected{% endif %}>EUR - يورو</option>
-              <option value="SAR" {% if supplier.preferred_currency == 'SAR' %}selected{% endif %}>SAR - ريال</option>
+            <select name="preferred_currency" class="form-control select2">
+              {% for code, meta in lookups.currencies %}
+              <option value="{{ code }}" {% if supplier.preferred_currency == code %}selected{% endif %}>{{ code }} - {{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
         </div>

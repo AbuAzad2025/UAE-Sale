@@ -519,7 +519,31 @@
               <li class="nav-item">
                 <a href="{{ url_for('ledger.index') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
+                  <p>الرئيسية</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('ledger.journal_entries') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>القيود</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('ledger.accounts') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
                   <p>الحسابات</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('ledger.accounts_tree') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>شجرة الحسابات</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('ledger.manual_entry') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>قيد يدوي</p>
                 </a>
               </li>
               <li class="nav-item">
@@ -540,12 +564,77 @@
                   <p>الميزانية</p>
                 </a>
               </li>
+              <li class="nav-item">
+                <a href="{{ url_for('ledger.reports') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>التقارير</p>
+                </a>
+              </li>
               {% if current_user.is_admin() %}
               <li class="nav-item">
-                <a href="{{ url_for('ledger.admin_dashboard') }}" class="nav-link">
+                <a href="{{ url_for('ledger.vaults') }}" class="nav-link">
                   <i class="fas fa-cogs nav-icon"></i>
-                  <p>لوحة التحكم الإدارية</p>
+                  <p>الخزائن</p>
                 </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('ledger.settings') }}" class="nav-link">
+                  <i class="fas fa-cogs nav-icon"></i>
+                  <p>الإعدادات</p>
+                </a>
+              </li>
+              <li class="nav-item has-treeview">
+                <a href="#" class="nav-link">
+                  <i class="fas fa-cogs nav-icon"></i>
+                  <p>
+                    إدارة متقدمة
+                    <i class="right fas fa-angle-left"></i>
+                  </p>
+                </a>
+                <ul class="nav nav-treeview">
+                  <li class="nav-item">
+                    <a href="{{ url_for('advanced_ledger.customs_taxes') }}" class="nav-link">
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>الجمارك والضرائب</p>
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="{{ url_for('advanced_ledger.expense_categories') }}" class="nav-link">
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>فئات المصروفات</p>
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="{{ url_for('advanced_ledger.advanced_expenses') }}" class="nav-link">
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>المصروفات المتقدمة</p>
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="{{ url_for('advanced_ledger.cheque_integration') }}" class="nav-link">
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>تكامل الشيكات</p>
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="{{ url_for('advanced_ledger.professional_reports') }}" class="nav-link">
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>التقارير الاحترافية</p>
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="{{ url_for('advanced_ledger.advanced_analytics') }}" class="nav-link">
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>التحليلات</p>
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="{{ url_for('advanced_ledger.real_time_events') }}" class="nav-link">
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>الأحداث</p>
+                    </a>
+                  </li>
+                </ul>
               </li>
               {% endif %}
             </ul>
@@ -762,6 +851,18 @@
             </a>
           </li>
           <li class="nav-item">
+            <a href="{{ url_for('owner.constants_index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.constants') %}active{% endif %}">
+              <i class="nav-icon fas fa-list-alt text-info"></i>
+              <p>ثوابت النظام</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('monitoring.dashboard') }}" class="nav-link">
+              <i class="nav-icon fas fa-heartbeat text-danger"></i>
+              <p>مراقبة النظام</p>
+            </a>
+          </li>
+          <li class="nav-item">
             <a href="{{ url_for('ai.config') }}" class="nav-link">
               <i class="nav-icon fas fa-key text-info"></i>
               <p>مفاتيح AI (Groq)</p>
@@ -790,7 +891,7 @@
       <div class="container-fluid">
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
-            <div id="flash-messages-container" style="position: sticky; top: 60px; z-index: 1040; margin-bottom: 20px;">
+            <div id="flash-messages-container" style="margin-bottom: 20px;">
               {% for category, message in messages %}
                 <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show flash-message" 
                      style="font-size: 18px; font-weight: 600; padding: 20px 25px; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); animation: slideDown 0.4s ease-out; border-left: 5px solid {{ 'var(--success-color)' if category == 'success' else ('var(--danger-color)' if category in ['error', 'danger'] else ('var(--warning-color)' if category == 'warning' else 'var(--info-color)')) }};">
@@ -852,6 +953,14 @@
 <script src="{{ url_for('static', filename='adminlte/plugins/jquery/jquery.min.js') }}"></script>
 <script src="{{ url_for('static', filename='adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ url_for('static', filename='adminlte/js/adminlte.min.js') }}"></script>
+<script>
+  // Unified system lookups for JS (single source of truth: LookupService).
+  window.SYSTEM_LOOKUPS = {
+    card_types: {{ lookups.card_types|tojson }},
+    cheque_statuses: {{ lookups.cheque_statuses|tojson }},
+    ewallets: {{ lookups.ewallets|tojson }}
+  };
+</script>
 
 <!-- Non-Critical Scripts - تحميل متأخر مع defer -->
 <script defer src="{{ url_for('static', filename='adminlte/plugins/select2/js/select2.full.min.js') }}"></script>

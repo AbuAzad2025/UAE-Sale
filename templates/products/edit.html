@@ -211,12 +211,9 @@
             {% set selected_unit = request.form.get('unit') if request.method == 'POST' else product.unit %}
             <select name="unit" class="form-control select2" data-placeholder="اختر الوحدة..." data-allow-clear="true">
               <option value="" {% if not selected_unit %}selected{% endif %}>بلا</option>
-              <option value="piece" {% if selected_unit == 'piece' %}selected{% endif %}>قطعة</option>
-              <option value="kg" {% if selected_unit == 'kg' %}selected{% endif %}>كيلو</option>
-              <option value="liter" {% if selected_unit == 'liter' %}selected{% endif %}>لتر</option>
-              <option value="meter" {% if selected_unit == 'meter' %}selected{% endif %}>متر</option>
-              <option value="box" {% if selected_unit == 'box' %}selected{% endif %}>صندوق</option>
-              <option value="set" {% if selected_unit == 'set' %}selected{% endif %}>طقم</option>
+              {% for code, meta in lookups.product_units %}
+              <option value="{{ code }}" {% if selected_unit == code %}selected{% endif %}>{{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
         </div>

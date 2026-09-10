@@ -88,7 +88,12 @@
 </div>
 
 <div class="card shadow-sm mb-4">
-  <div class="card-header"><h5 class="mb-0">مستخدمو المستأجر ({{ users|length }})</h5></div>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">مستخدمو المستأجر ({{ users|length }})</h5>
+    {% if tenant.is_active and not tenant.is_suspended %}
+    <a href="{{ url_for('users.create', tenant_id=tenant.id) }}" class="btn btn-success btn-sm"><i class="fas fa-user-plus mr-1"></i>إضافة مستخدم</a>
+    {% endif %}
+  </div>
   <div class="card-body p-0">
     <table class="table table-bordered table-striped mb-0">
       <thead><tr><th>اسم المستخدم</th><th>الاسم</th><th>البريد</th><th>الحالة</th></tr></thead>

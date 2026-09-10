@@ -269,9 +269,14 @@ class TestUsersAdmin:
         _login(client, misc_owner)
         assert client.get(f'/users/{misc_seller.id}/edit').status_code == 200
 
-    def test_owner_self_hidden_by_design(self, client, misc_owner):
+    def test_owner_self_visible_unified_roster(self, client, misc_owner):
+        # Unified roster: the platform owner manages ALL accounts (incl.
+        # owners) from /users/* — the legacy "hidden by design" rule only
+        # applies to non-owner actors (see seller matrix + zero-trust).
         _login(client, misc_owner)
-        assert client.get(f'/users/{misc_owner.id}').status_code == 404
+        resp = client.get(f'/users/{misc_owner.id}')
+        assert resp.status_code == 200
+        assert misc_owner.username.encode() in resp.data
 
     def test_change_password_owner_ok(self, client, misc_owner):
         _login(client, misc_owner)

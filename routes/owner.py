@@ -3,7 +3,7 @@ from decimal import Decimal
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app, abort
 from flask_login import login_required, current_user
 from sqlalchemy import func, desc
-from extensions import db, limiter
+from extensions import db
 from models import (
     User, Customer, Product, Sale, SaleLine, Purchase, Receipt, AuditLog,
     ArchivedRecord, CardVault, InvoiceSettings, Tenant, SystemSettings, IntegrationSettings,
@@ -12,7 +12,7 @@ from models import (
 from models.login_history import LoginHistory
 from models.security_alert import SecurityAlert
 from models.api_key import APIKey
-from utils.decorators import owner_required, permission_required, _role_level as _role_level_canon, _enforce_target_role_not_higher, get_owned_or_404
+from utils.decorators import owner_required, permission_required, _role_level as _role_level_canon, get_owned_or_404
 from utils.db_safety import validate_table_name, validate_backup_filename
 from sqlalchemy import text, inspect
 
@@ -319,257 +319,6 @@ def archived():
     return render_template('owner/archived.html',
                            records=pagination.items,
                            pagination=pagination)
-
-
-@owner_bp.route('/users-list')
-@login_required
-@owner_required
-def users_list():
-    """قائمة المستخدمين"""
-    users = User.query.order_by(User.created_at.desc()).all()
-
-    # إحصائيات
-    from models import Role
-    stats = {
-        'total': User.query.count(),
-        'active': User.query.filter_by(is_active=True).count(),
-        'inactive': User.query.filter_by(is_active=False).count(),
-        'owners': User.query.filter_by(is_owner=True).count(),
-        'admins': db.session.query(User).join(Role).filter(Role.slug == 'super_admin').count(),
-        'managers': db.session.query(User).join(Role).filter(Role.slug == 'manager').count(),
-        'sellers': db.session.query(User).join(Role).filter(Role.slug == 'seller').count(),
-    }
-
-    return render_template('owner/users_list.html', users=users, stats=stats)
-
-
-@owner_bp.route('/users/create', methods=['GET', 'POST'])
-@login_required
-@owner_required
-@limiter.limit("5 per minute", methods=['POST'])
-def create_user():
-    """إضافة مستخدم جديد"""
-    from models import Role
-    from werkzeug.security import generate_password_hash
-    from utils.password_validator import PasswordValidator
-
-    current_level = _current_user_level()
-    roles = Role.query.filter_by(is_active=True).all()
-    roles = [r for r in roles if _role_level(getattr(r, 'slug', None)) <= current_level]
-    default_form = {'is_active': 'on'}
-
-    if request.method == 'POST':
-        try:
-            from utils.sanitizer import InputSanitizer
-
-            username = InputSanitizer.sanitize_text(request.form.get('username', ''), max_length=20)
-            email = InputSanitizer.sanitize_email(request.form.get('email', ''))
-            password = request.form.get('password', '').strip()  # لا نعدل password
-            full_name = InputSanitizer.sanitize_text(request.form.get('full_name', ''), max_length=100)
-            role_id = request.form.get('role_id', type=int)
-            is_owner = request.form.get('is_owner') == 'on'
-            is_active = request.form.get('is_active') == 'on'
-
-            def _form_values():
-                values = request.form.to_dict()
-                values['is_owner'] = 'on' if is_owner else 'off'
-                values['is_active'] = 'on' if is_active else 'off'
-                return values
-
-            # التحقق من البيانات
-            if not username or not password:
-                from utils.error_messages import ErrorMessages
-                flash(ErrorMessages.user_required_fields(), 'error')
-                return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
-
-            if not role_id:
-                flash('⚠️ يرجى اختيار الدور الوظيفي.', 'warning')
-                return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
-
-            # SECURITY: server-side re-validation of the chosen role.
-            target_role = Role.query.get(role_id)
-            if target_role is None:
-                flash('⚠️ الدور المختار غير صالح.', 'danger')
-                return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
-            _enforce_target_role_not_higher(target_role)
-
-            # SECURITY: only the platform owner may mint another owner.
-            if is_owner and not getattr(current_user, 'is_owner', False):
-                flash('⛔ لا يمكن إنشاء مالك جديد إلا من قِبل المالك الحالي.', 'danger')
-                return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
-
-            # التحقق من قوة كلمة المرور
-            is_valid, errors = PasswordValidator.validate(password)
-            if not is_valid:
-                from utils.error_messages import ErrorMessages
-                flash(ErrorMessages.weak_password(errors), 'danger')
-                return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
-
-            # التحقق من عدم وجود المستخدم
-            existing = User.query.filter_by(username=username).first()
-            if existing:
-                from utils.error_messages import ErrorMessages
-                flash(ErrorMessages.user_exists(username), 'error')
-                return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
-
-            # إنشاء المستخدم
-            user = User(
-                username=username,
-                email=email,
-                password_hash=generate_password_hash(password),
-                full_name=full_name,
-                role_id=role_id,
-                is_owner=is_owner,
-                is_active=is_active
-            )
-
-            db.session.add(user)
-            db.session.commit()
-
-            flash(f'تم إضافة المستخدم {username} بنجاح', 'success')
-            return redirect(url_for('owner.users_list'))
-
-        except Exception as e:
-            db.session.rollback()
-            from utils.error_messages import ErrorMessages
-            current_app.logger.error(f'User update error: {e}')
-            flash('❌ خطأ في تحديث المستخدم.', 'error')
-            return render_template('owner/create_user.html', roles=roles, form_data=_form_values())
-
-    return render_template('owner/create_user.html', roles=roles, form_data=default_form)
-
-
-@owner_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
-@login_required
-@owner_required
-@limiter.limit("10 per minute", methods=['POST'])
-def edit_user(user_id):
-    """تعديل مستخدم"""
-    from models import Role
-    from werkzeug.security import generate_password_hash
-
-    # SECURITY: use get_owned_or_404 for cross-tenant safety.
-    user = get_owned_or_404(User, user_id)
-
-    if request.method == 'POST':
-        try:
-            user.username = request.form.get('username', '').strip()
-            user.email = request.form.get('email', '').strip()
-            user.full_name = request.form.get('full_name', '').strip()
-
-            # SECURITY: re-validate the new role level.  Even if the
-            # dropdown is filtered, body tampering could try to inject
-            # a higher role.  Owners can edit anyone, but only the
-            # owner is the owner.
-            new_role_id = request.form.get('role_id', type=int)
-            if new_role_id and new_role_id != user.role_id:
-                new_role = Role.query.get(new_role_id)
-                if new_role is None:
-                    flash('⚠️ الدور المختار غير صالح.', 'danger')
-                    return redirect(url_for('owner.edit_user', user_id=user_id))
-                _enforce_target_role_not_higher(new_role)
-                user.role_id = new_role_id
-
-            # SECURITY: only the platform owner may mint another owner.
-            new_is_owner = request.form.get('is_owner') == 'on'
-            if new_is_owner and not getattr(current_user, 'is_owner', False):
-                flash('⛔ لا يمكن منح صلاحية المالك لغير المالك الحالي.', 'danger')
-                return redirect(url_for('owner.edit_user', user_id=user_id))
-            user.is_owner = new_is_owner
-            user.is_active = request.form.get('is_active') == 'on'
-
-            # تغيير كلمة المرور إن وجدت
-            new_password = request.form.get('new_password', '').strip()
-            if new_password:
-                # SECURITY: Enforce password strength policy
-                from utils.password_validator import PasswordValidator
-                is_valid, pw_errors = PasswordValidator.validate(new_password)
-                if not is_valid:
-                    flash('⚠️ كلمة المرور ضعيفة:\n' + '\n'.join(pw_errors), 'danger')
-                    return redirect(url_for('owner.edit_user', user_id=user_id))
-                user.password_hash = generate_password_hash(new_password, method='pbkdf2:sha256')
-
-            user.updated_by = current_user.id
-
-            db.session.commit()
-
-            flash(f'تم تحديث المستخدم {user.username} بنجاح', 'success')
-            return redirect(url_for('owner.users_list'))
-
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f'User edit error: {e}')
-            flash('❌ خطأ في تحديث المستخدم.', 'error')
-
-    current_level = _current_user_level()
-    roles = Role.query.filter_by(is_active=True).all()
-    roles = [r for r in roles if _role_level(getattr(r, 'slug', None)) <= current_level]
-    return render_template('owner/edit_user.html', user=user, roles=roles)
-
-
-@owner_bp.route('/users/<int:user_id>/profile')
-@login_required
-@owner_required
-def user_profile(user_id):
-    """الملف الشخصي للمستخدم"""
-    # SECURITY: cross-tenant safe lookup.
-    user = get_owned_or_404(User, user_id)
-
-    # إحصائيات المستخدم
-    from models import Sale, Payment  # noqa: F811  (local import intentional)
-
-    stats = {
-        'sales_count': Sale.query.count(),
-        'sales_total': db.session.query(func.sum(Sale.amount_base)).filter_by(status='confirmed').scalar() or 0,
-        'payments_count': Payment.query.count(),
-        'payments_total': db.session.query(func.sum(Payment.amount_base)).scalar() or 0,
-        'audits_count': 0,  # Audit.query.filter_by(user_id=user_id).count(),
-    }
-
-    # آخر النشاطات
-    recent_sales = Sale.query.order_by(Sale.sale_date.desc()).limit(5).all()
-    recent_audits = []  # Audit.query.filter_by(user_id=user_id).order_by(Audit.timestamp.desc()).limit(10).all()
-
-    return render_template('owner/user_profile.html',
-                           user=user,
-                           stats=stats,
-                           recent_sales=recent_sales,
-                           recent_audits=recent_audits)
-
-
-@owner_bp.route('/users/<int:user_id>/delete', methods=['POST'])
-@login_required
-@owner_required
-def delete_user(user_id):
-    """حذف مستخدم"""
-    # SECURITY: cross-tenant check.
-    user = get_owned_or_404(User, user_id)
-
-    # لا يمكن حذف المالك
-    from utils.error_messages import ErrorMessages
-
-    if user.is_owner:
-        flash(ErrorMessages.user_delete_owner(), 'error')
-        return redirect(url_for('owner.users_list'))
-
-    # لا يمكن حذف نفسك
-    if user.id == current_user.id:
-        flash(ErrorMessages.user_delete_self(), 'error')
-        return redirect(url_for('owner.users_list'))
-
-    try:
-        # Soft delete - تعطيل بدلاً من الحذف
-        user.is_active = False
-        user.updated_by = current_user.id
-        db.session.commit()
-
-        flash(f'تم تعطيل المستخدم {user.username}', 'success')
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f'User delete error: {e}')
-        flash('❌ خطأ في حذف المستخدم.', 'error')
-
-    return redirect(url_for('owner.users_list'))
 
 
 @owner_bp.route('/roles-permissions')
@@ -1831,6 +1580,112 @@ def tenant_activate(id):
         current_app.logger.error(f'Tenant activate error: {e}')
         flash('حدث خطأ أثناء التفعيل.', 'danger')
     return redirect(url_for('owner.tenant_detail', id=tenant.id))
+
+
+# ── System constants management ─────────────────────────────────────────
+# Owner UI over LookupService.  Locked groups (codes drive logic) expose
+# labels for editing only; add/disable are refused server-side.
+
+@owner_bp.route('/constants')
+@login_required
+@owner_required
+def constants_index():
+    """نظرة عامة على مجموعات الثوابت."""
+    from services.lookup_service import groups, group_detail
+    rows = []
+    for key, meta in groups().items():
+        try:
+            detail = group_detail(key)
+        except ValueError:
+            detail = []
+        rows.append({
+            'key': key,
+            'title': meta.get('title_ar') or key,
+            'locked': bool(meta.get('locked_codes')),
+            'total': len(detail),
+            'custom': sum(1 for r in detail if r['custom']),
+            'disabled': sum(1 for r in detail if r['disabled']),
+        })
+    rows.sort(key=lambda r: r['title'])
+    return render_template('owner/constants_index.html', rows=rows)
+
+
+@owner_bp.route('/constants/<group>')
+@login_required
+@owner_required
+def constants_group(group):
+    """قيم مجموعة ثوابت واحدة."""
+    from services.lookup_service import groups, group_detail
+    if group not in groups():
+        abort(404)
+    meta = groups()[group]
+    return render_template('owner/constants_group.html', group=group,
+                           meta=meta, rows=group_detail(group))
+
+
+@owner_bp.route('/constants/<group>/add', methods=['POST'])
+@login_required
+@owner_required
+def constants_add(group):
+    from services.lookup_service import add_custom
+    from utils.helpers import create_audit_log
+    try:
+        code = add_custom(group,
+                          request.form.get('code'),
+                          request.form.get('ar'),
+                          request.form.get('en'))
+        create_audit_log('create', 'system_lookups', None,
+                         {'group': group, 'code': code})
+        flash(f'تمت إضافة "{code}" إلى الثوابت بنجاح', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+    except Exception as e:
+        current_app.logger.error(f'Lookup add error: {e}')
+        flash('حدث خطأ أثناء الإضافة.', 'danger')
+    return redirect(url_for('owner.constants_group', group=group))
+
+
+@owner_bp.route('/constants/<group>/label', methods=['POST'])
+@login_required
+@owner_required
+def constants_label(group):
+    from services.lookup_service import set_label
+    from utils.helpers import create_audit_log
+    try:
+        code = (request.form.get('code') or '').strip()
+        set_label(group, code,
+                  request.form.get('ar'), request.form.get('en'))
+        create_audit_log('update', 'system_lookups', None,
+                         {'group': group, 'code': code})
+        flash('تم حفظ التسمية بنجاح', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+    except Exception as e:
+        current_app.logger.error(f'Lookup label error: {e}')
+        flash('حدث خطأ أثناء الحفظ.', 'danger')
+    return redirect(url_for('owner.constants_group', group=group))
+
+
+@owner_bp.route('/constants/<group>/visibility', methods=['POST'])
+@login_required
+@owner_required
+def constants_visibility(group):
+    from services.lookup_service import set_disabled
+    from utils.helpers import create_audit_log
+    try:
+        code = (request.form.get('code') or '').strip()
+        disable = request.form.get('disabled') == '1'
+        set_disabled(group, code, disable)
+        create_audit_log('update', 'system_lookups', None,
+                         {'group': group, 'code': code,
+                          'disabled': disable})
+        flash('تم تحديث الحالة بنجاح', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+    except Exception as e:
+        current_app.logger.error(f'Lookup visibility error: {e}')
+        flash('حدث خطأ أثناء التحديث.', 'danger')
+    return redirect(url_for('owner.constants_group', group=group))
 
 
 @owner_bp.route('/invoice-settings', methods=['GET', 'POST'])

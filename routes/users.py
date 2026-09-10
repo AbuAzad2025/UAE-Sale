@@ -1,30 +1,25 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, current_app
 from flask_login import login_required, current_user
 from extensions import db
-from models import User, Role
+from models import User, Role, Tenant
+from services.user_service import UserService
 from utils.decorators import admin_required, _role_level, _current_user_level, _enforce_target_role_not_higher, get_owned_or_404
 from utils.helpers import create_audit_log
 
 users_bp = Blueprint('users', __name__, url_prefix='/users')
 
 
-def _role_level_local(slug):
-    """Local role-level map for filtering the role dropdown.
-    Kept here so the filter is visible in one place; the canonical
-    ranking lives in ``utils.decorators._role_level``.
-    """
-    return _role_level(Role(slug=slug) if slug else None) if False else _role_level(_role_obj_for(slug))
-
-
 def _role_obj_for(slug):
-    """Best-effort role stub for the local level map.  We only need the
-    slug to map to a level, so build a lightweight object that satisfies
-    ``_role_level``'s contract (``role.slug``)."""
+    """Lightweight role stub satisfying ``_role_level`` (``role.slug``)."""
     class _R:
         pass
     r = _R()
     r.slug = slug
     return r
+
+
+def _is_platform_owner():
+    return bool(getattr(current_user, 'is_owner', False))
 
 
 @users_bp.route('/')
@@ -38,7 +33,24 @@ def index():
     per_page = request.args.get('per_page', 20, type=int)
     search = request.args.get('search', '', type=str)
 
-    query = User.query.filter_by(is_owner=False, is_active=True)
+    stats = None
+    tenants = None
+    tenant_filter = request.args.get('tenant_id', type=int)
+    if _is_platform_owner():
+        query = User.query
+        if tenant_filter:
+            query = query.filter_by(tenant_id=tenant_filter)
+        tenants = Tenant.query.order_by(Tenant.name_ar).all()
+        stats = {
+            'total': User.query.count(),
+            'active': User.query.filter_by(is_active=True).count(),
+            'inactive': User.query.filter_by(is_active=False).count(),
+            'owners': User.query.filter_by(is_owner=True).count(),
+        }
+    else:
+        query = User.query.filter_by(is_owner=False, is_active=True)
+        if getattr(current_user, 'tenant_id', None):
+            query = query.filter_by(tenant_id=current_user.tenant_id)
 
     if search:
         search_filter = f'%{search}%'
@@ -58,7 +70,11 @@ def index():
 
     return render_template('users/index.html',
                            users=pagination.items,
-                           pagination=pagination)
+                           pagination=pagination,
+                           stats=stats,
+                           tenants=tenants,
+                           tenant_filter=tenant_filter,
+                           search=search)
 
 
 @users_bp.route('/create', methods=['GET', 'POST'])
@@ -74,71 +90,59 @@ def create():
     roles = [r for r in roles if _role_level(r) <= current_level]
     default_form = {'is_active': '1'}
 
+    # Owner may pre-scope creation to a tenant (?tenant_id= → locked banner).
+    fixed_tenant = None
+    if _is_platform_owner():
+        fixed_tenant_id = request.args.get('tenant_id', type=int)
+        if fixed_tenant_id:
+            fixed_tenant = Tenant.query.get(fixed_tenant_id)
+    tenants = Tenant.query.order_by(Tenant.name_ar).all() if _is_platform_owner() else []
+
     if request.method == 'POST':
+        form_values = request.form.to_dict()
         try:
-            role_id = request.form.get('role_id', type=int)
-            if not role_id:
-                flash('⚠️ يرجى اختيار الدور الوظيفي.', 'warning')
-                form_values = request.form.to_dict()
-                form_values['is_active'] = request.form.get('is_active', '1')
-                return render_template('users/create.html', roles=roles, form_data=form_values)
-
-            # SECURITY: Re-validate the chosen role server-side against the
-            # current user's privilege level. The dropdown is filtered, but
-            # body tampering must not be able to inject a higher role.
-            target_role = Role.query.get(role_id)
-            if target_role is None:
-                flash('⚠️ الدور المختار غير صالح.', 'danger')
-                return render_template('users/create.html', roles=roles,
-                                       form_data=request.form.to_dict())
-            _enforce_target_role_not_higher(target_role)
-
-            is_active = request.form.get('is_active', '1') == '1'
-
-            user = User(
+            if _is_platform_owner():
+                tenant_id = fixed_tenant.id if fixed_tenant else request.form.get('tenant_id', type=int)
+                is_owner = request.form.get('is_owner') == 'on'
+            else:
+                # SECURITY: same tenant, forced server-side; owners never
+                # created outside the platform-owner path.
+                tenant_id = getattr(current_user, 'tenant_id', None)
+                is_owner = False
+            user = UserService.provision_user(
                 username=request.form.get('username'),
                 email=request.form.get('email'),
+                password=request.form.get('password'),
+                role_id=request.form.get('role_id', type=int),
                 full_name=request.form.get('full_name'),
                 full_name_ar=request.form.get('full_name_ar'),
                 phone=request.form.get('phone'),
-                role_id=role_id,
-                is_owner=False,  # SECURITY: never let non-owner routes create owners
-                tenant_id=getattr(current_user, 'tenant_id', None),  # SECURITY: same tenant
-                is_active=is_active
+                tenant_id=tenant_id,
+                is_owner=is_owner,
+                is_active=request.form.get('is_active', '1') == '1',
+                actor=current_user,
             )
-
-            password = request.form.get('password')
-
-            # SECURITY: Enforce password strength policy
-            from utils.password_validator import PasswordValidator
-            is_valid, errors = PasswordValidator.validate(password or '')
-            if not is_valid:
-                flash('⚠️ كلمة المرور ضعيفة:\n' + '\n'.join(errors), 'danger')
-                form_values = request.form.to_dict()
-                form_values['is_active'] = request.form.get('is_active', '1')
-                return render_template('users/create.html', roles=roles, form_data=form_values)
-
-            user.set_password(password)
-
-            db.session.add(user)
-            db.session.flush()
-
             create_audit_log('create', 'users', user.id)
-
-            db.session.commit()
-
             flash('✅ تم إضافة المستخدم بنجاح!', 'success')
+            if fixed_tenant:
+                return redirect(url_for('owner.tenant_detail', id=fixed_tenant.id))
             return redirect(url_for('users.index'))
-
+        except ValueError as e:
+            flash(f'⚠️ {str(e)}', 'danger')
+            return render_template('users/create.html', roles=roles,
+                                   form_data=form_values, tenants=tenants,
+                                   fixed_tenant=fixed_tenant)
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f'User creation error: {e}')
             flash('❌ حدث خطأ في إنشاء المستخدم. يرجى المحاولة مرة أخرى.', 'danger')
-            form_values = request.form.to_dict()
-            form_values['is_active'] = request.form.get('is_active', '1')
-            return render_template('users/create.html', roles=roles, form_data=form_values)
+            return render_template('users/create.html', roles=roles,
+                                   form_data=form_values, tenants=tenants,
+                                   fixed_tenant=fixed_tenant)
 
-    return render_template('users/create.html', roles=roles, form_data=default_form)
+    return render_template('users/create.html', roles=roles,
+                           form_data=default_form, tenants=tenants,
+                           fixed_tenant=fixed_tenant)
 
 
 @users_bp.route('/<int:id>')
@@ -149,9 +153,26 @@ def view(id):
 
     # SECURITY: cross-tenant check via get_owned_or_404.
     user = get_owned_or_404(User, id, code=404)
-    if user.is_owner:
+    if user.is_owner and not _is_platform_owner():
         abort(404)
-    return render_template('users/view.html', user=user)
+
+    # User-scoped activity (never global counters).
+    from models import Sale, Payment, AuditLog
+    sales_q = Sale.query.filter_by(seller_id=user.id)
+    stats = {
+        'sales_count': sales_q.count(),
+        'sales_total': float(sum((s.amount_base or 0) for s in sales_q.all()) or 0),
+        'payments_total': float(sum(
+            (p.amount_base or 0)
+            for p in Payment.query.filter_by(user_id=user.id).all()) or 0),
+        'audits_count': AuditLog.query.filter_by(user_id=user.id).count(),
+    }
+    recent_sales = sales_q.order_by(Sale.sale_date.desc()).limit(5).all()
+    recent_audits = AuditLog.query.filter_by(user_id=user.id).order_by(
+        AuditLog.created_at.desc()).limit(10).all()
+    return render_template('users/view.html', user=user, stats=stats,
+                           recent_sales=recent_sales,
+                           recent_audits=recent_audits)
 
 
 @users_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
@@ -161,45 +182,36 @@ def edit(id):
     # SECURITY: use get_owned_or_404 to enforce cross-tenant isolation
     # in addition to the @admin_required role gate.
     user = get_owned_or_404(User, id, code=404)
-    if user.is_owner:
-        # Owner accounts cannot be edited through this route.
+    if user.is_owner and not _is_platform_owner():
+        # Owner accounts cannot be edited through this route by non-owners.
         abort(404)
 
     if request.method == 'POST':
         try:
-            user.email = request.form.get('email')
-            user.full_name = request.form.get('full_name')
-            user.full_name_ar = request.form.get('full_name_ar')
-            user.phone = request.form.get('phone')
-
-            # SECURITY: server-side role-level re-validation. The dropdown
-            # is filtered to ≤ current user's level, but body tampering
-            # could try to inject a higher role. Reject 403.
+            from services.user_service import _UNCHANGED
             new_role_id = request.form.get('role_id', type=int)
-            if new_role_id and new_role_id != user.role_id:
-                new_role = Role.query.get(new_role_id)
-                if new_role is None:
-                    flash('⚠️ الدور المختار غير صالح.', 'danger')
-                    return redirect(url_for('users.edit', id=user.id))
-                _enforce_target_role_not_higher(new_role)
-                user.role_id = new_role_id
-
-            new_password = request.form.get('new_password')
-            if new_password:
-                from utils.password_validator import PasswordValidator
-                is_valid, errors = PasswordValidator.validate(new_password)
-                if not is_valid:
-                    flash('⚠️ كلمة المرور ضعيفة:\n' + '\n'.join(errors), 'danger')
-                    return redirect(url_for('users.edit', id=user.id))
-                user.set_password(new_password)
-
-            db.session.commit()
-
+            role_arg = new_role_id if new_role_id and new_role_id != user.role_id else _UNCHANGED
+            if _is_platform_owner():
+                owner_arg = request.form.get('is_owner') == 'on'
+            else:
+                owner_arg = _UNCHANGED
+            UserService.update_user(
+                user,
+                email=request.form.get('email'),
+                full_name=request.form.get('full_name'),
+                full_name_ar=request.form.get('full_name_ar'),
+                phone=request.form.get('phone'),
+                role_id=role_arg,
+                is_owner=owner_arg,
+                new_password=request.form.get('new_password') or None,
+                actor=current_user,
+            )
             create_audit_log('update', 'users', user.id)
-
             flash('✅ تم تحديث بيانات المستخدم بنجاح!', 'success')
             return redirect(url_for('users.view', id=user.id))
-
+        except ValueError as e:
+            flash(f'⚠️ {str(e)}', 'danger')
+            return redirect(url_for('users.edit', id=user.id))
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f'User edit error: {e}')
@@ -219,12 +231,12 @@ def toggle_active(id):
     # SECURITY: cross-tenant check before mutating.
     user = get_owned_or_404(User, id, code=404)
     if user.is_owner:
+        # Owner accounts are immune here (same as the legacy rule).
         abort(404)
 
-    user.is_active = not user.is_active
-    db.session.commit()
+    updated = UserService.set_active(user, not user.is_active, current_user)
 
-    status_msg = 'تفعيل' if user.is_active else 'إلغاء تفعيل'
+    status_msg = 'تفعيل' if updated.is_active else 'إلغاء تفعيل'
     flash(f'✅ تم {status_msg} المستخدم "{user.username}" بنجاح!', 'success')
 
     create_audit_log('toggle_active', 'users', user.id)
@@ -241,37 +253,31 @@ def delete(id):
 
     # SECURITY: cross-tenant check before mutating.
     user = get_owned_or_404(User, id, code=404)
-    if user.is_owner:
+    if user.is_owner and not _is_platform_owner():
         # Never allow owner account to be deleted through this route.
         abort(404)
 
-    if user.id == current_user.id:
-        flash('⚠️ لا يمكنك حذف حسابك الخاص.\n💡 اطلب من مدير آخر حذف حسابك إذا لزم الأمر.', 'danger')
-        return redirect(url_for('users.index'))
-
     try:
-        from models import Sale
-        sales_count = Sale.query.filter_by(seller_id=id).count()
-
-        if sales_count > 0:
-            user.is_active = False
-            db.session.commit()
-            flash(f'⚠️ تم إلغاء تفعيل المستخدم "{user.username}" (لديه {sales_count} عملية مسجلة).\n💡 لا يمكن حذفه نهائياً للحفاظ على السجلات.', 'warning')
-            create_audit_log('deactivate', 'users', id)
-        else:
-            username = user.username
-            db.session.delete(user)
-            db.session.commit()
-            flash(f'✅ تم حذف المستخدم "{username}" نهائياً!', 'success')
-            create_audit_log('delete', 'users', id)
-
+        outcome = UserService.delete_user(user, current_user)
+    except ValueError as e:
+        flash(f'⚠️ {str(e)}', 'danger')
         return redirect(url_for('users.index'))
-
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'User delete error: {e}')
         flash('❌ حدث خطأ في حذف المستخدم.', 'danger')
         return redirect(url_for('users.index'))
+
+    if outcome == 'deactivated':
+        from models import Sale
+        sales_count = Sale.query.filter_by(seller_id=id).count()
+        flash(f'⚠️ تم إلغاء تفعيل المستخدم "{user.username}" (لديه {sales_count} عملية مسجلة).\n💡 لا يمكن حذفه نهائياً للحفاظ على السجلات.', 'warning')
+        create_audit_log('deactivate', 'users', id)
+    else:
+        flash(f'✅ تم حذف المستخدم نهائياً!', 'success')
+        create_audit_log('delete', 'users', id)
+
+    return redirect(url_for('users.index'))
 
 
 @users_bp.route('/change-password', methods=['GET', 'POST'])
@@ -279,35 +285,17 @@ def delete(id):
 def change_password():
     """Self-service password change — any authenticated user can change their own password."""
     if request.method == 'POST':
-        current_password = request.form.get('current_password', '')
-        new_password = request.form.get('new_password', '')
-        confirm_password = request.form.get('confirm_password', '')
-
-        # Verify current password
-        if not current_user.check_password(current_password):
-            flash('❌ كلمة المرور الحالية غير صحيحة.', 'danger')
+        try:
+            UserService.change_own_password(
+                current_user,
+                request.form.get('current_password', ''),
+                request.form.get('new_password', ''),
+                request.form.get('confirm_password', ''),
+            )
+        except ValueError as e:
+            flash(f'❌ {str(e)}', 'danger')
             return render_template('users/change_password.html')
 
-        # Validate new password matches confirmation
-        if new_password != confirm_password:
-            flash('❌ كلمة المرور الجديدة غير متطابقة.', 'danger')
-            return render_template('users/change_password.html')
-
-        # Enforce password strength policy
-        from utils.password_validator import PasswordValidator
-        is_valid, errors = PasswordValidator.validate(new_password)
-        if not is_valid:
-            flash('⚠️ كلمة المرور ضعيفة:\n' + '\n'.join(errors), 'danger')
-            return render_template('users/change_password.html')
-
-        # Prevent reusing the current password
-        if current_user.check_password(new_password):
-            flash('❌ كلمة المرور الجديدة يجب أن تختلف عن الحالية.', 'danger')
-            return render_template('users/change_password.html')
-
-        # Update password
-        current_user.set_password(new_password)
-        db.session.commit()
         create_audit_log('change_password', 'users', current_user.id)
         flash('✅ تم تغيير كلمة المرور بنجاح!', 'success')
         return redirect(url_for('users.change_password'))

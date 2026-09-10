@@ -385,9 +385,11 @@ class TestUsersRoutes:
         _mk_user(db, 'finder_two', active=False)
         _login(client)
         html = _html(client.get('/users/'))
+        # Unified roster: the platform owner sees everyone (incl. owners
+        # and inactive); search still scopes correctly.
         assert 'testseller' in html and 'finder_one' in html
-        assert 'owner@test.com' not in html
-        assert 'finder_two' not in html
+        assert 'owner@test.com' in html
+        assert 'finder_two' in html
         assert User.query.filter_by(is_owner=True).count() >= 1
         page = _html(client.get('/users/?search=finder'))
         assert 'finder_one' in page and 'testseller' not in page
@@ -398,7 +400,9 @@ class TestUsersRoutes:
         _login(client)
         assert client.get(f'/users/{seller_user.id}').status_code == 200
         assert client.get('/users/999999').status_code == 404
-        assert client.get(f'/users/{owner_user.id}').status_code == 404
+        # Unified profile: the platform owner may view owner accounts
+        # (tenant admins still get 404 — see seller matrix below).
+        assert client.get(f'/users/{owner_user.id}').status_code == 200
 
     def test_create_get_lists_roles_for_owner_level(self, client, owner_user, seller_user):
         tier_role = _mk_role(db, 'seller-tier')
@@ -444,7 +448,7 @@ class TestUsersRoutes:
             'username': 'testseller', 'email': 'dupe@example.com', 'full_name': 'D',
             'role_id': seller_user.role_id, 'password': STRONG_PW})
         assert resp.status_code == 200
-        assert 'حدث خطأ في إنشاء المستخدم' in _html(resp)
+        assert 'مستخدم بالفعل' in _html(resp)
         assert User.query.filter_by(email='dupe@example.com').first() is None
 
     def test_edit_get_post_password_and_profile(self, client, owner_user, seller_user):

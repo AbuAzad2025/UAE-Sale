@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import User, Role, Tenant
 from services.user_service import UserService
-from utils.decorators import admin_required, _role_level, _current_user_level, _enforce_target_role_not_higher, get_owned_or_404
+from utils.decorators import admin_required, _role_level, _current_user_level, get_owned_or_404
 from utils.helpers import create_audit_log
 
 users_bp = Blueprint('users', __name__, url_prefix='/users')

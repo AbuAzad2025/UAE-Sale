@@ -20,7 +20,6 @@ from extensions import db
 from models import Role, Tenant, User
 from utils.decorators import (
     _role_level as _canon_role_level,
-    _enforce_target_role_not_higher,
     get_owned_or_404,
 )
 
@@ -80,7 +79,10 @@ def _resolve_role(role_id, actor):
     role = Role.query.get(role_id)
     if role is None or not getattr(role, 'is_active', True):
         raise ValueError('الدور المختار غير صالح.')
-    _enforce_target_role_not_higher(role)
+    # NOTE: deliberately NOT calling _enforce_target_role_not_higher here:
+    # it reads the global Flask-Login proxy (None outside a request) and
+    # aborts 403 instead of raising ValueError.  The explicit actor-based
+    # comparison below enforces the identical rule with service semantics.
     actor_level = _actor_level(actor)
     if _role_level_of(role) > actor_level:
         raise ValueError('لا يمكنك منح دور أعلى من دورك.')

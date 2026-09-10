@@ -1,0 +1,31 @@
+{# Shared compensation fields (create: employee undefined; edit: set). #}
+<div class="col-md-3">
+  <div class="form-group">
+    <label>الراتب الأساسي (د.إ){% if hr_mode == 'create' %} <span class="text-danger">*</span>{% endif %}</label>
+    <input type="number" name="base_salary" class="form-control" step="0.01" value="{{ employee.base_salary if employee else 0 }}" {% if hr_mode == 'create' %}required{% endif %}>
+  </div>
+</div>
+<div class="col-md-3">
+  <div class="form-group">
+    <label>بدل السكن (د.إ)</label>
+    <input type="number" name="housing_allowance" class="form-control" step="0.01" value="{{ employee.housing_allowance if employee else 0 }}">
+  </div>
+</div>
+<div class="col-md-3">
+  <div class="form-group">
+    <label>بدل النقل (د.إ)</label>
+    <input type="number" name="transport_allowance" class="form-control" step="0.01" value="{{ employee.transport_allowance if employee else 0 }}">
+  </div>
+</div>
+<div class="col-md-3">
+  <div class="form-group">
+    <label>بدل الهاتف (د.إ)</label>
+    <input type="number" name="phone_allowance" class="form-control" step="0.01" value="{{ employee.phone_allowance if employee else 0 }}">
+  </div>
+</div>
+<div class="col-md-3">
+  <div class="form-group">
+    <label>مزايا أخرى (د.إ)</label>
+    <input type="number" name="other_allowances" class="form-control" step="0.01" value="{{ employee.other_allowances if employee else 0 }}">
+  </div>
+</div>

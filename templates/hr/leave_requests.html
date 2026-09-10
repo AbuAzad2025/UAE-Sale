@@ -13,11 +13,11 @@
   <div class="card-body">
     <form method="GET" class="row">
       <div class="col-md-3">
-        <select name="status" class="form-control">
+        <select name="status" class="form-control select2">
           <option value="">— كل الحالات —</option>
-          <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>قيد المراجعة</option>
-          <option value="approved" {% if request.args.get('status') == 'approved' %}selected{% endif %}>تمت الموافقة</option>
-          <option value="rejected" {% if request.args.get('status') == 'rejected' %}selected{% endif %}>مرفوض</option>
+          {% for code, meta in lookups.leave_statuses %}
+          <option value="{{ code }}" {% if request.args.get('status') == code %}selected{% endif %}>{{ meta.ar }}</option>
+          {% endfor %}
         </select>
       </div>
       <div class="col-md-3">

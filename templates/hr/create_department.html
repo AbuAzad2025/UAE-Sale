@@ -10,54 +10,7 @@
       <form method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="card-body">
-          <div class="row">
-            <div class="col-md-6">
-              <div class="form-group">
-                <label>اسم القسم <span class="text-danger">*</span></label>
-                <input type="text" name="name" class="form-control" required>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="form-group">
-                <label>اسم القسم بالعربي</label>
-                <input type="text" name="name_ar" class="form-control">
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="form-group">
-                <label>الكود <span class="text-danger">*</span></label>
-                <input type="text" name="code" class="form-control" required placeholder="مثال: IT">
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="form-group">
-                <label>القسم الأب</label>
-                <select name="parent_id" class="form-control">
-                  <option value="">— بدون —</option>
-                  {% for d in parent_departments %}
-                  <option value="{{ d.id }}">{{ d.code }} - {{ d.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="form-group">
-                <label>المدير</label>
-                <select name="manager_id" class="form-control">
-                  <option value="">— بدون —</option>
-                  {% for m in managers %}
-                  <option value="{{ m.id }}">{{ m.full_name or m.username }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="form-group">
-                <label>الميزانية الشهرية (د.إ)</label>
-                <input type="number" name="budget_amount" class="form-control" step="0.01" value="0">
-              </div>
-            </div>
-          </div>
+          {% include 'hr/_department_fields.html' %}
         </div>
         <div class="card-footer">
           <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>حفظ</button>

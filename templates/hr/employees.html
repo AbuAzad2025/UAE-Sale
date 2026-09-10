@@ -30,11 +30,11 @@
         </select>
       </div>
       <div class="col-md-3">
-        <select name="status" class="form-control">
+        <select name="status" class="form-control select2">
           <option value="">— كل الحالات —</option>
-          <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>نشط</option>
-          <option value="on_leave" {% if request.args.get('status') == 'on_leave' %}selected{% endif %}>في إجازة</option>
-          <option value="terminated" {% if request.args.get('status') == 'terminated' %}selected{% endif %}>منتهي الخدمة</option>
+          {% for code, meta in lookups.employment_statuses %}
+          <option value="{{ code }}" {% if request.args.get('status') == code %}selected{% endif %}>{{ meta.ar }}</option>
+          {% endfor %}
         </select>
       </div>
       <div class="col-md-2">

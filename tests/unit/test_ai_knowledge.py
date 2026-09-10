@@ -256,7 +256,7 @@ class TestContinuousLearner:
         assert isinstance(result, ContinuousLearner)
 
     def test_evaluate_and_learn(self):
-        evaluate_and_learn([], ai_service=None)
+        assert evaluate_and_learn([], ai_service=None) == []
 
     def test_continuous_learner_class(self):
         cl = ContinuousLearner()

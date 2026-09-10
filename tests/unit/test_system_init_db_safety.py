@@ -122,12 +122,12 @@ class TestCostPermissionGrants:
 
     def test_boot_does_not_touch_operator_roles(self, db, app, no_telemetry):
         _run_init(app)
-        mgr = Role(name='OpsManager', name_ar='مدير', slug='manager',
+        mgr = Role(name='OpsCustom', name_ar='مخصص', slug='ops_custom',
                    description='operator-created')
         db.session.add(mgr)
         db.session.commit()
         _run_init(app)
-        assert Role.query.filter_by(slug='manager').first() \
+        assert Role.query.filter_by(slug='ops_custom').first() \
             .has_permission('view_costs') is False
 
     def test_boot_grant_is_idempotent(self, db, app, no_telemetry):
@@ -136,6 +136,36 @@ class TestCostPermissionGrants:
         _run_init(app)
         after = Role.query.filter_by(slug='owner').first().permissions
         assert len(before) == len(after)
+
+
+class TestOperationalRolesSeeding:
+    """Operational roles are system constants: every fresh deploy seeds
+    them; operator customizations of existing roles are never overwritten.
+    """
+
+    def test_full_init_seeds_operational_roles(self, db, app, no_telemetry):
+        from utils.system_init import OPERATIONAL_ROLES
+        _run_init(app)
+        for slug, (name, name_ar, codes) in OPERATIONAL_ROLES.items():
+            role = Role.query.filter_by(slug=slug).first()
+            assert role is not None, f"missing seeded role {slug}"
+            assert role.is_active is True
+            assert {p.code for p in role.permissions} == set(codes)
+
+    def test_rerun_preserves_operator_customization(self, db, app, no_telemetry):
+        _run_init(app)
+        mgr = Role.query.filter_by(slug='manager').first()
+        mgr.permissions = []
+        db.session.commit()
+        _run_init(app)
+        db.session.refresh(mgr)
+        assert mgr.permissions == []
+        assert Role.query.filter_by(slug='manager').count() == 1
+
+    def test_seeded_manager_carries_view_costs(self, db, app, no_telemetry):
+        _run_init(app)
+        assert Role.query.filter_by(slug='manager').first() \
+            .has_permission('view_costs') is True
 
 
 class TestOwnerUser:

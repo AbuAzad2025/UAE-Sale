@@ -94,6 +94,9 @@
         width: "100%",
         language: "ar",
         placeholder: $el.attr("placeholder") || "اختر...",
+        // Short lists stay clean (no search box); long lookup lists
+        // automatically gain a filter box. Uniform UX everywhere.
+        minimumResultsForSearch: 6,
         allowClear: String($el.data("allow-clear") || "").toLowerCase() === "true" || $el.data("allowClear") == 1,
         dropdownParent: parent.length ? parent : $(document.body)
       });

@@ -6,9 +6,17 @@ from wtforms.validators import DataRequired, Optional, NumberRange
 class SaleForm(FlaskForm):
     customer_id = SelectField('الزبون', coerce=int, validators=[DataRequired()])
     currency = SelectField('العملة', choices=[
-        ('AED', 'درهم'),
-        ('USD', 'دولار'),
-        ('EUR', 'يورو')
+        ('ILS', 'شيقل'),
+        ('JOD', 'دينار أردني'),
+        ('AED', 'درهم إماراتي'),
+        ('SAR', 'ريال سعودي'),
+        ('USD', 'دولار أمريكي'),
+        ('EUR', 'يورو'),
+        ('GBP', 'جنيه إسترليني'),
+        ('KWD', 'دينار كويتي'),
+        ('QAR', 'ريال قطري'),
+        ('OMR', 'ريال عماني'),
+        ('BHD', 'دينار بحريني'),
     ], default='AED', validators=[DataRequired()])
     exchange_rate = DecimalField('سعر الصرف', default=1.0, validators=[Optional(), NumberRange(min=0)])
     discount_amount = DecimalField('الخصم', default=0, validators=[Optional(), NumberRange(min=0)])

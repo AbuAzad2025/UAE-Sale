@@ -49,11 +49,11 @@
 
           <div class="form-group">
             <label>مزود الخدمة</label>
-            <select name="sms_provider" class="form-control">
+            <select name="sms_provider" class="form-control select2">
               <option value="" {{ 'selected' if not settings.sms_provider }}>بلا</option>
-              <option value="twilio" {{ 'selected' if settings.sms_provider == 'twilio' }}>Twilio</option>
-              <option value="nexmo" {{ 'selected' if settings.sms_provider == 'nexmo' }}>Nexmo (Vonage)</option>
-              <option value="local" {{ 'selected' if settings.sms_provider == 'local' }}>مزود محلي</option>
+              {% for code, meta in lookups.sms_providers %}
+              <option value="{{ code }}" {{ 'selected' if settings.sms_provider == code }}>{{ meta.en }}</option>
+              {% endfor %}
             </select>
             <small class="form-text text-muted mt-2">
               اختر مزود الرسائل الذي تملك بياناته. يمكنك لاحقاً ربط API خارجي حسب الحاجة.

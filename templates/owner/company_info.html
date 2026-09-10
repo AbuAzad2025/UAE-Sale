@@ -132,21 +132,26 @@
             <div class="col-lg-8 col-md-7">
               <div class="form-group">
                 <label>نوع النشاط</label>
-                <select name="business_type" class="form-control compact-control select-center">
-                  <option value="garage" {{ 'selected' if tenant.business_type == 'garage' }}>كراج</option>
-                  <option value="workshop" {{ 'selected' if tenant.business_type == 'workshop' }}>ورشة</option>
-                  <option value="parts_shop" {{ 'selected' if tenant.business_type == 'parts_shop' }}>محل قطع</option>
-                  <option value="equipment" {{ 'selected' if tenant.business_type == 'equipment' }}>معدات ثقيلة</option>
+                <select name="business_type" class="form-control compact-control select-center select2">
+                  {% for code, meta in lookups.business_types %}
+                  <option value="{{ code }}" {{ 'selected' if tenant.business_type == code }}>{{ meta.ar }}</option>
+                  {% endfor %}
+                  {% if tenant.business_type and tenant.business_type not in lookup_codes.business_types %}
+                  <option value="{{ tenant.business_type }}" selected>{{ tenant.business_type }} (قيمة سابقة)</option>
+                  {% endif %}
                 </select>
               </div>
             </div>
             <div class="col-lg-8 col-md-7">
               <div class="form-group">
                 <label>الصناعة</label>
-                <select name="industry" class="form-control compact-control select-center">
-                  <option value="automotive" {{ 'selected' if tenant.industry == 'automotive' }}>سيارات</option>
-                  <option value="heavy_equipment" {{ 'selected' if tenant.industry == 'heavy_equipment' }}>معدات ثقيلة</option>
-                  <option value="mixed" {{ 'selected' if tenant.industry == 'mixed' }}>مختلط</option>
+                <select name="industry" class="form-control compact-control select-center select2">
+                  {% for code, meta in lookups.industries %}
+                  <option value="{{ code }}" {{ 'selected' if tenant.industry == code }}>{{ meta.ar }}</option>
+                  {% endfor %}
+                  {% if tenant.industry and tenant.industry not in lookup_codes.industries %}
+                  <option value="{{ tenant.industry }}" selected>{{ tenant.industry }} (قيمة سابقة)</option>
+                  {% endif %}
                 </select>
               </div>
             </div>
@@ -178,18 +183,27 @@
             <div class="col-xl-4 col-lg-5 col-md-6 col-sm-8">
               <div class="form-group">
                 <label>{{ t('City') }}</label>
-                <input type="text" name="city" class="form-control compact-control" value="{{ tenant.city or '' }}">
+                <select name="city" class="form-control compact-control select-center select2">
+                  <option value="">—</option>
+                  {% for code, meta in lookups.cities %}
+                  <option value="{{ code }}" {{ 'selected' if tenant.city == code }}>{{ meta.ar }}</option>
+                  {% endfor %}
+                  {% if tenant.city and tenant.city not in lookup_codes.cities %}
+                  <option value="{{ tenant.city }}" selected>{{ tenant.city }} (قيمة سابقة)</option>
+                  {% endif %}
+                </select>
               </div>
             </div>
             <div class="col-xl-4 col-lg-6 col-md-7">
               <div class="form-group">
                 <label>{{ t('Country') }}</label>
-                <select name="country" class="form-control compact-control select-center">
-                  <option value="UAE" {{ 'selected' if tenant.country == 'UAE' }}>الإمارات</option>
-                  <option value="Saudi" {{ 'selected' if tenant.country == 'Saudi' }}>السعودية</option>
-                  <option value="Palestine" {{ 'selected' if tenant.country == 'Palestine' }}>فلسطين</option>
-                  <option value="Jordan" {{ 'selected' if tenant.country == 'Jordan' }}>الأردن</option>
-                  <option value="Other" {{ 'selected' if tenant.country == 'Other' }}>{{ t('Other') }}</option>
+                <select name="country" class="form-control compact-control select-center select2">
+                  {% for code, meta in lookups.countries %}
+                  <option value="{{ code }}" {{ 'selected' if tenant.country == code }}>{{ meta.ar }}</option>
+                  {% endfor %}
+                  {% if tenant.country and tenant.country not in lookup_codes.countries %}
+                  <option value="{{ tenant.country }}" selected>{{ tenant.country }} ({{ t('Other') }})</option>
+                  {% endif %}
                 </select>
               </div>
             </div>

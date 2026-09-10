@@ -10,19 +10,19 @@
       <div class="card-body">
         <form method="GET" class="form-inline">
           <div class="form-group mr-2">
-            <select name="status" class="form-control form-control-sm">
+            <select name="status" class="form-control form-control-sm select2">
               <option value="">الكل</option>
-              <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>معلق</option>
-              <option value="approved" {% if selected_status == 'approved' %}selected{% endif %}>موافق عليه</option>
-              <option value="rejected" {% if selected_status == 'rejected' %}selected{% endif %}>مرفوض</option>
+              {% for code, meta in lookups.approval_statuses %}
+              <option value="{{ code }}" {% if selected_status == code %}selected{% endif %}>{{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
           <div class="form-group mr-2">
-            <select name="entity_type" class="form-control form-control-sm">
+            <select name="entity_type" class="form-control form-control-sm select2">
               <option value="">الكل</option>
-              <option value="sale" {% if selected_entity == 'sale' %}selected{% endif %}>مبيعات</option>
-              <option value="payment" {% if selected_entity == 'payment' %}selected{% endif %}>مدفوعات</option>
-              <option value="purchase" {% if selected_entity == 'purchase' %}selected{% endif %}>مشتريات</option>
+              {% for code, meta in lookups.approval_entities %}
+              <option value="{{ code }}" {% if selected_entity == code %}selected{% endif %}>{{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
           <button type="submit" class="btn btn-sm btn-primary">

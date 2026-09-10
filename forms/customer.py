@@ -18,10 +18,15 @@ class CustomerForm(FlaskForm):
     preferred_currency = SelectField('العملة الافتراضية', choices=[
         ('ILS', 'شيقل'),
         ('JOD', 'دينار أردني'),
-        ('AED', 'درهم'),
+        ('AED', 'درهم إماراتي'),
         ('SAR', 'ريال سعودي'),
-        ('USD', 'دولار'),
-        ('EUR', 'يورو')
+        ('USD', 'دولار أمريكي'),
+        ('EUR', 'يورو'),
+        ('GBP', 'جنيه إسترليني'),
+        ('KWD', 'دينار كويتي'),
+        ('QAR', 'ريال قطري'),
+        ('OMR', 'ريال عماني'),
+        ('BHD', 'دينار بحريني'),
     ], default='ILS', validators=[Optional()])
     is_active = SelectField('الحالة', choices=[
         ('1', 'نشط'),

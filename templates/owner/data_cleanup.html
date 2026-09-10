@@ -76,11 +76,12 @@
 
           <div class="form-group">
             <label>نوع البيانات للحذف</label>
-            <select name="cleanup_type" class="form-control" required>
-              <option value="">اختر...</option>
-              <option value="logs">سجلات المراجعة</option>
-              <option value="archived">السجلات المؤرشفة</option>
-            </select>
+              <select name="cleanup_type" class="form-control select2" required>
+                <option value="">اختر...</option>
+                {% for code, meta in lookups.cleanup_scopes %}
+                <option value="{{ code }}">{{ meta.ar }}</option>
+                {% endfor %}
+              </select>
             <small class="form-text text-muted">حدد الفئة التي ترغب في حذفها. ننصح بالتدرج وعدم حذف كل شيء مرة واحدة.</small>
           </div>
 

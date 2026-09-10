@@ -191,18 +191,10 @@ a.btn.btn-outline-secondary span {
                   <i class="fas fa-money-bill-wave text-success mr-1"></i>عملة الدفع
                   <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="العملة التي سيدفع بها العميل - الفاتورة بـ{{ base_currency_name }} دائماً (اختياري)"></i>
                 </label>
-                <select name="currency" id="currency" class="form-control">
-                  <option value="ILS" {% if base_currency == 'ILS' %}selected{% endif %}>شيقل (ILS)</option>
-                  <option value="JOD" {% if base_currency == 'JOD' %}selected{% endif %}>دينار أردني (JOD)</option>
-                  <option value="AED" {% if base_currency == 'AED' %}selected{% endif %}>درهم إماراتي (AED)</option>
-                  <option value="SAR" {% if base_currency == 'SAR' %}selected{% endif %}>ريال سعودي (SAR)</option>
-                  <option value="USD" {% if base_currency == 'USD' %}selected{% endif %}>دولار أمريكي (USD)</option>
-                  <option value="EUR">يورو (EUR)</option>
-                  <option value="GBP">جنيه استرليني (GBP)</option>
-                  <option value="KWD">دينار كويتي (KWD)</option>
-                  <option value="QAR">ريال قطري (QAR)</option>
-                  <option value="OMR">ريال عماني (OMR)</option>
-                  <option value="BHD">دينار بحريني (BHD)</option>
+                <select name="currency" id="currency" class="form-control select2">
+                  {% for code, meta in lookups.currencies %}
+                  <option value="{{ code }}" {% if base_currency == code %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
+                  {% endfor %}
                 </select>
                 <small class="form-text text-info">
                   <i class="fas fa-lightbulb"></i> الأسعار بـ{{ base_currency_name }} - العملة فقط لتحويل المدفوع
@@ -311,13 +303,11 @@ a.btn.btn-outline-secondary span {
               <i class="fas fa-credit-card text-info"></i> طريقة الدفع
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر طريقة الدفع أو اتركها فارغة للدفع الآجل"></i>
             </label>
-            <select name="payment_method" id="payment_method" class="form-control">
+            <select name="payment_method" id="payment_method" class="form-control select2">
               <option value="">آجل (بدون دفع)</option>
-              <option value="cash">نقدي</option>
-              <option value="card">بطاقة</option>
-              <option value="bank_transfer">تحويل بنكي</option>
-              <option value="cheque">شيك</option>
-              <option value="e_wallet">محفظة إلكترونية</option>
+              {% for code, meta in lookups.payment_methods %}
+              <option value="{{ code }}">{{ meta.ar }}</option>
+              {% endfor %}
             </select>
             <small class="form-text text-muted">
               <i class="fas fa-info-circle"></i> اترك فارغاً للدفع الآجل (على الحساب)

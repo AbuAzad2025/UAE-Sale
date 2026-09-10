@@ -127,6 +127,18 @@ def create():  # noqa: C901
     # تعيين choices للتصنيفات
     categories = ProductCategory.query.filter_by(is_active=True).all()
     form.category_id.choices = [(0, 'بلا')] + [(c.id, c.name) for c in categories]
+    # Live lookup lists (single source of truth); class-level WTForms
+    # choices remain as offline fallback.
+    try:
+        from services.lookup_service import get_lookup
+        form.unit.choices = [('', 'بلا')] + [
+            (c, m.get('ar', c)) for c, m in get_lookup('product_units')]
+        form.warranty_unit.choices = [
+            (c, m.get('ar', c)) for c, m in get_lookup('warranty_units')]
+        form.is_returnable.choices = [
+            (c, m.get('ar', c)) for c, m in get_lookup('yes_no_flags')]
+    except Exception:
+        pass
     preselected_warehouse_id = request.args.get('warehouse_id', type=int)
     merchants = Customer.query.filter_by(is_active=True, customer_type='merchant').order_by(Customer.name).all()
     partners = Customer.query.filter_by(is_active=True, customer_type='partner').order_by(Customer.name).all()
@@ -294,6 +306,18 @@ def edit(id):  # noqa: C901
     # تعيين choices للتصنيفات
     categories = ProductCategory.query.filter_by(is_active=True).all()
     form.category_id.choices = [(0, 'بلا')] + [(c.id, c.name) for c in categories]
+    # Live lookup lists (single source of truth); class-level WTForms
+    # choices remain as offline fallback.
+    try:
+        from services.lookup_service import get_lookup
+        form.unit.choices = [('', 'بلا')] + [
+            (c, m.get('ar', c)) for c, m in get_lookup('product_units')]
+        form.warranty_unit.choices = [
+            (c, m.get('ar', c)) for c, m in get_lookup('warranty_units')]
+        form.is_returnable.choices = [
+            (c, m.get('ar', c)) for c, m in get_lookup('yes_no_flags')]
+    except Exception:
+        pass
     warehouses = Warehouse.query.filter_by(is_active=True).order_by(Warehouse.is_main.desc(), Warehouse.name).all()
     merchants = Customer.query.filter_by(is_active=True, customer_type='merchant').order_by(Customer.name).all()
     partners = Customer.query.filter_by(is_active=True, customer_type='partner').order_by(Customer.name).all()

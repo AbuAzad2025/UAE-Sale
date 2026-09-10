@@ -40,25 +40,54 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>نوع النشاط</label>
-            <input type="text" name="business_type" value="{{ form.business_type }}" class="form-control" maxlength="50">
+            <select name="business_type" class="form-control select2">
+              {% for code, meta in lookups.business_types %}
+              <option value="{{ code }}" {{ 'selected' if form.business_type == code }}>{{ meta.ar }}</option>
+              {% endfor %}
+              {% if form.business_type and form.business_type not in lookup_codes.business_types %}
+              <option value="{{ form.business_type }}" selected>{{ form.business_type }} (قيمة سابقة)</option>
+              {% endif %}
+            </select>
           </div>
         </div>
         <div class="col-md-3">
           <div class="form-group">
             <label>المجال</label>
-            <input type="text" name="industry" value="{{ form.industry }}" class="form-control" maxlength="100">
+            <select name="industry" class="form-control select2">
+              {% for code, meta in lookups.industries %}
+              <option value="{{ code }}" {{ 'selected' if form.industry == code }}>{{ meta.ar }}</option>
+              {% endfor %}
+              {% if form.industry and form.industry not in lookup_codes.industries %}
+              <option value="{{ form.industry }}" selected>{{ form.industry }} (قيمة سابقة)</option>
+              {% endif %}
+            </select>
           </div>
         </div>
         <div class="col-md-3">
           <div class="form-group">
             <label>المدينة</label>
-            <input type="text" name="city" value="{{ form.city }}" class="form-control" maxlength="100">
+            <select name="city" class="form-control select2">
+              <option value="">—</option>
+              {% for code, meta in lookups.cities %}
+              <option value="{{ code }}" {{ 'selected' if form.city == code }}>{{ meta.ar }}</option>
+              {% endfor %}
+              {% if form.city and form.city not in lookup_codes.cities %}
+              <option value="{{ form.city }}" selected>{{ form.city }} (قيمة سابقة)</option>
+              {% endif %}
+            </select>
           </div>
         </div>
         <div class="col-md-3">
           <div class="form-group">
             <label>الدولة</label>
-            <input type="text" name="country" value="{{ form.country }}" class="form-control" maxlength="100">
+            <select name="country" class="form-control select2">
+              {% for code, meta in lookups.countries %}
+              <option value="{{ code }}" {{ 'selected' if form.country == code }}>{{ meta.ar }}</option>
+              {% endfor %}
+              {% if form.country and form.country not in lookup_codes.countries %}
+              <option value="{{ form.country }}" selected>{{ form.country }} (قيمة سابقة)</option>
+              {% endif %}
+            </select>
           </div>
         </div>
       </div>
@@ -128,8 +157,8 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>العملة الافتراضية</label>
-            <select name="default_currency" class="form-control">
-              {% for code, meta in currencies %}
+            <select name="default_currency" class="form-control select2">
+              {% for code, meta in lookups.currencies %}
               <option value="{{ code }}" {{ 'selected' if form.default_currency == code }}>{{ code }} - {{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -138,25 +167,33 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>اللغة الافتراضية</label>
-            <select name="default_language" class="form-control">
-              <option value="ar" {{ 'selected' if form.default_language == 'ar' }}>العربية</option>
-              <option value="en" {{ 'selected' if form.default_language == 'en' }}>English</option>
+            <select name="default_language" class="form-control select2">
+              {% for code, meta in lookups.languages %}
+              <option value="{{ code }}" {{ 'selected' if form.default_language == code }}>{{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
         </div>
         <div class="col-md-3">
           <div class="form-group">
             <label>المنطقة الزمنية</label>
-            <input type="text" name="timezone" value="{{ form.timezone }}" class="form-control" maxlength="50" dir="ltr">
+            <select name="timezone" class="form-control select2">
+              {% for code, meta in lookups.timezones %}
+              <option value="{{ code }}" {{ 'selected' if form.timezone == code }}>{{ code }} ({{ meta.en }})</option>
+              {% endfor %}
+              {% if form.timezone and form.timezone not in lookup_codes.timezones %}
+              <option value="{{ form.timezone }}" selected>{{ form.timezone }}</option>
+              {% endif %}
+            </select>
           </div>
         </div>
         <div class="col-md-3">
           <div class="form-group">
             <label>الخطة</label>
-            <select name="subscription_plan" class="form-control">
-              <option value="basic" {{ 'selected' if form.subscription_plan == 'basic' }}>basic</option>
-              <option value="pro" {{ 'selected' if form.subscription_plan == 'pro' }}>pro</option>
-              <option value="enterprise" {{ 'selected' if form.subscription_plan == 'enterprise' }}>enterprise</option>
+            <select name="subscription_plan" class="form-control select2">
+              {% for code, meta in lookups.subscription_plans %}
+              <option value="{{ code }}" {{ 'selected' if form.subscription_plan == code }}>{{ meta.ar }} ({{ code }})</option>
+              {% endfor %}
             </select>
           </div>
         </div>

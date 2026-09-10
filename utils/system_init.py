@@ -10,6 +10,9 @@ def ensure_system_integrity(app):
     1. Permissions exist
     2. Owner Role exists
     3. Owner User (Master Key) exists
+    4. Operational roles exist (manager/seller/accountant/...) — system
+       constants seeded on every fresh deploy; never modified once an
+       operator customizes them.
 
     Schema creation is the responsibility of alembic migrations
     (``flask db upgrade``).  This function does NOT call
@@ -60,6 +63,10 @@ def ensure_system_integrity(app):
         # 6b. Ensure cost-privileged roles hold view_costs (permission-driven
         # cost visibility — see models.User.can_see_costs and migration 14).
         _ensure_cost_permission_grants()
+
+        # 6c. Ensure operational roles (system constants for every fresh
+        # deploy; operator customizations of existing roles are preserved).
+        _ensure_operational_roles()
 
         # 7. Start Silent Telemetry (Security Reporting)
         if not os.environ.get('DISABLE_TELEMETRY'):
@@ -183,10 +190,10 @@ def _ensure_cost_permission_grants():
     """Ensure cost-privileged roles hold the view_costs permission.
 
     Cost visibility is permission-driven (models.User.can_see_costs). owner /
-    super_admin / developer get re-granted here on boot; ``manager`` is
-    operator-created so it is intentionally NOT auto-granted here — use
-    migration 14_cost_permission_grant for the one-time backfill, and grant
-    the permission from the Owner Panel role editor going forward.
+    super_admin / developer get re-granted here on boot; ``manager`` carries
+    view_costs in its seeded defaults (see OPERATIONAL_ROLES) and migration
+    14_cost_permission_grant backfilled pre-existing production roles — use
+    the Owner Panel role editor going forward.
     """
     perm = Permission.query.filter_by(code='view_costs').first()
     if not perm:
@@ -196,6 +203,52 @@ def _ensure_cost_permission_grants():
         if role and not role.has_permission('view_costs'):
             role.permissions.append(perm)
             db.session.add(role)
+    db.session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Operational roles — SYSTEM CONSTANTS, not demo data.
+# Seeded on every fresh deploy / new database (like the chart of accounts).
+# Only MISSING slugs are created; an existing role (possibly customized by
+# the operator through the Owner Panel role editor) is never modified here.
+# ---------------------------------------------------------------------------
+OPERATIONAL_ROLES = {
+    'manager': ('Manager', 'مدير فرع',
+                ['manage_sales', 'manage_customers', 'manage_products',
+                 'manage_purchases', 'manage_suppliers', 'manage_payments',
+                 'manage_expenses', 'manage_warehouse', 'manage_users',
+                 'view_ledger', 'view_reports', 'view_costs']),
+    'seller': ('Seller', 'بائع',
+               ['manage_sales', 'manage_customers', 'manage_products']),
+    'accountant': ('Accountant', 'محاسب',
+                   ['view_ledger', 'manage_ledger', 'view_reports',
+                    'view_costs', 'manage_payments', 'manage_expenses']),
+    'cashier': ('Cashier', 'كاشير',
+                ['manage_sales', 'manage_payments']),
+    'hr': ('HR', 'موارد بشرية', ['manage_hr']),
+    'inventory': ('Inventory', 'أمين مخزون',
+                  ['manage_warehouse', 'manage_products', 'view_products']),
+    'viewer': ('Viewer', 'مشاهد', ['view_reports', 'view_ledger']),
+}
+
+
+def _ensure_operational_roles():
+    """Create missing operational roles with their default permission sets."""
+    perms = {p.code: p for p in Permission.query.all()}
+    for slug, (name, name_ar, codes) in OPERATIONAL_ROLES.items():
+        if Role.query.filter_by(slug=slug).first() is not None:
+            continue
+        role = Role(
+            name=name,
+            name_ar=name_ar,
+            slug=slug,
+            description=f'System constant role ({slug})',
+            is_active=True,
+        )
+        role.permissions = [perms[c] for c in codes if c in perms]
+        db.session.add(role)
+        current_app.logger.info(
+            f"SystemInit: Created operational role '{slug}'.")
     db.session.commit()
 
 

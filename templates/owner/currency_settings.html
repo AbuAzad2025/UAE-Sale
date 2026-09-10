@@ -46,18 +46,10 @@
 
           <div class="form-group">
             <label>العملة الافتراضية</label>
-            <select name="default_currency" class="form-control">
-              <option value="ILS" {{ 'selected' if settings.default_currency == 'ILS' }}>ILS - شيقل</option>
-              <option value="JOD" {{ 'selected' if settings.default_currency == 'JOD' }}>JOD - دينار أردني</option>
-              <option value="AED" {{ 'selected' if settings.default_currency == 'AED' }}>AED - درهم إماراتي</option>
-              <option value="USD" {{ 'selected' if settings.default_currency == 'USD' }}>USD - دولار أمريكي</option>
-              <option value="EUR" {{ 'selected' if settings.default_currency == 'EUR' }}>EUR - يورو</option>
-              <option value="GBP" {{ 'selected' if settings.default_currency == 'GBP' }}>GBP - جنيه إسترليني</option>
-              <option value="SAR" {{ 'selected' if settings.default_currency == 'SAR' }}>SAR - ريال سعودي</option>
-              <option value="KWD" {{ 'selected' if settings.default_currency == 'KWD' }}>KWD - دينار كويتي</option>
-              <option value="QAR" {{ 'selected' if settings.default_currency == 'QAR' }}>QAR - ريال قطري</option>
-              <option value="OMR" {{ 'selected' if settings.default_currency == 'OMR' }}>OMR - ريال عماني</option>
-              <option value="BHD" {{ 'selected' if settings.default_currency == 'BHD' }}>BHD - دينار بحريني</option>
+            <select name="default_currency" class="form-control select2">
+              {% for code, meta in lookups.currencies %}
+              <option value="{{ code }}" {{ 'selected' if settings.default_currency == code }}>{{ code }} - {{ meta.ar }}</option>
+              {% endfor %}
             </select>
           </div>
 

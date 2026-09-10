@@ -36,11 +36,12 @@
 
           <div class="form-group">
             <label>قاعدة البيانات المستهدفة:</label>
-            <select name="target_db" id="target_db" class="form-control" onchange="toggleConfig()">
-              <option value="">بلا</option>
-              <option value="postgresql">PostgreSQL (موصى به للإنتاج)</option>
-              <option value="mysql">MySQL (قريباً)</option>
-            </select>
+              <select name="target_db" id="target_db" class="form-control select2" onchange="toggleConfig()">
+                <option value="">بلا</option>
+                {% for code, meta in lookups.db_targets %}
+                <option value="{{ code }}">{{ meta.en }}</option>
+                {% endfor %}
+              </select>
           </div>
 
           <div id="postgresqlConfig" style="display: none;">

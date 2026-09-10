@@ -1,0 +1,25 @@
+{# Shared leave quotas + notes (create: employee undefined; edit: set). #}
+<div class="col-md-3">
+  <div class="form-group">
+    <label>إجازة سنوية (أيام)</label>
+    <input type="number" name="annual_leave_days" class="form-control" value="{{ employee.annual_leave_days if employee else 30 }}">
+  </div>
+</div>
+<div class="col-md-3">
+  <div class="form-group">
+    <label>إجازة مرضية (أيام)</label>
+    <input type="number" name="sick_leave_days" class="form-control" value="{{ employee.sick_leave_days if employee else 15 }}">
+  </div>
+</div>
+<div class="col-md-3">
+  <div class="form-group">
+    <label>إجازة شخصية (أيام)</label>
+    <input type="number" name="personal_leave_days" class="form-control" value="{{ employee.personal_leave_days if employee else 5 }}">
+  </div>
+</div>
+<div class="col-md-12">
+  <div class="form-group">
+    <label>ملاحظات</label>
+    <textarea name="notes" class="form-control" rows="3">{{ employee.notes if employee else '' }}</textarea>
+  </div>
+</div>

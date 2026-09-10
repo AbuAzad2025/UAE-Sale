@@ -3,6 +3,7 @@
 {% block page_title %}<i class="fas fa-edit mr-2"></i>تعديل بيانات: {{ employee.user.full_name if employee.user else '' }}{% endblock %}
 
 {% block content %}
+{% set hr_mode = 'edit' %}
 <form method="POST">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <!-- Basic Info -->
@@ -44,22 +45,20 @@
             <div class="col-md-3">
               <div class="form-group">
                 <label>نوع العقد</label>
-                <select name="contract_type" class="form-control">
-                  <option value="full_time" {% if employee.contract_type == 'full_time' %}selected{% endif %}>دوام كامل</option>
-                  <option value="part_time" {% if employee.contract_type == 'part_time' %}selected{% endif %}>دوام جزئي</option>
-                  <option value="contract" {% if employee.contract_type == 'contract' %}selected{% endif %}>عقد مؤقت</option>
-                  <option value="intern" {% if employee.contract_type == 'intern' %}selected{% endif %}>تدريب</option>
+                <select name="contract_type" class="form-control select2">
+                  {% for code, meta in lookups.contract_types %}
+                  <option value="{{ code }}" {% if employee.contract_type == code %}selected{% endif %}>{{ meta.ar }}</option>
+                  {% endfor %}
                 </select>
               </div>
             </div>
             <div class="col-md-3">
               <div class="form-group">
                 <label>الحالة</label>
-                <select name="employment_status" class="form-control">
-                  <option value="active" {% if employee.employment_status == 'active' %}selected{% endif %}>نشط</option>
-                  <option value="on_leave" {% if employee.employment_status == 'on_leave' %}selected{% endif %}>في إجازة</option>
-                  <option value="terminated" {% if employee.employment_status == 'terminated' %}selected{% endif %}>منتهي الخدمة</option>
-                  <option value="resigned" {% if employee.employment_status == 'resigned' %}selected{% endif %}>مستقيل</option>
+                <select name="employment_status" class="form-control select2">
+                  {% for code, meta in lookups.employment_statuses %}
+                  <option value="{{ code }}" {% if employee.employment_status == code %}selected{% endif %}>{{ meta.ar }}</option>
+                  {% endfor %}
                 </select>
               </div>
             </div>
@@ -76,36 +75,7 @@
         <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-money-bill-wave mr-2"></i>الراتب والمزايا</h5></div>
         <div class="card-body">
           <div class="row">
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>الراتب الأساسي (د.إ)</label>
-                <input type="number" name="base_salary" class="form-control" step="0.01" value="{{ employee.base_salary or 0 }}">
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>بدل السكن (د.إ)</label>
-                <input type="number" name="housing_allowance" class="form-control" step="0.01" value="{{ employee.housing_allowance or 0 }}">
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>بدل النقل (د.إ)</label>
-                <input type="number" name="transport_allowance" class="form-control" step="0.01" value="{{ employee.transport_allowance or 0 }}">
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>بدل الهاتف (د.إ)</label>
-                <input type="number" name="phone_allowance" class="form-control" step="0.01" value="{{ employee.phone_allowance or 0 }}">
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>مزايا أخرى (د.إ)</label>
-                <input type="number" name="other_allowances" class="form-control" step="0.01" value="{{ employee.other_allowances or 0 }}">
-              </div>
-            </div>
+            {% include 'hr/_employee_compensation.html' %}
           </div>
         </div>
       </div>
@@ -119,64 +89,7 @@
         <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-id-card mr-2"></i>المعلومات الشخصية والتأشيرة</h5></div>
         <div class="card-body">
           <div class="row">
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>رقم الهوية</label>
-                <input type="text" name="national_id" class="form-control" value="{{ employee.national_id or '' }}">
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>رقم الجواز</label>
-                <input type="text" name="passport_number" class="form-control" value="{{ employee.passport_number or '' }}">
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>رقم التأشيرة</label>
-                <input type="text" name="visa_number" class="form-control" value="{{ employee.visa_number or '' }}">
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>انتهاء التأشيرة</label>
-                <input type="date" name="visa_expiry" class="form-control" value="{{ employee.visa_expiry.isoformat() if employee.visa_expiry else '' }}">
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>تاريخ الميلاد</label>
-                <input type="date" name="date_of_birth" class="form-control" value="{{ employee.date_of_birth.isoformat() if employee.date_of_birth else '' }}">
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>الجنس</label>
-                <select name="gender" class="form-control">
-                  <option value="">— اختر —</option>
-                  <option value="male" {% if employee.gender == 'male' %}selected{% endif %}>ذكر</option>
-                  <option value="female" {% if employee.gender == 'female' %}selected{% endif %}>أنثى</option>
-                </select>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>الجنسية</label>
-                <input type="text" name="nationality" class="form-control" value="{{ employee.nationality or '' }}">
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>الحالة الاجتماعية</label>
-                <select name="marital_status" class="form-control">
-                  <option value="">— اختر —</option>
-                  <option value="single" {% if employee.marital_status == 'single' %}selected{% endif %}>أعزب</option>
-                  <option value="married" {% if employee.marital_status == 'married' %}selected{% endif %}>متزوج</option>
-                  <option value="divorced" {% if employee.marital_status == 'divorced' %}selected{% endif %}>مطلق</option>
-                  <option value="widowed" {% if employee.marital_status == 'widowed' %}selected{% endif %}>أرمل</option>
-                </select>
-              </div>
-            </div>
+            {% include 'hr/_employee_identity.html' %}
           </div>
         </div>
       </div>
@@ -190,30 +103,7 @@
         <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-calendar mr-2"></i>الإجازات والملاحظات</h5></div>
         <div class="card-body">
           <div class="row">
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>إجازة سنوية (أيام)</label>
-                <input type="number" name="annual_leave_days" class="form-control" value="{{ employee.annual_leave_days or 30 }}">
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>إجازة مرضية (أيام)</label>
-                <input type="number" name="sick_leave_days" class="form-control" value="{{ employee.sick_leave_days or 15 }}">
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>إجازة شخصية (أيام)</label>
-                <input type="number" name="personal_leave_days" class="form-control" value="{{ employee.personal_leave_days or 5 }}">
-              </div>
-            </div>
-            <div class="col-md-12">
-              <div class="form-group">
-                <label>ملاحظات</label>
-                <textarea name="notes" class="form-control" rows="3">{{ employee.notes or '' }}</textarea>
-              </div>
-            </div>
+            {% include 'hr/_employee_leave.html' %}
           </div>
         </div>
         <div class="card-footer">

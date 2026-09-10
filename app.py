@@ -220,7 +220,6 @@ def create_app(config_class=Config):  # noqa: C901
     from routes.cheques import cheques_bp
     from routes.returns import returns_bp
     from routes.advanced_ledger import advanced_ledger_bp
-    from routes.admin_ledger import admin_ledger_bp
     from routes.gamification import gamification_bp
     from routes.whatsapp import whatsapp_bp
     from routes.monitoring import monitoring_bp
@@ -257,7 +256,6 @@ def create_app(config_class=Config):  # noqa: C901
     app.register_blueprint(cheques_bp)
     app.register_blueprint(returns_bp)
     app.register_blueprint(advanced_ledger_bp)
-    app.register_blueprint(admin_ledger_bp)
     app.register_blueprint(gamification_bp)
     app.register_blueprint(whatsapp_bp)
     app.register_blueprint(monitoring_bp)
@@ -280,6 +278,12 @@ def create_app(config_class=Config):  # noqa: C901
         from utils.helpers import format_currency, timeago
         from utils.constants import CURRENCIES
         from utils.i18n import t, is_rtl, get_current_language
+        from services.lookup_service import get_all as _get_all_lookups
+        try:
+            _lookups = _get_all_lookups()
+        except Exception:
+            _lookups = {}
+        _lookup_codes = {g: [c for c, _ in v] for g, v in _lookups.items()}
 
         def get_currency_symbol(code):
             for c_code, data in CURRENCIES:
@@ -294,6 +298,8 @@ def create_app(config_class=Config):  # noqa: C901
             'is_rtl': is_rtl,
             'get_current_language': get_current_language,
             'get_currency_symbol': get_currency_symbol,
+            'lookups': _lookups,
+            'lookup_codes': _lookup_codes,
             'company_name': app.config.get('COMPANY_NAME', 'Garage Manager'),
             'current_year': datetime.now().year,
             'now': datetime.now(),

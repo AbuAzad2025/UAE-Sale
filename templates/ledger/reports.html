@@ -5,8 +5,8 @@
 {% block content %}
 <div class="row mb-3">
   <div class="col-12">
-    <a href="{{ url_for('ledger.admin_dashboard') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للوحة التحكم
+    <a href="{{ url_for('ledger.index') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-right mr-2"></i>العودة لدفتر الأستاذ
     </a>
   </div>
 </div>
@@ -22,7 +22,7 @@
       </div>
       <div class="card-body">
         <div class="list-group list-group-flush">
-          <a href="{{ url_for('ledger.admin_trial_balance') }}" class="list-group-item list-group-item-action">
+          <a href="{{ url_for('ledger.trial_balance') }}" class="list-group-item list-group-item-action">
             <div class="d-flex w-100 justify-content-between">
               <h6 class="mb-1">ميزان المراجعة</h6>
               <small class="text-muted">Trial Balance</small>
@@ -30,7 +30,7 @@
             <p class="mb-1">عرض أرصدة جميع الحسابات في تاريخ محدد</p>
           </a>
           
-          <a href="{{ url_for('ledger.admin_balance_sheet') }}" class="list-group-item list-group-item-action">
+          <a href="{{ url_for('ledger.balance_sheet') }}" class="list-group-item list-group-item-action">
             <div class="d-flex w-100 justify-content-between">
               <h6 class="mb-1">الميزانية العمومية</h6>
               <small class="text-muted">Balance Sheet</small>
@@ -38,7 +38,7 @@
             <p class="mb-1">عرض الأصول والخصوم وحقوق الملكية</p>
           </a>
           
-          <a href="{{ url_for('ledger.admin_income_statement') }}" class="list-group-item list-group-item-action">
+          <a href="{{ url_for('ledger.income_statement') }}" class="list-group-item list-group-item-action">
             <div class="d-flex w-100 justify-content-between">
               <h6 class="mb-1">قائمة الدخل</h6>
               <small class="text-muted">Income Statement</small>
@@ -118,7 +118,7 @@
         <div class="row">
           <div class="col-md-6">
             <h6>تقرير مخصص حسب التاريخ:</h6>
-            <form method="GET" action="{{ url_for('ledger.admin_trial_balance') }}" class="ledger-reports-form">
+            <form method="GET" action="{{ url_for('ledger.trial_balance') }}" class="ledger-reports-form">
               <div class="form-group">
                 <label>من تاريخ:</label>
                 <input type="date" name="date_from" class="form-control" required>

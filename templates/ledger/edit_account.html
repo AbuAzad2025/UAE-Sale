@@ -13,7 +13,7 @@
           </h3>
         </div>
         <div class="card-body">
-          <form method="post" action="{{ url_for('admin_ledger.edit_account', id=account.id) }}" class="ledger-account-form">
+          <form method="post" action="{{ url_for('ledger.edit_account', id=account.id) }}" class="ledger-account-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             
             <div class="row">
@@ -28,12 +28,10 @@
               <div class="col-md-6">
                 <div class="form-group">
                   <label>نوع الحساب *</label>
-                  <select name="type" class="form-control" required>
-                    <option value="asset" {% if account.type == 'asset' %}selected{% endif %}>أصول</option>
-                    <option value="liability" {% if account.type == 'liability' %}selected{% endif %}>خصوم</option>
-                    <option value="equity" {% if account.type == 'equity' %}selected{% endif %}>حقوق ملكية</option>
-                    <option value="revenue" {% if account.type == 'revenue' %}selected{% endif %}>إيرادات</option>
-                    <option value="expense" {% if account.type == 'expense' %}selected{% endif %}>مصروفات</option>
+                  <select name="type" class="form-control select2" required>
+                    {% for code, meta in lookups.account_types %}
+                    <option value="{{ code }}" {% if account.type == code %}selected{% endif %}>{{ meta.ar }}</option>
+                    {% endfor %}
                   </select>
                 </div>
               </div>
@@ -90,7 +88,7 @@
               <button type="submit" class="btn btn-success btn-lg">
                 <i class="fas fa-save"></i> حفظ التعديلات
               </button>
-              <a href="{{ url_for('admin_ledger.accounts_management') }}" class="btn btn-secondary btn-lg">
+              <a href="{{ url_for('ledger.accounts') }}" class="btn btn-secondary btn-lg">
                 <i class="fas fa-times"></i> إلغاء
               </a>
             </div>

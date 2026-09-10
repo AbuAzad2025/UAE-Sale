@@ -16,6 +16,16 @@
       <i class="fas fa-undo mr-2"></i>عكس القيد
     </button>
     {% endif %}
+    {% if not entry.is_posted and not entry.is_reversed and current_user.is_admin() %}
+    <form method="post" action="{{ url_for('ledger.approve_entry', id=entry.id) }}" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-success"><i class="fas fa-check mr-2"></i>اعتماد وترحيل</button>
+    </form>
+    <form method="post" action="{{ url_for('ledger.delete_entry', id=entry.id) }}" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-danger" onclick="return confirm('حذف هذه المسودة نهائياً؟')"><i class="fas fa-trash mr-2"></i>حذف المسودة</button>
+    </form>
+    {% endif %}
   </div>
 </div>
 

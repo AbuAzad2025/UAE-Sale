@@ -5,10 +5,10 @@
 {% block content %}
 <div class="row mb-3">
   <div class="col-12">
-    <a href="{{ url_for('admin_ledger.dashboard') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للوحة التحكم
+    <a href="{{ url_for('ledger.index') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-right mr-2"></i>العودة لدفتر الأستاذ
     </a>
-    <a href="{{ url_for('admin_ledger.add_account') }}" class="btn btn-success">
+    <a href="{{ url_for('ledger.add_account') }}" class="btn btn-success">
       <i class="fas fa-plus mr-2"></i>إضافة حساب جديد
     </a>
     <a href="{{ url_for('ledger.accounts_tree') }}" class="btn btn-info">
@@ -83,7 +83,7 @@
             </td>
             <td>
               <div class="btn-group btn-group-sm">
-                <a href="{{ url_for('admin_ledger.edit_account', id=account.id) }}" class="btn btn-outline-primary btn-sm">
+                <a href="{{ url_for('ledger.edit_account', id=account.id) }}" class="btn btn-outline-primary btn-sm">
                   <i class="fas fa-edit"></i>
                 </a>
                 <a href="{{ url_for('ledger.account_statement', id=account.id) }}" class="btn btn-outline-info btn-sm">
@@ -135,7 +135,7 @@
 // حذف الحساب
 function deleteAccount(accountId, accountName) {
   document.getElementById('accountName').textContent = accountName;
-  document.getElementById('deleteForm').action = "{{ url_for('admin_ledger.delete_account', id=0) }}".replace('0', accountId);
+  document.getElementById('deleteForm').action = "{{ url_for('ledger.delete_account', id=0) }}".replace('0', accountId);
   $('#deleteModal').modal('show');
 }
 

@@ -264,9 +264,10 @@ class TestDialects:
     def test_set_valid_and_invalid(self):
         from ai_knowledge.dialects import DialectManager
         dm = DialectManager()
-        current = dm.set_dialect('palestinian')
-        assert dm.set_dialect('klingon') != 'klingon' or True
-        assert current is not None or True
+        assert dm.set_dialect('palestinian') is True
+        assert dm.current_dialect == 'palestinian'
+        assert dm.set_dialect('klingon') is False
+        assert dm.current_dialect == 'palestinian'
 
     def test_formal_passthrough(self):
         from ai_knowledge.dialects import DialectManager

@@ -1,4 +1,4 @@
-﻿"""Tests for routes/advanced_ledger.py â€” ledger-adjacent admin pages.
+"""Tests for routes/advanced_ledger.py â€” ledger-adjacent admin pages.
 
 advanced_ledger.py sat at ~43% combined coverage. Covers read pages for
 ledger-authorized roles, admin gating, and safe failure of entry

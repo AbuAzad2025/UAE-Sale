@@ -70,7 +70,7 @@ class TestCreateReturn:
             ],
             user_id=owner_user.id,
         )
-        assert len(ret.lines.all() if hasattr(ret.lines, 'all') else ret.lines) in (0, 1) or True
+        assert len(ret.lines.all() if hasattr(ret.lines, 'all') else ret.lines) == 1
         db.session.refresh(ret)
         assert ret.total_amount == Decimal('100.000')
 

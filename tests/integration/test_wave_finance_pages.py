@@ -1004,29 +1004,30 @@ class TestLedgerCore:
 
 
 class TestAdminLedger:
+    """Canonical ledger stack (merged admin_ledger blueprint)."""
     def test_admin_ledger_pages_owner_only_loop(self, client, login_owner):
         _ensure_accounts()
         urls = [
-            '/admin/ledger/', '/admin/ledger/accounts', '/admin/ledger/reports',
-            '/admin/ledger/settings', '/admin/ledger/vaults', '/admin/ledger/journals',
-            '/admin/ledger/reports/trial-balance', '/admin/ledger/reports/balance-sheet',
-            '/admin/ledger/reports/income-statement',
+            '/ledger/', '/ledger/accounts', '/ledger/reports',
+            '/ledger/settings', '/ledger/vaults', '/ledger/journal-entries',
+            '/ledger/trial-balance', '/ledger/balance-sheet',
+            '/ledger/income-statement',
         ]
         for u in urls:
             resp = client.get(u)
             assert resp.status_code == 200, u
-        assert client.get('/admin/ledger/api/account-statement/'
+        assert client.get('/ledger/api/account-statement/'
                           f"{GLAccount.query.filter_by(code='1110').first().id}").is_json
 
     def test_anon_blocked_from_admin_ledger(self, client):
-        assert client.get('/admin/ledger/').status_code == 302
+        assert client.get('/ledger/').status_code == 302
 
     def test_seller_forbidden_admin_ledger(self, client, login_seller):
-        assert client.get('/admin/ledger/accounts').status_code == 403
+        assert client.get('/ledger/accounts').status_code == 403
 
     def test_account_add_guards_success_edit_delete_guards(self, client, login_owner, gl):
-        assert client.get('/admin/ledger/accounts/add').status_code == 200
-        missing_type = client.post('/admin/ledger/accounts/add', data={'code': '7776', 'name': 'X'},
+        assert client.get('/ledger/accounts/add').status_code == 200
+        missing_type = client.post('/ledger/accounts/add', data={'code': '7776', 'name': 'X'},
                                    follow_redirects=True)
         assert missing_type.status_code == 200  # type-required render+flash
         assert GLAccount.query.filter_by(code='7776').count() == 0
@@ -1034,21 +1035,21 @@ class TestAdminLedger:
         seeded = GLAccount(code='7777', name='Dup Acct', name_ar='مكرر', type='asset', level=0)
         db.session.add(seeded)
         db.session.commit()
-        dup = client.post('/admin/ledger/accounts/add', data={
+        dup = client.post('/ledger/accounts/add', data={
             'code': '7777', 'name': 'Again', 'type': 'asset'}, follow_redirects=True)
         assert dup.status_code == 200
         assert GLAccount.query.filter_by(code='7777').count() == 1
 
-        ok = client.post('/admin/ledger/accounts/add', data={
+        ok = client.post('/ledger/accounts/add', data={
             'code': '8888', 'name': 'Safe Deposit', 'name_ar': 'وديعة', 'type': 'asset',
             'is_header': 'on', 'is_active': 'on'}, follow_redirects=False)
         assert ok.status_code == 302
         created = GLAccount.query.filter_by(code='8888').one()
         assert created.is_header is True and created.is_active is True
 
-        edit_get = client.get(f'/admin/ledger/accounts/{created.id}/edit')
+        edit_get = client.get(f'/ledger/accounts/{created.id}/edit')
         assert edit_get.status_code == 200
-        client.post(f'/admin/ledger/accounts/{created.id}/edit', data={
+        client.post(f'/ledger/accounts/{created.id}/edit', data={
             'code': '8888', 'name': 'Renamed Vault', 'type': 'asset', 'is_active': 'on'},
             follow_redirects=True)
         db.session.refresh(created)
@@ -1063,13 +1064,13 @@ class TestAdminLedger:
         child.parent_id = parent.id
         db.session.add(child)
         db.session.commit()
-        kids = client.post(f'/admin/ledger/accounts/{parent.id}/delete', data={},
+        kids = client.post(f'/ledger/accounts/{parent.id}/delete', data={},
                            follow_redirects=True)
         assert kids.status_code == 200
         assert db.session.get(GLAccount, parent.id) is not None
 
         used_acct = GLAccount.query.filter_by(code='1110').one()
-        used = client.post(f'/admin/ledger/accounts/{used_acct.id}/delete', data={},
+        used = client.post(f'/ledger/accounts/{used_acct.id}/delete', data={},
                            follow_redirects=True)
         assert used.status_code == 200  # journal lines exist → blocked
         assert db.session.get(GLAccount, used_acct.id) is not None
@@ -1078,33 +1079,33 @@ class TestAdminLedger:
         db.session.add(leaf)
         db.session.commit()
         lid = leaf.id
-        gone = client.post(f'/admin/ledger/accounts/{lid}/delete', data={}, follow_redirects=True)
+        gone = client.post(f'/ledger/accounts/{lid}/delete', data={}, follow_redirects=True)
         assert gone.status_code == 200
         assert db.session.get(GLAccount, lid) is None
 
     def test_journal_view_reverse_link_and_error_paths(self, client, login_owner, gl):
         entry = gl['entries'][1]
-        view = client.get(f'/admin/ledger/journals/{entry.id}/view')
+        view = client.get(f'/ledger/entry/{entry.id}')
         assert view.status_code == 200 and entry.entry_number.encode() in view.data
 
-        reversed_now = client.post(f'/admin/ledger/journals/{entry.id}/reverse', data={},
+        reversed_now = client.post(f'/ledger/entry/{entry.id}/reverse', data={},
                                    follow_redirects=True)
         assert reversed_now.status_code == 200
         db.session.refresh(entry)
         assert entry.is_reversed is True
         assert GLJournalEntry.query.filter_by(reversed_entry_id=entry.id).count() == 1
 
-        twice = client.post(f'/admin/ledger/journals/{entry.id}/reverse', data={},
+        twice = client.post(f'/ledger/entry/{entry.id}/reverse', data={},
                             follow_redirects=True)
         assert twice.status_code == 200  # broad except → error flash, count stable
         assert GLJournalEntry.query.filter_by(reversed_entry_id=entry.id).count() == 1
 
         balance_api = client.get(
-            f"/admin/ledger/api/account-balance/{GLAccount.query.filter_by(code='1110').first().id}"
+            f"/ledger/api/account-balance/{GLAccount.query.filter_by(code='1110').first().id}"
         ).get_json()
         assert balance_api['account_code'] == '1110' and isinstance(balance_api['balance'], float)
         stmt_api = client.get(
-            f"/admin/ledger/api/account-statement/"
+            f"/ledger/api/account-statement/"
             f"{GLAccount.query.filter_by(code='1110').first().id}?date_from=2000-01-01"
         ).get_json()
         assert float(stmt_api['statement']['total_debit']) == 1000.0
@@ -1191,34 +1192,34 @@ class TestAdvancedLedger:
             {'account_code': '4100', 'debit': 0, 'credit': 80, 'description': ''},
         ])
 
-        page = client.get('/ledger/advanced/journal-management')
+        page = client.get('/ledger/journal-entries')
         assert page.status_code == 200
         assert to_approve.entry_number.encode() in page.data
 
-        appr = client.post(f'/ledger/advanced/journal-management/{to_approve.id}/approve',
+        appr = client.post(f'/ledger/entry/{to_approve.id}/approve',
                            data={'approval_notes': 'ok'}, follow_redirects=True)
         assert appr.status_code == 200
         db.session.refresh(to_approve)
         assert to_approve.is_posted is True
 
-        appr_again = client.post(f'/ledger/advanced/journal-management/{posted.id}/approve',
+        appr_again = client.post(f'/ledger/entry/{posted.id}/approve',
                                  data={}, follow_redirects=True)
         assert appr_again.status_code == 200  # already-posted error flash
         assert GLJournalEntry.query.filter_by(is_posted=False).count() == 1
 
-        deleted = client.post(f'/ledger/advanced/journal-management/{to_delete.id}/delete',
+        deleted = client.post(f'/ledger/entry/{to_delete.id}/delete',
                               data={'reason': 'draft junk'}, follow_redirects=True)
         assert deleted.status_code == 200
         assert db.session.get(GLJournalEntry, to_delete.id) is None
 
-        del_posted = client.post(f'/ledger/advanced/journal-management/{posted.id}/delete',
+        del_posted = client.post(f'/ledger/entry/{posted.id}/delete',
                                  data={}, follow_redirects=True)
         assert del_posted.status_code == 200  # immutable posted → error flash
         assert db.session.get(GLJournalEntry, posted.id) is not None
 
         reversed_now = client.post(
-            f'/ledger/advanced/journal-management/{posted.id}/reverse',
-            data={'reason': 'wrong coding'}, follow_redirects=True)
+            f'/ledger/entry/{posted.id}/reverse',
+            data={'description': 'wrong coding'}, follow_redirects=True)
         assert reversed_now.status_code == 200
         db.session.refresh(posted)
         assert posted.is_reversed is True

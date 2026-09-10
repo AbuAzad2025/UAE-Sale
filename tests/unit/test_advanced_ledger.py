@@ -63,7 +63,7 @@ READ_PAGES_OWNER = [
     '/ledger/advanced/expense-categories/add',
     '/ledger/advanced/advanced-expenses',
     '/ledger/advanced/advanced-expenses/add',
-    '/ledger/advanced/journal-management',
+    '/ledger/journal-entries',
     '/ledger/advanced/cheque-integration',
 ]
 
@@ -87,7 +87,7 @@ class TestAdvancedLedgerReads:
 
     @pytest.mark.parametrize('url', [
         '/ledger/advanced/customs-taxes',
-        '/ledger/advanced/journal-management',
+        '/ledger/journal-entries',
         '/ledger/advanced/expense-categories',
     ])
     def test_seller_forbidden(self, client, ledger_seller, url):
@@ -96,19 +96,24 @@ class TestAdvancedLedgerReads:
 
 
 class TestJournalEntryMutations:
-    @pytest.mark.parametrize('action', ['reverse', 'delete', 'approve'])
+    """Canonical /ledger/entry/<id> endpoints (merged journal-management)."""
+
+    def test_reverse_missing_entry_404(self, client, ledger_owner):
+        _login(client, ledger_owner)
+        resp = client.post('/ledger/entry/999999/reverse')
+        assert resp.status_code == 404
+
+    @pytest.mark.parametrize('action', ['delete', 'approve'])
     def test_missing_entry_redirects_safely(self, client, ledger_owner, action):
         _login(client, ledger_owner)
-        resp = client.post(
-            f'/ledger/advanced/journal-management/999999/{action}')
+        resp = client.post(f'/ledger/entry/999999/{action}')
         assert resp.status_code == 302
 
-    @pytest.mark.parametrize('action', ['reverse', 'delete', 'approve'])
+    @pytest.mark.parametrize('action', ['delete', 'approve'])
     def test_non_admin_forbidden(self, client, ledger_accountant, action):
         # accountant has ledger perms but is not admin (owner/super_admin)
         _login(client, ledger_accountant)
-        resp = client.post(
-            f'/ledger/advanced/journal-management/999999/{action}')
+        resp = client.post(f'/ledger/entry/999999/{action}')
         assert resp.status_code == 403
 
     def test_reverse_real_entry(self, client, ledger_owner, db):
@@ -118,8 +123,8 @@ class TestJournalEntryMutations:
         _db.session.commit()
         _login(client, ledger_owner)
         resp = client.post(
-            f'/ledger/advanced/journal-management/{entry.id}/reverse',
-            data={'reason': 'test reversal'})
+            f'/ledger/entry/{entry.id}/reverse',
+            data={'description': 'test reversal'})
         # Either path must redirect (never 500): success flashes, missing
         # prerequisites flash an error â€” both are safe outcomes.
         assert resp.status_code == 302

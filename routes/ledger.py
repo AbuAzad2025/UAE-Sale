@@ -19,7 +19,23 @@ ledger_bp = Blueprint('ledger', __name__, url_prefix='/ledger')
 @permission_required('view_ledger')
 def index():
     accounts = GLAccount.query.filter_by(is_active=True).order_by(GLAccount.code).all()
-    return render_template('ledger/index.html', accounts=accounts)
+    # Dashboard stats (merged from the admin twin — single ledger home).
+    total_accounts = GLAccount.query.count()
+    total_entries = GLJournalEntry.query.count()
+    posted_entries = GLJournalEntry.query.filter_by(is_posted=True).count()
+    cash_accounts = GLAccount.query.filter(GLAccount.code.like('11%')).all()
+    total_cash = sum((a.get_balance() for a in cash_accounts), Decimal('0'))
+    recent_entries = GLJournalEntry.query.order_by(
+        GLJournalEntry.created_at.desc()).limit(10).all()
+    stats = {
+        'total_accounts': total_accounts,
+        'active_accounts': len(accounts),
+        'total_entries': total_entries,
+        'posted_entries': posted_entries,
+        'total_cash': float(total_cash),
+    }
+    return render_template('ledger/index.html', accounts=accounts,
+                           stats=stats, recent_entries=recent_entries)
 
 
 @ledger_bp.route('/account/<int:id>')
@@ -73,6 +89,15 @@ def account_ledger(id):
 @login_required
 @permission_required('view_ledger')
 def trial_balance():
+    # Optional date window (merged from the admin twin): absent = all-time.
+    date_from = request.args.get('date_from', type=str) or None
+    date_to = request.args.get('date_to', type=str) or None
+    try:
+        df = datetime.strptime(date_from, '%Y-%m-%d').date() if date_from else None
+        dt = datetime.strptime(date_to, '%Y-%m-%d').date() if date_to else None
+    except Exception:
+        df = dt = None
+
     accounts = GLAccount.query.filter_by(is_active=True).order_by(GLAccount.code).all()
 
     trial_data = []
@@ -82,8 +107,19 @@ def trial_balance():
     total_credit_balance = Decimal('0')
 
     for account in accounts:
-        debit_sum = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=account.id).scalar() or Decimal('0')
-        credit_sum = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=account.id).scalar() or Decimal('0')
+        debit_q = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=account.id)
+        credit_q = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=account.id)
+        if df or dt:
+            debit_q = debit_q.join(GLJournalEntry)
+            credit_q = credit_q.join(GLJournalEntry)
+            if df:
+                debit_q = debit_q.filter(func.date(GLJournalEntry.entry_date) >= df)
+                credit_q = credit_q.filter(func.date(GLJournalEntry.entry_date) >= df)
+            if dt:
+                debit_q = debit_q.filter(func.date(GLJournalEntry.entry_date) <= dt)
+                credit_q = credit_q.filter(func.date(GLJournalEntry.entry_date) <= dt)
+        debit_sum = debit_q.scalar() or Decimal('0')
+        credit_sum = credit_q.scalar() or Decimal('0')
 
         balance = debit_sum - credit_sum
 
@@ -115,7 +151,9 @@ def trial_balance():
                            total_debit_balance=float(total_debit_balance),
                            total_credit_balance=float(total_credit_balance),
                            is_balanced=is_balanced,
-                           is_net_balanced=is_net_balanced)
+                           is_net_balanced=is_net_balanced,
+                           date_from=date_from or '',
+                           date_to=date_to or '')
 
 
 @ledger_bp.route('/journal-entries')
@@ -123,8 +161,27 @@ def trial_balance():
 @permission_required('view_ledger')
 def journal_entries():
     page = request.args.get('page', 1, type=int)
+    status = (request.args.get('status') or '').strip()
+    entry_type = (request.args.get('entry_type') or '').strip()
+    q = (request.args.get('q') or '').strip()
 
-    pagination = GLJournalEntry.query.order_by(GLJournalEntry.entry_date.desc()).paginate(
+    query = GLJournalEntry.query
+    if status == 'posted':
+        query = query.filter_by(is_posted=True, is_reversed=False)
+    elif status == 'draft':
+        query = query.filter_by(is_posted=False)
+    elif status == 'reversed':
+        query = query.filter_by(is_reversed=True)
+    if entry_type in ('manual', 'auto', 'reversing', 'closing'):
+        query = query.filter_by(entry_type=entry_type)
+    if q:
+        like = f'%{q}%'
+        query = query.filter(db.or_(
+            GLJournalEntry.entry_number.ilike(like),
+            GLJournalEntry.description.ilike(like),
+        ))
+
+    pagination = query.order_by(GLJournalEntry.entry_date.desc()).paginate(
         page=page,
         per_page=50,
         error_out=False
@@ -132,7 +189,10 @@ def journal_entries():
 
     return render_template('ledger/journal_entries.html',
                            entries=pagination.items,
-                           pagination=pagination)
+                           pagination=pagination,
+                           status=status,
+                           entry_type=entry_type,
+                           q=q)
 
 
 @ledger_bp.route('/income-statement')
@@ -206,6 +266,21 @@ def income_statement():
 @login_required
 @permission_required('view_ledger')
 def balance_sheet():
+    # Optional as-of date (merged from the admin twin): absent = all-time.
+    as_of_raw = request.args.get('as_of_date', type=str) or None
+    try:
+        as_of_date = datetime.strptime(as_of_raw, '%Y-%m-%d').date() if as_of_raw else None
+    except Exception:
+        as_of_date = None
+
+    def _sums(account_id):
+        dq = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=account_id)
+        cq = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=account_id)
+        if as_of_date is not None:
+            dq = dq.join(GLJournalEntry).filter(func.date(GLJournalEntry.entry_date) <= as_of_date)
+            cq = cq.join(GLJournalEntry).filter(func.date(GLJournalEntry.entry_date) <= as_of_date)
+        return (dq.scalar() or Decimal('0')), (cq.scalar() or Decimal('0'))
+
     assets = {}
     liabilities = {}
     equity = {}
@@ -216,8 +291,7 @@ def balance_sheet():
 
     total_assets = Decimal('0')
     for acc in asset_accounts:
-        debit = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
-        credit = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
+        debit, credit = _sums(acc.id)
         balance = debit - credit
 
         if balance != 0:
@@ -226,8 +300,7 @@ def balance_sheet():
 
     total_liabilities = Decimal('0')
     for acc in liability_accounts:
-        credit = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
-        debit = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
+        debit, credit = _sums(acc.id)
         balance = credit - debit
 
         if balance != 0:
@@ -236,8 +309,7 @@ def balance_sheet():
 
     total_equity = Decimal('0')
     for acc in equity_accounts:
-        credit = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
-        debit = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
+        debit, credit = _sums(acc.id)
         balance = credit - debit
 
         if balance != 0:
@@ -251,14 +323,12 @@ def balance_sheet():
 
     total_revenue_period = Decimal('0')
     for acc in revenue_accounts:
-        credit = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
-        debit = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
+        debit, credit = _sums(acc.id)
         total_revenue_period += (credit - debit)
 
     total_expense_period = Decimal('0')
     for acc in expense_accounts:
-        debit = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
-        credit = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=acc.id).scalar() or Decimal('0')
+        debit, credit = _sums(acc.id)
         total_expense_period += (debit - credit)
 
     net_profit_period = total_revenue_period - total_expense_period
@@ -273,7 +343,8 @@ def balance_sheet():
                            equity=equity,
                            total_assets=float(total_assets),
                            total_liabilities=float(total_liabilities),
-                           total_equity=float(total_equity))
+                           total_equity=float(total_equity),
+                           as_of_date=as_of_raw or '')
 
 
 @ledger_bp.route('/accounts-tree')
@@ -390,14 +461,13 @@ def view_entry(id):
 @login_required
 @permission_required('manage_ledger')
 def reverse_entry(id):
-    """عكس القيد"""
+    """عكس القيد (عبر مدير القيود المتقدم: موثق ومحمي من العكس المزدوج)"""
+    from services.advanced_journal_manager import AdvancedJournalEntryManager
+    entry = get_owned_or_404(GLJournalEntry, id)
     try:
-        entry = get_owned_or_404(GLJournalEntry, id)
-
-        description = request.form.get('description')
-        reversed_entry = entry.reverse_entry(description)
-
-        db.session.commit()
+        reason = request.form.get('description') or request.form.get('reason') or 'عكس القيد'
+        reversed_entry = AdvancedJournalEntryManager.reverse_entry_advanced(
+            entry.id, current_user.id, reason)
 
         create_audit_log('create', 'gl_journal_entries', reversed_entry.id,
                          changes={'reversed_from': entry.entry_number})
@@ -412,6 +482,55 @@ def reverse_entry(id):
         db.session.rollback()
         flash(f'❌ خطأ: {str(e)}', 'danger')
         return redirect(url_for('ledger.view_entry', id=id))
+
+
+@ledger_bp.route('/entry/<int:id>/approve', methods=['POST'])
+@login_required
+@admin_required
+def approve_entry(id):
+    """الموافقة على قيد مسودة وترحيله"""
+    from services.advanced_journal_manager import AdvancedJournalEntryManager
+    try:
+        approval_notes = request.form.get('approval_notes', 'موافقة على القيد')
+
+        AdvancedJournalEntryManager.approve_entry(
+            entry_id=id,
+            approved_by=current_user.id,
+            approval_notes=approval_notes
+        )
+
+        flash('✅ تم الموافقة على القيد وترحيله بنجاح', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ خطأ: {str(e)}', 'danger')
+
+    return redirect(url_for('ledger.view_entry', id=id))
+
+
+@ledger_bp.route('/entry/<int:id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_entry(id):
+    """حذف قيد مسودة (المرحّل محمي: مرفوض)"""
+    from services.advanced_journal_manager import AdvancedJournalEntryManager
+    try:
+        reason = request.form.get('reason', 'حذف القيد')
+
+        AdvancedJournalEntryManager.delete_entry(
+            entry_id=id,
+            deleted_by=current_user.id,
+            reason=reason
+        )
+
+        flash('✅ تم حذف القيد بنجاح', 'success')
+        return redirect(url_for('ledger.journal_entries'))
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ خطأ: {str(e)}', 'danger')
+
+    return redirect(url_for('ledger.view_entry', id=id))
 
 
 @ledger_bp.route('/api/accounts/search')
@@ -533,95 +652,61 @@ def aging_analysis():
         flash(f'❌ فشل إنشاء تحليل الأعمار: {str(e)}\n💡 تحقق من البيانات وحاول مرة أخرى.', 'danger')
         return redirect(url_for('ledger.index'))
 
-# ==================== لوحة التحكم الإدارية ====================
+
+# ==================== إدارة الحسابات والخزائن والتقارير ====================
+# Canonical homes (merged from the retired admin_ledger blueprint):
+# accounts CRUD, vaults, reports hub, settings, account JSON APIs.
 
 
-@ledger_bp.route('/admin-dashboard')
+@ledger_bp.route('/accounts')
 @login_required
 @admin_required
-def admin_dashboard():
-    """لوحة تحكم شاملة لدفتر الأستاذ"""
-
-    # إحصائيات عامة
-    total_accounts = GLAccount.query.count()
-    active_accounts = GLAccount.query.filter_by(is_active=True).count()
-    total_entries = GLJournalEntry.query.count()
-    posted_entries = GLJournalEntry.query.filter_by(is_posted=True).count()
-
-    # إحصائيات مالية
-    cash_accounts = GLAccount.query.filter(GLAccount.code.like('11%')).all()
-    total_cash = sum(account.get_balance() for account in cash_accounts)
-
-    # آخر القيود
-    recent_entries = GLJournalEntry.query.order_by(GLJournalEntry.created_at.desc()).limit(10).all()
-
-    # الحسابات ذات الأرصدة العالية
-    high_balance_accounts = []
-    for account in GLAccount.query.filter_by(is_active=True, is_header=False).all():
-        balance = account.get_balance()
-        if abs(balance) > 1000:  # أرصدة أعلى من 1000
-            high_balance_accounts.append({
-                'account': account,
-                'balance': balance
-            })
-
-    # ترتيب حسب الرصيد
-    high_balance_accounts.sort(key=lambda x: abs(x['balance']), reverse=True)
-
-    # إحصائيات الشيكات
-    total_cheques = Cheque.query.count()
-    pending_cheques = Cheque.query.filter_by(status='pending').count()
-    cleared_cheques = Cheque.query.filter_by(status='cleared').count()
-
-    # إحصائيات المحافظ
-    total_vaults = PaymentVault.query.count()
-    active_vaults = PaymentVault.query.filter_by(is_locked=False).count()
-
-    return render_template('admin/ledger/dashboard.html',
-                           total_accounts=total_accounts,
-                           active_accounts=active_accounts,
-                           total_entries=total_entries,
-                           posted_entries=posted_entries,
-                           total_cash=total_cash,
-                           recent_entries=recent_entries,
-                           high_balance_accounts=high_balance_accounts[:10],
-                           total_cheques=total_cheques,
-                           pending_cheques=pending_cheques,
-                           cleared_cheques=cleared_cheques,
-                           total_vaults=total_vaults,
-                           active_vaults=active_vaults)
-
-
-@ledger_bp.route('/admin-accounts')
-@login_required
-@admin_required
-def admin_accounts():
+def accounts():
     """إدارة الحسابات المحاسبية"""
     accounts = GLAccount.query.order_by(GLAccount.code).all()
-    return render_template('admin/ledger/accounts.html', accounts=accounts)
+    return render_template('ledger/accounts.html', accounts=accounts)
 
 
-@ledger_bp.route('/admin-accounts/add', methods=['GET', 'POST'])
+@ledger_bp.route('/accounts/add', methods=['GET', 'POST'])
 @login_required
 @admin_required
-def admin_add_account():
+def add_account():
     """إضافة حساب محاسبي جديد"""
+    parent_accounts = GLAccount.query.filter_by(is_header=True).order_by(GLAccount.code).all()
+    default_form = {'is_active': 'on'}
+
     if request.method == 'POST':
         try:
-            code = request.form.get('code')
-            name = request.form.get('name')
-            name_ar = request.form.get('name_ar')
-            account_type = request.form.get('type')
-            parent_id = request.form.get('parent_id') or None
+            code = (request.form.get('code') or '').strip()
+            name = (request.form.get('name') or '').strip()
+            name_ar = (request.form.get('name_ar') or '').strip()
+            account_type = (request.form.get('type') or '').strip()
+            parent_id_raw = (request.form.get('parent_id') or '').strip()
+            parent_id = int(parent_id_raw) if parent_id_raw else None
             currency = request.form.get('currency', 'AED')
-            is_header = bool(request.form.get('is_header'))
+            is_header = 'on' in request.form.getlist('is_header')
+            is_active = 'on' in request.form.getlist('is_active')
             description = request.form.get('description')
+
+            if not account_type:
+                flash('⚠️ يرجى اختيار نوع الحساب.', 'warning')
+                form_values = request.form.to_dict()
+                form_values['is_header'] = 'on' if is_header else 'off'
+                form_values['is_active'] = 'on' if is_active else 'off'
+                return render_template('ledger/add_account.html',
+                                       parent_accounts=parent_accounts,
+                                       form_data=form_values)
 
             # التحقق من عدم تكرار الكود
             existing = GLAccount.query.filter_by(code=code).first()
             if existing:
-                flash('⚠️ كود الحساب موجود مسبقاً.\n💡 استخدم كود فريد أو اختر كود آخر.', 'danger')
-                return redirect(url_for('ledger.admin_add_account'))
+                flash('❌ كود الحساب موجود مسبقاً', 'danger')
+                form_values = request.form.to_dict()
+                form_values['is_header'] = 'on' if is_header else 'off'
+                form_values['is_active'] = 'on' if is_active else 'off'
+                return render_template('ledger/add_account.html',
+                                       parent_accounts=parent_accounts,
+                                       form_data=form_values)
 
             # حساب المستوى
             level = 0
@@ -637,6 +722,7 @@ def admin_add_account():
                 parent_id=parent_id,
                 currency=currency,
                 is_header=is_header,
+                is_active=is_active,
                 level=level,
                 description=description
             )
@@ -646,161 +732,156 @@ def admin_add_account():
 
             create_audit_log('create', 'gl_accounts', account.id)
             flash(f'✅ تم إنشاء الحساب {account.full_name} بنجاح', 'success')
-            return redirect(url_for('ledger.admin_accounts'))
+            return redirect(url_for('ledger.accounts'))
 
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            flash(f'❌ خطأ: {str(e)}', 'danger')
+            form_values = request.form.to_dict()
+            form_values['is_header'] = 'on' if 'on' in request.form.getlist('is_header') else 'off'
+            form_values['is_active'] = 'on' if 'on' in request.form.getlist('is_active') else 'off'
+            return render_template('ledger/add_account.html',
+                                   parent_accounts=parent_accounts,
+                                   form_data=form_values)
 
-    # الحصول على الحسابات الرئيسية للقائمة المنسدلة
-    parent_accounts = GLAccount.query.filter_by(is_header=True).order_by(GLAccount.code).all()
-    return render_template('admin/ledger/add_account.html', parent_accounts=parent_accounts)
+    return render_template('ledger/add_account.html',
+                           parent_accounts=parent_accounts,
+                           form_data=default_form)
 
 
-@ledger_bp.route('/admin-vaults')
+@ledger_bp.route('/accounts/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
 @admin_required
-def admin_vaults():
+def edit_account(id):
+    """تعديل حساب محاسبي"""
+    account = db.get_or_404(GLAccount, id)
+
+    if request.method == 'POST':
+        try:
+            account.code = request.form.get('code')
+            account.name = request.form.get('name')
+            account.name_ar = request.form.get('name_ar')
+            account.type = request.form.get('type')
+            account.parent_id = request.form.get('parent_id') or None
+            account.currency = request.form.get('currency', 'AED')
+            account.is_header = bool(request.form.get('is_header'))
+            account.description = request.form.get('description')
+            account.is_active = bool(request.form.get('is_active'))
+
+            # حساب المستوى
+            if account.parent_id:
+                parent = db.session.get(GLAccount, account.parent_id)
+                account.level = parent.level + 1 if parent else 0
+            else:
+                account.level = 0
+
+            db.session.commit()
+
+            create_audit_log('update', 'gl_accounts', account.id)
+            flash(f'✅ تم تحديث الحساب {account.full_name} بنجاح', 'success')
+            return redirect(url_for('ledger.accounts'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'❌ خطأ: {str(e)}', 'danger')
+
+    parent_accounts = GLAccount.query.filter_by(is_header=True).order_by(GLAccount.code).all()
+    return render_template('ledger/edit_account.html', account=account, parent_accounts=parent_accounts)
+
+
+@ledger_bp.route('/accounts/<int:id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_account(id):
+    """حذف حساب محاسبي"""
+    account = db.get_or_404(GLAccount, id)
+
+    try:
+        # التحقق من وجود قيود مرتبطة
+        has_entries = GLJournalLine.query.filter_by(account_id=id).first()
+        if has_entries:
+            flash('❌ لا يمكن حذف الحساب لوجود قيود مرتبطة به', 'danger')
+            return redirect(url_for('ledger.accounts'))
+
+        # التحقق من وجود حسابات فرعية
+        has_children = GLAccount.query.filter_by(parent_id=id).first()
+        if has_children:
+            flash('❌ لا يمكن حذف الحساب لوجود حسابات فرعية مرتبطة به', 'danger')
+            return redirect(url_for('ledger.accounts'))
+
+        db.session.delete(account)
+        db.session.commit()
+
+        create_audit_log('delete', 'gl_accounts', id)
+        flash(f'✅ تم حذف الحساب {account.full_name} بنجاح', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ خطأ: {str(e)}', 'danger')
+
+    return redirect(url_for('ledger.accounts'))
+
+
+@ledger_bp.route('/vaults')
+@login_required
+@admin_required
+def vaults():
     """إدارة الصناديق والمحافظ"""
     vaults = PaymentVault.query.all()
-    return render_template('admin/ledger/vaults.html', vaults=vaults)
+    return render_template('ledger/vaults.html', vaults=vaults)
 
 
-@ledger_bp.route('/admin-journals')
+@ledger_bp.route('/reports')
+@login_required
+@permission_required('view_ledger')
+def reports():
+    """مركز التقارير المالية"""
+    return render_template('ledger/reports.html')
+
+
+@ledger_bp.route('/settings')
 @login_required
 @admin_required
-def admin_journals():
-    """إدارة القيود المحاسبية"""
-    page = request.args.get('page', 1, type=int)
-    per_page = 20
-
-    entries = GLJournalEntry.query.order_by(GLJournalEntry.created_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-
-    return render_template('admin/ledger/journals.html', entries=entries)
-
-
-@ledger_bp.route('/admin-reports')
-@login_required
-@admin_required
-def admin_reports():
-    """التقارير المالية المتقدمة"""
-    return render_template('admin/ledger/reports.html')
-
-
-@ledger_bp.route('/admin-trial-balance')
-@login_required
-@admin_required
-def admin_trial_balance():
-    """ميزان المراجعة"""
-    date_from = request.args.get('date_from', date.today().strftime('%Y-%m-%d'))
-    date_to = request.args.get('date_to', date.today().strftime('%Y-%m-%d'))
-
-    # تحويل التواريخ
-    try:
-        date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
-        date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
-    except Exception:
-        date_from = date_to = date.today()
-
-    # حساب أرصدة الحسابات
-    accounts = GLAccount.query.filter_by(is_active=True, is_header=False).order_by(GLAccount.code).all()
-    trial_balance_data = []
-
-    total_debit = total_credit = 0
-
-    for account in accounts:
-        balance = account.get_balance(date_from, date_to)
-        if balance != 0:
-            trial_balance_data.append({
-                'account': account,
-                'debit': balance if balance > 0 else 0,
-                'credit': abs(balance) if balance < 0 else 0
-            })
-            total_debit += balance if balance > 0 else 0
-            total_credit += abs(balance) if balance < 0 else 0
-
-    return render_template('admin/ledger/trial_balance.html',
-                           trial_balance_data=trial_balance_data,
-                           total_debit=total_debit,
-                           total_credit=total_credit,
-                           date_from=date_from,
-                           date_to=date_to)
-
-
-@ledger_bp.route('/admin-balance-sheet')
-@login_required
-@admin_required
-def admin_balance_sheet():
-    """الميزانية العمومية"""
-    as_of_date = request.args.get('as_of_date', date.today().strftime('%Y-%m-%d'))
-
-    try:
-        as_of_date = datetime.strptime(as_of_date, '%Y-%m-%d').date()
-    except Exception:
-        as_of_date = date.today()
-
-    # الأصول
-    assets = GLAccount.query.filter_by(type='asset', is_active=True, is_header=False).order_by(GLAccount.code).all()
-    assets_total = sum(account.get_balance(as_of_date=as_of_date) for account in assets)
-
-    # الخصوم
-    liabilities = GLAccount.query.filter_by(type='liability', is_active=True, is_header=False).order_by(GLAccount.code).all()
-    liabilities_total = sum(abs(account.get_balance(as_of_date=as_of_date)) for account in liabilities)
-
-    # حقوق الملكية
-    equity = GLAccount.query.filter_by(type='equity', is_active=True, is_header=False).order_by(GLAccount.code).all()
-    equity_total = sum(abs(account.get_balance(as_of_date=as_of_date)) for account in equity)
-
-    return render_template('admin/ledger/balance_sheet.html',
-                           assets=assets,
-                           assets_total=assets_total,
-                           liabilities=liabilities,
-                           liabilities_total=liabilities_total,
-                           equity=equity,
-                           equity_total=equity_total,
-                           as_of_date=as_of_date)
-
-
-@ledger_bp.route('/admin-income-statement')
-@login_required
-@admin_required
-def admin_income_statement():
-    """قائمة الدخل"""
-    date_from = request.args.get('date_from', (date.today() - timedelta(days=30)).strftime('%Y-%m-%d'))
-    date_to = request.args.get('date_to', date.today().strftime('%Y-%m-%d'))
-
-    try:
-        date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
-        date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
-    except Exception:
-        date_from = date.today() - timedelta(days=30)
-        date_to = date.today()
-
-    # الإيرادات
-    revenues = GLAccount.query.filter_by(type='revenue', is_active=True, is_header=False).order_by(GLAccount.code).all()
-    revenues_total = sum(abs(account.get_balance(date_from, date_to)) for account in revenues)
-
-    # المصروفات
-    expenses = GLAccount.query.filter_by(type='expense', is_active=True, is_header=False).order_by(GLAccount.code).all()
-    expenses_total = sum(account.get_balance(date_from, date_to) for account in expenses)
-
-    net_income = revenues_total - expenses_total
-
-    return render_template('admin/ledger/income_statement.html',
-                           revenues=revenues,
-                           revenues_total=revenues_total,
-                           expenses=expenses,
-                           expenses_total=expenses_total,
-                           net_income=net_income,
-                           date_from=date_from,
-                           date_to=date_to)
-
-
-@ledger_bp.route('/admin-settings')
-@login_required
-@admin_required
-def admin_settings():
+def settings():
     """إعدادات النظام المحاسبي"""
-    return render_template('admin/ledger/settings.html')
+    return render_template('ledger/settings.html')
+
+
+@ledger_bp.route('/api/account-balance/<int:account_id>')
+@login_required
+@admin_required
+def api_account_balance(account_id):
+    """API للحصول على رصيد حساب"""
+    account = db.get_or_404(GLAccount, account_id)
+    balance = account.get_balance()
+
+    return jsonify({
+        'account_code': account.code,
+        'account_name': account.full_name,
+        'balance': float(balance),
+        'balance_formatted': f"{balance:,.2f}"
+    })
+
+
+@ledger_bp.route('/api/account-statement/<int:account_id>')
+@login_required
+@admin_required
+def api_account_statement(account_id):
+    """API لكشف حساب"""
+    account = db.get_or_404(GLAccount, account_id)
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+
+    statement = GLService.get_account_statement(account_id, date_from, date_to)
+
+    # get_account_statement includes the ORM object itself for templates;
+    # strip it before serializing to JSON.
+    statement.pop('account', None)
+
+    return jsonify({
+        'account': {
+            'code': account.code,
+            'name': account.full_name
+        },
+        'statement': statement
+    })

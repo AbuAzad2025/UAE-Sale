@@ -4,6 +4,20 @@
 
 {% block content %}
 <div class="row mb-3">
+  <div class="col-md-3 col-6">
+    <div class="small-box bg-info"><div class="inner"><h4>{{ stats.total_accounts }}</h4><p>الحسابات</p></div><div class="icon"><i class="fas fa-list"></i></div></div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="small-box bg-success"><div class="inner"><h4>{{ stats.total_entries }}</h4><p>القيود (مرحّل: {{ stats.posted_entries }})</p></div><div class="icon"><i class="fas fa-book"></i></div></div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="small-box bg-warning"><div class="inner"><h4>{{ "{:,.2f}".format(stats.total_cash) }}</h4><p>النقدية (11xx)</p></div><div class="icon"><i class="fas fa-coins"></i></div></div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="small-box bg-primary"><div class="inner"><h4>{{ stats.active_accounts }}</h4><p>حسابات نشطة</p></div><div class="icon"><i class="fas fa-check"></i></div></div>
+  </div>
+</div>
+<div class="row mb-3">
   <div class="col-12">
     <a href="{{ url_for('ledger.accounts_tree') }}" class="btn btn-primary">
       <i class="fas fa-sitemap mr-2"></i>شجرة الحسابات
@@ -22,6 +36,15 @@
     </a>
     <a href="{{ url_for('ledger.balance_sheet') }}" class="btn btn-dark">
       <i class="fas fa-file-invoice mr-2"></i>الميزانية
+    </a>
+    <a href="{{ url_for('ledger.accounts') }}" class="btn btn-outline-primary">
+      <i class="fas fa-cogs mr-2"></i>إدارة الحسابات
+    </a>
+    <a href="{{ url_for('ledger.vaults') }}" class="btn btn-outline-success">
+      <i class="fas fa-box mr-2"></i>الخزائن
+    </a>
+    <a href="{{ url_for('ledger.reports') }}" class="btn btn-outline-warning">
+      <i class="fas fa-chart-bar mr-2"></i>التقارير
     </a>
   </div>
 </div>

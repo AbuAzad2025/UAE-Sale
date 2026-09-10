@@ -29,7 +29,7 @@
     <a href="{{ url_for('owner.roles_permissions') }}" class="btn btn-primary">
       <i class="fas fa-user-shield"></i> الأدوار والصلاحيات
     </a>
-    <a href="{{ url_for('owner.users_list') }}" class="btn btn-outline-primary">
+    <a href="{{ url_for('users.index') }}" class="btn btn-outline-primary">
       <i class="fas fa-users"></i> إدارة المستخدمين
     </a>
     <a href="{{ url_for('owner.audit_logs') }}" class="btn btn-outline-secondary">
@@ -355,7 +355,7 @@
         <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary btn-lg">
           <i class="fas fa-arrow-left mr-2"></i>العودة للوحة المالك
         </a>
-        <a href="{{ url_for('owner.users_list') }}" class="btn btn-primary btn-lg">
+        <a href="{{ url_for('users.index') }}" class="btn btn-primary btn-lg">
           <i class="fas fa-users mr-2"></i>إدارة المستخدمين
         </a>
       </div>

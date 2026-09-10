@@ -110,6 +110,7 @@ class User(UserMixin, db.Model):
     # Relationships
     sales = db.relationship('Sale', back_populates='seller', lazy='dynamic', foreign_keys='Sale.seller_id')
     audit_logs = db.relationship('AuditLog', back_populates='user', lazy='dynamic')
+    tenant = db.relationship('Tenant', foreign_keys=[tenant_id])
 
     # Avoid circular imports - use strings for forward references
     # created_suppliers = db.relationship('Supplier', foreign_keys='Supplier.created_by', lazy='dynamic')

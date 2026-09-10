@@ -10,6 +10,7 @@
         <div class="card-header">
           <h3 class="card-title">
             <i class="fas fa-user"></i> تفاصيل المستخدم - {{ user.username }}
+            {% if user.is_owner %}<span class="badge badge-warning">مالك</span>{% endif %}
           </h3>
           <div class="card-tools">
             <a href="{{ url_for('users.edit', id=user.id) }}" class="btn btn-warning">
@@ -32,11 +33,15 @@
                 </tr>
                 <tr>
                   <th>الاسم الكامل</th>
-                  <td>{{ user.full_name }}</td>
+                  <td>{{ user.full_name or '-' }}</td>
                 </tr>
                 <tr>
                   <th>البريد الإلكتروني</th>
                   <td>{{ user.email or '-' }}</td>
+                </tr>
+                <tr>
+                  <th>الهاتف</th>
+                  <td dir="ltr" class="text-left">{{ user.phone or '-' }}</td>
                 </tr>
                 <tr>
                   <th>الدور</th>
@@ -46,10 +51,16 @@
                     {% elif user.is_admin %}
                       <span class="badge badge-warning">مدير</span>
                     {% else %}
-                      <span class="badge badge-info">{{ user.role }}</span>
+                      <span class="badge badge-info">{{ user.role.name_ar if user.role else '-' }}</span>
                     {% endif %}
                   </td>
                 </tr>
+                {% if current_user.is_owner %}
+                <tr>
+                  <th>المستأجر</th>
+                  <td>{{ user.tenant.name_ar if user.tenant else '—' }}</td>
+                </tr>
+                {% endif %}
                 <tr>
                   <th>الحالة</th>
                   <td>
@@ -72,20 +83,69 @@
                   <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</td>
                 </tr>
                 <tr>
+                  <th>آخر دخول</th>
+                  <td>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else '-' }}</td>
+                </tr>
+                <tr>
                   <th>آخر ظهور</th>
                   <td>{{ user.last_seen.strftime('%Y-%m-%d %H:%M') if user.last_seen else '-' }}</td>
                 </tr>
                 <tr>
                   <th>عدد المبيعات</th>
-                  <td>{{ user.sales.count() if user.sales else 0 }}</td>
+                  <td>{{ stats.sales_count }}</td>
                 </tr>
+                <tr>
+                  <th>إجمالي المبيعات</th>
+                  <td>{{ "{:,.2f}".format(stats.sales_total) }}</td>
+                </tr>
+                <tr>
+                  <th>إجمالي المدفوعات</th>
+                  <td>{{ "{:,.2f}".format(stats.payments_total) }}</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+
+          <div class="row mt-3">
+            <div class="col-md-6">
+              <h5>أحدث المبيعات</h5>
+              <table class="table table-bordered table-striped">
+                <thead><tr><th>الرقم</th><th>الإجمالي</th><th>الحالة</th></tr></thead>
+                <tbody>
+                  {% for s in recent_sales %}
+                  <tr>
+                    <td>{{ s.sale_number }}</td>
+                    <td>{{ "{:,.2f}".format(s.total_amount or 0) }}</td>
+                    <td>{{ s.status }}</td>
+                  </tr>
+                  {% else %}
+                  <tr><td colspan="3" class="text-center text-muted">لا مبيعات.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div class="col-md-6">
+              <h5>أحدث سجل التدقيق ({{ stats.audits_count }})</h5>
+              <table class="table table-bordered table-striped">
+                <thead><tr><th>الإجراء</th><th>الجدول</th><th>التاريخ</th></tr></thead>
+                <tbody>
+                  {% for a in recent_audits %}
+                  <tr>
+                    <td>{{ a.action }}</td>
+                    <td>{{ a.table_name or '-' }}</td>
+                    <td>{{ a.created_at.strftime('%Y-%m-%d %H:%M') if a.created_at else '-' }}</td>
+                  </tr>
+                  {% else %}
+                  <tr><td colspan="3" class="text-center text-muted">لا سجلات.</td></tr>
+                  {% endfor %}
+                </tbody>
               </table>
             </div>
           </div>
         </div>
         <div class="card-footer">
           {% if current_user.is_admin %}
-          <button type="button" class="btn btn-danger" 
+          <button type="button" class="btn btn-danger"
                   onclick="deleteItem('users', {{ user.id }}, {{ user.username|tojson }}, {{ url_for('users.index')|tojson }})">
             <i class="fas fa-trash"></i> حذف
           </button>
@@ -96,4 +156,3 @@
   </div>
 </div>
 {% endblock %}
-

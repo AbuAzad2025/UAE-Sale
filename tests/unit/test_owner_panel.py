@@ -53,11 +53,13 @@ def _login(client, user):
 
 
 # Safe read-only owner pages: must render 200 for the owner.
+# NOTE: user management lives at the unified /users/* stack (the legacy
+# /owner/users-list was merged away) — covered via '/users/' below.
 OWNER_READ_PAGES = [
     '/owner/dashboard',
     '/owner/system-stats',
     '/owner/audit-logs',
-    '/owner/users-list',
+    '/users/',
     '/owner/roles-permissions',
     '/owner/financial-overview',
     '/owner/database-tools',

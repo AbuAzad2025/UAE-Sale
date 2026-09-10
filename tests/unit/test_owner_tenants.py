@@ -241,3 +241,139 @@ class TestTenantIsolationRegression:
         # Unscoped (owner) context still sees everything.
         assert Customer.query.filter(
             Customer.name.in_(['Iso A', 'Iso B'])).count() == 2
+
+
+class TestTenantUserProvisioning:
+    """Provisioning through the unified /users/create stack.
+
+    The legacy /owner/tenants/<id>/users/new endpoint was merged away:
+    owners pre-scope via ?tenant_id= (locked banner), everyone else is
+    forced to their own tenant server-side.
+    """
+    def _role(self):
+        from models import Role
+        role = Role.query.filter_by(slug='manager').first()
+        if role is None:
+            role = Role(name='Manager', name_ar='مدير', slug='manager',
+                        is_active=True)
+            _db.session.add(role)
+            _db.session.commit()
+        return role
+
+    def _tenant(self, client, owner_user, slug='u-tenant', name_en='UTenant'):
+        client.post('/owner/tenants/new', data=_tenant_payload(
+            slug=slug, name_en=name_en))
+        return Tenant.query.filter_by(slug=slug).first()
+
+    def _payload(self, role_id, username='tenant_admin'):
+        return {'username': username, 'email': f'{username}@t.co',
+                'full_name': 'Tenant Admin', 'full_name_ar': 'مدير الفرع',
+                'phone': '', 'role_id': str(role_id),
+                'password': 'Str0ng!Pass#9z', 'is_active': '1'}
+
+    def test_owner_creates_tenant_user(self, client, owner_user):
+        _owner_login(client, owner_user)
+        role = self._role()
+        t = self._tenant(client, owner_user)
+        resp = client.post(f'/users/create?tenant_id={t.id}',
+                           data=self._payload(role.id),
+                           follow_redirects=False)
+        assert resp.status_code == 302
+        assert resp.headers['Location'].endswith(f'/owner/tenants/{t.id}')
+        u = User.query.filter_by(username='tenant_admin').first()
+        assert u is not None
+        assert u.tenant_id == t.id
+        assert u.is_owner is False
+        assert u.check_password('Str0ng!Pass#9z')
+
+    def test_locked_banner_shown(self, client, owner_user):
+        _owner_login(client, owner_user)
+        t = self._tenant(client, owner_user)
+        html = client.get(f'/users/create?tenant_id={t.id}') \
+            .get_data(as_text=True)
+        assert t.slug in html
+
+    def test_body_tenant_id_ignored_when_locked(self, client, owner_user):
+        _owner_login(client, owner_user)
+        role = self._role()
+        t = self._tenant(client, owner_user)
+        other = self._tenant(client, owner_user, slug='u-other', name_en='UOther')
+        payload = self._payload(role.id, username='sneaky')
+        payload['tenant_id'] = str(other.id)  # tampering attempt
+        client.post(f'/users/create?tenant_id={t.id}', data=payload)
+        u = User.query.filter_by(username='sneaky').first()
+        assert u is not None
+        assert u.tenant_id == t.id
+
+    def test_max_users_enforced(self, client, owner_user):
+        _owner_login(client, owner_user)
+        role = self._role()
+        t = self._tenant(client, owner_user)
+        t.max_users = 1
+        _db.session.commit()
+        client.post(f'/users/create?tenant_id={t.id}',
+                    data=self._payload(role.id, username='first_one'))
+        assert User.query.filter_by(username='first_one').first() is not None
+        client.post(f'/users/create?tenant_id={t.id}',
+                    data=self._payload(role.id, username='second_one'))
+        assert User.query.filter_by(username='second_one').first() is None
+
+    def test_duplicate_username_rejected(self, client, owner_user):
+        _owner_login(client, owner_user)
+        role = self._role()
+        t = self._tenant(client, owner_user)
+        client.post(f'/users/create?tenant_id={t.id}',
+                    data=self._payload(role.id))
+        before = User.query.count()
+        resp = client.post(f'/users/create?tenant_id={t.id}',
+                           data=self._payload(role.id))
+        assert resp.status_code == 200
+        assert User.query.count() == before
+
+    def test_suspended_tenant_blocked(self, client, owner_user):
+        _owner_login(client, owner_user)
+        role = self._role()
+        t = self._tenant(client, owner_user)
+        t.is_active = False
+        t.is_suspended = True
+        _db.session.commit()
+        client.post(f'/users/create?tenant_id={t.id}',
+                    data=self._payload(role.id, username='ghost'))
+        assert User.query.filter_by(username='ghost').first() is None
+
+    def test_seller_cannot_provision(self, client, seller_user):
+        _login(client, 'testseller', 'SellerPass123!')
+        resp = client.post('/users/create', data={})
+        assert resp.status_code == 403
+
+
+class TestTenantLookups:
+    def test_new_form_has_constant_dropdowns(self, client, owner_user):
+        _owner_login(client, owner_user)
+        resp = client.get('/owner/tenants/new')
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        for name in ('business_type', 'industry', 'city', 'country'):
+            assert f'name="{name}"' in html
+        assert 'batteries' in html
+        assert 'Dubai' in html
+
+    def test_create_with_lookup_codes(self, client, owner_user):
+        _owner_login(client, owner_user)
+        payload = _tenant_payload(slug='lookup-t', name_en='LookupT')
+        payload.update({'business_type': 'batteries', 'industry': 'retail_trade',
+                        'city': 'Dubai', 'country': 'UAE'})
+        resp = client.post('/owner/tenants/new', data=payload,
+                           follow_redirects=False)
+        assert resp.status_code == 302
+        t = Tenant.query.filter_by(slug='lookup-t').first()
+        assert (t.business_type, t.industry, t.city, t.country) == (
+            'batteries', 'retail_trade', 'Dubai', 'UAE')
+
+    def test_company_info_uses_constant_dropdowns(self, client, owner_user):
+        _owner_login(client, owner_user)
+        resp = client.get('/owner/company-info')
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        assert 'batteries' in html
+        assert 'name="city"' in html

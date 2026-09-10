@@ -22,6 +22,33 @@ from models.tenant_scope import set_current_tenant_id, clear_current_tenant_id
 
 # ── Fixtures ────────────────────────────────────────────────────────────────
 
+import os as _os
+
+_IS_PG = _os.environ.get('DATABASE_URL', '').startswith('postgresql')
+
+
+@pytest.fixture(scope='function', autouse=True)
+def _seed_numeric_tenants(db):
+    """Portability: legacy fixtures reference raw tenant_id=1/9999.
+
+    SQLite ignores the FK so the rows were never needed; PostgreSQL
+    enforces it. Seed the referenced rows (by exact id) so the same
+    tests run green on both backends. No test asserts tenant absence.
+    """
+    from models import Tenant
+    for tid, slug in ((1, 'seed-one'), (9999, 'seed-other')):
+        if Tenant.query.get(tid) is None:
+            db.session.add(Tenant(id=tid, name=f'Seed {tid}',
+                                  name_ar=f'بذرة {tid}', slug=slug,
+                                  business_type='garage'))
+    db.session.commit()
+    if _IS_PG:
+        db.session.execute(db.text(
+            "SELECT setval('tenants_id_seq', "
+            "(SELECT MAX(id) FROM tenants))"))
+        db.session.commit()
+
+
 @pytest.fixture(scope='function')
 def all_permissions(db):
     """Ensure all 20 permissions exist and return them."""
@@ -826,7 +853,7 @@ class TestMasterKeyScoping:
 
     def test_owner_can_manage_users(self, client, owner_user):
         _login(client, owner_user)
-        resp = client.get('/owner/users-list')
+        resp = client.get('/users/')
         assert resp.status_code == 200
 
     def test_owner_bypasses_tenant_filter(self, client, owner_user, db):

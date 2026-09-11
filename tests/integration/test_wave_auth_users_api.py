@@ -211,17 +211,21 @@ class TestAuthPaymentEndpoints:
         assert len(kwargs['crypto_currency']) <= 10
 
     def test_payment_create_service_error_passthrough(self, monkeypatch, client):
+        # SECURITY: upstream/gateway errors must be REDACTED, never echoed
+        # to the client. The generic message is returned instead.
         _patch_np(monkeypatch, create_payment={'success': False, 'error': 'gateway down'})
         resp = client.post('/auth/payment/create', json={'amount': 9})
         assert resp.status_code == 400
-        assert resp.get_json()['error'] == 'gateway down'
+        assert 'فشلت عملية الدفع' in resp.get_json()['error']
+        assert 'gateway down' not in resp.get_json()['error']
 
     def test_payment_create_service_raises(self, monkeypatch, client):
         svc = _patch_np(monkeypatch)
         svc.create_payment.side_effect = RuntimeError('boom')
         resp = client.post('/auth/payment/create', json={'amount': 9})
         assert resp.status_code == 500
-        assert 'خطأ في إنشاء الدفعة' in resp.get_json()['error']
+        assert 'إنشاء الدفعة' in resp.get_json()['error']
+        assert 'boom' not in resp.get_json()['error']
 
     @pytest.mark.parametrize('result,status', [
         ({'success': True, 'data': {'s': 'finished'}}, 200),
@@ -289,7 +293,8 @@ class TestAuthPaymentEndpoints:
         resp = client.post('/auth/payment/callback', headers={'x-nowpayments-sig': 'x'},
                            json={'a': 1})
         assert resp.status_code == 500
-        assert 'خطأ في معالجة callback' in resp.get_json()['error']
+        assert 'معالجة الدفعة' in resp.get_json()['error']
+        assert 'bad json' not in resp.get_json()['error']
 
     @pytest.mark.parametrize('query,status', [('amount=abc', 400), ('amount=zzz', 400)])
     def test_estimate_unparseable_amount(self, monkeypatch, client, query, status):

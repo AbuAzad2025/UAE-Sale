@@ -981,7 +981,7 @@
 <script defer src="{{ url_for('static', filename='js/notifications.js') }}"></script>
 <script defer src="{{ url_for('static', filename='js/keyboard-shortcuts.js') }}"></script>
 <script defer src="{{ url_for('static', filename='js/dark-mode.js') }}"></script>
-<script defer src="{{ url_for('static', filename='js/performance.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/performance.js') }}?v=20260911-fix-aborted"></script>
 <script defer src="{{ url_for('static', filename='js/smart-print.js') }}"></script>
 {% block extra_js %}{% endblock %}
 
@@ -1051,21 +1051,13 @@ $(function() {
 // Global Performance Enhancements
 (function() {
   'use strict';
-  
-  // Prefetch hover links for instant navigation
-  document.querySelectorAll('a[href^="/"]').forEach(link => {
-    link.addEventListener('mouseenter', function() {
-      const url = this.getAttribute('href');
-      if (url && !this.dataset.prefetched) {
-        const prefetch = document.createElement('link');
-        prefetch.rel = 'prefetch';
-        prefetch.href = url;
-        document.head.appendChild(prefetch);
-        this.dataset.prefetched = 'true';
-      }
-    }, { once: true, passive: true });
-  });
-  
+
+  // Inline hover prefetch has been REMOVED permanently (see the sibling
+  // comment block at the top of static/js/performance.js for why).
+  // Leaving this IIFE here because other enhancements (flash auto-hide,
+  // below) live inside it.
+  // -- v20260911 fingerprint: ensure the browser loaded this FIXED base.html.
+
   // Auto-hide flash messages with progress bar (إلا التحذيرات الدائمة)
   document.querySelectorAll('.flash-message').forEach((alert, index) => {
     // لا تخفي التحذيرات الدائمة أو alert-danger

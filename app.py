@@ -434,6 +434,61 @@ def create_app(config_class=Config):  # noqa: C901
     except Exception as e:
         app.logger.warning(f'Enhanced CLI commands not registered: {e}')
 
+    # === MANDATORY STARTUP SCHEMA VERIFICATION ===
+    # Step 1: Run alembic upgrade head to ensure all migrations are applied.
+    # This creates any missing tables before we verify them.
+    try:
+        from alembic.command import upgrade as _upgrade
+        from alembic.config import Config
+
+        cfg = Config('migrations/alembic.ini')
+        with app.app_context():
+            _upgrade(cfg, 'head')
+        app.logger.info('[OK] Alembic migrations applied — database synchronized.')
+    except Exception as e:
+        app.logger.critical(
+            'FATAL: Schema migration failed during startup — '
+            'database tables are missing or out of sync. '
+            'Application cannot run in a degraded state. Error: %s', e
+        )
+        raise
+
+    # Step 2: Verify all critical tables exist after migration.
+    # Fail-fast policy: halt boot if schema is incomplete even after migrations.
+    try:
+        from sqlalchemy import inspect
+        with app.app_context():
+            inspector = inspect(db.engine)
+            existing_tables = set(inspector.get_table_names())
+
+            # Tables that MUST exist for the application to function.
+            # These are the actual table names from the SQLAlchemy models / migrations.
+            critical_tables = {
+                'users', 'roles', 'permissions', 'products',
+                'customers', 'sales', 'tenants', 'system_settings',
+                'gl_accounts', 'gl_journal_entries', 'gl_journal_lines',
+                'expenses', 'integration_settings', 'audit_logs'
+            }
+
+            missing = critical_tables - existing_tables
+            if missing:
+                app.logger.critical(
+                    'FATAL: Missing critical tables after migration: %s. '
+                    'Application cannot start without a complete schema. '
+                    'Manual intervention required.', sorted(missing)
+                )
+                raise RuntimeError(f'Missing critical tables after migration: {sorted(missing)}')
+
+            app.logger.info('[OK] Schema verification passed: %d tables present', len(existing_tables))
+    except RuntimeError:
+        raise
+    except Exception as e:
+        app.logger.critical(
+            'FATAL: Schema verification failed during startup. '
+            'Cannot proceed. Error: %s', e
+        )
+        raise
+
     app.logger.info('[OK] Application initialized successfully')
 
     return app

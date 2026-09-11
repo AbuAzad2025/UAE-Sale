@@ -46,21 +46,15 @@ $(document).ready(function() {
         }
     });
 
-    // Preload critical pages
-    function preloadPage(url) {
-        const link = document.createElement('link');
-        link.rel = 'prefetch';
-        link.href = url;
-        document.head.appendChild(link);
-    }
-
-    // Preload on hover
-    $('.nav-link, .btn').hover(function() {
-        const href = $(this).attr('href');
-        if (href && href.startsWith('/') && !href.includes('#')) {
-            preloadPage(href);
-        }
-    });
+    // NOTE: Speculative hover-based page prefetching has been REMOVED
+    // permanently (was function preloadPage() + .nav-link/.btn hover).
+    // Rationale: Flask renders HTML with Cache-Control: no-store, so all
+    // prefetch variants (<link rel=prefetch / fetch / xhr) are ABORTED by
+    // Chromium's prefetch engine the moment the uncacheable response starts,
+    // producing endless ``net::ERR_ABORTED`` console noise.  For an AdminLTE
+    // dashboard this prefetch gives 0 measurable UX benefit anyway.
+    // -- Sept 2026 (this comment block doubles as fingerprint so we can tell
+    //    the browser has definitely loaded the FIXED version of this file).
 
     // Optimize DataTables
     if ($.fn.DataTable) {

@@ -956,9 +956,9 @@
 <script>
   // Unified system lookups for JS (single source of truth: LookupService).
   window.SYSTEM_LOOKUPS = {
-    card_types: {{ lookups.card_types|tojson }},
-    cheque_statuses: {{ lookups.cheque_statuses|tojson }},
-    ewallets: {{ lookups.ewallets|tojson }}
+    card_types: {{ lookups.get('card_types', [])|tojson }},
+    cheque_statuses: {{ lookups.get('cheque_statuses', [])|tojson }},
+    ewallets: {{ lookups.get('ewallets', [])|tojson }}
   };
 </script>
 

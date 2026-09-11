@@ -74,6 +74,8 @@ def _mk_product(db, test_category, sku, active=True):
 class _FakeResponse:
     def __init__(self, payload=None):
         self._payload = payload if payload is not None else {'id': 'msg-123'}
+        self.status_code = 200
+        self.text = ''
 
     def json(self):
         return self._payload

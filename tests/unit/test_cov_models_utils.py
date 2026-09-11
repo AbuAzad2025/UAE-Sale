@@ -497,8 +497,8 @@ class TestSecretRedaction:
         with app.test_request_context('/some-page'):
             resp = app.handle_user_exception(
                 InternalServerError(f'boom password={secret}'))
-        assert resp[1] == 500
-        assert secret not in resp[0].get_data(as_text=True)
+        assert resp.status_code == 500
+        assert secret not in resp.get_data(as_text=True)
 
 
 # ---------------------------------------------------------------------------

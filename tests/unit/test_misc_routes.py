@@ -159,13 +159,13 @@ class TestGraphql:
         # (Non-view_reports roles like seller are rejected by the base
         # view_reports gate before field checks — covered above.)
         _login(client, misc_owner)
-        resp = client.post('/graphql', json={'query': '{ sales { id } }'})
+        resp = client.post('/graphql', json={'query': '{ allSales { id } }'})
         assert resp.status_code == 200
         body = resp.get_json()
-        # Owner query executes (not field-rejected): data.sales list present.
+        # Owner query executes (not field-rejected): data.allSales list present.
         assert 'data' in body
-        assert 'sales' in body['data']
-        assert isinstance(body['data']['sales'], list)
+        assert 'allSales' in body['data']
+        assert isinstance(body['data']['allSales'], list)
 
     def test_empty_body_rejected(self, client, misc_viewer):
         _login(client, misc_viewer)

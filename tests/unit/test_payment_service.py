@@ -29,6 +29,7 @@ class TestCreateReceipt:
     def test_cash_receipt_created(self, db, owner_user, test_customer, app):
         receipt = PaymentService.create_receipt({
             'customer_id': test_customer.id,
+            'user_id': owner_user.id,
             'amount': Decimal('150'),
             'currency': 'AED',
             'payment_method': 'cash',

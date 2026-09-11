@@ -2,7 +2,8 @@
 #
 # Valid entries are full fingerprints:  <commit>:<file>:<rule>:<line>
 # Legacy bare-filename entries (nowpayments_config.py, env.pythonanywhere,
-# deploy_dump.sql, check_ai_paths.py, trigger_backup.py) were removed: those
-# files were deleted or no longer contain credentials, and the working tree
-# scans clean.  If a genuine legacy secret resurfaces in history, add its
-# exact fingerprint below (after rotating the credential out of production).
+# deploy_dump.sql) were removed: those files no longer exist in the repo.
+# check_ai_paths.py was also removed as an orphaned diagnostic script.
+# The working tree scans clean; if a genuine legacy secret resurfaces in
+# history, add its exact fingerprint below (after rotating it out of
+# production).

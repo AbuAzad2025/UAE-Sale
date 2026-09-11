@@ -51,7 +51,7 @@
             <label>مزود الخدمة</label>
             <select name="sms_provider" class="form-control select2">
               <option value="" {{ 'selected' if not settings.sms_provider }}>بلا</option>
-              {% for code, meta in lookups.sms_providers %}
+              {% for code, meta in lookups.get('sms_providers', []) %}
               <option value="{{ code }}" {{ 'selected' if settings.sms_provider == code }}>{{ meta.en }}</option>
               {% endfor %}
             </select>

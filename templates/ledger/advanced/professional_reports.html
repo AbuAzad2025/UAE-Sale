@@ -208,7 +208,7 @@
       <div class="form-group mr-3">
         <label class="mr-2">نوع التقرير:</label>
       <select name="report_type" class="form-control select2">
-        {% for code, meta in lookups.professional_report_types %}
+        {% for code, meta in lookups.get('professional_report_types', []) %}
         <option value="{{ code }}">{{ meta.ar }}</option>
         {% endfor %}
       </select>

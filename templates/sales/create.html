@@ -192,7 +192,7 @@ a.btn.btn-outline-secondary span {
                   <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="العملة التي سيدفع بها العميل - الفاتورة بـ{{ base_currency_name }} دائماً (اختياري)"></i>
                 </label>
                 <select name="currency" id="currency" class="form-control select2">
-                  {% for code, meta in lookups.currencies %}
+                  {% for code, meta in lookups.get('currencies', []) %}
                   <option value="{{ code }}" {% if base_currency == code %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
                   {% endfor %}
                 </select>
@@ -305,7 +305,7 @@ a.btn.btn-outline-secondary span {
             </label>
             <select name="payment_method" id="payment_method" class="form-control select2">
               <option value="">آجل (بدون دفع)</option>
-              {% for code, meta in lookups.payment_methods %}
+              {% for code, meta in lookups.get('payment_methods', []) %}
               <option value="{{ code }}">{{ meta.ar }}</option>
               {% endfor %}
             </select>

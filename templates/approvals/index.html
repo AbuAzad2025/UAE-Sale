@@ -12,7 +12,7 @@
           <div class="form-group mr-2">
             <select name="status" class="form-control form-control-sm select2">
               <option value="">الكل</option>
-              {% for code, meta in lookups.approval_statuses %}
+              {% for code, meta in lookups.get('approval_statuses', []) %}
               <option value="{{ code }}" {% if selected_status == code %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -20,7 +20,7 @@
           <div class="form-group mr-2">
             <select name="entity_type" class="form-control form-control-sm select2">
               <option value="">الكل</option>
-              {% for code, meta in lookups.approval_entities %}
+              {% for code, meta in lookups.get('approval_entities', []) %}
               <option value="{{ code }}" {% if selected_entity == code %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
             </select>

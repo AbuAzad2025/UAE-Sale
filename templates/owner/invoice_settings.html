@@ -340,7 +340,7 @@
                   <i class="fas fa-file-invoice text-primary"></i> القالب النشط
                 </label>
                 <select class="form-control select2" name="active_template">
-                  {% for code, meta in lookups.invoice_templates %}
+                  {% for code, meta in lookups.get('invoice_templates', []) %}
                   <option value="{{ code }}" {% if settings.active_template == code %}selected{% endif %}>{{ meta.ar }} ({{ meta.en }})</option>
                   {% endfor %}
                 </select>
@@ -482,7 +482,7 @@
                   <i class="fas fa-file-alt text-info"></i> حجم الورق
                 </label>
                 <select class="form-control select2" name="paper_size">
-                  {% for code, meta in lookups.paper_sizes %}
+                  {% for code, meta in lookups.get('paper_sizes', []) %}
                   <option value="{{ code }}" {% if settings.paper_size == code %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
                   {% endfor %}
                 </select>
@@ -496,7 +496,7 @@
                   <i class="fas fa-arrows-alt-h text-warning"></i> الاتجاه
                 </label>
                 <select class="form-control select2" name="orientation">
-                  {% for code, meta in lookups.orientations %}
+                  {% for code, meta in lookups.get('orientations', []) %}
                   <option value="{{ code }}" {% if settings.orientation == code %}selected{% endif %}>{{ meta.ar }} ({{ meta.en }})</option>
                   {% endfor %}
                 </select>
@@ -510,7 +510,7 @@
                   <i class="fas fa-language text-primary"></i> اللغة الافتراضية
                 </label>
                 <select class="form-control select2" name="default_language">
-                  {% for code, meta in lookups.invoice_languages %}
+                  {% for code, meta in lookups.get('invoice_languages', []) %}
                   <option value="{{ code }}" {% if settings.default_language == code %}selected{% endif %}>{{ meta.ar }} - {{ meta.en }}</option>
                   {% endfor %}
                 </select>

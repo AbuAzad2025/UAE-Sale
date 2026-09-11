@@ -46,7 +46,7 @@
                   <label>نوع الحساب *</label>
                   {% set selected_tax_type = form_data.get('tax_type', 'customs') %}
                   <select name="tax_type" class="form-control select2" required>
-                    {% for code, meta in lookups.tax_types %}
+                    {% for code, meta in lookups.get('tax_types', []) %}
                     <option value="{{ code }}" {% if selected_tax_type == code %}selected{% endif %}>{{ meta.ar }}</option>
                     {% endfor %}
                   </select>

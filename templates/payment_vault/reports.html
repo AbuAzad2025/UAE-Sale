@@ -64,7 +64,7 @@
                     <div class="col-md-3">
                         <label>نوع التقرير</label>
                         <select name="report_type" class="form-control select2">
-                            {% for code, meta in lookups.vault_report_scopes %}
+                            {% for code, meta in lookups.get('vault_report_scopes', []) %}
                             <option value="{{ code }}">{{ meta.ar }}</option>
                             {% endfor %}
                         </select>

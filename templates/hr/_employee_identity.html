@@ -34,7 +34,7 @@
     <label>الجنس</label>
     <select name="gender" class="form-control select2">
       <option value="">— اختر —</option>
-      {% for code, meta in lookups.genders %}
+      {% for code, meta in lookups.get('genders', []) %}
       <option value="{{ code }}" {% if employee and employee.gender == code %}selected{% endif %}>{{ meta.ar }}</option>
       {% endfor %}
     </select>
@@ -51,7 +51,7 @@
     <label>الحالة الاجتماعية</label>
     <select name="marital_status" class="form-control select2">
       <option value="">— اختر —</option>
-      {% for code, meta in lookups.marital_statuses %}
+      {% for code, meta in lookups.get('marital_statuses', []) %}
       <option value="{{ code }}" {% if employee and employee.marital_status == code %}selected{% endif %}>{{ meta.ar }}</option>
       {% endfor %}
     </select>

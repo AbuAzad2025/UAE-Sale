@@ -7,7 +7,7 @@
     <div class="row">
       <div class="col-md-4"><div class="form-group"><label>العميل <span class="text-danger">*</span></label><select name="customer_id" class="form-control" required><option value="">— اختر —</option>{% for c in customers %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div></div>
       <div class="col-md-4"><div class="form-group"><label>المستودع</label><select name="warehouse_id" class="form-control"><option value="">— اختر —</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div></div>
-      <div class="col-md-2"><div class="form-group"><label>العملة</label><select name="currency" class="form-control select2">{% for code, meta in lookups.currencies %}<option value="{{ code }}" {% if code == 'AED' %}selected{% endif %}>{{ code }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-2"><div class="form-group"><label>العملة</label><select name="currency" class="form-control select2">{% for code, meta in lookups.get('currencies', []) %}<option value="{{ code }}" {% if code == 'AED' %}selected{% endif %}>{{ code }}</option>{% endfor %}</select></div></div>
       <div class="col-md-2"><div class="form-group"><label>صالح (أيام)</label><input type="number" name="valid_days" class="form-control" value="30"></div></div>
       <div class="col-md-3"><div class="form-group"><label>الخصم (د.إ)</label><input type="number" name="discount_amount" class="form-control" step="0.01" value="0"></div></div>
       <div class="col-md-3"><div class="form-group"><label>الشحن (د.إ)</label><input type="number" name="shipping_cost" class="form-control" step="0.01" value="0"></div></div>

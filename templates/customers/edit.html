@@ -43,7 +43,7 @@
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عادي: سعر التجزئة | تاجر: خصم 10% | شريك: خصم 15%"></i>
             </label>
             <select name="customer_type" class="form-control select2" required>
-              {% for code, meta in lookups.customer_types %}
+              {% for code, meta in lookups.get('customer_types', []) %}
               <option value="{{ code }}" {% if customer.customer_type == code %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -56,7 +56,7 @@
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="حالة تفعيل العميل"></i>
             </label>
             <select name="is_active" class="form-control select2">
-              {% for code, meta in lookups.active_flags %}
+              {% for code, meta in lookups.get('active_flags', []) %}
               <option value="{{ code }}" {% if (customer.is_active and code == '1') or (not customer.is_active and code == '0') %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -91,7 +91,7 @@
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="العملة المفضلة (افتراضي: ILS)"></i>
             </label>
             <select name="default_currency" class="form-control select2">
-              {% for code, meta in lookups.currencies %}
+              {% for code, meta in lookups.get('currencies', []) %}
               <option value="{{ code }}" {% if customer.default_currency == code %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
             </select>

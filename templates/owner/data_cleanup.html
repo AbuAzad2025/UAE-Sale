@@ -78,7 +78,7 @@
             <label>نوع البيانات للحذف</label>
               <select name="cleanup_type" class="form-control select2" required>
                 <option value="">اختر...</option>
-                {% for code, meta in lookups.cleanup_scopes %}
+                {% for code, meta in lookups.get('cleanup_scopes', []) %}
                 <option value="{{ code }}">{{ meta.ar }}</option>
                 {% endfor %}
               </select>

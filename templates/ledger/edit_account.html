@@ -29,7 +29,7 @@
                 <div class="form-group">
                   <label>نوع الحساب *</label>
                   <select name="type" class="form-control select2" required>
-                    {% for code, meta in lookups.account_types %}
+                    {% for code, meta in lookups.get('account_types', []) %}
                     <option value="{{ code }}" {% if account.type == code %}selected{% endif %}>{{ meta.ar }}</option>
                     {% endfor %}
                   </select>

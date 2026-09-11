@@ -118,7 +118,7 @@
                                     <div class="form-group">
                                         <label><i class="fas fa-cog mr-2"></i>وضع PayPal</label>
                                         <select class="form-control select2" name="paypal_mode">
-                                            {% for code, meta in lookups.paypal_modes %}
+                                            {% for code, meta in lookups.get('paypal_modes', []) %}
                                             <option value="{{ code }}" {% if vault.paypal_mode == code %}selected{% endif %}>{{ meta.en }} ({{ meta.ar }})</option>
                                             {% endfor %}
                                         </select>

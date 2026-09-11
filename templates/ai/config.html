@@ -73,7 +73,7 @@
           <div class="form-group">
             <label>نوع المزود</label>
             <select name="provider" id="other_provider" class="form-control select2">
-              {% for code, meta in lookups.ai_providers %}
+              {% for code, meta in lookups.get('ai_providers', []) %}
               <option value="{{ code }}">{{ meta.ar }} ({{ meta.en }})</option>
               {% endfor %}
             </select>

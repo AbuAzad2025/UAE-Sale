@@ -73,7 +73,7 @@
           <div class="form-group">
             <label><i class="fas fa-sync"></i> التكرار:</label>
             <select name="frequency" class="form-control select2" required>
-              {% for code, meta in lookups.backup_frequencies %}
+              {% for code, meta in lookups.get('backup_frequencies', []) %}
               <option value="{{ code }}" {% if settings.frequency == code %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
             </select>

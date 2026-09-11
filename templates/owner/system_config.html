@@ -172,7 +172,7 @@
               <div class="form-group">
                 <label>العملة الافتراضية</label>
                 <select name="default_currency" class="form-control select2">
-                  {% for code, meta in lookups.currencies %}
+                  {% for code, meta in lookups.get('currencies', []) %}
                   <option value="{{ code }}" {{ 'selected' if settings.default_currency == code }}>{{ code }} - {{ meta.ar }}</option>
                   {% endfor %}
                 </select>
@@ -182,7 +182,7 @@
               <div class="form-group">
                 <label>اللغة الافتراضية</label>
                 <select name="default_language" class="form-control select2">
-                  {% for code, meta in lookups.languages %}
+                  {% for code, meta in lookups.get('languages', []) %}
                   <option value="{{ code }}" {{ 'selected' if settings.default_language == code }}>{{ meta.ar }}</option>
                   {% endfor %}
                 </select>
@@ -192,7 +192,7 @@
               <div class="form-group">
                 <label>المنطقة الزمنية</label>
                 <select name="timezone" class="form-control select2">
-                  {% for code, meta in lookups.timezones %}
+                  {% for code, meta in lookups.get('timezones', []) %}
                   <option value="{{ code }}" {{ 'selected' if settings.timezone == code }}>{{ code }} ({{ meta.en }})</option>
                   {% endfor %}
                   {% if settings.timezone and settings.timezone not in lookup_codes.timezones %}

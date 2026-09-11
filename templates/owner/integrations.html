@@ -209,7 +209,7 @@
                                     </label>
                                     <select class="form-control select2" name="smtp_encryption">
                                         {% set encryption = integrations.email.config.smtp_encryption or 'tls' %}
-                                        {% for code, meta in lookups.smtp_encryptions %}
+                                        {% for code, meta in lookups.get('smtp_encryptions', []) %}
                                         <option value="{{ code }}" {{ 'selected' if encryption == code }}>{{ meta.en }} - {{ meta.ar }}</option>
                                         {% endfor %}
                                     </select>
@@ -359,7 +359,7 @@
                                     </label>
                                     {% set provider = integrations.currency_api.config.api_provider or 'exchangerate' %}
                                     <select class="form-control select2" name="api_provider">
-                                        {% for code, meta in lookups.currency_providers %}
+                                        {% for code, meta in lookups.get('currency_providers', []) %}
                                         <option value="{{ code }}" {{ 'selected' if provider == code }}>{{ meta.en }}</option>
                                         {% endfor %}
                                     </select>
@@ -386,7 +386,7 @@
                                     </label>
                                     {% set base_currency = integrations.currency_api.config.base_currency or 'USD' %}
                                     <select class="form-control select2" name="base_currency">
-                                        {% for code, meta in lookups.currencies %}
+                                        {% for code, meta in lookups.get('currencies', []) %}
                                         <option value="{{ code }}" {{ 'selected' if base_currency == code }}>{{ code }} - {{ meta.ar }}</option>
                                         {% endfor %}
                                     </select>
@@ -401,7 +401,7 @@
                                     </label>
                                     {% set freq = integrations.currency_api.config.update_frequency or 'daily' %}
                                     <select class="form-control select2" name="update_frequency">
-                                        {% for code, meta in lookups.update_frequencies %}
+                                        {% for code, meta in lookups.get('update_frequencies', []) %}
                                         <option value="{{ code }}" {{ 'selected' if freq == code }}>{{ meta.ar }}</option>
                                         {% endfor %}
                                     </select>

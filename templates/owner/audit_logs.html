@@ -121,7 +121,7 @@
               </label>
               <select name="action" class="form-control select2">
                 <option value="">بلا</option>
-                {% for code, meta in lookups.audit_actions %}
+                {% for code, meta in lookups.get('audit_actions', []) %}
                 <option value="{{ code }}" {{ 'selected' if request.args.get('action') == code }}>{{ meta.ar }}</option>
                 {% endfor %}
               </select>

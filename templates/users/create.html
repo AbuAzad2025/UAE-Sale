@@ -193,8 +193,8 @@
                 <i class="fas fa-key text-danger"></i> كلمة المرور
                 <span class="text-danger">*</span>
               </label>
-              <input type="password" name="password" id="password" class="form-control" placeholder="••••••••" required minlength="6">
-              <small class="form-text text-muted">6 أحرف على الأقل</small>
+              <input type="password" name="password" id="password" class="form-control" placeholder="••••••••" required minlength="10">
+              <small class="form-text text-muted">10 أحرف على الأقل: حرف كبير، حرف صغير، رقم، ورمز خاص</small>
             </div>
           </div>
 
@@ -321,6 +321,19 @@ $(function () {
     const password = $(this).val();
     const strength = getPasswordStrength(password);
     showPasswordStrength(strength);
+    const messageDiv = $('#password-match-message');
+    const req = [];
+    if (password.length >= 10) req.push('<i class="fas fa-check text-success"></i> 10 أحرف+');
+    else req.push('<i class="fas fa-times text-danger"></i> 10 أحرف+');
+    if (/[A-Z]/.test(password)) req.push('<i class="fas fa-check text-success"></i> حرف كبير');
+    else req.push('<i class="fas fa-times text-danger"></i> حرف كبير');
+    if (/[a-z]/.test(password)) req.push('<i class="fas fa-check text-success"></i> حرف صغير');
+    else req.push('<i class="fas fa-times text-danger"></i> حرف صغير');
+    if (/\d/.test(password)) req.push('<i class="fas fa-check text-success"></i> رقم');
+    else req.push('<i class="fas fa-times text-danger"></i> رقم');
+    if (/[^a-zA-Z\d]/.test(password)) req.push('<i class="fas fa-check text-success"></i> رمز خاص');
+    else req.push('<i class="fas fa-times text-danger"></i> رمز خاص');
+    messageDiv.html('<div class="password-req small mt-1">' + req.join(' &bull; ') + '</div>');
   });
   
   // Password match validation
@@ -363,12 +376,12 @@ $(function () {
       return false;
     }
     
-    if (password.length < 6) {
+    if (password.length < 10) {
       e.preventDefault();
       Swal.fire({
         icon: 'error',
         title: 'كلمة مرور ضعيفة',
-        text: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.',
+        text: 'كلمة المرور يجب أن تكون 10 أحرف على الأقل، مع حرف كبير وصغير ورقم ورمز خاص.',
         confirmButtonText: 'حسناً'
       });
       $('#password').focus();

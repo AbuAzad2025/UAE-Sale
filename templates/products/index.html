@@ -262,7 +262,7 @@
             <label for="adjustmentType">نوع التعديل</label>
             <select id="adjustmentType" name="adjustment_type" class="form-control select2" required autocomplete="off">
               <option value="" selected>بلا</option>
-              {% for code, meta in lookups.stock_adjustment_types %}
+              {% for code, meta in lookups.get('stock_adjustment_types', []) %}
               <option value="{{ code }}">{{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -275,7 +275,7 @@
             <label for="adjustmentReason">السبب</label>
             <select id="adjustmentReason" name="adjustment_reason" class="form-control select2" required autocomplete="off">
               <option value="" selected>بلا</option>
-              {% for code, meta in lookups.stock_adjustment_reasons %}
+              {% for code, meta in lookups.get('stock_adjustment_reasons', []) %}
               <option value="{{ code }}">{{ meta.ar }}</option>
               {% endfor %}
             </select>

@@ -55,7 +55,7 @@
               <div class="form-group">
                 <label>الخدمة</label>
                 <select name="service" class="form-control select2" required>
-                  {% for code, meta in lookups.api_key_services %}
+                  {% for code, meta in lookups.get('api_key_services', []) %}
                   <option value="{{ code }}">{{ meta.ar }} ({{ meta.en }})</option>
                   {% endfor %}
                 </select>

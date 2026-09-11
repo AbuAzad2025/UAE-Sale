@@ -37,7 +37,7 @@
             {% set selected_type = form_data.get('type', '') %}
             <select name="type" class="form-control select2" required>
               <option value="" {% if not selected_type %}selected{% endif %}>بلا</option>
-              {% for code, meta in lookups.account_types %}
+              {% for code, meta in lookups.get('account_types', []) %}
               <option value="{{ code }}" {% if selected_type == code %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -85,7 +85,7 @@
             <label>العملة</label>
             {% set selected_currency = form_data.get('currency', 'AED') %}
             <select name="currency" class="form-control select2">
-              {% for code, meta in lookups.currencies %}
+              {% for code, meta in lookups.get('currencies', []) %}
               <option value="{{ code }}" {% if selected_currency == code %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
               {% endfor %}
             </select>

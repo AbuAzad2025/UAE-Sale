@@ -47,7 +47,7 @@
           <div class="form-group">
             <label>العملة الافتراضية</label>
             <select name="default_currency" class="form-control select2">
-              {% for code, meta in lookups.currencies %}
+              {% for code, meta in lookups.get('currencies', []) %}
               <option value="{{ code }}" {{ 'selected' if settings.default_currency == code }}>{{ code }} - {{ meta.ar }}</option>
               {% endfor %}
             </select>

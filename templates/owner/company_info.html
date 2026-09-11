@@ -133,7 +133,7 @@
               <div class="form-group">
                 <label>نوع النشاط</label>
                 <select name="business_type" class="form-control compact-control select-center select2">
-                  {% for code, meta in lookups.business_types %}
+                  {% for code, meta in lookups.get('business_types', []) %}
                   <option value="{{ code }}" {{ 'selected' if tenant.business_type == code }}>{{ meta.ar }}</option>
                   {% endfor %}
                   {% if tenant.business_type and tenant.business_type not in lookup_codes.business_types %}
@@ -146,7 +146,7 @@
               <div class="form-group">
                 <label>الصناعة</label>
                 <select name="industry" class="form-control compact-control select-center select2">
-                  {% for code, meta in lookups.industries %}
+                  {% for code, meta in lookups.get('industries', []) %}
                   <option value="{{ code }}" {{ 'selected' if tenant.industry == code }}>{{ meta.ar }}</option>
                   {% endfor %}
                   {% if tenant.industry and tenant.industry not in lookup_codes.industries %}
@@ -185,7 +185,7 @@
                 <label>{{ t('City') }}</label>
                 <select name="city" class="form-control compact-control select-center select2">
                   <option value="">—</option>
-                  {% for code, meta in lookups.cities %}
+                  {% for code, meta in lookups.get('cities', []) %}
                   <option value="{{ code }}" {{ 'selected' if tenant.city == code }}>{{ meta.ar }}</option>
                   {% endfor %}
                   {% if tenant.city and tenant.city not in lookup_codes.cities %}
@@ -198,7 +198,7 @@
               <div class="form-group">
                 <label>{{ t('Country') }}</label>
                 <select name="country" class="form-control compact-control select-center select2">
-                  {% for code, meta in lookups.countries %}
+                  {% for code, meta in lookups.get('countries', []) %}
                   <option value="{{ code }}" {{ 'selected' if tenant.country == code }}>{{ meta.ar }}</option>
                   {% endfor %}
                   {% if tenant.country and tenant.country not in lookup_codes.countries %}

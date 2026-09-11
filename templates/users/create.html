@@ -244,7 +244,7 @@
               </label>
               {% set selected_active = form_data.get('is_active', '1') %}
               <select name="is_active" class="form-control select2">
-                {% for code, meta in lookups.active_flags %}
+                {% for code, meta in lookups.get('active_flags', []) %}
                 <option value="{{ code }}" {% if (selected_active != '0' and code == '1') or (selected_active == '0' and code == '0') %}selected{% endif %}>{{ meta.ar }}</option>
                 {% endfor %}
               </select>

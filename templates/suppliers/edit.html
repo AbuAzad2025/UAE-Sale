@@ -127,7 +127,7 @@
             <label>نوع المورد</label>
             <select name="supplier_type" class="form-control select2">
               <option value="" {% if not supplier.supplier_type %}selected{% endif %}>بلا</option>
-              {% for code, meta in lookups.supplier_types %}
+              {% for code, meta in lookups.get('supplier_types', []) %}
               <option value="{{ code }}" {% if supplier.supplier_type == code %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -139,7 +139,7 @@
             <label>التقييم</label>
             <select name="rating" class="form-control select2">
               <option value="" {% if supplier.rating is none %}selected{% endif %}>بلا</option>
-              {% for code, meta in lookups.supplier_ratings %}
+              {% for code, meta in lookups.get('supplier_ratings', []) %}
               <option value="{{ code }}" {% if supplier.rating|string == code %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -150,7 +150,7 @@
           <div class="form-group">
             <label>العملة المفضلة</label>
             <select name="preferred_currency" class="form-control select2">
-              {% for code, meta in lookups.currencies %}
+              {% for code, meta in lookups.get('currencies', []) %}
               <option value="{{ code }}" {% if supplier.preferred_currency == code %}selected{% endif %}>{{ code }} - {{ meta.ar }}</option>
               {% endfor %}
             </select>

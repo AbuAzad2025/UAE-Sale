@@ -64,7 +64,7 @@
               <div class="form-group">
                 <label>نوع العقد</label>
                 <select name="contract_type" class="form-control select2">
-                  {% for code, meta in lookups.contract_types %}
+                  {% for code, meta in lookups.get('contract_types', []) %}
                   <option value="{{ code }}">{{ meta.ar }}</option>
                   {% endfor %}
                 </select>
@@ -89,7 +89,7 @@
               <div class="form-group">
                 <label>العملة</label>
                 <select name="salary_currency" class="form-control select2">
-                  {% for code, meta in lookups.currencies %}
+                  {% for code, meta in lookups.get('currencies', []) %}
                   <option value="{{ code }}" {% if code == 'ILS' %}selected{% endif %}>{{ code }} - {{ meta.ar }}</option>
                   {% endfor %}
                 </select>
@@ -99,7 +99,7 @@
               <div class="form-group">
                 <label>دورة الدفع</label>
                 <select name="payment_frequency" class="form-control select2">
-                  {% for code, meta in lookups.payment_frequencies %}
+                  {% for code, meta in lookups.get('payment_frequencies', []) %}
                   <option value="{{ code }}">{{ meta.ar }}</option>
                   {% endfor %}
                 </select>

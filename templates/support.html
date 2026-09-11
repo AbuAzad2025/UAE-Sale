@@ -890,7 +890,7 @@
                     <i class="fab fa-bitcoin mr-2" style="color: #f7931a;"></i>اختر العملة الرقمية
                 </label>
                 <select class="form-control select2" id="cryptoType" style="font-size: 1.05rem; padding: 15px; border: 2px solid #dee2e6;">
-                    {% for code, meta in lookups.crypto_types %}
+                    {% for code, meta in lookups.get('crypto_types', []) %}
                     <option value="{{ code }}">{{ meta.en }} ({{ code }})</option>
                     {% endfor %}
                 </select>

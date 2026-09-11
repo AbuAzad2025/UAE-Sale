@@ -88,7 +88,7 @@
                     <label>الحالة</label>
                     <select name="status" class="form-control select2" onchange="this.form.submit()">
                         <option value="">بلا</option>
-                        {% for code, meta in lookups.donation_statuses %}
+                        {% for code, meta in lookups.get('donation_statuses', []) %}
                         <option value="{{ code }}" {% if request.args.get('status') == code %}selected{% endif %}>{{ meta.ar }}</option>
                         {% endfor %}
                     </select>

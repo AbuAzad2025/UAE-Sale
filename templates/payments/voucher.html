@@ -80,7 +80,7 @@
           <div class="form-group">
             <label class="font-weight-bold">نوع الجهة</label>
             <select class="form-control select2" name="party_type" id="party_type" onchange="updatePartyList()">
-              {% for code, meta in lookups.party_types %}
+              {% for code, meta in lookups.get('party_types', []) %}
               <option value="{{ code }}">{{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -113,7 +113,7 @@
           <div class="form-group">
             <label class="font-weight-bold">طريقة الدفع</label>
             <select class="form-control select2" name="payment_method" id="payment_method" onchange="toggleChequeFields()">
-              {% for code, meta in lookups.payment_methods %}
+              {% for code, meta in lookups.get('payment_methods', []) %}
               <option value="{{ code }}">{{ meta.ar }}</option>
               {% endfor %}
             </select>

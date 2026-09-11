@@ -399,7 +399,7 @@ table.statement-table thead th {
     <div class="form-group mx-1 mb-2">
       <label for="transaction_type" class="sr-only">نوع الحركة</label>
       <select id="transaction_type" name="transaction_type" class="form-control form-control-sm select2">
-        {% for code, meta in lookups.statement_filters %}
+        {% for code, meta in lookups.get('statement_filters', []) %}
         <option value="{{ code }}" {% if active_filters.transaction_type == code %}selected{% endif %}>{{ meta.ar }}</option>
         {% endfor %}
       </select>

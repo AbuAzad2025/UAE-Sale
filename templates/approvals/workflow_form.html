@@ -30,7 +30,7 @@
             <div class="form-group col-md-4">
               <label>نوع الكيان <span class="text-danger">*</span></label>
               <select name="entity_type" class="form-control select2" required>
-                {% for code, meta in lookups.approval_entities %}
+                {% for code, meta in lookups.get('approval_entities', []) %}
                 <option value="{{ code }}" {% if workflow and workflow.entity_type == code %}selected{% endif %}>{{ meta.ar }}</option>
                 {% endfor %}
               </select>

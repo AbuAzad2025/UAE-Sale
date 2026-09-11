@@ -46,7 +46,7 @@
               <div class="form-group">
                 <label>نوع العقد</label>
                 <select name="contract_type" class="form-control select2">
-                  {% for code, meta in lookups.contract_types %}
+                  {% for code, meta in lookups.get('contract_types', []) %}
                   <option value="{{ code }}" {% if employee.contract_type == code %}selected{% endif %}>{{ meta.ar }}</option>
                   {% endfor %}
                 </select>
@@ -56,7 +56,7 @@
               <div class="form-group">
                 <label>الحالة</label>
                 <select name="employment_status" class="form-control select2">
-                  {% for code, meta in lookups.employment_statuses %}
+                  {% for code, meta in lookups.get('employment_statuses', []) %}
                   <option value="{{ code }}" {% if employee.employment_status == code %}selected{% endif %}>{{ meta.ar }}</option>
                   {% endfor %}
                 </select>

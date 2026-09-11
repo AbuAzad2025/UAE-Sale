@@ -25,7 +25,7 @@
           <div class="form-group">
             <label>العملة الأساسية:</label>
             <select class="form-control">
-              {% for code, meta in lookups.currencies %}
+              {% for code, meta in lookups.get('currencies', []) %}
               <option value="{{ code }}" {% if code == 'AED' %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
               {% endfor %}
             </select>
@@ -34,7 +34,7 @@
           <div class="form-group">
             <label>السنة المالية:</label>
             <select class="form-control">
-              {% for code, meta in lookups.fiscal_years %}
+              {% for code, meta in lookups.get('fiscal_years', []) %}
               <option value="{{ code }}">{{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -43,7 +43,7 @@
           <div class="form-group">
             <label>نظام الترقيم:</label>
             <select class="form-control">
-              {% for code, meta in lookups.numbering_modes %}
+              {% for code, meta in lookups.get('numbering_modes', []) %}
               <option value="{{ code }}">{{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -52,7 +52,7 @@
           <div class="form-group">
             <label>عدد الأرقام العشرية:</label>
             <select class="form-control">
-              {% for code, meta in lookups.decimal_places %}
+              {% for code, meta in lookups.get('decimal_places', []) %}
               <option value="{{ code }}" {% if code == '2' %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -79,7 +79,7 @@
           <div class="form-group">
             <label>طول كود الحساب:</label>
             <select class="form-control">
-              {% for code, meta in lookups.code_lengths %}
+              {% for code, meta in lookups.get('code_lengths', []) %}
               <option value="{{ code }}" {% if code == '4' %}selected{% endif %}>{{ meta.ar }} أرقام</option>
               {% endfor %}
             </select>
@@ -88,7 +88,7 @@
           <div class="form-group">
             <label>مستوى الحسابات:</label>
             <select class="form-control">
-              {% for code, meta in lookups.account_levels %}
+              {% for code, meta in lookups.get('account_levels', []) %}
               <option value="{{ code }}" {% if code == '3' %}selected{% endif %}>{{ meta.ar }} مستويات</option>
               {% endfor %}
             </select>
@@ -137,7 +137,7 @@
           <div class="form-group">
             <label>تنسيق التواريخ:</label>
             <select class="form-control">
-              {% for code, meta in lookups.date_formats %}
+              {% for code, meta in lookups.get('date_formats', []) %}
               <option value="{{ code }}" {% if code == 'dd/mm/yyyy' %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -146,7 +146,7 @@
           <div class="form-group">
             <label>تنسيق الأرقام:</label>
             <select class="form-control">
-              {% for code, meta in lookups.number_formats %}
+              {% for code, meta in lookups.get('number_formats', []) %}
               <option value="{{ code }}" {% if code == '1,234.56' %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -155,7 +155,7 @@
           <div class="form-group">
             <label>اللغة الافتراضية:</label>
             <select class="form-control">
-              {% for code, meta in lookups.languages %}
+              {% for code, meta in lookups.get('languages', []) %}
               <option value="{{ code }}" {% if code == 'ar' %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
             </select>
@@ -244,7 +244,7 @@
               <div class="form-group">
                 <label>تكرار النسخ الاحتياطي:</label>
                 <select class="form-control">
-                  {% for code, meta in lookups.backup_frequencies %}
+                  {% for code, meta in lookups.get('backup_frequencies', []) %}
                   <option value="{{ code }}" {% if code == 'daily' %}selected{% endif %}>{{ meta.ar }}</option>
                   {% endfor %}
                 </select>

@@ -211,7 +211,7 @@
             {% set selected_unit = request.form.get('unit') if request.method == 'POST' else product.unit %}
             <select name="unit" class="form-control select2" data-placeholder="اختر الوحدة..." data-allow-clear="true">
               <option value="" {% if not selected_unit %}selected{% endif %}>بلا</option>
-              {% for code, meta in lookups.product_units %}
+              {% for code, meta in lookups.get('product_units', []) %}
               <option value="{{ code }}" {% if selected_unit == code %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
             </select>

@@ -15,7 +15,7 @@
       <div class="col-md-3">
         <select name="status" class="form-control select2">
           <option value="">— كل الحالات —</option>
-          {% for code, meta in lookups.payroll_statuses %}
+          {% for code, meta in lookups.get('payroll_statuses', []) %}
           <option value="{{ code }}" {% if request.args.get('status') == code %}selected{% endif %}>{{ meta.ar }}</option>
           {% endfor %}
         </select>

@@ -21,7 +21,7 @@
       <div class="form-group mr-2 mb-2">
         <select name="status" class="form-control select2">
           <option value="all" {{ 'selected' if status == 'all' }}>كل الحالات</option>
-          {% for code, meta in lookups.tenant_statuses %}
+          {% for code, meta in lookups.get('tenant_statuses', []) %}
           <option value="{{ code }}" {{ 'selected' if status == code }}>{{ meta.ar }}</option>
           {% endfor %}
         </select>

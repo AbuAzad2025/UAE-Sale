@@ -26,7 +26,7 @@
             <label>العملة الأساسية:</label>
             <select class="form-control">
               {% for code, meta in lookups.get('currencies', []) %}
-              <option value="{{ code }}" {% if code == 'AED' %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
+              <option value="{{ code }}" {% if code == base_currency %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
               {% endfor %}
             </select>
           </div>

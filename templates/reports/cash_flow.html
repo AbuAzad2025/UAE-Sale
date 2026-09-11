@@ -91,7 +91,7 @@
       <thead>
         <tr>
           <th>الحساب</th>
-          <th class="text-right num-cell">المبلغ (AED)</th>
+          <th class="text-right num-cell">المبلغ ({{ base_currency }})</th>
         </tr>
       </thead>
       <tbody>
@@ -126,7 +126,7 @@
       <thead>
         <tr>
           <th>الحساب</th>
-          <th class="text-right num-cell">المبلغ (AED)</th>
+          <th class="text-right num-cell">المبلغ ({{ base_currency }})</th>
         </tr>
       </thead>
       <tbody>
@@ -161,7 +161,7 @@
       <thead>
         <tr>
           <th>الحساب</th>
-          <th class="text-right num-cell">المبلغ (AED)</th>
+          <th class="text-right num-cell">المبلغ ({{ base_currency }})</th>
         </tr>
       </thead>
       <tbody>
@@ -194,7 +194,7 @@
           <i class="fas fa-calculator mr-2"></i>
           صافي التدفق النقدي:
           <span class="num-cell {{ 'money-neg' if net_change < 0 else ('money-pos' if net_change > 0 else '') }} font-weight-bold">
-            {{ net_change|money }} AED
+            {{ net_change|money(base_currency) }}
           </span>
         </h4>
       </div>

@@ -37,8 +37,8 @@
                 <p><strong>المجموع الفرعي:</strong> {{ purchase.subtotal }} {{ purchase.currency }}</p>
                 <p><strong>الضريبة:</strong> {{ purchase.tax_amount }} {{ purchase.currency }}</p>
                 <p><strong>الإجمالي:</strong> {{ purchase.total_amount }} {{ purchase.currency }}</p>
-                <p><strong>المدفوع:</strong> {{ purchase.paid_amount }} AED</p>
-                <p><strong>المتبقي:</strong> {{ purchase.balance }} AED</p>
+                <p><strong>المدفوع:</strong> {{ purchase.paid_amount }} {{ base_currency }}</p>
+                <p><strong>المتبقي:</strong> {{ purchase.balance }} {{ base_currency }}</p>
               </div>
             </div>
 

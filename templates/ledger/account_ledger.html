@@ -54,7 +54,7 @@
           <td colspan="4" class="text-center">{{ t('Total') }}</td>
           <td class="text-danger">{{ "{:,.2f}".format(summary.total_debit) }}</td>
           <td class="text-success">{{ "{:,.2f}".format(summary.total_credit) }}</td>
-          <td><strong>{{ "{:,.2f}".format(summary.final_balance) }} AED</strong></td>
+          <td><strong>{{ "{:,.2f}".format(summary.final_balance) }} {{ base_currency }}</strong></td>
         </tr>
       </tfoot>
     </table>

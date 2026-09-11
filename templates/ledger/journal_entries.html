@@ -95,7 +95,7 @@
                                                 <span class="badge badge-success">مرحّل</span>
                                                 {% endif %}
                                             </td>
-                                            <td>{{ entry.currency or 'AED' }}</td>
+                                            <td>{{ entry.currency or base_currency }}</td>
                                             <td>{{ "%.4f"|format(entry.exchange_rate) if entry.exchange_rate else '1.0000' }}</td>
                                             <td>{{ entry.user.username if entry.user else 'نظام' }}</td>
                                             <td>

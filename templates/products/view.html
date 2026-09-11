@@ -43,7 +43,7 @@
           </li>
           <li class="list-group-item">
             <b>{{ t('Price') }}</b>
-            <span class="float-left text-success">{{ "{:,.2f}".format(product.regular_price) }} AED</span>
+            <span class="float-left text-success">{{ "{:,.2f}".format(product.regular_price) }} {{ base_currency }}</span>
           </li>
         </ul>
         
@@ -90,14 +90,14 @@
           
           {% if current_user.can_see_costs() %}
           <dt class="col-sm-4">سعر التكلفة:</dt>
-          <dd class="col-sm-8">{{ "{:,.2f}".format(product.cost_price or 0) }} AED</dd>
+          <dd class="col-sm-8">{{ "{:,.2f}".format(product.cost_price or 0) }} {{ base_currency }}</dd>
           {% endif %}
           
           <dt class="col-sm-4">خصم التاجر:</dt>
           <dd class="col-sm-8">
             {% if product.merchant_price %}
               {{ product.merchant_price }}% 
-              <span class="text-muted">({{ "{:,.2f}".format(product.regular_price * (1 - product.merchant_price/100)) }} AED)</span>
+              <span class="text-muted">({{ "{:,.2f}".format(product.regular_price * (1 - product.merchant_price/100)) }} {{ base_currency }})</span>
             {% else %}
               -
             {% endif %}
@@ -107,7 +107,7 @@
           <dd class="col-sm-8">
             {% if product.partner_price %}
               {{ product.partner_price }}%
-              <span class="text-muted">({{ "{:,.2f}".format(product.regular_price * (1 - product.partner_price/100)) }} AED)</span>
+              <span class="text-muted">({{ "{:,.2f}".format(product.regular_price * (1 - product.partner_price/100)) }} {{ base_currency }})</span>
             {% else %}
               -
             {% endif %}

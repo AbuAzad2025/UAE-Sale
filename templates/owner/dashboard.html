@@ -98,7 +98,7 @@
     <div class="small-box bg-gradient-danger shadow">
       <div class="inner">
         <h3>{{ "{:,.0f}".format(stats.year_sales_amount|default(0)) }}</h3>
-        <p><i class="fas fa-money-bill-wave mr-1"></i> الإيرادات (AED)</p>
+        <p><i class="fas fa-money-bill-wave mr-1"></i> الإيرادات ({{ base_currency }})</p>
       </div>
       <div class="icon"><i class="fas fa-coins"></i></div>
       <a href="{{ url_for('reports.sales') }}" class="small-box-footer">
@@ -339,7 +339,7 @@
     <div class="info-box shadow-sm">
       <span class="info-box-icon bg-danger"><i class="fas fa-coins"></i></span>
       <div class="info-box-content">
-        <span class="info-box-text">الإيرادات (AED)</span>
+        <span class="info-box-text">الإيرادات ({{ base_currency }})</span>
         <span class="info-box-number">{{ "{:,.0f}".format(stats.year_sales_amount|default(0)) }}</span>
       </div>
     </div>

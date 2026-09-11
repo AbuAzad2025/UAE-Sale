@@ -100,16 +100,16 @@
       <div class="card-body">
         <div class="d-flex justify-content-between mb-2">
           <span>إجمالي المبيعات الخاضعة:</span>
-          <strong>{{ "{:,.2f}".format(summary.total_taxable_sales) }} AED</strong>
+          <strong>{{ "{:,.2f}".format(summary.total_taxable_sales) }} {{ base_currency }}</strong>
         </div>
         <div class="d-flex justify-content-between mb-2">
           <span>إجمالي المبيعات المعفاة:</span>
-          <strong>{{ "{:,.2f}".format(summary.total_exempt_sales) }} AED</strong>
+          <strong>{{ "{:,.2f}".format(summary.total_exempt_sales) }} {{ base_currency }}</strong>
         </div>
         <hr>
         <div class="d-flex justify-content-between">
           <span class="font-weight-bold">ضريبة المبيعات (Output VAT):</span>
-          <strong class="text-danger">{{ "{:,.2f}".format(summary.total_output_vat) }} AED</strong>
+          <strong class="text-danger">{{ "{:,.2f}".format(summary.total_output_vat) }} {{ base_currency }}</strong>
         </div>
       </div>
     </div>
@@ -124,16 +124,16 @@
       <div class="card-body">
         <div class="d-flex justify-content-between mb-2">
           <span>إجمالي المشتريات الخاضعة:</span>
-          <strong>{{ "{:,.2f}".format(summary.total_taxable_purchases) }} AED</strong>
+          <strong>{{ "{:,.2f}".format(summary.total_taxable_purchases) }} {{ base_currency }}</strong>
         </div>
         <div class="d-flex justify-content-between mb-2">
           <span>إجمالي المشتريات المعفاة:</span>
-          <strong>{{ "{:,.2f}".format(summary.total_exempt_purchases) }} AED</strong>
+          <strong>{{ "{:,.2f}".format(summary.total_exempt_purchases) }} {{ base_currency }}</strong>
         </div>
         <hr>
         <div class="d-flex justify-content-between">
           <span class="font-weight-bold">ضريبة المشتريات (Input VAT):</span>
-          <strong class="text-success">{{ "{:,.2f}".format(summary.total_input_vat) }} AED</strong>
+          <strong class="text-success">{{ "{:,.2f}".format(summary.total_input_vat) }} {{ base_currency }}</strong>
         </div>
       </div>
     </div>
@@ -259,12 +259,12 @@
         {% if summary.vat_payable > 0 %}
         <div class="alert alert-danger mb-0">
           <h5><i class="fas fa-exclamation-circle"></i> مبلغ مستحق للVERN</h5>
-          <h3>{{ "{:,.2f}".format(summary.vat_payable) }} AED</h3>
+          <h3>{{ "{:,.2f}".format(summary.vat_payable) }} {{ base_currency }}</h3>
         </div>
         {% elif summary.vat_refund > 0 %}
         <div class="alert alert-success mb-0">
           <h5><i class="fas fa-check-circle"></i> مبلغ مسترد من هيئة الضرائب</h5>
-          <h3>{{ "{:,.2f}".format(summary.vat_refund) }} AED</h3>
+          <h3>{{ "{:,.2f}".format(summary.vat_refund) }} {{ base_currency }}</h3>
         </div>
         {% else %}
         <div class="alert alert-info mb-0">

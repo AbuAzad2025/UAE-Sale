@@ -270,10 +270,10 @@
           <div class="form-group">
             <label for="currency">
               <i class="fas fa-dollar-sign text-success"></i> العملة
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عملة الفاتورة (افتراضي: AED)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عملة الفاتورة (افتراضي: {{ base_currency }})"></i>
             </label>
             <select name="currency" id="currency" class="form-control">
-              <option value="AED" selected>درهم إماراتي (AED)</option>
+              <option value="AED" {% if base_currency == "AED" %}selected{% endif %}>درهم إماراتي (AED)</option>
               <option value="USD">دولار أمريكي (USD)</option>
               <option value="EUR">يورو (EUR)</option>
               <option value="GBP">جنيه إسترليني (GBP)</option>
@@ -333,15 +333,15 @@
               <table class="table table-sm">
                 <tr>
                   <td>المجموع الفرعي:</td>
-                  <td class="text-left" id="summary_subtotal">0.00 AED</td>
+                  <td class="text-left" id="summary_subtotal">0.00 {{ base_currency }}</td>
                 </tr>
                 <tr>
                   <td>الضريبة:</td>
-                  <td class="text-left" id="summary_tax">0.00 AED</td>
+                  <td class="text-left" id="summary_tax">0.00 {{ base_currency }}</td>
                 </tr>
                 <tr class="font-weight-bold border-top">
                   <td>الإجمالي:</td>
-                  <td class="text-left text-primary" id="summary_total">0.00 AED</td>
+                  <td class="text-left text-primary" id="summary_total">0.00 {{ base_currency }}</td>
                 </tr>
               </table>
             </div>
@@ -498,7 +498,7 @@ function addLine() {
                 <br><small class="text-muted">SKU: ${p.sku || '-'}</small>
               </div>
               <div class="text-left">
-                <small><strong>${(p.cost_price || 0).toFixed(2)} AED</strong></small>
+                <small><strong>${(p.cost_price || 0).toFixed(2)} {{ base_currency }}</strong></small>
                 <br><small class="${stockClass}">${stockIcon} ${p.current_stock || 0}</small>
               </div>
             </div>
@@ -599,9 +599,9 @@ async function calculateTotals() {
     
     if (result.success) {
       // تحديث الواجهة
-      $('#summary_subtotal').text(result.subtotal.toFixed(2) + ' AED');
-      $('#summary_tax').text(result.tax_amount.toFixed(2) + ' AED');
-      $('#summary_total').text(result.total.toFixed(2) + ' AED');    } else {      // Fallback to client-side
+      $('#summary_subtotal').text(result.subtotal.toFixed(2) + ' ' + base_currency);
+      $('#summary_tax').text(result.tax_amount.toFixed(2) + ' ' + base_currency);
+      $('#summary_total').text(result.total.toFixed(2) + ' ' + base_currency);    } else {      // Fallback to client-side
       calculateTotalsClientSide();
     }
   } catch (error) {    // Fallback to client-side
@@ -633,9 +633,9 @@ function calculateTotalsClientSide() {
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
   
-  $('#summary_subtotal').text(subtotal.toFixed(2) + ' AED');
-  $('#summary_tax').text(taxAmount.toFixed(2) + ' AED');
-  $('#summary_total').text(total.toFixed(2) + ' AED');}
+  $('#summary_subtotal').text(subtotal.toFixed(2) + ' ' + base_currency);
+  $('#summary_tax').text(taxAmount.toFixed(2) + ' ' + base_currency);
+  $('#summary_total').text(total.toFixed(2) + ' ' + base_currency);}
 
 // =====================================
 // Debug function

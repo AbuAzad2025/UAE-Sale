@@ -69,14 +69,42 @@ def dashboard():  # noqa: C901
         tenant_key = get_current_tenant_id()
         cache_key_prefix = f'dashboard:{tenant_key}:{today}'
 
+        _cache_failed = False
+
         def _cached(key, fn):
-            """Return cached value or compute, store, and return."""
+            """Return cached value or compute, store, and return.
+
+            Fail-open design: if the cache backend (e.g. Redis) is unreachable
+            for any reason we silently bypass the cache and compute the value
+            directly.  The dashboard stays fully functional even when Redis is
+            down / misconfigured / pending restart — instead of hard-500.
+            We flip a module-level flag on first failure and stop talking to
+            cache for the rest of the request to avoid repeated TCP RSTs.
+            """
+            nonlocal _cache_failed
+            if _cache_failed:
+                return fn()
             full_key = f'{cache_key_prefix}:{key}'
-            val = cache.get(full_key)
+            try:
+                val = cache.get(full_key)
+            except Exception as exc:  # noqa: BLE001 — broad catch is intentional
+                current_app.logger.warning(
+                    'Dashboard cache.get(%s) failed (%s: %s). '
+                    'Bypassing cache for this request.',
+                    full_key, type(exc).__name__, exc)
+                _cache_failed = True
+                return fn()
             if val is not None:
                 return val
             val = fn()
-            cache.set(full_key, val, timeout=DASHBOARD_CACHE_TTL)
+            try:
+                cache.set(full_key, val, timeout=DASHBOARD_CACHE_TTL)
+            except Exception as exc:  # noqa: BLE001
+                current_app.logger.warning(
+                    'Dashboard cache.set(%s) failed (%s: %s). '
+                    'Value computed successfully but not persisted.',
+                    full_key, type(exc).__name__, exc)
+                _cache_failed = True
             return val
 
         if show_customers_card:
@@ -206,14 +234,4 @@ def dashboard():  # noqa: C901
 
     except Exception as e:
         current_app.logger.error(f"Dashboard Error: {e}", exc_info=True)
-        # Show safe error page — never leak stack traces to users
-        return """
-        <html>
-            <head><title>خطأ في لوحة التحكم</title></head>
-            <body style="font-family: sans-serif; padding: 40px; text-align: center; direction: rtl;">
-                <h1 style="color: #dc3545;">⚠️ خطأ في لوحة التحكم</h1>
-                <p>حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى أو الاتصال بالمدير.</p>
-                <a href="/" style="color: #007bff;">العودة للرئيسية</a>
-            </body>
-        </html>
-        """, 500
+        return render_template('errors/500.html', error=str(e)), 500

@@ -56,8 +56,12 @@ class TestSaleView:
         db.session.commit()
 
         response = client.get(f'/sales/{sale.id}')
-        # Seller can view: 200 (rendered) or 302 (redirect to dashboard after login)
-        assert response.status_code in (200, 302)
+        # Seller owns this sale + holds manage_sales -> renders (200).
+        assert response.status_code == 200
+        assert sale.sale_number.encode() in response.data
+        # DB-state: row untouched by a read.
+        from models import Sale as _Sale
+        assert db.session.get(_Sale, sale.id) is not None
 
     def test_seller_cannot_view_other_sale(self, client, db, login_seller, seller_user, owner_user, test_customer, test_product):
         """Seller cannot view another seller's sale (IDOR protection)."""
@@ -85,8 +89,18 @@ class TestSaleView:
 
         # Try to view owner's sale — should be redirected
         response = client.get(f'/sales/{sale.id}', follow_redirects=False)
-        # Should redirect away (302)
-        assert response.status_code in (302, 200)
+        # IDOR guard flashes + redirects to sales.index (never renders).
+        assert response.status_code == 302
+        assert '/sales' in response.headers.get('Location', '')
+        # DB-state: foreign sale untouched.
+        db.session.expire_all()
+        assert db.session.get(Sale, sale.id) is not None
+        assert db.session.get(Sale, sale.id).seller_id == owner_user.id
+        # Flash + list isolation: following the redirect surfaces the
+        # denial and the seller list still hides the foreign invoice.
+        denied = client.get(f'/sales/{sale.id}', follow_redirects=True)
+        assert denied.status_code == 200
+        assert sale.sale_number not in client.get('/sales/').get_data(as_text=True)
 
 
 class TestSaleEdit:
@@ -126,8 +140,13 @@ class TestSaleEdit:
         db.session.commit()
 
         response = client.get(f'/sales/{sale.id}/edit', follow_redirects=False)
-        # Should redirect away (302)
-        assert response.status_code in (302, 200)
+        # IDOR guard flashes 'ليس لديك صلاحية لتعديل' + redirects to sales.index.
+        assert response.status_code == 302
+        assert '/sales' in response.headers.get('Location', '')
+        assert '/edit' not in response.headers.get('Location', '')
+        # DB-state: foreign sale untouched.
+        db.session.expire_all()
+        assert db.session.get(Sale, sale.id).total_amount == Decimal('50.000')
 
     def test_cannot_edit_paid_sale(self, client, login_owner, test_sale, db):
         """Paid sales cannot be edited."""
@@ -135,8 +154,15 @@ class TestSaleEdit:
         db.session.commit()
 
         response = client.get(f'/sales/{test_sale.id}/edit', follow_redirects=False)
-        # Should redirect with error message
-        assert response.status_code in (302, 200)
+        # Paid-sale guard flashes 'مدفوعة' + redirects to sales.view (not edit).
+        assert response.status_code == 302
+        assert f'/sales/{test_sale.id}' in response.headers.get('Location', '')
+        assert '/edit' not in response.headers.get('Location', '')
+        # DB-state: guard is read-only.
+        db.session.expire_all()
+        assert db.session.get(type(test_sale), test_sale.id).payment_status == 'paid'
+        blocked_page = client.get(f'/sales/{test_sale.id}/edit', follow_redirects=True)
+        assert 'مدفوعة' in blocked_page.get_data(as_text=True)
 
 
 class TestSaleDelete:
@@ -170,6 +196,16 @@ class TestSaleDelete:
         db.session.add(sale)
         db.session.commit()
 
+        sale_id = sale.id
+        sale_number = sale.sale_number
         response = client.post(f'/sales/{sale.id}/delete', follow_redirects=False)
-        # Should redirect away (302)
-        assert response.status_code in (302, 200)
+        # IDOR guard flashes 'ليس لديك صلاحية لحذف' + redirects to sales.index.
+        assert response.status_code == 302
+        assert '/sales' in response.headers.get('Location', '')
+        # DB-state: foreign sale NOT deleted/archived.
+        from models import Sale as _Sale2
+        assert db.session.get(_Sale2, sale_id) is not None
+        denied_page = client.post(f'/sales/{sale_id}/delete', follow_redirects=True)
+        assert denied_page.status_code == 200
+        assert db.session.get(_Sale2, sale_id) is not None
+        assert sale_number not in client.get('/sales/').get_data(as_text=True)

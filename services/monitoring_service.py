@@ -8,14 +8,30 @@ from extensions import db
 class MonitoringService:
 
     @staticmethod
+    def _aggregate_status(database: Dict, disk: Dict, memory: Dict, cpu: Dict) -> str:
+        """Worst-status rollup: database failure dominates, any degraded
+        resource degrades the whole, otherwise healthy. Shapes of the
+        per-check dicts are unchanged."""
+        if not database.get('healthy', True):
+            return 'unhealthy'
+        for part in (disk, memory, cpu):
+            if not part.get('healthy', True):
+                return 'degraded'
+        return 'healthy'
+
+    @staticmethod
     def get_system_health() -> Dict:
+        database = MonitoringService.check_database()
+        disk = MonitoringService.get_disk_usage()
+        memory = MonitoringService.get_memory_usage()
+        cpu = MonitoringService.get_cpu_usage()
         return {
             'timestamp': datetime.now().isoformat(),
-            'database': MonitoringService.check_database(),
-            'disk': MonitoringService.get_disk_usage(),
-            'memory': MonitoringService.get_memory_usage(),
-            'cpu': MonitoringService.get_cpu_usage(),
-            'status': 'healthy'
+            'database': database,
+            'disk': disk,
+            'memory': memory,
+            'cpu': cpu,
+            'status': MonitoringService._aggregate_status(database, disk, memory, cpu)
         }
 
     @staticmethod
@@ -30,7 +46,10 @@ class MonitoringService:
     @staticmethod
     def get_disk_usage() -> Dict:
         try:
-            disk = psutil.disk_usage('/')
+            # Cross-platform root (C:\ on Windows, / on POSIX) shared with
+            # health_service so the probe works on Windows hosts.
+            from services.health_service import _disk_root
+            disk = psutil.disk_usage(_disk_root())
             return {
                 'total_gb': round(disk.total / (1024**3), 2),
                 'used_gb': round(disk.used / (1024**3), 2),

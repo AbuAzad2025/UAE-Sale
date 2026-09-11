@@ -66,13 +66,34 @@ class TestCreate:
         assert client.get('/cheques/create').status_code == 200
 
     def test_post_creates_and_redirects(self, client, login_owner, test_customer):
+        from models import GLAccount as _GLAcc, GLJournalEntry as _GLEntry
+        db.session.refresh(test_customer)
+        balance_before = test_customer.balance or Decimal('0')
         resp = client.post('/cheques/create', data=_form(customer_id=test_customer.id),
                            follow_redirects=True)
         assert resp.status_code == 200
         ch = Cheque.query.filter_by(cheque_bank_number='777888').first()
+        # Cheque-row assertions: exact persisted state.
         assert ch is not None
         assert ch.amount_base == Decimal('1500.00')
         assert ch.cheque_number.startswith('CHQ')
+        assert ch.cheque_type == 'incoming'
+        assert ch.customer_id == test_customer.id
+        assert ch.status in ('pending', 'under_collection')
+        assert ch.is_active is True
+        # GL-entry assertions: receive_cheque posts balanced cheque_receive.
+        entry = _GLEntry.query.filter_by(
+            reference_type='cheque_receive', reference_id=ch.id).first()
+        assert entry is not None
+        assert entry.total_debit == entry.total_credit == Decimal('1500.00')
+        codes = {ln.account.code for ln in entry.lines}
+        assert {'1150', '1130'} <= codes
+        # Balance assertions: under-collection (1150) holds the 1500 debit;
+        # Customer.balance column is untouched at receipt (only bounce/cancel
+        # mutate it — see TestHttpInterfaceBalanceAdjustment).
+        assert _GLAcc.query.filter_by(code='1150').first().get_balance() == Decimal('1500')
+        db.session.refresh(test_customer)
+        assert (test_customer.balance or Decimal('0')) == balance_before
 
     def test_post_missing_type_rerenders(self, client, login_owner):
         resp = client.post('/cheques/create', data=_form(cheque_type=''))

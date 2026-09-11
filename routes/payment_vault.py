@@ -13,6 +13,7 @@ from models import (PaymentVault, PaymentLog, Donation, CardPayment,
 from services.nowpayments_service import NOWPaymentsService
 from utils.helpers import create_audit_log
 import logging
+import os
 import uuid
 
 payment_vault_bp = Blueprint('payment_vault', __name__, url_prefix='/payment-vault')
@@ -60,8 +61,9 @@ def _split_expiry(expiry):
         parts = str(expiry or '').replace('-', '/').split('/')
         month = parts[0].strip()
         year = parts[1].strip() if len(parts) > 1 else ''
-        if month.isdigit() and year.isdigit():
-            return month, year
+        if month.isdigit() and year.isdigit() and len(parts) == 2:
+            if 1 <= int(month) <= 12 and len(year) in (2, 4):
+                return month, year
     except Exception:
         pass
     return None, None
@@ -98,6 +100,16 @@ def unlock_vault():
         # البحث عن الخزينة أو إنشاؤها
         vault = PaymentVault.query.first()
         if not vault:
+            # First-boot claim guard: when VAULT_SETUP_TOKEN is set, the
+            # caller must present it — otherwise any owner session could
+            # claim a fresh vault. Empty/unset = legacy behavior preserved.
+            setup_token = os.environ.get('VAULT_SETUP_TOKEN', '')
+            if setup_token:
+                provided = (request.form.get('setup_token') or '').strip()
+                if provided != setup_token:
+                    logger.warning('Vault first-create rejected: missing/invalid setup token')
+                    flash('❌ رمز إعداد الخزينة مطلوب لإنشائها أول مرة.', 'danger')
+                    return render_template('payment_vault/unlock.html')
             # إنشاء خزينة جديدة
             vault = PaymentVault()
             vault.set_vault_password(password)  # كلمة المرور الأولى
@@ -241,7 +253,9 @@ def settings():  # noqa: C901
         return redirect(url_for('payment_vault.unlock_vault'))
 
     if request.method == 'POST':
-        def _as_float(value, default):
+        invalid_fields = []
+
+        def _as_float(value, default, field=''):
             try:
                 if value is None:
                     return float(default)
@@ -250,9 +264,10 @@ def settings():  # noqa: C901
                     return float(default)
                 return float(s)
             except Exception:
+                invalid_fields.append(field or 'قيمة رقمية')
                 return float(default)
 
-        def _as_int(value, default):
+        def _as_int(value, default, field=''):
             try:
                 if value is None:
                     return int(default)
@@ -261,6 +276,7 @@ def settings():  # noqa: C901
                     return int(default)
                 return int(s)
             except Exception:
+                invalid_fields.append(field or 'قيمة رقمية')
                 return int(default)
 
         # تحديث إعدادات الدفع - Crypto
@@ -292,14 +308,14 @@ def settings():  # noqa: C901
         vault.stripe_webhook_secret = request.form.get('stripe_webhook_secret', vault.stripe_webhook_secret)
 
         # تحديث حدود الدفع
-        vault.min_donation_amount = _as_float(request.form.get('min_donation_amount'), vault.min_donation_amount)
-        vault.max_donation_amount = _as_float(request.form.get('max_donation_amount'), vault.max_donation_amount)
-        vault.daily_limit = _as_float(request.form.get('daily_limit'), vault.daily_limit)
+        vault.min_donation_amount = _as_float(request.form.get('min_donation_amount'), vault.min_donation_amount, 'min_donation_amount')
+        vault.max_donation_amount = _as_float(request.form.get('max_donation_amount'), vault.max_donation_amount, 'max_donation_amount')
+        vault.daily_limit = _as_float(request.form.get('daily_limit'), vault.daily_limit, 'daily_limit')
 
         # تحديث إعدادات الأمان
         vault.require_2fa = bool(request.form.get('require_2fa'))
-        vault.auto_lock_minutes = _as_int(request.form.get('auto_lock_minutes'), vault.auto_lock_minutes)
-        vault.max_failed_attempts = _as_int(request.form.get('max_failed_attempts'), vault.max_failed_attempts)
+        vault.auto_lock_minutes = _as_int(request.form.get('auto_lock_minutes'), vault.auto_lock_minutes, 'auto_lock_minutes')
+        vault.max_failed_attempts = _as_int(request.form.get('max_failed_attempts'), vault.max_failed_attempts, 'max_failed_attempts')
 
         vault.updated_at = datetime.utcnow()
         db.session.commit()
@@ -315,6 +331,8 @@ def settings():  # noqa: C901
         )
 
         flash('✅ تم تحديث إعدادات الخزينة بنجاح!', 'success')
+        if invalid_fields:
+            flash(f"❌ قيم رقمية غير صالحة تم تجاهلها: {', '.join(invalid_fields)}", 'danger')
         return redirect(url_for('payment_vault.settings'))
 
     return render_template('payment_vault/settings.html', vault=vault)
@@ -687,6 +705,10 @@ def process_payment():
             if not card_number or len(card_number) < 13:
                 return jsonify({'success': False, 'error': 'رقم البطاقة غير صحيح'}), 400
 
+            exp_month, exp_year = _split_expiry(expiry)
+            if not exp_month or not exp_year:
+                return jsonify({'success': False, 'error': 'تاريخ انتهاء البطاقة غير صالح (MM/YY)'}), 400
+
             # إنشاء سجل البطاقة المشفر
             card_payment = CardPayment(
                 customer_name=data.get('customer_name', ''),
@@ -716,7 +738,6 @@ def process_payment():
                         data.get('customer_email', ''),
                         data.get('customer_phone', ''),
                     )
-                    exp_month, exp_year = _split_expiry(expiry)
                     card_vault_entry = CardVault(customer_id=vault_customer.id)
                     card_vault_entry.set_card_data(
                         card_number,

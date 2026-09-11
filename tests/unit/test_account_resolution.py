@@ -90,19 +90,34 @@ class TestResolverPrecedence:
         assert AccountResolver.resolve(AccountRole.CASH) == '1121'
         assert AccountResolver.resolve(AccountRole.BANK) == '1120'  # untouched
 
+    def _seed_tenant(self, db, tid):
+        # Portability: back the numeric tenant_id with a real Tenant row
+        # (same Tenant(id=...) pattern as test_erp_role_isolation); the
+        # override-key semantics ('gl_role_map:<id>') stay identical.
+        from models import Tenant
+        tenant = db.session.get(Tenant, tid)
+        if tenant is None:
+            tenant = Tenant(id=tid, name=f'Seed {tid}', name_ar=f'بذرة {tid}',
+                            slug=f'seed-{tid}', business_type='garage')
+            db.session.add(tenant)
+            db.session.commit()
+        return tenant
+
     def test_tenant_override_beats_global(self, db, core, settings_row):
+        tenant = self._seed_tenant(db, 7)
         _set_global_map(db, settings_row, {'CASH': '1121'})
-        settings_row.set_custom_setting('gl_role_map:7', {'CASH': '1120'})
+        settings_row.set_custom_setting(f'gl_role_map:{tenant.id}', {'CASH': '1120'})
         db.session.commit()
-        assert AccountResolver.resolve(AccountRole.CASH, tenant_id=7) == '1120'
+        assert AccountResolver.resolve(AccountRole.CASH, tenant_id=tenant.id) == '1120'
         assert AccountResolver.resolve(AccountRole.CASH) == '1121'
 
     def test_tenant_falls_back_to_global_for_missing_role(self, db, core, settings_row):
+        tenant = self._seed_tenant(db, 7)
         _set_global_map(db, settings_row, {'CASH': '1121'})
-        settings_row.set_custom_setting('gl_role_map:7', {'BANK': '1110'})
+        settings_row.set_custom_setting(f'gl_role_map:{tenant.id}', {'BANK': '1110'})
         db.session.commit()
-        assert AccountResolver.resolve(AccountRole.CASH, tenant_id=7) == '1121'
-        assert AccountResolver.resolve(AccountRole.BANK, tenant_id=7) == '1110'
+        assert AccountResolver.resolve(AccountRole.CASH, tenant_id=tenant.id) == '1121'
+        assert AccountResolver.resolve(AccountRole.BANK, tenant_id=tenant.id) == '1110'
 
     def test_malformed_custom_settings_json_ignored(self, db, core, settings_row):
         settings_row.custom_settings = '{definitely-not-json'
@@ -119,8 +134,9 @@ class TestResolverPrecedence:
         assert AccountResolver.resolve(AccountRole.CASH) == '1110'
 
     def test_resolve_has_no_write_side_effects(self, db, core, settings_row):
+        tenant = self._seed_tenant(db, 9)
         before = settings_row.custom_settings
-        AccountResolver.resolve(AccountRole.CASH, tenant_id=9)
+        AccountResolver.resolve(AccountRole.CASH, tenant_id=tenant.id)
         db.session.expire(settings_row)
         assert settings_row.custom_settings == before
 
@@ -137,9 +153,15 @@ class TestGetAccount:
         assert AccountResolver.get_account(AccountRole.CASH) is None
 
     def test_get_account_with_tenant_scope(self, db, core, settings_row):
-        settings_row.set_custom_setting('gl_role_map:3', {'INVENTORY': '1121'})
+        from models import Tenant
+        tid = 3
+        if db.session.get(Tenant, tid) is None:
+            db.session.add(Tenant(id=tid, name=f'Seed {tid}', name_ar=f'بذرة {tid}',
+                                  slug=f'seed-{tid}', business_type='garage'))
+            db.session.commit()
+        settings_row.set_custom_setting(f'gl_role_map:{tid}', {'INVENTORY': '1121'})
         db.session.commit()
-        acc = AccountResolver.get_account(AccountRole.INVENTORY, tenant_id=3)
+        acc = AccountResolver.get_account(AccountRole.INVENTORY, tenant_id=tid)
         assert acc is not None and acc.code == '1121'
 
 
@@ -165,11 +187,17 @@ class TestGLServiceMigratedMappings:
         assert GLService.get_customer_credit_account(test_customer) == '1130'
 
     def test_customer_credit_respects_tenant_override(self, db, test_customer, settings_row):
-        settings_row.set_custom_setting('gl_role_map:5', {'PARTNERS_CURRENT': '3100'})
+        from models import Tenant
+        tid = 5
+        if db.session.get(Tenant, tid) is None:
+            db.session.add(Tenant(id=tid, name=f'Seed {tid}', name_ar=f'بذرة {tid}',
+                                  slug=f'seed-{tid}', business_type='garage'))
+            db.session.commit()
+        settings_row.set_custom_setting(f'gl_role_map:{tid}', {'PARTNERS_CURRENT': '3100'})
         db.session.commit()
         test_customer.customer_type = 'partner'
         assert GLService.get_customer_credit_account(test_customer) != '3100'  # no tenant scope passed
-        assert AccountResolver.resolve(AccountRole.PARTNERS_CURRENT, tenant_id=5) == '3100'
+        assert AccountResolver.resolve(AccountRole.PARTNERS_CURRENT, tenant_id=tid) == '3100'
 
 
 class TestBalanceSignConventions:

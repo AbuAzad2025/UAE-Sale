@@ -168,7 +168,12 @@ class PaymentService:
                 cheque_date=cheque_date,
                 bank_name=bank_name,
                 notes=notes,
-                user_id=current_user.id if getattr(current_user, 'is_authenticated', False) else 1
+                # Explicit actor wins; session user next; headless callers
+                # get NULL (never a magic user_id=1 that may not exist).
+                user_id=payment_data.get('user_id')
+                or (current_user.id
+                    if getattr(current_user, 'is_authenticated', False)
+                    else None)
             )
 
             db.session.add(receipt)

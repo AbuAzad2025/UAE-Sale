@@ -181,12 +181,13 @@ class HealthCheckService:
             'system': HealthCheckService.check_system_resources()
         }
 
-        # تحديد الحالة العامة
+        # تحديد الحالة العامة — 'unknown' is never healthy: a probe that
+        # could not determine health degrades the overall status to warning.
         statuses = [check['status'] for check in checks.values()]
 
         if 'unhealthy' in statuses:
             overall_status = 'unhealthy'
-        elif 'warning' in statuses:
+        elif 'warning' in statuses or 'unknown' in statuses:
             overall_status = 'warning'
         else:
             overall_status = 'healthy'

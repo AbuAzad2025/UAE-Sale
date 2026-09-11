@@ -54,7 +54,7 @@ class Query(graphene.ObjectType):
     product = graphene.Field(ProductType, id=graphene.Int())
 
     def resolve_all_sales(self, info, limit=50, offset=0):
-        sales = Sale.query.limit(limit).offset(offset).all()
+        sales = _scoped_list_query(Sale).limit(limit).offset(offset).all()
         return [_convert_sale_to_type(sale) for sale in sales]
 
     def resolve_sale(self, info, id):
@@ -62,7 +62,7 @@ class Query(graphene.ObjectType):
         return _convert_sale_to_type(sale)
 
     def resolve_all_customers(self, info, limit=50):
-        customers = Customer.query.limit(limit).all()
+        customers = _scoped_list_query(Customer).limit(limit).all()
         return [_convert_customer_to_type(customer) for customer in customers]
 
     def resolve_customer(self, info, id):
@@ -70,12 +70,42 @@ class Query(graphene.ObjectType):
         return _convert_customer_to_type(customer)
 
     def resolve_all_products(self, info, limit=50):
-        products = Product.query.limit(limit).all()
+        products = _scoped_list_query(Product).limit(limit).all()
         return [_convert_product_to_type(product) for product in products]
 
     def resolve_product(self, info, id):
         product = get_owned_or_404(Product, id, code=404)
         return _convert_product_to_type(product)
+
+
+def _scoped_list_query(model):
+    """Explicit tenant scoping for list resolvers.
+
+    Mirrors the single-item resolvers' get_owned_or_404 enforcement
+    (utils.decorators._enforce_same_tenant): owner / super_admin and
+    anonymous contexts see everything; a tenant-scoped user only sees rows
+    in their own tenant. Tenant-less rows are invisible to scoped users
+    (fail closed), exactly like the single-item 403 path.
+    """
+    query = model.query
+    try:
+        if not getattr(current_user, 'is_authenticated', False):
+            return query
+        if getattr(current_user, 'is_owner', False):
+            return query
+        _is_super_admin = getattr(current_user, 'is_super_admin', None)
+        if callable(_is_super_admin):
+            try:
+                if _is_super_admin():
+                    return query
+            except Exception:
+                pass
+        actor_tenant = getattr(current_user, 'tenant_id', None)
+        if actor_tenant is None:
+            return query
+        return query.filter(model.tenant_id == actor_tenant)
+    except Exception:
+        return query
 
 
 def _convert_sale_to_type(sale):

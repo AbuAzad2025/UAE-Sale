@@ -228,8 +228,51 @@ def allowed_file(filename, allowed_extensions=None):
                 if isinstance(ext_set, set):
                     allowed_extensions.update(ext_set)
 
+    if _is_double_extension_attack(filename):
+        return False
+
     return '.' in filename and \
            '.' + filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+
+#: App-level upload cap (see save_uploaded_file): the effective limit is the
+#: stricter of this and Flask's MAX_CONTENT_LENGTH, so neither bound can be
+#: silently exceeded by the other.
+_APP_LEVEL_MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
+#: Intermediate extensions that must never appear before the final extension
+#: ('invoice.php.jpg' bypasses naive last-extension checks).
+_DANGEROUS_INTERMEDIATE_EXTS = frozenset({
+    '.php', '.phtml', '.phar', '.exe', '.dll', '.so', '.elf', '.sh',
+    '.bash', '.bat', '.cmd', '.com', '.msi', '.ps1', '.vbs', '.vbe',
+    '.js', '.jsp', '.asp', '.aspx', '.py', '.rb', '.pl', '.cgi',
+    '.htm', '.html', '.xhtml', '.svg', '.swf', '.jar', '.war',
+})
+
+#: Byte markers (lowercased) signalling an executable/script polyglot hiding
+#: behind an innocent extension. Checked against the file header alongside
+#: the MZ/ELF magic-number guard.
+_POLYGLOT_MARKERS = (b'<?php', b'<?=', b'<%', b'<script')
+
+
+def _is_double_extension_attack(filename):
+    """True when a dangerous extension hides before the final extension."""
+    parts = str(filename or '').lower().split('.')
+    if len(parts) < 3:
+        return False
+    return any('.' + part in _DANGEROUS_INTERMEDIATE_EXTS for part in parts[1:-1])
+
+
+def _is_polyglot_header(file_header):
+    """True when the header mixes executable/script content into the file."""
+    if not file_header:
+        return False
+    if file_header.startswith(b'MZ') or file_header.startswith(b'\x7fELF'):
+        return True
+    lowered = bytes(file_header).lower()
+    if lowered.lstrip().startswith(b'#!'):
+        return True
+    return any(marker in lowered for marker in _POLYGLOT_MARKERS)
 
 
 def save_uploaded_file(file, upload_folder='uploads', allowed_extensions=None):
@@ -240,18 +283,30 @@ def save_uploaded_file(file, upload_folder='uploads', allowed_extensions=None):
     if not allowed_file(file.filename, allowed_extensions):
         raise ValueError('File type not allowed')
 
-    MAX_FILE_SIZE = 5 * 1024 * 1024
+    if _is_double_extension_attack(file.filename):
+        raise ValueError('File type not allowed (double extension)')
+
+    # Effective cap is the stricter of Flask's MAX_CONTENT_LENGTH (request
+    # layer, default 16MB) and the 5MB app-level upload policy, so lowering
+    # either bound is always honored and neither can silently exceed the other.
+    # NOTE: must stay usable without an app context (plain unit tests), hence
+    # the broad fallback to the app-level default.
+    try:
+        configured_max = int(current_app.config.get('MAX_CONTENT_LENGTH'))
+    except Exception:
+        configured_max = _APP_LEVEL_MAX_UPLOAD_BYTES
+    max_file_size = min(configured_max, _APP_LEVEL_MAX_UPLOAD_BYTES)
     file.seek(0, os.SEEK_END)
     file_length = file.tell()
     file.seek(0)
 
-    if file_length > MAX_FILE_SIZE:
-        raise ValueError('File size exceeds limit (5MB)')
+    if file_length > max_file_size:
+        raise ValueError(f'File size exceeds limit ({max_file_size // (1024 * 1024)}MB)')
 
     file_header = file.read(512)
     file.seek(0)
 
-    if file_header.startswith(b'MZ') or file_header.startswith(b'\x7fELF'):
+    if _is_polyglot_header(file_header):
         raise ValueError('Executable files are not allowed')
 
     filename = secure_filename(file.filename)

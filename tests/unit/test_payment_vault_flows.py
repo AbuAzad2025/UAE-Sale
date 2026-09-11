@@ -110,14 +110,24 @@ class TestDonationFlows:
     def test_approve_completes(self, client, vault_owner, unlocked_vault, donation, db):
         _login(client, vault_owner)
         resp = client.post(f'/payment-vault/donation/{donation.id}/approve')
-        assert resp.status_code in (200, 302)
+        assert resp.status_code == 302
+        assert 'donations' in resp.headers.get('Location', '')
+        row = _db.session.get(Donation, donation.id)
+        assert row.status == 'completed'
+        assert row.completed_at is not None
+        # Flash surfaces on the landing page; no second state change on GET.
+        landing = client.get(resp.headers['Location'])
+        assert landing.status_code == 200
         assert _db.session.get(Donation, donation.id).status == 'completed'
 
     def test_reject_fails(self, client, vault_owner, unlocked_vault, donation, db):
         _login(client, vault_owner)
         resp = client.post(f'/payment-vault/donation/{donation.id}/reject')
-        assert resp.status_code in (200, 302)
-        assert _db.session.get(Donation, donation.id).status == 'failed'
+        assert resp.status_code == 302
+        assert 'donations' in resp.headers.get('Location', '')
+        row = _db.session.get(Donation, donation.id)
+        assert row.status == 'failed'
+        assert row.completed_at is None
 
     def test_approve_non_owner_blocked(self, client, vault_plain, unlocked_vault, donation, db):
         _login(client, vault_plain)
@@ -130,10 +140,19 @@ class TestDonationFlows:
 class TestPackageFlows:
     def test_toggle_flips(self, client, vault_owner, package, db):
         _login(client, vault_owner)
+        assert package.is_active is True
         resp = client.post(f'/payment-vault/package/{package.id}/toggle')
         assert resp.status_code == 200
-        assert resp.get_json()['success'] is True
+        body = resp.get_json()
+        assert body['success'] is True
+        assert package.name_ar in body['message']
+        _db.session.expire_all()
         assert _db.session.get(Package, package.id).is_active is False
+        # Toggle back restores the original DB-state (proves a real flip).
+        resp2 = client.post(f'/payment-vault/package/{package.id}/toggle')
+        assert resp2.get_json()['success'] is True
+        _db.session.expire_all()
+        assert _db.session.get(Package, package.id).is_active is True
 
     def test_toggle_missing_404(self, client, vault_owner):
         _login(client, vault_owner)
@@ -145,16 +164,28 @@ class TestPackageFlows:
 
     def test_activate_purchase(self, client, vault_owner, purchase, db):
         _login(client, vault_owner)
+        assert purchase.activation_status == 'pending'
         resp = client.post(f'/payment-vault/purchase/{purchase.id}/activate')
-        assert resp.status_code in (200, 302)
+        assert resp.status_code == 302
+        assert f'/purchase/{purchase.id}' in resp.headers.get('Location', '')
         pu = _db.session.get(PackagePurchase, purchase.id)
         assert pu.activation_status == 'activated'
         assert pu.payment_status == 'completed'
+        assert pu.activation_date is not None
 
-    def test_package_stats(self, client, vault_owner, package):
+    def test_package_stats(self, client, vault_owner, package, purchase):
         _login(client, vault_owner)
         resp = client.get(f'/payment-vault/api/package-stats/{package.id}')
-        assert resp.status_code in (200, 302)
+        assert resp.status_code == 200
+        assert resp.is_json
+        stats = resp.get_json()
+        # Exact envelope from api_package_stats; fixture purchase is pending.
+        assert set(stats) == {'total_sales', 'total_revenue', 'pending', 'completed', 'failed'}
+        assert stats['total_sales'] == 1
+        assert stats['pending'] == 1
+        assert stats['completed'] == 0
+        assert stats['failed'] == 0
+        assert float(stats['total_revenue']) == 0.0
 
 
 # ── Exports ───────────────────────────────────────────────────────────────────

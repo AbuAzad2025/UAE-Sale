@@ -5,14 +5,25 @@ from models.gl import GLJournalEntry, GLJournalLine, GLAccount
 from models.advanced_accounting import AdvancedExpense
 from models.cheque import Cheque
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class RealTimeAccountingListeners:
     """مستمعات لحظية للأحداث المحاسبية"""
 
+    # Guard against import-time double registration: setup_listeners() runs
+    # at module import AND may be called explicitly (dev reloader, tests);
+    # SQLAlchemy would stack a duplicate listener set on every call because
+    # each call creates new closures, so handlers would fire N times.
+    _listeners_registered = False
+
     @staticmethod
     def setup_listeners():
         """إعداد جميع المستمعات"""
+        if RealTimeAccountingListeners._listeners_registered:
+            return
 
         # مستمع إنشاء القيود
         @event.listens_for(GLJournalEntry, 'after_insert')
@@ -43,6 +54,8 @@ class RealTimeAccountingListeners:
         @event.listens_for(Cheque, 'after_update')
         def cheque_updated(mapper, connection, target):
             RealTimeAccountingListeners._on_cheque_updated(target)
+
+        RealTimeAccountingListeners._listeners_registered = True
 
     @staticmethod
     def _on_journal_entry_created(entry):
@@ -223,10 +236,17 @@ class RealTimeAccountingListeners:
                 'data': data
             }
 
+            # Structured log for production; print retained for console/test
+            # visibility (listeners fire inside flush where DB-backed logging
+            # could reenter the session, so print stays as the side-effect-
+            # free fallback, not the only sink).
+            logger.info("Accounting event %s: %s",
+                        event_type, json.dumps(data, ensure_ascii=False))
             # طباعة للاختبار (يمكن استبدالها بحفظ في قاعدة البيانات)
             print(f"🔔 حدث محاسبي: {event_type} - {json.dumps(data, ensure_ascii=False)}")
 
         except Exception as e:
+            logger.exception("خطأ في تسجيل الحدث: %s", e)
             print(f"خطأ في تسجيل الحدث: {e}")
 
     @staticmethod
@@ -242,9 +262,11 @@ class RealTimeAccountingListeners:
             }
 
             icon = icons.get(level, 'ℹ️')
+            logger.info("%s %s: %s", icon, title, message)
             print(f"{icon} {title}: {message}")
 
         except Exception as e:
+            logger.exception("خطأ في إرسال الإشعار: %s", e)
             print(f"خطأ في إرسال الإشعار: {e}")
 
     @staticmethod

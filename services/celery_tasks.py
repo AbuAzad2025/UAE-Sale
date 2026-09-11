@@ -72,7 +72,12 @@ celery.conf.beat_schedule = {
 @celery.task(name='celery_tasks.generate_monthly_report')
 def generate_monthly_report(month: int, year: int):
     from app import create_app
-    from services.report_service import ReportService
+    try:
+        from services.report_service import ReportService
+    except ImportError as exc:
+        # No services.report_service module exists in this codebase; fail
+        # with a clear payload instead of raising ImportError in the worker.
+        return {'success': False, 'error': f'ReportService unavailable: {exc}'}
 
     app = create_app()
     with app.app_context():
@@ -146,19 +151,26 @@ def send_payment_reminders():
     with app.app_context():
         customers = Customer.query.filter_by(is_active=True).all()
         sent = 0
+        failed = 0
 
         for customer in customers:
-            balance = customer.get_balance_aed()
-            if balance > Decimal('1000') and customer.phone:
-                result = WhatsAppService.send_payment_reminder(
-                    customer.phone,
-                    customer.name,
-                    float(balance)
-                )
-                if result.get('success'):
-                    sent += 1
+            try:
+                balance = customer.get_balance_aed()
+                if balance > Decimal('1000') and customer.phone:
+                    result = WhatsAppService.send_payment_reminder(
+                        customer.phone,
+                        customer.name,
+                        float(balance)
+                    )
+                    if result.get('success'):
+                        sent += 1
+            except Exception:
+                # One bad customer (bad phone, API error, ...) must not
+                # abort the whole batch.
+                failed += 1
+                continue
 
-        return {'sent': sent, 'total_checked': len(customers)}
+        return {'sent': sent, 'failed': failed, 'total_checked': len(customers)}
 
 
 @celery.task(name='celery_tasks.cleanup_old_cache')
@@ -223,7 +235,7 @@ def run_security_scan(self):
                 LoginHistory.user_id,
                 db.func.count().label('fail_count')
             ).filter(
-                LoginHistory.success is False,
+                LoginHistory.success == False,  # noqa: E712 - SQLAlchemy NULL-safe equality
                 LoginHistory.timestamp >= cutoff
             ).group_by(
                 LoginHistory.user_id

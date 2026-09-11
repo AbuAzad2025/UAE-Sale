@@ -12,7 +12,7 @@ from utils.decorators import admin_required, permission_required, get_owned_or_4
 
 from utils.helpers import create_audit_log, generate_number
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 cheques_bp = Blueprint('cheques', __name__, url_prefix='/cheques')
 
@@ -199,6 +199,9 @@ def create():
             flash(f'✅ تم إضافة الشيك {cheque.cheque_bank_number} بنجاح', 'success')
             return redirect(url_for('cheques.view', id=cheque.id))
 
+        except InvalidOperation:
+            db.session.rollback()
+            flash('❌ مبلغ الشيك غير صالح.\n💡 أدخل رقماً صحيحاً وحاول مرة أخرى.', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات وحاول مرة أخرى.', 'danger')
@@ -275,6 +278,9 @@ def edit(id):
             flash('✅ تم تحديث الشيك بنجاح', 'success')
             return redirect(url_for('cheques.view', id=id))
 
+        except InvalidOperation:
+            db.session.rollback()
+            flash('❌ مبلغ الشيك غير صالح.\n💡 أدخل رقماً صحيحاً وحاول مرة أخرى.', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات وحاول مرة أخرى.', 'danger')

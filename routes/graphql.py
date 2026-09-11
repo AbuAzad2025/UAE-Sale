@@ -24,9 +24,25 @@ def _estimate_query_depth(query_str):
     return max_depth
 
 
+def _strip_graphql_ignored(query_str):
+    """Remove GraphQL string literals and comments before field extraction.
+
+    Field names mentioned inside "..." / \"\"\"...\"\"\" literals or after #
+    are argument values, not selected fields — counting them would demand
+    permissions the query never exercises (false 403s) or, worse, mask the
+    real selection set. Replaced with a single space to keep token gaps.
+    """
+    import re
+    cleaned = re.sub(r'"""[\s\S]*?"""', ' ', query_str)
+    cleaned = re.sub(r'"(?:\\.|[^"\\])*"', ' ', cleaned)
+    cleaned = re.sub(r'#[^\n]*', ' ', cleaned)
+    return cleaned
+
+
 def _extract_query_types(query_str):
     """Extract root field names from GraphQL query for permission mapping."""
     import re
+    query_str = _strip_graphql_ignored(query_str)
     # Simple extraction of root fields (e.g., "sale", "sales", "customer", "customers", etc.)
     # Matches patterns like "sale(id: 1) {", "sales {", "customer {", etc.
     root_fields = re.findall(r'\b(\w+)\s*\([^)]*\)\s*\{', query_str)

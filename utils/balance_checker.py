@@ -16,8 +16,21 @@ TOLERANCE = Decimal('0.01')
 
 
 def to_decimal(value):
-    """Coerce any numeric boundary value to Decimal (never float arithmetic)."""
-    return Decimal(str(value)) if value is not None else Decimal('0')
+    """Coerce any numeric boundary value to Decimal (never float arithmetic).
+
+    Total-safe: None, garbage strings, and non-finite values (NaN/Infinity)
+    coerce to Decimal('0') instead of raising, so reconciliation totals can
+    never crash on dirty boundary data.
+    """
+    if value is None:
+        return Decimal('0')
+    try:
+        d = Decimal(str(value).strip().replace(',', ''))
+    except Exception:
+        return Decimal('0')
+    if not d.is_finite():
+        return Decimal('0')
+    return d
 
 
 def get_control_account_balance(account_codes):

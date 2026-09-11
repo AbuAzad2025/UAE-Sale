@@ -68,14 +68,28 @@ class WebhookService:
             logger.warning('NOWPayments IPN secret not configured')
             return False
 
-        # حساب التوقيع المتوقع
-        expected_signature = hmac.new(
-            ipn_secret.encode('utf-8'),
-            payload,
-            hashlib.sha512
-        ).hexdigest()
+        # Fail closed on None/non-str signatures: compare_digest would raise
+        # TypeError, so reject early instead of propagating.
+        if not isinstance(signature, str) or not signature:
+            logger.warning('NOWPayments signature missing or not a string')
+            return False
 
-        return hmac.compare_digest(expected_signature, signature)
+        try:
+            if isinstance(payload, str):
+                payload = payload.encode('utf-8')
+            # حساب التوقيع المتوقع
+            expected_signature = hmac.new(
+                ipn_secret.encode('utf-8'),
+                payload,
+                hashlib.sha512
+            ).hexdigest()
+        except Exception:
+            return False
+
+        try:
+            return hmac.compare_digest(expected_signature, signature)
+        except Exception:
+            return False
 
     @staticmethod
     def process_nowpayments_webhook(data, raw_body=None, received_sig=None,

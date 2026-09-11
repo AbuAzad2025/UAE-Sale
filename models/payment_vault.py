@@ -82,6 +82,14 @@ class PaymentVault(db.Model):
 
     def unlock_vault(self, password):
         """فتح الخزينة"""
+        if self.is_locked_out():
+            # Lockout enforced: even the correct password is blocked while
+            # failed attempts exceed the limit. The counter keeps incrementing
+            # (audit trail) and the caller surfaces the lockout via
+            # is_locked_out(). Reset only through reset_failed_attempts().
+            self.failed_attempts = (self.failed_attempts or 0) + 1
+            db.session.commit()
+            return False
         if self.check_vault_password(password):
             self.is_locked = False
             self.last_access = datetime.utcnow()
@@ -119,7 +127,9 @@ class PaymentVault(db.Model):
 
     def is_locked_out(self):
         """التحقق من القفل بسبب المحاولات الفاشلة"""
-        return self.failed_attempts >= self.max_failed_attempts
+        failed = self.failed_attempts or 0
+        limit = self.max_failed_attempts or 3
+        return failed >= limit
 
 
 class PaymentTransaction(db.Model):

@@ -71,29 +71,52 @@ class ElasticsearchService:
             return ElasticsearchService._fallback_search(query, filters, limit)
 
     @staticmethod
+    def _escape_like(value: str) -> str:
+        """Escape LIKE wildcards so user input matches literally."""
+        return (
+            str(value)
+            .replace('\\', '\\\\')
+            .replace('%', '\\%')
+            .replace('_', '\\_')
+        )
+
+    @staticmethod
     def _fallback_search(query: str, filters: Dict = None, limit: int = 50) -> Dict:
-        from models import Sale
-        from sqlalchemy import or_
+        import logging
 
-        search_query = Sale.query
+        try:
+            from models import Sale
+            from sqlalchemy import or_
 
-        if query:
-            search_query = search_query.filter(
-                or_(
-                    Sale.sale_number.ilike(f'%{query}%'),
-                    Sale.notes.ilike(f'%{query}%')
+            search_query = Sale.query
+
+            if query:
+                pattern = f'%{ElasticsearchService._escape_like(query)}%'
+                search_query = search_query.filter(
+                    or_(
+                        Sale.sale_number.ilike(pattern, escape='\\'),
+                        Sale.notes.ilike(pattern, escape='\\')
+                    )
                 )
-            )
 
-        if filters:
-            for key, value in filters.items():
-                search_query = search_query.filter(getattr(Sale, key) == value)
+            if filters:
+                for key, value in filters.items():
+                    search_query = search_query.filter(getattr(Sale, key) == value)
 
-        results = search_query.limit(limit).all()
+            results = search_query.limit(limit).all()
 
-        return {
-            'success': True,
-            'results': [sale.to_dict() for sale in results],
-            'total': len(results),
-            'fallback': True
-        }
+            return {
+                'success': True,
+                'results': [sale.to_dict() for sale in results],
+                'total': len(results),
+                'fallback': True
+            }
+        except Exception as exc:
+            logging.getLogger(__name__).exception('Fallback search failed: %s', exc)
+            return {
+                'success': False,
+                'results': [],
+                'total': 0,
+                'fallback': True,
+                'error': str(exc),
+            }

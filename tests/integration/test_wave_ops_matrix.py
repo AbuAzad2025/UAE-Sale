@@ -514,7 +514,7 @@ def test_payments_purchase_voucher_flow_and_balance_api(client, login_owner, own
 
 # ---------------------------------------------------------------- expenses ops
 
-def test_expenses_cash_cheque_edit_categories_archive_delete(client, login_owner):
+def test_expenses_cash_cheque_edit_categories_archive_delete(client, login_owner, owner_user):
     cat = ExpenseCategory(name=_uniq('إيجار-'), name_ar='إيجار',
                           gl_account_code='6200', is_active=True)
     db.session.add(cat)
@@ -602,12 +602,14 @@ def test_expenses_cash_cheque_edit_categories_archive_delete(client, login_owner
     assert new_json.status_code == 200 and jbody['success'] is True
     assert jbody['category']['name'].startswith('JSON-')
 
+    # Back user_id with the created owner fixture row (same semantics as
+    # the raw id=1 seed; keeps the FK valid on PostgreSQL where it is
+    # enforced, while SQLite ignored it).
     archived_cycle = Expense(
         expense_number=_uniq('EXP-ARC-'), category_id=cat.id,
         description='للأرشفة', amount=Decimal('250'), currency='AED',
         exchange_rate=Decimal('1'), amount_base=Decimal('250'),
-        payment_method='bank_transfer', user_id=None)
-    archived_cycle.user_id = 1
+        payment_method='bank_transfer', user_id=owner_user.id)
     db.session.add(archived_cycle)
     db.session.commit()
     aid = archived_cycle.id

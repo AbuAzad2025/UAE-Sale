@@ -178,7 +178,15 @@ login_manager.login_message_category = "warning"
 @login_manager.user_loader
 def load_user(user_id):
     from models.user import User
-    return db.session.get(User, int(user_id))
+    try:
+        uid = int(user_id)
+    except (TypeError, ValueError):
+        # Tampered/garbage session cookie (e.g. user_id='abc'): fail closed
+        # with None instead of raising ValueError into a 500.
+        return None
+    if uid <= 0:
+        return None
+    return db.session.get(User, uid)
 
 
 from flask_login import AnonymousUserMixin  # noqa: E402

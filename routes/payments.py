@@ -828,10 +828,9 @@ def delete_receipt(id):  # noqa: C901
                 if sale.paid_amount_base < 0:
                     sale.paid_amount_base = 0
 
-                if sale.currency == 'ILS':
-                    sale.balance_due = sale.total_amount - sale.paid_amount_base
-                else:
-                    sale.balance_due = sale.amount_base - sale.paid_amount_base
+                # F14: balance is always tracked in base currency (mirrors
+                # Sale.recalculate_payment_status) — no per-currency branch.
+                sale.balance_due = sale.amount_base - sale.paid_amount_base
 
                 # تحديث حالة الدفع
                 if sale.balance_due <= 0:
@@ -842,12 +841,14 @@ def delete_receipt(id):  # noqa: C901
                 else:
                     sale.payment_status = 'unpaid'
 
-                # استعادة رصيد العميل
-                from models import Customer as _CustDel
-                _cust_del = get_owned_or_404(_CustDel, receipt.customer_id)
-                if _cust_del:
-                    _cust_del.balance = (_cust_del.balance or Decimal('0')) + receipt.amount_base
-                    _cust_del.update_classification()
+                # F14: best-effort customer restore — never 404-abort
+                # mid-delete when the receipt has no (or a stale) link.
+                if receipt.customer_id:
+                    from models import Customer as _CustDel
+                    _cust_del = db.session.get(_CustDel, receipt.customer_id)
+                    if _cust_del is not None:
+                        _cust_del.balance = (_cust_del.balance or Decimal('0')) + receipt.amount_base
+                        _cust_del.update_classification()
 
         # 2. القرار: أرشفة أو حذف
         if has_links:
@@ -998,13 +999,14 @@ def create_payment(purchase_id):  # noqa: C901
     purchase = get_owned_or_404(Purchase, purchase_id)
     supplier = get_owned_or_404(Supplier, purchase.supplier_id) if purchase.supplier_id else None
 
-    # حساب المبلغ المدفوع من جدول payments
-    paid_amount = db.session.query(func.sum(Payment.amount_base)).filter(
-        Payment.supplier_id == purchase.supplier_id
-    ).scalar() or 0
+    # F13: per-invoice balance from this purchase's own tracked paid
+    # amount — summing every supplier payment mixes other invoices (and
+    # base vs invoice currencies). Payments carry no purchase FK, so the
+    # tracked column is the per-purchase source of truth.
+    paid_amount = purchase.get_paid_amount()
 
     # حساب المبلغ المتبقي
-    balance = float(purchase.total_amount) - float(paid_amount)
+    balance = float(purchase.total_amount or 0) - float(paid_amount)
     suggested_amount = balance if balance > 0 else 0
 
     if request.method == 'POST':

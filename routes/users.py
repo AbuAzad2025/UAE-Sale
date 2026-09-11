@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, current_app
 from flask_login import login_required, current_user
+from sqlalchemy import func
 from extensions import db
 from models import User, Role, Tenant
 from services.user_service import UserService
@@ -157,14 +158,13 @@ def view(id):
         abort(404)
 
     # User-scoped activity (never global counters).
+    # Single-statement SQL aggregates (no per-row Python sums / N+1).
     from models import Sale, Payment, AuditLog
     sales_q = Sale.query.filter_by(seller_id=user.id)
     stats = {
         'sales_count': sales_q.count(),
-        'sales_total': float(sum((s.amount_base or 0) for s in sales_q.all()) or 0),
-        'payments_total': float(sum(
-            (p.amount_base or 0)
-            for p in Payment.query.filter_by(user_id=user.id).all()) or 0),
+        'sales_total': float(db.session.query(func.sum(Sale.amount_base)).filter_by(seller_id=user.id).scalar() or 0),
+        'payments_total': float(db.session.query(func.sum(Payment.amount_base)).filter_by(user_id=user.id).scalar() or 0),
         'audits_count': AuditLog.query.filter_by(user_id=user.id).count(),
     }
     recent_sales = sales_q.order_by(Sale.sale_date.desc()).limit(5).all()

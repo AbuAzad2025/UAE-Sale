@@ -130,10 +130,16 @@ def dashboard():  # noqa: C901
                     for sale in recent_sales:
                         try:
                             total += Decimal(str(sale.get_profit()))
-                        except Exception:
+                        except Exception as exc:
+                            current_app.logger.warning(
+                                'Dashboard month-profit: skipping sale %s: %s',
+                                getattr(sale, 'id', '?'), exc)
                             continue
                     return total
-                except Exception:
+                except Exception as exc:
+                    current_app.logger.error(
+                        'Dashboard month-profit aggregate failed: %s', exc,
+                        exc_info=True)
                     return Decimal('0')
             stats['month_profit'] = float(_cached('month_profit', _month_profit))
 

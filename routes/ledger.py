@@ -95,8 +95,28 @@ def trial_balance():
     try:
         df = datetime.strptime(date_from, '%Y-%m-%d').date() if date_from else None
         dt = datetime.strptime(date_to, '%Y-%m-%d').date() if date_to else None
-    except Exception:
+    except (ValueError, TypeError):
+        flash('⚠️ صيغة التاريخ غير صالحة — تم تجاهل فلتر التاريخ.', 'warning')
         df = dt = None
+        date_from = date_to = None
+
+    # Single GROUP BY query: per-account debit/credit sums in one round trip.
+    sums_q = db.session.query(
+        GLJournalLine.account_id.label('account_id'),
+        func.sum(GLJournalLine.debit).label('debit_sum'),
+        func.sum(GLJournalLine.credit).label('credit_sum'),
+    )
+    if df or dt:
+        sums_q = sums_q.join(GLJournalEntry, GLJournalLine.entry_id == GLJournalEntry.id)
+        if df:
+            sums_q = sums_q.filter(func.date(GLJournalEntry.entry_date) >= df)
+        if dt:
+            sums_q = sums_q.filter(func.date(GLJournalEntry.entry_date) <= dt)
+    sums_q = sums_q.group_by(GLJournalLine.account_id)
+    sums_by_account = {
+        row.account_id: ((row.debit_sum or Decimal('0')), (row.credit_sum or Decimal('0')))
+        for row in sums_q.all()
+    }
 
     accounts = GLAccount.query.filter_by(is_active=True).order_by(GLAccount.code).all()
 
@@ -107,19 +127,7 @@ def trial_balance():
     total_credit_balance = Decimal('0')
 
     for account in accounts:
-        debit_q = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=account.id)
-        credit_q = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=account.id)
-        if df or dt:
-            debit_q = debit_q.join(GLJournalEntry)
-            credit_q = credit_q.join(GLJournalEntry)
-            if df:
-                debit_q = debit_q.filter(func.date(GLJournalEntry.entry_date) >= df)
-                credit_q = credit_q.filter(func.date(GLJournalEntry.entry_date) >= df)
-            if dt:
-                debit_q = debit_q.filter(func.date(GLJournalEntry.entry_date) <= dt)
-                credit_q = credit_q.filter(func.date(GLJournalEntry.entry_date) <= dt)
-        debit_sum = debit_q.scalar() or Decimal('0')
-        credit_sum = credit_q.scalar() or Decimal('0')
+        debit_sum, credit_sum = sums_by_account.get(account.id, (Decimal('0'), Decimal('0')))
 
         balance = debit_sum - credit_sum
 
@@ -270,8 +278,12 @@ def balance_sheet():
     as_of_raw = request.args.get('as_of_date', type=str) or None
     try:
         as_of_date = datetime.strptime(as_of_raw, '%Y-%m-%d').date() if as_of_raw else None
-    except Exception:
+    except (ValueError, TypeError):
+        from flask import current_app
+        current_app.logger.warning(f'Ledger balance-sheet: ignoring unparsable as_of_date={as_of_raw!r}')
+        flash('⚠️ صيغة التاريخ غير صالحة — تم تجاهل فلتر التاريخ.', 'warning')
         as_of_date = None
+        as_of_raw = None
 
     def _sums(account_id):
         dq = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=account_id)
@@ -403,11 +415,10 @@ def manual_entry():  # noqa: C901
 
                 # تحويل القيم الفارغة إلى صفر
                 try:
-                    debit_value = float(debit) if debit and debit.strip() else 0
-                    credit_value = float(credit) if credit and credit.strip() else 0
-                except (ValueError, AttributeError):
-                    debit_value = 0
-                    credit_value = 0
+                    debit_value = float(str(debit).strip()) if debit and str(debit).strip() else 0
+                    credit_value = float(str(credit).strip()) if credit and str(credit).strip() else 0
+                except (ValueError, AttributeError, TypeError):
+                    raise ValueError(f'❌ قيمة غير صالحة في السطر {i + 1}: تحقق من المدين/الدائن.')
 
                 # إضافة السطر فقط إذا كان فيه قيمة
                 if debit_value > 0 or credit_value > 0:

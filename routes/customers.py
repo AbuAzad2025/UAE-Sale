@@ -144,14 +144,39 @@ def edit(id):
 
     if request.method == 'POST':
         try:
-            customer.name = request.form.get('name')
+            # F54: validate like create() (WTForms: name required,
+            # customer_type in choices, currency optional but in choices).
+            name = (request.form.get('name') or '').strip()
+            customer_type = (request.form.get('customer_type') or '').strip()
+            preferred_currency = (request.form.get('preferred_currency') or '').strip()
+
+            try:
+                from services.lookup_service import get_lookup
+                _allowed_types = {c for c, _m in get_lookup('customer_types')}
+                _allowed_currencies = {c for c, _m in get_lookup('currencies')}
+            except Exception:
+                from utils.constants import CUSTOMER_TYPES, CURRENCIES
+                _allowed_types = {c for c, _m in CUSTOMER_TYPES}
+                _allowed_currencies = {c for c, _m in CURRENCIES}
+
+            if not name:
+                flash('❌ اسم الزبون مطلوب.\n💡 أدخل اسم الزبون وحاول مرة أخرى.', 'danger')
+                return render_template('customers/edit.html', customer=customer)
+            if customer_type not in _allowed_types:
+                flash('❌ نوع الزبون غير صالح.\n💡 اختر النوع من القائمة وحاول مرة أخرى.', 'danger')
+                return render_template('customers/edit.html', customer=customer)
+            if preferred_currency and preferred_currency not in _allowed_currencies:
+                flash('❌ العملة المفضلة غير صالحة.\n💡 اختر العملة من القائمة وحاول مرة أخرى.', 'danger')
+                return render_template('customers/edit.html', customer=customer)
+
+            customer.name = name
             customer.name_ar = request.form.get('name_ar')
-            customer.customer_type = request.form.get('customer_type')
+            customer.customer_type = customer_type
             customer.phone = request.form.get('phone')
             customer.email = request.form.get('email')
             customer.address = request.form.get('address')
             customer.tax_number = request.form.get('tax_number')
-            customer.preferred_currency = request.form.get('preferred_currency')
+            customer.preferred_currency = preferred_currency or None
             customer.notes = request.form.get('notes')
 
             db.session.commit()

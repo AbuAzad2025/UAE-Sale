@@ -298,7 +298,9 @@ class NOWPaymentsService:
             if status == 'finished':
                 donation.status = 'completed'
                 donation.completed_at = datetime.utcnow()
-            elif status == 'failed':
+            elif status in ('failed', 'expired'):
+                # expired is terminal: the funds will never arrive, so the
+                # donation must not linger as pending.
                 donation.status = 'failed'
             elif status == 'refunded':
                 donation.status = 'refunded'

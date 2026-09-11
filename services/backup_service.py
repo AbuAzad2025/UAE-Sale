@@ -17,6 +17,24 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _validated_backup_path(backup_dir: str, filename) -> Optional[str]:
+    """Resolve *filename* inside *backup_dir* or return None when unsafe.
+
+    Fail-closed wrapper around utils.db_safety.validate_backup_filename so
+    direct service callers (not just the owner routes) are protected against
+    path traversal.
+    """
+    try:
+        from utils.db_safety import validate_backup_filename
+    except ImportError:
+        return None
+    try:
+        return validate_backup_filename(filename, backup_dir)
+    except (ValueError, TypeError):
+        logger.warning('Rejected unsafe backup filename: %r', filename)
+        return None
+
+
 class BackupService:
     """خدمة النسخ الاحتياطي الاحترافية"""
 
@@ -464,7 +482,9 @@ class BackupService:
     def verify_backup(cls, filename: str) -> bool:  # noqa: C901
         """التحقق من سلامة نسخة احتياطية"""
         try:
-            backup_path = os.path.join(cls.BACKUP_DIR, filename)
+            backup_path = _validated_backup_path(cls.BACKUP_DIR, filename)
+            if not backup_path:
+                return False
             if not os.path.exists(backup_path):
                 return False
 
@@ -472,27 +492,30 @@ class BackupService:
             if os.path.getsize(backup_path) == 0:
                 return False
 
-            # 2. Check gzip integrity if compressed
+            # 2. Check gzip integrity if compressed — stream the WHOLE file,
+            # not just the first 1024 bytes, so truncated/corrupt tails fail.
             if filename.endswith('.gz'):
                 try:
                     with gzip.open(backup_path, 'rb') as f:
-                        f.read(1024)  # Try reading header
+                        for _chunk in iter(lambda: f.read(65536), b''):
+                            pass
                 except Exception:
                     return False
 
-            # 3. Check metadata checksum if available
+            # 3. Check metadata checksum if available — fail closed: a
+            # corrupt/unparseable meta file or a checksum mismatch fails.
             meta_path = backup_path + '.meta.json'
             if os.path.exists(meta_path):
                 try:
                     with open(meta_path, 'r', encoding='utf-8') as f:
                         meta = json.load(f)
-                        stored_checksum = meta.get('checksum')
-                        if stored_checksum:
-                            current_checksum = cls._calculate_checksum(backup_path)
-                            if current_checksum != stored_checksum:
-                                return False
                 except Exception:
-                    pass
+                    return False
+                stored_checksum = meta.get('checksum') if isinstance(meta, dict) else None
+                if stored_checksum:
+                    current_checksum = cls._calculate_checksum(backup_path)
+                    if not current_checksum or current_checksum != stored_checksum:
+                        return False
 
             return True
         except Exception:
@@ -505,7 +528,10 @@ class BackupService:
         """
         try:
             cls.initialize()
-            backup_path = os.path.join(cls.BACKUP_DIR, backup_filename)
+            backup_path = _validated_backup_path(cls.BACKUP_DIR, backup_filename)
+            if not backup_path:
+                logger.error(f"Rejected unsafe backup filename: {backup_filename!r}")
+                return False
 
             if not os.path.exists(backup_path):
                 logger.error(f"Backup file not found: {backup_filename}")
@@ -608,17 +634,29 @@ class BackupService:
     @classmethod
     def delete_backup(cls, backup_filename: str) -> bool:
         try:
-            backup_path = os.path.join(cls.BACKUP_DIR, backup_filename)
+            backup_path = _validated_backup_path(cls.BACKUP_DIR, backup_filename)
+            if not backup_path:
+                logger.error(f"Rejected unsafe backup filename: {backup_filename!r}")
+                return False
             meta_path = backup_path + '.meta.json'
 
             # Log paths for debugging
             logger.info(f"Attempting to delete backup: {backup_path}")
 
-            if os.path.exists(backup_path):
-                os.remove(backup_path)
-                logger.info(f"Deleted backup file: {backup_path}")
-            else:
-                logger.warning(f"Backup file not found: {backup_path}")
+            # Missing file is idempotent success (rm -f semantics): the
+            # end-state (file absent) already holds. Callers that need
+            # strictness pre-check existence themselves.
+            if not os.path.exists(backup_path):
+                logger.warning(f"Backup file not found (noop): {backup_path}")
+                if os.path.exists(meta_path):
+                    try:
+                        os.remove(meta_path)
+                    except Exception:
+                        pass
+                return True
+
+            os.remove(backup_path)
+            logger.info(f"Deleted backup file: {backup_path}")
 
             if os.path.exists(meta_path):
                 os.remove(meta_path)

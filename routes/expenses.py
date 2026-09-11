@@ -7,7 +7,7 @@ from services.gl_service import GLService
 from utils.decorators import permission_required
 
 from utils.helpers import create_audit_log, generate_number
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from datetime import datetime
 
 expenses_bp = Blueprint('expenses', __name__, url_prefix='/expenses')
@@ -166,6 +166,9 @@ def create():  # noqa: C901
             flash('✅ تم إضافة المصروف بنجاح!', 'success')
             return redirect(url_for('expenses.view', id=expense.id))
 
+        except InvalidOperation:
+            db.session.rollback()
+            flash('❌ مبلغ المصروف غير صالح.\n💡 أدخل رقماً صحيحاً وحاول مرة أخرى.', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
@@ -305,6 +308,12 @@ def edit(id):  # noqa: C901
             expense.supplier_name = request.form.get('supplier_name')
             expense.notes = request.form.get('notes')
 
+            # F12: assign the method from the form when present, otherwise the
+            # snapshot comparison below can never fire the GL repost.
+            new_payment_method = request.form.get('payment_method')
+            if new_payment_method:
+                expense.payment_method = new_payment_method
+
             # حساب المبلغ بالدرهم
             exchange_rate = CurrencyService.get_exchange_rate(expense.currency, 'AED')
             expense.exchange_rate = exchange_rate
@@ -330,9 +339,18 @@ def edit(id):  # noqa: C901
                     audit_changes['gl_reversed'] = gl_reversed_entry_number
             create_audit_log('update', 'expenses', id, changes=audit_changes or None)
 
-            flash('✅ تم تحديث المصروف بنجاح!', 'success')
+            # F52: never report a silent success when a GL-relevant edit
+            # could not be reposted — the repost helper already flashed the
+            # specific warning, this surfaces the error outcome.
+            if gl_relevant_change and gl_reversed_entry_number is None:
+                flash('❌ تم حفظ التعديل لكن تعذر إعادة ترحيل القيد المحاسبي؛ راجع دفتر اليومية يدوياً.', 'danger')
+            else:
+                flash('✅ تم تحديث المصروف بنجاح!', 'success')
             return redirect(url_for('expenses.view', id=id))
 
+        except InvalidOperation:
+            db.session.rollback()
+            flash('❌ مبلغ المصروف غير صالح.\n💡 أدخل رقماً صحيحاً وحاول مرة أخرى.', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')

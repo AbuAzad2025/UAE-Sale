@@ -228,6 +228,7 @@ def create():  # noqa: C901
                     supplier.update_statistics()
                 except Exception as e:
                     current_app.logger.warning(f'Supplier stats update failed: {e}')
+                    flash('⚠️ تم حفظ الفاتورة لكن تعذر تحديث إحصائيات المورد.', 'warning')
 
             current_app.logger.info("About to commit to database...")
             current_app.logger.info(f"Final values: subtotal={purchase.subtotal}, tax_amount={purchase.tax_amount}, total_amount={purchase.total_amount}, amount_base={purchase.amount_base}")  # noqa: E501

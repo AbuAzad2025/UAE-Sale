@@ -112,13 +112,14 @@ def manage_workflows():
 @permission_required('manage_settings')
 def new_workflow():
     if request.method == 'POST':
+        max_raw = (request.form.get('max_amount') or '').strip()
         wf = ApprovalWorkflow(
             name=request.form.get('name', '').strip(),
             name_ar=request.form.get('name_ar', '').strip() or None,
             description=request.form.get('description', '').strip() or None,
             entity_type=request.form.get('entity_type', 'sale'),
             min_amount=float(request.form.get('min_amount', 0) or 0),
-            max_amount=float(request.form['max_amount']) if request.form.get('max_amount') else None,
+            max_amount=float(max_raw) if max_raw else None,
             levels_required=int(request.form.get('levels_required', 1) or 1),
             is_active='is_active' in request.form,
         )
@@ -141,7 +142,8 @@ def edit_workflow(wf_id):
         wf.description = request.form.get('description', '').strip() or None
         wf.entity_type = request.form.get('entity_type', 'sale')
         wf.min_amount = float(request.form.get('min_amount', 0) or 0)
-        wf.max_amount = float(request.form['max_amount']) if request.form.get('max_amount') else None
+        max_raw = (request.form.get('max_amount') or '').strip()
+        wf.max_amount = float(max_raw) if max_raw else None
         wf.levels_required = int(request.form.get('levels_required', 1) or 1)
         wf.is_active = 'is_active' in request.form
         db.session.commit()

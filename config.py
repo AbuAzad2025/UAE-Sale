@@ -173,19 +173,19 @@ class Config:
     COMPANY_NAME = os.environ.get("COMPANY_NAME", "Azad Smart Systems")
     COMPANY_NAME_AR = os.environ.get("COMPANY_NAME_AR", "شركة أزاد للأنظمة الذكية")
     COMPANY_ADDRESS = os.environ.get("COMPANY_ADDRESS", "فلسطين - رام الله | Palestine - Ramallah")
-    COMPANY_PHONE = os.environ.get("COMPANY_PHONE", "0598953362")
-    COMPANY_PHONE_2 = os.environ.get("COMPANY_PHONE_2", "0562150193")
-    COMPANY_EMAIL = os.environ.get("COMPANY_EMAIL", "rafideen.ahmadghannam@gmail.com")
+    COMPANY_PHONE = os.environ.get("COMPANY_PHONE", "")
+    COMPANY_PHONE_2 = os.environ.get("COMPANY_PHONE_2", "")
+    COMPANY_EMAIL = os.environ.get("COMPANY_EMAIL", "")
     COMPANY_WEBSITE = os.environ.get("COMPANY_WEBSITE", "https://azadsystems.com")
-    COMPANY_WHATSAPP = os.environ.get("COMPANY_WHATSAPP", "00972562150193")
+    COMPANY_WHATSAPP = os.environ.get("COMPANY_WHATSAPP", "")
     COMPANY_TAX_NUMBER = os.environ.get("COMPANY_TAX_NUMBER", "")
     COMPANY_LOGO = os.environ.get("COMPANY_LOGO", "img/azad_logo.png")
 
     DEVELOPER_NAME = os.environ.get("DEVELOPER_NAME", "م. أحمد غنام | Eng. Ahmad Ghannam")
     DEVELOPER_CREDIT = "تطوير وبرمجة: م. أحمد غنام | Developed by Eng. Ahmad Ghannam - Azad Systems"
     DEVELOPER_WEBSITE = os.environ.get("DEVELOPER_WEBSITE", "https://azadsystems.com")
-    DEVELOPER_PHONE = os.environ.get("DEVELOPER_PHONE", "+970-56-215-0193")
-    DEVELOPER_EMAIL = os.environ.get("DEVELOPER_EMAIL", "rafideen.ahmadghannam@gmail.com")
+    DEVELOPER_PHONE = os.environ.get("DEVELOPER_PHONE", "")
+    DEVELOPER_EMAIL = os.environ.get("DEVELOPER_EMAIL", "")
     APP_VERSION = "2.0.0"
 
     BABEL_DEFAULT_LOCALE = os.environ.get("BABEL_DEFAULT_LOCALE", "ar")
@@ -203,7 +203,7 @@ class Config:
             "OWNER_PASSWORD environment variable is not set! "
             "The owner account cannot be created without a secure password."
         )
-    OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "rafideen.ahmadghannam@gmail.com")
+    OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "")
 
     CARD_ENCRYPTION_KEY = os.environ.get("CARD_ENCRYPTION_KEY", "")
     if not CARD_ENCRYPTION_KEY:

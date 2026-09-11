@@ -121,6 +121,11 @@ class TestJournalEntry:
         assert reversed_entry.total_credit == entry.total_debit
         assert reversed_entry.entry_type == 'reversing'
 
+    # LAYER: model — GLJournalEntry.reverse_entry() instance guard.
+    # Intentionally overlaps with the manager-level double-reverse tests in
+    # test_double_entry_integrity.py and test_erp_modules_journal.py, which
+    # cover AdvancedJournalEntryManager.reverse_entry_advanced(); this one
+    # pins the model primitive they both delegate to. Do not delete.
     def test_cannot_reverse_twice(self, db, owner_user):
         """Cannot reverse an already reversed entry."""
         from models import GLJournalEntry

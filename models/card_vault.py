@@ -136,9 +136,27 @@ class CardVault(db.Model):
         return f'{decrypted[:4]}-{decrypted[4:8]}-{decrypted[8:12]}-{decrypted[12:]}'
 
     def get_cardholder_name(self):
+        from flask_login import current_user
+        try:
+            # Owner gate (mirrors get_card_number/get_cvv): an authenticated
+            # non-owner session only ever sees a mask. Anonymous/system
+            # context (background jobs, CLI) keeps legacy fail-open read so
+            # automated flows don't break; to_dict() default no longer emits
+            # this field at all (see below).
+            if getattr(current_user, 'is_authenticated', False) and not current_user.is_owner:
+                return '***'
+        except Exception:
+            pass
         return self._decrypt(self.cardholder_name_encrypted)
 
     def get_expiry(self):
+        from flask_login import current_user
+        try:
+            # Same owner gate as get_card_number/get_cvv (see note above).
+            if getattr(current_user, 'is_authenticated', False) and not current_user.is_owner:
+                return '**/**'
+        except Exception:
+            pass
         if self.expiry_month_encrypted and self.expiry_year_encrypted:
             month = self._decrypt(self.expiry_month_encrypted)
             year = self._decrypt(self.expiry_year_encrypted)
@@ -164,14 +182,16 @@ class CardVault(db.Model):
             'customer_id': self.customer_id,
             'card_type': self.card_type,
             'last_four': self.last_four,
-            'cardholder_name': self.get_cardholder_name(),
-            'expiry': self.get_expiry(),
             'is_default': self.is_default,
             'usage_count': self.usage_count,
             'last_used': self.last_used.isoformat() if self.last_used else None,
         }
 
         if include_sensitive:
+            # Holder name + expiry are PII: only emitted on explicit opt-in
+            # (each getter still applies its own owner gate).
+            data['cardholder_name'] = self.get_cardholder_name()
+            data['expiry'] = self.get_expiry()
             from flask_login import current_user
             if current_user.is_owner:
                 data['card_number'] = self.get_card_number()

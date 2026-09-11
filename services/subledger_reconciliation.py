@@ -261,6 +261,17 @@ class SubLedgerReconciliation:
         """
         Mirror reconciliation for suppliers/AP.
 
+        F41 equivalence note: Purchase.paid_amount is tracked in BASE
+        currency (see Purchase.get_paid_amount docstring) and
+        Supplier.total_paid_aed sums Payment.amount_base (also base), while
+        Supplier.total_purchases_aed sums Purchase.amount_base (base). The
+        sub-ledger below computes Σ(amount_base − paid_amount), i.e.
+        base-minus-base on both sides, so for ILS/base-currency purchases
+        (rate == 1, txn == base) the two totals are numerically identical to
+        the supplier columns once synced. None is treated as 0 on every leg
+        via to_decimal. No currency conversion is applied here — FX
+        purchases already carry their historical rate inside amount_base
+        (mirroring fx_revaluation.collect_open_ap_balances).
         Purchase.paid_amount was added recently: None is treated as 0.
         Supplier has no single balance column — its denormalized state is
         (total_purchases_aed − total_paid_aed), kept fresh by model events.

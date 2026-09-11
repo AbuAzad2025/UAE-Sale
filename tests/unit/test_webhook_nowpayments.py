@@ -584,6 +584,13 @@ class TestPaymentCallback:
         db.session.expire_all()
         assert db.session.get(Donation, donation.id).status == 'pending'
 
+    def test_expired_maps_to_failed(self, svc, db, donation):
+        assert svc.process_payment_callback({
+            'payment_id': 'pay-donation-001', 'payment_status': 'expired',
+        }) is True
+        db.session.expire_all()
+        assert db.session.get(Donation, donation.id).status == 'failed'
+
     def test_lookup_matches_gateway_transaction_id_too(self, svc, db, donation):
         donation.transaction_hash = None
         db.session.commit()

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone, timedelta
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session, current_app
 from flask_login import login_user, logout_user, current_user
 from extensions import db, limiter
 from models import User
@@ -200,12 +200,17 @@ def create_payment():
         if result['success']:
             return jsonify(result)
         else:
-            return jsonify(result), 400
+            current_app.logger.warning(f"NOWPayments create_payment failed: {result.get('error')}")
+            return jsonify({
+                'success': False,
+                'error': '❌ فشلت عملية الدفع. يرجى المحاولة لاحقاً.'
+            }), 400
 
     except Exception as e:
+        current_app.logger.error(f'NOWPayments create_payment error: {e}', exc_info=True)
         return jsonify({
             'success': False,
-            'error': f'خطأ في إنشاء الدفعة: {str(e)}'
+            'error': '❌ حدث خطأ أثناء إنشاء الدفعة. يرجى المحاولة لاحقاً.'
         }), 500
 
 
@@ -219,12 +224,17 @@ def payment_status(payment_id):
         if result['success']:
             return jsonify(result)
         else:
-            return jsonify(result), 400
+            current_app.logger.warning(f"NOWPayments get_payment_status failed: {result.get('error')}")
+            return jsonify({
+                'success': False,
+                'error': '❌ تعذر الحصول على حالة الدفعة. يرجى المحاولة لاحقاً.'
+            }), 400
 
     except Exception as e:
+        current_app.logger.error(f'NOWPayments payment_status error: {e}', exc_info=True)
         return jsonify({
             'success': False,
-            'error': f'خطأ في الحصول على حالة الدفعة: {str(e)}'
+            'error': '❌ حدث خطأ أثناء الحصول على حالة الدفعة. يرجى المحاولة لاحقاً.'
         }), 500
 
 
@@ -252,8 +262,9 @@ def payment_callback():
             return jsonify({'error': 'فشل في معالجة الدفعة'}), 500
 
     except Exception as e:
+        current_app.logger.error(f'NOWPayments callback error: {e}', exc_info=True)
         return jsonify({
-            'error': f'خطأ في معالجة callback: {str(e)}'
+            'error': '❌ حدث خطأ أثناء معالجة الدفعة. يرجى المحاولة لاحقاً.'
         }), 500
 
 
@@ -267,12 +278,17 @@ def available_currencies():
         if result['success']:
             return jsonify(result)
         else:
-            return jsonify(result), 400
+            current_app.logger.warning(f"NOWPayments get_available_currencies failed: {result.get('error')}")
+            return jsonify({
+                'success': False,
+                'error': '❌ تعذر الحصول على العملات المتاحة. يرجى المحاولة لاحقاً.'
+            }), 400
 
     except Exception as e:
+        current_app.logger.error(f'NOWPayments currencies error: {e}', exc_info=True)
         return jsonify({
             'success': False,
-            'error': f'خطأ في الحصول على العملات: {str(e)}'
+            'error': '❌ حدث خطأ أثناء الحصول على العملات. يرجى المحاولة لاحقاً.'
         }), 500
 
 
@@ -299,12 +315,17 @@ def estimate_amount():
         if result['success']:
             return jsonify(result)
         else:
-            return jsonify(result), 400
+            current_app.logger.warning(f"NOWPayments estimate failed: {result.get('error')}")
+            return jsonify({
+                'success': False,
+                'error': '❌ تعذر تقدير المبلغ. يرجى المحاولة لاحقاً.'
+            }), 400
 
     except Exception as e:
+        current_app.logger.error(f'NOWPayments estimate error: {e}', exc_info=True)
         return jsonify({
             'success': False,
-            'error': f'خطأ في التقدير: {str(e)}'
+            'error': '❌ حدث خطأ أثناء التقدير. يرجى المحاولة لاحقاً.'
         }), 500
 
 

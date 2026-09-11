@@ -76,6 +76,9 @@ class WhatsAppService:
         api_url = os.environ.get('WHATSAPP_API_URL', 'https://api.ultramsg.com')
         instance_id = os.environ.get('WHATSAPP_INSTANCE_ID')
 
+        if not all([api_key, api_url, instance_id]):
+            return {'success': False, 'error': 'Missing WhatsApp configuration: WHATSAPP_API_KEY/WHATSAPP_API_URL/WHATSAPP_INSTANCE_ID'}
+
         phone_clean = phone.replace('+', '').replace(' ', '').replace('-', '')
         if not phone_clean.startswith('971'):
             phone_clean = '971' + phone_clean.lstrip('0')
@@ -98,11 +101,26 @@ class WhatsAppService:
                 'body': message
             }, timeout=10)
 
-            result = response.json()
+            if response.status_code < 200 or response.status_code >= 300:
+                return {
+                    'success': False,
+                    'error': f'WhatsApp API HTTP {response.status_code}: {response.text[:200]}',
+                }
+
+            try:
+                result = response.json()
+            except ValueError:
+                return {
+                    'success': False,
+                    'error': 'WhatsApp API returned non-JSON response',
+                }
+
+            if isinstance(result, dict) and result.get('error'):
+                return {'success': False, 'error': str(result.get('error'))}
 
             return {
                 'success': True,
-                'message_id': result.get('id'),
+                'message_id': result.get('id') if isinstance(result, dict) else None,
                 'phone': phone_clean
             }
 
@@ -121,6 +139,9 @@ class WhatsAppService:
         api_url = os.environ.get('WHATSAPP_API_URL', 'https://api.ultramsg.com')
         instance_id = os.environ.get('WHATSAPP_INSTANCE_ID')
 
+        if not all([api_key, api_url, instance_id]):
+            return {'success': False, 'error': 'Missing WhatsApp configuration: WHATSAPP_API_KEY/WHATSAPP_API_URL/WHATSAPP_INSTANCE_ID'}
+
         phone_clean = phone.replace('+', '').replace(' ', '').replace('-', '')
         if not phone_clean.startswith('971'):
             phone_clean = '971' + phone_clean.lstrip('0')
@@ -133,11 +154,26 @@ class WhatsAppService:
                 'body': message
             }, timeout=10)
 
-            result = response.json()
+            if response.status_code < 200 or response.status_code >= 300:
+                return {
+                    'success': False,
+                    'error': f'WhatsApp API HTTP {response.status_code}: {response.text[:200]}',
+                }
+
+            try:
+                result = response.json()
+            except ValueError:
+                return {
+                    'success': False,
+                    'error': 'WhatsApp API returned non-JSON response',
+                }
+
+            if isinstance(result, dict) and result.get('error'):
+                return {'success': False, 'error': str(result.get('error'))}
 
             return {
                 'success': True,
-                'message_id': result.get('id'),
+                'message_id': result.get('id') if isinstance(result, dict) else None,
                 'phone': phone_clean
             }
 

@@ -53,8 +53,8 @@ def _validate_csrf_token():
             try:
                 validate_csrf_token(csrf_token)
                 return True
-            except Exception:
-                pass
+            except Exception as exc:
+                current_app.logger.warning(f'AI CSRF header token invalid ({header_name}): {exc}')
 
     # Fall back to standard form token
     csrf_token = request.form.get('csrf_token')
@@ -62,21 +62,22 @@ def _validate_csrf_token():
         try:
             validate_csrf_token(csrf_token)
             return True
-        except Exception:
-            pass
+        except Exception as exc:
+            current_app.logger.warning(f'AI CSRF form token invalid: {exc}')
 
     # JSON body token (some clients embed it in the payload)
     try:
         body = request.get_json(silent=True) or {}
         csrf_token = body.get('csrf_token')
-    except Exception:
+    except Exception as exc:
+        current_app.logger.warning(f'AI CSRF body parse failed: {exc}')
         csrf_token = None
     if csrf_token:
         try:
             validate_csrf_token(csrf_token)
             return True
-        except Exception:
-            pass
+        except Exception as exc:
+            current_app.logger.warning(f'AI CSRF body token invalid: {exc}')
 
     return False
 
@@ -98,8 +99,9 @@ def _validate_origin():
             if origin_host and origin_host != host:
                 return False
         return True
-    except Exception:
-        return True
+    except Exception as exc:
+        current_app.logger.warning(f'AI origin check failed (rejecting): {exc}')
+        return False
 
 
 def _log_security_event(event_type, details=None):
@@ -332,7 +334,7 @@ def train_local_ai(action, data, result):
 
         return True
     except Exception as e:
-        print(f"Training error: {e}")
+        current_app.logger.warning(f"AI local training failed: {e}")
         return False
 
 
@@ -3323,7 +3325,7 @@ def _train_ai_from_excel(df, created, updated, user_id):
         # learning_system.learn_from_user_data(learning_data)  # تعطيل مؤقت
 
     except Exception as e:
-        print(f"AI training from Excel failed: {e}")
+        current_app.logger.warning(f"AI training from Excel failed: {e}")
 
 
 @ai_bp.route('/predict-sales', methods=['GET'])

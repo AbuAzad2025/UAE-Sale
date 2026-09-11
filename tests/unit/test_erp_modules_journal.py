@@ -513,6 +513,11 @@ class TestAdvancedJournalManagerReverse:
             AdvancedJournalEntryManager.reverse_entry_advanced(
                 draft_entry.id, owner_user.id, 'سبب')
 
+    # LAYER: manager API — AdvancedJournalEntryManager.reverse_entry_advanced()
+    # on the shared posted_entry fixture (audit/linkage contract). Overlaps
+    # intentionally with the model-level guard in test_gl.py
+    # (GLJournalEntry.reverse_entry) and the invariant-harness guard in
+    # test_double_entry_integrity.py; each pins a different layer. Do not delete.
     def test_double_reverse_rejected(self, db, posted_entry, owner_user):
         AdvancedJournalEntryManager.reverse_entry_advanced(
             posted_entry.id, owner_user.id, 'أول عكس')

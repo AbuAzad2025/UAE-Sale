@@ -45,11 +45,13 @@ def resolve_account(role_name):
 def merchant_receivable_codes():
     """Non-standard AR buckets used for merchant/partner invoices.
 
-    Merchant-type customer invoices are debited to MERCHANTS_PAYABLE ('2115')
-    and partner-type to PARTNERS_CURRENT ('3350') instead of the AR control
-    ('1130'). Sub-ledger reconciliation imports this helper (defensively) so
-    its control scope covers ALL customer types, keeping the
-    control-vs-subledger proof intact. Returns ``['2115', '3350']`` today.
+    Since F37, NEW merchant invoices post to the AR control ('1130') via
+    ``GLService.get_customer_credit_account`` (a merchant receivable is an
+    asset, not the liability '2115'). Partner invoices still post to
+    PARTNERS_CURRENT ('3350'). This helper keeps returning ``['2115',
+    '3350']`` so the sub-ledger reconciliation scope still covers LEGACY
+    merchant postings sitting on '2115' plus partner buckets — the
+    control-vs-subledger proof stays intact for all customer types.
     """
     codes = []
     for role_name in ('MERCHANTS_PAYABLE', 'PARTNER_CURRENT'):
@@ -309,11 +311,17 @@ class SaleService:
             )
 
             # Determine AR Account based on Customer Type (resolved dynamically)
+            # F37: merchant receivables are true receivables — align with the
+            # GLService resolver (FIX 2: merchant -> AR control 1130), not the
+            # liability 2115. Partner mapping stays on PARTNERS_CURRENT.
             ar_account = resolve_account('AR_CONTROL')
             if customer.customer_type == 'partner':
                 ar_account = resolve_account('PARTNER_CURRENT')
             elif customer.customer_type == 'merchant':
-                ar_account = resolve_account('MERCHANTS_PAYABLE')
+                try:
+                    ar_account = GLService.get_customer_credit_account(customer)
+                except Exception:
+                    ar_account = resolve_account('AR_CONTROL')
 
             # Prepare GL lines with proper decimal precision
             # AR and Revenue should be in Transaction Currency (Foreign)
@@ -608,9 +616,43 @@ class SaleService:
     @staticmethod
     def update_payment_status(sale):
         """
-        Update payment status based on paid amount
-        Uses Decimal for accurate comparisons
+        Update payment status based on paid amount.
+        Uses Decimal for accurate comparisons.
+
+        F38: for foreign-currency invoices compare base-vs-base
+        (paid_amount_base vs amount_base); the legacy ILS path
+        (paid_amount vs total_amount, rate == 1) is kept byte-identical so
+        existing ILS behavior is unchanged.
         """
+        try:
+            _base = CurrencyService.get_base_currency()
+        except Exception:
+            _base = 'ILS'
+        try:
+            _rate = Decimal(str(sale.exchange_rate or 1))
+        except Exception:
+            _rate = Decimal('1')
+        _is_fx = (getattr(sale, 'currency', None) or _base) != _base or _rate != Decimal('1')
+
+        if _is_fx:
+            paid = Decimal(str(sale.paid_amount_base or 0))
+            total = Decimal(str(sale.amount_base))
+
+            balance = (total - paid).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
+
+            if balance <= Decimal('0'):
+                sale.payment_status = 'paid'
+                sale.balance_due = Decimal('0')
+            elif paid > Decimal('0'):
+                sale.payment_status = 'partial'
+                sale.balance_due = balance
+            else:
+                sale.payment_status = 'unpaid'
+                sale.balance_due = total
+
+            db.session.commit()
+            return
+
         paid = Decimal(str(sale.paid_amount)) if sale.paid_amount else Decimal('0')
         total = Decimal(str(sale.total_amount))
 

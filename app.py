@@ -1,5 +1,5 @@
 import os
-print("DEBUG: App file starting load...", flush=True)
+import logging
 import sys  # noqa: E402,F401
 import uuid  # noqa: E402
 from datetime import datetime, timezone  # noqa: E402,F401
@@ -162,9 +162,7 @@ def create_app(config_class=Config):  # noqa: C901
         _ = True
     except Exception as e:
         ai_import_error = str(e)
-        print(f"AI Blueprint Import Error: {ai_import_error}")
-        import traceback
-        traceback.print_exc()
+        app.logger.error("AI Blueprint Import Error: %s", ai_import_error, exc_info=True)
         _ = False
 
         # Fallback Blueprint to prevent url_for BuildError
@@ -442,12 +440,13 @@ def create_app(config_class=Config):  # noqa: C901
 
 
 if __name__ == '__main__':  # noqa: C901
-    print("DEBUG: Entering main block...", flush=True)
+    _log = logging.getLogger(__name__)
+    _log.debug("Entering main block...")
     try:
         app = create_app()
-        print("DEBUG: App created successfully", flush=True)
+        app.logger.debug("App created successfully")
     except Exception as e:
-        print(f"DEBUG: Failed to create app: {e}", flush=True)
+        _log.error("Failed to create app: %s", e, exc_info=True)
         raise e
 
     # Background schedulers run ONLY under this built-in dev server. Under

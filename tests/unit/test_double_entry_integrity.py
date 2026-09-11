@@ -428,6 +428,12 @@ class TestJournalManagerIntegrity:
             assert rev.debit == src.credit and rev.credit == src.debit
         assert_ledger_invariants()
 
+    # LAYER: service/harness — AdvancedJournalEntryManager.reverse_entry_advanced()
+    # under the full double-entry invariant sweep (SaleService + journal
+    # lifecycle in this file). Overlaps intentionally with the model-level
+    # guard in test_gl.py (GLJournalEntry.reverse_entry) and the manager-API
+    # guard in test_erp_modules_journal.py; each pins a different layer.
+    # Do not delete.
     def test_double_reverse_rejected(self, db, gl_accounts, owner_user):
         entry = AdvancedJournalEntryManager.create_entry_with_validation(
             description='عكس مرة واحدة', lines=self.BALANCED,

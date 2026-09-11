@@ -103,17 +103,21 @@ class TestLanguageSwitch:
 # ── API docs (public spec UI) ─────────────────────────────────────────────────
 
 class TestApiDocs:
+    # api_docs blueprint is public (no login_required) -> always renders 200.
     @pytest.mark.parametrize('url', [
         '/api-docs/', '/api-docs/openapi.json', '/api-docs/redoc',
     ])
     def test_docs_reachable(self, client, url):
-        assert client.get(url).status_code in (200, 302)
+        resp = client.get(url)
+        assert resp.status_code == 200
+        assert 'login' not in resp.headers.get('Location', '')
 
     def test_openapi_spec_is_json(self, client):
         resp = client.get('/api-docs/openapi.json')
-        assert resp.status_code in (200, 302)
-        if resp.status_code == 200:
-            assert 'openapi' in resp.get_json()
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body['openapi'].startswith('3.')
+        assert 'paths' in body and 'info' in body
 
 
 # ── GraphQL ───────────────────────────────────────────────────────────────────
@@ -158,7 +162,10 @@ class TestGraphql:
         resp = client.post('/graphql', json={'query': '{ sales { id } }'})
         assert resp.status_code == 200
         body = resp.get_json()
-        assert 'data' in body or 'errors' in body
+        # Owner query executes (not field-rejected): data.sales list present.
+        assert 'data' in body
+        assert 'sales' in body['data']
+        assert isinstance(body['data']['sales'], list)
 
     def test_empty_body_rejected(self, client, misc_viewer):
         _login(client, misc_viewer)
@@ -189,8 +196,17 @@ class TestApprovals:
 
 class TestReturns:
     def test_view_missing_returns_404(self, client, misc_owner):
+        # Owner bypasses manage_sales gate; missing ProductReturn -> get_or_404.
+        # Renders 404 (not a login redirect).
         _login(client, misc_owner)
-        assert client.get('/returns/view/999999').status_code in (404, 302)
+        resp = client.get('/returns/view/999999')
+        assert resp.status_code == 404
+        assert 'login' not in resp.headers.get('Location', '')
+
+    def test_view_ownership_requires_manage_sales(self, client, misc_viewer):
+        # Viewer lacks manage_sales -> 403 (ownership gate), not a redirect.
+        _login(client, misc_viewer)
+        assert client.get('/returns/view/999999').status_code == 403
 
     def test_api_create_rejects_empty(self, client, misc_seller):
         _login(client, misc_seller)
@@ -214,8 +230,13 @@ class TestReturns:
 
 class TestWhatsapp:
     def test_test_page_owner_ok(self, client, misc_owner):
+        # Owner passes admin_required; route returns JSON 200 in both
+        # configured and not-configured branches (never a redirect).
         _login(client, misc_owner)
-        assert client.get('/whatsapp/test').status_code in (200, 302)
+        resp = client.get('/whatsapp/test')
+        assert resp.status_code == 200
+        assert resp.is_json
+        assert resp.get_json()['success'] in (True, False)
 
     def test_test_page_seller_forbidden(self, client, misc_seller):
         _login(client, misc_seller)
@@ -225,18 +246,43 @@ class TestWhatsapp:
 # ── Payment vault (own lock layer: 200 or redirect-to-unlock) ─────────────────
 
 class TestPaymentVault:
-    @pytest.mark.parametrize('url', [
-        '/payment-vault/',
-        '/payment-vault/dashboard',
-        '/payment-vault/metrics',
-        '/payment-vault/cards',
-        '/payment-vault/reports',
-        '/payment-vault/api/live-stats',
-        '/payment-vault/api/notifications',
+    # Ownership + lock layers distinguished: index renders for owner;
+    # lock-guarded pages redirect to unlock when no vault row exists;
+    # owner JSON APIs answer 200 without a lock check.
+    @pytest.mark.parametrize('url,expect', [
+        ('/payment-vault/', 200),
+        ('/payment-vault/dashboard', 302),
+        ('/payment-vault/cards', 302),
+        ('/payment-vault/reports', 302),
+        ('/payment-vault/metrics', 200),
+        ('/payment-vault/api/live-stats', 200),
+        ('/payment-vault/api/notifications', 200),
     ])
-    def test_owner_reaches_vault_pages(self, client, misc_owner, url):
+    def test_owner_reaches_vault_pages(self, client, misc_owner, url, expect):
         _login(client, misc_owner)
-        assert client.get(url).status_code in (200, 302)
+        resp = client.get(url)
+        assert resp.status_code == expect, url
+        if expect == 302:
+            # Lock layer redirects to the unlock page (not off-site/login).
+            assert 'unlock' in resp.headers.get('Location', ''), url
+        elif url in ('/payment-vault/api/live-stats', '/payment-vault/api/notifications'):
+            # Owner JSON APIs (no lock check): exact success envelope.
+            assert resp.is_json, url
+            assert resp.get_json()['success'] is True, url
+        elif url == '/payment-vault/metrics':
+            # Owner metrics endpoint: JSON payload (no success envelope).
+            assert resp.is_json, url
+            assert isinstance(resp.get_json(), dict) and resp.get_json(), url
+        else:
+            # Render branch: owner index template (no redirect).
+            assert 'login' not in resp.headers.get('Location', ''), url
+
+    def test_vault_lock_redirect_ownership(self, client, misc_seller):
+        # Non-owner is rejected before the lock layer (dashboard -> main).
+        _login(client, misc_seller)
+        resp = client.get('/payment-vault/dashboard')
+        assert resp.status_code == 302
+        assert 'unlock' not in resp.headers.get('Location', '')
 
     def test_health_signals_status(self, client, misc_owner):
         # /health honestly reports degraded deps as 503 in test env
@@ -293,6 +339,8 @@ class TestUsersAdmin:
         assert 'misc_owner' not in page.data.decode()
 
     def test_toggle_missing_user_404(self, client, misc_owner):
+        # Owner passes admin_required; missing row -> get_owned_or_404 (404).
         _login(client, misc_owner)
         resp = client.post('/users/999999/toggle-active')
-        assert resp.status_code in (404, 302)
+        assert resp.status_code == 404
+        assert 'login' not in resp.headers.get('Location', '')

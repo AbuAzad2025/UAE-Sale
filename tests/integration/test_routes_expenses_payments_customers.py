@@ -204,7 +204,13 @@ class TestExpenseCreate:
         entry = GLJournalEntry.query.filter_by(
             reference_type='Expense', reference_id=exp.id).first()
         assert entry is not None
-        assert entry.total_debit == entry.total_credit
+        assert entry.total_debit == entry.total_credit == Decimal('500')
+        # Exact posting: category 6200 debit / cash 1110 credit.
+        codes = {ln.account.code for ln in entry.lines}
+        assert {'6200', '1110'} <= codes
+        by_code = {ln.account.code: ln for ln in entry.lines}
+        assert by_code['6200'].debit == Decimal('500')
+        assert by_code['1110'].credit == Decimal('500')
 
         view = client.get(f'/expenses/{exp.id}')
         assert exp.expense_number in view.get_data(as_text=True)
@@ -226,6 +232,19 @@ class TestExpenseCreate:
         assert cheque.cheque_number == chq_num
         assert cheque.cheque_type == 'outgoing'
         assert cheque.status == 'pending'
+        assert cheque.amount_base == Decimal('500')
+        # GL: Expense leg (category debit / AP 2110 credit) + cheque_issue
+        # leg (AP 2110 debit / deferred 2120 credit), both balanced.
+        exp_entry = GLJournalEntry.query.filter_by(
+            reference_type='Expense', reference_id=exp.id).first()
+        assert exp_entry is not None
+        assert exp_entry.total_debit == exp_entry.total_credit == Decimal('500')
+        assert {ln.account.code for ln in exp_entry.lines} == {expense_category.gl_account_code, '2110'}
+        chq_entry = GLJournalEntry.query.filter_by(
+            reference_type='cheque_issue', reference_id=cheque.id).first()
+        assert chq_entry is not None
+        assert chq_entry.total_debit == chq_entry.total_credit == Decimal('500')
+        assert {ln.account.code for ln in chq_entry.lines} == {'2110', '2120'}
 
     def test_post_without_category_rerenders_with_error_flash(self, client, login_owner):
         resp = client.post('/expenses/create', data=_expense_form())
@@ -331,7 +350,8 @@ class TestPaymentsVoucher:
         entry = GLJournalEntry.query.filter_by(
             reference_type='Payment', reference_id=pay.id).first()
         assert entry is not None
-        assert entry.total_debit == entry.total_credit
+        assert entry.total_debit == entry.total_credit == Decimal('300')
+        assert {ln.account.code for ln in entry.lines} == {'2110', '1110'}
 
     def test_incoming_refund_from_supplier(self, client, login_owner, supplier):
         client.post('/payments/voucher/submit', data=_voucher_form(
@@ -341,6 +361,12 @@ class TestPaymentsVoucher:
         assert pay is not None
         assert pay.payment_type == 'refund'
         assert pay.amount_base == Decimal('120')
+        # GL: bank 1120 debit / AP 2110 credit, balanced.
+        entry = GLJournalEntry.query.filter_by(
+            reference_type='Payment', reference_id=pay.id).first()
+        assert entry is not None
+        assert entry.total_debit == entry.total_credit == Decimal('120')
+        assert {ln.account.code for ln in entry.lines} == {'1120', '2110'}
 
     def test_outgoing_refund_to_partner_customer_posts_partner_account(self, client, login_owner, partner_customer):
         client.post('/payments/voucher/submit', data=_voucher_form(
@@ -355,6 +381,9 @@ class TestPaymentsVoucher:
         assert entry is not None
         codes = {line.account.code for line in entry.lines}
         assert '3350' in codes
+        # Partner refund posts balanced 80: 3350 debit / bank 1120 credit.
+        assert entry.total_debit == entry.total_credit == Decimal('80')
+        assert {'3350', '1120'} <= codes
 
     def test_missing_party_redirects_with_warning_and_skips(self, client, login_owner):
         before = Payment.query.count()

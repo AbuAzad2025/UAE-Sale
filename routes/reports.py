@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 from io import BytesIO
-from flask import Blueprint, render_template, request, jsonify, make_response, abort
+from flask import Blueprint, render_template, request, jsonify, make_response, abort, current_app
 from flask_login import login_required, current_user
 from werkzeug.exceptions import HTTPException
 from sqlalchemy import func
@@ -720,7 +720,9 @@ def entity_report_fragment(type, id):  # noqa: C901
     except HTTPException:
         raise
     except Exception as e:
-        return render_template('reports/partials/entity_report.html', error=str(e))
+        current_app.logger.error(f'Entity report fragment error: {e}', exc_info=True)
+        return render_template('reports/partials/entity_report.html',
+                               error='حدث خطأ أثناء تحميل التقرير.'), 500
 
 
 @reports_bp.route('/top-selling')

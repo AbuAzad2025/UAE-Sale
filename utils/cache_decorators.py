@@ -1,6 +1,7 @@
 from functools import wraps
 from flask import current_app
 from extensions import cache
+import fnmatch
 import hashlib
 import json
 
@@ -74,11 +75,62 @@ def cached_query(timeout=300, key_prefix=None):
 
 
 def invalidate_cache(key_pattern):
+    """Delete cached entries matching a literal key, prefix, or glob pattern.
+
+    cached_query() builds keys as '<prefix>:<scope>:<md5>', so callers pass a
+    key_prefix (e.g. 'products') rather than a full key. Passing such a
+    pattern straight to delete()/delete_many() only matches literal keys, so
+    prefix invalidation silently did nothing. This walks the underlying store
+    (cachelib SimpleCache dict, Redis SCAN) and deletes every key that equals,
+    starts with, or fnmatch-matches the pattern, then falls back to a literal
+    delete for anything left.
+    """
     try:
-        from extensions import cache
-        if hasattr(cache, 'delete_many'):
-            cache.delete_many(key_pattern)
-        elif hasattr(cache, 'delete'):
-            cache.delete(key_pattern)
+        pattern = str(key_pattern or '')
+
+        def _matches(key):
+            if isinstance(key, (bytes, bytearray)):
+                key = key.decode('utf-8', 'ignore')
+            else:
+                key = str(key)
+            return key == pattern or key.startswith(pattern) or fnmatch.fnmatch(key, pattern)
+
+        # 1) cachelib in-memory store (SimpleCache._cache dict)
+        try:
+            store = getattr(getattr(cache, 'cache', None), '_cache', None)
+            if isinstance(store, dict):
+                for raw_key in [k for k in list(store.keys()) if _matches(k)]:
+                    name = raw_key.decode('utf-8', 'ignore') if isinstance(raw_key, (bytes, bytearray)) else str(raw_key)
+                    try:
+                        cache.delete(name)
+                    except Exception:
+                        try:
+                            store.pop(raw_key, None)
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+
+        # 2) Redis-backed caches via SCAN (never KEYS — production-safe)
+        try:
+            client = getattr(getattr(cache, 'cache', None), '_client', None)
+            if client is not None and hasattr(client, 'scan_iter'):
+                try:
+                    for raw_key in client.scan_iter(match=f'*{pattern}*', count=200):
+                        name = raw_key.decode('utf-8', 'ignore') if isinstance(raw_key, (bytes, bytearray)) else str(raw_key)
+                        try:
+                            cache.delete(name)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # 3) literal fallback (preserves old behavior for exact keys)
+        try:
+            cache.delete(pattern)
+        except Exception:
+            pass
     except Exception:
         pass

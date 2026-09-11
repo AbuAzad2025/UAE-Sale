@@ -1,10 +1,28 @@
 ﻿from datetime import datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from extensions import db
 from models.cheque import Cheque
 from models.gl import GLAccount, GLJournalEntry
 from services.gl_service import GLService
 from utils.decorators import get_owned_or_404
+
+_MONEY_Q3 = Decimal("0.001")
+
+
+def _coerce_decimal(value) -> Decimal:
+    """Coerce boundary input to Decimal without ever going through float."""
+    if isinstance(value, Decimal):
+        return value
+    if value is None:
+        return Decimal("0")
+    try:
+        return Decimal(str(value).strip() or "0")
+    except (InvalidOperation, ValueError, AttributeError):
+        return Decimal("0")
+
+
+def _quantize_3(value: Decimal) -> Decimal:
+    return _coerce_decimal(value).quantize(_MONEY_Q3, rounding=ROUND_HALF_UP)
 
 # Dynamic CoA resolution (contract C3/Agent 1) with literal fallbacks equal to
 # today's codes when the resolver is unavailable or the role is unmapped.
@@ -174,7 +192,14 @@ class ChequeAccountingIntegration:
             raise ValueError("الشيك ليس في حالة يمكن صرفه")
 
         try:
-            amount_base = ChequeAccountingIntegration._ensure_amount_base(cheque)
+            # F5: coerce + quantize every leg to 3dp BEFORE posting so the
+            # entry balances exactly even when callers pass str/float or
+            # >3dp values. The bank leg is derived from the quantized
+            # components (amount - charges + fx), so debit == credit holds
+            # exactly at 3dp and GLService never sees a 0.001 rounding break.
+            amount_base = _quantize_3(ChequeAccountingIntegration._ensure_amount_base(cheque))
+            bank_charges = _quantize_3(_coerce_decimal(bank_charges))
+            exchange_gain_loss = _quantize_3(_coerce_decimal(exchange_gain_loss))
             bank_charges_account = _resolve_role_code('BANK_CHARGES', '6950')
             fx_gain_account = _resolve_role_code('FX_GAIN', '4400')
             fx_loss_account = _resolve_role_code('FX_LOSS', '6900')
@@ -186,7 +211,7 @@ class ChequeAccountingIntegration:
                 # المدين: حساب البنك
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['bank_account'],
-                    'debit': amount_base - bank_charges + exchange_gain_loss,
+                    'debit': _quantize_3(amount_base - bank_charges + exchange_gain_loss),
                     'credit': 0,
                     'description': f'صرف شيك وارد رقم {cheque.cheque_bank_number}'
                 })
@@ -240,7 +265,7 @@ class ChequeAccountingIntegration:
                 lines.append({
                     'account_code': ChequeAccountingIntegration.CHEQUE_ACCOUNTS['bank_account'],
                     'debit': 0,
-                    'credit': amount_base + bank_charges - exchange_gain_loss,
+                    'credit': _quantize_3(amount_base + bank_charges - exchange_gain_loss),
                     'description': f'صرف شيك صادر رقم {cheque.cheque_bank_number}'
                 })
 

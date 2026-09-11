@@ -26,6 +26,7 @@ def get_allowed_table_names_safe():
 
 
 import json  # noqa: E402
+import ipaddress  # noqa: E402
 import os  # noqa: E402
 import shutil  # noqa: E402,F401
 from datetime import datetime as dt  # noqa: E402
@@ -1976,47 +1977,55 @@ def system_health():  # noqa: C901
 
         try:
             cpu_percent = psutil.cpu_percent(interval=0.5)
+            cpu_ok = True
         except Exception:
             cpu_percent = 0
+            cpu_ok = False
 
         try:
             memory = psutil.virtual_memory()
+            memory_ok = True
         except Exception:
             memory = type('obj', (object,), {'total': 0, 'used': 0, 'percent': 0})()
+            memory_ok = False
 
         try:
             disk = psutil.disk_usage('.')
+            disk_ok = True
         except Exception:
             disk = type('obj', (object,), {'total': 0, 'used': 0, 'free': 0, 'percent': 0})()
+            disk_ok = False
 
         try:
             size_result = db.session.execute(text("SELECT pg_database_size(current_database())"))
             db_size_bytes = size_result.scalar() or 0
             db_size_mb = db_size_bytes / (1024 * 1024)
+            db_ok = True
         except Exception:
             db_size_mb = 0
+            db_ok = False
 
         health_data = {
             'cpu': {
                 'percent': cpu_percent,
-                'status': 'جيد' if cpu_percent < 70 else 'تحذير' if cpu_percent < 90 else 'خطر'
+                'status': ('جيد' if cpu_percent < 70 else 'تحذير' if cpu_percent < 90 else 'خطر') if cpu_ok else 'غير معروف'
             },
             'memory': {
                 'total': memory.total / (1024**3) if memory.total else 0,
                 'used': memory.used / (1024**3) if memory.used else 0,
                 'percent': memory.percent,
-                'status': 'جيد' if memory.percent < 70 else 'تحذير' if memory.percent < 90 else 'خطر'
+                'status': ('جيد' if memory.percent < 70 else 'تحذير' if memory.percent < 90 else 'خطر') if memory_ok else 'غير معروف'
             },
             'disk': {
                 'total': disk.total / (1024**3) if disk.total else 0,
                 'used': disk.used / (1024**3) if disk.used else 0,
                 'free': disk.free / (1024**3) if disk.free else 0,
                 'percent': disk.percent,
-                'status': 'جيد' if disk.percent < 70 else 'تحذير' if disk.percent < 90 else 'خطر'
+                'status': ('جيد' if disk.percent < 70 else 'تحذير' if disk.percent < 90 else 'خطر') if disk_ok else 'غير معروف'
             },
             'database': {
                 'size_mb': round(db_size_mb, 2),
-                'status': 'جيد' if db_size_mb < 500 else 'تحذير' if db_size_mb < 1000 else 'خطر'
+                'status': ('جيد' if db_size_mb < 500 else 'تحذير' if db_size_mb < 1000 else 'خطر') if db_ok else 'غير معروف'
             },
             'system': {
                 'os': platform.system(),
@@ -2204,23 +2213,50 @@ def resolve_alert(id):
 @owner_required
 def ip_whitelist():
     if request.method == 'POST':
-        ip_address = request.form.get('ip_address')
-        description = request.form.get('description')
+        ip_address = (request.form.get('ip_address') or '').strip()
+        description = (request.form.get('description') or '').strip()
+
+        try:
+            ipaddress.ip_address(ip_address)
+        except ValueError:
+            flash('❌ عنوان IP غير صالح.', 'danger')
+            return redirect(url_for('owner.ip_whitelist'))
 
         settings = SystemSettings.get_current()
-        whitelist = settings.owner_whitelist_ips or []
+        whitelist = _get_ip_whitelist(settings)
+
+        if any((entry or {}).get('ip') == ip_address for entry in whitelist):
+            flash('⚠️ عنوان IP موجود مسبقاً في القائمة البيضاء.', 'warning')
+            return redirect(url_for('owner.ip_whitelist'))
 
         whitelist.append({'ip': ip_address, 'description': description})
-        settings.owner_whitelist_ips = whitelist
+        _save_ip_whitelist(settings, whitelist)
         db.session.commit()
 
         flash('✅ تم إضافة IP للقائمة البيضاء', 'success')
         return redirect(url_for('owner.ip_whitelist'))
 
     settings = SystemSettings.get_current()
-    whitelist = settings.owner_whitelist_ips or []
+    whitelist = _get_ip_whitelist(settings)
 
     return render_template('owner/ip_whitelist.html', whitelist=whitelist)
+
+
+def _get_ip_whitelist(settings):
+    """Read the whitelist as a list (Text column stores JSON)."""
+    raw = settings.owner_whitelist_ips or []
+    if isinstance(raw, list):
+        return list(raw)
+    try:
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, list) else []
+    except (TypeError, ValueError):
+        return []
+
+
+def _save_ip_whitelist(settings, whitelist):
+    """Persist the whitelist as JSON text."""
+    settings.owner_whitelist_ips = json.dumps(whitelist or [], ensure_ascii=False)
 
 
 @owner_bp.route('/ip-whitelist/<int:index>/delete', methods=['POST'])
@@ -2228,11 +2264,11 @@ def ip_whitelist():
 @owner_required
 def delete_ip_whitelist(index):
     settings = SystemSettings.get_current()
-    whitelist = settings.owner_whitelist_ips or []
+    whitelist = _get_ip_whitelist(settings)
 
     if 0 <= index < len(whitelist):
         whitelist.pop(index)
-        settings.owner_whitelist_ips = whitelist
+        _save_ip_whitelist(settings, whitelist)
         db.session.commit()
         flash('✅ تم حذف IP من القائمة البيضاء', 'success')
 
@@ -2574,6 +2610,10 @@ def data_cleanup():
             deleted_count = AuditLog.query.filter(AuditLog.created_at < cutoff_date).delete()
         elif cleanup_type == 'archived':
             deleted_count = ArchivedRecord.query.filter(ArchivedRecord.archived_at < cutoff_date).delete()
+        else:
+            db.session.rollback()
+            flash(f'❌ نوع التنظيف غير معروف: {cleanup_type}', 'danger')
+            return redirect(url_for('owner.data_cleanup'))
 
         db.session.commit()
 

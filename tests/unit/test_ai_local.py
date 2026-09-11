@@ -102,14 +102,22 @@ class TestLocalAnalyticsEndpoints:
         assert client.get(url).status_code == 200
 
     def test_customer_balance_missing_ok(self, client, ai_analyst):
+        # system_integrator returns success=False (no raise) -> jsonify 200.
         _login(client, ai_analyst)
         resp = client.get('/ai/system/customer-balance/NoSuchCustomer')
-        assert resp.status_code in (200, 404, 500)
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body['success'] is False
+        assert 'غير موجود' in body['error']
 
     def test_add_customer_validation(self, client, ai_analyst):
+        # Empty payload fails required-field check -> success=False, 200.
         _login(client, ai_analyst)
         resp = client.post('/ai/system/add-customer', json={})
-        assert resp.status_code in (200, 400, 500)
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body['success'] is False
+        assert 'مطلوب' in body['error']
 
     def test_add_customer_forbidden_for_plain(self, client, ai_plain):
         _login(client, ai_plain)
@@ -121,22 +129,36 @@ class TestLocalAnalyticsEndpoints:
 # Admin-only AI operations ────────────────────────────────────────────────────
 
 class TestAdminAiOperations:
-    @pytest.mark.parametrize('url', [
-        '/ai/learning/evolve',
-        '/ai/improvement/auto-improve',
+    @pytest.mark.parametrize('url,key', [
+        ('/ai/learning/evolve', 'evolution'),
+        ('/ai/improvement/auto-improve', 'improvements'),
     ])
-    def test_owner_ok(self, client, ai_owner, url):
+    def test_owner_ok(self, client, ai_owner, url, key):
+        # Owner passes admin gate; success carries the payload key,
+        # failure carries success=False + error (both JSON, never HTML).
         _login(client, ai_owner)
-        assert client.post(url, json={}).status_code in (200, 500)
+        resp = client.post(url, json={})
+        assert resp.status_code in (200, 500)
+        body = resp.get_json()
+        assert body['success'] in (True, False)
+        if resp.status_code == 200:
+            assert body['success'] is True
+            assert key in body
+        else:
+            assert 'error' in body
 
     def test_analyst_forbidden(self, client, ai_analyst):
         _login(client, ai_analyst)
         assert client.post('/ai/learning/evolve', json={}).status_code == 403
 
     def test_set_goal_validation(self, client, ai_owner):
+        # Empty payload misses area/target_score -> exact 400 contract.
         _login(client, ai_owner)
         resp = client.post('/ai/improvement/set-goal', json={})
-        assert resp.status_code in (200, 400, 500)
+        assert resp.status_code == 400
+        body = resp.get_json()
+        assert body['success'] is False
+        assert body['error'] == 'المجال والهدف مطلوبان'
 
 
 # External-key endpoints fail safe ────────────────────────────────────────────
@@ -148,23 +170,34 @@ class TestExternalEndpointsFailSafe:
         assert resp.status_code == 400
 
     def test_chat_without_key_graceful(self, client, ai_analyst, monkeypatch):
+        # No key -> local fallback path returns 200 with the response envelope.
         monkeypatch.delenv('GROQ_API_KEY', raising=False)
+        monkeypatch.delenv('GEMINI_API_KEY', raising=False)
+        monkeypatch.delenv('OPENAI_API_KEY', raising=False)
         _login(client, ai_analyst)
         resp = client.post('/ai/chat', json={'message': 'مرحبا',
                                              'ai_mode': 'groq'})
-        assert resp.status_code in (200, 500)
+        assert resp.status_code == 200
         body = resp.get_json()
-        assert 'response' in body or 'error' in body or 'success' in body
+        assert 'response' in body and body['response']
+        assert body['ai_mode'] == 'groq'
+        assert body['ai_enabled'] is True
 
     def test_ask_genius_requires_question(self, client, ai_analyst):
         _login(client, ai_analyst)
         assert client.post('/ai/ask-genius', json={}).status_code == 400
 
     def test_quick_calc(self, client, ai_analyst):
+        # '2+3*4' is not a named formula -> brain returns success=False,
+        # route wraps it as 200 {'success': False, 'result': {...}}.
         _login(client, ai_analyst)
         resp = client.post('/ai/quick-calc',
                            json={'formula': '2+3*4', 'params': {}})
-        assert resp.status_code in (200, 400, 500)
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body['success'] is False
+        assert body['result']['success'] is False
+        assert 'Unknown formula' in body['result']['error']
 
 
 # Owner-only AI pages ─────────────────────────────────────────────────────────

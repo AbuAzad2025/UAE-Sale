@@ -435,6 +435,64 @@ def create_app(config_class=Config):  # noqa: C901
         app.logger.warning(f'Enhanced CLI commands not registered: {e}')
 
     # === MANDATORY STARTUP SCHEMA VERIFICATION ===
+    # Pre-step: Guarantee alembic_version.version_num can hold long descriptive
+    # revision slugs (e.g. "15_approval_workflow_reconciliation" = 36 chars).
+    #
+    # RATIONALE (CI FAILURE ROOT CAUSE):
+    # By default Alembic creates alembic_version(version_num VARCHAR(32)) when
+    # it first creates the table on a fresh database. Our latest revision slug
+    # is 36 characters long, so after migration 15 runs, Alembic's internal
+    # UPDATE alembic_version SET version_num='15_approval_workflow_reconciliation'
+    # raises psycopg2.errors.StringDataRightTruncation. The alembic
+    # `version_table_column_length` configure() argument is unreliable across
+    # versions, so we brute-force PREPARE the table EXPLICITLY BEFORE calling
+    # upgrade() in a dialect-robust way:
+    #   1. CREATE TABLE IF NOT EXISTS alembic_version with VARCHAR(64) from day
+    #      one — guarantees fresh CI DBs never get a narrow 32-char column.
+    #   2. ALTER the column width to 64 for any existing DB that was previously
+    #      created with the 32-char default.
+    try:
+        from sqlalchemy import text
+        with app.app_context():
+            with db.engine.begin() as _widen_conn:
+                _dialect = _widen_conn.dialect.name
+                if _dialect == "postgresql":
+                    # (1) Create table if missing — this runs on every fresh CI
+                    # run (new empty Postgres) BEFORE alembic touches anything.
+                    _widen_conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS alembic_version (
+                            version_num VARCHAR(64) NOT NULL PRIMARY KEY
+                        );
+                    """))
+                    # (2) Widen an existing alembic_version table if it was
+                    # already created earlier with VARCHAR(32).
+                    _widen_conn.execute(text("""
+                        DO $$
+                        BEGIN
+                            IF EXISTS (
+                                SELECT 1 FROM information_schema.columns
+                                WHERE table_name = 'alembic_version'
+                                  AND column_name = 'version_num'
+                                  AND (character_maximum_length IS NULL
+                                       OR character_maximum_length < 64)
+                            ) THEN
+                                ALTER TABLE alembic_version
+                                    ALTER COLUMN version_num TYPE VARCHAR(64);
+                            END IF;
+                        END $$;
+                    """))
+                elif _dialect == "sqlite":
+                    _widen_conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS alembic_version (
+                            version_num VARCHAR(64) NOT NULL PRIMARY KEY
+                        );
+                    """))
+    except Exception as _widen_err:
+        app.logger.warning(
+            'Pre-migration alembic_version widening skipped (safe): %s',
+            _widen_err,
+        )
+
     # Step 1: Run alembic upgrade head to ensure all migrations are applied.
     # This creates any missing tables before we verify them.
     try:

@@ -16,6 +16,7 @@
       {% endif %}
     </h3>
     <div>
+      <a href="{{ url_for('users.create', tenant_id=tenant.id) }}" class="btn btn-success btn-sm"><i class="fas fa-user-plus mr-1"></i>إضافة مستخدم</a>
       <a href="{{ url_for('owner.tenant_edit', id=tenant.id) }}" class="btn btn-warning btn-sm"><i class="fas fa-edit mr-1"></i>تعديل</a>
       {% if tenant.is_active and not tenant.is_suspended %}
       <form method="POST" action="{{ url_for('owner.tenant_suspend', id=tenant.id) }}" style="display:inline;" onsubmit="return confirm('إيقاف المستأجر {{ tenant.name_ar }}؟');">
@@ -90,9 +91,6 @@
 <div class="card shadow-sm mb-4">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="mb-0">مستخدمو المستأجر ({{ users|length }})</h5>
-    {% if tenant.is_active and not tenant.is_suspended %}
-    <a href="{{ url_for('users.create', tenant_id=tenant.id) }}" class="btn btn-success btn-sm"><i class="fas fa-user-plus mr-1"></i>إضافة مستخدم</a>
-    {% endif %}
   </div>
   <div class="card-body p-0">
     <table class="table table-bordered table-striped mb-0">

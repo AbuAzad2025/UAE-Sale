@@ -429,15 +429,17 @@ class TestInternalApiKeyAndCsrf:
 
     def test_key_gate_allows_match_and_blocks_mismatch(self, app, monkeypatch):
         from routes.ai import _validate_csrf_token
-        monkeypatch.setitem(app.config, 'INTERNAL_API_KEY', 'cov-secret-key-123')
+        # gitleaks:allow — fake value used only to test the gate, not a secret
+        monkeypatch.setitem(app.config, 'INTERNAL_API_KEY', 'cov-secret-key-123')  # gitleaks:allow
         with app.test_request_context(
-                '/ai/chat', method='POST', headers={'X-API-Key': 'cov-secret-key-123'}):
+                '/ai/chat', method='POST',
+                headers={'X-API-Key': 'cov-secret-key-123'}):  # gitleaks:allow
             assert _validate_csrf_token() is True
         with app.test_request_context(
-                '/ai/chat?api_key=cov-secret-key-123', method='POST'):
+                '/ai/chat?api_key=cov-secret-key-123', method='POST'):  # gitleaks:allow
             assert _validate_csrf_token() is True
         with app.test_request_context(
-                '/ai/chat', method='POST', headers={'X-API-Key': 'wrong-key'}):
+                '/ai/chat', method='POST', headers={'X-API-Key': 'wrong-key'}):  # gitleaks:allow
             assert _validate_csrf_token() is False
         with app.test_request_context('/ai/chat', method='POST'):
             assert _validate_csrf_token() is False
@@ -476,9 +478,10 @@ class TestSecretRedaction:
 
     def test_error_record_with_secrets_is_redacted(self):
         from utils.log_sanitizer import REDACTED, SanitizeFilter
+        # gitleaks:allow — fake "secret" string proving the sanitizer strips it
         record = logging.LogRecord(
             'utils.error_handlers', logging.ERROR, __file__, 1,
-            'Internal Server Error: password=hunter2 api_key=ABCDEFGH1234567890XYZ',
+            'Internal Server Error: password=hunter2 api_key=ABCDEFGH1234567890XYZ',  # gitleaks:allow
             None, None)
         assert SanitizeFilter().filter(record) is True
         assert 'hunter2' not in record.msg

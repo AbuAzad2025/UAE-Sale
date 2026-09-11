@@ -52,6 +52,7 @@ function initializeSelect2() {
  */
 function initializeDataTables() {
     if ($.fn.DataTable) {
+        if ($('.datatable').data("dt-initialized")) return;
         $('.datatable').DataTable({
             language: {
                 url: '/static/datatables/Arabic.json'
@@ -78,6 +79,7 @@ function initializeDataTables() {
                 }
             ]
         });
+        $('.datatable').data("dt-initialized", true);
     }
 }
 

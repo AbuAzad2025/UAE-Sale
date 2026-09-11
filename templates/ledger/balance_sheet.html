@@ -37,12 +37,12 @@
             {% for name, amount in assets.items() %}
             <tr>
               <td>{{ name }}</td>
-              <td class="text-left">{{ "{:,.2f}".format(amount) }} AED</td>
+              <td class="text-left">{{ "{:,.2f}".format(amount) }} {{ base_currency }}</td>
             </tr>
             {% endfor %}
             <tr class="font-weight-bold bg-light">
               <td>إجمالي الأصول</td>
-              <td class="text-left text-success">{{ "{:,.2f}".format(total_assets) }} AED</td>
+              <td class="text-left text-success">{{ "{:,.2f}".format(total_assets) }} {{ base_currency }}</td>
             </tr>
           </tbody>
         </table>
@@ -55,12 +55,12 @@
             {% for name, amount in liabilities.items() %}
             <tr>
               <td>{{ name }}</td>
-              <td class="text-left">{{ "{:,.2f}".format(amount) }} AED</td>
+              <td class="text-left">{{ "{:,.2f}".format(amount) }} {{ base_currency }}</td>
             </tr>
             {% endfor %}
             <tr class="font-weight-bold bg-light">
               <td>إجمالي الخصوم</td>
-              <td class="text-left text-danger">{{ "{:,.2f}".format(total_liabilities) }} AED</td>
+              <td class="text-left text-danger">{{ "{:,.2f}".format(total_liabilities) }} {{ base_currency }}</td>
             </tr>
           </tbody>
         </table>
@@ -71,12 +71,12 @@
             {% for name, amount in equity.items() %}
             <tr>
               <td>{{ name }}</td>
-              <td class="text-left">{{ "{:,.2f}".format(amount) }} AED</td>
+              <td class="text-left">{{ "{:,.2f}".format(amount) }} {{ base_currency }}</td>
             </tr>
             {% endfor %}
             <tr class="font-weight-bold bg-light">
               <td>إجمالي حقوق الملكية</td>
-              <td class="text-left text-info">{{ "{:,.2f}".format(total_equity) }} AED</td>
+              <td class="text-left text-info">{{ "{:,.2f}".format(total_equity) }} {{ base_currency }}</td>
             </tr>
           </tbody>
         </table>

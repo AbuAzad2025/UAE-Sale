@@ -120,9 +120,9 @@
             <strong>المتبقي:</strong><br>
             <span class="text-danger">
               {% if suggested_amount is not none %}
-                {{ "{:,.2f}".format(suggested_amount) }} AED
+                {{ "{:,.2f}".format(suggested_amount) }} {{ base_currency }}
               {% else %}
-                {{ "{:,.2f}".format(purchase.total_amount) }} AED
+                {{ "{:,.2f}".format(purchase.total_amount) }} {{ base_currency }}
               {% endif %}
             </span>
           </div>
@@ -344,7 +344,7 @@
             <div class="row">
               <div class="col-md-6">
                 <strong>الرصيد الحالي:</strong> 
-                <span id="customerBalance" class="badge badge-secondary">0.00 AED</span>
+                <span id="customerBalance" class="badge badge-secondary">0.00 {{ base_currency }}</span>
               </div>
               <div class="col-md-6">
                 <div id="unpaidSales"></div>
@@ -462,7 +462,7 @@ function loadCustomerBalance() {
     return;
   }  $.get('/customers/' + customerId + '/balance', function(data) {    // عرض الرصيد مع اللون المناسب
     var balanceClass = data.balance < 0 ? 'text-danger' : 'text-success';
-    $('#customerBalance').text(data.balance.toFixed(2) + ' AED')
+    $('#customerBalance').text(data.balance.toFixed(2) + ' ' + base_currency)
       .removeClass('text-danger text-success').addClass(balanceClass);
     $('#customerInfo').slideDown();
     
@@ -481,7 +481,7 @@ function loadCustomerBalance() {
       var html = '<strong>فواتير غير مدفوعة:</strong><ul class="mb-0">';
       data.unpaid_sales.forEach(function(sale) {
         var saleUrl = "{{ url_for('sales.view', id=0) }}".replace('0', sale.id);
-        html += '<li><a href="' + saleUrl + '" target="_blank">' + sale.sale_number + '</a>: ' + parseFloat(sale.balance_due).toFixed(2) + ' AED</li>';
+        html += '<li><a href="' + saleUrl + '" target="_blank">' + sale.sale_number + '</a>: ' + parseFloat(sale.balance_due).toFixed(2) + ' ' + base_currency + '</li>';
       });
       html += '</ul>';
       $('#unpaidSales').html(html);

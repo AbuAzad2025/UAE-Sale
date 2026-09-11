@@ -270,7 +270,7 @@
         
         <div class="col-md-3">
           <div class="form-group">
-            <label>الحد الائتماني (AED)</label>
+            <label>الحد الائتماني ({{ base_currency }})</label>
             <input type="number" name="credit_limit" class="form-control"
                    value="{{ supplier.credit_limit or 0 }}" step="0.01" min="0">
           </div>

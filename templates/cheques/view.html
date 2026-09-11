@@ -86,8 +86,8 @@
                 </td>
               </tr>
               <tr>
-                <th>المبلغ المتوقع (AED):</th>
-                <td><strong>{{ "{:,.2f}".format(cheque.amount_base) }}</strong> AED</td>
+                <th>المبلغ المتوقع ({{ base_currency }}):</th>
+                <td><strong>{{ "{:,.2f}".format(cheque.amount_base) }}</strong> {{ base_currency }}</td>
               </tr>
               {% if cheque.status == 'cleared' and cheque.clearance_exchange_rate %}
               <tr class="table-success">
@@ -97,15 +97,15 @@
                 </td>
               </tr>
               <tr class="table-success">
-                <th>المبلغ الفعلي (AED):</th>
-                <td><strong>{{ "{:,.2f}".format(cheque.actual_amount_base) }}</strong> AED</td>
+                <th>المبلغ الفعلي ({{ base_currency }}):</th>
+                <td><strong>{{ "{:,.2f}".format(cheque.actual_amount_base) }}</strong> {{ base_currency }}</td>
               </tr>
               {% if cheque.currency_gain_loss and cheque.currency_gain_loss != 0 %}
               <tr class="{% if cheque.currency_gain_loss > 0 %}table-success{% else %}table-danger{% endif %}">
                 <th>ربح/خسارة العملة:</th>
                 <td>
                   <strong class="{% if cheque.currency_gain_loss > 0 %}text-success{% else %}text-danger{% endif %}">
-                    {% if cheque.currency_gain_loss > 0 %}+{% endif %}{{ "{:,.2f}".format(cheque.currency_gain_loss) }} AED
+                    {% if cheque.currency_gain_loss > 0 %}+{% endif %}{{ "{:,.2f}".format(cheque.currency_gain_loss) }} {{ base_currency }}
                   </strong>
                 </td>
               </tr>
@@ -360,7 +360,7 @@
           <div class="form-group">
             <label>المبلغ المتوقع بالدرهم:</label>
             <input type="text" class="form-control" 
-                   value="{{ "{:,.2f}".format(cheque.amount_base) }} AED" readonly>
+                   value="{{ "{:,.2f}".format(cheque.amount_base) }} {{ base_currency }}" readonly>
           </div>
           
           <div class="form-group">
@@ -436,7 +436,7 @@
           </div>
           
           <p>إيداع الشيك رقم: <strong>{{ cheque.cheque_bank_number }}</strong></p>
-          <p>المبلغ: <strong>{{ "{:,.2f}".format(cheque.amount_base) }} AED</strong></p>
+          <p>المبلغ: <strong>{{ "{:,.2f}".format(cheque.amount_base) }} {{ base_currency }}</strong></p>
           
           <div class="form-group">
             <label>تاريخ الإيداع: <span class="text-danger">*</span></label>
@@ -540,7 +540,7 @@ function calculateActualAmount() {
   const difference = actualAmount - originalAmount;
   
   // عرض المبلغ الفعلي
-  $('#actual_amount_preview').val(actualAmount.toFixed(2) + ' AED');
+  $('#actual_amount_preview').val(actualAmount.toFixed(2) + ' ' + base_currency);
   
   // عرض الفرق
   if (Math.abs(difference) > 0.01) {
@@ -549,10 +549,10 @@ function calculateActualAmount() {
     
     if (difference > 0) {
       $gainLoss.removeClass('alert-danger').addClass('alert-success').show();
-      $amount.html('<span class="text-success">+' + difference.toFixed(2) + ' AED (ربح)</span>');
+      $amount.html('<span class="text-success">+' + difference.toFixed(2) + ' ' + base_currency + ' (ربح)</span>');
     } else {
       $gainLoss.removeClass('alert-success').addClass('alert-danger').show();
-      $amount.html('<span class="text-danger">' + difference.toFixed(2) + ' AED (خسارة)</span>');
+      $amount.html('<span class="text-danger">' + difference.toFixed(2) + ' ' + base_currency + ' (خسارة)</span>');
     }
   } else {
     $('#gain_loss_preview').hide();

@@ -36,7 +36,7 @@
               </select>
             </div>
             <div class="form-group col-md-4">
-              <label>الحد الأدنى للمبلغ (AED)</label>
+              <label>الحد الأدنى للمبلغ ({{ base_currency }})</label>
               <input type="number" name="min_amount" class="form-control" step="0.01" value="{{ workflow.min_amount if workflow else 0 }}">
             </div>
             <div class="form-group col-md-4">

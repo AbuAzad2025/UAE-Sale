@@ -39,9 +39,12 @@ def _post(ref_type, ref_id, amount=Decimal("100.000")):
 
 class TestPurgeByReference:
     def test_purges_entry_and_lines(self, db, core):
+        from models import GLJournalEntry, GLJournalLine
         e = _post("COV-PURGE", 91001)
         eid = e.id
         n = GLService.purge_by_reference("COV-PURGE", 91001)
+        db.session.commit()
+        db.session.expire_all()
         assert n == 1
         assert _db.session.get(GLJournalEntry, eid) is None
         assert GLJournalLine.query.filter_by(entry_id=eid).count() == 0

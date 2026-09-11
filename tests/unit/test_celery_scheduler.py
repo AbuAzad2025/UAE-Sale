@@ -219,7 +219,7 @@ class TestSendPaymentRemindersTask:
 
         result = send_payment_reminders.run()
 
-        assert result == {'sent': 1, 'total_checked': 3}
+        assert result == {'sent': 1, 'failed': 0, 'total_checked': 3}
         assert calls == [('+971501111111', 'مرتفع', 2000.0)]
 
     def test_counts_only_successful_sends(self, app, db, owner_user, monkeypatch):
@@ -235,7 +235,7 @@ class TestSendPaymentRemindersTask:
 
         result = send_payment_reminders.run()
 
-        assert result == {'sent': 0, 'total_checked': 1}
+        assert result == {'sent': 0, 'failed': 0, 'total_checked': 1}
 
     def test_boundary_balance_at_threshold_not_reminded(self, app, db, owner_user, monkeypatch):
         from services.celery_tasks import send_payment_reminders
@@ -250,7 +250,7 @@ class TestSendPaymentRemindersTask:
 
         result = send_payment_reminders.run()
 
-        assert result == {'sent': 0, 'total_checked': 1}
+        assert result == {'sent': 0, 'failed': 0, 'total_checked': 1}
 
 
 class TestCleanupOldCacheTask:

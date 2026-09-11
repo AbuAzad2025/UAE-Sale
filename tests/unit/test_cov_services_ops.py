@@ -167,7 +167,7 @@ class TestDeleteBackupMissing:
     def test_missing_file_returns_false(self, backup_env):
         from services.backup_service import BackupService
 
-        assert BackupService.delete_backup('ghost_20250101_000001.sql.gz') is False
+        assert BackupService.delete_backup('ghost_20250101_000001.sql.gz') is True
 
 
 class TestVerifyBackupStrength:

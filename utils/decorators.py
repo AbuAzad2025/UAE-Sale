@@ -153,7 +153,8 @@ def owner_required(f):
             abort(404)
 
         if not (current_user.is_owner or (getattr(current_user, 'role', None) and getattr(current_user.role, 'slug', None) == 'developer')):
-            abort(404)
+            flash('الصفحة مخصصة لمالكي المنصة فقط. ستتم إعادة التوجيه إلى لوحة التحكم.', 'warning')
+            return redirect(url_for('main.dashboard'))
 
         return f(*args, **kwargs)
     return decorated_function

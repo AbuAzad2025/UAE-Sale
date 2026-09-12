@@ -44,8 +44,23 @@ def _warehouse(db, name):
 
 
 def _make_sale(db, number, customer_id, amount='100.000', paid='0', seller_id=None, **extra):
-    from models import Sale
+    from models import Role, Sale, User
 
+    import uuid
+
+    if seller_id is None:
+        suffix = uuid.uuid4().hex[:8]
+        role = Role(name=f'EvRole-{suffix}', slug=f'ev-role-{suffix}')
+        db.session.add(role)
+        db.session.flush()
+        u = User(
+            username=f'evuser-{suffix}', email=f'evuser-{suffix}@t.t',
+            full_name='X', role_id=role.id, is_active=True,
+        )
+        u.set_password('Xy123456!')
+        db.session.add(u)
+        db.session.flush()
+        seller_id = u.id
     sale = Sale(
         sale_number=number, customer_id=customer_id, seller_id=seller_id,
         total_amount=Decimal(amount), amount_base=Decimal(amount),
@@ -111,7 +126,7 @@ class TestSaleBalanceListeners:
 
     def test_sale_insert_recalculates_customer_balance(self, db, owner_user):
         c = _customer(db, 'BalCust-Ins')
-        s1 = _make_sale(db, 'S-EV-BAL-1', c.id, amount='100.000')
+        s1 = _make_sale(db, 'S-EV-BAL-1', c.id, amount='100.000', seller_id=owner_user.id)
         assert s1.id is not None
         db.session.refresh(c)
         assert c.balance == Decimal('100.000')
@@ -140,7 +155,7 @@ class TestSaleBalanceListeners:
 
         c = _customer(db, 'BalCust-Inact')
         _make_sale(db, 'S-EV-INACT-1', c.id, amount='80.000', seller_id=owner_user.id)
-        sale = _make_sale(db, 'S-EV-INACT-2', c.id, amount='70.000')
+        sale = _make_sale(db, 'S-EV-INACT-2', c.id, amount='70.000', seller_id=owner_user.id)
         db.session.refresh(c)
         assert c.balance == Decimal('150.000')
 
@@ -153,9 +168,9 @@ class TestSaleBalanceListeners:
         reloaded = db.session.get(Customer, c.id)
         assert reloaded.balance == Decimal('150.000')
 
-    def test_sale_delete_logs_audit_warning(self, db, caplog):
+    def test_sale_delete_logs_audit_warning(self, db, owner_user, caplog):
         c = _customer(db, 'BalCust-Del')
-        sale = _make_sale(db, 'S-EV-DEL-1', c.id, amount='30.000')
+        sale = _make_sale(db, 'S-EV-DEL-1', c.id, amount='30.000', seller_id=owner_user.id)
 
         with caplog.at_level(logging.INFO, logger=EVENTS_LOGGER):
             db.session.delete(sale)
@@ -164,7 +179,7 @@ class TestSaleBalanceListeners:
         msgs = [r.getMessage() for r in caplog.records]
         assert any('DELETED: Sale S-EV-DEL-1' in m for m in msgs)
 
-    def test_sale_negative_amount_logged(self, db, caplog):
+    def test_sale_negative_amount_logged(self, db, owner_user, caplog):
         from models import Sale
 
         c = _customer(db, 'BalCust-Neg')
@@ -174,18 +189,20 @@ class TestSaleBalanceListeners:
                 amount='-5.000',
                 total_amount=Decimal('100.000'),
                 balance_due=None,
+                seller_id=owner_user.id,
             )
 
         assert isinstance(sale, Sale) and sale.id is not None
         assert any('S-EV-NEG-1' in r.getMessage() and 'Negative amount' in r.getMessage()
                    for r in caplog.records)
 
-    def test_sale_balance_due_autocorrected_with_warning(self, db, caplog):
+    def test_sale_balance_due_autocorrected_with_warning(self, db, owner_user, caplog):
         from models import Sale
 
         c = _customer(db, 'BalCust-Fix')
         sale = Sale(
             sale_number='S-EV-FIX-1', customer_id=c.id,
+            seller_id=owner_user.id,
             total_amount=Decimal('100.000'), amount_base=Decimal('100.000'),
             paid_amount=Decimal('40.000'), paid_amount_base=Decimal('40.000'),
             balance_due=Decimal('999.000'), currency='AED',
@@ -200,12 +217,13 @@ class TestSaleBalanceListeners:
         assert any('Balance auto-corrected' in r.getMessage() and 'S-EV-FIX-1' in r.getMessage()
                    for r in caplog.records)
 
-    def test_sale_balance_within_tolerance_not_corrected(self, db, caplog):
+    def test_sale_balance_within_tolerance_not_corrected(self, db, owner_user, caplog):
         from models import Sale
 
         c = _customer(db, 'BalCust-Tol')
         sale = Sale(
             sale_number='S-EV-TOL-1', customer_id=c.id,
+            seller_id=owner_user.id,
             total_amount=Decimal('100.000'), amount_base=Decimal('100.000'),
             paid_amount=Decimal('0'), paid_amount_base=Decimal('0'),
             balance_due=Decimal('100.005'), currency='AED',

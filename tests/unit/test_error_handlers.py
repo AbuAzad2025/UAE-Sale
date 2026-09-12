@@ -29,8 +29,9 @@ class TestHtmlErrorPages:
         client.post('/auth/login',
                     data={'username': 'eplain', 'password': 'Pass123!'},
                     follow_redirects=True)
-        resp = client.get('/owner/dashboard')
-        assert resp.status_code == 404  # stealth gate, still no leak
+        resp = client.get('/owner/dashboard', follow_redirects=False)
+        assert resp.status_code == 302  # owner gate redirects, still no leak
+        assert resp.headers['Location'].endswith('/dashboard')
         assert 'Traceback' not in resp.data.decode(errors='ignore')
 
 

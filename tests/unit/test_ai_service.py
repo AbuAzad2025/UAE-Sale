@@ -229,8 +229,8 @@ class TestRecommendPrice:
         assert AIService.recommend_price(test_product.id, merchant.id)['base_price'] == 80.0
         assert AIService.recommend_price(test_product.id, partner.id)['base_price'] == 70.0
 
-    def test_history_blends_average(self, app, db, test_product, test_customer):
-        sale = _make_sale('RP-H1', customer=test_customer, amount=Decimal('300'), paid=Decimal('300'))
+    def test_history_blends_average(self, app, db, test_product, test_customer, owner_user):
+        sale = _make_sale('RP-H1', customer=test_customer, seller=owner_user, amount=Decimal('300'), paid=Decimal('300'))
         db.session.add(sale)
         db.session.flush()
         db.session.add(SaleLine(
@@ -322,10 +322,10 @@ class TestExchangeRateSuggestion:
     def test_default_rate_table(self, app, db, currency, expected):
         assert AIService.get_exchange_rate_suggestion(currency)['suggested_rate'] == expected
 
-    def test_internal_average_of_recent_sales(self, app, db):
-        db.session.add(_make_sale('ER-1', currency='USD', rate=Decimal('3.6'),
+    def test_internal_average_of_recent_sales(self, app, db, test_customer, owner_user):
+        db.session.add(_make_sale('ER-1', customer=test_customer, seller=owner_user, currency='USD', rate=Decimal('3.6'),
                                   amount=Decimal('10'), created_days_ago=2))
-        db.session.add(_make_sale('ER-2', currency='USD', rate=Decimal('3.8'),
+        db.session.add(_make_sale('ER-2', customer=test_customer, seller=owner_user, currency='USD', rate=Decimal('3.8'),
                                   amount=Decimal('10'), created_days_ago=1))
         db.session.commit()
         result = AIService.get_exchange_rate_suggestion('USD')
@@ -334,8 +334,8 @@ class TestExchangeRateSuggestion:
         assert result['latest_rate'] == 3.8
         assert 'داخلي' in result['source']
 
-    def test_stale_sales_outside_week_window_ignored(self, app, db):
-        db.session.add(_make_sale('ER-old', currency='USD', rate=Decimal('9.9'),
+    def test_stale_sales_outside_week_window_ignored(self, app, db, test_customer, owner_user):
+        db.session.add(_make_sale('ER-old', customer=test_customer, seller=owner_user, currency='USD', rate=Decimal('9.9'),
                                   amount=Decimal('10'), created_days_ago=30))
         db.session.commit()
         result = AIService.get_exchange_rate_suggestion('USD')
@@ -348,17 +348,17 @@ class TestPredictSalesTrend:
         result = AIService.predict_sales_trend()
         assert result == {'prediction': None, 'confidence': 0, 'message': 'لا توجد بيانات كافية'}
 
-    def test_fewer_than_seven_days(self, app, db):
+    def test_fewer_than_seven_days(self, app, db, test_customer, owner_user):
         for i in range(6):
-            db.session.add(_make_sale(f'TR-{i}', days_ago=i, amount=Decimal('100')))
+            db.session.add(_make_sale(f'TR-{i}', customer=test_customer, seller=owner_user, days_ago=i, amount=Decimal('100')))
         db.session.commit()
         result = AIService.predict_sales_trend()
         assert result['prediction'] is None
         assert '7 أيام' in result['message']
 
-    def test_uptrend_predictions(self, app, db):
+    def test_uptrend_predictions(self, app, db, test_customer, owner_user):
         for d in range(8):
-            db.session.add(_make_sale(f'TU-{d}', days_ago=7 - d, amount=Decimal('100') * (d + 1)))
+            db.session.add(_make_sale(f'TU-{d}', customer=test_customer, seller=owner_user, days_ago=7 - d, amount=Decimal('100') * (d + 1)))
         db.session.commit()
         result = AIService.predict_sales_trend(days_ahead=3)
         assert 'صاعد' in result['trend']['direction']
@@ -370,9 +370,9 @@ class TestPredictSalesTrend:
         assert result['confidence'] == 100
         assert result['historical']['days_analyzed'] == 8
 
-    def test_downtrend_clamps_negatives_to_zero(self, app, db):
+    def test_downtrend_clamps_negatives_to_zero(self, app, db, test_customer, owner_user):
         for d in range(7):
-            db.session.add(_make_sale(f'TD-{d}', days_ago=6 - d,
+            db.session.add(_make_sale(f'TD-{d}', customer=test_customer, seller=owner_user, days_ago=6 - d,
                                       amount=Decimal('800') - Decimal('100') * d))
         db.session.commit()
         result = AIService.predict_sales_trend(days_ahead=2)
@@ -397,8 +397,8 @@ class TestProfitMargins:
         assert top['margin'] == 50.0
         assert result['least_profitable'][-1]['name'] == test_product.name
 
-    def test_zero_revenue_branch(self, app, db):
-        db.session.add(_make_sale('PM-Z', amount=Decimal('0')))
+    def test_zero_revenue_branch(self, app, db, test_customer, owner_user):
+        db.session.add(_make_sale('PM-Z', customer=test_customer, seller=owner_user, amount=Decimal('0')))
         db.session.commit()
         result = AIService.analyze_profit_margins()
         assert result['success'] is True
@@ -407,15 +407,15 @@ class TestProfitMargins:
 
 
 class TestSalesPatterns:
-    def test_insufficient_data(self, app, db):
+    def test_insufficient_data(self, app, db, test_customer, owner_user):
         for i in range(9):
-            db.session.add(_make_sale(f'SP-{i}', days_ago=i))
+            db.session.add(_make_sale(f'SP-{i}', customer=test_customer, seller=owner_user, days_ago=i))
         db.session.commit()
         assert AIService.detect_sales_patterns() == {'success': False, 'message': 'بيانات غير كافية'}
 
-    def test_best_day_and_peak_hour(self, app, db):
+    def test_best_day_and_peak_hour(self, app, db, test_customer, owner_user):
         for i in range(10):
-            db.session.add(_make_sale(f'SPX-{i}', days_ago=1, hour=14, amount=Decimal('100') * (i + 1)))
+            db.session.add(_make_sale(f'SPX-{i}', customer=test_customer, seller=owner_user, days_ago=1, hour=14, amount=Decimal('100') * (i + 1)))
         db.session.commit()
         result = AIService.detect_sales_patterns()
         assert result['success'] is True
@@ -438,23 +438,23 @@ class TestCustomerBehaviorAnalysis:
         assert result['risk_level'] == 'low'
         assert 'ممتاز' in result['recommendation']
 
-    def test_high_risk_unpaid_customer(self, app, db, test_customer):
-        db.session.add(_make_sale('CB-H', customer=test_customer, amount=Decimal('1000')))
+    def test_high_risk_unpaid_customer(self, app, db, test_customer, owner_user):
+        db.session.add(_make_sale('CB-H', customer=test_customer, seller=owner_user, amount=Decimal('1000')))
         db.session.commit()
         result = AIService.analyze_customer_behavior(test_customer.id)
         assert result['risk_level'] == 'high'
         assert 'عالي المخاطر' in result['recommendation']
         assert result['current_balance'] == 1000.0
 
-    def test_medium_risk_partial_payment(self, app, db, test_customer):
-        db.session.add(_make_sale('CB-M', customer=test_customer, amount=Decimal('1000'), paid=Decimal('700')))
+    def test_medium_risk_partial_payment(self, app, db, test_customer, owner_user):
+        db.session.add(_make_sale('CB-M', customer=test_customer, seller=owner_user, amount=Decimal('1000'), paid=Decimal('700')))
         db.session.commit()
         result = AIService.analyze_customer_behavior(test_customer.id)
         assert result['risk_level'] == 'medium'
         assert result['avg_payment_delay_days'] == 0
 
-    def test_payment_delay_measured(self, app, db, test_customer):
-        sale = _make_sale('CB-D', customer=test_customer, amount=Decimal('1000'), paid=Decimal('900'))
+    def test_payment_delay_measured(self, app, db, test_customer, owner_user):
+        sale = _make_sale('CB-D', customer=test_customer, seller=owner_user, amount=Decimal('1000'), paid=Decimal('900'))
         sale.created_at = _utc(days=5)
         db.session.add(sale)
         db.session.add(_make_payment('CB-P1', test_customer, Decimal('900')))
@@ -473,9 +473,9 @@ class TestBusinessInsights:
         today = [i for i in insights if i['title'] == 'مبيعات اليوم'][0]
         assert today['priority'] == 'low'
 
-    def test_combined_insights(self, app, db, test_customer):
+    def test_combined_insights(self, app, db, test_customer, owner_user):
         db.session.add(_make_product('BI-L', stock=Decimal('5'), minimum=Decimal('10')))
-        db.session.add(_make_sale('BI-S1', customer=test_customer, amount=Decimal('2000'), days_ago=1))
+        db.session.add(_make_sale('BI-S1', customer=test_customer, seller=owner_user, amount=Decimal('2000'), days_ago=1))
         db.session.commit()
         insights = AIService.generate_business_insights()
         by_title = {i['title']: i for i in insights}

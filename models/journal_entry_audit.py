@@ -21,8 +21,13 @@ class JournalEntryAudit(db.Model):
 
     journal_entry_id = db.Column(
         db.Integer,
-        db.ForeignKey('gl_journal_entries.id', ondelete='CASCADE'),
+        # Intentionally NO ForeignKey: the audit trail must survive its
+        # entry's deletion (migration 9 states this intent; the delete
+        # unit test pins it). Enforcing the FK either blocks draft deletes
+        # (restrictive) or silently destroys the history it exists to keep
+        # (CASCADE). The id is a historical reference, not a live link.
         nullable=False,
+        index=True,
     )
 
     action = db.Column(db.String(50), nullable=False)
@@ -48,12 +53,14 @@ class JournalEntryAudit(db.Model):
 
     journal_entry = db.relationship(
         'GLJournalEntry',
-        # delete-orphan (not the backref default) is mandatory here:
-        # session.delete(entry) must DELETE dependent audits at ORM level
-        # instead of nulling their NOT NULL FK (which raises IntegrityError
-        # before the DB-level ON DELETE CASCADE can act). Mirrors the
-        # database CASCADE from migration 9_audit_cascade.
-        backref=db.backref('audits', cascade='all, delete-orphan'),
+        # No database FK backs this link (see journal_entry_id above), so
+        # the join and the delete behavior must be spelled out explicitly:
+        # passive_deletes stops session.delete(entry) from nulling/touching
+        # dependent audit rows (their NOT NULL historical reference stays
+        # intact); the database enforces nothing.
+        primaryjoin='JournalEntryAudit.journal_entry_id == GLJournalEntry.id',
+        foreign_keys=[journal_entry_id],
+        backref=db.backref('audits', passive_deletes=True),
         lazy='joined',
     )
     performer = db.relationship('User', foreign_keys=[performed_by])

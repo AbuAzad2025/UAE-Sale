@@ -204,9 +204,12 @@ class TestExternalEndpointsFailSafe:
 
 class TestOwnerAiPages:
     @pytest.mark.parametrize('url', ['/ai/assistant', '/ai/config'])
-    def test_owner_ok_others_404(self, client, ai_owner, ai_analyst, url):
+    def test_owner_ok_others_redirected(self, client, ai_owner, ai_analyst, url):
         _login(client, ai_owner)
         assert client.get(url).status_code == 200
         client.get('/auth/logout', follow_redirects=True)
         _login(client, ai_analyst)
-        assert client.get(url).status_code == 404
+        # owner-guarded pages redirect non-owners to the main dashboard.
+        resp = client.get(url, follow_redirects=False)
+        assert resp.status_code == 302
+        assert resp.headers['Location'].endswith('/dashboard')

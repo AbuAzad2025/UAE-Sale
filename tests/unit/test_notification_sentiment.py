@@ -20,9 +20,10 @@ def _reset_service_state():
     SecurityService._failed_attempts.clear()
 
 
-def _sale(db, customer_id, number, notes):
+def _sale(db, customer_id, number, notes, seller_id=None):
     sale = Sale(
         sale_number=number, customer_id=customer_id,
+        seller_id=seller_id,
         total_amount=Decimal('100.000'), amount_base=Decimal('100.000'),
         notes=notes,
     )
@@ -378,10 +379,10 @@ class TestSentimentBoundsAndMetrics:
 
 
 class TestAnalyzeCustomerFeedback:
-    def test_combines_sale_notes_into_overall_sentiment(self, db, test_customer):
-        db.session.add(_sale(db, test_customer.id, 'S-NS-0001', 'excellent and fast service'))
-        db.session.add(_sale(db, test_customer.id, 'S-NS-0002', 'amazing support, thank you'))
-        db.session.add(_sale(db, test_customer.id, 'S-NS-0003', None))
+    def test_combines_sale_notes_into_overall_sentiment(self, db, test_customer, owner_user):
+        db.session.add(_sale(db, test_customer.id, 'S-NS-0001', 'excellent and fast service', seller_id=owner_user.id))
+        db.session.add(_sale(db, test_customer.id, 'S-NS-0002', 'amazing support, thank you', seller_id=owner_user.id))
+        db.session.add(_sale(db, test_customer.id, 'S-NS-0003', None, seller_id=owner_user.id))
         db.session.commit()
 
         result = SentimentAnalyzer.analyze_customer_feedback(test_customer.id)
@@ -390,9 +391,9 @@ class TestAnalyzeCustomerFeedback:
         assert result['polarity'] == 1.0
         assert result['feedback_count'] == 2
 
-    def test_negative_notes_detected(self, db, test_customer):
-        db.session.add(_sale(db, test_customer.id, 'S-NS-0011', 'terrible late service'))
-        db.session.add(_sale(db, test_customer.id, 'S-NS-0012', 'awful support and a big problem'))
+    def test_negative_notes_detected(self, db, test_customer, owner_user):
+        db.session.add(_sale(db, test_customer.id, 'S-NS-0011', 'terrible late service', seller_id=owner_user.id))
+        db.session.add(_sale(db, test_customer.id, 'S-NS-0012', 'awful support and a big problem', seller_id=owner_user.id))
         db.session.commit()
 
         result = SentimentAnalyzer.analyze_customer_feedback(test_customer.id)
@@ -401,8 +402,8 @@ class TestAnalyzeCustomerFeedback:
         assert result['polarity'] < 0
         assert result['feedback_count'] == 2
 
-    def test_customer_without_notes_is_neutral(self, db, test_customer):
-        db.session.add(_sale(db, test_customer.id, 'S-NS-0021', None))
+    def test_customer_without_notes_is_neutral(self, db, test_customer, owner_user):
+        db.session.add(_sale(db, test_customer.id, 'S-NS-0021', None, seller_id=owner_user.id))
         db.session.commit()
 
         result = SentimentAnalyzer.analyze_customer_feedback(test_customer.id)

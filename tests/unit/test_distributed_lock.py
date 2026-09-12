@@ -5,7 +5,33 @@ Proves that concurrent generate_number() calls never produce duplicates.
 """
 
 import threading
+import uuid
 from decimal import Decimal
+
+
+def _ensure_sale_deps(db, tag):
+    from models import Customer, Role, User
+
+    suffix = uuid.uuid4().hex[:8]
+    c = Customer(
+        name=f'DlkCust-{tag}-{suffix}', customer_type='regular',
+        is_active=True,
+    )
+    db.session.add(c)
+    db.session.flush()
+    role = Role(name=f'DlkRole-{tag}-{suffix}', slug=f'dlk-role-{tag}-{suffix}')
+    db.session.add(role)
+    db.session.flush()
+    u = User(
+        username=f'dlkuser-{tag}-{suffix}',
+        email=f'dlkuser-{tag}-{suffix}@t.t',
+        full_name='X', role_id=role.id, is_active=True,
+    )
+    u.set_password('Xy123456!')
+    db.session.add(u)
+    db.session.flush()
+    db.session.commit()
+    return c.id, u.id
 
 
 class TestDistributedLockBasic:
@@ -36,6 +62,7 @@ class TestGenerateNumberConcurrency:
         from models import Sale
         from utils.helpers import generate_number
 
+        cust_id, seller_id = _ensure_sale_deps(db, 'single')
         numbers = set()
         for _ in range(10):
             num = generate_number('S', Sale, 'sale_number')
@@ -43,6 +70,8 @@ class TestGenerateNumberConcurrency:
             numbers.add(num)
             sale = Sale(
                 sale_number=num,
+                customer_id=cust_id,
+                seller_id=seller_id,
                 total_amount=Decimal('0'),
                 amount_base=Decimal('0'),
                 paid_amount_base=Decimal('0'),
@@ -67,6 +96,7 @@ class TestGenerateNumberConcurrency:
         from models import Sale
         from utils.helpers import generate_number
 
+        cust_id, seller_id = _ensure_sale_deps(db, 'multi')
         generated = []
         errors = []
         lock = threading.Lock()
@@ -79,6 +109,8 @@ class TestGenerateNumberConcurrency:
                     num = generate_number('S', Sale, 'sale_number')
                     sale = Sale(
                         sale_number=num,
+                        customer_id=cust_id,
+                        seller_id=seller_id,
                         total_amount=Decimal('0'),
                         amount_base=Decimal('0'),
                         paid_amount_base=Decimal('0'),

@@ -542,8 +542,15 @@ class TestCrossTenantIsolation:
     ):
         _login(client, manager_user)
         # Create a sale in another tenant
+        other_cust = Customer(
+            name='Other Tenant Sale Cust', customer_type='regular',
+            is_active=True, tenant_id=9999,
+        )
+        db.session.add(other_cust)
+        db.session.flush()
         other = Sale(
-            sale_number='S-OTHER-001', total_amount=Decimal('100'),
+            sale_number='S-OTHER-001', customer_id=other_cust.id,
+            seller_id=manager_user.id, total_amount=Decimal('100'),
             amount_base=Decimal('100'), paid_amount=Decimal('0'),
             paid_amount_base=Decimal('0'), balance_due=Decimal('100'),
             currency='AED', exchange_rate=Decimal('1'),
@@ -818,6 +825,7 @@ class TestDashboardDataScoping:
         db.session.flush()
         sale = Sale(
             sale_number='S-CACHE-9999', customer_id=other.id,
+            seller_id=seller_user.id,
             total_amount=Decimal('7777'), amount_base=Decimal('7777'),
             paid_amount=Decimal('0'), paid_amount_base=Decimal('0'),
             balance_due=Decimal('7777'), currency='AED',

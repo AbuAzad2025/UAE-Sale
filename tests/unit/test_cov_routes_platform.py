@@ -200,11 +200,18 @@ class TestTrialBalance:
 
 class TestUserRosterAggregates:
     def test_view_sums_match_sql_aggregates(self, client, db, owner_user, seller_user):
-        sale1 = Sale(sale_number='S-AGG-1', customer_id=None,
+        from models import Customer
+
+        agg_cust = Customer(
+            name='AggCust', customer_type='regular', is_active=True,
+        )
+        db.session.add(agg_cust)
+        db.session.flush()
+        sale1 = Sale(sale_number='S-AGG-1', customer_id=agg_cust.id,
                      seller_id=seller_user.id, total_amount=Decimal('100.000'),
                      amount_base=Decimal('100.000'), paid_amount_base=Decimal('0'),
                      status='confirmed', is_active=True)
-        sale2 = Sale(sale_number='S-AGG-2', customer_id=None,
+        sale2 = Sale(sale_number='S-AGG-2', customer_id=agg_cust.id,
                      seller_id=seller_user.id, total_amount=Decimal('250.000'),
                      amount_base=Decimal('250.000'), paid_amount_base=Decimal('0'),
                      status='confirmed', is_active=True)

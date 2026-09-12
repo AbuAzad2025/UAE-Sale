@@ -10,10 +10,11 @@ from services.cash_flow_service import CashFlowService
 from services.gl_service import GLService
 
 
-def _sale(customer_id, total, paid, status, days_ago, num):
+def _sale(customer_id, total, paid, status, days_ago, num, seller_id=None):
     s = Sale(
         sale_number=num,
         customer_id=customer_id,
+        seller_id=seller_id,
         total_amount=Decimal(str(total)), amount_base=Decimal(str(total)),
         paid_amount=Decimal(str(paid)), paid_amount_base=Decimal(str(paid)),
         balance_due=Decimal(str(total)) - Decimal(str(paid)),
@@ -25,11 +26,11 @@ def _sale(customer_id, total, paid, status, days_ago, num):
 
 
 @pytest.fixture
-def aging_customer(db, test_customer):
+def aging_customer(db, test_customer, owner_user):
     """One customer with three invoices across buckets."""
-    recent = _sale(test_customer.id, 100, 40, 'partial', 10, 'S-AGE-001')   # bal 60 → 0-30
-    mid = _sale(test_customer.id, 200, 0, 'pending', 45, 'S-AGE-002')       # bal 200 → 31-60
-    old = _sale(test_customer.id, 300, 0, 'pending', 100, 'S-AGE-003')      # bal 300 → 91-120
+    recent = _sale(test_customer.id, 100, 40, 'partial', 10, 'S-AGE-001', seller_id=owner_user.id)   # bal 60 → 0-30
+    mid = _sale(test_customer.id, 200, 0, 'pending', 45, 'S-AGE-002', seller_id=owner_user.id)       # bal 200 → 31-60
+    old = _sale(test_customer.id, 300, 0, 'pending', 100, 'S-AGE-003', seller_id=owner_user.id)      # bal 300 → 91-120
     db.session.add_all([recent, mid, old])
     db.session.commit()
     return test_customer
@@ -50,8 +51,8 @@ class TestReceivablesAging:
         inv_categories = {i['age_category'] for i in row['invoices']}
         assert {'0-30', '31-60', '91-120'} <= inv_categories
 
-    def test_paid_sales_excluded(self, db, test_customer, aging_customer):
-        fully_paid = _sale(test_customer.id, 999, 999, 'paid', 500, 'S-AGE-PAID')
+    def test_paid_sales_excluded(self, db, test_customer, owner_user, aging_customer):
+        fully_paid = _sale(test_customer.id, 999, 999, 'paid', 500, 'S-AGE-PAID', seller_id=owner_user.id)
         db.session.add(fully_paid)
         db.session.commit()
 
@@ -71,16 +72,16 @@ class TestReceivablesAging:
         # everything lands in over_120 relative to far-future date? No: days negative → 0-30
         assert result['totals']['total'] == 560.0
 
-    def test_over_120_bucket(self, db, test_customer):
-        ancient = _sale(test_customer.id, 150, 0, 'pending', 200, 'S-AGE-OLD')
+    def test_over_120_bucket(self, db, test_customer, owner_user):
+        ancient = _sale(test_customer.id, 150, 0, 'pending', 200, 'S-AGE-OLD', seller_id=owner_user.id)
         db.session.add(ancient)
         db.session.commit()
         result = AgingAnalysisService.get_receivables_aging()
         assert result['totals']['over_120'] == 150.0
 
-    def test_invoice_dated_today_included(self, db, test_customer):
+    def test_invoice_dated_today_included(self, db, test_customer, owner_user):
         """انحدار: فاتورة اليوم نفسه يجب ألا تُستبعد بفلتر التاريخ المجرد."""
-        today_sale = _sale(test_customer.id, 90, 0, 'pending', 0, 'S-AGE-TODAY')
+        today_sale = _sale(test_customer.id, 90, 0, 'pending', 0, 'S-AGE-TODAY', seller_id=owner_user.id)
         db.session.add(today_sale)
         db.session.commit()
 

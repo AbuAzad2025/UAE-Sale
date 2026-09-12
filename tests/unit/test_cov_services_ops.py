@@ -544,8 +544,18 @@ def _make_user(db, tag, tenant_id, is_owner=False):
 
 class TestGraphqlTenantScoping:
     def _seed(self, db, tenant_a_id, tenant_b_id):
-        from models import Customer, Product, Sale
+        from models import Customer, Product, Role, Sale, User
 
+        scope_role = Role(name='ScopeSellerRole', slug='scope-seller-role')
+        db.session.add(scope_role)
+        db.session.flush()
+        scope_user = User(
+            username='scopeseller', email='scopeseller@t.t',
+            full_name='X', role_id=scope_role.id, is_active=True,
+        )
+        scope_user.set_password('Xy123456!')
+        db.session.add(scope_user)
+        db.session.flush()
         customers = [
             Customer(name='Cust A', customer_type='regular', tenant_id=tenant_a_id,
                      is_active=True),
@@ -564,12 +574,15 @@ class TestGraphqlTenantScoping:
         db.session.flush()
         sales = [
             Sale(sale_number='SCOPE-S-A', customer_id=customers[0].id,
+                 seller_id=scope_user.id,
                  total_amount=Decimal('10'), amount_base=Decimal('10'),
                  status='confirmed', tenant_id=tenant_a_id, is_active=True),
             Sale(sale_number='SCOPE-S-B', customer_id=customers[1].id,
+                 seller_id=scope_user.id,
                  total_amount=Decimal('10'), amount_base=Decimal('10'),
                  status='confirmed', tenant_id=tenant_b_id, is_active=True),
             Sale(sale_number='SCOPE-S-NT', customer_id=customers[0].id,
+                 seller_id=scope_user.id,
                  total_amount=Decimal('10'), amount_base=Decimal('10'),
                  status='confirmed', tenant_id=None, is_active=True),
         ]

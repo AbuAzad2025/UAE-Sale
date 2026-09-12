@@ -17,8 +17,12 @@ os.environ['ALEMBIC_RUNNING'] = '1'
 config = context.config
 
 # Interpret the config file for Python logging.
-# This line sets up loggers basically.
-fileConfig(config.config_file_name)
+# disable_existing_loggers=False is mandatory: the default (True) would set
+# disabled=True on every existing application logger process-wide the moment
+# a migration runs (e.g. create_app() during a pytest session), silently
+# swallowing all subsequent app log records (including pytest caplog capture).
+# The application configures its own logging via extensions.setup_logging().
+fileConfig(config.config_file_name, disable_existing_loggers=False)
 logger = logging.getLogger('alembic.env')
 
 

@@ -523,7 +523,11 @@ class TestUsersRoutes:
                                current_stock=Decimal('1'), min_stock_alert=Decimal('0'),
                                is_active=True))
         db.session.flush()
-        db.session.add(Sale(sale_number='S-2026-900001', customer_id=None,
+        cust = Customer(name='DelCust', customer_type='regular', is_active=True)
+        db.session.add(cust)
+        db.session.flush()
+        db.session.add(Sale(sale_number='S-2026-900001',
+                            customer_id=cust.id,
                             seller_id=victim.id, total_amount=Decimal('5'),
                             amount_base=Decimal('5'), paid_amount=Decimal('0'),
                             paid_amount_base=Decimal('0'), balance_due=Decimal('5'),

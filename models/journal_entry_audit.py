@@ -48,7 +48,12 @@ class JournalEntryAudit(db.Model):
 
     journal_entry = db.relationship(
         'GLJournalEntry',
-        backref='audits',
+        # delete-orphan (not the backref default) is mandatory here:
+        # session.delete(entry) must DELETE dependent audits at ORM level
+        # instead of nulling their NOT NULL FK (which raises IntegrityError
+        # before the DB-level ON DELETE CASCADE can act). Mirrors the
+        # database CASCADE from migration 9_audit_cascade.
+        backref=db.backref('audits', cascade='all, delete-orphan'),
         lazy='joined',
     )
     performer = db.relationship('User', foreign_keys=[performed_by])

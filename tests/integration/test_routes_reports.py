@@ -385,7 +385,8 @@ class TestFinancialReports:
         assert 'Old Sup' in html and '800.00' in html
         assert 'New Sup' in html and '400.00' in html
         assert 'Dormant Sup' not in html
-        assert '1,200.00 AED' in html
+        from services.currency_service import CurrencyService
+        assert f'1,200.00 {CurrencyService.get_base_currency()}' in html
 
     def test_inventory_valuation_page(self, client, login_owner, db,
                                       test_category, test_product):

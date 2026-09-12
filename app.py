@@ -435,37 +435,35 @@ def create_app(config_class=Config):  # noqa: C901
         app.logger.warning(f'Enhanced CLI commands not registered: {e}')
 
     # === MANDATORY STARTUP SCHEMA VERIFICATION ===
-    # Pre-step: Guarantee alembic_version.version_num can hold long descriptive
-    # revision slugs (e.g. "15_approval_workflow_reconciliation" = 36 chars).
+    # PostgreSQL (production/CI): widen alembic_version, then run
+    # `alembic upgrade head`. Any failure halts boot (fail-fast).
     #
-    # RATIONALE (CI FAILURE ROOT CAUSE):
-    # By default Alembic creates alembic_version(version_num VARCHAR(32)) when
-    # it first creates the table on a fresh database. Our latest revision slug
-    # is 36 characters long, so after migration 15 runs, Alembic's internal
-    # UPDATE alembic_version SET version_num='15_approval_workflow_reconciliation'
-    # raises psycopg2.errors.StringDataRightTruncation. The alembic
-    # `version_table_column_length` configure() argument is unreliable across
-    # versions, so we brute-force PREPARE the table EXPLICITLY BEFORE calling
-    # upgrade() in a dialect-robust way:
-    #   1. CREATE TABLE IF NOT EXISTS alembic_version with VARCHAR(64) from day
-    #      one — guarantees fresh CI DBs never get a narrow 32-char column.
-    #   2. ALTER the column width to 64 for any existing DB that was previously
-    #      created with the 32-char default.
+    # SQLite (unit tests + hermetic QA script): Alembic file migrations
+    # contain standalone ALTER-constraint DDL (e.g. op.create_foreign_key
+    # in 1a6dadd0ddb4) that the SQLite dialect cannot execute outside
+    # batch mode, so running the migration chain here breaks every test
+    # fixture at setup. Build the schema directly from SQLAlchemy model
+    # metadata instead — SQLite is already banned in production
+    # (assert_production_sanity), so this path never weakens prod safety.
     try:
         from sqlalchemy import text
         with app.app_context():
-            with db.engine.begin() as _widen_conn:
-                _dialect = _widen_conn.dialect.name
-                if _dialect == "postgresql":
-                    # (1) Create table if missing — this runs on every fresh CI
-                    # run (new empty Postgres) BEFORE alembic touches anything.
+            if db.engine.dialect.name == 'sqlite':
+                db.create_all()
+                app.logger.info(
+                    '[OK] SQLite schema synchronized via model metadata '
+                    '(Alembic file migrations skipped: SQLite-incompatible DDL).'
+                )
+            else:
+                # Pre-step: guarantee alembic_version.version_num can hold
+                # long descriptive revision slugs (VARCHAR(64), not the
+                # Alembic 32-char default) before upgrade() touches it.
+                with db.engine.begin() as _widen_conn:
                     _widen_conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS alembic_version (
                             version_num VARCHAR(64) NOT NULL PRIMARY KEY
                         );
                     """))
-                    # (2) Widen an existing alembic_version table if it was
-                    # already created earlier with VARCHAR(32).
                     _widen_conn.execute(text("""
                         DO $$
                         BEGIN
@@ -481,31 +479,16 @@ def create_app(config_class=Config):  # noqa: C901
                             END IF;
                         END $$;
                     """))
-                elif _dialect == "sqlite":
-                    _widen_conn.execute(text("""
-                        CREATE TABLE IF NOT EXISTS alembic_version (
-                            version_num VARCHAR(64) NOT NULL PRIMARY KEY
-                        );
-                    """))
-    except Exception as _widen_err:
-        app.logger.warning(
-            'Pre-migration alembic_version widening skipped (safe): %s',
-            _widen_err,
-        )
 
-    # Step 1: Run alembic upgrade head to ensure all migrations are applied.
-    # This creates any missing tables before we verify them.
-    try:
-        from alembic.command import upgrade as _upgrade
-        from alembic.config import Config
+                from alembic.command import upgrade as _upgrade
+                from alembic.config import Config
 
-        cfg = Config('migrations/alembic.ini')
-        with app.app_context():
-            _upgrade(cfg, 'head')
-        app.logger.info('[OK] Alembic migrations applied — database synchronized.')
+                cfg = Config('migrations/alembic.ini')
+                _upgrade(cfg, 'head')
+                app.logger.info('[OK] Alembic migrations applied — database synchronized.')
     except Exception as e:
         app.logger.critical(
-            'FATAL: Schema migration failed during startup — '
+            'FATAL: Schema synchronization failed during startup — '
             'database tables are missing or out of sync. '
             'Application cannot run in a degraded state. Error: %s', e
         )

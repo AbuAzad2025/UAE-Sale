@@ -218,10 +218,11 @@ def _naive_utc(days_offset=0):
     return datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=days_offset)
 
 
-def _make_sale(db, customer, currency='USD', total=Decimal('1000'),
+def _make_sale(db, customer, seller_id=None, currency='USD', total=Decimal('1000'),
                rate=Decimal('3.6'), paid=Decimal('0'), status='confirmed'):
     sale = Sale(
         sale_number=f'S-FX-{_uid()}', customer_id=customer.id,
+        seller_id=seller_id,
         total_amount=total, amount_base=(total * rate).quantize(Decimal('0.001')),
         paid_amount=paid, paid_amount_base=(paid * rate).quantize(Decimal('0.001')),
         balance_due=total - paid, currency=currency, exchange_rate=rate,
@@ -246,8 +247,8 @@ def _make_purchase(db, owner_user, currency='USD', total=Decimal('1000'),
 
 
 @pytest.fixture
-def usd_sale(db, test_customer):
-    return _make_sale(db, test_customer)
+def usd_sale(db, test_customer, owner_user):
+    return _make_sale(db, test_customer, seller_id=owner_user.id)
 
 
 @pytest.fixture
@@ -257,10 +258,10 @@ def usd_purchase(db, owner_user):
 
 class TestCollectOpenBalances:
     def test_ar_groups_foreign_only_excludes_base_cancelled_paid(
-            self, db, test_customer, usd_sale):
-        _make_sale(db, test_customer, currency='ILS', rate=Decimal('1'))
-        _make_sale(db, test_customer, status='cancelled')
-        _make_sale(db, test_customer, paid=Decimal('1000'))  # fully settled
+            self, db, test_customer, owner_user, usd_sale):
+        _make_sale(db, test_customer, seller_id=owner_user.id, currency='ILS', rate=Decimal('1'))
+        _make_sale(db, test_customer, seller_id=owner_user.id, status='cancelled')
+        _make_sale(db, test_customer, seller_id=owner_user.id, paid=Decimal('1000'))  # fully settled
 
         balances = FXRevaluationService.collect_open_ar_balances()
         assert set(balances) == {'USD'}

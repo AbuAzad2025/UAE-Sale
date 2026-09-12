@@ -113,9 +113,13 @@ class TestOwnerReadPages:
         '/owner/database-tools',
         '/owner/system-stats',
     ])
-    def test_non_owner_gets_stealth_404(self, client, plain_user, url):
+    def test_non_owner_redirected_to_dashboard(self, client, plain_user, url):
+        # owner_required redirects authenticated non-owners to the main
+        # dashboard (no stealth 404) — see utils/decorators.py.
         _login(client, plain_user)
-        assert client.get(url).status_code == 404
+        resp = client.get(url, follow_redirects=False)
+        assert resp.status_code == 302
+        assert resp.headers['Location'].endswith('/dashboard')
 
     def test_unauthenticated_redirects_to_login(self, client):
         resp = client.get('/owner/dashboard')

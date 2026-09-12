@@ -2090,7 +2090,9 @@ def error_logs():
     errors_list = []
 
     if os.path.exists(error_file):
-        with open(error_file, 'r', encoding='utf-8') as f:
+        # errors='replace': log files may contain non-UTF-8 bytes (e.g.
+        # Windows-1252 from console output); a viewer must never 500 on them.
+        with open(error_file, 'r', encoding='utf-8', errors='replace') as f:
             lines = f.readlines()
             for line in reversed(lines[-1000:]):
                 if line.strip():
@@ -2154,7 +2156,8 @@ def performance_metrics():
     slow_queries = []
 
     if os.path.exists(performance_file):
-        with open(performance_file, 'r', encoding='utf-8') as f:
+        # errors='replace': see error_logs() above.
+        with open(performance_file, 'r', encoding='utf-8', errors='replace') as f:
             for line in f.readlines()[-200:]:
                 if 'SLOW' in line:
                     slow_queries.append(line.strip())

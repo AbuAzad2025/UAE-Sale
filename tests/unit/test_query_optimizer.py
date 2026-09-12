@@ -59,10 +59,18 @@ class TestBatchFetch:
 
     def test_with_relationship(self, db):
         from decimal import Decimal
-        from models import Sale
+        from models import Role, Sale, User
         from extensions import db as _db
         a = _customer(1)
-        s = Sale(sale_number='QO-B-1', customer_id=a.id,
+        role = Role(name='QO-R-B1', slug='qo-r-b1')
+        _db.session.add(role)
+        _db.session.flush()
+        u = User(username='qo_u_b1', email='qo_u_b1@t.t', full_name='X',
+                 role_id=role.id, is_active=True)
+        u.set_password('Xy123456!')
+        _db.session.add(u)
+        _db.session.flush()
+        s = Sale(sale_number='QO-B-1', customer_id=a.id, seller_id=u.id,
                  total_amount=Decimal('5'), amount_base=Decimal('5'),
                  paid_amount=Decimal('0'), paid_amount_base=Decimal('0'),
                  balance_due=Decimal('5'), currency='AED',
@@ -81,8 +89,17 @@ class TestPrefetchRelated:
     def test_attaches_related(self, db):
         from extensions import db as _db
         from decimal import Decimal
+        from models import Role, User
         a = _customer(1)
-        s = Sale(sale_number='QO-S-1', customer_id=a.id,
+        role = Role(name='QO-R-S1', slug='qo-r-s1')
+        _db.session.add(role)
+        _db.session.flush()
+        u = User(username='qo_u_s1', email='qo_u_s1@t.t', full_name='X',
+                 role_id=role.id, is_active=True)
+        u.set_password('Xy123456!')
+        _db.session.add(u)
+        _db.session.flush()
+        s = Sale(sale_number='QO-S-1', customer_id=a.id, seller_id=u.id,
                  total_amount=Decimal('5'), amount_base=Decimal('5'),
                  paid_amount=Decimal('0'), paid_amount_base=Decimal('0'),
                  balance_due=Decimal('5'), currency='AED',

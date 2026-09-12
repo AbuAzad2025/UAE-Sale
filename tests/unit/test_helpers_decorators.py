@@ -55,10 +55,30 @@ class FakeUpload:
 
 
 def make_sale(db, number):
-    from models import Sale
+    from models import Customer, Role, Sale, User
 
+    import uuid
+
+    suffix = uuid.uuid4().hex[:8]
+    c = Customer(
+        name=f'HlpCust-{suffix}', customer_type='regular', is_active=True,
+    )
+    db.session.add(c)
+    db.session.flush()
+    role = Role(name=f'HlpRole-{suffix}', slug=f'hlp-role-{suffix}')
+    db.session.add(role)
+    db.session.flush()
+    u = User(
+        username=f'hlpuser-{suffix}', email=f'hlpuser-{suffix}@t.t',
+        full_name='X', role_id=role.id, is_active=True,
+    )
+    u.set_password('Xy123456!')
+    db.session.add(u)
+    db.session.flush()
     sale = Sale(
         sale_number=number,
+        customer_id=c.id,
+        seller_id=u.id,
         total_amount=Decimal('10.000'),
         amount_base=Decimal('10.000'),
         paid_amount=Decimal('0'),
@@ -496,11 +516,14 @@ class TestOwnerRequired:
         with app.test_request_context('/'):
             assert self._view()() == 'OWNER-OK'
 
-    def test_non_privileged_user_gets_404(self, app, monkeypatch):
+    def test_non_privileged_user_redirected_to_dashboard(self, app, monkeypatch):
+        # owner_required redirects authenticated non-owners to the main
+        # dashboard instead of raising (no stealth 404).
         monkeypatch.setattr(decorators, 'current_user', FakeUser(slug='seller'))
         with app.test_request_context('/'):
-            with pytest.raises(NotFound):
-                self._view()()
+            resp = self._view()()
+            assert resp.status_code == 302
+            assert resp.headers['Location'].endswith('/dashboard')
 
     def test_real_owner_fixture_passes_with_real_permissions(self, app, db, owner_user, monkeypatch):
         monkeypatch.setattr(decorators, 'current_user', owner_user)

@@ -49,9 +49,11 @@ class TestTenantAccess:
         assert resp.status_code == 302
         assert '/auth/login' in resp.headers['Location']
 
-    def test_list_seller_404(self, client, seller_user):
+    def test_list_seller_redirected(self, client, seller_user):
         _login(client, 'testseller', 'SellerPass123!')
-        assert client.get('/owner/tenants').status_code == 404
+        resp = client.get('/owner/tenants', follow_redirects=False)
+        assert resp.status_code == 302
+        assert resp.headers['Location'].endswith('/dashboard')
 
     def test_detail_unknown_404(self, client, owner_user):
         _owner_login(client, owner_user)
@@ -107,8 +109,10 @@ class TestTenantCreate:
     def test_seller_cannot_create(self, client, seller_user):
         _login(client, 'testseller', 'SellerPass123!')
         before = Tenant.query.count()
-        resp = client.post('/owner/tenants/new', data=_tenant_payload())
-        assert resp.status_code == 404
+        resp = client.post('/owner/tenants/new', data=_tenant_payload(),
+                             follow_redirects=False)
+        assert resp.status_code == 302
+        assert resp.headers['Location'].endswith('/dashboard')
         assert Tenant.query.count() == before
 
 
@@ -187,8 +191,10 @@ class TestTenantSuspendActivate:
         t = Tenant.query.filter_by(slug='branch-a').first()
         client.get('/auth/logout', follow_redirects=True)
         _login(client, 'testseller', 'SellerPass123!')
-        resp = client.post(f'/owner/tenants/{t.id}/suspend')
-        assert resp.status_code == 404
+        resp = client.post(f'/owner/tenants/{t.id}/suspend',
+                             follow_redirects=False)
+        assert resp.status_code == 302
+        assert resp.headers['Location'].endswith('/dashboard')
         _db.session.refresh(t)
         assert t.is_active is True
 

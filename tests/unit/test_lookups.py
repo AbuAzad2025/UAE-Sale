@@ -97,9 +97,12 @@ class TestConstantsUI:
         client.post('/auth/login', data={
             'username': 'testseller', 'password': 'SellerPass123!',
         }, follow_redirects=True)
-        assert client.get('/owner/constants').status_code == 404
+        # owner-guarded constants pages redirect non-owners to the dashboard.
+        assert client.get('/owner/constants',
+                          follow_redirects=False).status_code == 302
         assert client.post('/owner/constants/product_units/add',
-                           data={}).status_code == 404
+                           data={},
+                           follow_redirects=False).status_code == 302
 
     def test_add_flow_visible_in_lookup(self, client, owner_user):
         self._owner(client, owner_user)

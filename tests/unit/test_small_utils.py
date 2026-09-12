@@ -195,7 +195,7 @@ class TestMonitoringService:
 
 def _seed_sale(db):
     from decimal import Decimal
-    from models import Sale, Customer, Product, ProductCategory
+    from models import Sale, Customer, Product, ProductCategory, Role, User
     from extensions import db as _db
     cat = ProductCategory(name='C', name_ar='ت')
     _db.session.add(cat)
@@ -207,7 +207,15 @@ def _seed_sale(db):
                 current_stock=Decimal('3'), is_active=True)
     _db.session.add(p)
     _db.session.flush()
-    s = Sale(sale_number='GQ-S-1', customer_id=c.id,
+    role = Role(name='GQ-R', slug='gq-r')
+    _db.session.add(role)
+    _db.session.flush()
+    u = User(username='gq_u', email='gq_u@t.t', full_name='X',
+             role_id=role.id, is_active=True)
+    u.set_password('Xy123456!')
+    _db.session.add(u)
+    _db.session.flush()
+    s = Sale(sale_number='GQ-S-1', customer_id=c.id, seller_id=u.id,
              total_amount=Decimal('10'), amount_base=Decimal('10'),
              paid_amount=Decimal('0'), paid_amount_base=Decimal('0'),
              balance_due=Decimal('10'), currency='AED',

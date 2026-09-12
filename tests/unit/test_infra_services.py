@@ -36,9 +36,22 @@ class TestDatabaseOptimizer:
 # ── ElasticsearchService ──────────────────────────────────────────────────────
 
 def _make_sale(number='S-ES-1', notes='note-es'):
-    from models import Sale
+    from models import Customer, Role, Sale, User
     from extensions import db as _db
-    s = Sale(sale_number=number, total_amount=Decimal('10'),
+    safe = number.replace('-', '_')
+    c = Customer(name=f'ES-C-{safe}', customer_type='regular', is_active=True)
+    _db.session.add(c)
+    _db.session.flush()
+    role = Role(name=f'ES-R-{safe}', slug=f'es-r-{safe.lower()}')
+    _db.session.add(role)
+    _db.session.flush()
+    u = User(username=f'es_u_{safe.lower()}', email=f'es_u_{safe.lower()}@t.t',
+             full_name='X', role_id=role.id, is_active=True)
+    u.set_password('Xy123456!')
+    _db.session.add(u)
+    _db.session.flush()
+    s = Sale(sale_number=number, customer_id=c.id, seller_id=u.id,
+             total_amount=Decimal('10'),
              amount_base=Decimal('10'), paid_amount=Decimal('0'),
              paid_amount_base=Decimal('0'), balance_due=Decimal('10'),
              currency='AED', exchange_rate=Decimal('1'),

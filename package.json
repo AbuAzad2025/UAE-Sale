@@ -1,0 +1,23 @@
+{
+  "name": "uae-sale-frontend-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vitest unit tests for UAE-Sale static JavaScript modules",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ci": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@vitest/coverage-v8": "5.0.0",
+    "jsdom": "30.0.1",
+    "typescript": "^5.5.0",
+    "vitest": "5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -92,6 +92,12 @@ htmlcov/
 check_db.py
 verify_*.py
 
+# Node / Vitest
+node_modules/
+coverage/
+test-results/
+playwright-report/
+
 # Neural models (can be large)
 ai_knowledge/models/*.pkl
 ai_knowledge/models/*.joblib

@@ -1,7 +1,7 @@
 """
 Public Routes - Landing Page, Pricing, User Guide, SEO
 """
-from flask import Blueprint, render_template, redirect, url_for, Response, request
+from flask import Blueprint, render_template, redirect, url_for, Response, request, session
 from flask_login import current_user
 
 public_bp = Blueprint('public', __name__)
@@ -17,18 +17,25 @@ def landing():
         if getattr(current_user, 'is_owner', False) or current_user.is_super_admin():
             return redirect(url_for('owner.dashboard'))
         return redirect(url_for('main.dashboard'))
+    if session.get('language') == 'en':
+        return render_template('public/landing_en.html')
     return render_template('public/landing.html')
 
 
 @public_bp.route('/pricing')
 def pricing():
     """صفحة الأسعار والعروض"""
+    from flask import session
+    if session.get('language') == 'en':
+        return render_template('public/pricing_en.html')
     return render_template('public/pricing.html')
 
 
 @public_bp.route('/features')
 def features():
     """صفحة المميزات"""
+    if session.get('language') == 'en':
+        return render_template('public/features_en.html')
     return render_template('public/features.html')
 
 
@@ -49,12 +56,16 @@ def user_guide():
 @public_bp.route('/contact')
 def contact():
     """اتصل بنا"""
+    if session.get('language') == 'en':
+        return render_template('public/contact_en.html')
     return render_template('public/contact.html')
 
 
 @public_bp.route('/demo')
 def demo():
     """طلب نسخة تجريبية"""
+    if session.get('language') == 'en':
+        return render_template('public/demo_en.html')
     return render_template('public/demo.html')
 
 

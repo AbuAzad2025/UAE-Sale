@@ -1,0 +1,702 @@
+        * {
+            font-family: 'Cairo', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .support-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .hero-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 50px 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(102,126,234,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.3rem;
+            color: #555;
+            margin-bottom: 30px;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .tab-btn {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border: 3px solid #e0e0e0;
+            border-radius: 50px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .tab-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Donation hero medallion: flat FA heart badge (no emoji). */
+        .donation-heart {
+            width: 84px;
+            height: 84px;
+            margin: 0 auto 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            color: #fff;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            box-shadow: 0 10px 30px rgba(238,90,36,0.35);
+        }
+        
+        .package-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .package-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border: 3px solid transparent;
+        }
+        
+        .package-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+            border-color: #667eea;
+        }
+        
+        .package-card.active {
+            border-color: #28a745;
+            background: linear-gradient(135deg, rgba(40,167,69,0.05) 0%, rgba(32,201,151,0.05) 100%);
+            position: relative;
+        }
+        
+        .package-card.active::after {
+            content: '✓ محدد';
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #28a745;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        /* English pages: same badge, translated (single shared file). */
+        html[dir="ltr"] .package-card.active::after {
+            content: '✓ Selected';
+        }
+        
+        .package-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .package-price {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .package-features {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+            text-align: start;
+        }
+        
+        .package-features li {
+            padding: 8px 0;
+            color: #666;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .package-features li:last-child {
+            border-bottom: none;
+        }
+        
+        .package-features i {
+            color: #28a745;
+            margin-inline-start: 8px;
+        }
+        
+        .crypto-badge {
+            display: inline-block;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 30px;
+            font-weight: 700;
+            margin: 5px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .payment-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border: 3px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .payment-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+        
+        .payment-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+            border-color: #667eea;
+        }
+        
+        .payment-card.active {
+            border-color: #28a745;
+            background: linear-gradient(135deg, rgba(102,126,234,0.05) 0%, rgba(118,75,162,0.05) 100%);
+            position: relative;
+        }
+        
+        .payment-card.active::after {
+            content: '✓';
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #28a745;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 900;
+        }
+        
+        .payment-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .payment-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .payment-desc {
+            color: #666;
+            font-size: 0.95rem;
+        }
+        
+        .donation-form {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            display: none;
+        }
+        
+        .donation-form.active {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        /* WhatsApp help strip under the payment methods (shared AR/EN). */
+        .wa-strip {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: rgba(37,211,102,0.1);
+            border: 2px dashed rgba(37,211,102,0.5);
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin: 0 0 30px 0;
+            color: #1d7a3d;
+            font-weight: 600;
+            text-align: center;
+        }
+        .wa-strip > i {
+            font-size: 1.6rem;
+            color: #25D366;
+        }
+        .wa-strip-btn {
+            background: #25D366;
+            color: #fff !important;
+            padding: 10px 25px;
+            border-radius: 50px;
+            text-decoration: none !important;
+            font-weight: 700;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        .wa-strip-btn:hover {
+            color: #fff !important;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(37,211,102,0.4);
+        }
+
+        /* Bank details card (account data comes from the owner panel). */
+        .bank-details {
+            background: #f8f9fa;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        .bank-details h4 {
+            color: #1B4D89;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .bank-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .bank-row:last-child {
+            border-bottom: none;
+        }
+        .bank-row .bank-label {
+            color: #666;
+            font-weight: 600;
+        }
+        .bank-row .bank-value {
+            font-weight: 700;
+            color: #1a202c;
+            direction: ltr;
+            unicode-bidi: embed;
+            text-align: end;
+        }
+        .bank-copy {
+            background: #e2e8f0;
+            border: none;
+            border-radius: 8px;
+            padding: 4px 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #1B4D89;
+            font-weight: 700;
+        }
+        .bank-copy:hover {
+            background: #cbd5e0;
+        }
+
+        /* Manual card completion note (no online charging: PANs are never
+           collected — completion happens with our team via WhatsApp). */
+        .card-manual-note {
+            background: rgba(102,126,234,0.08);
+            border-inline-start: 4px solid #667eea;
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin-bottom: 25px;
+            color: #333;
+            line-height: 1.9;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .amount-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .amount-btn {
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 700;
+            font-size: 1.1rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .amount-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(102,126,234,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .amount-btn:hover {
+            border-color: #667eea;
+            background: rgba(102,126,234,0.05);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .amount-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .amount-btn.active {
+            border-color: #28a745;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(40,167,69,0.3);
+        }
+        
+        .amount-btn.active::after {
+            content: '✓';
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: white;
+            color: #28a745;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 900;
+        }
+        
+        .crypto-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 30px;
+        }
+        
+        .wallet-address {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin: 10px 0;
+            position: relative;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.3);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.5);
+        }
+        
+        .qr-code {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: inline-block;
+            margin: 20px 0;
+        }
+        
+        .btn-donate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-donate:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+        
+        .btn-donate:active {
+            transform: translateY(0);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102,126,234,0.25);
+        }
+        
+        .payment-methods-header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: fadeInDown 0.5s ease;
+        }
+        
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Progress indicator */
+        .progress-steps {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            flex: 1;
+            max-width: 200px;
+        }
+        
+        .step::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 60%;
+            width: 100%;
+            height: 3px;
+            background: #e0e0e0;
+            z-index: -1;
+        }
+        
+        .step:last-child::after {
+            display: none;
+        }
+        
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            color: #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+        
+        .step.active .step-number {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: scale(1.2);
+            box-shadow: 0 5px 15px rgba(102,126,234,0.4);
+        }
+        
+        .step.completed .step-number {
+            background: #28a745;
+            color: white;
+        }
+        
+        .step.completed .step-number::before {
+            content: '✓';
+            font-size: 1.2rem;
+        }
+        
+        .step-label {
+            font-size: 0.85rem;
+            color: #666;
+            text-align: center;
+        }
+        
+        .step.active .step-label {
+            color: #667eea;
+            font-weight: 700;
+        }
+        
+        .security-badge {
+            display: inline-block;
+            padding: 8px 15px;
+            background: rgba(40,167,69,0.1);
+            color: #28a745;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 5px;
+        }
+        
+        .login-link {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            text-decoration: none;
+            color: #667eea;
+            font-weight: 700;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        
+        .login-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            color: #764ba2;
+            text-decoration: none;
+        }
+        
+        .features-list {
+            text-align: start;
+            margin: 30px 0;
+        }
+        
+        .feature-item {
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            border-inline-start: 4px solid #28a745;
+        }
+        
+        .feature-item i {
+            margin-inline-start: 10px;
+            color: #28a745;
+        }

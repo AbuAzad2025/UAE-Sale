@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azad Smart Systems - Plans & Pricing</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pricing.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/lang_pills.css') }}">
+</head>
+<body>
+
+    <!-- Language Switcher -->
+    <div style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+        <a href="{{ url_for('language.set_language', lang='en' if session.get('language', 'ar') == 'ar' else 'ar') }}" class="btn btn-sm" style="background: rgba(255,255,255,0.9); border-radius: 20px; padding: 8px 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <i class="fas fa-globe mr-2"></i>{{ 'English' if session.get('language', 'ar') == 'ar' else 'العربية' }}
+        </a>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">{{ config.COMPANY_NAME }}</div>
+        <div>
+            <a href="{{ url_for('public.landing') }}">Home</a>
+            <a href="{{ url_for('public.features') }}">Features</a>
+            <a href="{{ url_for('public.pricing') }}">Pricing</a>
+            <a href="{{ url_for('public.user_guide') }}">User Guide</a>
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Sign In</a>
+        </div>
+    </nav>
+
+    <header class="pricing-header">
+        <h1>Plans & Pricing</h1>
+        <p>Choose the right plan for your business size — no hidden fees</p>
+    </header>
+
+    <div class="pricing-container">
+        <div class="pricing-grid">
+            
+            <!-- Basic Plan -->
+            <div class="price-card">
+                <div class="plan-name">Basic Plan</div>
+                <div class="price">$50<small>/month</small></div>
+                <div class="price-note">or $80/month with managed hosting<br>For small and medium businesses</div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> 3 users</li>
+                    <li><i class="fas fa-check"></i> Sales & purchasing</li>
+                    <li><i class="fas fa-check"></i> Stock management</li>
+                    <li><i class="fas fa-check"></i> E-invoicing</li>
+                    <li><i class="fas fa-check"></i> Customers & suppliers</li>
+                    <li><i class="fas fa-check"></i> Basic reports</li>
+                    <li><i class="fas fa-check"></i> WhatsApp support</li>
+                </ul>
+                <button class="btn-select" onclick="contact('basic')">Choose Plan</button>
+            </div>
+
+            <!-- Professional Plan -->
+            <div class="price-card featured">
+                <div class="badge">Most Popular</div>
+                <div class="plan-name">Professional Plan</div>
+                <div class="price">$100<small>/month</small></div>
+                <div class="price-note">or $130/month with managed hosting<br>For growing businesses</div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> 10 users</li>
+                    <li><i class="fas fa-check"></i> Everything in Basic</li>
+                    <li><i class="fas fa-check"></i> Artificial intelligence</li>
+                    <li><i class="fas fa-check"></i> GL general ledger</li>
+                    <li><i class="fas fa-check"></i> Advanced reports</li>
+                    <li><i class="fas fa-check"></i> Integration API</li>
+                    <li><i class="fas fa-check"></i> 24/7 technical support</li>
+                </ul>
+                <button class="btn-select" onclick="contact('professional')">Choose Plan</button>
+            </div>
+
+            <!-- Enterprise Plan -->
+            <div class="price-card">
+                <div class="plan-name">Business & Enterprise Plan</div>
+                <div class="price">$120<small>/month</small></div>
+                <div class="price-note">or $150/month with managed hosting<br>Tailored enterprise solutions</div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> Unlimited users</li>
+                    <li><i class="fas fa-check"></i> All advanced features</li>
+                    <li><i class="fas fa-check"></i> Full system customization</li>
+                    <li><i class="fas fa-check"></i> Free staff training</li>
+                    <li><i class="fas fa-check"></i> Private hosting</li>
+                    <li><i class="fas fa-check"></i> Third-party integrations</li>
+                    <li><i class="fas fa-check"></i> Dedicated account manager</li>
+                    <li><i class="fas fa-check"></i> Guaranteed SLA</li>
+                </ul>
+                <button class="btn-select" onclick="contact('enterprise')">Contact Us</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comparison Table -->
+    <div class="comparison">
+        <h2>Detailed Plan Comparison</h2>
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Basic ($50)</th>
+                        <th>Professional ($100)</th>
+                        <th>Enterprise ($120)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="text-align: start;">Users</td>
+                        <td>3</td>
+                        <td>10</td>
+                        <td>Unlimited</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: start;">Artificial intelligence</td>
+                        <td><i class="cross fas fa-times"></i></td>
+                        <td><i class="check fas fa-check"></i></td>
+                        <td><i class="check fas fa-check"></i></td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: start;">GL general ledger</td>
+                        <td><i class="cross fas fa-times"></i></td>
+                        <td><i class="check fas fa-check"></i></td>
+                        <td><i class="check fas fa-check"></i></td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: start;">API</td>
+                        <td><i class="cross fas fa-times"></i></td>
+                        <td><i class="check fas fa-check"></i></td>
+                        <td><i class="check fas fa-check"></i></td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: start;">Managed hosting</td>
+                        <td>+$30</td>
+                        <td>+$30</td>
+                        <td>+$30</td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: start;">Support</td>
+                        <td>WhatsApp</td>
+                        <td>24/7</td>
+                        <td>Dedicated manager</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <h2>Ready to Start?</h2>
+        <p>Start your 14-day free trial — no credit card required</p>
+        <div class="cta-buttons">
+            <a href="#" onclick="contact('demo')" class="btn-cta btn-white">Try Free</a>
+            <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" class="btn-cta btn-outline" target="_blank">
+                <i class="fab fa-whatsapp"></i> Talk to Us
+            </a>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2025 {{ config.COMPANY_NAME }}. All rights reserved.</p>
+        <p style="margin-top: 10px;">{{ config.DEVELOPER_CREDIT }}</p>
+    </footer>
+
+    <script>
+        function contact(plan) {
+            const whatsapp = "{{ config.COMPANY_WHATSAPP }}";
+            const message = `Hello, I would like to subscribe to the plan: ${plan}`;
+            window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, '_blank');
+        }
+    </script>
+
+</body>
+</html>
+

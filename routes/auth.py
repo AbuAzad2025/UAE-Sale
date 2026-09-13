@@ -12,10 +12,62 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 @auth_bp.route('/support')
 def support():
     """صفحة الدعم والشراء - متاحة قبل تسجيل الدخول"""
-    from models import Package
+    from flask import session
+    from models import Package, PaymentVault
     # جلب الباقات النشطة
     packages = Package.query.filter_by(is_active=True).order_by(Package.sort_order.asc()).all()
-    return render_template('support.html', packages=packages)
+    # إعدادات الدفع العامة (بدون أسرار): الطرق المتاحة + الحدود + بيانات
+    # الاستقبال المعلنة من لوحة المالك. الطريقة تظهر فقط إذا كانت مفعّلة
+    # ومُهيأة (مفتاح/عنوان/حساب موجود).
+    vault = PaymentVault.query.first()
+    pay_config = {
+        'methods': {'crypto': False, 'card': False, 'paypal': False, 'bank': False},
+        'min_amount': 15,
+        'min_display': '15',
+        'bank': None,
+        'addresses': {},
+        'whatsapp': current_app.config.get('COMPANY_WHATSAPP', ''),
+    }
+    if vault is not None:
+        try:
+            min_amt = float(vault.min_donation_amount or 15)
+        except (TypeError, ValueError):
+            min_amt = 15
+        pay_config['min_amount'] = min_amt
+        pay_config['min_display'] = ('%g' % min_amt)
+        addrs = {}
+        if vault.bitcoin_address:
+            addrs['btc'] = vault.bitcoin_address
+        if vault.ethereum_address:
+            addrs['eth'] = vault.ethereum_address
+        if vault.usdt_address:
+            addrs['usdt'] = vault.usdt_address
+        pay_config['addresses'] = addrs
+        pay_config['methods'] = {
+            'crypto': bool(getattr(vault, 'crypto_enabled', True)) and bool(
+                vault.nowpayments_api_key or addrs),
+            'card': bool(getattr(vault, 'card_enabled', True)),
+            'paypal': bool(getattr(vault, 'paypal_enabled', True)) and bool(
+                vault.paypal_client_id or vault.paypal_business_email),
+            'bank': bool(getattr(vault, 'bank_enabled', True)) and bool(
+                vault.bank_account_number or vault.bank_iban),
+        }
+        if pay_config['methods']['bank']:
+            pay_config['bank'] = {
+                'bank_name': vault.bank_name or '',
+                'account_name': vault.bank_account_name or '',
+                'account_number': vault.bank_account_number or '',
+                'iban': vault.bank_iban or '',
+                'swift': vault.bank_swift_code or '',
+                'branch': vault.bank_branch or '',
+                'country': vault.bank_country or '',
+                'currency': vault.bank_currency or 'USD',
+            }
+    if session.get('language') == 'en':
+        return render_template('public/support_en.html', packages=packages,
+                               pay_config=pay_config)
+    return render_template('support.html', packages=packages,
+                           pay_config=pay_config)
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -332,9 +384,14 @@ def estimate_amount():
 @auth_bp.route('/thank-you')
 def thank_you():
     """صفحة الشكر بعد الدفع"""
+    from flask import session
     payment_id = request.args.get('payment_id')
     status = request.args.get('status', 'pending')
 
+    if session.get('language') == 'en':
+        return render_template('thank_you_en.html',
+                               payment_id=payment_id,
+                               status=status)
     return render_template('thank_you.html',
                            payment_id=payment_id,
                            status=status)

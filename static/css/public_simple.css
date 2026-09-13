@@ -1,0 +1,143 @@
+/* Shared styles for simple public pages (demo / contact / features).
+   One file, linked by all three pages in both languages — no duplication. */
+:root {
+    --gulf-gold: #D4AF37;
+    --gulf-blue: #1B4D89;
+    --gradient-gulf: linear-gradient(135deg, #1B4D89 0%, #6B46C1 50%, #D4AF37 100%);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Tajawal', sans-serif; background: #040914; color: #f8fafc; }
+
+/* NOTE: static/css/accessibility.css forces `a { color: blue !important }`
+   globally; without these rules every link below renders blue-on-dark. */
+.navbar {
+    background: rgba(10,14,39,0.95);
+    backdrop-filter: blur(10px);
+    padding: 20px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--gulf-gold);
+}
+.navbar a, .navbar a:hover, .navbar a:focus {
+    color: #ffffff !important;
+    text-decoration: none;
+    margin: 0 15px;
+    transition: color 0.3s;
+}
+.navbar a:hover { color: var(--gulf-gold) !important; }
+.logo { font-size: 1.8rem; font-weight: 900; color: var(--gulf-gold); }
+
+.page-container {
+    max-width: 1200px;
+    margin: 80px auto;
+    padding: 0 20px;
+}
+.page-header { text-align: center; margin-bottom: 60px; }
+.page-header h1 {
+    font-size: 3rem;
+    color: var(--gulf-gold);
+    margin-bottom: 15px;
+}
+.page-header p { font-size: 1.2rem; color: rgba(255,255,255,0.8); }
+
+.info-card {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(10px);
+    padding: 40px;
+    border-radius: 20px;
+    border: 2px solid rgba(212,175,55,0.35);
+}
+.info-card h3 { color: var(--gulf-gold); margin-bottom: 15px; }
+.info-card ul { margin-inline-start: 20px; line-height: 2; }
+
+.btn-gold {
+    display: inline-block;
+    padding: 18px 45px;
+    background: var(--gulf-gold);
+    color: var(--gulf-blue) !important;
+    border-radius: 50px;
+    text-decoration: none !important;
+    font-weight: 700;
+    font-size: 1.2rem;
+    transition: all 0.3s;
+}
+.btn-gold:hover {
+    color: var(--gulf-blue) !important;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(212,175,55,0.4);
+}
+.btn-whatsapp {
+    display: block;
+    background: #25D366;
+    color: #ffffff !important;
+    padding: 20px;
+    border-radius: 50px;
+    text-align: center;
+    text-decoration: none !important;
+    font-size: 1.5rem;
+    font-weight: 700;
+    transition: all 0.3s;
+}
+.btn-whatsapp:hover {
+    color: #ffffff !important;
+    transform: scale(1.03);
+    box-shadow: 0 10px 40px rgba(37,211,102,0.4);
+}
+
+.contact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+    margin-bottom: 60px;
+}
+.contact-card {
+    background: rgba(15,23,42,0.85);
+    backdrop-filter: blur(10px);
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    border: 2px solid rgba(212,175,55,0.35);
+    transition: all 0.4s;
+}
+.contact-card:hover {
+    transform: translateY(-10px);
+    border-color: var(--gulf-gold);
+    box-shadow: 0 20px 60px rgba(212,175,55,0.3);
+}
+.contact-card i {
+    font-size: 3rem;
+    color: var(--gulf-gold);
+    margin-bottom: 20px;
+}
+.contact-card h3 { font-size: 1.4rem; margin-bottom: 15px; }
+.contact-card a, .contact-card a:hover, .contact-card a:focus {
+    color: #f8fafc !important;
+    text-decoration: none !important;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+.contact-card a:hover { color: var(--gulf-gold) !important; }
+.contact-card .muted { margin-top: 10px; color: rgba(255,255,255,0.6); font-size: 0.95rem; }
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+}
+.feature-card {
+    background: rgba(255,255,255,0.05);
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    border: 1px solid rgba(212,175,55,0.25);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.feature-card:hover {
+    transform: translateY(-8px);
+    border-color: var(--gulf-gold);
+    box-shadow: 0 15px 40px rgba(212,175,55,0.25);
+}
+.feature-card .feature-icon { font-size: 2.5rem; color: var(--gulf-gold); margin-bottom: 15px; }
+.feature-card h3 { font-size: 1.2rem; margin-bottom: 10px; }
+.feature-card p { color: rgba(255,255,255,0.75); line-height: 1.7; font-size: 0.95rem; }

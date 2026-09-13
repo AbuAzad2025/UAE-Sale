@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azad Smart Systems - All-in-One Sales, Inventory & Accounting Software</title>
+    
+    <!-- Enhanced SEO Meta Tags -->
+    <meta name="description" content="Azad Smart Systems - an integrated sales, purchasing and inventory management system with AI assistance. Professional accounting software for businesses: e-invoicing, stock control, account statements and comprehensive financial reports.">
+    <meta name="keywords" content="inventory management system, accounting software, e-invoicing, stock control, sales software, POS system, auto spare parts, accounting AI, ERP, account statement, cheques management, financial reports, cloud accounting">
+    <meta name="author" content="Azad Smart Systems">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="language" content="English">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:title" content="Azad Smart Systems - All-in-One Sales and Inventory Management">
+    <meta property="og:description" content="An integrated sales, purchasing and inventory system with advanced AI assistance. A professional solution for businesses and retail stores.">
+    <meta property="og:image" content="{{ url_for('static', filename='img/azad_logo.png', _external=True) }}">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:site_name" content="Azad Smart Systems">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Azad Smart Systems - Integrated Management Software">
+    <meta name="twitter:description" content="An integrated sales, inventory and accounting system with AI. Invoices, stock, accounts, reports.">
+    <meta name="twitter:image" content="{{ url_for('static', filename='img/azad_logo.png', _external=True) }}">
+    
+    <!-- Canonical -->
+    <link rel="canonical" href="{{ request.url }}">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
+    
+    <!-- Advanced Schema.org JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Azad Business Management Software",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web, Cloud",
+      "offers": {
+        "@type": "AggregateOffer",
+        "lowPrice": "50",
+        "highPrice": "150",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "reviewCount": "150",
+        "bestRating": "5"
+      },
+      "provider": {
+        "@type": "Organization",
+        "name": "Azad Smart Systems",
+        "url": "{{ request.url_root }}"
+      }
+    }
+    </script>
+    
+    <!-- FAQPage Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is the Azad business management system?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Azad is an integrated accounting and management suite for companies and retail stores. It covers sales, purchasing, inventory, e-invoicing, account statements, cheque management and financial reports, with AI-powered assistance tools."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the software suitable for auto spare parts stores?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! The system includes specialized features such as part-to-vehicle compatibility, 3 price levels, accurate stock tracking, professional invoices and sales analytics."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How much does a subscription cost?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "We offer 3 flexible plans for businesses of all sizes. All plans include technical support, free updates, training and AI tools."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does the system support e-invoicing?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! The system fully supports e-invoicing. Create professional invoices in multiple designs, print in different sizes, add your logo and details, QR codes, and export PDF."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What AI features does the software offer?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "AI provides smart pricing recommendations, customer behavior analysis, sales forecasting, product performance analysis, hidden pattern detection, profit-boosting recommendations, and a conversational assistant that learns from your data."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can the software be used in multiple branches?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! The system supports multiple warehouses and branches. Track stock per branch, transfer goods between warehouses, and get separate reports per branch."
+        },
+        {
+          "@type": "Question",
+          "name": "How do I get started with Azad?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Getting started is easy! Just 3 steps: (1) book a free live demo, (2) choose the right plan, (3) start immediately! We provide free team training, legacy data import and ongoing support."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the system secure? Does it protect my data?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Security is our priority! We use full SSL encryption, automatic daily backups, intrusion protection, advanced permissions, a comprehensive audit log and a secure card vault. Your data is protected with top global security standards."
+          }
+        }
+      ]
+    }
+    </script>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/lang_pills.css') }}">
+</head>
+<body>
+
+    <!-- Language Switcher (Floating) -->
+    <!-- NOTE: plain pill links instead of a Bootstrap dropdown: this page
+         ships no Bootstrap CSS, so .dropdown-menu rendered as an unstyled
+         stacked block. Pills need no JS and always sit side by side. -->
+    <div class="lang-switcher">
+        <a href="{{ url_for('language.set_language', lang='ar') }}"
+           class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}">
+            <i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>
+            العربية
+        </a>
+        <a href="{{ url_for('language.set_language', lang='en') }}"
+           class="lang-pill {% if session.get('language') == 'en' %}active{% endif %}">
+            <i class="fas fa-check {% if session.get('language') != 'en' %}invisible{% endif %}"></i>
+            English
+        </a>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-pattern"></div>
+        <div class="hero-content">
+            <div class="logo-badge">
+                <div class="flag-icon">
+                    <i class="fas fa-warehouse"></i>
+                </div>
+            </div>
+            <h1>{{ config.COMPANY_NAME }}</h1>
+            <p class="hero-subtitle">
+                <strong>An All-in-One System for Sales, Inventory & Accounting</strong>
+            </p>
+            <p class="hero-tagline" style="font-size: 1.2rem; margin-top: 15px;">
+                Integrated accounting | E-invoicing | Stock control | Financial reports
+            </p>
+            <p class="hero-tagline" style="font-size: 1rem; margin-top: 10px; color: rgba(255,255,255,0.9);">
+                A professional solution for companies and stores: sales, purchasing, stock and accounts in one place
+            </p>
+            <div class="hero-buttons" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; max-width: 900px; margin: 0 auto;">
+                <a href="{{ url_for('auth.support') }}?tab=purchase" class="btn-hero btn-success" style="flex: 1;">
+                    <i class="fas fa-shopping-cart"></i> Buy Now
+                </a>
+                <a href="{{ url_for('public.demo') }}" class="btn-hero btn-primary" style="flex: 1;">
+                    <i class="fas fa-rocket"></i> Free Trial
+                </a>
+                <a href="{{ url_for('auth.support') }}?tab=donation" class="btn-hero btn-warning" style="flex: 1;">
+                    <i class="fas fa-heart"></i> Support the Project
+                </a>
+                <a href="{{ url_for('auth.login') }}" class="btn-hero btn-login" style="flex: 1;">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </a>
+            </div>
+            
+            <div style="margin-top: 30px; text-align: center;">
+                <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-outline" style="display: inline-block; min-width: 250px;">
+                    <i class="fas fa-gem"></i> View All Plans & Pricing
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <h2>Why Choose Azad for Your Business?</h2>
+        <p class="features-subtitle">
+            We offer a <strong>complete accounting and management suite</strong> with practical features that make running your business easier, faster and more profitable.
+        </p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-brain"></i></div>
+                <h3>AI Assistant</h3>
+                <p><strong>A smart assistant</strong> offering price recommendations, sales analysis and forecasts to help you make better decisions. <strong>Learns from your business data</strong> and keeps improving.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-warehouse"></i></div>
+                <h3>Professional Stock Control</h3>
+                <p><strong>Accurate real-time stock tracking</strong>, automatic low-stock alerts, multi-branch warehouse management, barcodes, QR codes and fast stock-taking.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-cash-register"></i></div>
+                <h3>Integrated Sales & Purchasing</h3>
+                <p><strong>Professional e-invoices</strong> in multiple designs, 3 price levels (wholesale, semi-wholesale, retail), multi-currency support, thermal printing and POS integration.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-users"></i></div>
+                <h3>Complete Customer & Supplier Management</h3>
+                <p>A comprehensive customer and supplier database, <strong>detailed account statements</strong>, cheque and voucher management, dues follow-up and receivables reports.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+                <h3>Comprehensive Reports</h3>
+                <p>Interactive dashboards, accurate financial reports, and a general ledger (GL)</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
+                <h3>Advanced Security</h3>
+                <p>Protection against SQL injection and XSS, data encryption, and a full audit log</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Preview -->
+    <section class="pricing-preview">
+        <h2>Flexible Plans for Every Business</h2>
+        <p>Choose the right plan for you — professional solutions at competitive prices</p>
+        <div class="pricing-cards">
+            <div class="price-card">
+                <h3>Basic Plan</h3>
+                <div class="price">$50<small>/month</small></div>
+                <p style="color: var(--gulf-gold); font-size: 0.85rem; margin-bottom: 10px;">or $80 with managed hosting</p>
+                <ul>
+                    <li><i class="fas fa-check"></i> 3 users</li>
+                    <li><i class="fas fa-check"></i> Sales & purchasing</li>
+                    <li><i class="fas fa-check"></i> Stock management</li>
+                    <li><i class="fas fa-check"></i> Basic reports</li>
+                </ul>
+                <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-primary" style="margin-top: 20px; display: inline-block;">Choose Plan</a>
+            </div>
+            
+            <div class="price-card featured">
+                <span style="background: #667eea; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem;">Most Popular</span>
+                <h3>Professional Plan</h3>
+                <div class="price">$100<small>/month</small></div>
+                <p style="color: var(--gulf-gold); font-size: 0.85rem; margin-bottom: 10px;">or $130 with managed hosting</p>
+                <ul>
+                    <li><i class="fas fa-check"></i> 10 users</li>
+                    <li><i class="fas fa-check"></i> Everything in Basic</li>
+                    <li><i class="fas fa-check"></i> Artificial intelligence</li>
+                    <li><i class="fas fa-check"></i> GL general ledger</li>
+                    <li><i class="fas fa-check"></i> 24/7 technical support</li>
+                </ul>
+                <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-primary" style="margin-top: 20px; display: inline-block;">Choose Plan</a>
+            </div>
+            
+            <div class="price-card">
+                <h3>Business & Enterprise Plan</h3>
+                <div class="price">$120<small>/month</small></div>
+                <p style="color: var(--gulf-gold); font-size: 0.85rem; margin-bottom: 10px;">or $150 with managed hosting</p>
+                <ul>
+                    <li><i class="fas fa-check"></i> Unlimited users</li>
+                    <li><i class="fas fa-check"></i> All advanced features</li>
+                    <li><i class="fas fa-check"></i> Full customization</li>
+                    <li><i class="fas fa-check"></i> Free training</li>
+                    <li><i class="fas fa-check"></i> Dedicated API</li>
+                </ul>
+                <a href="{{ url_for('public.contact') }}" class="btn-hero btn-primary" style="margin-top: 20px; display: inline-block;">Contact Us</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact">
+        <h2>Contact Us</h2>
+        <p style="color: rgba(255,255,255,0.9); font-size: 1rem; margin-bottom: 8px;">Our team is ready to help</p>
+        <div class="contact-info">
+            <div class="contact-item">
+                <i class="fab fa-whatsapp"></i>
+                <strong>WhatsApp</strong>
+                <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank">+{{ config.COMPANY_WHATSAPP }}</a>
+            </div>
+            <div class="contact-item">
+                <i class="fas fa-phone"></i>
+                <strong>Mobile</strong>
+                <a href="tel:{{ config.COMPANY_PHONE }}">{{ config.COMPANY_PHONE }}</a>
+            </div>
+            <div class="contact-item">
+                <i class="fas fa-mobile-alt"></i>
+                <strong>Wataniya</strong>
+                <a href="tel:{{ config.COMPANY_PHONE_2 }}">{{ config.COMPANY_PHONE_2 }}</a>
+            </div>
+            <div class="contact-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <strong>{{ t('Address') }}</strong>
+                <a style="cursor: default;">{{ config.COMPANY_ADDRESS }}</a>
+            </div>
+        </div>
+        <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+            <a href="{{ url_for('public.user_guide') }}" class="btn-hero btn-primary">
+                <i class="fas fa-book"></i> User Guide
+            </a>
+            <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-outline">
+                <i class="fas fa-tags"></i> Pricing
+            </a>
+            <a href="{{ url_for('public.contact') }}" class="btn-hero btn-outline">
+                <i class="fas fa-envelope"></i> Message Us
+            </a>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section style="padding: 80px 20px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+        <div style="max-width: 1000px; margin: 0 auto;">
+            <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 30px; color: var(--gulf-blue);">
+                <i class="fas fa-building" style="margin-inline-start: 10px;"></i>
+                About Us — Azad Smart Systems
+            </h2>
+            <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                <p style="font-size: 1.15rem; line-height: 2; color: #333; text-align: justify; margin-bottom: 25px;">
+                    <strong>Azad Smart Systems</strong> is a company specialized in developing <strong>business management software</strong>. We provide <strong>sales and warehouse management systems</strong> that help companies grow efficiently.
+                </p>
+                <p style="font-size: 1.15rem; line-height: 2; color: #333; text-align: justify; margin-bottom: 25px;">
+                    The <strong>Azad system</strong> combines advanced technology with easy-to-use design, making it <strong>the ideal choice</strong> for business owners looking for a <strong>comprehensive accounting suite</strong> that saves time and grows profits.
+                </p>
+                <p style="font-size: 1.15rem; line-height: 2; color: #333; text-align: justify;">
+                    We pride ourselves on <strong>excellent Arabic technical support</strong>, comprehensive training and continuous free updates. Our specialized team is ready to help you with your <strong>digital transformation</strong> using the latest technologies.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Who benefits from our system -->
+    <section style="padding: 80px 20px; background: white;">
+        <div style="max-width: 1000px; margin: 0 auto;">
+                <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 20px; color: var(--gulf-blue);">
+                    <i class="fas fa-users-cog" style="margin-inline-start: 10px;"></i>
+                    Who Benefits from Azad?
+                </h2>
+                <p style="text-align: center; color: #666; margin-bottom: 50px; font-size: 1.1rem;">
+                    Tailored solutions for different business sectors
+                </p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 35px; border-radius: 15px; color: white; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <h3 style="font-size: 1.5rem; margin-bottom: 15px;">
+                        <i class="fas fa-car" style="margin-left: 10px;"></i>
+                        Auto Spare Parts Stores
+                    </h3>
+                    <p style="line-height: 1.8; opacity: 0.95;">
+                        A specialized system for <strong>auto spare parts</strong> with unique features: part compatibility, 3 price levels, barcodes and accurate stock control.
+                    </p>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 35px; border-radius: 15px; color: white; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <h3 style="font-size: 1.5rem; margin-bottom: 15px;">
+                        <i class="fas fa-store" style="margin-left: 10px;"></i>
+                        Retail Stores & Supermarkets
+                    </h3>
+                    <p style="line-height: 1.8; opacity: 0.95;">
+                        A fast, easy <strong>POS system</strong> with barcodes, thermal printing, supplier management, account statements and daily reports. A complete retail solution.
+                    </p>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 35px; border-radius: 15px; color: white; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <h3 style="font-size: 1.5rem; margin-bottom: 15px;">
+                        <i class="fas fa-industry" style="margin-left: 10px;"></i>
+                        Small & Medium Businesses
+                    </h3>
+                    <p style="line-height: 1.8; opacity: 0.95;">
+                        An <strong>integrated ERP</strong> for all your operations: sales, purchasing, stock, accounts, HR and comprehensive reports. <strong>100% cloud</strong> — follow your business from anywhere.
+                    </p>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 35px; border-radius: 15px; color: white; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                    <h3 style="font-size: 1.5rem; margin-bottom: 15px;">
+                        <i class="fas fa-wrench" style="margin-left: 10px;"></i>
+                        Maintenance & Service Workshops
+                    </h3>
+                    <p style="line-height: 1.8; opacity: 0.95;">
+                        <strong>Work order</strong> management, used-parts tracking, service invoices, appointment scheduling and full-history customer management. Ideal for <strong>auto repair and maintenance workshops</strong>.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section" style="padding: 80px 20px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white;">
+        <div style="max-width: 900px; margin: 0 auto;">
+            <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 20px; background: var(--gradient-gulf); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                Frequently Asked Questions
+            </h2>
+            <p style="text-align: center; color: rgba(255,255,255,0.8); margin-bottom: 50px; font-size: 1.1rem;">
+                Answers to the most common questions about the sales and inventory management system
+            </p>
+            
+            <div class="faq-container">
+                <!-- Question 1 -->
+                <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
+                    <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
+                        <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
+                        What is the Azad business management system?
+                    </h3>
+                    <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
+                        Azad is an <strong>integrated accounting and management suite</strong> for companies and retail stores, covering sales, purchasing, inventory, e-invoicing, account statements, cheque management and financial reports.
+                    </p>
+                </div>
+                
+                <!-- Question 2 -->
+                <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
+                    <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
+                        <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
+                        Is the software suitable for auto spare parts stores?
+                    </h3>
+                    <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
+                        Yes! The system includes specialized features such as part-to-vehicle compatibility, 3 price levels (wholesale, semi-wholesale, retail), accurate stock tracking, <strong>professional invoices</strong> with your logo, and sales analytics.
+                    </p>
+                </div>
+                
+                <!-- Question 3 -->
+                <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
+                    <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
+                        <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
+                        How much does a subscription cost?
+                    </h3>
+                    <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
+                        We offer <strong>3 flexible plans</strong> for businesses of all sizes. All plans include technical support, free updates and training. <a href="{{ url_for('public.pricing') }}" style="color: var(--gulf-gold); text-decoration: underline;">See plan details</a>
+                    </p>
+                </div>
+                
+                <!-- Question 4 -->
+                <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
+                    <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
+                        <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
+                        Does the system support e-invoicing?
+                    </h3>
+                    <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
+                        Yes! The system fully supports <strong>e-invoicing</strong>. Create professional invoices in multiple designs, print in different sizes (A4, A5, thermal), add your logo and details, QR codes, and export PDF.
+                    </p>
+                </div>
+                
+                <!-- Question 5 -->
+                <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
+                    <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
+                        <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
+                        What AI features does the software offer?
+                    </h3>
+                    <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
+                        The <strong>advanced AI</strong> in Azad provides smart market-based pricing recommendations, customer behavior analysis, sales forecasting, product performance analysis, hidden pattern detection, profit-boosting recommendations, a conversational assistant, and continuous learning from your data.
+                    </p>
+                </div>
+                
+                <!-- Question 6 -->
+                <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
+                    <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
+                        <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
+                        Can the software be used in multiple branches?
+                    </h3>
+                    <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
+                        Yes! The system supports <strong>multi-warehouse</strong> and branch management. Track stock per branch, transfer goods between warehouses, and get separate reports per branch with centralized control.
+                    </p>
+                </div>
+                
+                <!-- Question 7 -->
+                <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
+                    <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
+                        <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
+                        How do I get started with Azad?
+                    </h3>
+                    <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
+                        Getting started is easy! Just <strong>3 steps:</strong> (1) <a href="{{ url_for('public.demo') }}" style="color: var(--gulf-gold); text-decoration: underline;">book a free live demo</a>, (2) choose the right plan, (3) start immediately! We provide <strong>free training</strong> for your team, legacy data import and ongoing support.
+                    </p>
+                </div>
+                
+                <!-- Question 8 -->
+                <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; border: 1px solid rgba(212, 175, 55, 0.2);">
+                    <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
+                        <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
+                        Is the system secure? Does it protect my data?
+                    </h3>
+                    <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
+                        <strong>Security is our priority!</strong> We use full SSL encryption, automatic daily backups, intrusion protection, advanced user permissions, a comprehensive audit log and a secure card vault. Your data is protected with top global security standards.
+                    </p>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 50px;">
+                <a href="{{ url_for('public.contact') }}" class="btn-hero btn-primary" style="display: inline-block; padding: 18px 45px; background: var(--gulf-gold); color: var(--gulf-blue); border-radius: 50px; text-decoration: none; font-weight: 700; font-size: 1.2rem; box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);">
+                    <i class="fas fa-phone-alt" style="margin-inline-start: 10px;"></i>
+                    Contact us for more information
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div style="margin-bottom: 15px;">
+            <img src="{{ url_for('static', filename='img/azad_logo_white_on_dark.png') }}" alt="Azad Smart Systems - All-in-One Management Software" style="max-height: 50px;">
+        </div>
+        <p style="font-size: 0.95rem;">&copy; 2025 {{ config.COMPANY_NAME }}. All rights reserved.</p>
+        <p class="developer" style="font-size: 0.9rem;">{{ config.DEVELOPER_CREDIT }}</p>
+        <div style="margin-top: 15px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; font-size: 0.85rem;">
+            <a href="{{ url_for('public.pricing') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">Pricing</a>
+            <span style="color: rgba(255,255,255,0.3);">|</span>
+            <a href="{{ url_for('public.features') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">Features</a>
+            <span style="color: rgba(255,255,255,0.3);">|</span>
+            <a href="{{ url_for('public.user_guide') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">Guide</a>
+            <span style="color: rgba(255,255,255,0.3);">|</span>
+            <a href="{{ url_for('public.contact') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">Contact Us</a>
+        </div>
+        <p style="margin-top: 15px; color: var(--gulf-gold); font-size: 0.85rem;">
+            <i class="fas fa-shield-alt"></i> Protected with top security standards
+        </p>
+    </footer>
+
+    <script>
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Animate on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.feature-card, .price-card').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(50px)';
+            el.style.transition = 'all 0.8s ease-out';
+            observer.observe(el);
+        });
+    </script>
+
+    <!-- Bootstrap JS for dropdown -->
+    <script src="{{ url_for('static', filename='adminlte/plugins/jquery/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+
+</body>
+</html>
+

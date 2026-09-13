@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شركة أزاد للأنظمة الذكية - المميزات والخدمات</title>
-    <meta name="description" content="مميزات نظام أزاد: مبيعات، مخزون، عملاء، تقارير، ذكاء اصطناعي، واتساب، محاسبة وأمان.">
+    <title>Azad Smart Systems - Features & Services</title>
+    <meta name="description" content="Azad features: sales, inventory, customers, reports, AI, WhatsApp, accounting and security.">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
@@ -18,69 +18,69 @@
     </div>
 
     <nav class="navbar">
-        <div class="logo">{{ config.COMPANY_NAME_AR }}</div>
+        <div class="logo">{{ config.COMPANY_NAME }}</div>
         <div>
-            <a href="{{ url_for('public.landing') }}">الرئيسية</a>
-            <a href="{{ url_for('public.pricing') }}">الأسعار</a>
-            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> دخول</a>
+            <a href="{{ url_for('public.landing') }}">Home</a>
+            <a href="{{ url_for('public.pricing') }}">Pricing</a>
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Sign In</a>
         </div>
     </nav>
 
     <div class="page-container">
         <div class="page-header">
-            <h1>مميزات النظام</h1>
-            <p>كل ما تحتاجه لإدارة أعمالك في مكان واحد</p>
+            <h1>System Features</h1>
+            <p>Everything you need to run your business in one place</p>
         </div>
         <div class="features-grid">
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-shopping-cart"></i></div>
-                <h3>إدارة المبيعات</h3>
-                <p>نظام مبيعات متكامل مع فواتير احترافية وإدارة الدفعات والشيكات.</p>
+                <h3>Sales Management</h3>
+                <p>A complete sales system with professional invoices, payment and cheque handling.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-warehouse"></i></div>
-                <h3>إدارة المخزون</h3>
-                <p>تتبع دقيق للمخزون وتنبيهات الأصناف المنخفضة وإدارة متعددة المستودعات.</p>
+                <h3>Inventory Management</h3>
+                <p>Accurate stock tracking, low-stock alerts and multi-warehouse management.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-users"></i></div>
-                <h3>إدارة العملاء</h3>
-                <p>قاعدة بيانات شاملة للعملاء مع سجل المعاملات والمستحقات.</p>
+                <h3>Customer Management</h3>
+                <p>A comprehensive customer database with transaction history and dues.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
-                <h3>تقارير متقدمة</h3>
-                <p>تقارير مالية تفصيلية وتحليلات مبيعات وتنبؤات أداء.</p>
+                <h3>Advanced Reports</h3>
+                <p>Detailed financial reports, sales analytics and performance forecasts.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-robot"></i></div>
-                <h3>مساعد ذكي</h3>
-                <p>مساعد ذكاء اصطناعي للإجابة على الأسئلة وتقديم التوصيات.</p>
+                <h3>Smart Assistant</h3>
+                <p>An AI assistant that answers questions and offers recommendations.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fab fa-whatsapp"></i></div>
-                <h3>تكامل واتساب</h3>
-                <p>إرسال الفواتير والإشعارات عبر واتساب مباشرة للعملاء.</p>
+                <h3>WhatsApp Integration</h3>
+                <p>Send invoices and notifications to customers directly via WhatsApp.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-calculator"></i></div>
-                <h3>محاسبة متقدمة</h3>
-                <p>نظام محاسبي كامل مع دفتر الأستاذ العام والقيود اليومية.</p>
+                <h3>Advanced Accounting</h3>
+                <p>A full accounting system with a general ledger and journal entries.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
-                <h3>أمان عالي</h3>
-                <p>تشفير البيانات ونسخ احتياطي تلقائي وصلاحيات مستخدمين متقدمة.</p>
+                <h3>High Security</h3>
+                <p>Data encryption, automatic backups and advanced user permissions.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-mobile-alt"></i></div>
-                <h3>متجاوب تماماً</h3>
-                <p>يعمل على الكمبيوتر والتابلت والهاتف بشكل مثالي.</p>
+                <h3>Fully Responsive</h3>
+                <p>Works perfectly on desktop, tablet and mobile.</p>
             </div>
         </div>
         <div style="text-align: center; margin-top: 60px;">
             <a href="{{ url_for('public.demo') }}" class="btn-gold">
-                <i class="fas fa-rocket"></i> احجز عرضاً توضيحياً مجانياً
+                <i class="fas fa-rocket"></i> Book a Free Live Demo
             </a>
         </div>
     </div>

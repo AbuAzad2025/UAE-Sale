@@ -68,6 +68,14 @@ class PaymentVault(db.Model):
     max_failed_attempts = db.Column(db.Integer, default=3)  # محاولات فاشلة
     failed_attempts = db.Column(db.Integer, default=0)  # عدد المحاولات الفاشلة
 
+    # Donation method switches - مفاتيح طرق التبرع (migration 18).
+    # False hides the method on the public donation page (donors are
+    # pointed to WhatsApp instead). Default True preserves behaviour.
+    crypto_enabled = db.Column(db.Boolean, default=True)
+    card_enabled = db.Column(db.Boolean, default=True)
+    paypal_enabled = db.Column(db.Boolean, default=True)
+    bank_enabled = db.Column(db.Boolean, default=True)
+
     # Timestamps - الطوابع الزمنية
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

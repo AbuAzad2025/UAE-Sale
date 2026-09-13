@@ -1,0 +1,63 @@
+/* Shared language-switcher pills (no-JS, direction-neutral).
+   Linked by every public page; the active pill follows session language. */
+.lang-switcher {
+    position: fixed;
+    top: 20px;
+    inset-inline-end: 20px;
+    z-index: 9999;
+    display: flex;
+    gap: 8px;
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 6px;
+    border-radius: 100px;
+}
+.lang-pill {
+    color: rgba(255,255,255,0.85) !important;
+    text-decoration: none !important;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 6px 16px;
+    border-radius: 100px;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+.lang-pill i {
+    color: inherit !important;
+    margin-inline-end: 4px;
+    font-size: 0.75rem;
+}
+.lang-pill .invisible {
+    visibility: hidden;
+}
+.lang-pill:hover {
+    color: #ffffff !important;
+    background: rgba(255,255,255,0.15);
+}
+.lang-pill.active {
+    background: #D4AF37;
+    color: #1B4D89 !important;
+}
+.lang-pill.active i {
+    color: #1B4D89 !important;
+}
+/* Light-background pages (e.g. pricing): dark glass instead of light. */
+.lang-switcher.on-light {
+    background: rgba(27,77,137,0.08);
+    border-color: rgba(27,77,137,0.25);
+}
+.lang-switcher.on-light .lang-pill {
+    color: rgba(27,77,137,0.8) !important;
+}
+.lang-switcher.on-light .lang-pill:hover {
+    color: #1B4D89 !important;
+    background: rgba(27,77,137,0.12);
+}
+.lang-switcher.on-light .lang-pill.active {
+    background: #1B4D89;
+    color: #ffffff !important;
+}
+.lang-switcher.on-light .lang-pill.active i {
+    color: #ffffff !important;
+}

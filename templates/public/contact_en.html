@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شركة أزاد للأنظمة الذكية - اتصل بنا</title>
-    <meta name="description" content="تواصل مع شركة أزاد للأنظمة الذكية: واتساب، هاتف، بريد إلكتروني.">
+    <title>Azad Smart Systems - Contact Us</title>
+    <meta name="description" content="Contact Azad Smart Systems: WhatsApp, phone, email.">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
@@ -18,48 +18,48 @@
     </div>
 
     <nav class="navbar">
-        <div class="logo">{{ config.COMPANY_NAME_AR }}</div>
+        <div class="logo">{{ config.COMPANY_NAME }}</div>
         <div>
-            <a href="{{ url_for('public.landing') }}">الرئيسية</a>
-            <a href="{{ url_for('public.pricing') }}">الأسعار</a>
-            <a href="{{ url_for('public.user_guide') }}">دليل المستخدم</a>
-            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> دخول</a>
+            <a href="{{ url_for('public.landing') }}">Home</a>
+            <a href="{{ url_for('public.pricing') }}">Pricing</a>
+            <a href="{{ url_for('public.user_guide') }}">User Guide</a>
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Sign In</a>
         </div>
     </nav>
 
     <div class="page-container">
         <div class="page-header">
-            <h1>اتصل بنا</h1>
-            <p>نحن هنا لخدمتك. تواصل معنا في أي وقت</p>
+            <h1>Contact Us</h1>
+            <p>We are here to serve you. Reach out at any time</p>
         </div>
 
         <div class="contact-grid">
             <div class="contact-card">
                 <i class="fab fa-whatsapp"></i>
-                <h3>واتساب</h3>
+                <h3>WhatsApp</h3>
                 <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank">+{{ config.COMPANY_WHATSAPP }}</a>
-                <p class="muted">الطريقة الأسرع للتواصل</p>
+                <p class="muted">The fastest way to reach us</p>
             </div>
 
             <div class="contact-card">
                 <i class="fas fa-phone"></i>
-                <h3>جوال</h3>
+                <h3>Mobile</h3>
                 <a href="tel:{{ config.COMPANY_PHONE }}">{{ config.COMPANY_PHONE }}</a>
-                <p class="muted">متاح 24/7</p>
+                <p class="muted">Available 24/7</p>
             </div>
 
             <div class="contact-card">
                 <i class="fas fa-mobile-alt"></i>
-                <h3>وطنية</h3>
+                <h3>Wataniya</h3>
                 <a href="tel:{{ config.COMPANY_PHONE_2 }}">{{ config.COMPANY_PHONE_2 }}</a>
-                <p class="muted">للمكالمات المحلية</p>
+                <p class="muted">For local calls</p>
             </div>
 
             <div class="contact-card">
                 <i class="fas fa-envelope"></i>
                 <h3>{{ t('Email') }}</h3>
                 <a href="mailto:{{ config.COMPANY_EMAIL }}">{{ config.COMPANY_EMAIL }}</a>
-                <p class="muted">للاستفسارات الرسمية</p>
+                <p class="muted">For official inquiries</p>
             </div>
 
             <div class="contact-card">
@@ -70,15 +70,15 @@
 
             <div class="contact-card">
                 <i class="fas fa-globe"></i>
-                <h3>الموقع الإلكتروني</h3>
+                <h3>Website</h3>
                 <a href="{{ config.COMPANY_WEBSITE }}" target="_blank">{{ config.COMPANY_WEBSITE }}</a>
-                <p class="muted">تفضل بزيارتنا</p>
+                <p class="muted">Come visit us</p>
             </div>
         </div>
 
         <div style="text-align: center; margin-top: 60px;">
             <a href="{{ url_for('public.demo') }}" class="btn-gold">
-                <i class="fas fa-rocket"></i> احجز عرض توضيحي مجاني
+                <i class="fas fa-rocket"></i> Book a Free Live Demo
             </a>
         </div>
     </div>

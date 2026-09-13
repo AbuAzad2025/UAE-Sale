@@ -293,7 +293,12 @@ def create_app(config_class=Config):  # noqa: C901
             'format_currency': format_currency,
             'timeago': timeago,
             't': t,
-            'is_rtl': is_rtl,
+            # Evaluated values (not the functions): templates use
+            # `{{ current_language }}` and `{% if is_rtl %}` directly.
+            # Passing the function object made `is_rtl` always truthy,
+            # locking every page to dir="rtl" even in English.
+            'is_rtl': is_rtl(),
+            'current_language': get_current_language(),
             'get_current_language': get_current_language,
             'get_currency_symbol': get_currency_symbol,
             'lookups': _lookups,

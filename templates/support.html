@@ -4,612 +4,30 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>دعم المشروع - Support Azad Systems</title>
-    
+
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
-    
+
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <!-- Bootstrap RTL -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.rtl.min.css">
-    
+
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-    
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
-    
-    <style>
-        * {
-            font-family: 'Cairo', sans-serif;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .support-container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        .hero-section {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 50px 30px;
-            text-align: center;
-            margin-bottom: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .hero-section::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(102,126,234,0.1) 0%, transparent 70%);
-            animation: pulse 4s ease-in-out infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-        
-        .hero-content {
-            position: relative;
-            z-index: 1;
-        }
-        
-        .hero-title {
-            font-size: 3rem;
-            font-weight: 900;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 20px;
-        }
-        
-        .hero-subtitle {
-            font-size: 1.3rem;
-            color: #555;
-            margin-bottom: 30px;
-        }
-        
-        .tab-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-        }
-        
-        .tab-btn {
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            font-weight: 700;
-            border: 3px solid #e0e0e0;
-            border-radius: 50px;
-            background: white;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .tab-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        
-        .tab-btn.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-color: #667eea;
-        }
-        
-        .tab-content {
-            display: none;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        .package-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .package-card {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            text-align: center;
-            transition: all 0.3s;
-            cursor: pointer;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-            border: 3px solid transparent;
-        }
-        
-        .package-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
-            border-color: #667eea;
-        }
-        
-        .package-card.active {
-            border-color: #28a745;
-            background: linear-gradient(135deg, rgba(40,167,69,0.05) 0%, rgba(32,201,151,0.05) 100%);
-            position: relative;
-        }
-        
-        .package-card.active::after {
-            content: '✓ محدد';
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: #28a745;
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 700;
-        }
-        
-        .package-name {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #667eea;
-            margin-bottom: 15px;
-        }
-        
-        .package-price {
-            font-size: 2.5rem;
-            font-weight: 900;
-            color: #333;
-            margin-bottom: 20px;
-        }
-        
-        .package-features {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 20px 0;
-            text-align: right;
-        }
-        
-        .package-features li {
-            padding: 8px 0;
-            color: #666;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
-        .package-features li:last-child {
-            border-bottom: none;
-        }
-        
-        .package-features i {
-            color: #28a745;
-            margin-left: 8px;
-        }
-        
-        .crypto-badge {
-            display: inline-block;
-            padding: 10px 20px;
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-            border-radius: 30px;
-            font-weight: 700;
-            margin: 5px;
-            animation: float 3s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-        
-        .payment-methods {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .payment-card {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            text-align: center;
-            transition: all 0.3s;
-            cursor: pointer;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-            border: 3px solid transparent;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .payment-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 5px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-        }
-        
-        .payment-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
-            border-color: #667eea;
-        }
-        
-        .payment-card.active {
-            border-color: #28a745;
-            background: linear-gradient(135deg, rgba(102,126,234,0.05) 0%, rgba(118,75,162,0.05) 100%);
-            position: relative;
-        }
-        
-        .payment-card.active::after {
-            content: '✓';
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: #28a745;
-            color: white;
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            font-weight: 900;
-        }
-        
-        .payment-icon {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .payment-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .payment-desc {
-            color: #666;
-            font-size: 0.95rem;
-        }
-        
-        .donation-form {
-            background: white;
-            border-radius: 15px;
-            padding: 40px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            display: none;
-        }
-        
-        .donation-form.active {
-            display: block;
-            animation: slideIn 0.5s ease;
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .amount-options {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-        
-        .amount-btn {
-            padding: 15px;
-            border: 2px solid #dee2e6;
-            border-radius: 10px;
-            background: white;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 700;
-            font-size: 1.1rem;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .amount-btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(102,126,234,0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-        
-        .amount-btn:hover {
-            border-color: #667eea;
-            background: rgba(102,126,234,0.05);
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        
-        .amount-btn:hover::before {
-            width: 300px;
-            height: 300px;
-        }
-        
-        .amount-btn.active {
-            border-color: #28a745;
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-            transform: scale(1.05);
-            box-shadow: 0 5px 20px rgba(40,167,69,0.3);
-        }
-        
-        .amount-btn.active::after {
-            content: '✓';
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background: white;
-            color: #28a745;
-            width: 25px;
-            height: 25px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.9rem;
-            font-weight: 900;
-        }
-        
-        .crypto-info {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 15px;
-            margin-top: 30px;
-        }
-        
-        .wallet-address {
-            background: rgba(255,255,255,0.2);
-            padding: 15px;
-            border-radius: 10px;
-            word-break: break-all;
-            font-family: monospace;
-            font-size: 0.9rem;
-            margin: 10px 0;
-            position: relative;
-        }
-        
-        .copy-btn {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(255,255,255,0.3);
-            border: none;
-            color: white;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .copy-btn:hover {
-            background: rgba(255,255,255,0.5);
-        }
-        
-        .qr-code {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            display: inline-block;
-            margin: 20px 0;
-        }
-        
-        .btn-donate {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            color: white;
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            font-weight: 700;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        
-        .btn-donate:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-        }
-        
-        .btn-donate:active {
-            transform: translateY(0);
-            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-        }
-        
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102,126,234,0.25);
-        }
-        
-        .payment-methods-header {
-            text-align: center;
-            margin-bottom: 30px;
-            animation: fadeInDown 0.5s ease;
-        }
-        
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        /* Progress indicator */
-        .progress-steps {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 30px 0;
-            padding: 20px;
-            background: rgba(255,255,255,0.95);
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        
-        .step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-            flex: 1;
-            max-width: 200px;
-        }
-        
-        .step::after {
-            content: '';
-            position: absolute;
-            top: 20px;
-            left: 60%;
-            width: 100%;
-            height: 3px;
-            background: #e0e0e0;
-            z-index: -1;
-        }
-        
-        .step:last-child::after {
-            display: none;
-        }
-        
-        .step-number {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #e0e0e0;
-            color: #999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            margin-bottom: 10px;
-            transition: all 0.3s;
-        }
-        
-        .step.active .step-number {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            transform: scale(1.2);
-            box-shadow: 0 5px 15px rgba(102,126,234,0.4);
-        }
-        
-        .step.completed .step-number {
-            background: #28a745;
-            color: white;
-        }
-        
-        .step.completed .step-number::before {
-            content: '✓';
-            font-size: 1.2rem;
-        }
-        
-        .step-label {
-            font-size: 0.85rem;
-            color: #666;
-            text-align: center;
-        }
-        
-        .step.active .step-label {
-            color: #667eea;
-            font-weight: 700;
-        }
-        
-        .security-badge {
-            display: inline-block;
-            padding: 8px 15px;
-            background: rgba(40,167,69,0.1);
-            color: #28a745;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin: 5px;
-        }
-        
-        .login-link {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: white;
-            padding: 10px 20px;
-            border-radius: 30px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            text-decoration: none;
-            color: #667eea;
-            font-weight: 700;
-            transition: all 0.3s;
-            z-index: 1000;
-        }
-        
-        .login-link:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-            color: #764ba2;
-            text-decoration: none;
-        }
-        
-        .features-list {
-            text-align: right;
-            margin: 30px 0;
-        }
-        
-        .feature-item {
-            padding: 15px;
-            margin: 10px 0;
-            background: rgba(255,255,255,0.05);
-            border-radius: 10px;
-            border-right: 4px solid #28a745;
-        }
-        
-        .feature-item i {
-            margin-left: 10px;
-            color: #28a745;
-        }
-    </style>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/support.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/lang_pills.css') }}">
+
 </head>
 <body>
+    <div class="lang-switcher on-light">
+        <a href="{{ url_for('language.set_language', lang='ar') }}" class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}"><i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>العربية</a>
+        <a href="{{ url_for('language.set_language', lang='en') }}" class="lang-pill {% if session.get('language') == 'en' %}active{% endif %}"><i class="fas fa-check {% if session.get('language') != 'en' %}invisible{% endif %}"></i>English</a>
+    </div>
     <a href="{{ url_for('auth.login') }}" class="login-link">
         <i class="fas fa-sign-in-alt mr-2"></i>تسجيل الدخول
     </a>
@@ -628,7 +46,7 @@
                 <p class="hero-subtitle">
                     🚀 احصل على نظام إدارة احترافي شامل أو ساهم في تطوير المشروع
                 </p>
-                <div style="background: rgba(102,126,234,0.1); padding: 20px; border-radius: 15px; margin: 20px 0; border-right: 5px solid #667eea;">
+                <div style="background: rgba(102,126,234,0.1); padding: 20px; border-radius: 15px; margin: 20px 0; border-inline-start: 5px solid #667eea;">
                     <h4 style="color: #667eea; margin-bottom: 15px;">
                         <i class="fas fa-star"></i> لماذا تختار نظامنا؟
                     </h4>
@@ -639,20 +57,27 @@
                         <div><i class="fas fa-check-circle" style="color: #28a745;"></i> واجهة عربية احترافية</div>
                     </div>
                 </div>
-                
+
                 <!-- Tab Buttons -->
                 <div class="tab-buttons">
                     <button class="tab-btn active" onclick="switchTab('purchase', event)">
-                        <i class="fas fa-shopping-cart"></i> 
+                        <i class="fas fa-shopping-cart"></i>
                         <span>شراء النظام</span>
                         <small style="display: block; font-size: 0.8rem; opacity: 0.8;">احصل على النظام كاملاً</small>
                     </button>
                     <button class="tab-btn" onclick="switchTab('donation', event)">
-                        <i class="fas fa-heart"></i> 
+                        <i class="fas fa-heart"></i>
                         <span>دعم المشروع</span>
                         <small style="display: block; font-size: 0.8rem; opacity: 0.8;">ساهم في التطوير</small>
                     </button>
                 </div>
+            <div class="wa-strip">
+                <i class="fab fa-whatsapp"></i>
+                <span>طريقة الدفع التي تريدها غير متاحة؟ تواصل معنا مباشرة على واتساب وسنرتب كل شيء.</span>
+                <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank" class="wa-strip-btn">
+                    <i class="fab fa-whatsapp"></i> تواصل واتساب
+                </a>
+            </div>
                 <div>
                     <span class="crypto-badge">
                         <i class="fab fa-bitcoin"></i> Bitcoin
@@ -690,12 +115,12 @@
                     <div class="step-label">إتمام الدفع</div>
                 </div>
             </div>
-            
+
             <div class="payment-card" style="max-width: 1000px; margin: 0 auto 30px;">
                 <h3 style="text-align: center; color: #667eea; margin-bottom: 30px;">
                     <i class="fas fa-box-open"></i> اختر الباقة المناسبة لك
                 </h3>
-                
+
                 <div class="package-grid">
                     {% if packages %}
                         {% for package in packages %}
@@ -721,7 +146,7 @@
                     {% endif %}
                 </div>
             </div>
-            
+
             <!-- طرق الدفع للشراء (تظهر بعد اختيار الباقة) -->
             <div id="purchase-payment-methods" style="display: none;">
                 <div class="payment-card" style="margin-bottom: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
@@ -731,7 +156,8 @@
                     <p style="margin: 10px 0 0 0; opacity: 0.9;">جميع الطرق آمنة ومحمية بتشفير SSL</p>
                 </div>
                 <div class="payment-methods">
-                
+
+                {% if pay_config.methods.crypto %}
                 <div class="payment-card" onclick="selectMethod('crypto', event)">
                     <i class="fab fa-bitcoin payment-icon"></i>
                     <div class="payment-title">العملات الرقمية</div>
@@ -740,7 +166,9 @@
                         <br><small class="text-success"><i class="fas fa-shield-alt"></i> آمن ومجهول</small>
                     </p>
                 </div>
-                
+                {% endif %}
+
+                {% if pay_config.methods.card %}
                 <div class="payment-card" onclick="selectMethod('card', event)">
                     <i class="fas fa-credit-card payment-icon"></i>
                     <div class="payment-title">البطاقات البنكية</div>
@@ -749,7 +177,9 @@
                         <br><small class="text-info"><i class="fas fa-lock"></i> تشفير SSL</small>
                     </p>
                 </div>
-                
+                {% endif %}
+
+                {% if pay_config.methods.paypal %}
                 <div class="payment-card" onclick="selectMethod('paypal', event)">
                     <i class="fab fa-paypal payment-icon"></i>
                     <div class="payment-title">PayPal</div>
@@ -758,7 +188,9 @@
                         <br><small class="text-primary"><i class="fas fa-check-circle"></i> حماية المشتري</small>
                     </p>
                 </div>
-                
+                {% endif %}
+
+                {% if pay_config.methods.bank %}
                 <div class="payment-card" onclick="selectMethod('bank', event)">
                     <i class="fas fa-university payment-icon"></i>
                     <div class="payment-title">تحويل بنكي</div>
@@ -767,14 +199,17 @@
                         <br><small class="text-secondary"><i class="fas fa-building"></i> للمبالغ الكبيرة</small>
                     </p>
                 </div>
+                {% endif %}
                 </div>
             </div>
         </div>
-        
+
         <!-- Donation Tab Content -->
         <div class="tab-content" id="donation-tab">
             <div class="payment-card" style="max-width: 900px; margin: 0 auto 30px; text-align: center; background: linear-gradient(135deg, rgba(255,107,107,0.1) 0%, rgba(238,90,36,0.1) 100%); border: 2px solid #ff6b6b;">
-                <div style="font-size: 3rem; margin-bottom: 15px;">❤️</div>
+                <div class="donation-heart" aria-hidden="true">
+                    <i class="fas fa-heart"></i>
+                </div>
                 <h3 style="color: #ff6b6b; margin-bottom: 20px; font-size: 2rem;">
                     <i class="fas fa-heart"></i> ساهم في تطوير المشروع
                 </h3>
@@ -782,23 +217,24 @@
                     تبرعك يساعدنا في تحسين النظام وإضافة ميزات جديدة وتقديم خدمات أفضل للجميع
                 </p>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 25px;">
-                    <div style="background: white; padding: 15px; border-radius: 10px; border-right: 4px solid #28a745;">
+                    <div style="background: white; padding: 15px; border-radius: 10px; border-inline-start: 4px solid #28a745;">
                         <i class="fas fa-code" style="color: #667eea; font-size: 1.5rem;"></i>
                         <p style="margin: 10px 0 0 0; color: #666;">تطوير ميزات جديدة</p>
                     </div>
-                    <div style="background: white; padding: 15px; border-radius: 10px; border-right: 4px solid #28a745;">
+                    <div style="background: white; padding: 15px; border-radius: 10px; border-inline-start: 4px solid #28a745;">
                         <i class="fas fa-bug" style="color: #667eea; font-size: 1.5rem;"></i>
                         <p style="margin: 10px 0 0 0; color: #666;">إصلاح الأخطاء</p>
                     </div>
-                    <div style="background: white; padding: 15px; border-radius: 10px; border-right: 4px solid #28a745;">
+                    <div style="background: white; padding: 15px; border-radius: 10px; border-inline-start: 4px solid #28a745;">
                         <i class="fas fa-headset" style="color: #667eea; font-size: 1.5rem;"></i>
                         <p style="margin: 10px 0 0 0; color: #666;">تحسين الدعم الفني</p>
                     </div>
                 </div>
             </div>
-            
+
             <!-- طرق الدفع للتبرعات -->
             <div class="payment-methods">
+                {% if pay_config.methods.crypto %}
                 <div class="payment-card" onclick="selectMethod('crypto', event)">
                 <i class="fab fa-bitcoin payment-icon"></i>
                 <div class="payment-title">العملات الرقمية</div>
@@ -807,7 +243,9 @@
                     <br><small class="text-success"><i class="fas fa-shield-alt"></i> آمن ومجهول</small>
                 </p>
             </div>
-            
+                {% endif %}
+
+                {% if pay_config.methods.card %}
             <div class="payment-card" onclick="selectMethod('card', event)">
                 <i class="fas fa-credit-card payment-icon"></i>
                 <div class="payment-title">البطاقات البنكية</div>
@@ -816,7 +254,9 @@
                     <br><small class="text-info"><i class="fas fa-lock"></i> تشفير SSL</small>
                 </p>
             </div>
-            
+                {% endif %}
+
+                {% if pay_config.methods.paypal %}
             <div class="payment-card" onclick="selectMethod('paypal', event)">
                 <i class="fab fa-paypal payment-icon"></i>
                 <div class="payment-title">PayPal</div>
@@ -825,7 +265,9 @@
                     <br><small class="text-primary"><i class="fas fa-check-circle"></i> حماية المشتري</small>
                 </p>
             </div>
-            
+                {% endif %}
+
+                {% if pay_config.methods.bank %}
             <div class="payment-card" onclick="selectMethod('bank', event)">
                 <i class="fas fa-university payment-icon"></i>
                 <div class="payment-title">تحويل بنكي</div>
@@ -834,6 +276,7 @@
                     <br><small class="text-secondary"><i class="fas fa-building"></i> للمبالغ الكبيرة</small>
                 </p>
             </div>
+                {% endif %}
             </div>
         </div>
 
@@ -846,12 +289,12 @@
                 </h3>
                 <p style="margin: 10px 0 0 0; opacity: 0.9;">دفع آمن ومجهول بدون رسوم إضافية</p>
             </div>
-            
-            <div class="alert alert-success" style="border-right: 4px solid #28a745;">
+
+            <div class="alert alert-success" style="border-inline-start: 4px solid #28a745;">
                 <i class="fas fa-shield-alt mr-2"></i>
                 <strong>أمان كامل:</strong> لا تتبع، لا رسوم إضافية، تحويل فوري ⚡
             </div>
-            
+
             <div class="form-group">
                 <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
                     <i class="fas fa-coins mr-2" style="color: #f5a623;"></i>اختر المبلغ (بالدولار)
@@ -871,7 +314,7 @@
                     </button>
                     <button class="amount-btn" onclick="selectAmount(100)">
                         <div style="font-size: 1.3rem; font-weight: 900;">$100</div>
-                        <small style="opacity: 0.7;">رهيب</small>
+                        <small style="opacity: 0.7;">كريم</small>
                     </button>
                     <button class="amount-btn" onclick="selectAmount(250)">
                         <div style="font-size: 1.3rem; font-weight: 900;">$250</div>
@@ -882,9 +325,9 @@
                         <small style="opacity: 0.7;">VIP</small>
                     </button>
                 </div>
-                <input type="number" id="customAmount" class="form-control" placeholder="💰 أو أدخل مبلغ مخصص (الحد الأدنى $15)" min="15" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
+                <input type="number" id="customAmount" class="form-control" placeholder="أو أدخل مبلغ مخصص (الحد الأدنى ${{ pay_config.min_display }})" min="{{ pay_config.min_display }}" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
             </div>
-            
+
             <div class="form-group">
                 <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
                     <i class="fab fa-bitcoin mr-2" style="color: #f7931a;"></i>اختر العملة الرقمية
@@ -895,19 +338,19 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             <button class="btn btn-donate btn-block" onclick="generateCryptoPayment()" style="font-size: 1.2rem; padding: 18px; margin-top: 25px;">
                 <i class="fas fa-wallet mr-2"></i>
                 <span>إنشاء عنوان الدفع الآن</span>
                 <i class="fas fa-arrow-left mr-2"></i>
             </button>
-            
+
             <div class="crypto-info" id="cryptoPaymentInfo" style="display: none;">
                 <h4 class="text-center mb-4">
                     <i class="fas fa-qrcode mr-2"></i>
                     معلومات الدفع
                 </h4>
-                
+
                 <div class="features-list">
                     <div class="feature-item">
                         <i class="fas fa-user-secret"></i>
@@ -922,21 +365,21 @@
                         <strong>آمن:</strong> تشفير متقدم وحماية كاملة
                     </div>
                 </div>
-                
+
                 <div class="text-center">
                     <div class="qr-code" id="qrCode">
                         <!-- QR Code will be generated here -->
                         <canvas id="qrCanvas"></canvas>
                     </div>
                 </div>
-                
+
                 <div class="wallet-address">
                     <span id="walletAddress">bc1q...</span>
                     <button class="copy-btn" onclick="copyAddress()">
                         <i class="fas fa-copy"></i> نسخ
                     </button>
                 </div>
-                
+
                 <p class="text-center mt-3 mb-0">
                     <small>
                         <i class="fas fa-info-circle"></i>
@@ -944,7 +387,7 @@
                     </small>
                 </p>
             </div>
-            
+
             <div class="text-center mt-4">
                 <span class="security-badge">
                     <i class="fas fa-lock mr-1"></i>SSL Encrypted
@@ -967,53 +410,33 @@
                 </h3>
                 <p style="margin: 10px 0 0 0; opacity: 0.9;">Visa • Mastercard • American Express</p>
             </div>
-            
-            <div class="alert alert-info" style="border-right: 4px solid #17a2b8;">
+
+            <div class="alert alert-info" style="border-inline-start: 4px solid #17a2b8;">
                 <i class="fas fa-lock mr-2"></i>
-                <strong>دفع آمن 100%:</strong> جميع البيانات محمية بتشفير SSL 256-bit 🔒
+                <strong>بدون مشاركة بيانات بنكية:</strong> لا نطلب رقم البطاقة هنا — الإتمام يتم بأمان مع فريقنا
             </div>
-            
+
+            <div class="card-manual-note">
+                <i class="fas fa-info-circle"></i>
+                <strong>كيف يتم الدفع بالبطاقة؟</strong>
+                سجّل المبلغ وبيانات التواصل أدناه، وسيتواصل معك فريقنا عبر واتساب
+                لإتمام الدفع بالبطاقة بشكل آمن. لا تُدخل بيانات بطاقتك هنا أبداً.
+            </div>
             <form id="cardPaymentForm" action="">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
                         <i class="fas fa-dollar-sign mr-2" style="color: #28a745;"></i>المبلغ (USD)
                     </label>
-                    <input type="number" id="cardAmount" class="form-control" min="15" placeholder="💵 أدخل المبلغ (الحد الأدنى $15)" required style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
+                    <input type="number" id="cardAmount" class="form-control" min="{{ pay_config.min_display }}" placeholder="أدخل المبلغ (الحد الأدنى ${{ pay_config.min_display }})" required style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
                 </div>
-                
-                <div class="form-group">
-                    <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
-                        <i class="fas fa-credit-card mr-2" style="color: #667eea;"></i>رقم البطاقة
-                    </label>
-                    <input type="text" class="form-control" placeholder="1234 5678 9012 3456" maxlength="19" required style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6; letter-spacing: 2px;">
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label style="font-weight: 700; color: #333;">
-                                <i class="fas fa-calendar mr-2" style="color: #667eea;"></i>تاريخ الانتهاء
-                            </label>
-                            <input type="text" class="form-control" placeholder="MM/YY" maxlength="5" required style="font-size: 1.05rem; padding: 15px; border: 2px solid #dee2e6;">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label style="font-weight: 700; color: #333;">
-                                <i class="fas fa-lock mr-2" style="color: #28a745;"></i>CVV
-                            </label>
-                            <input type="text" class="form-control" placeholder="123" maxlength="4" required style="font-size: 1.05rem; padding: 15px; border: 2px solid #dee2e6; text-align: center;">
-                        </div>
-                    </div>
-                </div>
-                
+
                 <button type="submit" class="btn btn-donate btn-block" style="font-size: 1.2rem; padding: 18px; margin-top: 25px;">
                     <i class="fas fa-check-circle mr-2"></i>
-                    <span>تأكيد الدفع الآن</span>
+                    <span>تسجيل طلب الدفع</span>
                     <i class="fas fa-arrow-left mr-2"></i>
                 </button>
-                
+
                 <div class="text-center mt-4">
                     <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/0/04/Visa.svg" alt="Visa" style="height: 30px;">
@@ -1033,12 +456,12 @@
                 </h3>
                 <p style="margin: 10px 0 0 0; opacity: 0.9;">دفع سريع وآمن مع حماية المشتري</p>
             </div>
-            
-            <div class="alert alert-info" style="border-right: 4px solid #0070ba;">
+
+            <div class="alert alert-info" style="border-inline-start: 4px solid #0070ba;">
                 <i class="fas fa-shield-alt mr-2"></i>
                 <strong>حماية كاملة:</strong> استرداد الأموال متاح • لا حاجة لبطاقة ائتمان 💳
             </div>
-            
+
             <div class="text-center" id="paypal-button-container">
                 <!-- PayPal Button will be rendered here -->
                 <button class="btn btn-lg" onclick="handlePayPalPayment()" style="background: #0070ba; color: white; font-size: 1.3rem; padding: 20px 50px; border-radius: 50px; border: none; font-weight: 700; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: all 0.3s;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.2)'">
@@ -1060,30 +483,78 @@
                 </h3>
                 <p style="margin: 10px 0 0 0; opacity: 0.9;">للمبالغ الكبيرة والتعاملات الرسمية</p>
             </div>
-            
-            <div class="alert alert-warning" style="border-right: 4px solid #ffc107;">
-                <i class="fas fa-info-circle mr-2"></i>
-                <strong>ملاحظة:</strong> للتحويلات البنكية (+$500)، يُرجى التواصل معنا للحصول على تفاصيل الحساب البنكي
+
+            {% if pay_config.bank %}
+            <div class="bank-details">
+                <h4><i class="fas fa-university"></i> بيانات الحساب البنكي</h4>
+                {% if pay_config.bank.bank_name %}
+                <div class="bank-row"><span class="bank-label">البنك</span><span class="bank-value">{{ pay_config.bank.bank_name }}</span></div>
+                {% endif %}
+                {% if pay_config.bank.account_name %}
+                <div class="bank-row"><span class="bank-label">اسم الحساب</span><span class="bank-value">{{ pay_config.bank.account_name }}</span></div>
+                {% endif %}
+                {% if pay_config.bank.account_number %}
+                <div class="bank-row"><span class="bank-label">رقم الحساب</span><span class="bank-value">{{ pay_config.bank.account_number }} <button type="button" class="bank-copy" onclick="navigator.clipboard.writeText('{{ pay_config.bank.account_number }}')">نسخ</button></span></div>
+                {% endif %}
+                {% if pay_config.bank.iban %}
+                <div class="bank-row"><span class="bank-label">IBAN</span><span class="bank-value">{{ pay_config.bank.iban }} <button type="button" class="bank-copy" onclick="navigator.clipboard.writeText('{{ pay_config.bank.iban }}')">نسخ</button></span></div>
+                {% endif %}
+                {% if pay_config.bank.swift %}
+                <div class="bank-row"><span class="bank-label">SWIFT</span><span class="bank-value">{{ pay_config.bank.swift }}</span></div>
+                {% endif %}
+                {% if pay_config.bank.branch %}
+                <div class="bank-row"><span class="bank-label">الفرع</span><span class="bank-value">{{ pay_config.bank.branch }}</span></div>
+                {% endif %}
+                {% if pay_config.bank.country %}
+                <div class="bank-row"><span class="bank-label">الدولة</span><span class="bank-value">{{ pay_config.bank.country }}</span></div>
+                {% endif %}
             </div>
-            
+            {% endif %}
+            <div class="alert alert-warning" style="border-inline-start: 4px solid #ffc107;">
+                <i class="fas fa-info-circle mr-2"></i>
+                <strong>ملاحظة:</strong> بعد إتمام التحويل من تطبيق بنكك، سجّل العملية أدناه ليتم تأكيدها من الإدارة
+            </div>
+            <div class="form-group">
+                <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
+                    <i class="fas fa-dollar-sign mr-2" style="color: #28a745;"></i>المبلغ المحوّل (USD)
+                </label>
+                <input type="number" id="bankAmount" class="form-control" min="{{ pay_config.min_display }}" placeholder="أدخل المبلغ الذي حوّلته" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
+            </div>
+            <div class="form-group">
+                <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
+                    <i class="fas fa-user mr-2" style="color: #667eea;"></i>الاسم الكامل
+                </label>
+                <input type="text" id="bankName" class="form-control" placeholder="اسمك الكامل" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
+            </div>
+            <div class="form-group">
+                <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
+                    <i class="fas fa-phone mr-2" style="color: #667eea;"></i>رقم الجوال (واتساب)
+                </label>
+                <input type="text" id="bankPhone" class="form-control" placeholder="رقم الجوال للتواصل" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
+            </div>
+            <button type="button" class="btn btn-donate btn-block" onclick="submitBankTransfer()" style="font-size: 1.2rem; padding: 18px; margin-top: 25px;">
+                <i class="fas fa-check-circle mr-2"></i>
+                <span>سجّل التحويل للمراجعة</span>
+            </button>
             <div class="text-center">
                 <a href="mailto:{{ config.COMPANY_EMAIL }}?subject=Bank Transfer Request" class="btn btn-donate btn-lg" style="font-size: 1.2rem; padding: 18px 40px; margin: 10px;">
                     <i class="fas fa-envelope mr-2"></i>
                     طلب تفاصيل الحساب عبر البريد
                 </a>
-                
+
                 <p class="mt-4" style="font-size: 1.1rem; color: #666;">
                     <strong>أو تواصل معنا مباشرة:</strong>
                 </p>
-                <a href="https://wa.me/970598953362" class="btn btn-lg mt-2" style="background: #25D366; color: white; font-size: 1.2rem; padding: 18px 40px; border-radius: 50px; font-weight: 700; box-shadow: 0 5px 15px rgba(0,0,0,0.2);">
+                <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" class="btn btn-lg mt-2" style="background: #25D366; color: white; font-size: 1.2rem; padding: 18px 40px; border-radius: 50px; font-weight: 700; box-shadow: 0 5px 15px rgba(0,0,0,0.2);">
                     <i class="fab fa-whatsapp mr-2" style="font-size: 1.5rem;"></i>
                     تواصل عبر WhatsApp
                 </a>
-                
+
                 <div class="alert alert-info mt-3">
                     <i class="fas fa-info-circle mr-2"></i>
                     <strong>للمبالغ الكبيرة (+$500):</strong> يُرجى التواصل معنا للحصول على تفاصيل الحساب البنكي
                 </div>
+            </div>
             </div>
         </div>
     </div>
@@ -1093,44 +564,69 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    
+
     <script>
+        // Server-driven constants (owner panel -> support route -> template).
+        const DONATION_MIN = {{ pay_config.min_amount|tojson }};
+        const DONATION_MIN_DISPLAY = {{ pay_config.min_display|tojson }};
+        const WA_NUMBER = {{ config.COMPANY_WHATSAPP|tojson }};
+        function waLink(message) {
+            return 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(message);
+        }
+        function whatsappFallbackSwal(titleText, orderRefText) {
+            Swal.fire({
+                icon: 'warning',
+                title: titleText,
+                html: `
+                    <p>${orderRefText}</p>
+                    <hr>
+                    <p>تواصل معنا مباشرة على واتساب لإتمام العملية</p>
+                `,
+                confirmButtonText: 'تواصل عبر WhatsApp',
+                showCancelButton: true,
+                cancelButtonText: 'إلغاء'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.open(waLink(orderRefText), '_blank');
+                }
+            });
+        }
         let selectedAmount = 0;
         let selectedMethod = '';
         let selectedCrypto = 'btc';
         let selectedPackage = '';
         let currentTab = 'purchase';
-        
+
         // Check URL parameters on page load
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
             const tabParam = urlParams.get('tab');
-            
+
             if (tabParam === 'donation') {
                 // Switch to donation tab
                 document.querySelectorAll('.tab-btn').forEach(btn => {
                     btn.classList.remove('active');
                 });
                 document.querySelectorAll('.tab-btn')[1].classList.add('active');
-                
+
                 document.querySelectorAll('.tab-content').forEach(content => {
                     content.classList.remove('active');
                 });
                 document.getElementById('donation-tab').classList.add('active');
-                
+
                 // Update hero icon
                 const heroIcon = document.querySelector('.hero-section .mb-4 i');
                 heroIcon.className = 'fas fa-heart';
                 heroIcon.style.color = '#e74c3c';
-                
+
                 currentTab = 'donation';
             }
         });
-        
+
         // Switch between tabs
         function switchTab(tab, event) {
             currentTab = tab;
-            
+
             // Update tab buttons
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.remove('active');
@@ -1145,19 +641,19 @@
                     }
                 });
             }
-            
+
             // Update tab content
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
             document.getElementById(tab + '-tab').classList.add('active');
-            
+
             // Hide purchase payment methods when switching tabs
             const purchasePaymentMethods = document.getElementById('purchase-payment-methods');
             if (purchasePaymentMethods && tab !== 'purchase') {
                 purchasePaymentMethods.style.display = 'none';
             }
-            
+
             // Reset selected package when switching to donation
             if (tab === 'donation') {
                 document.querySelectorAll('.package-card').forEach(card => {
@@ -1166,7 +662,7 @@
                 selectedPackage = null;
                 selectedAmount = 0;
             }
-            
+
             // Update hero icon
             const heroIcon = document.querySelector('.hero-section .mb-4 i');
             if (tab === 'purchase') {
@@ -1177,12 +673,12 @@
                 heroIcon.style.color = '#e74c3c';
             }
         }
-        
+
         // Select package
         function selectPackage(packageName, price, event) {
             selectedPackage = packageName;
             selectedAmount = price;
-            
+
             // Update UI
             document.querySelectorAll('.package-card').forEach(card => {
                 card.classList.remove('active');
@@ -1190,50 +686,50 @@
             if (event && event.currentTarget) {
                 event.currentTarget.classList.add('active');
             }
-            
+
             // Update progress
             updateProgress('step-package', 'completed');
             updateProgress('step-payment', 'active');
             updateProgress('step-complete', '');
-            
+
             // Show payment methods for purchase
             const purchasePaymentMethods = document.getElementById('purchase-payment-methods');
             if (purchasePaymentMethods) {
                 purchasePaymentMethods.style.display = 'grid';
-                
+
                 // Scroll to payment methods
                 setTimeout(() => {
                     purchasePaymentMethods.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 100);
             }
         }
-        
+
         function updateProgress(stepId, status) {
             const step = document.getElementById(stepId);
             if (!step) return;
-            
+
             step.className = 'step';
             if (status) {
                 step.classList.add(status);
             }
         }
-        
+
         function selectMethod(method, event) {
             // Hide all forms
             document.querySelectorAll('.donation-form').forEach(form => {
                 form.classList.remove('active');
             });
-            
+
             // Remove active class from all cards
             document.querySelectorAll('.payment-card').forEach(card => {
                 card.classList.remove('active');
             });
-            
+
             // Show selected form
             const selectedForm = document.getElementById(method + '-form');
             if (selectedForm) {
                 selectedForm.classList.add('active');
-                
+
                 // Pre-fill amount ONLY if in purchase tab and package was selected
                 if (currentTab === 'purchase' && selectedAmount > 0) {
                     if (method === 'card') {
@@ -1261,51 +757,51 @@
                         }
                     }
                 }
-                
+
                 // Scroll to form
                 selectedForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-            
+
             // Add active class to selected card
             if (event && event.currentTarget) {
                 event.currentTarget.classList.add('active');
             }
-            
+
             selectedMethod = method;
         }
-        
+
         function selectAmount(amount) {
             selectedAmount = amount;
-            
+
             // Remove active class from all buttons
             document.querySelectorAll('.amount-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            
+
             // Add active class to selected button
             event.currentTarget.classList.add('active');
-            
+
             // Clear custom amount
             document.getElementById('customAmount').value = '';
         }
-        
+
         function generateCryptoPayment() {
             // Get amount
             const customAmount = document.getElementById('customAmount').value;
             const paymentAmount = customAmount || selectedAmount;
-            
-            if (!paymentAmount || paymentAmount < 15) {
+
+            if (!paymentAmount || parseFloat(paymentAmount) < DONATION_MIN) {
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
-                    text: 'الحد الأدنى للتبرع هو $1',
+                    text: 'الحد الأدنى للتبرع $' + DONATION_MIN_DISPLAY,
                     confirmButtonColor: '#667eea'
                 });
                 return;
             }
-            
+
             const cryptoType = document.getElementById('cryptoType').value;
-            
+
             // Show loading
             Swal.fire({
                 title: 'جاري إنشاء عنوان الدفع...',
@@ -1313,11 +809,11 @@
                 showConfirmButton: false,
                 allowOutsideClick: false
             });
-            
+
             // تحديد نوع المعاملة والبيانات
             let apiEndpoint = '';
             let requestData = {};
-            
+
             // إضافة بيانات المشترية إذا كان شراء
             if (currentTab === 'purchase') {
                 if (!selectedPackage) {
@@ -1329,11 +825,11 @@
                     });
                     return;
                 }
-                
+
                 // جلب package_id من البطاقة المحددة
                 const packageCard = document.querySelector('.package-card.active');
                 const packageId = packageCard ? packageCard.getAttribute('data-package-id') : null;
-                
+
                 if (!packageId) {
                     Swal.fire({
                         icon: 'error',
@@ -1343,12 +839,12 @@
                     });
                     return;
                 }
-                
+
                 const customerName = prompt('الرجاء إدخال اسمك الكامل:');
                 const customerEmail = prompt('البريد الإلكتروني:');
                 const customerPhone = prompt('رقم الجوال (WhatsApp):');
                 const companyName = prompt('اسم الشركة (اختياري):');
-                
+
                 if (!customerName || !customerEmail) {
                     Swal.fire({
                         icon: 'error',
@@ -1358,7 +854,7 @@
                     });
                     return;
                 }
-                
+
                 apiEndpoint = '/payment-vault/api/purchase';
                 requestData = {
                     package_id: parseInt(packageId),
@@ -1380,7 +876,7 @@
                 const donorName = prompt('اسمك (اختياري):');
                 const donorEmail = prompt('بريدك الإلكتروني (اختياري):');
                 const donorMessage = prompt('رسالة قصيرة (اختياري):');
-                
+
                 apiEndpoint = '/payment-vault/api/donation';
                 requestData = {
                     amount: paymentAmount,
@@ -1392,7 +888,7 @@
                     transaction_id: 'DONATION_' + Date.now()
                 };
             }
-            
+
             // Create payment via API
             fetch(apiEndpoint, {
                 method: 'POST',
@@ -1404,34 +900,83 @@
             .then(response => response.json())
             .then(data => {
                 Swal.close();
-                
+
                 if (data.success) {
                     const recordId = data.purchase_id || data.donation_id;
-                    const recordType = data.purchase_id ? 'شراء' : 'تبرع';
-                    
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'تم إنشاء الطلب بنجاح!',
-                        html: `
-                            <div style="text-align: center;">
-                                <p style="font-size: 1.2rem; margin: 20px 0;">${data.message}</p>
-                                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
-                                    <p><strong>رقم الطلب:</strong> #${recordId}</p>
-                                    <p><strong>المبلغ:</strong> $${paymentAmount}</p>
-                                    <p><strong>العملة:</strong> ${cryptoType.toUpperCase()}</p>
+                    const orderRef = (currentTab === 'purchase' ? 'طلب شراء #' : 'تبرع #') + (recordId || '') + ' - المبلغ: $' + paymentAmount;
+
+                    if (data.payment_address) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'تم إنشاء عنوان الدفع!',
+                            html: `
+                                <div style="text-align: center;">
+                                    <p style="font-size: 1.2rem; margin-bottom: 20px;">
+                                        <strong>رقم الطلب: #${recordId}</strong>
+                                    </p>
+                                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                                        <p><strong>المبلغ المطلوب:</strong></p>
+                                        <p style="font-size: 1.5rem; color: #667eea; font-weight: 900;">
+                                            ${data.payment_amount || paymentAmount} ${data.crypto_currency || ''}
+                                        </p>
+                                        <hr>
+                                        <p><strong>عنوان المحفظة:</strong></p>
+                                        <p style="word-break: break-all; font-family: monospace; background: white; padding: 10px; border-radius: 5px;">
+                                            ${data.payment_address}
+                                        </p>
+                                        <button onclick="navigator.clipboard.writeText('${data.payment_address}')"
+                                                class="btn btn-sm btn-primary mt-2">
+                                            <i class="fas fa-copy"></i> نسخ العنوان
+                                        </button>
+                                    </div>
+                                    <p style="color: #28a745; font-size: 0.95rem;">
+                                        <i class="fas fa-info-circle"></i>
+                                        أرسل المبلغ المحدد إلى العنوان أعلاه
+                                    </p>
                                 </div>
-                                <p style="color: #667eea; font-size: 0.95rem;">
-                                    <i class="fas fa-info-circle"></i> 
-                                    سنتواصل معك قريباً لتأكيد الدفع وإرسال تفاصيل المحفظة
-                                </p>
-                            </div>
-                        `,
-                        confirmButtonText: 'حسناً',
-                        confirmButtonColor: '#28a745',
-                        allowOutsideClick: false
-                    }).then(() => {
-                        location.reload();
-                    });
+                            `,
+                            confirmButtonText: 'حسناً',
+                            confirmButtonColor: '#28a745',
+                            width: 600,
+                            allowOutsideClick: false
+                        });
+                    } else if (data.manual_address) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'تم تسجيل طلبك بنجاح!',
+                            html: `
+                                <div style="text-align: center;">
+                                    <p style="font-size: 1.2rem; margin-bottom: 20px;">
+                                        <strong>رقم الطلب: #${recordId}</strong>
+                                    </p>
+                                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                                        <p><strong>حوّل المبلغ مباشرة إلى هذا العنوان (${data.crypto_currency || ''}):</strong></p>
+                                        <p style="font-size: 1.5rem; color: #667eea; font-weight: 900;">
+                                            $${paymentAmount}
+                                        </p>
+                                        <hr>
+                                        <p style="word-break: break-all; font-family: monospace; background: white; padding: 10px; border-radius: 5px;">
+                                            ${data.manual_address}
+                                        </p>
+                                        <button onclick="navigator.clipboard.writeText('${data.manual_address}')"
+                                                class="btn btn-sm btn-primary mt-2">
+                                            <i class="fas fa-copy"></i> نسخ العنوان
+                                        </button>
+                                    </div>
+                                    <p style="color: #28a745; font-size: 0.95rem;">
+                                        <i class="fas fa-info-circle"></i>
+                                        بعد التحويل سيتم تأكيد طلبك من الإدارة
+                                    </p>
+                                </div>
+                            `,
+                            confirmButtonText: 'حسناً',
+                            confirmButtonColor: '#28a745',
+                            width: 600,
+                            allowOutsideClick: false
+                        });
+                    } else {
+                        whatsappFallbackSwal('تم تسجيل طلبك بنجاح!', orderRef);
+                    }
                 } else {
                     Swal.fire({
                         icon: 'error',
@@ -1442,30 +987,74 @@
                 }
             })
             .catch(error => {
-                Swal.close();                
-                // Show fallback message with manual payment option
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'خطأ في الاتصال',
-                    html: `
-                        <p>فشل في الاتصال بالخادم، يُرجى المحاولة مرة أخرى</p>
-                        <hr>
-                        <p><strong>الدفع اليدوي:</strong></p>
-                        <p>يمكنك إرسال التبرع مباشرة إلى:</p>
-                        <p><code>REDACTED-BITCOIN-ADDR</code></p>
-                        <p>المبلغ: $${amount} Bitcoin</p>
-                    `,
-                    confirmButtonColor: '#667eea',
-                    showCancelButton: true,
-                    cancelButtonText: 'إلغاء',
-                    confirmButtonText: 'حسناً'
-                });
+                Swal.close();
+                // فشل الاتصال بالخادم: تواصل واتساب مباشر بدل عنوان وهمي
+                whatsappFallbackSwal('خطأ في الاتصال', '');
             });
         }
-        
+
+        // تسجيل تحويل بنكي: ينشئ سجلاً معلقاً ليعتمده المالك (لا ينشئ حوالة)
+        async function submitBankTransfer() {
+            const amountEl = document.getElementById('bankAmount');
+            const nameEl = document.getElementById('bankName');
+            const phoneEl = document.getElementById('bankPhone');
+            const paymentAmount = parseFloat((amountEl && amountEl.value) || selectedAmount || 0);
+
+            if (!paymentAmount || paymentAmount < DONATION_MIN) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ',
+                    text: 'الحد الأدنى للتبرع $' + DONATION_MIN_DISPLAY,
+                    confirmButtonColor: '#667eea'
+                });
+                return;
+            }
+            const donorName = (nameEl && nameEl.value || '').trim();
+            const donorPhone = (phoneEl && phoneEl.value || '').trim();
+            if (!donorName) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'تنبيه',
+                    text: 'الرجاء إدخال الاسم الكامل',
+                    confirmButtonColor: '#667eea'
+                });
+                return;
+            }
+
+            const payload = {
+                amount: paymentAmount,
+                payment_method: 'bank',
+                donor_name: donorName,
+                donor_email: '',
+                transaction_id: 'BANK_' + Date.now()
+            };
+            if (donorPhone) {
+                payload.customer_phone = donorPhone;
+            }
+
+            try {
+                const response = await fetch('/payment-vault/api/donation', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    whatsappFallbackSwal(
+                        'تم تسجيل تحويلك بنجاح!',
+                        'تحويل بنكي #' + (data.donation_id || '') + ' - المبلغ: $' + paymentAmount
+                    );
+                } else {
+                    Swal.fire({icon: 'error', title: 'خطأ', text: data.error || 'تعذر تسجيل التحويل'});
+                }
+            } catch (error) {
+                whatsappFallbackSwal('خطأ في الاتصال', '');
+            }
+        }
+
         function copyAddress() {
             const address = document.getElementById('walletAddress').textContent;
-            
+
             navigator.clipboard.writeText(address).then(() => {
                 Swal.fire({
                     icon: 'success',
@@ -1476,22 +1065,22 @@
                 });
             });
         }
-        
+
         // Handle PayPal payment
         async function handlePayPalPayment() {
             const customAmount = document.getElementById('customAmount').value;
             const paymentAmount = customAmount || selectedAmount || 0;
-            
-            if (!paymentAmount || paymentAmount < 15) {
+
+            if (!paymentAmount || parseFloat(paymentAmount) < DONATION_MIN) {
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
-                    text: 'الحد الأدنى للتبرع $15',
+                    text: 'الحد الأدنى للتبرع $' + DONATION_MIN_DISPLAY,
                     confirmButtonColor: '#667eea'
                 });
                 return;
             }
-            
+
             // طلب بيانات العميل
             const { value: formValues } = await Swal.fire({
                 title: 'بيانات الدفع - PayPal',
@@ -1513,24 +1102,24 @@
                     }
                 }
             });
-            
+
             if (!formValues || !formValues.name || !formValues.email) {
                 return;
             }
-            
+
             // حفظ في DB
             const apiEndpoint = currentTab === 'purchase' ? '/payment-vault/api/purchase' : '/payment-vault/api/donation';
             let requestData = {};
-            
+
             if (currentTab === 'purchase') {
                 const packageCard = document.querySelector('.package-card.active');
                 const packageId = packageCard ? packageCard.getAttribute('data-package-id') : null;
-                
+
                 if (!packageId) {
                     Swal.fire({icon: 'error', title: 'خطأ', text: 'الرجاء اختيار باقة'});
                     return;
                 }
-                
+
                 requestData = {
                     package_id: parseInt(packageId),
                     customer_name: formValues.name,
@@ -1551,16 +1140,16 @@
                     transaction_id: 'PAYPAL_DONATION_' + Date.now()
                 };
             }
-            
+
             try {
                 const response = await fetch(apiEndpoint, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(requestData)
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     // إذا كان هناك عنوان دفع (تحويل تلقائي لـ Bitcoin)
                     if (data.payment_address) {
@@ -1570,7 +1159,7 @@
                             html: `
                                 <div style="text-align: center;">
                                     <p style="font-size: 1.1rem; margin-bottom: 15px;">
-                                        <i class="fab fa-paypal" style="color: #0070ba;"></i> 
+                                        <i class="fab fa-paypal" style="color: #0070ba;"></i>
                                         <strong>دفع عبر PayPal</strong>
                                     </p>
                                     <p>رقم الطلب: #${data.purchase_id || data.donation_id}</p>
@@ -1583,13 +1172,13 @@
                                         <p style="word-break: break-all; font-family: monospace; font-size: 0.85rem;">
                                             ${data.payment_address}
                                         </p>
-                                        <button onclick="navigator.clipboard.writeText('${data.payment_address}')" 
+                                        <button onclick="navigator.clipboard.writeText('${data.payment_address}')"
                                                 class="btn btn-sm btn-primary">
                                             <i class="fas fa-copy"></i> نسخ
                                         </button>
                                     </div>
                                     <p style="color: #28a745; font-size: 0.9rem;">
-                                        ✅ تم حفظ طلبك بنجاح
+                                        تم حفظ طلبك بنجاح
                                     </p>
                                 </div>
                             `,
@@ -1610,10 +1199,10 @@
                             confirmButtonText: 'تواصل عبر WhatsApp'
                         }).then((result) => {
                             if (result.isConfirmed) {
-                                const message = currentTab === 'purchase' 
+                                const message = currentTab === 'purchase'
                                     ? `طلب شراء #${data.purchase_id || ''} - ${selectedPackage} - $${paymentAmount}`
                                     : `تبرع #${data.donation_id || ''} - $${paymentAmount}`;
-                                window.open('https://wa.me/970598953362?text=' + encodeURIComponent(message), '_blank');
+                                window.open('https://wa.me/{{ config.COMPANY_WHATSAPP }}?text=' + encodeURIComponent(message), '_blank');
                             }
                         });
                     }
@@ -1621,28 +1210,28 @@
                     Swal.fire({icon: 'error', title: 'خطأ', text: data.error});
                 }
             } catch (error) {
-                Swal.fire({icon: 'error', title: 'خطأ', text: 'فشل الاتصال'});
+                whatsappFallbackSwal('خطأ في الاتصال', '');
             }
         }
-        
+
         // Handle card payment form
         document.getElementById('cardPaymentForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             // Get form data
             const cardAmountInput = document.getElementById('cardAmount');
             const paymentAmount = parseFloat(cardAmountInput.value) || selectedAmount || 0;
-            
-            if (!paymentAmount || paymentAmount < 15) {
+
+            if (!paymentAmount || parseFloat(paymentAmount) < DONATION_MIN) {
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
-                    text: 'الحد الأدنى للتبرع $15',
+                    text: 'الحد الأدنى للتبرع $' + DONATION_MIN_DISPLAY,
                     confirmButtonColor: '#667eea'
                 });
                 return;
             }
-            
+
             // طلب بيانات العميل
             const { value: formValues } = await Swal.fire({
                 title: 'بيانات الدفع',
@@ -1664,24 +1253,24 @@
                     }
                 }
             });
-            
+
             if (!formValues || !formValues.name || !formValues.email) {
                 return;
             }
-            
+
             // إنشاء السجل
             const apiEndpoint = currentTab === 'purchase' ? '/payment-vault/api/purchase' : '/payment-vault/api/donation';
             let requestData = {};
-            
+
             if (currentTab === 'purchase') {
                 const packageCard = document.querySelector('.package-card.active');
                 const packageId = packageCard ? packageCard.getAttribute('data-package-id') : null;
-                
+
                 if (!packageId) {
                     Swal.fire({icon: 'error', title: 'خطأ', text: 'الرجاء اختيار باقة'});
                     return;
                 }
-                
+
                 requestData = {
                     package_id: parseInt(packageId),
                     customer_name: formValues.name,
@@ -1702,7 +1291,7 @@
                     transaction_id: 'CARD_DONATION_' + Date.now()
                 };
             }
-            
+
             // حفظ في DB
             try {
                 const response = await fetch(apiEndpoint, {
@@ -1710,9 +1299,9 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(requestData)
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     // إذا كان هناك عنوان دفع (من NOWPayments)
                     if (data.payment_address) {
@@ -1734,13 +1323,13 @@
                                         <p style="word-break: break-all; font-family: monospace; background: white; padding: 10px; border-radius: 5px;">
                                             ${data.payment_address}
                                         </p>
-                                        <button onclick="navigator.clipboard.writeText('${data.payment_address}')" 
+                                        <button onclick="navigator.clipboard.writeText('${data.payment_address}')"
                                                 class="btn btn-sm btn-primary mt-2">
                                             <i class="fas fa-copy"></i> نسخ العنوان
                                         </button>
                                     </div>
                                     <p style="color: #28a745; font-size: 0.95rem;">
-                                        <i class="fas fa-check-circle"></i> 
+                                        <i class="fas fa-check-circle"></i>
                                         أرسل المبلغ المحدد إلى العنوان أعلاه
                                     </p>
                                 </div>
@@ -1764,10 +1353,10 @@
                             confirmButtonText: 'تواصل عبر WhatsApp'
                         }).then((result) => {
                             if (result.isConfirmed) {
-                                const message = currentTab === 'purchase' 
+                                const message = currentTab === 'purchase'
                                     ? `مرحباً، طلب شراء #${data.purchase_id || ''} - الباقة: ${selectedPackage} - المبلغ: $${paymentAmount}`
                                     : `مرحباً، تبرع #${data.donation_id || ''} - المبلغ: $${paymentAmount}`;
-                                window.open('https://wa.me/970598953362?text=' + encodeURIComponent(message), '_blank');
+                                window.open('https://wa.me/{{ config.COMPANY_WHATSAPP }}?text=' + encodeURIComponent(message), '_blank');
                             }
                         });
                     }
@@ -1775,11 +1364,11 @@
                     Swal.fire({icon: 'error', title: 'خطأ', text: data.error});
                 }
             } catch (error) {
-                Swal.fire({icon: 'error', title: 'خطأ', text: 'فشل الاتصال بالخادم'});
+                whatsappFallbackSwal('خطأ في الاتصال', '');
             }
         });
     </script>
-    
+
     <!-- Footer -->
     <footer style="background: rgba(255,255,255,0.95); padding: 40px 20px; border-radius: 20px; margin-top: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
         <div class="container">
@@ -1800,12 +1389,12 @@
                     <p style="color: #666;">نضيف ميزات جديدة باستمرار</p>
                 </div>
             </div>
-            
+
             <hr style="border-color: #dee2e6; margin: 30px 0;">
-            
+
             <div class="text-center">
                 <div style="margin-bottom: 20px;">
-                    <a href="https://wa.me/970598953362" style="margin: 5px; display: inline-block; width: 45px; height: 45px; background: #25D366; color: white; border-radius: 50%; line-height: 45px; text-decoration: none; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                    <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" style="margin: 5px; display: inline-block; width: 45px; height: 45px; background: #25D366; color: white; border-radius: 50%; line-height: 45px; text-decoration: none; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
                         <i class="fab fa-whatsapp" style="font-size: 1.5rem;"></i>
                     </a>
                     <a href="mailto:{{ config.COMPANY_EMAIL }}" style="margin: 5px; display: inline-block; width: 45px; height: 45px; background: #667eea; color: white; border-radius: 50%; line-height: 45px; text-decoration: none; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
@@ -1815,12 +1404,12 @@
                         <i class="fab fa-github" style="font-size: 1.5rem;"></i>
                     </a>
                 </div>
-                
+
                 <p style="color: #666; margin: 15px 0;">
                     <i class="fas fa-heart" style="color: #ff6b6b;"></i>
                     صُنع بحب من فريق Azad Systems
                 </p>
-                
+
                 <p style="color: #999; font-size: 0.9rem; margin: 0;">
                     © 2025 Azad Systems. جميع الحقوق محفوظة.
                 </p>

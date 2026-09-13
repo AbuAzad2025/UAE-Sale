@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azad Smart Systems - Contact Us</title>
+    <meta name="description" content="Contact Azad Smart Systems: WhatsApp, phone, email.">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/public_simple.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/lang_pills.css') }}">
+</head>
+<body>
+    <div class="lang-switcher">
+        <a href="{{ url_for('language.set_language', lang='ar') }}" class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}"><i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>العربية</a>
+        <a href="{{ url_for('language.set_language', lang='en') }}" class="lang-pill {% if session.get('language') == 'en' %}active{% endif %}"><i class="fas fa-check {% if session.get('language') != 'en' %}invisible{% endif %}"></i>English</a>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">{{ config.COMPANY_NAME }}</div>
+        <div>
+            <a href="{{ url_for('public.landing') }}">Home</a>
+            <a href="{{ url_for('public.pricing') }}">Pricing</a>
+            <a href="{{ url_for('public.user_guide') }}">User Guide</a>
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Sign In</a>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <div class="page-header">
+            <h1>Contact Us</h1>
+            <p>We are here to serve you. Reach out at any time</p>
+        </div>
+
+        <div class="contact-grid">
+            <div class="contact-card">
+                <i class="fab fa-whatsapp"></i>
+                <h3>WhatsApp</h3>
+                <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank">+{{ config.COMPANY_WHATSAPP }}</a>
+                <p class="muted">The fastest way to reach us</p>
+            </div>
+
+            <div class="contact-card">
+                <i class="fas fa-phone"></i>
+                <h3>Mobile</h3>
+                <a href="tel:{{ config.COMPANY_PHONE }}">{{ config.COMPANY_PHONE }}</a>
+                <p class="muted">Available 24/7</p>
+            </div>
+
+            <div class="contact-card">
+                <i class="fas fa-mobile-alt"></i>
+                <h3>Wataniya</h3>
+                <a href="tel:{{ config.COMPANY_PHONE_2 }}">{{ config.COMPANY_PHONE_2 }}</a>
+                <p class="muted">For local calls</p>
+            </div>
+
+            <div class="contact-card">
+                <i class="fas fa-envelope"></i>
+                <h3>{{ t('Email') }}</h3>
+                <a href="mailto:{{ config.COMPANY_EMAIL }}">{{ config.COMPANY_EMAIL }}</a>
+                <p class="muted">For official inquiries</p>
+            </div>
+
+            <div class="contact-card">
+                <i class="fas fa-map-marker-alt"></i>
+                <h3>{{ t('Address') }}</h3>
+                <p style="font-size: 1.2rem; font-weight: 700;">{{ config.COMPANY_ADDRESS }}</p>
+            </div>
+
+            <div class="contact-card">
+                <i class="fas fa-globe"></i>
+                <h3>Website</h3>
+                <a href="{{ config.COMPANY_WEBSITE }}" target="_blank">{{ config.COMPANY_WEBSITE }}</a>
+                <p class="muted">Come visit us</p>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 60px;">
+            <a href="{{ url_for('public.demo') }}" class="btn-gold">
+                <i class="fas fa-rocket"></i> Book a Free Live Demo
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>

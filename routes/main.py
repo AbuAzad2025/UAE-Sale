@@ -25,6 +25,9 @@ def index():
     - Any other logged-in user: send to the main dashboard.
     """
     if not current_user.is_authenticated:
+        from flask import session
+        if session.get('language') == 'en':
+            return render_template('public/landing_en.html')
         return render_template('public/landing.html')
     if getattr(current_user, 'is_owner', False) or current_user.is_super_admin():
         return redirect(url_for('owner.dashboard'))

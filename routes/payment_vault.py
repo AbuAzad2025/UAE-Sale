@@ -312,6 +312,12 @@ def settings():  # noqa: C901
         vault.max_donation_amount = _as_float(request.form.get('max_donation_amount'), vault.max_donation_amount, 'max_donation_amount')
         vault.daily_limit = _as_float(request.form.get('daily_limit'), vault.daily_limit, 'daily_limit')
 
+        # مفاتيح طرق التبرع الظاهرة للجمهور (migration 18)
+        vault.crypto_enabled = bool(request.form.get('crypto_enabled'))
+        vault.card_enabled = bool(request.form.get('card_enabled'))
+        vault.paypal_enabled = bool(request.form.get('paypal_enabled'))
+        vault.bank_enabled = bool(request.form.get('bank_enabled'))
+
         # تحديث إعدادات الأمان
         vault.require_2fa = bool(request.form.get('require_2fa'))
         vault.auto_lock_minutes = _as_int(request.form.get('auto_lock_minutes'), vault.auto_lock_minutes, 'auto_lock_minutes')
@@ -1024,8 +1030,15 @@ def api_create_donation():  # noqa: C901
         if not data.get('amount') or not data.get('payment_method'):
             return jsonify({'success': False, 'error': 'المبلغ وطريقة الدفع مطلوبة'}), 400
 
-        if float(data['amount']) < 15:
-            return jsonify({'success': False, 'error': 'الحد الأدنى للتبرع $15'}), 400
+        # الحد الأدنى من إعدادات الخزينة (لوحة المالك)، و15 احتياطياً
+        from models import PaymentVault as _Vault
+        _vault = _Vault.query.first()
+        try:
+            _min_amt = float(_vault.min_donation_amount) if _vault and _vault.min_donation_amount else 15
+        except (TypeError, ValueError):
+            _min_amt = 15
+        if float(data['amount']) < _min_amt:
+            return jsonify({'success': False, 'error': f'الحد الأدنى للتبرع ${_min_amt:g}'}), 400
 
         # تنظيف المدخلات
         from html import escape
@@ -1038,6 +1051,7 @@ def api_create_donation():  # noqa: C901
         donor_name = sanitize(data.get('donor_name'), 100)
         donor_email = sanitize(data.get('donor_email'), 100)
         donor_message = sanitize(data.get('message'), 500)
+        customer_phone = sanitize(data.get('customer_phone'), 50)
 
         # التحقق من البريد إذا تم إدخاله
         if donor_email:
@@ -1054,6 +1068,7 @@ def api_create_donation():  # noqa: C901
             donor_name=donor_name,
             donor_email=donor_email,
             donor_message=donor_message,
+            customer_phone=customer_phone,
             status='pending',
             transaction_hash=sanitize(data.get('transaction_id'), 100),
             ip_address=request.remote_addr,
@@ -1112,6 +1127,21 @@ def api_create_donation():  # noqa: C901
                 'payment_id': payment_result.get('payment_id'),
                 'payment_url': payment_result.get('invoice_url')
             })
+        elif data['payment_method'] == 'crypto':
+            # لا بوابة مهيأة: عنوان استقبال مباشر من إعدادات الخزينة
+            # (لوحة المالك) حتى لا يعلق المتبرع بدون عنوان.
+            _static = {
+                'btc': getattr(_vault, 'bitcoin_address', None),
+                'eth': getattr(_vault, 'ethereum_address', None),
+                'usdt': getattr(_vault, 'usdt_address', None),
+            }
+            _addr = (_static.get((crypto_currency or 'btc').lower())
+                     if _vault else None)
+            if _addr:
+                response_data.update({
+                    'manual_address': _addr,
+                    'crypto_currency': (crypto_currency or 'btc').upper(),
+                })
 
         return jsonify(response_data), 201
 

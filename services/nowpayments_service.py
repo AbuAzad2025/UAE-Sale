@@ -16,9 +16,23 @@ class NOWPaymentsService:
     """خدمة NOWPayments للدفع بالعملات الرقمية"""
 
     def __init__(self):
-        self.api_key = current_app.config.get('NOWPAYMENTS_API_KEY')
+        # Key resolution order: owner-panel vault FIRST (operator-controlled),
+        # environment config as fallback. Previously only the env var was
+        # read, so keys entered in the vault settings page were silently
+        # ignored and gateway payments could never work.
+        self.api_key = current_app.config.get('NOWPAYMENTS_API_KEY') or ''
+        self.ipn_secret = current_app.config.get('NOWPAYMENTS_IPN_SECRET') or ''
+        try:
+            from models import PaymentVault
+            vault = PaymentVault.query.first()
+            if vault is not None:
+                if vault.nowpayments_api_key:
+                    self.api_key = vault.nowpayments_api_key
+                if vault.nowpayments_ipn_secret:
+                    self.ipn_secret = vault.nowpayments_ipn_secret
+        except Exception:
+            pass
         self.api_url = 'https://api.nowpayments.io/v1'
-        self.ipn_secret = current_app.config.get('NOWPAYMENTS_IPN_SECRET')
 
     def create_payment(self, amount, currency='USD', crypto_currency='btc',
                        order_id=None, customer_email=None, description=None,

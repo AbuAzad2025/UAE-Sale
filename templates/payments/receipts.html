@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('إدارة') } { t('Payments') }{% endblock %}
-{% block page_title %}{ t('جميع') } { t('Payments') }{% endblock %}
+{% block title %}شركة أزاد للأنظمة الذكية - إدارة المدفوعات{% endblock %}
+{% block page_title %}جميع المدفوعات{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -74,31 +74,31 @@
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h3 class="card-title mb-0">
-      <i class="fas fa-wallet mr-2"></i>{ t('إدارة') } { t('Payments') }
+      <i class="fas fa-wallet mr-2"></i>إدارة المدفوعات
     </h3>
     <div class="btn-group">
       <button type="button" class="btn btn-sm btn-outline-info" id="printReceiptsBtn">
-        <i class="fas fa-print mr-1"></i>{ t('Print') }
+        <i class="fas fa-print mr-1"></i>طباعة
       </button>
       <a href="{{ url_for('payments.create_receipt') }}" class="btn btn-success">
-        <i class="fas fa-plus mr-2"></i>{ t('سند_قبض_جديد') }
+        <i class="fas fa-plus mr-2"></i>سند قبض جديد
       </a>
       <a href="{{ url_for('payments.archived_receipts') }}" class="btn btn-warning">
-        <i class="fas fa-archive mr-2"></i>{ t('الأرشيف') }
+        <i class="fas fa-archive mr-2"></i>الأرشيف
       </a>
       <div class="btn-group">
         <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-toggle="dropdown">
-          <i class="fas fa-filter mr-1"></i>{ t('Filter') }
+          <i class="fas fa-filter mr-1"></i>فلترة
         </button>
         <div class="dropdown-menu dropdown-menu-right">
           <a class="dropdown-item" href="{{ url_for('payments.receipts', direction='') }}">
-            <i class="fas fa-list mr-1"></i>{ t('All') }
+            <i class="fas fa-list mr-1"></i>الكل
           </a>
           <a class="dropdown-item" href="{{ url_for('payments.receipts', direction='incoming') }}">
-            <i class="fas fa-arrow-down mr-1 text-success"></i>سندات ال{ t('قبض') } ({ t('وارد') })
+            <i class="fas fa-arrow-down mr-1 text-success"></i>سندات القبض (وارد)
           </a>
           <a class="dropdown-item" href="{{ url_for('payments.receipts', direction='outgoing') }}">
-            <i class="fas fa-arrow-up mr-1 text-danger"></i>سندات ال{ t('صرف') } ({ t('صادر') })
+            <i class="fas fa-arrow-up mr-1 text-danger"></i>سندات الصرف (صادر)
           </a>
         </div>
       </div>
@@ -109,16 +109,16 @@
       <table id="receiptsTable" class="table table-bordered table-striped">
       <thead>
         <tr>
-          <th>{ t('رقم_السند') }</th>
-          <th>{ t('العميل_المورد') }</th>
+          <th>رقم السند</th>
+          <th>العميل/المورد</th>
           <th>{{ t('Date') }}</th>
           <th>{{ t('Amount') }}</th>
-          <th>{ t('النوع') }</th>
-          <th>{ t('الاتجاه') }</th>
-          <th>{ t('المصدر') }</th>
-          <th>{ t('الطريقة') }</th>
-          <th>{ t('Status') }</th>
-          <th>{ t('الإجراءات') }</th>
+          <th>النوع</th>
+          <th>الاتجاه</th>
+          <th>المصدر</th>
+          <th>الطريقة</th>
+          <th>الحالة</th>
+          <th>الإجراءات</th>
         </tr>
       </thead>
       <tbody>
@@ -127,9 +127,9 @@
           <td>
             <strong>{{ item.number }}</strong>
             {% if item.type == 'receipt' %}
-              <br><small class="text-muted">{ t('سند_قبض') }</small>
+              <br><small class="text-muted">سند قبض</small>
             {% else %}
-              <br><small class="text-muted">{ t('سند_صرف') }</small>
+              <br><small class="text-muted">سند صرف</small>
             {% endif %}
           </td>
           <td>
@@ -151,41 +151,41 @@
           <td>
             {% if item.type == 'receipt' %}
               <span class="badge badge-success">
-                <i class="fas fa-arrow-down mr-1"></i>{ t('قبض') }
+                <i class="fas fa-arrow-down mr-1"></i>قبض
               </span>
             {% else %}
               <span class="badge badge-danger">
-                <i class="fas fa-arrow-up mr-1"></i>{ t('صرف') }
+                <i class="fas fa-arrow-up mr-1"></i>صرف
               </span>
             {% endif %}
           </td>
           <td>
             {% if item.direction == 'incoming' %}
               <span class="badge badge-success">
-                <i class="fas fa-arrow-down mr-1"></i>{ t('وارد') }
+                <i class="fas fa-arrow-down mr-1"></i>وارد
               </span>
             {% else %}
               <span class="badge badge-danger">
-                <i class="fas fa-arrow-up mr-1"></i>{ t('صادر') }
+                <i class="fas fa-arrow-up mr-1"></i>صادر
               </span>
             {% endif %}
           </td>
           <td>
             {% if item.source_type == 'sale' %}
               <span class="badge badge-primary">
-                <i class="fas fa-file-invoice mr-1"></i>{ t('مبيعات') }
+                <i class="fas fa-file-invoice mr-1"></i>مبيعات
               </span>
             {% elif item.source_type == 'supplier_payment' %}
               <span class="badge badge-warning">
-                <i class="fas fa-truck mr-1"></i>{ t('مورد') }
+                <i class="fas fa-truck mr-1"></i>مورد
               </span>
             {% elif item.source_type == 'customer_payment' %}
               <span class="badge badge-info">
-                <i class="fas fa-user mr-1"></i>{ t('عميل') }
+                <i class="fas fa-user mr-1"></i>عميل
               </span>
             {% elif item.source_type == 'refund' %}
               <span class="badge badge-secondary">
-                <i class="fas fa-undo mr-1"></i>{ t('استرداد') }
+                <i class="fas fa-undo mr-1"></i>استرداد
               </span>
             {% else %}
               <span class="badge badge-secondary">{{ item.source_type }}</span>
@@ -195,11 +195,11 @@
           <td>
             {% if item.payment_confirmed %}
               <span class="badge badge-success">
-                <i class="fas fa-check mr-1"></i>{ t('مؤكد') }
+                <i class="fas fa-check mr-1"></i>مؤكد
               </span>
             {% else %}
               <span class="badge badge-warning">
-                <i class="fas fa-clock mr-1"></i>{ t('Pending') }
+                <i class="fas fa-clock mr-1"></i>معلق
               </span>
             {% endif %}
           </td>
@@ -207,31 +207,31 @@
             <div class="btn-group btn-group-sm">
               {% if item.type == 'receipt' %}
                 <a href="{{ url_for('payments.view_receipt', id=item.id) }}" 
-                   class="btn btn-info" title="{ t('View') }">
+                   class="btn btn-info" title="عرض">
                   <i class="fas fa-eye"></i>
                 </a>
                 <a href="{{ url_for('payments.print_receipt', id=item.id) }}" 
-                   class="btn btn-secondary" target="_blank" title="{ t('Print') }">
+                   class="btn btn-secondary" target="_blank" title="طباعة">
                   <i class="fas fa-print"></i>
                 </a>
               {% else %}
                 <a href="{{ url_for('payments.view_payment', id=item.id) }}" 
-                   class="btn btn-info" title="{ t('View') }">
+                   class="btn btn-info" title="عرض">
                   <i class="fas fa-eye"></i>
                 </a>
                 <a href="{{ url_for('payments.print_payment', id=item.id) }}" 
-                   class="btn btn-secondary" target="_blank" title="{ t('Print') }">
+                   class="btn btn-secondary" target="_blank" title="طباعة">
                   <i class="fas fa-print"></i>
                 </a>
               {% endif %}
               <button type="button" class="btn btn-warning" 
                       onclick="archiveItem('{{ item.type }}', {{ item.id }}, '{{ item.number }}')" 
-                      title="{ t('أرشفة') }">
+                      title="أرشفة">
                 <i class="fas fa-archive"></i>
               </button>
               <button type="button" class="btn btn-danger" 
                       onclick="deleteItem('{{ item.type }}s', {{ item.id }}, {{ item.number|tojson }})" 
-                      title="{ t('Delete') }">
+                      title="حذف">
                 <i class="fas fa-trash"></i>
               </button>
             </div>
@@ -250,7 +250,7 @@
 $(document).ready(function() {
   const $tableEl = $('#receiptsTable');
   const printOptions = {
-    title: '{ t('جميع') } { t('Payments') }',
+    title: 'جميع المدفوعات',
     headerColor: '#198754'
   };
 

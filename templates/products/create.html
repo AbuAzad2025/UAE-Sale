@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('إضافة_منتج_جديد') }{% endblock %}
+{% block title %}شركة أزاد للأنظمة الذكية - إضافة منتج جديد{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-plus-circle mr-2"></i>{ t('إضافة_منتج_جديد') }</h1>
+    <h1 class="mb-0"><i class="fas fa-plus-circle mr-2"></i>إضافة منتج جديد</h1>
   </div>
   <div>
     <a href="{{ url_for('products.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>{ t('العودة') } للمنتجات
+      <i class="fas fa-arrow-right mr-2"></i>العودة للمنتجات
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>{ t('الرئيسية') }
+      <i class="fas fa-home mr-2"></i>الرئيسية
     </a>
   </div>
 </div>
@@ -45,25 +45,25 @@
   <form method="POST" action="{{ url_for('products.create') }}" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="card-body">
-      <!-- { t('المعلومات_الأساسية') } -->
+      <!-- المعلومات الأساسية -->
       <div class="row">
         <div class="col-md-6">
           <div class="form-group">
             <label for="product_name">
-              <i class="fas fa-box text-primary"></i> { t('Name') } 
+              <i class="fas fa-box text-primary"></i> الاسم 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('اسم_المنتج') } بالإنجليزية ({ t('إجباري') })"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم المنتج بالإنجليزية (إجباري)"></i>
             </label>
-            <input type="text" id="product_name" name="name" class="form-control" placeholder="{ t('Product_Name') }" required autocomplete="off">
+            <input type="text" id="product_name" name="name" class="form-control" placeholder="Product Name" required autocomplete="off">
           </div>
         </div>
         <div class="col-md-6">
           <div class="form-group">
             <label for="product_name_ar">
-              <i class="fas fa-font text-info"></i> { t('الاسم_بالعربية') }
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('اسم_المنتج') } بالعربية (اختياري)"></i>
+              <i class="fas fa-font text-info"></i> الاسم بالعربية
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم المنتج بالعربية (اختياري)"></i>
             </label>
-            <input type="text" id="product_name_ar" name="name_ar" class="form-control" placeholder="{ t('اسم_المنتج') }" autocomplete="off">
+            <input type="text" id="product_name_ar" name="name_ar" class="form-control" placeholder="اسم المنتج" autocomplete="off">
           </div>
         </div>
       </div>
@@ -72,41 +72,41 @@
         <div class="col-md-6 col-lg-3">
           <div class="form-group">
             <label for="product_part_number">
-              <i class="fas fa-hashtag text-primary"></i> { t('رقم_القطعة') } (Part Number)
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('رقم_القطعة') } الداخلي أو رقم { t('المورد') } (اختياري)"></i>
+              <i class="fas fa-hashtag text-primary"></i> رقم القطعة (Part Number)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="رقم القطعة الداخلي أو رقم المورد (اختياري)"></i>
             </label>
-            <input type="text" id="product_part_number" name="part_number" class="form-control" placeholder="{ t('مثال') }: PN-12345" autocomplete="off">
+            <input type="text" id="product_part_number" name="part_number" class="form-control" placeholder="مثال: PN-12345" autocomplete="off">
           </div>
         </div>
         <div class="col-md-6 col-lg-3">
           <div class="form-group">
             <label for="product_sku">
-              <i class="fas fa-hashtag text-primary"></i> { t('رقم_القطعة') } (SKU)
+              <i class="fas fa-hashtag text-primary"></i> رقم القطعة (SKU)
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('رقم_القطعة_الفريد_يتم_توليده_{ t('تلقائي') }اً_إن_لم_يُدخل') }"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="رقم القطعة الفريد - يتم توليده تلقائياً إن لم يُدخل"></i>
             </label>
-            <input type="text" id="product_sku" name="sku" class="form-control" placeholder="{ t('يتم_توليده_تلقائياً') }" autocomplete="off">
+            <input type="text" id="product_sku" name="sku" class="form-control" placeholder="يتم توليده تلقائياً" autocomplete="off">
           </div>
         </div>
         <div class="col-md-6 col-lg-3">
           <div class="form-group">
             <label for="product_barcode">
               <i class="fas fa-barcode text-secondary"></i> {{ t('Barcode') }}
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('الباركود_للمسح_يتم_توليده_تلقائياً_إن_لم_{ t('يُدخل') }') }"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الباركود للمسح - يتم توليده تلقائياً إن لم يُدخل"></i>
             </label>
-            <input type="text" id="product_barcode" name="barcode" class="form-control" placeholder="{ t('يتم_توليده_تلقائياً') }" autocomplete="off">
+            <input type="text" id="product_barcode" name="barcode" class="form-control" placeholder="يتم توليده تلقائياً" autocomplete="off">
           </div>
         </div>
         <div class="col-md-6 col-lg-3">
           <div class="form-group">
             <label for="product_category">
-              <i class="fas fa-folder text-warning"></i> { t('الفئة') }
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="يمكن تركها بلا لتصنيف { t('المنتج') } لاحقاً (اختياري)"></i>
+              <i class="fas fa-folder text-warning"></i> الفئة
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="يمكن تركها بلا لتصنيف المنتج لاحقاً (اختياري)"></i>
             </label>
             <div class="input-group">
               {% set selected_category = form_data.get('category_id') %}
-              <select name="category_id" id="product_category" class="form-control select2" style="flex: 1;" data-placeholder="{ t('اختر_الفئة') }" autocomplete="off">
-                <option value="0" {% if not selected_category or selected_category == '0' %}selected{% endif %}>{ t('بلا') }</option>
+              <select name="category_id" id="product_category" class="form-control select2" style="flex: 1;" data-placeholder="اختر الفئة..." autocomplete="off">
+                <option value="0" {% if not selected_category or selected_category == '0' %}selected{% endif %}>بلا</option>
                 {% for category in categories %}
                 <option value="{{ category.id }}" {% if selected_category and selected_category|int == category.id %}selected{% endif %}>
                   {{ category.name }}
@@ -114,7 +114,7 @@
                 {% endfor %}
               </select>
               <div class="input-group-append">
-                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#addCategoryModal" title="{ t('إضافة_فئة_جديدة') }">
+                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#addCategoryModal" title="إضافة فئة جديدة">
                   <i class="fas fa-plus"></i>
                 </button>
               </div>
@@ -123,17 +123,17 @@
         </div>
       </div>
 
-      <!-- { t('الأسعار') } -->
+      <!-- الأسعار -->
       <hr>
-      <h5 class="text-success"><i class="fas fa-money-bill-wave"></i> { t('الأسعار') }</h5>
+      <h5 class="text-success"><i class="fas fa-money-bill-wave"></i> الأسعار</h5>
       <div class="row">
         {% if current_user.can_see_costs() %}
         <div class="col-md-3">
           <div class="form-group">
             <label for="product_cost_price">
-              <i class="fas fa-dollar-sign text-danger"></i> { t('سعر_التكلفة') }
+              <i class="fas fa-dollar-sign text-danger"></i> سعر التكلفة
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر الشراء من { t('المورد') } (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر الشراء من المورد (إجباري)"></i>
             </label>
             <input type="number" id="product_cost_price" name="cost_price" class="form-control" step="0.01" min="0" value="0" placeholder="0.00" required autocomplete="off">
           </div>
@@ -142,9 +142,9 @@
         <div class="col-md-3">
           <div class="form-group">
             <label for="product_regular_price">
-              <i class="fas fa-tag text-success"></i> سعر { t('عادي') }
+              <i class="fas fa-tag text-success"></i> سعر عادي
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر التجزئة { t('للعملاء_العاديين') } (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر التجزئة للعملاء العاديين (إجباري)"></i>
             </label>
             <input type="number" id="product_regular_price" name="regular_price" class="form-control" step="0.01" min="0" placeholder="0.00" required autocomplete="off">
           </div>
@@ -152,8 +152,8 @@
         <div class="col-md-3">
           <div class="form-group">
             <label for="product_merchant_price">
-              <i class="fas fa-store text-primary"></i> خصم { t('التاجر') } (%)
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="نسبة { t('Discount') } للتجار (مثال: 10 { t('تعني') } 10%)"></i>
+              <i class="fas fa-store text-primary"></i> خصم التاجر (%)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="نسبة الخصم للتجار (مثال: 10 تعني 10%)"></i>
             </label>
             <input type="number" id="product_merchant_price" name="merchant_price" class="form-control" step="0.01" min="0" max="100" placeholder="10" autocomplete="off">
           </div>
@@ -161,27 +161,27 @@
         <div class="col-md-3">
           <div class="form-group">
             <label for="product_partner_price">
-              <i class="fas fa-handshake text-info"></i> خصم { t('الشريك') } (%)
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="نسبة { t('Discount') } للشركاء (مثال: 15 { t('تعني') } 15%)"></i>
+              <i class="fas fa-handshake text-info"></i> خصم الشريك (%)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="نسبة الخصم للشركاء (مثال: 15 تعني 15%)"></i>
             </label>
             <input type="number" id="product_partner_price" name="partner_price" class="form-control" step="0.01" min="0" max="100" placeholder="15" autocomplete="off">
           </div>
         </div>
       </div>
 
-      <!-- { t('المخزون') } -->
+      <!-- المخزون -->
       <hr>
-      <h5 class="text-warning"><i class="fas fa-warehouse"></i> { t('المخزون') }</h5>
+      <h5 class="text-warning"><i class="fas fa-warehouse"></i> المخزون</h5>
       <div class="row">
         <div class="col-12 col-lg-6">
           <div class="form-group">
             <label for="warehouse_id">
-              <i class="fas fa-warehouse text-info"></i> { t('Warehouse') }
+              <i class="fas fa-warehouse text-info"></i> المستودع
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('Warehouse') } الذي سيُضاف إليه { t('المنتج') } (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المستودع الذي سيُضاف إليه المنتج (إجباري)"></i>
             </label>
             <select id="warehouse_id" name="warehouse_id" class="form-control warehouse-select" required autocomplete="off">
-              <option value="" {% if not selected_warehouse %}selected{% endif %}>{ t('بلا') }</option>
+              <option value="" {% if not selected_warehouse %}selected{% endif %}>بلا</option>
               {% if warehouses %}
                 {% for warehouse in warehouses %}
                 <option value="{{ warehouse.id }}" {% if selected_warehouse and selected_warehouse|int == warehouse.id %}selected{% endif %}>
@@ -191,7 +191,7 @@
                 </option>
                 {% endfor %}
               {% else %}
-                <option value="" disabled>{ t('لا_توجد_مستودعات_متاحة') }</option>
+                <option value="" disabled>لا توجد مستودعات متاحة</option>
               {% endif %}
             </select>
           </div>
@@ -199,17 +199,17 @@
         <div class="col-md-6 col-lg-3">
           <div class="form-group">
             <label for="product_current_stock">
-              <i class="fas fa-boxes text-success"></i> { t('Quantity') } المُدخلة
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('Quantity') } التي سيتم إضافتها مباشرةً إلى { t('المخزون') } عند إنشاء المنتج ({ t('افتراضي') }: 0)"></i>
+              <i class="fas fa-boxes text-success"></i> الكمية المُدخلة
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الكمية التي سيتم إضافتها مباشرةً إلى المخزون عند إنشاء المنتج (افتراضي: 0)"></i>
             </label>
-            <input type="number" id="product_current_stock" name="current_stock" class="form-control" step="0.001" min="0" value="0" placeholder="{ t('أدخل_الكمية_الأولية') }" autocomplete="off">
+            <input type="number" id="product_current_stock" name="current_stock" class="form-control" step="0.001" min="0" value="0" placeholder="أدخل الكمية الأولية" autocomplete="off">
           </div>
         </div>
         <div class="col-md-6 col-lg-2">
           <div class="form-group">
             <label for="product_min_stock_alert">
-              <i class="fas fa-exclamation-triangle text-warning"></i> { t('حد_التنبيه') }
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('عند') } الوصول لهذا الحد يظهر تنبيه ({ t('افتراضي') }: 10)"></i>
+              <i class="fas fa-exclamation-triangle text-warning"></i> حد التنبيه
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عند الوصول لهذا الحد يظهر تنبيه (افتراضي: 10)"></i>
             </label>
             <input type="number" id="product_min_stock_alert" name="min_stock_alert" class="form-control" step="0.001" min="0" value="10" placeholder="10" autocomplete="off">
           </div>
@@ -217,12 +217,12 @@
         <div class="col-md-6 col-lg-2">
           <div class="form-group">
             <label for="product_unit">
-              <i class="fas fa-balance-scale text-primary"></i> { t('الوحدة') }
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('يمكن_اختيار_الوحدة_أو_تركها_بلا_{ t('للمنتجات') }_غير_المقيسة') }"></i>
+              <i class="fas fa-balance-scale text-primary"></i> الوحدة
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="يمكن اختيار الوحدة أو تركها بلا للمنتجات غير المقيسة"></i>
             </label>
             {% set selected_unit = form_data.get('unit') if form_data.get('unit') is not none else 'piece' %}
-            <select id="product_unit" name="unit" class="form-control select2" data-placeholder="{ t('اختر_الوحدة') }" data-allow-clear="true" autocomplete="off">
-              <option value="" {% if not selected_unit %}selected{% endif %}>{ t('بلا') }</option>
+            <select id="product_unit" name="unit" class="form-control select2" data-placeholder="اختر الوحدة..." data-allow-clear="true" autocomplete="off">
+              <option value="" {% if not selected_unit %}selected{% endif %}>بلا</option>
               {% for code, meta in lookups.get('product_units', []) %}
               <option value="{{ code }}" {% if selected_unit == code %}selected{% endif %}>{{ meta.ar }}</option>
               {% endfor %}
@@ -231,20 +231,20 @@
         </div>
       </div>
 
-      <!-- { t('حقوق_الملكية_والشركاء') } -->
+      <!-- حقوق الملكية والشركاء -->
       <hr>
-      <h5 class="text-primary"><i class="fas fa-users-cog"></i> { t('حقوق_الملكية_والشركاء') }</h5>
+      <h5 class="text-primary"><i class="fas fa-users-cog"></i> حقوق الملكية والشركاء</h5>
       <div class="row">
         <!-- Merchant Selection -->
         <div class="col-md-6">
           <div class="form-group">
             <label for="merchant_customer_id">
-              <i class="fas fa-user-tie text-purple"></i> { t('التاجر') } المالك (اختياري)
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('اختر_التاجر_إذا_كان_هذا_المنتج_مملوكاً_ل{ t('تاجر') }_معين') }"></i>
+              <i class="fas fa-user-tie text-purple"></i> التاجر المالك (اختياري)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر التاجر إذا كان هذا المنتج مملوكاً لتاجر معين"></i>
             </label>
             <div class="input-group">
               <select name="merchant_customer_id" id="merchant_customer_id" class="form-control select2">
-                <option value="">{ t('اختر_التاجر') }</option>
+                <option value="">-- اختر التاجر --</option>
                 {% for merchant in merchants %}
                 <option value="{{ merchant.id }}" {% if request.form.get('merchant_customer_id') == merchant.id|string %}selected{% endif %}>{{ merchant.name }}</option>
                 {% endfor %}
@@ -255,8 +255,8 @@
         <div class="col-md-6" id="merchantShareContainer" style="display: {% if request.form.get('merchant_customer_id') %}block{% else %}none{% endif %};">
           <div class="form-group">
             <label for="merchant_share">
-              <i class="fas fa-percentage text-warning"></i> نسبة { t('التاجر') } من { t('Sales') } (%)
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('النسبة') } التي يحصل عليها { t('التاجر') } عند بيع المنتج (ال{ t('افتراضي') } 100%)"></i>
+              <i class="fas fa-percentage text-warning"></i> نسبة التاجر من المبيعات (%)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="النسبة التي يحصل عليها التاجر عند بيع المنتج (الافتراضي 100%)"></i>
             </label>
             <div class="input-group">
               <input type="number" id="merchant_share" name="merchant_share" class="form-control" step="0.01" min="0" max="100" value="{{ request.form.get('merchant_share', 100) }}" placeholder="100">
@@ -265,7 +265,7 @@
               </div>
             </div>
             <small class="form-text text-muted">
-              { t('Remaining') } من النسبة يعتبر ربحاً { t('للشركة') }.
+              المتبقي من النسبة يعتبر ربحاً للشركة.
             </small>
           </div>
         </div>
@@ -275,14 +275,14 @@
       <div class="row">
         <div class="col-12">
           <label>
-            <i class="fas fa-handshake text-info"></i> الشركاء ونسب { t('الأرباح') }
+            <i class="fas fa-handshake text-info"></i> الشركاء ونسب الأرباح
           </label>
           <table class="table table-bordered table-sm">
             <thead>
               <tr>
-                <th style="width: 50%">{ t('الشريك') }</th>
-                <th style="width: 40%">{ t('النسبة') } (%)</th>
-                <th style="width: 10%">{ t('Delete') }</th>
+                <th style="width: 50%">الشريك</th>
+                <th style="width: 40%">النسبة (%)</th>
+                <th style="width: 10%">حذف</th>
               </tr>
             </thead>
             <tbody id="partnersList">
@@ -292,7 +292,7 @@
               <tr>
                 <td colspan="3">
                   <button type="button" class="btn btn-sm btn-outline-primary" id="addPartnerBtn">
-                    <i class="fas fa-plus"></i> { t('Add') } شريك
+                    <i class="fas fa-plus"></i> إضافة شريك
                   </button>
                 </td>
               </tr>
@@ -301,24 +301,24 @@
         </div>
       </div>
 
-      <!-- { t('معلومات_إضافية') } -->
+      <!-- معلومات إضافية -->
       <hr>
-      <h5 class="text-info"><i class="fas fa-info-circle"></i> { t('معلومات_إضافية') }</h5>
+      <h5 class="text-info"><i class="fas fa-info-circle"></i> معلومات إضافية</h5>
       <div class="row">
         <div class="col-md-6">
           <div class="form-group">
             <label for="product_location">
-              <i class="fas fa-map-marker-alt text-danger"></i> { t('الموقع') }
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="موقع { t('المنتج') } في { t('Warehouse') } (اختياري)"></i>
+              <i class="fas fa-map-marker-alt text-danger"></i> الموقع
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="موقع المنتج في المستودع (اختياري)"></i>
             </label>
-            <input type="text" id="product_location" name="location" class="form-control" placeholder="{ t('رقم_الرف،_المخزن') }" autocomplete="off">
+            <input type="text" id="product_location" name="location" class="form-control" placeholder="رقم الرف، المخزن..." autocomplete="off">
           </div>
         </div>
         <div class="col-md-6">
           <div class="form-group">
             <label for="product_image">
-              <i class="fas fa-image text-success"></i> { t('صورة') } { t('المنتج') }
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('صورة') } توضيحية للمنتج (اختياري)"></i>
+              <i class="fas fa-image text-success"></i> صورة المنتج
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="صورة توضيحية للمنتج (اختياري)"></i>
             </label>
             <input type="file" id="product_image" name="image" class="form-control-file" accept="image/*">
           </div>
@@ -328,38 +328,38 @@
       <div class="form-group">
         <label for="product_description">
           <i class="fas fa-align-left text-secondary"></i> {{ t('Description') }}
-          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('وصف') } تفصيلي للمنتج (اختياري)"></i>
+          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="وصف تفصيلي للمنتج (اختياري)"></i>
         </label>
-        <textarea id="product_description" name="description" class="form-control" rows="3" placeholder="{ t('وصف_المنتج_وميزاته') }" autocomplete="off"></textarea>
+        <textarea id="product_description" name="description" class="form-control" rows="3" placeholder="وصف المنتج وميزاته..." autocomplete="off"></textarea>
       </div>
 
       <div class="form-group">
         <label for="product_notes">
           <i class="fas fa-sticky-note text-warning"></i> {{ t('Notes') }}
-          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('Notes') } داخلية عن المنتج ({ t('اختياري') })"></i>
+          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="ملاحظات داخلية عن المنتج (اختياري)"></i>
         </label>
-        <textarea id="product_notes" name="notes" class="form-control" rows="2" placeholder="{ t('ملاحظات_إضافية') }" autocomplete="off"></textarea>
+        <textarea id="product_notes" name="notes" class="form-control" rows="2" placeholder="ملاحظات إضافية..." autocomplete="off"></textarea>
       </div>
     </div>
 
     <div class="card-footer">
       <button type="submit" class="btn btn-success btn-lg">
-        <i class="fas fa-save mr-2"></i>{ t('Save') } { t('المنتج') }
+        <i class="fas fa-save mr-2"></i>حفظ المنتج
       </button>
       <a href="{{ url_for('products.index') }}" class="btn btn-secondary btn-lg">
-        <i class="fas fa-times mr-2"></i>{ t('Cancel') }
+        <i class="fas fa-times mr-2"></i>إلغاء
       </a>
     </div>
   </form>
 </div>
 
-<!-- Modal: { t('Add') } فئة منتجات -->
+<!-- Modal: إضافة فئة منتجات -->
 <div class="modal fade" id="addCategoryModal" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header bg-success text-white">
         <h5 class="modal-title">
-          <i class="fas fa-folder-plus mr-2"></i>{ t('Add') } فئة منتجات جديدة
+          <i class="fas fa-folder-plus mr-2"></i>إضافة فئة منتجات جديدة
         </h5>
         <button type="button" class="close text-white" data-dismiss="modal">
           <span>&times;</span>
@@ -369,25 +369,25 @@
         <form id="addCategoryForm" action="">
           <div class="form-group">
             <label for="category_name">
-              <i class="fas fa-font text-primary"></i> اسم { t('الفئة') }
+              <i class="fas fa-font text-primary"></i> اسم الفئة
               <span class="text-danger">*</span>
             </label>
-            <input type="text" id="category_name" name="category_name" class="form-control" placeholder="مثال: زيوت، فلاتر، { t('إطارات') }..." required autocomplete="off">
+            <input type="text" id="category_name" name="category_name" class="form-control" placeholder="مثال: زيوت، فلاتر، إطارات..." required autocomplete="off">
           </div>
           <div class="form-group">
             <label for="category_description">
-              <i class="fas fa-align-right text-info"></i> { t('Description') }
+              <i class="fas fa-align-right text-info"></i> الوصف
             </label>
-            <textarea id="category_description" name="category_description" class="form-control" rows="3" placeholder="{ t('وصف') } { t('الفئة') } (اختياري)" autocomplete="off"></textarea>
+            <textarea id="category_description" name="category_description" class="form-control" rows="3" placeholder="وصف الفئة (اختياري)" autocomplete="off"></textarea>
           </div>
         </form>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">
-          <i class="fas fa-times mr-2"></i>{ t('Cancel') }
+          <i class="fas fa-times mr-2"></i>إلغاء
         </button>
         <button type="button" class="btn btn-success" id="saveCategoryBtn">
-          <i class="fas fa-save mr-2"></i>{ t('Save') } { t('الفئة') }
+          <i class="fas fa-save mr-2"></i>حفظ الفئة
         </button>
       </div>
     </div>
@@ -398,18 +398,18 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-  // { t('تفعيل') } Tooltips
+  // تفعيل Tooltips
   $('[data-toggle="tooltip"]').tooltip({
     placement: 'top',
     trigger: 'hover'
   });
   
-  // { t('إدارة') } جدول الشركاء
+  // إدارة جدول الشركاء
   const partnersList = $('#partnersList');
   const addPartnerBtn = $('#addPartnerBtn');
   
-  // { t('List') } الشركاء المتاحين
-  let partnerOptions = '<option value="">{ t('اختر_الشريك') }</option>';
+  // قائمة الشركاء المتاحين
+  let partnerOptions = '<option value="">اختر الشريك...</option>';
   {% for partner in partners %}
   partnerOptions += `<option value="{{ partner.id }}">{{ partner.name }}</option>`;
   {% endfor %}
@@ -440,7 +440,7 @@ $(document).ready(function() {
     `;
     partnersList.append(html);
     
-    // تحديد { t('القيمة') } المختارة إذا وجدت
+    // تحديد القيمة المختارة إذا وجدت
     if (partnerId) {
       $(`#row-${rowId} select`).val(partnerId);
     }
@@ -455,7 +455,7 @@ $(document).ready(function() {
     $('#' + rowId).remove();
   });
   
-  // { t('Save') } { t('الفئة') } الجديدة
+  // حفظ الفئة الجديدة
   $('#saveCategoryBtn').click(function() {
     const name = $('#category_name').val().trim();
     const description = $('#category_description').val().trim();
@@ -465,7 +465,7 @@ $(document).ready(function() {
       return;
     }
     
-    // { t('الحصول') } على CSRF token
+    // الحصول على CSRF token
   const csrfToken = $('input[name="csrf_token"]').val();
   
   $.ajax({
@@ -481,27 +481,27 @@ $(document).ready(function() {
       }),
       success: function(response) {
         if (response.success) {
-          // { t('Add') } الفئة الجديدة للقائمة
+          // إضافة الفئة الجديدة للقائمة
           const newOption = new Option(response.category.name, response.category.id, true, true);
           $('#product_category').append(newOption).trigger('change');
           
-          // { t('Close') } النافذة وتنظيف الحقول
+          // إغلاق النافذة وتنظيف الحقول
           $('#addCategoryModal').modal('hide');
           $('#category_name').val('');
           $('#category_description').val('');
           
-          // { t('رسالة') } نجاح
+          // رسالة نجاح
           if (typeof UI !== 'undefined') {
-            UI.success('{ t('تم_إضافة_الفئة_بنجاح') }!');
+            UI.success('تم إضافة الفئة بنجاح!');
           } else {
             alert('تم إضافة الفئة بنجاح!');
           }
         } else {
-          alert('خطأ: ' + (response.error || 'فشل { t('Add') } الفئة'));
+          alert('خطأ: ' + (response.error || 'فشل إضافة الفئة'));
         }
       },
       error: function(xhr) {
-        const error = xhr.responseJSON?.error || 'حدث { t('Error') } أثناء الحفظ';
+        const error = xhr.responseJSON?.error || 'حدث خطأ أثناء الحفظ';
         alert('خطأ: ' + error);
       }
     });

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - قائمة { t('المستودعات') } وإدارتها{% endblock %}
+{% block title %}شركة أزاد للأنظمة الذكية - قائمة المستودعات وإدارتها{% endblock %}
 
 {% block extra_js %}
 {% endblock %}
@@ -10,12 +10,12 @@
   <div class="container-fluid">
     <div class="row mb-2">
       <div class="col-sm-6">
-        <h1 class="m-0"><i class="fas fa-warehouse"></i> { t('المستودعات') }</h1>
+        <h1 class="m-0"><i class="fas fa-warehouse"></i> المستودعات</h1>
       </div>
       <div class="col-sm-6">
         <ol class="breadcrumb float-sm-left">
           <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">{{ t('Dashboard') }}</a></li>
-          <li class="breadcrumb-item active">{ t('المستودعات') }</li>
+          <li class="breadcrumb-item active">المستودعات</li>
         </ol>
       </div>
     </div>
@@ -27,10 +27,10 @@
     <div class="row mb-3">
       <div class="col-12 d-flex flex-wrap align-items-center" style="gap: .5rem;">
         <a href="{{ url_for('warehouse.create_warehouse') }}" class="btn btn-primary mb-2">
-          <i class="fas fa-plus"></i> { t('إضافة_مستودع') } جديد
+          <i class="fas fa-plus"></i> إضافة مستودع جديد
         </a>
         <a href="{{ url_for('products.create') }}" class="btn btn-success mb-2">
-          <i class="fas fa-plus-circle"></i> { t('إضافة_منتج') }
+          <i class="fas fa-plus-circle"></i> إضافة منتج
         </a>
       </div>
     </div>
@@ -59,24 +59,24 @@
               <span class="badge badge-secondary">{{ warehouse.code or '-' }}</span>
             </p>
             <p class="mb-2">
-              <strong><i class="fas fa-map-marker-alt text-danger"></i> { t('الموقع') }:</strong> 
+              <strong><i class="fas fa-map-marker-alt text-danger"></i> الموقع:</strong> 
               {{ warehouse.location or '-' }}
             </p>
             <p class="mb-2">
-              <strong><i class="fas fa-user-tie text-info"></i> { t('المدير') }:</strong> 
+              <strong><i class="fas fa-user-tie text-info"></i> المدير:</strong> 
               {{ warehouse.manager.username if warehouse.manager else '-' }}
             </p>
             
             {% if warehouse.parent %}
             <p class="mb-2">
-              <strong><i class="fas fa-sitemap text-success"></i> { t('Warehouse') } الأب:</strong>
+              <strong><i class="fas fa-sitemap text-success"></i> المستودع الأب:</strong>
               <span class="badge badge-success">{{ warehouse.parent.name_ar or warehouse.parent.name }}</span>
             </p>
             {% endif %}
             
             {% if warehouse.sub_warehouses %}
             <p class="mb-2">
-              <strong><i class="fas fa-code-branch text-warning"></i> { t('المستودعات') } الفرعية:</strong>
+              <strong><i class="fas fa-code-branch text-warning"></i> المستودعات الفرعية:</strong>
               <span class="badge badge-warning">{{ warehouse.sub_warehouses|length }}</span>
             </p>
             <ul class="list-unstyled ml-3">
@@ -87,37 +87,37 @@
             {% endif %}
             
             <p class="mb-2">
-              <strong><i class="fas fa-boxes text-primary"></i> { t('Stock Movements') }:</strong>
+              <strong><i class="fas fa-boxes text-primary"></i> حركات المخزون:</strong>
               <span class="badge badge-info">{{ warehouse.stock_movements.count() }}</span>
             </p>
             
             <div class="mt-3 d-flex flex-wrap align-items-center" style="gap: .5rem;">
               {% if warehouse.is_main %}
-              <span class="badge badge-primary"><i class="fas fa-star"></i> { t('مستودع_رئيسي') }</span>
+              <span class="badge badge-primary"><i class="fas fa-star"></i> مستودع رئيسي</span>
               {% endif %}
               {% if warehouse.parent_id %}
-              <span class="badge badge-success"><i class="fas fa-sitemap"></i> { t('مستودع_فرعي') }</span>
+              <span class="badge badge-success"><i class="fas fa-sitemap"></i> مستودع فرعي</span>
               {% endif %}
               {% if warehouse.is_active %}
-              <span class="badge badge-success"><i class="fas fa-check"></i> { t('Active') }</span>
+              <span class="badge badge-success"><i class="fas fa-check"></i> نشط</span>
               {% else %}
-              <span class="badge badge-danger"><i class="fas fa-times"></i> { t('Inactive') }</span>
+              <span class="badge badge-danger"><i class="fas fa-times"></i> غير نشط</span>
               {% endif %}
             </div>
           </div>
           <div class="card-footer bg-light">
             <a href="{{ url_for('warehouse.view_warehouse', id=warehouse.id) }}" class="btn btn-primary btn-block mb-2">
-              <i class="fas fa-eye"></i> عرض تفاصيل ومخزون { t('Warehouse') }
+              <i class="fas fa-eye"></i> عرض تفاصيل ومخزون المستودع
             </a>
             <div class="d-flex justify-content-between">
               <a href="{{ url_for('products.create', warehouse_id=warehouse.id) }}" class="btn btn-sm btn-success">
-                <i class="fas fa-plus-circle"></i> { t('إضافة_منتج') }
+                <i class="fas fa-plus-circle"></i> إضافة منتج
               </a>
               <a href="{{ url_for('warehouse.movements', warehouse=warehouse.id) }}" class="btn btn-outline-secondary btn-sm">
                 <i class="fas fa-exchange-alt"></i> الحركات
               </a>
               <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteItem('warehouses', {{ warehouse.id }}, {{ warehouse.name|tojson }})">
-                <i class="fas fa-trash"></i> { t('Delete') }
+                <i class="fas fa-trash"></i> حذف
               </button>
             </div>
           </div>
@@ -129,7 +129,7 @@
     {% if not warehouses %}
     <div class="alert alert-info text-center">
       <i class="fas fa-info-circle"></i>
-      لا توجد مستودعات مسجلة. يمكنك { t('إضافة_مستودع') } جديد الآن.
+      لا توجد مستودعات مسجلة. يمكنك إضافة مستودع جديد الآن.
     </div>
     {% endif %}
   </div>

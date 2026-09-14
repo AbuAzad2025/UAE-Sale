@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('فاتورة') } شراء #{{ purchase.purchase_number }}{% endblock %}
+{% block title %}شركة أزاد للأنظمة الذكية - فاتورة شراء #{{ purchase.purchase_number }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0">{ t('فاتورة') } شراء رقم: {{ purchase.purchase_number }}</h1>
+    <h1 class="mb-0">فاتورة شراء رقم: {{ purchase.purchase_number }}</h1>
   </div>
   <div>
     <a href="{{ url_for('purchases.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>{ t('العودة_للقائمة') }
+      <i class="fas fa-arrow-right mr-2"></i>العودة للقائمة
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>{ t('الرئيسية') }
+      <i class="fas fa-home mr-2"></i>الرئيسية
     </a>
   </div>
 </div>
@@ -21,20 +21,20 @@
   <div class="col-md-8">
     <div class="card">
       <div class="card-header bg-gradient-primary">
-        <h3 class="card-title text-white">{ t('تفاصيل_فاتورة_الشراء') }</h3>
+        <h3 class="card-title text-white">تفاصيل فاتورة الشراء</h3>
       </div>
       <div class="card-body">
         <dl class="row">
-          <dt class="col-sm-4">{ t('رقم_الفاتورة') }:</dt>
+          <dt class="col-sm-4">رقم الفاتورة:</dt>
           <dd class="col-sm-8"><strong>{{ purchase.purchase_number }}</strong></dd>
           
-          <dt class="col-sm-4">{ t('المورد') }:</dt>
+          <dt class="col-sm-4">المورد:</dt>
           <dd class="col-sm-8">{{ purchase.supplier_name }}</dd>
           
-          <dt class="col-sm-4">{ t('Phone') }:</dt>
+          <dt class="col-sm-4">الهاتف:</dt>
           <dd class="col-sm-8">{{ purchase.supplier_phone or '-' }}</dd>
           
-          <dt class="col-sm-4">{ t('Date') }:</dt>
+          <dt class="col-sm-4">التاريخ:</dt>
           <dd class="col-sm-8">{{ purchase.purchase_date.strftime('%Y-%m-%d') }}</dd>
         </dl>
 
@@ -45,7 +45,7 @@
             <tr>
               <th>المنتج</th>
               <th>{{ t('Quantity') }}</th>
-              <th>{ t('التكلفة') }</th>
+              <th>التكلفة</th>
               <th>الخصم%</th>
               <th>{{ t('Total') }}</th>
             </tr>
@@ -70,25 +70,25 @@
   <div class="col-md-4">
     <div class="card mb-3">
       <div class="card-header bg-gradient-success">
-        <h3 class="card-title text-white">{ t('الإجماليات') }</h3>
+        <h3 class="card-title text-white">الإجماليات</h3>
       </div>
       <div class="card-body">
         <dl class="row">
-          <dt class="col-6">{ t('Total') } قبل الخصم:</dt>
+          <dt class="col-6">المجموع قبل الخصم:</dt>
           <dd class="col-6 text-left">{{ "{:,.2f}".format((purchase.subtotal or 0) + (purchase.discount_amount or 0)) }}</dd>
           
-          <dt class="col-6">{ t('Discount') }:</dt>
+          <dt class="col-6">الخصم:</dt>
           <dd class="col-6 text-left text-danger">{{ "{:,.2f}".format(purchase.discount_amount or 0) }}</dd>
           
-          <dt class="col-6">{ t('Total') } بعد الخصم:</dt>
+          <dt class="col-6">المجموع بعد الخصم:</dt>
           <dd class="col-6 text-left">{{ "{:,.2f}".format(purchase.subtotal) }}</dd>
           
-          <dt class="col-6">{ t('Tax') }:</dt>
+          <dt class="col-6">الضريبة:</dt>
           <dd class="col-6 text-left">{{ "{:,.2f}".format(purchase.tax_amount) }}</dd>
         </dl>
         <hr>
         <dl class="row">
-          <dt class="col-6"><h5>{ t('الإجمالي') }:</h5></dt>
+          <dt class="col-6"><h5>الإجمالي:</h5></dt>
           <dd class="col-6 text-left"><h5>{{ "{:,.2f}".format(purchase.total_amount) }} {{ purchase.currency }}</h5></dd>
         </dl>
       </div>
@@ -97,19 +97,19 @@
     <!-- Actions Card -->
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-cog mr-2"></i>{ t('الإجراءات') }</h3>
+        <h3 class="card-title"><i class="fas fa-cog mr-2"></i>الإجراءات</h3>
       </div>
       <div class="card-body">
         <div class="btn-group-vertical w-100">
           <a href="{{ url_for('purchases.print_purchase', id=purchase.id) }}" class="btn btn-secondary mb-2" target="_blank">
-            <i class="fas fa-print mr-2"></i>{ t('طباعة_الفاتورة') }
+            <i class="fas fa-print mr-2"></i>طباعة الفاتورة
           </a>
           
           {% if current_user.is_admin %}
           <hr>
           <button type="button" class="btn btn-danger" 
                   onclick="deleteItem('purchases', {{ purchase.id }}, {{ purchase.purchase_number|tojson }})">
-            <i class="fas fa-trash-alt mr-2"></i>حذف { t('الفاتورة') }
+            <i class="fas fa-trash-alt mr-2"></i>حذف الفاتورة
           </button>
           {% endif %}
         </div>

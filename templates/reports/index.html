@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}{{ t('شركة أزاد للأنظمة الذكية - التقارير والإحصائيات') }}{% endblock %}
-{% block page_title %}{ t('Reports') }{% endblock %}
+{% block page_title %}التقارير{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -9,13 +9,13 @@
       <div class="card-header bg-gradient-primary">
         <h3 class="card-title text-white">
           <i class="fas fa-chart-bar mr-2"></i>
-          { t('Reports') } والإحصائيات
+          التقارير والإحصائيات
         </h3>
       </div>
       <div class="card-body">
         <div class="row">
           
-          <!-- { t('Sales Report') } -->
+          <!-- تقرير المبيعات -->
           <div class="col-md-4">
             <div class="info-box bg-gradient-success">
               <span class="info-box-icon"><i class="fas fa-shopping-cart"></i></span>
@@ -23,35 +23,35 @@
                 <span class="info-box-text">{{ t('Sales Report') }}</span>
                 <span class="info-box-number">Sales Report</span>
                 <a href="{{ url_for('reports.sales') }}" class="btn btn-light btn-sm mt-2 stretched-link">
-                  { t('View') } التقرير <i class="fas fa-arrow-left mr-1"></i>
+                  عرض التقرير <i class="fas fa-arrow-left mr-1"></i>
                 </a>
               </div>
             </div>
           </div>
 
-          <!-- تقرير { t('المخزون') } -->
+          <!-- تقرير المخزون -->
           <div class="col-md-4">
             <div class="info-box bg-gradient-warning">
               <span class="info-box-icon"><i class="fas fa-boxes"></i></span>
               <div class="info-box-content">
                 <span class="info-box-text">{{ t('Inventory Report') }}</span>
-                <span class="info-box-number">{ t('Inventory_Report') }</span>
+                <span class="info-box-number">Inventory Report</span>
                 <a href="{{ url_for('reports.inventory') }}" class="btn btn-light btn-sm mt-2 stretched-link">
-                  { t('View') } التقرير <i class="fas fa-arrow-left mr-1"></i>
+                  عرض التقرير <i class="fas fa-arrow-left mr-1"></i>
                 </a>
               </div>
             </div>
           </div>
 
-          <!-- { t('الذمم_المدينة') } -->
+          <!-- الذمم المدينة -->
           <div class="col-md-4">
             <div class="info-box bg-gradient-danger">
               <span class="info-box-icon"><i class="fas fa-user-clock"></i></span>
               <div class="info-box-content">
-                <span class="info-box-text">{ t('الذمم_المدينة') }</span>
+                <span class="info-box-text">الذمم المدينة</span>
                 <span class="info-box-number">Receivables</span>
                 <a href="{{ url_for('reports.receivables') }}" class="btn btn-light btn-sm mt-2 stretched-link">
-                  { t('View') } التقرير <i class="fas fa-arrow-left mr-1"></i>
+                  عرض التقرير <i class="fas fa-arrow-left mr-1"></i>
                 </a>
               </div>
             </div>
@@ -61,69 +61,69 @@
 
         <div class="row mt-3">
           
-          <!-- { t('التقارير_المالية') } -->
+          <!-- التقارير المالية -->
           <div class="col-md-4">
             <div class="card card-outline card-primary">
               <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-book mr-2"></i>{ t('التقارير_المالية') }</h3>
+                <h3 class="card-title"><i class="fas fa-book mr-2"></i>التقارير المالية</h3>
               </div>
               <div class="card-body">
                 <div class="list-group">
                   <a href="{{ url_for('ledger.trial_balance') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-balance-scale mr-2"></i>{ t('Trial Balance') }
+                    <i class="fas fa-balance-scale mr-2"></i>ميزان المراجعة
                   </a>
                   <a href="{{ url_for('ledger.income_statement') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-chart-line mr-2"></i>{ t('Income Statement') }
+                    <i class="fas fa-chart-line mr-2"></i>قائمة الدخل
                   </a>
                   <a href="{{ url_for('ledger.balance_sheet') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-file-invoice-dollar mr-2"></i>{ t('الميزانية_العمومية') }
+                    <i class="fas fa-file-invoice-dollar mr-2"></i>الميزانية العمومية
                   </a>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- { t('تقارير_العمليات') } -->
+          <!-- تقارير العمليات -->
           <div class="col-md-4">
             <div class="card card-outline card-success">
               <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-clipboard-list mr-2"></i>{ t('تقارير_العمليات') }</h3>
+                <h3 class="card-title"><i class="fas fa-clipboard-list mr-2"></i>تقارير العمليات</h3>
               </div>
               <div class="card-body">
                 <div class="list-group">
                   <a href="{{ url_for('sales.index') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-file-invoice mr-2"></i>فواتير { t('Sales') }
+                    <i class="fas fa-file-invoice mr-2"></i>فواتير المبيعات
                   </a>
                   <a href="{{ url_for('purchases.index') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-shopping-bag mr-2"></i>فواتير { t('Purchases') }
+                    <i class="fas fa-shopping-bag mr-2"></i>فواتير المشتريات
                   </a>
                   <a href="{{ url_for('payments.receipts') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-money-bill-wave mr-2"></i>{ t('Payments') }
+                    <i class="fas fa-money-bill-wave mr-2"></i>المدفوعات
                   </a>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- { t('تقارير_أخرى') } -->
+          <!-- تقارير أخرى -->
           <div class="col-md-4">
             <div class="card card-outline card-info">
               <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-list mr-2"></i>{ t('تقارير_أخرى') }</h3>
+                <h3 class="card-title"><i class="fas fa-list mr-2"></i>تقارير أخرى</h3>
               </div>
               <div class="card-body">
                 <div class="list-group">
                   <a href="{{ url_for('customers.index') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-users mr-2"></i>{ t('العملاء') }
+                    <i class="fas fa-users mr-2"></i>العملاء
                   </a>
                   <a href="{{ url_for('products.index') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-cubes mr-2"></i>{ t('Products') }
+                    <i class="fas fa-cubes mr-2"></i>المنتجات
                   </a>
                   <a href="{{ url_for('expenses.index') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-wallet mr-2"></i>{ t('Expenses') }
+                    <i class="fas fa-wallet mr-2"></i>المصروفات
                   </a>
                   <a href="{{ url_for('reports.partners') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-handshake mr-2"></i>{ t('تقرير_الشركاء_والتجار') }
+                    <i class="fas fa-handshake mr-2"></i>تقرير الشركاء والتجار
                   </a>
                 </div>
               </div>
@@ -132,33 +132,33 @@
 
         </div>
 
-        <!-- تقارير { t('New') }ة Phase 2 -->
+        <!-- تقارير جديدة Phase 2 -->
         <div class="row mt-4">
           <div class="col-md-12">
             <div class="card card-outline card-info">
               <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-chart-pie mr-2"></i>{ t('التقارير_المالية_المتقدمة') }</h3>
+                <h3 class="card-title"><i class="fas fa-chart-pie mr-2"></i>التقارير المالية المتقدمة</h3>
               </div>
               <div class="card-body">
                 <div class="row">
                   <div class="col-md-3">
                     <a href="{{ url_for('reports.inventory_valuation') }}" class="btn btn-outline-primary btn-block">
-                      <i class="fas fa-boxes mr-2"></i>{ t('تقييم_المخزون') }
+                      <i class="fas fa-boxes mr-2"></i>تقييم المخزون
                     </a>
                   </div>
                   <div class="col-md-3">
                     <a href="{{ url_for('reports.ap_aging') }}" class="btn btn-outline-danger btn-block">
-                      <i class="fas fa-user-clock mr-2"></i>{ t('أعمار_الذمم_الدائنة') }
+                      <i class="fas fa-user-clock mr-2"></i>أعمار الذمم الدائنة
                     </a>
                   </div>
                   <div class="col-md-3">
                     <a href="{{ url_for('reports.cash_flow') }}" class="btn btn-outline-success btn-block">
-                      <i class="fas fa-money-bill-alt mr-2"></i>{ t('قائمة_التدفقات_النقدية') }
+                      <i class="fas fa-money-bill-alt mr-2"></i>قائمة التدفقات النقدية
                     </a>
                   </div>
                   <div class="col-md-3">
                     <a href="{{ url_for('reports.vat_report') }}" class="btn btn-outline-warning btn-block">
-                      <i class="fas fa-percent mr-2"></i>{ t('تقرير_VAT') } (5%)
+                      <i class="fas fa-percent mr-2"></i>تقرير VAT (5%)
                     </a>
                   </div>
                 </div>

@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
-{% block title %}{{ t('شركة أزاد للأنظمة الذكية - أرشيف { t('Expenses') }') }}{% endblock %}
+{% block title %}{{ t('شركة أزاد للأنظمة الذكية - أرشيف المصروفات') }}{% endblock %}
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
-            <h2><i class="fas fa-archive me-2"></i>{ t('أرشيف_المصروفات') }</h2>
+            <h2><i class="fas fa-archive me-2"></i>أرشيف المصروفات</h2>
             <a href="{{ url_for('expenses.index') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-right me-2"></i>{ t('Back') }
+                <i class="fas fa-arrow-right me-2"></i>رجوع
             </a>
         </div>
     </div>
@@ -18,14 +18,14 @@
             <table id="expensesTable" class="table table-hover">
                 <thead>
                     <tr>
-                        <th>{ t('رقم_المصروف') }</th>
-                        <th>{ t('الفئة') }</th>
+                        <th>رقم المصروف</th>
+                        <th>الفئة</th>
                         <th>{{ t('Description') }}</th>
                         <th>{{ t('Amount') }}</th>
                         <th>{{ t('Date') }}</th>
-                        <th>{ t('طريقة_الدفع') }</th>
-                        <th>{ t('تاريخ_الأرشفة') }</th>
-                        <th>{ t('الإجراءات') }</th>
+                        <th>طريقة الدفع</th>
+                        <th>تاريخ الأرشفة</th>
+                        <th>الإجراءات</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -41,11 +41,11 @@
                         <td>
                             <div class="btn-group btn-group-sm">
                                 <a href="{{ url_for('expenses.view', id=expense.id) }}" 
-                                   class="btn btn-info" title="{ t('View') }">
+                                   class="btn btn-info" title="عرض">
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 <button type="button" class="btn btn-success restore-expense-btn" 
-                                        data-id="{{ expense.id }}" title="{ t('استعادة') }">
+                                        data-id="{{ expense.id }}" title="استعادة">
                                     <i class="fas fa-undo"></i>
                                 </button>
                             </div>
@@ -68,7 +68,7 @@ $(document).ready(function() {
     pageLength: 25
   });
   
-  // { t('استعادة') } مصروف
+  // استعادة مصروف
   $(document).on('click', '.restore-expense-btn', function(e) {
     e.preventDefault();
     e.stopPropagation();

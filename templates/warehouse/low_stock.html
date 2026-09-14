@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('مخزون_منخفض') }{% endblock %}
+{% block title %}شركة أزاد للأنظمة الذكية - مخزون منخفض{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
     <h1 class="mb-0" style="color: #ffc107;">
-      <i class="fas fa-exclamation-triangle mr-3"></i>{ t('مخزون_منخفض') }
+      <i class="fas fa-exclamation-triangle mr-3"></i>مخزون منخفض
     </h1>
-    <p class="text-muted">{ t('منتجات_تحتاج_إلى_إعادة_تموين_عاجلة') }</p>
+    <p class="text-muted">منتجات تحتاج إلى إعادة تموين عاجلة</p>
   </div>
   <div>
     <a href="{{ url_for('warehouse.index') }}" class="btn btn-info btn-lg">
-      <i class="fas fa-warehouse mr-2"></i>{ t('Warehouse') }
+      <i class="fas fa-warehouse mr-2"></i>المستودع
     </a>
     <a href="{{ url_for('purchases.create') }}" class="btn btn-success btn-lg">
-      <i class="fas fa-shopping-cart mr-2"></i>شراء { t('New') }
+      <i class="fas fa-shopping-cart mr-2"></i>شراء جديد
     </a>
   </div>
 </div>
@@ -69,7 +69,7 @@
 <div class="card">
   <div class="card-header" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: white;">
     <h3 class="card-title text-white mb-0">
-      <i class="fas fa-boxes mr-2"></i>{ t('Products') } ذات المخزون المنخفض
+      <i class="fas fa-boxes mr-2"></i>المنتجات ذات المخزون المنخفض
     </h3>
   </div>
   <div class="card-body">
@@ -77,12 +77,12 @@
       <table id="lowStockTable" class="table table-hover">
         <thead style="background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%); color: white;">
           <tr>
-            <th><i class="fas fa-exclamation-circle mr-2"></i>{ t('الأولوية') }</th>
-            <th><i class="fas fa-box mr-2"></i>{ t('المنتج') }</th>
+            <th><i class="fas fa-exclamation-circle mr-2"></i>الأولوية</th>
+            <th><i class="fas fa-box mr-2"></i>المنتج</th>
             <th><i class="fas fa-barcode mr-2"></i>SKU</th>
             <th><i class="fas fa-layer-group mr-2"></i>{{ t('Inventory') }}</th>
-            <th><i class="fas fa-bell mr-2"></i>{ t('حد_التنبيه') }</th>
-            <th><i class="fas fa-percentage mr-2"></i>{ t('النسبة') }</th>
+            <th><i class="fas fa-bell mr-2"></i>حد التنبيه</th>
+            <th><i class="fas fa-percentage mr-2"></i>النسبة</th>
             <th><i class="fas fa-money-bill-wave mr-2"></i>{{ t('Price') }}</th>
             <th class="text-center"><i class="fas fa-cog mr-2"></i>{{ t('Actions') }}</th>
           </tr>
@@ -149,7 +149,7 @@
                   <i class="fas fa-edit"></i>
                 </a>
                 <a href="{{ url_for('purchases.create') }}" 
-                   class="btn btn-success" title="{ t('طلب_شراء') }">
+                   class="btn btn-success" title="طلب شراء">
                   <i class="fas fa-shopping-cart"></i>
                 </a>
               </div>
@@ -185,7 +185,7 @@ $(document).ready(function() {
     buttons: [
       {extend: 'excel', text: '<i class="fas fa-file-excel mr-1"></i> Excel', className: 'btn-sm btn-success'},
       {extend: 'pdf', text: '<i class="fas fa-file-pdf mr-1"></i> PDF', className: 'btn-sm btn-danger'},
-      {extend: 'print', text: '<i class="fas fa-print mr-1"></i> { t('Print') }', className: 'btn-sm btn-info'}
+      {extend: 'print', text: '<i class="fas fa-print mr-1"></i> طباعة', className: 'btn-sm btn-info'}
     ]
   });
 });

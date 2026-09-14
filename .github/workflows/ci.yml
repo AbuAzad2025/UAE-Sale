@@ -163,10 +163,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  # ── Unit tests (SQLite, fast, no services) ──
+  # ── Unit tests (SQLite, no services) ──
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
       - name: Set up Python

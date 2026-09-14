@@ -1,21 +1,21 @@
 {% extends 'base.html' %}
 
-{% block title %}شركة أزاد للأنظمة الذكية - إعدادات النظام المتقدمة{% endblock %}
+{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('إعدادات_النظام') } المتقدمة{% endblock %}
 
 {% block content %}
 <div class="content-header">
   <div class="container-fluid">
     <div class="row mb-2 align-items-center">
       <div class="col-sm-6">
-        <h1 class="m-0">⚙️ إعدادات النظام</h1>
+        <h1 class="m-0">⚙️ { t('إعدادات_النظام') }</h1>
       </div>
       <div class="col-sm-6 d-flex justify-content-end">
         <div class="d-flex align-items-center">
           <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary ml-2">
-            <i class="fas fa-arrow-right mr-1"></i> الرجوع للوحة المالك
+            <i class="fas fa-arrow-right mr-1"></i> الرجوع ل{ t('لوحة_المالك') }
           </a>
           <ol class="breadcrumb float-sm-left mb-0">
-            <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">لوحة المالك</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">{ t('لوحة_المالك') }</a></li>
             <li class="breadcrumb-item active">{{ t('System Settings') }}</li>
           </ol>
         </div>
@@ -40,7 +40,7 @@
               <div class="custom-control custom-switch">
                 <input type="checkbox" class="custom-control-input" id="enable_sales" name="enable_sales" {{ 'checked' if settings.enable_sales }}>
                 <label class="custom-control-label" for="enable_sales">
-                  <i class="fas fa-shopping-cart text-success"></i> المبيعات
+                  <i class="fas fa-shopping-cart text-success"></i> { t('Sales') }
                 </label>
               </div>
             </div>
@@ -48,7 +48,7 @@
               <div class="custom-control custom-switch">
                 <input type="checkbox" class="custom-control-input" id="enable_purchases" name="enable_purchases" {{ 'checked' if settings.enable_purchases }}>
                 <label class="custom-control-label" for="enable_purchases">
-                  <i class="fas fa-truck text-primary"></i> المشتريات
+                  <i class="fas fa-truck text-primary"></i> { t('Purchases') }
                 </label>
               </div>
             </div>
@@ -56,7 +56,7 @@
               <div class="custom-control custom-switch">
                 <input type="checkbox" class="custom-control-input" id="enable_inventory" name="enable_inventory" {{ 'checked' if settings.enable_inventory }}>
                 <label class="custom-control-label" for="enable_inventory">
-                  <i class="fas fa-boxes text-warning"></i> المخزون
+                  <i class="fas fa-boxes text-warning"></i> { t('المخزون') }
                 </label>
               </div>
             </div>
@@ -64,7 +64,7 @@
               <div class="custom-control custom-switch">
                 <input type="checkbox" class="custom-control-input" id="enable_customers" name="enable_customers" {{ 'checked' if settings.enable_customers }}>
                 <label class="custom-control-label" for="enable_customers">
-                  <i class="fas fa-users text-info"></i> الزبائن
+                  <i class="fas fa-users text-info"></i> { t('Customers') }
                 </label>
               </div>
             </div>
@@ -75,7 +75,7 @@
               <div class="custom-control custom-switch">
                 <input type="checkbox" class="custom-control-input" id="enable_expenses" name="enable_expenses" {{ 'checked' if settings.enable_expenses }}>
                 <label class="custom-control-label" for="enable_expenses">
-                  <i class="fas fa-money-bill-wave text-danger"></i> المصروفات
+                  <i class="fas fa-money-bill-wave text-danger"></i> { t('Expenses') }
                 </label>
               </div>
             </div>
@@ -83,7 +83,7 @@
               <div class="custom-control custom-switch">
                 <input type="checkbox" class="custom-control-input" id="enable_gl" name="enable_gl" {{ 'checked' if settings.enable_gl }}>
                 <label class="custom-control-label" for="enable_gl">
-                  <i class="fas fa-book text-secondary"></i> دفتر الأستاذ
+                  <i class="fas fa-book text-secondary"></i> { t('Ledger') }
                 </label>
               </div>
             </div>
@@ -91,7 +91,7 @@
               <div class="custom-control custom-switch">
                 <input type="checkbox" class="custom-control-input" id="enable_reports" name="enable_reports" {{ 'checked' if settings.enable_reports }}>
                 <label class="custom-control-label" for="enable_reports">
-                  <i class="fas fa-chart-line text-success"></i> التقارير
+                  <i class="fas fa-chart-line text-success"></i> { t('Reports') }
                 </label>
               </div>
             </div>
@@ -99,7 +99,7 @@
               <div class="custom-control custom-switch">
                 <input type="checkbox" class="custom-control-input" id="enable_ai_assistant" name="enable_ai_assistant" {{ 'checked' if settings.enable_ai_assistant }}>
                 <label class="custom-control-label" for="enable_ai_assistant">
-                  <i class="fas fa-robot text-primary"></i> المساعد الذكي
+                  <i class="fas fa-robot text-primary"></i> { t('AI Assistant') }
                 </label>
               </div>
             </div>
@@ -107,10 +107,10 @@
         </div>
       </div>
 
-      <!-- المميزات -->
+      <!-- { t('Features') } -->
       <div class="card">
         <div class="card-header bg-gradient-success">
-          <h3 class="card-title text-white">✨ المميزات (Features)</h3>
+          <h3 class="card-title text-white">✨ { t('Features') } (Features)</h3>
         </div>
         <div class="card-body">
           <div class="row">
@@ -118,7 +118,7 @@
               <div class="custom-control custom-switch">
                 <input type="checkbox" class="custom-control-input" id="enable_barcode_scanner" name="enable_barcode_scanner" {{ 'checked' if settings.enable_barcode_scanner }}>
                 <label class="custom-control-label" for="enable_barcode_scanner">
-                  <i class="fas fa-barcode"></i> قارئ الباركود
+                  <i class="fas fa-barcode"></i> قارئ البار{ t('كود') }
                 </label>
               </div>
             </div>
@@ -145,7 +145,7 @@
               <div class="custom-control custom-switch">
                 <input type="checkbox" class="custom-control-input" id="enable_discounts" name="enable_discounts" {{ 'checked' if settings.enable_discounts }}>
                 <label class="custom-control-label" for="enable_discounts">
-                  <i class="fas fa-percent"></i> الخصومات
+                  <i class="fas fa-percent"></i> { t('الخصومات') }
                 </label>
               </div>
             </div>
@@ -153,7 +153,7 @@
               <div class="custom-control custom-switch">
                 <input type="checkbox" class="custom-control-input" id="enable_returns" name="enable_returns" {{ 'checked' if settings.enable_returns }}>
                 <label class="custom-control-label" for="enable_returns">
-                  <i class="fas fa-undo"></i> المرتجعات
+                  <i class="fas fa-undo"></i> { t('المرتجعات') }
                 </label>
               </div>
             </div>
@@ -164,13 +164,13 @@
       <!-- إعدادات عامة -->
       <div class="card">
         <div class="card-header bg-gradient-warning">
-          <h3 class="card-title text-white">🔧 إعدادات عامة</h3>
+          <h3 class="card-title text-white">{ t('إعدادات_عامة') }</h3>
         </div>
         <div class="card-body">
           <div class="row">
             <div class="col-md-3">
               <div class="form-group">
-                <label>العملة الافتراضية</label>
+                <label>{ t('العملة_الافتراضية') }</label>
                 <select name="default_currency" class="form-control select2">
                   {% for code, meta in lookups.get('currencies', []) %}
                   <option value="{{ code }}" {{ 'selected' if settings.default_currency == code }}>{{ code }} - {{ meta.ar }}</option>
@@ -180,7 +180,7 @@
             </div>
             <div class="col-md-3">
               <div class="form-group">
-                <label>اللغة الافتراضية</label>
+                <label>{ t('اللغة_الافتراضية') }</label>
                 <select name="default_language" class="form-control select2">
                   {% for code, meta in lookups.get('languages', []) %}
                   <option value="{{ code }}" {{ 'selected' if settings.default_language == code }}>{{ meta.ar }}</option>
@@ -190,7 +190,7 @@
             </div>
             <div class="col-md-3">
               <div class="form-group">
-                <label>المنطقة الزمنية</label>
+                <label>{ t('المنطقة_الزمنية') }</label>
                 <select name="timezone" class="form-control select2">
                   {% for code, meta in lookups.get('timezones', []) %}
                   <option value="{{ code }}" {{ 'selected' if settings.timezone == code }}>{{ code }} ({{ meta.en }})</option>
@@ -203,7 +203,7 @@
             </div>
             <div class="col-md-3">
               <div class="form-group">
-                <label>عناصر لكل صفحة</label>
+                <label>{ t('عناصر_لكل_صفحة') }</label>
                 <input type="number" name="items_per_page" class="form-control" value="{{ settings.items_per_page or 25 }}" min="10" max="100">
               </div>
             </div>
@@ -215,10 +215,10 @@
       <div class="row">
         <div class="col-12">
           <button type="submit" class="btn btn-primary btn-lg">
-            <i class="fas fa-save mr-2"></i>حفظ الإعدادات
+            <i class="fas fa-save mr-2"></i>حفظ { t('Settings') }
           </button>
           <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary btn-lg">
-            <i class="fas fa-times mr-2"></i>إلغاء
+            <i class="fas fa-times mr-2"></i>{ t('Cancel') }
           </a>
         </div>
       </div>

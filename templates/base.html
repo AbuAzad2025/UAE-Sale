@@ -14,9 +14,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   
   <!-- SEO Meta Tags -->
-  <meta name="description" content="{% block meta_description %}شركة أزاد للأنظمة الذكية - نظام متكامل لإدارة المستودعات والمبيعات والمشتريات مع ذكاء اصطناعي متقدم{% endblock %}">
-  <meta name="keywords" content="{% block meta_keywords %}نظام إدارة المستودعات، برنامج محاسبة، فواتير إلكترونية، إدارة المبيعات، إدارة المخزون، ذكاء اصطناعي، الإمارات، دبي، أبوظبي{% endblock %}">
-  <meta name="author" content="شركة أزاد للأنظمة الذكية">
+  <meta name="description" content="{% block meta_description %}{ t('شركة_أزاد_للأنظمة_الذكية') } - نظام متكامل ل{ t('إدارة_المستودع') }ات والمبيعات و{ t('Purchases') } مع { t('ذكاء_اصطناعي') } متقدم{% endblock %}">
+  <meta name="keywords" content="{% block meta_keywords %}نظام { t('إدارة_المستودع') }ات، برنامج محاسبة، { t('فواتير_إلكترونية') }، إدارة { t('Sales') }، { t('إدارة_المخزون') }، ذكاء اصطناعي، { t('الإمارات') }، دبي، أبوظبي{% endblock %}">
+  <meta name="author" content="{ t('شركة_أزاد_للأنظمة_الذكية') }">
   <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
   <meta name="language" content="{{ current_language }}">
   
@@ -27,7 +27,7 @@
   <meta property="og:description" content="{% block og_description %}{{ self.meta_description() }}{% endblock %}">
   <meta property="og:image" content="{{ url_for('static', filename='img/azad_logo.png', _external=True) }}">
   <meta property="og:locale" content="{{ 'ar_AE' if current_language == 'ar' else 'en_US' }}">
-  <meta property="og:site_name" content="شركة أزاد للأنظمة الذكية">
+  <meta property="og:site_name" content="{ t('شركة_أزاد_للأنظمة_الذكية') }">
   
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
@@ -48,14 +48,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   
-  <!-- Critical CSS - تحميل فوري -->
+  <!-- Critical CSS - { t('تحميل') } فوري -->
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/css/adminlte.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dark-mode.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/enhancements.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
   
-  <!-- Non-Critical CSS - تحميل متأخر -->
+  <!-- Non-Critical CSS - تحميل { t('متأخر') } -->
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <link rel="preload" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <link rel="preload" href="{{ url_for('static', filename='adminlte/plugins/select2/css/select2.min.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -85,16 +85,16 @@
   </noscript>
   {% block extra_css %}{% endblock %}
   
-  <!-- Schema.org JSON-LD للتحسين في محركات البحث -->
+  <!-- Schema.org JSON-LD للتحسين في محركات ال{ t('Search') } -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "شركة أزاد للأنظمة الذكية",
+    "name": "{ t('شركة_أزاد_للأنظمة_الذكية') }",
     "alternateName": "Azad Smart Systems",
     "url": "{{ request.url_root }}",
     "logo": "{{ url_for('static', filename='img/azad_logo.png', _external=True) }}",
-    "description": "نظام متكامل لإدارة المستودعات والمبيعات والمشتريات مع ذكاء اصطناعي متقدم",
+    "description": "نظام متكامل ل{ t('إدارة_المستودع') }ات والمبيعات و{ t('Purchases') } مع { t('ذكاء_اصطناعي') } متقدم",
     "address": {
       "@type": "PostalAddress",
       "addressCountry": "AE",
@@ -110,12 +110,12 @@
   </script>
   
   <style>
-    /* تحسينات سريعة للأداء */
+    /* { t('تحسينات') } سريعة للأداء */
     * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
     img { will-change: transform; }
     .content-wrapper { min-height: calc(100vh - 120px); }
     
-    /* Custom Scrollbar للسايدبار */
+    /* Custom Scrollbar { t('للسايدبار') } */
     .sidebar::-webkit-scrollbar {
       width: 8px;
     }
@@ -156,11 +156,11 @@
     </ul>
 
     <ul class="navbar-nav ml-auto">
-      <!-- الساعة والتاريخ وسعر الصرف -->
+      <!-- الساعة و{ t('Date') } و{ t('سعر_الصرف') } -->
       <li class="nav-item d-none d-lg-inline-block">
         <div class="nav-link navbar-widgets">
           <div class="d-flex align-items-center" style="gap: 15px;">
-            <!-- الساعة والتاريخ -->
+            <!-- الساعة و{ t('Date') } -->
             <div class="navbar-datetime-widget">
               <div id="current-time">
                 <i class="fas fa-clock mr-1"></i>
@@ -172,7 +172,7 @@
               </div>
             </div>
             
-            <!-- سعر الصرف -->
+            <!-- { t('سعر_الصرف') } -->
             <div class="navbar-exchange-widget">
               <div class="exchange-label">
                 <i class="fas fa-exchange-alt mr-1"></i>USD/{{ base_currency }}
@@ -195,31 +195,31 @@
       <!-- AI Assistant -->
       {% if current_user.is_owner or (current_user.role and current_user.role.slug == 'developer') %}
       <li class="nav-item">
-        <a href="{{ url_for('ai.assistant_page') }}" class="nav-link" title="المساعد الذكي">
+        <a href="{{ url_for('ai.assistant_page') }}" class="nav-link" title="{ t('AI Assistant') }">
           <i class="fas fa-robot mr-1" style="color: #667eea; font-size: 1.1em;"></i>
-          <span class="d-none d-md-inline">المساعد</span>
+          <span class="d-none d-md-inline">{ t('المساعد') }</span>
         </a>
       </li>
       {% endif %}
       
       <!-- Sidebar Direction Toggle -->
       <li class="nav-item">
-        <a class="nav-link" href="#" onclick="toggleSidebarDirection(); return false;" title="تبديل موقع القائمة الجانبية">
+        <a class="nav-link" href="#" onclick="toggleSidebarDirection(); return false;" title="{ t('تبديل_موقع_القائمة_الجانبية') }">
           <i class="fas fa-exchange-alt" style="transform: rotate(90deg);"></i>
-          <span class="d-none d-md-inline">تبديل القائمة</span>
+          <span class="d-none d-md-inline">{ t('تبديل_القائمة') }</span>
         </a>
       </li>
       
       <!-- Language Switcher -->
       <li class="nav-item dropdown">
-        <a class="nav-link" data-toggle="dropdown" href="#" title="تغيير اللغة">
+        <a class="nav-link" data-toggle="dropdown" href="#" title="{ t('تغيير_اللغة') }">
           <i class="fas fa-globe mr-1"></i>
           <span class="d-none d-md-inline">{{ session.get('language', 'ar')|upper }}</span>
         </a>
         <div class="dropdown-menu dropdown-menu-sm dropdown-menu-left">
           <a href="{{ url_for('language.set_language', lang='ar') }}" class="dropdown-item {% if session.get('language', 'ar') == 'ar' %}active{% endif %}">
             <i class="fas fa-check mr-2 {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>
-            العربية
+            { t('العربية') }
           </a>
           <a href="{{ url_for('language.set_language', lang='en') }}" class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}">
             <i class="fas fa-check mr-2 {% if session.get('language') != 'en' %}invisible{% endif %}"></i>
@@ -240,7 +240,7 @@
           <span class="dropdown-item dropdown-header">{{ current_user.username }}</span>
           <div class="dropdown-divider"></div>
           <a href="{{ url_for('auth.logout') }}" class="dropdown-item">
-            <i class="fas fa-sign-out-alt mr-2"></i>تسجيل خروج
+            <i class="fas fa-sign-out-alt mr-2"></i>{ t('Logout') }
           </a>
         </div>
       </li>
@@ -259,7 +259,7 @@
         </div>
         <div class="info">
           <a href="#" class="d-block text-white">{{ current_user.username }}</a>
-          <small class="text-white-50">{{ current_user.role.name_ar if current_user.role else 'مستخدم' }}</small>
+          <small class="text-white-50">{{ current_user.role.name_ar if current_user.role else '{ t('مستخدم') }' }}</small>
         </div>
       </div>
 
@@ -277,7 +277,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('sales.') %}active{% endif %}">
               <i class="nav-icon fas fa-file-invoice"></i>
               <p>
-                المبيعات
+                { t('Sales') }
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -285,13 +285,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('sales.create') }}" class="nav-link">
                   <i class="fas fa-plus-circle nav-icon text-success"></i>
-                  <p>فاتورة جديدة</p>
+                  <p>{ t('New Invoice') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('sales.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة الفواتير</p>
+                  <p>{ t('قائمة_الفواتير') }</p>
                 </a>
               </li>
             </ul>
@@ -303,7 +303,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('customers.') %}active{% endif %}">
               <i class="nav-icon fas fa-users"></i>
               <p>
-                الزبائن
+                { t('Customers') }
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -311,13 +311,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('customers.create') }}" class="nav-link">
                   <i class="fas fa-user-plus nav-icon text-success"></i>
-                  <p>زبون جديد</p>
+                  <p>{ t('New Customer') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('customers.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة الزبائن</p>
+                  <p>{ t('قائمة_الزبائن') }</p>
                 </a>
               </li>
             </ul>
@@ -329,7 +329,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('products.') %}active{% endif %}">
               <i class="nav-icon fas fa-box"></i>
               <p>
-                المنتجات
+                { t('Products') }
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -343,7 +343,7 @@
               <li class="nav-item">
                 <a href="{{ url_for('products.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة المنتجات</p>
+                  <p>{ t('قائمة_المنتجات') }</p>
                 </a>
               </li>
             </ul>
@@ -355,7 +355,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('purchases.') %}active{% endif %}">
               <i class="nav-icon fas fa-shopping-cart"></i>
               <p>
-                المشتريات
+                { t('Purchases') }
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -363,13 +363,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('purchases.create') }}" class="nav-link">
                   <i class="fas fa-plus-circle nav-icon text-success"></i>
-                  <p>مشترى جديد</p>
+                  <p>{ t('مشترى_جديد') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('purchases.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة المشتريات</p>
+                  <p>{ t('قائمة_المشتريات') }</p>
                 </a>
               </li>
             </ul>
@@ -381,7 +381,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('suppliers.') %}active{% endif %}">
               <i class="nav-icon fas fa-truck"></i>
               <p>
-                الموردين
+                { t('Suppliers') }
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -389,13 +389,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('suppliers.create') }}" class="nav-link">
                   <i class="fas fa-plus-circle nav-icon text-success"></i>
-                  <p>مورد جديد</p>
+                  <p>{ t('New Supplier') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('suppliers.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة الموردين</p>
+                  <p>{ t('قائمة_الموردين') }</p>
                 </a>
               </li>
             </ul>
@@ -407,7 +407,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('users.') %}active{% endif %}">
               <i class="nav-icon fas fa-users-cog"></i>
               <p>
-                المستخدمين
+                { t('المستخدمين') }
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -415,13 +415,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('users.create') }}" class="nav-link">
                   <i class="fas fa-user-plus nav-icon text-success"></i>
-                  <p>مستخدم جديد</p>
+                  <p>{ t('مستخدم_جديد') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('users.index') }}" class="nav-link">
                   <i class="fas fa-users nav-icon"></i>
-                  <p>قائمة المستخدمين</p>
+                  <p>{ t('قائمة_المستخدمين') }</p>
                 </a>
               </li>
             </ul>
@@ -433,7 +433,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('payments.') %}active{% endif %}">
               <i class="nav-icon fas fa-money-bill-wave"></i>
               <p>
-                المدفوعات
+                { t('Payments') }
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -441,13 +441,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('payments.create_receipt') }}" class="nav-link">
                   <i class="fas fa-plus-circle nav-icon text-success"></i>
-                  <p>سند قبض جديد</p>
+                  <p>{ t('سند_قبض_جديد') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('payments.receipts') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة السندات</p>
+                  <p>{ t('قائمة_السندات') }</p>
                 </a>
               </li>
             </ul>
@@ -459,7 +459,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('cheques.') %}active{% endif %}">
               <i class="nav-icon fas fa-money-check-alt"></i>
               <p>
-                إدارة الشيكات
+                { t('إدارة') } { t('الشيكات') }
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -467,13 +467,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('cheques.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon text-info"></i>
-                  <p>الشيكات</p>
+                  <p>{ t('الشيكات') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('cheques.alerts') }}" class="nav-link">
                   <i class="fas fa-bell nav-icon text-warning"></i>
-                  <p>تنبيهات الشيكات</p>
+                  <p>{ t('تنبيهات_الشيكات') }</p>
                 </a>
               </li>
             </ul>
@@ -485,7 +485,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('expenses.') %}active{% endif %}">
               <i class="nav-icon fas fa-receipt"></i>
               <p>
-                المصروفات
+                { t('Expenses') }
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -493,13 +493,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('expenses.create') }}" class="nav-link">
                   <i class="fas fa-plus-circle nav-icon text-success"></i>
-                  <p>مصروف جديد</p>
+                  <p>{ t('مصروف_جديد') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('expenses.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة المصروفات</p>
+                  <p>{ t('قائمة_المصروفات') }</p>
                 </a>
               </li>
             </ul>
@@ -511,7 +511,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('ledger.') %}active{% endif %}">
               <i class="nav-icon fas fa-book"></i>
               <p>
-                دفتر الأستاذ
+                { t('Ledger') }
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -519,75 +519,75 @@
               <li class="nav-item">
                 <a href="{{ url_for('ledger.index') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>الرئيسية</p>
+                  <p>{ t('الرئيسية') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.journal_entries') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>القيود</p>
+                  <p>{ t('القيود') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.accounts') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>الحسابات</p>
+                  <p>{ t('الحسابات') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.accounts_tree') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>شجرة الحسابات</p>
+                  <p>{ t('شجرة_الحسابات') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.manual_entry') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>قيد يدوي</p>
+                  <p>{ t('قيد_يدوي') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.trial_balance') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>ميزان المراجعة</p>
+                  <p>{ t('Trial Balance') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.income_statement') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>قائمة الدخل</p>
+                  <p>{ t('Income Statement') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.balance_sheet') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>الميزانية</p>
+                  <p>{ t('Balance Sheet') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.reports') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>التقارير</p>
+                  <p>{ t('Reports') }</p>
                 </a>
               </li>
               {% if current_user.is_admin() %}
               <li class="nav-item">
                 <a href="{{ url_for('ledger.vaults') }}" class="nav-link">
                   <i class="fas fa-cogs nav-icon"></i>
-                  <p>الخزائن</p>
+                  <p>{ t('الخزائن') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.settings') }}" class="nav-link">
                   <i class="fas fa-cogs nav-icon"></i>
-                  <p>الإعدادات</p>
+                  <p>{ t('Settings') }</p>
                 </a>
               </li>
               <li class="nav-item has-treeview">
                 <a href="#" class="nav-link">
                   <i class="fas fa-cogs nav-icon"></i>
                   <p>
-                    إدارة متقدمة
+                    { t('إدارة') } متقدمة
                     <i class="right fas fa-angle-left"></i>
                   </p>
                 </a>
@@ -595,43 +595,43 @@
                   <li class="nav-item">
                     <a href="{{ url_for('advanced_ledger.customs_taxes') }}" class="nav-link">
                       <i class="far fa-circle nav-icon"></i>
-                      <p>الجمارك والضرائب</p>
+                      <p>{ t('الجمارك_والضرائب') }</p>
                     </a>
                   </li>
                   <li class="nav-item">
                     <a href="{{ url_for('advanced_ledger.expense_categories') }}" class="nav-link">
                       <i class="far fa-circle nav-icon"></i>
-                      <p>فئات المصروفات</p>
+                      <p>{ t('فئات_المصروفات') }</p>
                     </a>
                   </li>
                   <li class="nav-item">
                     <a href="{{ url_for('advanced_ledger.advanced_expenses') }}" class="nav-link">
                       <i class="far fa-circle nav-icon"></i>
-                      <p>المصروفات المتقدمة</p>
+                      <p>{ t('المصروفات_المتقدمة') }</p>
                     </a>
                   </li>
                   <li class="nav-item">
                     <a href="{{ url_for('advanced_ledger.cheque_integration') }}" class="nav-link">
                       <i class="far fa-circle nav-icon"></i>
-                      <p>تكامل الشيكات</p>
+                      <p>{ t('تكامل_الشيكات') }</p>
                     </a>
                   </li>
                   <li class="nav-item">
                     <a href="{{ url_for('advanced_ledger.professional_reports') }}" class="nav-link">
                       <i class="far fa-circle nav-icon"></i>
-                      <p>التقارير الاحترافية</p>
+                      <p>{ t('التقارير_الاحترافية') }</p>
                     </a>
                   </li>
                   <li class="nav-item">
                     <a href="{{ url_for('advanced_ledger.advanced_analytics') }}" class="nav-link">
                       <i class="far fa-circle nav-icon"></i>
-                      <p>التحليلات</p>
+                      <p>{ t('التحليلات') }</p>
                     </a>
                   </li>
                   <li class="nav-item">
                     <a href="{{ url_for('advanced_ledger.real_time_events') }}" class="nav-link">
                       <i class="far fa-circle nav-icon"></i>
-                      <p>الأحداث</p>
+                      <p>{ t('الأحداث') }</p>
                     </a>
                   </li>
                 </ul>
@@ -646,30 +646,30 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('erp_modules.') %}active{% endif %}">
               <i class="nav-icon fas fa-puzzle-piece"></i>
               <p>
-                الوحدات المتقدمة
+                الوحدات { t('المتقدم') }ة
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
             <ul class="nav nav-treeview">
               {% if current_user.has_permission('manage_sales') %}
-              <li class="nav-item"><a href="{{ url_for('erp_modules.quotations') }}" class="nav-link"><i class="fas fa-file-invoice nav-icon"></i><p>عروض الأسعار</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('erp_modules.e_invoices') }}" class="nav-link"><i class="fas fa-file-code nav-icon"></i><p>الفواتير الإلكترونية</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.quotations') }}" class="nav-link"><i class="fas fa-file-invoice nav-icon"></i><p>{ t('عروض_الأسعار') }</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.e_invoices') }}" class="nav-link"><i class="fas fa-file-code nav-icon"></i><p>{ t('الفواتير_الإلكترونية') }</p></a></li>
               {% endif %}
               {% if current_user.has_permission('manage_purchases') %}
-              <li class="nav-item"><a href="{{ url_for('erp_modules.purchase_orders') }}" class="nav-link"><i class="fas fa-shopping-cart nav-icon"></i><p>أوامر الشراء</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.purchase_orders') }}" class="nav-link"><i class="fas fa-shopping-cart nav-icon"></i><p>{ t('أوامر_الشراء') }</p></a></li>
               {% endif %}
               {% if current_user.has_permission('manage_warehouse') %}
-              <li class="nav-item"><a href="{{ url_for('erp_modules.stock_transfers') }}" class="nav-link"><i class="fas fa-exchange-alt nav-icon"></i><p>نقل المخزون</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('erp_modules.stock_takes') }}" class="nav-link"><i class="fas fa-clipboard-check nav-icon"></i><p>جرد المخزون</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('erp_modules.lots') }}" class="nav-link"><i class="fas fa-layer-group nav-icon"></i><p>تتبع الدفعات</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('erp_modules.bins') }}" class="nav-link"><i class="fas fa-th-large nav-icon"></i><p>مواقع التخزين</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.stock_transfers') }}" class="nav-link"><i class="fas fa-exchange-alt nav-icon"></i><p>{ t('نقل_المخزون') }</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.stock_takes') }}" class="nav-link"><i class="fas fa-clipboard-check nav-icon"></i><p>{ t('جرد_المخزون') }</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.lots') }}" class="nav-link"><i class="fas fa-layer-group nav-icon"></i><p>{ t('تتبع_الدفعات') }</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.bins') }}" class="nav-link"><i class="fas fa-th-large nav-icon"></i><p>{ t('مواقع_التخزين') }</p></a></li>
               {% endif %}
               {% if current_user.has_permission('manage_payments') %}
-              <li class="nav-item"><a href="{{ url_for('erp_modules.dunning') }}" class="nav-link"><i class="fas fa-exclamation-triangle nav-icon"></i><p>إنذارات التحصيل</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('erp_modules.recurring_expenses') }}" class="nav-link"><i class="fas fa-redo nav-icon"></i><p>المصروفات الدورية</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.dunning') }}" class="nav-link"><i class="fas fa-exclamation-triangle nav-icon"></i><p>{ t('إنذارات_التحصيل') }</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.recurring_expenses') }}" class="nav-link"><i class="fas fa-redo nav-icon"></i><p>{ t('المصروفات_الدورية') }</p></a></li>
               {% endif %}
               {% if current_user.has_permission('manage_ledger') %}
-              <li class="nav-item"><a href="{{ url_for('erp_modules.fiscal_periods') }}" class="nav-link"><i class="fas fa-lock nav-icon"></i><p>الفترات المالية</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.fiscal_periods') }}" class="nav-link"><i class="fas fa-lock nav-icon"></i><p>{ t('الفترات_المالية') }</p></a></li>
               {% endif %}
             </ul>
           </li>
@@ -680,7 +680,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('hr.') %}active{% endif %}">
               <i class="nav-icon fas fa-users-cog"></i>
               <p>
-                الموارد البشرية
+                الم{ t('وارد') } البشرية
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -688,31 +688,31 @@
               <li class="nav-item">
                 <a href="{{ url_for('hr.dashboard') }}" class="nav-link">
                   <i class="fas fa-tachometer-alt nav-icon"></i>
-                  <p>لوحة التحكم</p>
+                  <p>{ t('Dashboard') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('hr.employees') }}" class="nav-link">
                   <i class="fas fa-users nav-icon"></i>
-                  <p>الموظفين</p>
+                  <p>{ t('الموظفين') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('hr.departments') }}" class="nav-link">
                   <i class="fas fa-building nav-icon"></i>
-                  <p>الأقسام</p>
+                  <p>{ t('الأقسام') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('hr.leave_requests') }}" class="nav-link">
                   <i class="fas fa-calendar-check nav-icon"></i>
-                  <p>طلبات الإجازة</p>
+                  <p>{ t('طلبات_الإجازة') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('hr.payroll') }}" class="nav-link">
                   <i class="fas fa-money-check-alt nav-icon"></i>
-                  <p>كشوفات الرواتب</p>
+                  <p>{ t('كشوفات_الرواتب') }</p>
                 </a>
               </li>
             </ul>
@@ -724,7 +724,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('reports.') %}active{% endif %}">
               <i class="nav-icon fas fa-chart-bar"></i>
               <p>
-                التقارير
+                { t('Reports') }
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -732,43 +732,43 @@
               <li class="nav-item">
                 <a href="{{ url_for('reports.sales') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>تقرير المبيعات</p>
+                  <p>{ t('Sales Report') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('reports.receivables') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>الذمم المدينة</p>
+                  <p>{ t('الذمم_المدينة') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('reports.partners') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>تقرير الشركاء والتجار</p>
+                  <p>{ t('تقرير_الشركاء_والتجار') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('reports.inventory_valuation') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>تقييم المخزون</p>
+                  <p>{ t('تقييم_المخزون') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('reports.ap_aging') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>أعمار الذمم الدائنة</p>
+                  <p>{ t('أعمار_الذمم_الدائنة') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('reports.cash_flow') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>التدفقات النقدية</p>
+                  <p>{ t('التدفقات_النقدية') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('reports.vat_report') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>تقرير VAT</p>
+                  <p>{ t('تقرير_VAT') }</p>
                 </a>
               </li>
             </ul>
@@ -779,7 +779,7 @@
           <li class="nav-item {% if request.endpoint and request.endpoint in ['owner.list_backups', 'owner.scheduled_backups'] %}menu-open{% endif %}">
             <a href="{{ url_for('owner.list_backups') }}" class="nav-link {% if request.endpoint and request.endpoint in ['owner.list_backups', 'owner.scheduled_backups'] %}active{% endif %}">
               <i class="nav-icon fas fa-database"></i>
-              <p>النسخ الاحتياطية</p>
+              <p>{ t('النسخ_الاحتياطية') }</p>
             </a>
           </li>
           {% endif %}
@@ -789,7 +789,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('warehouse.') %}active{% endif %}">
               <i class="nav-icon fas fa-warehouse"></i>
               <p>
-                المستودعات والمخزون
+                { t('المستودعات') } والمخزون
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -797,39 +797,39 @@
               <li class="nav-item">
                 <a href="{{ url_for('warehouse.index') }}" class="nav-link">
                   <i class="fas fa-boxes nav-icon text-info"></i>
-                  <p>إدارة المخزون</p>
+                  <p>{ t('إدارة_المخزون') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('warehouse.list_warehouses') }}" class="nav-link">
                   <i class="fas fa-building nav-icon text-primary"></i>
-                  <p>المستودعات</p>
+                  <p>{ t('المستودعات') }</p>
                 </a>
               </li>
               {% if current_user.is_admin() %}
               <li class="nav-item">
                 <a href="{{ url_for('warehouse.create_warehouse') }}" class="nav-link">
                   <i class="fas fa-plus-circle nav-icon text-success"></i>
-                  <p>إضافة مستودع</p>
+                  <p>{ t('إضافة_مستودع') }</p>
                 </a>
               </li>
               {% endif %}
               <li class="nav-item">
                 <a href="{{ url_for('warehouse.movements') }}" class="nav-link">
                   <i class="fas fa-exchange-alt nav-icon text-secondary"></i>
-                  <p>حركات المخزون</p>
+                  <p>{ t('Stock Movements') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('warehouse.low_stock') }}" class="nav-link">
                   <i class="fas fa-exclamation-triangle nav-icon text-warning"></i>
-                  <p>مخزون منخفض</p>
+                  <p>{ t('مخزون_منخفض') }</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('warehouse.out_of_stock') }}" class="nav-link">
                   <i class="fas fa-ban nav-icon text-danger"></i>
-                  <p>نفذ من المخزون</p>
+                  <p>{ t('نفذ_من_المخزون') }</p>
                 </a>
               </li>
             </ul>
@@ -841,31 +841,31 @@
           <li class="nav-item">
             <a href="{{ url_for('owner.dashboard') }}" class="nav-link">
               <i class="nav-icon fas fa-crown text-warning"></i>
-              <p>لوحة المالك</p>
+              <p>{ t('لوحة_المالك') }</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('owner.tenants_list') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.tenant') %}active{% endif %}">
               <i class="nav-icon fas fa-building text-success"></i>
-              <p>المستأجرون</p>
+              <p>{ t('المستأجرون') }</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('owner.constants_index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.constants') %}active{% endif %}">
               <i class="nav-icon fas fa-list-alt text-info"></i>
-              <p>ثوابت النظام</p>
+              <p>{ t('ثوابت_النظام') }</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('monitoring.dashboard') }}" class="nav-link">
               <i class="nav-icon fas fa-heartbeat text-danger"></i>
-              <p>مراقبة النظام</p>
+              <p>{ t('مراقبة_النظام') }</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('ai.config') }}" class="nav-link">
               <i class="nav-icon fas fa-key text-info"></i>
-              <p>مفاتيح AI (Groq)</p>
+              <p>{ t('مفاتيح') } AI (Groq)</p>
             </a>
           </li>
           {% endif %}
@@ -880,7 +880,7 @@
         <div class="d-flex justify-content-between align-items-center">
           <h1 class="m-0">{% block page_title %}{% endblock %}</h1>
           <ol class="breadcrumb float-sm-right mb-0" style="background:transparent;">
-            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}"><i class="fas fa-home"></i> الرئيسية</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}"><i class="fas fa-home"></i> { t('الرئيسية') }</a></li>
             <li class="breadcrumb-item active">{% block breadcrumb_current %}{{ self.page_title() }}{% endblock %}</li>
           </ol>
         </div>
@@ -925,10 +925,10 @@
 
   <footer class="main-footer main-footer-azad">
     <div class="mb-3">
-      <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="شركة أزاد" class="footer-logo">
+      <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="{ t('شركة_أزاد') }" class="footer-logo">
     </div>
     <div>
-      <p class="mb-2"><strong class="footer-title">🚀 شركة أزاد للأنظمة الذكية - Azad Smart Systems</strong></p>
+      <p class="mb-2"><strong class="footer-title">{ t('شركة_أزاد_للأنظمة_الذكية_Azad_Smart_Systems') }</strong></p>
       <p class="mb-2">
         <i class="fab fa-whatsapp"></i> {{ config.COMPANY_PHONE }} | 
         <i class="fas fa-envelope"></i> {{ config.COMPANY_EMAIL }} |
@@ -941,7 +941,7 @@
       <p class="mb-0" style="opacity: 0.9;">
         <small>
           <i class="fas fa-code"></i> {{ config.DEVELOPER_CREDIT }} | 
-          <i class="fas fa-robot"></i> مدعوم بالذكاء الاصطناعي | 
+          <i class="fas fa-robot"></i> مدعوم ب{ t('الذكاء_الاصطناعي') } | 
           v{{ config.APP_VERSION }}
         </small>
       </p>
@@ -949,7 +949,7 @@
   </footer>
 </div>
 
-<!-- Critical Scripts - تحميل فوري -->
+<!-- Critical Scripts - { t('تحميل') } فوري -->
 <script src="{{ url_for('static', filename='adminlte/plugins/jquery/jquery.min.js') }}"></script>
 <script src="{{ url_for('static', filename='adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ url_for('static', filename='adminlte/js/adminlte.min.js') }}"></script>
@@ -962,7 +962,7 @@
   };
 </script>
 
-<!-- Non-Critical Scripts - تحميل متأخر مع defer -->
+<!-- Non-Critical Scripts - تحميل { t('متأخر') } مع defer -->
 <script defer src="{{ url_for('static', filename='adminlte/plugins/select2/js/select2.full.min.js') }}"></script>
 <script defer src="{{ url_for('static', filename='adminlte/plugins/datatables/jquery.dataTables.min.js') }}"></script>
 <script defer src="{{ url_for('static', filename='adminlte/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js') }}"></script>
@@ -990,11 +990,11 @@
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content" style="border-radius:12px; overflow:hidden;">
       <div class="modal-header py-2" style="background:linear-gradient(135deg,#667eea,#764ba2); color:#fff;">
-        <h6 class="modal-title" id="commandPaletteLabel"><i class="fas fa-bolt mr-2"></i>لوحة الأوامر — Ctrl+K</h6>
+        <h6 class="modal-title" id="commandPaletteLabel"><i class="fas fa-bolt mr-2"></i>{ t('لوحة_الأوامر_Ctrl_K') }</h6>
         <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
       </div>
       <div class="modal-body p-0">
-        <input type="text" id="commandInput" class="form-control border-0" placeholder="ابحث عن: فاتورة جديدة، زبون، كشف حساب..." style="border-radius:0; padding:14px 16px;" autocomplete="off">
+        <input type="text" id="commandInput" class="form-control border-0" placeholder="ا{ t('Search') } عن: { t('New Invoice') }، زبون، كشف حساب..." style="border-radius:0; padding:14px 16px;" autocomplete="off">
         <div id="commandResults" style="max-height:320px; overflow-y:auto; border-top:1px solid #eee;"></div>
       </div>
     </div>
@@ -1007,14 +1007,14 @@ document.addEventListener('keydown', function(e){
 });
 (function(){
   const raw=[
-    {% if current_user.has_permission('manage_sales') %}{label:'فاتورة جديدة', icon:'fa-file-invoice', url:"{{ url_for('sales.create') }}", keys:'فاتورة بيع sale'},{% endif %}
-    {% if current_user.has_permission('manage_sales') %}{label:'قائمة الفواتير', icon:'fa-list', url:"{{ url_for('sales.index') }}", keys:'فواتير sales'},{% endif %}
-    {% if current_user.has_permission('manage_customers') %}{label:'زبون جديد', icon:'fa-user-plus', url:"{{ url_for('customers.create') }}", keys:'زبون customer'},{% endif %}
-    {% if current_user.has_permission('manage_customers') %}{label:'قائمة الزبائن', icon:'fa-users', url:"{{ url_for('customers.index') }}", keys:'زبائن customers'},{% endif %}
-    {% if current_user.has_permission('manage_products') %}{label:'منتج جديد', icon:'fa-box', url:"{{ url_for('products.create') }}", keys:'منتج product'},{% endif %}
-    {% if current_user.has_permission('manage_payments') %}{label:'سند قبض جديد', icon:'fa-money-bill-wave', url:"{{ url_for('payments.create_receipt') }}", keys:'سند قبض payment'},{% endif %}
-    {% if current_user.has_permission('view_ledger') %}{label:'كشف حساب', icon:'fa-book', url:"{{ url_for('ledger.index') }}", keys:'كشف حساب ledger'},{% endif %}
-    {% if current_user.has_permission('view_ledger') %}{label:'ميزان المراجعة', icon:'fa-balance-scale', url:"{{ url_for('ledger.trial_balance') }}", keys:'ميزان trial'},{% endif %}
+    {% if current_user.has_permission('manage_sales') %}{label:'{ t('New Invoice') }', icon:'fa-file-invoice', url:"{{ url_for('sales.create') }}", keys:'{ t('فاتورة_بيع') } sale'},{% endif %}
+    {% if current_user.has_permission('manage_sales') %}{label:'{ t('قائمة_الفواتير') }', icon:'fa-list', url:"{{ url_for('sales.index') }}", keys:'{ t('فواتير') } sales'},{% endif %}
+    {% if current_user.has_permission('manage_customers') %}{label:'{ t('New Customer') }', icon:'fa-user-plus', url:"{{ url_for('customers.create') }}", keys:'{ t('زبون') } customer'},{% endif %}
+    {% if current_user.has_permission('manage_customers') %}{label:'{ t('قائمة_الزبائن') }', icon:'fa-users', url:"{{ url_for('customers.index') }}", keys:'{ t('زبائن') } customers'},{% endif %}
+    {% if current_user.has_permission('manage_products') %}{label:'{ t('New Product') }', icon:'fa-box', url:"{{ url_for('products.create') }}", keys:'{ t('منتج') } product'},{% endif %}
+    {% if current_user.has_permission('manage_payments') %}{label:'{ t('سند_قبض_جديد') }', icon:'fa-money-bill-wave', url:"{{ url_for('payments.create_receipt') }}", keys:'{ t('سند_قبض') } payment'},{% endif %}
+    {% if current_user.has_permission('view_ledger') %}{label:'{ t('كشف_حساب') }', icon:'fa-book', url:"{{ url_for('ledger.index') }}", keys:'{ t('كشف_حساب') } ledger'},{% endif %}
+    {% if current_user.has_permission('view_ledger') %}{label:'{ t('Trial Balance') }', icon:'fa-balance-scale', url:"{{ url_for('ledger.trial_balance') }}", keys:'{ t('ميزان') } trial'},{% endif %}
   ];
   const commands=raw;
   const input=document.getElementById('commandInput');
@@ -1022,7 +1022,7 @@ document.addEventListener('keydown', function(e){
   function render(q){
     const f=q.trim().toLowerCase();
     const filtered= f ? commands.filter(c=> (c.label+c.keys+c.url).toLowerCase().includes(f)) : commands;
-    results.innerHTML = filtered.map(c=> `<a href="${c.url}" class="d-flex align-items-center p-3 text-dark" style="text-decoration:none; border-bottom:1px solid #f0f0f0;"><i class="fas ${c.icon} mr-3 text-primary"></i><span>${c.label}</span><small class="ml-auto text-muted">${c.keys.split(' ')[0]}</small></a>`).join('') || '<div class="p-4 text-center text-muted">لا نتائج</div>';
+    results.innerHTML = filtered.map(c=> `<a href="${c.url}" class="d-flex align-items-center p-3 text-dark" style="text-decoration:none; border-bottom:1px solid #f0f0f0;"><i class="fas ${c.icon} mr-3 text-primary"></i><span>${c.label}</span><small class="ml-auto text-muted">${c.keys.split(' ')[0]}</small></a>`).join('') || '<div class="p-4 text-center text-muted">لا { t('نتائج') }</div>';
   }
   if(input){ input.addEventListener('input', e=>render(e.target.value)); }
   $('#commandPalette').on('shown.bs.modal', ()=>render(''));
@@ -1058,9 +1058,9 @@ $(function() {
   // below) live inside it.
   // -- v20260911 fingerprint: ensure the browser loaded this FIXED base.html.
 
-  // Auto-hide flash messages with progress bar (إلا التحذيرات الدائمة)
+  // Auto-hide flash messages with progress bar (إلا ال{ t('Warning') }ات الدائمة)
   document.querySelectorAll('.flash-message').forEach((alert, index) => {
-    // لا تخفي التحذيرات الدائمة أو alert-danger
+    // لا تخفي ال{ t('Warning') }ات الدائمة أو alert-danger
     if (!alert.classList.contains('alert-permanent') && !alert.classList.contains('alert-danger')) {
       const progressBar = alert.querySelector('.flash-timer');
       
@@ -1071,7 +1071,7 @@ $(function() {
         }
       }, 100);
       
-      // Auto-hide after 40 seconds (ضعف المدة السابقة)
+      // Auto-hide after 40 seconds (ضعف المدة { t('السابق') }ة)
       setTimeout(() => {
         alert.style.transition = 'all 0.5s ease-out';
         alert.style.transform = 'translateX(100%)';
@@ -1081,11 +1081,11 @@ $(function() {
     }
   });
   
-  // تحديث الساعة والتاريخ وسعر الصرف
+  // { t('Update') } الساعة و{ t('Date') } و{ t('سعر_الصرف') }
   function updateDateTime() {
     const now = new Date();
     
-    // تحديث الساعة
+    // { t('Update') } الساعة
     const timeString = now.toLocaleTimeString('ar-SA', {
       hour: '2-digit',
       minute: '2-digit',
@@ -1093,14 +1093,14 @@ $(function() {
       hour12: false
     });
     
-    // تحديث التاريخ
+    // { t('Update') } { t('Date') }
     const dateString = now.toLocaleDateString('ar-SA', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
     });
     
-    // تحديث العرض
+    // { t('Update') } العرض
     const timeDisplay = document.getElementById('time-display');
     const dateDisplay = document.getElementById('date-display');
     
@@ -1108,12 +1108,12 @@ $(function() {
     if (dateDisplay) dateDisplay.textContent = dateString;
   }
   
-  // تحديث سعر الصرف - جلب حقيقي من الخادم (خوادم مجانية بدون مفتاح)
+  // { t('Update') } { t('سعر_الصرف') } - جلب حقيقي من { t('الخادم') } (خوادم مجانية بدون { t('مفتاح') })
   async function updateExchangeRate() {
     const rateDisplay = document.getElementById('rate-display');
     if (!rateDisplay) return;
     try {
-      // نحاول API الداخلي أولاً (يستخدم خوادم مجانية open.er-api + exchangerate-api + fawazahmed)
+      // نحاول API { t('الداخلي') } أولاً (يستخدم خوادم { t('مجانية') } open.er-api + exchangerate-api + fawazahmed)
       const res = await fetch(`/api/currency-rate/USD/{{ base_currency }}`, { headers: { 'Accept': 'application/json' }});
       if (res.ok) {
         const data = await res.json();
@@ -1128,7 +1128,7 @@ $(function() {
       }
       throw new Error('API failed');
     } catch (e) {
-      // محاولة مباشرة لخادم مجاني كخطة بديلة (بدون المرور بالخادم)
+      // محاولة { t('مباشرة') } لخادم مجاني كخطة بديلة (بدون المرور { t('بالخادم') })
       try {
         const r2 = await fetch('https://open.er-api.com/v6/latest/USD', { cache: 'no-store' });
         if (r2.ok) {
@@ -1140,24 +1140,24 @@ $(function() {
           }
         }
       } catch (e2) {}
-      // يبقى السعر الحالي كما هو في حال فشل كل المحاولات
+      // يبقى { t('Price') } الحالي كما هو في حال فشل كل { t('المحاولات') }
       console.warn('Exchange rate fetch failed', e);
     }
   }
   
-  // تشغيل التحديثات
+  // تشغيل ال{ t('Update') }ات
   updateDateTime();
   updateExchangeRate();
   
-  // تحديث الساعة كل ثانية
+  // { t('Update') } الساعة كل ثانية
   setInterval(updateDateTime, 1000);
   
-  // تحديث سعر الصرف كل 30 ثانية
+  // { t('Update') } { t('سعر_الصرف') } كل 30 ثانية
   setInterval(updateExchangeRate, 30000);
   
 })();
 
-// تبديل اتجاه الـ Sidebar بين اليمين والشمال
+// { t('تبديل') } اتجاه الـ Sidebar بين اليمين { t('والشمال') }
 function toggleSidebarDirection() {
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sidebar = document.querySelector('.main-sidebar');
@@ -1166,7 +1166,7 @@ function toggleSidebarDirection() {
   const savedLayout = localStorage.getItem('sidebarLayout') || 'left';
   
   if (savedLayout === 'left') {
-    // نقل الـ sidebar من اليسار لليمين
+    // نقل الـ sidebar من { t('اليسار') } لليمين
     if (sidebar) {
       sidebar.style.left = 'auto';
       sidebar.style.right = '0';
@@ -1188,12 +1188,12 @@ function toggleSidebarDirection() {
       toast: true,
       position: 'top-end',
       icon: 'success',
-      title: 'تم نقل القائمة لليمين',
+      title: 'تم نقل ال{ t('List') } لليمين',
       showConfirmButton: false,
       timer: 1500
     });
   } else {
-    // إرجاع الـ sidebar من اليمين لليسار
+    // إرجاع الـ sidebar من { t('اليمين') } لليسار
     if (sidebar) {
       sidebar.style.left = '0';
       sidebar.style.right = 'auto';
@@ -1215,14 +1215,14 @@ function toggleSidebarDirection() {
       toast: true,
       position: 'top-end',
       icon: 'success',
-      title: 'تم نقل القائمة لليسار',
+      title: 'تم نقل ال{ t('List') } لليسار',
       showConfirmButton: false,
       timer: 1500
     });
   }
 }
 
-// تطبيق الإعدادات المحفوظة عند تحميل الصفحة
+// { t('تطبيق') } { t('Settings') } المحفوظة عند تحميل { t('الصفحة') }
 (function() {
   const savedLayout = localStorage.getItem('sidebarLayout');
   const sidebar = document.querySelector('.main-sidebar');

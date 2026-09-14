@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}شركة أزاد للأنظمة الذكية - إعدادات النظام المتقدمة{% endblock %}
+{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('إعدادات_النظام') } المتقدمة{% endblock %}
 
 {% block content %}
 <div class="content-wrapper">
@@ -8,15 +8,15 @@
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1 class="m-0"><i class="fas fa-cog mr-2"></i>إعدادات النظام</h1>
+                    <h1 class="m-0"><i class="fas fa-cog mr-2"></i>{ t('إعدادات_النظام') }</h1>
                 </div>
                 <div class="col-sm-6">
                     <div class="float-left">
                         <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-right mr-2"></i>لوحة المالك
+                            <i class="fas fa-arrow-right mr-2"></i>{ t('لوحة_المالك') }
                         </a>
                         <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-home mr-2"></i>الرئيسية
+                            <i class="fas fa-home mr-2"></i>{ t('الرئيسية') }
                         </a>
                     </div>
                 </div>
@@ -47,8 +47,8 @@
                                 <table class="table table-bordered table-striped">
                                     <thead>
                                         <tr>
-                                            <th>المفتاح</th>
-                                            <th>القيمة</th>
+                                            <th>{ t('المفتاح') }</th>
+                                            <th>{ t('القيمة') }</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -57,7 +57,7 @@
                                             <td><strong>{{ key }}</strong></td>
                                             <td>
                                                 {% if key == 'DATABASE_URL' %}
-                                                    <span class="text-muted">مخفي لأسباب أمنية</span>
+                                                    <span class="text-muted">{ t('مخفي_لأسباب_أمنية') }</span>
                                                 {% else %}
                                                     {{ value }}
                                                 {% endif %}

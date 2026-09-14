@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}شركة أزاد للأنظمة الذكية - فئات المصروفات{% endblock %}
+{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('فئات_المصروفات') }{% endblock %}
 
 {% block content %}
 <div class="content-wrapper">
@@ -8,18 +8,18 @@
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1 class="m-0">فئات المصروفات</h1>
+                    <h1 class="m-0">{ t('فئات_المصروفات') }</h1>
                 </div>
                 <div class="col-sm-6">
                     <div class="float-right">
                         <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addCategoryModal">
-                            <i class="fas fa-plus"></i> إضافة فئة جديدة
+                            <i class="fas fa-plus"></i> { t('إضافة_فئة_جديدة') }
                         </button>
                         <a href="{{ url_for('expenses.index') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-right mr-2"></i>العودة للمصروفات
+                            <i class="fas fa-arrow-right mr-2"></i>العودة لل{ t('مصروفات') }
                         </a>
                         <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-home mr-2"></i>الرئيسية
+                            <i class="fas fa-home mr-2"></i>{ t('الرئيسية') }
                         </a>
                     </div>
                 </div>
@@ -33,7 +33,7 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">فئات المصروفات</h3>
+                            <h3 class="card-title">{ t('فئات_المصروفات') }</h3>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -41,10 +41,10 @@
                                     <thead>
                                         <tr>
                                             <th>{{ t('Name') }}</th>
-                                            <th>الاسم بالعربية</th>
-                                            <th>كود الحساب المحاسبي</th>
+                                            <th>{ t('الاسم_بالعربية') }</th>
+                                            <th>{ t('كود_الحساب_المحاسبي') }</th>
                                             <th>{{ t('Status') }}</th>
-                                            <th>الإجراءات</th>
+                                            <th>{ t('الإجراءات') }</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -62,10 +62,10 @@
                                             </td>
                                             <td>
                                                 <button type="button" class="btn btn-sm btn-primary">
-                                                    <i class="fas fa-edit"></i> تعديل
+                                                    <i class="fas fa-edit"></i> { t('Edit') }
                                                 </button>
                                                 <button type="button" class="btn btn-sm btn-danger">
-                                                    <i class="fas fa-trash"></i> حذف
+                                                    <i class="fas fa-trash"></i> { t('Delete') }
                                                 </button>
                                             </td>
                                         </tr>
@@ -86,7 +86,7 @@
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">إضافة فئة مصروف جديدة</h5>
+                <h5 class="modal-title">{ t('إضافة_فئة_مصروف_جديدة') }</h5>
                 <button type="button" class="close" data-dismiss="modal">
                     <span>&times;</span>
                 </button>
@@ -94,15 +94,15 @@
             <form method="POST" action="{{ url_for('expenses.create_category') }}">
                 <div class="modal-body">
                     <div class="form-group">
-                        <label for="name">الاسم:</label>
+                        <label for="name">{ t('Name') }:</label>
                         <input type="text" class="form-control" id="name" name="name" required>
                     </div>
                     <div class="form-group">
-                        <label for="name_ar">الاسم بالعربية:</label>
+                        <label for="name_ar">{ t('الاسم_بالعربية') }:</label>
                         <input type="text" class="form-control" id="name_ar" name="name_ar">
                     </div>
                     <div class="form-group">
-                        <label for="gl_account_code">كود الحساب المحاسبي:</label>
+                        <label for="gl_account_code">{ t('كود_الحساب_المحاسبي') }:</label>
                         <input type="text" class="form-control" id="gl_account_code" name="gl_account_code">
                     </div>
                 </div>

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{ t('شركة_أزاد_للأنظمة_الذكية_اتصل_بنا') }</title>
-    <meta name="description" content="تواصل مع { t('شركة_أزاد_للأنظمة_الذكية') }: { t('واتساب') }، هاتف، بريد إلكتروني.">
+    <title>شركة أزاد للأنظمة الذكية - اتصل بنا</title>
+    <meta name="description" content="تواصل مع شركة أزاد للأنظمة الذكية: واتساب، هاتف، بريد إلكتروني.">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
@@ -13,53 +13,53 @@
 </head>
 <body>
     <div class="lang-switcher">
-        <a href="{{ url_for('language.set_language', lang='ar') }}" class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}"><i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>{ t('العربية') }</a>
+        <a href="{{ url_for('language.set_language', lang='ar') }}" class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}"><i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>العربية</a>
         <a href="{{ url_for('language.set_language', lang='en') }}" class="lang-pill {% if session.get('language') == 'en' %}active{% endif %}"><i class="fas fa-check {% if session.get('language') != 'en' %}invisible{% endif %}"></i>English</a>
     </div>
 
     <nav class="navbar">
         <div class="logo">{{ config.COMPANY_NAME_AR }}</div>
         <div>
-            <a href="{{ url_for('public.landing') }}">{ t('الرئيسية') }</a>
-            <a href="{{ url_for('public.pricing') }}">{ t('الأسعار') }</a>
-            <a href="{{ url_for('public.user_guide') }}">{ t('دليل_المستخدم') }</a>
-            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> { t('Sign In') }</a>
+            <a href="{{ url_for('public.landing') }}">الرئيسية</a>
+            <a href="{{ url_for('public.pricing') }}">الأسعار</a>
+            <a href="{{ url_for('public.user_guide') }}">دليل المستخدم</a>
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> دخول</a>
         </div>
     </nav>
 
     <div class="page-container">
         <div class="page-header">
             <h1>اتصل بنا</h1>
-            <p>{ t('نحن_هنا_لخدمتك_تواصل_معنا_في_أي_وقت') }</p>
+            <p>نحن هنا لخدمتك. تواصل معنا في أي وقت</p>
         </div>
 
         <div class="contact-grid">
             <div class="contact-card">
                 <i class="fab fa-whatsapp"></i>
-                <h3>{ t('واتساب') }</h3>
+                <h3>واتساب</h3>
                 <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank">+{{ config.COMPANY_WHATSAPP }}</a>
-                <p class="muted">{ t('الطريقة_الأسرع_للتواصل') }</p>
+                <p class="muted">الطريقة الأسرع للتواصل</p>
             </div>
 
             <div class="contact-card">
                 <i class="fas fa-phone"></i>
-                <h3>{ t('جوال') }</h3>
+                <h3>جوال</h3>
                 <a href="tel:{{ config.COMPANY_PHONE }}">{{ config.COMPANY_PHONE }}</a>
-                <p class="muted">{ t('متاح_24_7') }</p>
+                <p class="muted">متاح 24/7</p>
             </div>
 
             <div class="contact-card">
                 <i class="fas fa-mobile-alt"></i>
-                <h3>{ t('وطنية') }</h3>
+                <h3>وطنية</h3>
                 <a href="tel:{{ config.COMPANY_PHONE_2 }}">{{ config.COMPANY_PHONE_2 }}</a>
-                <p class="muted">{ t('للمكالمات_المحلية') }</p>
+                <p class="muted">للمكالمات المحلية</p>
             </div>
 
             <div class="contact-card">
                 <i class="fas fa-envelope"></i>
                 <h3>{{ t('Email') }}</h3>
                 <a href="mailto:{{ config.COMPANY_EMAIL }}">{{ config.COMPANY_EMAIL }}</a>
-                <p class="muted">{ t('للاستفسارات_الرسمية') }</p>
+                <p class="muted">للاستفسارات الرسمية</p>
             </div>
 
             <div class="contact-card">
@@ -70,15 +70,15 @@
 
             <div class="contact-card">
                 <i class="fas fa-globe"></i>
-                <h3>{ t('الموقع_الإلكتروني') }</h3>
+                <h3>الموقع الإلكتروني</h3>
                 <a href="{{ config.COMPANY_WEBSITE }}" target="_blank">{{ config.COMPANY_WEBSITE }}</a>
-                <p class="muted">{ t('تفضل_بزيارتنا') }</p>
+                <p class="muted">تفضل بزيارتنا</p>
             </div>
         </div>
 
         <div style="text-align: center; margin-top: 60px;">
             <a href="{{ url_for('public.demo') }}" class="btn-gold">
-                <i class="fas fa-rocket"></i> احجز { t('View') } توضيحي مجاني
+                <i class="fas fa-rocket"></i> احجز عرض توضيحي مجاني
             </a>
         </div>
     </div>

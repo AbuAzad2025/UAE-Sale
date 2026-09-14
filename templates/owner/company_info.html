@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('معلومات_الشركة') } وإعدادات الهوية{% endblock %}
+{% block title %}شركة أزاد للأنظمة الذكية - معلومات الشركة وإعدادات الهوية{% endblock %}
 
 {% block content %}
 <div class="company-profile-wrapper">
@@ -24,21 +24,21 @@
       </div>
       <div class="profile-card__body">
         <div class="profile-card__stat">
-          <span class="label">{ t('نوع_النشاط') }</span>
+          <span class="label">نوع النشاط</span>
           <span class="value">{{ tenant.get_business_type_display() if tenant.get_business_type_display else 'غير محدد' }}</span>
         </div>
         <div class="profile-card__stat">
-          <span class="label">{ t('الدولة') }</span>
+          <span class="label">الدولة</span>
           <span class="value">{{ tenant.get_country_display() if tenant.get_country_display else 'غير محددة' }}</span>
         </div>
         <div class="profile-card__stat">
-          <span class="label">{ t('المدينة') }</span>
+          <span class="label">المدينة</span>
           <span class="value">{{ tenant.city or '---' }}</span>
         </div>
       </div>
       <div class="profile-card__footer">
         <div class="brand-colors">
-          <span>{ t('ألوان_الهوية') }</span>
+          <span>ألوان الهوية</span>
           <div class="brand-colors__swatches">
             <div class="color" style="--color: {{ tenant.brand_color_primary or '#007A3D' }}"></div>
             <div class="color" style="--color: {{ tenant.brand_color_secondary or '#D4AF37' }}"></div>
@@ -47,7 +47,7 @@
         <div class="profile-card__actions">
           <span class="badge badge-pill badge-info">
             <i class="fas fa-sync-alt"></i>
-            آخر { t('Update') }: {{ tenant.updated_at.strftime('%Y-%m-%d') if tenant.updated_at else '---' }}
+            آخر تحديث: {{ tenant.updated_at.strftime('%Y-%m-%d') if tenant.updated_at else '---' }}
           </span>
         </div>
       </div>
@@ -55,20 +55,20 @@
 
     <div class="quick-links card">
       <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-tools mr-2"></i>{ t('روابط_سريعة') }</h3>
+        <h3 class="card-title"><i class="fas fa-tools mr-2"></i>روابط سريعة</h3>
       </div>
       <div class="card-body">
         <a href="{{ url_for('owner.invoice_settings') }}" class="quick-link">
           <i class="fas fa-file-invoice"></i>
-          <span>{ t('إعدادات_الفواتير') }</span>
+          <span>إعدادات الفواتير</span>
         </a>
-        <a href="#" class="quick-link disabled-link" title="{ t('قريباً') }">
+        <a href="#" class="quick-link disabled-link" title="قريباً">
           <i class="fas fa-palette"></i>
-          <span>{ t('الهوية_البصرية') }</span>
+          <span>الهوية البصرية</span>
         </a>
-        <a href="#" class="quick-link disabled-link" title="{ t('قريباً') }">
+        <a href="#" class="quick-link disabled-link" title="قريباً">
           <i class="fas fa-warehouse"></i>
-          <span>{ t('المستودعات_الرئيسية') }</span>
+          <span>المستودعات الرئيسية</span>
         </a>
       </div>
     </div>
@@ -79,15 +79,15 @@
   <div class="container-fluid">
     <div class="row mb-2 align-items-center">
       <div class="col-sm-6">
-        <h1 class="m-0">{ t('معلومات_الشركة_الكراج') }</h1>
+        <h1 class="m-0">🏢 معلومات الشركة/الكراج</h1>
       </div>
       <div class="col-sm-6 d-flex justify-content-end">
         <div class="d-flex align-items-center">
           <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary ml-2">
-            <i class="fas fa-arrow-right mr-1"></i> الرجوع ل{ t('لوحة_المالك') }
+            <i class="fas fa-arrow-right mr-1"></i> الرجوع للوحة المالك
           </a>
           <ol class="breadcrumb float-sm-left mb-0">
-            <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">{ t('لوحة_المالك') }</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">لوحة المالك</a></li>
             <li class="breadcrumb-item active">{{ t('Company Info') }}</li>
           </ol>
         </div>
@@ -101,37 +101,37 @@
     <form method="POST" action="{{ url_for('owner.company_info') }}" enctype="multipart/form-data">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       
-      <!-- { t('معلومات') } أساسية -->
+      <!-- معلومات أساسية -->
       <div class="card">
         <div class="card-header bg-gradient-primary">
-          <h3 class="card-title text-white">📋 { t('المعلومات_الأساسية') }</h3>
+          <h3 class="card-title text-white">📋 المعلومات الأساسية</h3>
         </div>
         <div class="card-body">
           <div class="row gy-3">
             <div class="col-xl-4 col-lg-6">
               <div class="form-group">
-                <label>{ t('الاسم_بالعربي') } *</label>
+                <label>الاسم بالعربي *</label>
                 <input type="text" name="name_ar" class="form-control compact-control" value="{{ tenant.name_ar or '' }}" required>
               </div>
             </div>
             <div class="col-xl-4 col-lg-6">
               <div class="form-group">
-                <label>{ t('الاسم_بالإنجليزي') }</label>
+                <label>الاسم بالإنجليزي</label>
                 <input type="text" name="name_en" class="form-control compact-control" value="{{ tenant.name_en or '' }}">
               </div>
             </div>
             <div class="col-xl-4 col-lg-12">
               <div class="form-group">
-                <label>{ t('Code') } (Slug)</label>
+                <label>الكود (Slug)</label>
                 <input type="text" name="slug" class="form-control compact-control" value="{{ tenant.slug or '' }}" pattern="[a-z0-9-]+">
-                <small class="text-muted">{ t('حروف_صغيرة_وأرقام_وشرطة_فقط') }</small>
+                <small class="text-muted">حروف صغيرة وأرقام وشرطة فقط</small>
               </div>
             </div>
           </div>
           <div class="row gy-3">
             <div class="col-lg-8 col-md-7">
               <div class="form-group">
-                <label>{ t('نوع_النشاط') }</label>
+                <label>نوع النشاط</label>
                 <select name="business_type" class="form-control compact-control select-center select2">
                   {% for code, meta in lookups.get('business_types', []) %}
                   <option value="{{ code }}" {{ 'selected' if tenant.business_type == code }}>{{ meta.ar }}</option>
@@ -144,7 +144,7 @@
             </div>
             <div class="col-lg-8 col-md-7">
               <div class="form-group">
-                <label>{ t('الصناعة') }</label>
+                <label>الصناعة</label>
                 <select name="industry" class="form-control compact-control select-center select2">
                   {% for code, meta in lookups.get('industries', []) %}
                   <option value="{{ code }}" {{ 'selected' if tenant.industry == code }}>{{ meta.ar }}</option>
@@ -159,22 +159,22 @@
         </div>
       </div>
 
-      <!-- { t('معلومات_الاتصال') } -->
+      <!-- معلومات الاتصال -->
       <div class="card">
         <div class="card-header bg-gradient-success">
-          <h3 class="card-title text-white">📞 { t('معلومات_الاتصال') }</h3>
+          <h3 class="card-title text-white">📞 معلومات الاتصال</h3>
         </div>
         <div class="card-body">
           <div class="row">
             <div class="col-md-6">
               <div class="form-group">
-                <label>{ t('العنوان_بالعربي') }</label>
+                <label>العنوان بالعربي</label>
                 <textarea name="address_ar" class="form-control" rows="2">{{ tenant.address_ar or '' }}</textarea>
               </div>
             </div>
             <div class="col-md-6">
               <div class="form-group">
-                <label>{ t('العنوان_بالإنجليزي') }</label>
+                <label>العنوان بالإنجليزي</label>
                 <textarea name="address_en" class="form-control" rows="2">{{ tenant.address_en or '' }}</textarea>
               </div>
             </div>
@@ -209,7 +209,7 @@
             </div>
             <div class="col-xl-4 col-lg-6 col-md-7">
               <div class="form-group">
-                <label>{ t('الموقع_الجغرافي') }</label>
+                <label>الموقع الجغرافي</label>
                 <input type="text" name="location_coords" class="form-control compact-control" value="{{ tenant.location_coords or '' }}" placeholder="25.2048,55.2708">
               </div>
             </div>
@@ -217,19 +217,19 @@
           <div class="row">
             <div class="col-md-3">
               <div class="form-group">
-                <label>{ t('هاتف_1') }</label>
+                <label>هاتف 1</label>
                 <input type="tel" name="phone_1" class="form-control" value="{{ tenant.phone_1 or '' }}">
               </div>
             </div>
             <div class="col-md-3">
               <div class="form-group">
-                <label>{ t('هاتف_2') }</label>
+                <label>هاتف 2</label>
                 <input type="tel" name="phone_2" class="form-control" value="{{ tenant.phone_2 or '' }}">
               </div>
             </div>
             <div class="col-md-3">
               <div class="form-group">
-                <label>{ t('موبايل') }</label>
+                <label>موبايل</label>
                 <input type="tel" name="mobile" class="form-control" value="{{ tenant.mobile or '' }}">
               </div>
             </div>
@@ -241,34 +241,34 @@
             </div>
           </div>
           <div class="form-group">
-            <label>{ t('الموقع_الإلكتروني') }</label>
+            <label>الموقع الإلكتروني</label>
             <input type="url" name="website" class="form-control" value="{{ tenant.website or '' }}" placeholder="https://example.com">
           </div>
         </div>
       </div>
 
-      <!-- { t('معلومات') } قانونية -->
+      <!-- معلومات قانونية -->
       <div class="card">
         <div class="card-header bg-gradient-warning">
-          <h3 class="card-title text-white">{ t('المعلومات_القانونية') }</h3>
+          <h3 class="card-title text-white">⚖️ المعلومات القانونية</h3>
         </div>
         <div class="card-body">
           <div class="row">
             <div class="col-md-4">
               <div class="form-group">
-                <label>{ t('الرقم_الضريبي') } (TRN)</label>
+                <label>الرقم الضريبي (TRN)</label>
                 <input type="text" name="tax_number" class="form-control" value="{{ tenant.tax_number or '' }}">
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-group">
-                <label>{ t('السجل_التجاري') }</label>
+                <label>السجل التجاري</label>
                 <input type="text" name="commercial_register" class="form-control" value="{{ tenant.commercial_register or '' }}">
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-group">
-                <label>{ t('رقم_الترخيص') }</label>
+                <label>رقم الترخيص</label>
                 <input type="text" name="license_number" class="form-control" value="{{ tenant.license_number or '' }}">
               </div>
             </div>
@@ -279,26 +279,26 @@
       <!-- العلامة التجارية -->
       <div class="card">
         <div class="card-header bg-gradient-info">
-          <h3 class="card-title text-white">{ t('العلامة_التجارية') }</h3>
+          <h3 class="card-title text-white">🎨 العلامة التجارية</h3>
         </div>
         <div class="card-body">
           <div class="row">
             <div class="col-md-6">
               <div class="form-group">
-                <label>{ t('اللون_الأساسي') }</label>
+                <label>اللون الأساسي</label>
                 <input type="color" name="brand_color_primary" class="form-control" value="{{ tenant.brand_color_primary or '#007A3D' }}">
               </div>
             </div>
             <div class="col-md-6">
               <div class="form-group">
-                <label>{ t('اللون_الثانوي') }</label>
+                <label>اللون الثانوي</label>
                 <input type="color" name="brand_color_secondary" class="form-control" value="{{ tenant.brand_color_secondary or '#D4AF37' }}">
               </div>
             </div>
           </div>
           <div class="alert alert-info">
             <i class="fas fa-info-circle"></i>
-            <strong>ملاحظة:</strong> لتغيير الشعار، استخدم إعدادات ترويسات { t('الفواتير') }.
+            <strong>ملاحظة:</strong> لتغيير الشعار، استخدم إعدادات ترويسات الفواتير.
           </div>
         </div>
       </div>
@@ -307,10 +307,10 @@
       <div class="row">
         <div class="col-12">
           <button type="submit" class="btn btn-primary btn-lg">
-            <i class="fas fa-save mr-2"></i>حفظ ال{ t('معلومات') }
+            <i class="fas fa-save mr-2"></i>حفظ المعلومات
           </button>
           <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary btn-lg">
-            <i class="fas fa-times mr-2"></i>{ t('Cancel') }
+            <i class="fas fa-times mr-2"></i>إلغاء
           </a>
         </div>
       </div>

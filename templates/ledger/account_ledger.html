@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
-{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - دفتر حساب {{ account.name }}{% endblock %}
+{% block title %}شركة أزاد للأنظمة الذكية - دفتر حساب {{ account.name }}{% endblock %}
 {% block page_title %}دفتر حساب: {{ account.code }} - {{ account.name }}{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
   <div class="col-12">
     <button onclick="window.print()" class="btn btn-secondary">
-      <i class="fas fa-print mr-2"></i>{ t('Print') }
+      <i class="fas fa-print mr-2"></i>طباعة
     </button>
-    <a href="{{ url_for('ledger.index') }}" class="btn btn-info">{ t('العودة') }</a>
+    <a href="{{ url_for('ledger.index') }}" class="btn btn-info">العودة</a>
   </div>
 </div>
 
@@ -26,8 +26,8 @@
           <th>{{ t('Date') }}</th>
           <th>رقم القيد</th>
           <th>{{ t('Description') }}</th>
-          <th>{ t('المرجع') }</th>
-          <th class="text-danger">{ t('مدين') }</th>
+          <th>المرجع</th>
+          <th class="text-danger">مدين</th>
           <th class="text-success">دائن</th>
           <th>{{ t('Balance') }}</th>
         </tr>
@@ -69,13 +69,13 @@
     size: A4 {{ 'landscape' if request.args.get('orientation') == 'landscape' else 'portrait' }};
     margin: 15mm;
   }
-  /* { t('إخفاء') } عناصر UI */
+  /* إخفاء عناصر UI */
   .main-sidebar, .main-header, .main-footer, 
   .content-header, .no-print, button, .btn,
   .breadcrumb, .navbar, .sidebar {
     display: none !important;
   }
-  /* تحسين المحتوى لل{ t('Print') } */
+  /* تحسين المحتوى للطباعة */
   .content-wrapper {
     margin: 0 !important;
     padding: 0 !important;
@@ -88,7 +88,7 @@
   body {
     background: white !important;
   }
-  /* تحسين { t('الجداول') } */
+  /* تحسين الجداول */
   table {
     page-break-inside: auto;
   }

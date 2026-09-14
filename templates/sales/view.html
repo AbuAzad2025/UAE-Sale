@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('فاتورة') } مبيعات #{{ sale.sale_number }}{% endblock %}
+{% block title %}شركة أزاد للأنظمة الذكية - فاتورة مبيعات #{{ sale.sale_number }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
@@ -10,17 +10,17 @@
   </div>
   <div>
     <a href="{{ url_for('sales.print_invoice', id=sale.id) }}" class="btn btn-secondary btn-lg" target="_blank">
-      <i class="fas fa-print mr-2"></i>{ t('Print') }
+      <i class="fas fa-print mr-2"></i>طباعة
     </a>
     <a href="{{ url_for('sales.index') }}" class="btn btn-info btn-lg">
-      <i class="fas fa-arrow-right mr-2"></i>{ t('العودة_للقائمة') }
+      <i class="fas fa-arrow-right mr-2"></i>العودة للقائمة
     </a>
     <button type="button" class="btn btn-danger btn-lg" 
             onclick="deleteItem('sales', {{ sale.id }}, {{ sale.sale_number|tojson }})">
-      <i class="fas fa-trash mr-2"></i>{ t('Delete') }
+      <i class="fas fa-trash mr-2"></i>حذف
     </button>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary btn-lg">
-      <i class="fas fa-home mr-2"></i>{ t('الرئيسية') }
+      <i class="fas fa-home mr-2"></i>الرئيسية
     </a>
   </div>
 </div>
@@ -73,9 +73,9 @@
       <div class="invoice-header">
         <div class="row">
           <div class="col-6">
-            <h2 class="mb-3"><i class="fas fa-file-invoice mr-2"></i>{ t('فاتورة_بيع') }</h2>
-            <p class="mb-1"><strong>{ t('رقم_الفاتورة') }:</strong> {{ sale.sale_number }}</p>
-            <p class="mb-0"><strong>{ t('Date') }:</strong> {{ sale.sale_date.strftime('%Y-%m-%d %H:%M') }}</p>
+            <h2 class="mb-3"><i class="fas fa-file-invoice mr-2"></i>فاتورة بيع</h2>
+            <p class="mb-1"><strong>رقم الفاتورة:</strong> {{ sale.sale_number }}</p>
+            <p class="mb-0"><strong>التاريخ:</strong> {{ sale.sale_date.strftime('%Y-%m-%d %H:%M') }}</p>
           </div>
           <div class="col-6 text-left">
             <h4>{{ config.COMPANY_NAME_AR }}</h4>
@@ -90,44 +90,44 @@
       <div class="card-body">
         <div class="row mb-4">
           <div class="col-md-6">
-            <h5 class="text-primary"><i class="fas fa-user-circle mr-2"></i>{ t('معلومات_الزبون') }</h5>
+            <h5 class="text-primary"><i class="fas fa-user-circle mr-2"></i>معلومات الزبون</h5>
             <div class="p-3 bg-light rounded">
               <p class="mb-2">
-                <strong>{ t('Name') }:</strong> 
+                <strong>الاسم:</strong> 
                 <a href="{{ url_for('customers.view', id=sale.customer.id) }}" class="text-primary">
                   {{ sale.customer.name }}
                 </a>
               </p>
               {% if sale.customer.phone %}
-              <p class="mb-2"><strong>{ t('Phone') }:</strong> {{ sale.customer.phone }}</p>
+              <p class="mb-2"><strong>الهاتف:</strong> {{ sale.customer.phone }}</p>
               {% endif %}
               {% if sale.customer.email %}
-              <p class="mb-0"><strong>{ t('البريد') }:</strong> {{ sale.customer.email }}</p>
+              <p class="mb-0"><strong>البريد:</strong> {{ sale.customer.email }}</p>
               {% endif %}
             </div>
           </div>
           <div class="col-md-6">
-            <h5 class="text-success"><i class="fas fa-user-tie mr-2"></i>{ t('معلومات_البائع') }</h5>
+            <h5 class="text-success"><i class="fas fa-user-tie mr-2"></i>معلومات البائع</h5>
             <div class="p-3 bg-light rounded">
-              <p class="mb-2"><strong>{ t('Name') }:</strong> {{ sale.seller.full_name or sale.seller.username }}</p>
-              <p class="mb-0"><strong>{ t('العملة') }:</strong> {{ sale.currency }}</p>
+              <p class="mb-2"><strong>الاسم:</strong> {{ sale.seller.full_name or sale.seller.username }}</p>
+              <p class="mb-0"><strong>العملة:</strong> {{ sale.currency }}</p>
               {% if sale.exchange_rate != 1 %}
-              <p class="mb-0"><strong>{ t('سعر_الصرف') }:</strong> {{ "{:,.6f}".format(sale.exchange_rate) }}</p>
+              <p class="mb-0"><strong>سعر الصرف:</strong> {{ "{:,.6f}".format(sale.exchange_rate) }}</p>
               {% endif %}
             </div>
           </div>
         </div>
 
-        <h5 class="text-primary mb-3"><i class="fas fa-list mr-2"></i>{ t('الأصناف') }</h5>
+        <h5 class="text-primary mb-3"><i class="fas fa-list mr-2"></i>الأصناف</h5>
         <div class="table-responsive">
           <table class="table table-hover">
             <thead style="background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%); color: white;">
               <tr>
                 <th>#</th>
-                <th>{ t('المنتج') }</th>
+                <th>المنتج</th>
                 <th class="text-center">{{ t('Quantity') }}</th>
                 <th class="text-center">{{ t('Price') }}</th>
-                <th class="text-center">{ t('Discount') }%</th>
+                <th class="text-center">الخصم%</th>
                 <th class="text-center">{{ t('Total') }}</th>
               </tr>
             </thead>
@@ -168,23 +168,23 @@
         
         {% if sale.notes %}
         <div class="alert alert-info mt-3">
-          <h6><i class="fas fa-sticky-note mr-2"></i>{ t('Notes') }:</h6>
+          <h6><i class="fas fa-sticky-note mr-2"></i>ملاحظات:</h6>
           <p class="mb-0">{{ sale.notes }}</p>
         </div>
         {% endif %}
         
-        <!-- قسم { t('الدفع') }ات -->
+        <!-- قسم الدفعات -->
         {% if sale.payments %}
-        <h5 class="text-primary mb-3 mt-4"><i class="fas fa-money-bill-wave mr-2"></i>{ t('الدفع') }ات</h5>
+        <h5 class="text-primary mb-3 mt-4"><i class="fas fa-money-bill-wave mr-2"></i>الدفعات</h5>
         <div class="table-responsive">
           <table class="table table-bordered">
             <thead class="bg-light">
               <tr>
-                <th>{ t('رقم_الدفعة') }</th>
-                <th>{ t('Date') }</th>
-                <th>{ t('Amount') }</th>
-                <th>{ t('طريقة_الدفع') }</th>
-                <th>{ t('التفاصيل') }</th>
+                <th>رقم الدفعة</th>
+                <th>التاريخ</th>
+                <th>المبلغ</th>
+                <th>طريقة الدفع</th>
+                <th>التفاصيل</th>
               </tr>
             </thead>
             <tbody>
@@ -195,25 +195,25 @@
                 <td><strong class="text-success">{{ "{:,.2f}".format(payment.amount_base) }} {{ base_currency }}</strong></td>
                 <td>
                   {% if payment.payment_method == 'cash' %}
-                    <span class="badge badge-success"><i class="fas fa-money-bill-wave"></i> { t('نقدي') }</span>
+                    <span class="badge badge-success"><i class="fas fa-money-bill-wave"></i> نقدي</span>
                   {% elif payment.payment_method == 'card' %}
-                    <span class="badge badge-info"><i class="fas fa-credit-card"></i> { t('بطاقة') }</span>
+                    <span class="badge badge-info"><i class="fas fa-credit-card"></i> بطاقة</span>
                   {% elif payment.payment_method == 'bank_transfer' %}
-                    <span class="badge badge-primary"><i class="fas fa-university"></i> { t('تحويل_بنكي') }</span>
+                    <span class="badge badge-primary"><i class="fas fa-university"></i> تحويل بنكي</span>
                   {% elif payment.payment_method == 'cheque' %}
-                    <span class="badge badge-warning"><i class="fas fa-file-invoice"></i> { t('شيك') }</span>
+                    <span class="badge badge-warning"><i class="fas fa-file-invoice"></i> شيك</span>
                   {% else %}
-                    <span class="badge badge-secondary"><i class="fas fa-wallet"></i> { t('محفظة_إلكترونية') }</span>
+                    <span class="badge badge-secondary"><i class="fas fa-wallet"></i> محفظة إلكترونية</span>
                   {% endif %}
                 </td>
                 <td>
                   {% if payment.payment_method == 'cheque' and payment.cheque_number %}
                     <div class="cheque-details">
                       <small>
-                        <i class="fas fa-hashtag"></i> <strong>{ t('رقم_الشيك') }:</strong> {{ payment.cheque_number }}<br>
-                        <i class="fas fa-calendar"></i> <strong>{ t('تاريخ_الاستحقاق') }:</strong> 
+                        <i class="fas fa-hashtag"></i> <strong>رقم الشيك:</strong> {{ payment.cheque_number }}<br>
+                        <i class="fas fa-calendar"></i> <strong>تاريخ الاستحقاق:</strong> 
                         <span class="badge badge-info">{{ payment.cheque_date.strftime('%Y-%m-%d') if payment.cheque_date else '-' }}</span><br>
-                        <i class="fas fa-university"></i> <strong>{ t('البنك') }:</strong> {{ payment.bank_name or '-' }}
+                        <i class="fas fa-university"></i> <strong>البنك:</strong> {{ payment.bank_name or '-' }}
                       </small>
                     </div>
                   {% elif payment.reference_number %}
@@ -236,18 +236,18 @@
     <!-- Payment Status Card -->
     <div class="card mb-3">
       <div class="card-body text-center">
-        <h5 class="mb-3">{ t('حالة_الدفع') }</h5>
+        <h5 class="mb-3">حالة الدفع</h5>
         {% if sale.payment_status == 'paid' %}
         <div class="status-badge badge-success">
-          <i class="fas fa-check-circle"></i> { t('مدفوع') }ة بالكامل
+          <i class="fas fa-check-circle"></i> مدفوعة بالكامل
         </div>
         {% elif sale.payment_status == 'partial' %}
         <div class="status-badge badge-warning">
-          <i class="fas fa-clock"></i> { t('مدفوع') }ة جزئياً
+          <i class="fas fa-clock"></i> مدفوعة جزئياً
         </div>
         {% else %}
         <div class="status-badge badge-danger">
-          <i class="fas fa-hourglass-half"></i> { t('آجلة') }
+          <i class="fas fa-hourglass-half"></i> آجلة
         </div>
         {% endif %}
       </div>
@@ -257,33 +257,33 @@
     <div class="card mb-3">
       <div class="card-header" style="background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%); color: white;">
         <h3 class="card-title text-white mb-0">
-          <i class="fas fa-calculator mr-2"></i>{ t('الإجماليات') }
+          <i class="fas fa-calculator mr-2"></i>الإجماليات
         </h3>
       </div>
       <div class="card-body">
         <div class="invoice-summary">
           <div class="d-flex justify-content-between mb-2">
-            <span>{ t('Total') } الفرعي:</span>
+            <span>المجموع الفرعي:</span>
             <strong>{{ "{:,.2f}".format(sale.subtotal) }}</strong>
           </div>
           
           {% if sale.discount_amount > 0 %}
           <div class="d-flex justify-content-between mb-2">
-            <span><i class="fas fa-tag text-danger mr-1"></i>{ t('Discount') }:</span>
+            <span><i class="fas fa-tag text-danger mr-1"></i>الخصم:</span>
             <strong class="text-danger">-{{ "{:,.2f}".format(sale.discount_amount) }}</strong>
           </div>
           {% endif %}
           
           {% if sale.shipping_cost > 0 %}
           <div class="d-flex justify-content-between mb-2">
-            <span><i class="fas fa-truck text-info mr-1"></i>{ t('الشحن') }:</span>
+            <span><i class="fas fa-truck text-info mr-1"></i>الشحن:</span>
             <strong class="text-info">+{{ "{:,.2f}".format(sale.shipping_cost) }}</strong>
           </div>
           {% endif %}
           
           {% if sale.tax_amount > 0 %}
           <div class="d-flex justify-content-between mb-2">
-            <span><i class="fas fa-percent text-warning mr-1"></i>{ t('Tax') }:</span>
+            <span><i class="fas fa-percent text-warning mr-1"></i>الضريبة:</span>
             <strong class="text-warning">+{{ "{:,.2f}".format(sale.tax_amount) }}</strong>
           </div>
           {% endif %}
@@ -292,7 +292,7 @@
         <hr class="my-3">
         
         <div class="d-flex justify-content-between align-items-center mb-3" style="font-size: 1.3rem;">
-          <strong>{ t('الإجمالي') }:</strong>
+          <strong>الإجمالي:</strong>
           <strong style="color: #007A3D;">
             {{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency }}
           </strong>
@@ -300,28 +300,28 @@
         
         {% if sale.currency != 'AED' and sale.amount_base %}
         <div class="d-flex justify-content-between mb-3 text-muted">
-          <span>{ t('بالدرهم') }:</span>
+          <span>بالدرهم:</span>
           <strong>{{ "{:,.2f}".format(sale.amount_base) }} {{ base_currency }}</strong>
         </div>
         {% endif %}
         
         <div class="d-flex justify-content-between mb-2">
-          <span><i class="fas fa-check-circle text-success mr-1"></i>{ t('Paid') } المؤكد:</span>
+          <span><i class="fas fa-check-circle text-success mr-1"></i>المدفوع المؤكد:</span>
           <strong class="text-success">{{ "{:,.2f}".format(sale.paid_amount) }} {{ base_currency }}</strong>
         </div>
         
         {% if sale.pending_cheques_amount > 0 %}
         <div class="d-flex justify-content-between mb-2">
-          <span><i class="fas fa-hourglass-half text-warning mr-1"></i>{ t('شيك') }ات { t('Pending') }ة:</span>
+          <span><i class="fas fa-hourglass-half text-warning mr-1"></i>شيكات معلقة:</span>
           <strong class="text-warning">{{ "{:,.2f}".format(sale.pending_cheques_amount) }} {{ base_currency }}</strong>
         </div>
         <small class="text-muted d-block mb-2">
-          <i class="fas fa-info-circle"></i> هذه { t('الشيكات') } لم تُصرف بعد من { t('البنك') }
+          <i class="fas fa-info-circle"></i> هذه الشيكات لم تُصرف بعد من البنك
         </small>
         {% endif %}
         
         <div class="d-flex justify-content-between mb-3">
-          <span><i class="fas fa-exclamation-circle text-danger mr-1"></i>{ t('الباقي') }:</span>
+          <span><i class="fas fa-exclamation-circle text-danger mr-1"></i>الباقي:</span>
           <strong class="text-danger" style="font-size: 1.2rem;">
             {{ "{:,.2f}".format(sale.balance_due) }} {{ base_currency }}
           </strong>
@@ -330,12 +330,12 @@
         {% if sale.balance_due > 0 %}
         <a href="{{ url_for('payments.create_receipt') }}?customer_id={{ sale.customer_id }}" 
            class="btn btn-success btn-block btn-lg">
-          <i class="fas fa-money-bill-wave mr-2"></i>{ t('إضافة_دفعة') }
+          <i class="fas fa-money-bill-wave mr-2"></i>إضافة دفعة
         </a>
         {% else %}
         <div class="alert alert-success text-center mb-0">
           <i class="fas fa-check-circle fa-2x mb-2"></i>
-          <p class="mb-0"><strong>{ t('الفاتورة_مدفوعة_بالكامل') }</strong></p>
+          <p class="mb-0"><strong>الفاتورة مدفوعة بالكامل</strong></p>
         </div>
         {% endif %}
       </div>
@@ -344,20 +344,20 @@
     <!-- Actions Card -->
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-cog mr-2"></i>{ t('الإجراءات') }</h3>
+        <h3 class="card-title"><i class="fas fa-cog mr-2"></i>الإجراءات</h3>
       </div>
       <div class="card-body">
         <div class="btn-group-vertical w-100">
           <a href="{{ url_for('sales.print_invoice', id=sale.id) }}" 
              class="btn btn-secondary mb-2" target="_blank">
-            <i class="fas fa-print mr-2"></i>{ t('طباعة_الفاتورة') }
+            <i class="fas fa-print mr-2"></i>طباعة الفاتورة
           </a>
           <a href="{{ url_for('sales.index') }}" class="btn btn-info mb-2">
-            <i class="fas fa-list mr-2"></i>كل { t('الفواتير') }
+            <i class="fas fa-list mr-2"></i>كل الفواتير
           </a>
           {% if current_user.is_owner and sale.status != 'cancelled' %}
           <button type="button" class="btn btn-danger" onclick="confirmCancel()">
-            <i class="fas fa-ban mr-2"></i>{ t('Cancel') } { t('الفاتورة') }
+            <i class="fas fa-ban mr-2"></i>إلغاء الفاتورة
           </button>
           <form id="cancelForm" action="{{ url_for('sales.cancel', id=sale.id) }}" method="POST" style="display:none;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -366,7 +366,7 @@
           <hr>
           <!-- Delete Button -->
           <button type="button" class="btn btn-outline-danger w-100" onclick="confirmDelete()">
-            <i class="fas fa-trash-alt mr-2"></i>{ t('Delete') } { t('الفاتورة') }
+            <i class="fas fa-trash-alt mr-2"></i>حذف الفاتورة
           </button>
           <form id="deleteForm" action="{{ url_for('sales.delete', id=sale.id) }}" method="POST" style="display:none;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -381,13 +381,13 @@
 
 <script>
 function confirmCancel() {
-  if (confirm('هل أنت متأكد من { t('Cancel') } هذه { t('الفاتورة') }؟\n{ t('This action cannot be undone') }.')) {
+  if (confirm('هل أنت متأكد من إلغاء هذه الفاتورة؟\nلا يمكن التراجع عن هذا الإجراء.')) {
     document.getElementById('cancelForm').submit();
   }
 }
 
 function confirmDelete() {
-  if (confirm('هل أنت متأكد من { t('Delete') } هذه { t('الفاتورة') }؟\n\nتنبيه: سيتم { t('أرشفة') } { t('الفاتورة') } إذا كان لها ارتباطات مالية (دفعات/{ t('شيك') }ات)، أو { t('Delete') }ها نهائياً إذا كانت غير { t('مرتبطة') }.')) {
+  if (confirm('هل أنت متأكد من حذف هذه الفاتورة؟\n\nتنبيه: سيتم أرشفة الفاتورة إذا كان لها ارتباطات مالية (دفعات/شيكات)، أو حذفها نهائياً إذا كانت غير مرتبطة.')) {
     document.getElementById('deleteForm').submit();
   }
 }

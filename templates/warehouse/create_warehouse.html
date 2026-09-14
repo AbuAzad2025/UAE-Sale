@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('إنشاء_مستودع_جديد') }{% endblock %}
+{% block title %}شركة أزاد للأنظمة الذكية - إنشاء مستودع جديد{% endblock %}
 
 {% block content %}
 <div class="content-header">
   <div class="container-fluid">
     <div class="row mb-2">
       <div class="col-sm-6">
-        <h1 class="m-0"><i class="fas fa-warehouse"></i> { t('إنشاء_مستودع_جديد') }</h1>
+        <h1 class="m-0"><i class="fas fa-warehouse"></i> إنشاء مستودع جديد</h1>
       </div>
       <div class="col-sm-6">
         <ol class="breadcrumb float-sm-left">
           <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">{{ t('Dashboard') }}</a></li>
-          <li class="breadcrumb-item"><a href="{{ url_for('warehouse.list_warehouses') }}">{ t('المستودعات') }</a></li>
-          <li class="breadcrumb-item active">{ t('إنشاء_جديد') }</li>
+          <li class="breadcrumb-item"><a href="{{ url_for('warehouse.list_warehouses') }}">المستودعات</a></li>
+          <li class="breadcrumb-item active">إنشاء جديد</li>
         </ol>
       </div>
     </div>
@@ -26,7 +26,7 @@
       <div class="col-md-8">
         <div class="card">
           <div class="card-header bg-success">
-            <h3 class="card-title text-white"><i class="fas fa-plus-circle"></i> { t('معلومات_المستودع') }</h3>
+            <h3 class="card-title text-white"><i class="fas fa-plus-circle"></i> معلومات المستودع</h3>
           </div>
           {% set form_data = form_data if form_data is defined else request.form %}
           <form method="POST" action="{{ url_for('warehouse.create_warehouse') }}" class="warehouse-create-form">
@@ -36,9 +36,9 @@
                 <div class="col-md-6">
                   <div class="form-group">
                     <label>
-                      <i class="fas fa-warehouse text-primary"></i> { t('الاسم_بالإنجليزية') } 
+                      <i class="fas fa-warehouse text-primary"></i> الاسم بالإنجليزية 
                       <span class="text-danger">*</span>
-                      <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم المستودع ب{ t('الإنجليزية') } (إجباري)"></i>
+                      <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم المستودع بالإنجليزية (إجباري)"></i>
                     </label>
                     <input type="text" class="form-control" id="name" name="name" placeholder="Main Warehouse" required value="{{ form_data.get('name', '') }}">
                   </div>
@@ -46,10 +46,10 @@
                 <div class="col-md-6">
                   <div class="form-group">
                     <label>
-                      <i class="fas fa-font text-info"></i> { t('الاسم_بالعربية') }
-                      <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم { t('Warehouse') } بالعربية (اختياري)"></i>
+                      <i class="fas fa-font text-info"></i> الاسم بالعربية
+                      <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم المستودع بالعربية (اختياري)"></i>
                     </label>
-                    <input type="text" class="form-control" id="name_ar" name="name_ar" placeholder="{ t('Warehouse') } الرئيسي" value="{{ form_data.get('name_ar', '') }}">
+                    <input type="text" class="form-control" id="name_ar" name="name_ar" placeholder="المستودع الرئيسي" value="{{ form_data.get('name_ar', '') }}">
                   </div>
                 </div>
               </div>
@@ -58,7 +58,7 @@
                 <div class="col-md-6">
                   <div class="form-group">
                     <label>
-                      <i class="fas fa-barcode text-secondary"></i> رمز { t('Warehouse') }
+                      <i class="fas fa-barcode text-secondary"></i> رمز المستودع
                       <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="رمز مختصر للمستودع (اختياري)"></i>
                     </label>
                     <input type="text" class="form-control" id="code" name="code" placeholder="WH001" value="{{ form_data.get('code', '') }}">
@@ -67,11 +67,11 @@
                 <div class="col-md-6">
                   <div class="form-group">
                     <label>
-                      <i class="fas fa-map-marker-alt text-danger"></i> { t('الموقع') }
+                      <i class="fas fa-map-marker-alt text-danger"></i> الموقع
                       <span class="text-danger">*</span>
-                      <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="موقع { t('Warehouse') } الجغرافي (إجباري)"></i>
+                      <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="موقع المستودع الجغرافي (إجباري)"></i>
                     </label>
-                    <input type="text" class="form-control" id="location" name="location" placeholder="دبي - { t('الإمارات') }" required value="{{ form_data.get('location', '') }}">
+                    <input type="text" class="form-control" id="location" name="location" placeholder="دبي - الإمارات" required value="{{ form_data.get('location', '') }}">
                   </div>
                 </div>
               </div>
@@ -80,8 +80,8 @@
                 <div class="col-md-6">
                   <div class="form-group">
                     <label>
-                      <i class="fas fa-sitemap text-success"></i> { t('Warehouse') } الأب (للفروع)
-                      <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="إذا كان هذا { t('مستودع_فرعي') }، اختر المستودع ال{ t('رئيسي') } (اختياري)"></i>
+                      <i class="fas fa-sitemap text-success"></i> المستودع الأب (للفروع)
+                      <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="إذا كان هذا مستودع فرعي، اختر المستودع الرئيسي (اختياري)"></i>
                     </label>
                     <select class="form-control" id="parent_id" name="parent_id">
                       <option value="" {% if not form_data.get('parent_id') %}selected{% endif %}>بلا</option>
@@ -98,8 +98,8 @@
                 <div class="col-md-6">
                   <div class="form-group">
                     <label>
-                      <i class="fas fa-user-tie text-primary"></i> { t('المدير') } المسؤول
-                      <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر المدير المسؤول عن هذا { t('Warehouse') } (اختياري)"></i>
+                      <i class="fas fa-user-tie text-primary"></i> المدير المسؤول
+                      <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر المدير المسؤول عن هذا المستودع (اختياري)"></i>
                     </label>
                     <select class="form-control" id="manager_id" name="manager_id">
                       <option value="" {% if not form_data.get('manager_id') %}selected{% endif %}>بلا</option>
@@ -119,8 +119,8 @@
                 <div class="custom-control custom-checkbox">
                   <input type="checkbox" class="custom-control-input" id="is_main" name="is_main" {% if form_data.get('is_main') %}checked{% endif %}>
                   <label class="custom-control-label" for="is_main">
-                    <i class="fas fa-star text-warning"></i> { t('مستودع_رئيسي') }
-                    <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="هل هذا { t('Warehouse') } الرئيسي؟ (اختياري)"></i>
+                    <i class="fas fa-star text-warning"></i> مستودع رئيسي
+                    <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="هل هذا المستودع الرئيسي؟ (اختياري)"></i>
                   </label>
                 </div>
               </div>
@@ -128,10 +128,10 @@
 
             <div class="card-footer">
               <button type="submit" class="btn btn-success btn-lg">
-                <i class="fas fa-save mr-2"></i> إنشاء { t('Warehouse') }
+                <i class="fas fa-save mr-2"></i> إنشاء المستودع
               </button>
               <a href="{{ url_for('warehouse.list_warehouses') }}" class="btn btn-secondary btn-lg">
-                <i class="fas fa-times mr-2"></i> { t('Cancel') }
+                <i class="fas fa-times mr-2"></i> إلغاء
               </a>
             </div>
           </form>

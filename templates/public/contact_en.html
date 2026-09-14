@@ -13,7 +13,7 @@
 </head>
 <body>
     <div class="lang-switcher">
-        <a href="{{ url_for('language.set_language', lang='ar') }}" class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}"><i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>{ t('العربية') }</a>
+        <a href="{{ url_for('language.set_language', lang='ar') }}" class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}"><i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>العربية</a>
         <a href="{{ url_for('language.set_language', lang='en') }}" class="lang-pill {% if session.get('language') == 'en' %}active{% endif %}"><i class="fas fa-check {% if session.get('language') != 'en' %}invisible{% endif %}"></i>English</a>
     </div>
 

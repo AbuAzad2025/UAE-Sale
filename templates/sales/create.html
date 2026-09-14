@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('إنشاء_فاتورة_بيع') } جديدة{% endblock %}
+{% block title %}شركة أزاد للأنظمة الذكية - إنشاء فاتورة بيع جديدة{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-file-invoice mr-2"></i>{ t('فاتورة_بيع_جديدة') }</h1>
+    <h1 class="mb-0"><i class="fas fa-file-invoice mr-2"></i>فاتورة بيع جديدة</h1>
   </div>
   <div>
     <a href="{{ url_for('sales.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>{ t('العودة') } للمبيعات
+      <i class="fas fa-arrow-right mr-2"></i>العودة للمبيعات
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>{ t('الرئيسية') }
+      <i class="fas fa-home mr-2"></i>الرئيسية
     </a>
   </div>
 </div>
@@ -106,7 +106,7 @@
   text-align: right;
 }
 
-/* أزرار { t('Address') } */
+/* أزرار العنوان */
 a.btn.btn-secondary,
 .btn.btn-secondary {
   color: #ffffff !important;
@@ -142,32 +142,32 @@ a.btn.btn-outline-secondary span {
     <div class="col-md-8">
       <div class="card">
         <div class="card-header bg-gradient-primary">
-          <h3 class="card-title text-white"><i class="fas fa-file-invoice mr-2"></i>{ t('معلومات_الفاتورة') }</h3>
+          <h3 class="card-title text-white"><i class="fas fa-file-invoice mr-2"></i>معلومات الفاتورة</h3>
         </div>
         <div class="card-body">
           <div class="row">
             <div class="col-md-4">
               <div class="form-group">
                 <label class="font-weight-bold">
-                  <i class="fas fa-user text-primary mr-1"></i>{ t('الزبون') } 
+                  <i class="fas fa-user text-primary mr-1"></i>الزبون 
                   <span class="text-danger">*</span>
-                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('اختر_العميل') } - الفلتر الذكي: ا{ t('بحث_بالاسم_أو_الهاتف') } (إجباري)"></i>
+                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر العميل - الفلتر الذكي: ابحث بالاسم أو الهاتف (إجباري)"></i>
                 </label>
                 <select name="customer_id" id="customer_id" class="form-control customer-select" required>
                   <option value=""></option>
                 </select>
-                <small class="form-text text-muted">💡 الفلتر الذكي: ا{ t('Search') } ب{ t('Name') } أو { t('رقم_الهاتف') } (اكتب حرفين على { t('الأقل') })</small>
+                <small class="form-text text-muted">💡 الفلتر الذكي: ابحث بالاسم أو رقم الهاتف (اكتب حرفين على الأقل)</small>
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-group">
                 <label class="font-weight-bold">
-                  <i class="fas fa-warehouse text-info mr-1"></i>{ t('Warehouse') } 
+                  <i class="fas fa-warehouse text-info mr-1"></i>المستودع 
                   <span class="text-danger">*</span>
-                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('Warehouse') } الذي سيُخصم منه { t('المخزون') } (إجباري)"></i>
+                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المستودع الذي سيُخصم منه المخزون (إجباري)"></i>
                 </label>
                 <select name="warehouse_id" id="warehouse_id" class="form-control" required>
-                  <option value="" disabled selected>اختر { t('Warehouse') }...</option>
+                  <option value="" disabled selected>اختر المستودع...</option>
                   {% if warehouses %}
                     {% for warehouse in warehouses %}
                     <option value="{{ warehouse.id }}">
@@ -177,19 +177,19 @@ a.btn.btn-outline-secondary span {
                     </option>
                     {% endfor %}
                   {% else %}
-                    <option value="">{ t('لا_توجد_مستودعات_متاحة') }</option>
+                    <option value="">لا توجد مستودعات متاحة</option>
                   {% endif %}
                 </select>
                 <small class="form-text text-info">
-                  <i class="fas fa-info-circle"></i> سيُخصم { t('المخزون') } من هذا { t('Warehouse') }
+                  <i class="fas fa-info-circle"></i> سيُخصم المخزون من هذا المستودع
                 </small>
               </div>
             </div>
             <div class="col-md-2">
               <div class="form-group">
                 <label class="font-weight-bold">
-                  <i class="fas fa-money-bill-wave text-success mr-1"></i>{ t('عملة_الدفع') }
-                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('العملة') } التي سيدفع بها العميل - { t('الفاتورة') } بـ{{ base_currency_name }} دائماً ({ t('اختياري') })"></i>
+                  <i class="fas fa-money-bill-wave text-success mr-1"></i>عملة الدفع
+                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="العملة التي سيدفع بها العميل - الفاتورة بـ{{ base_currency_name }} دائماً (اختياري)"></i>
                 </label>
                 <select name="currency" id="currency" class="form-control select2">
                   {% for code, meta in lookups.get('currencies', []) %}
@@ -197,21 +197,21 @@ a.btn.btn-outline-secondary span {
                   {% endfor %}
                 </select>
                 <small class="form-text text-info">
-                  <i class="fas fa-lightbulb"></i> { t('الأسعار') } بـ{{ base_currency_name }} - { t('العملة') } فقط لتحويل { t('Paid') }
+                  <i class="fas fa-lightbulb"></i> الأسعار بـ{{ base_currency_name }} - العملة فقط لتحويل المدفوع
                 </small>
               </div>
             </div>
             <div class="col-md-2">
               <div class="form-group">
                 <label class="font-weight-bold">
-                  <i class="fas fa-exchange-alt text-info mr-1"></i>{ t('سعر_الصرف') }
-                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر { t('صرف') } { t('العملة') } مقابل الدرهم - يُحدث { t('تلقائي') }اً (اختياري)"></i>
+                  <i class="fas fa-exchange-alt text-info mr-1"></i>سعر الصرف
+                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر صرف العملة مقابل الدرهم - يُحدث تلقائياً (اختياري)"></i>
                 </label>
                 <input type="number" name="exchange_rate" id="exchange_rate" class="form-control" 
                        value="1.000000" step="0.000001" min="0.000001" 
                        placeholder="1.000000">
                 <small class="form-text text-muted">
-                  <i class="fas fa-robot"></i> يُحدّث { t('تلقائي') }اً عند اختيار { t('العملة') }
+                  <i class="fas fa-robot"></i> يُحدّث تلقائياً عند اختيار العملة
                 </small>
               </div>
             </div>
@@ -219,9 +219,9 @@ a.btn.btn-outline-secondary span {
 
           <hr>
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5><i class="fas fa-list mr-2"></i>{ t('الأصناف') } (<span id="line_count_display">0</span>)</h5>
+            <h5><i class="fas fa-list mr-2"></i>الأصناف (<span id="line_count_display">0</span>)</h5>
             <button type="button" class="btn btn-success" onclick="addLine()">
-              <i class="fas fa-plus mr-2"></i>{ t('Add') } صنف
+              <i class="fas fa-plus mr-2"></i>إضافة صنف
             </button>
           </div>
           <div id="linesContainer"></div>
@@ -232,13 +232,13 @@ a.btn.btn-outline-secondary span {
     <div class="col-md-4">
       <div class="card sale-totals-sticky">
         <div class="card-header bg-gradient-info">
-          <h3 class="card-title text-white"><i class="fas fa-calculator mr-2"></i>{ t('الإجماليات') }</h3>
+          <h3 class="card-title text-white"><i class="fas fa-calculator mr-2"></i>الإجماليات</h3>
         </div>
         <div class="card-body">
           <div class="form-group">
             <label class="font-weight-bold">
-              <i class="fas fa-percent text-danger mr-1"></i>{ t('Discount') } { t('الإجمالي') }
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('خصم_إضافي_على_إجمالي_الفاتورة') } بـ{{ base_currency_name }} ({ t('اختياري') } - افتراضي: 0)"></i>
+              <i class="fas fa-percent text-danger mr-1"></i>الخصم الإجمالي
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="خصم إضافي على إجمالي الفاتورة بـ{{ base_currency_name }} (اختياري - افتراضي: 0)"></i>
             </label>
             <div class="input-group">
               <input type="number" name="discount_amount" class="form-control" value="0" step="0.01" min="0" 
@@ -248,13 +248,13 @@ a.btn.btn-outline-secondary span {
                 <span class="input-group-text">{{ base_currency }}</span>
               </div>
             </div>
-            <small class="form-text text-muted">{ t('خصم') } بـ{{ base_currency_name }} على { t('Total') } الفرعي</small>
+            <small class="form-text text-muted">خصم بـ{{ base_currency_name }} على المجموع الفرعي</small>
           </div>
 
           <div class="form-group">
             <label class="font-weight-bold">
-              <i class="fas fa-shipping-fast text-primary mr-1"></i>تكلفة { t('الشحن') }
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تكلفة { t('الشحن') } والتوصيل بـ{{ base_currency_name }} ({ t('اختياري') } - افتراضي: 0)"></i>
+              <i class="fas fa-shipping-fast text-primary mr-1"></i>تكلفة الشحن
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تكلفة الشحن والتوصيل بـ{{ base_currency_name }} (اختياري - افتراضي: 0)"></i>
             </label>
             <div class="input-group">
               <input type="number" name="shipping_cost" class="form-control" value="0" step="0.01" min="0" 
@@ -264,13 +264,13 @@ a.btn.btn-outline-secondary span {
                 <span class="input-group-text">{{ base_currency }}</span>
               </div>
             </div>
-            <small class="form-text text-muted">{ t('تُضاف_للمجموع_قبل_الضريبة') }</small>
+            <small class="form-text text-muted">تُضاف للمجموع قبل الضريبة</small>
           </div>
 
           <div class="form-group">
             <label class="font-weight-bold">
-              <i class="fas fa-receipt text-warning mr-1"></i>{ t('نسبة_الضريبة') }
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="نسبة ضريبة { t('القيمة') } المضافة VAT% (اختياري - { t('افتراضي') }: 5%)"></i>
+              <i class="fas fa-receipt text-warning mr-1"></i>نسبة الضريبة
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="نسبة ضريبة القيمة المضافة VAT% (اختياري - افتراضي: 5%)"></i>
             </label>
             <div class="input-group">
               <input type="number" name="tax_rate" class="form-control" value="5" step="0.01" min="0" max="100" 
@@ -280,13 +280,13 @@ a.btn.btn-outline-secondary span {
                 <span class="input-group-text">%</span>
               </div>
             </div>
-            <small class="form-text text-muted">ضريبة { t('القيمة') } المضافة (VAT) - عادة 5% أو 16%</small>
+            <small class="form-text text-muted">ضريبة القيمة المضافة (VAT) - عادة 5% أو 16%</small>
           </div>
           
           <div class="total-box text-center">
             <div class="alert alert-info mb-3" style="background: rgba(255,255,255,0.2); border: none;">
               <i class="fas fa-info-circle"></i>
-              <strong>ملاحظة:</strong> { t('جميع') } { t('الأسعار') } بـ{{ base_currency_name }} ({{ base_currency }})
+              <strong>ملاحظة:</strong> جميع الأسعار بـ{{ base_currency_name }} ({{ base_currency }})
             </div>
             <h6 class="mb-2">{{ t('Subtotal') }}</h6>
             <h3 id="subtotal" class="mb-3">0.00</h3>
@@ -300,17 +300,17 @@ a.btn.btn-outline-secondary span {
 
           <div class="form-group mt-3">
             <label class="font-weight-bold">
-              <i class="fas fa-credit-card text-info"></i> { t('طريقة_الدفع') }
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('اختر_طريقة_الدفع_أو_اتركها_فارغة_للدفع_{ t('الآجل') }') }"></i>
+              <i class="fas fa-credit-card text-info"></i> طريقة الدفع
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر طريقة الدفع أو اتركها فارغة للدفع الآجل"></i>
             </label>
             <select name="payment_method" id="payment_method" class="form-control select2">
-              <option value="">{ t('آجل') } (بدون دفع)</option>
+              <option value="">آجل (بدون دفع)</option>
               {% for code, meta in lookups.get('payment_methods', []) %}
               <option value="{{ code }}">{{ meta.ar }}</option>
               {% endfor %}
             </select>
             <small class="form-text text-muted">
-              <i class="fas fa-info-circle"></i> اترك فارغاً للدفع الآجل (على { t('الحساب') })
+              <i class="fas fa-info-circle"></i> اترك فارغاً للدفع الآجل (على الحساب)
             </small>
           </div>
 
@@ -319,39 +319,39 @@ a.btn.btn-outline-secondary span {
 
           <div class="form-group" id="payment_amount_group" style="display:none;">
             <label class="font-weight-bold">
-              <i class="fas fa-hand-holding-usd mr-1"></i>{ t('المبلغ_المدفوع') }
-              <i class="fas fa-info-circle text-info" title="{ t('أدخل_المبلغ_بالعملة_المختارة_سيتم_تحويله_للدرهم_{ t('تلقائي') }اً') }"></i>
+              <i class="fas fa-hand-holding-usd mr-1"></i>المبلغ المدفوع
+              <i class="fas fa-info-circle text-info" title="أدخل المبلغ بالعملة المختارة - سيتم تحويله للدرهم تلقائياً"></i>
             </label>
             <div class="input-group">
               <input type="number" name="payment_amount" id="payment_amount" class="form-control" 
                      value="0" step="0.01" min="0"
-                     title="{ t('المبلغ_المدفوع_بعملة_الدفع_المختارة') }">
+                     title="المبلغ المدفوع بعملة الدفع المختارة">
               <div class="input-group-append">
                 <span class="input-group-text" id="payment_currency_display">{{ base_currency }}</span>
               </div>
             </div>
             <small class="form-text text-success">
-              <i class="fas fa-calculator"></i> سيتم تحويل { t('Amount') } للدرهم تلقائياً حسب { t('سعر_الصرف') }
+              <i class="fas fa-calculator"></i> سيتم تحويل المبلغ للدرهم تلقائياً حسب سعر الصرف
             </small>
-            <small class="text-muted d-block mt-1">{ t('اترك_صفر_للدفع_الآجل') }</small>
+            <small class="text-muted d-block mt-1">اترك صفر للدفع الآجل</small>
           </div>
 
           <div class="form-group">
             <label class="font-weight-bold">
               <i class="fas fa-sticky-note text-warning"></i> {{ t('Notes') }}
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('أي_ملاحظات_أو_تعليمات_إضافية_عن_هذه_{ t('الفاتورة') }') }"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="أي ملاحظات أو تعليمات إضافية عن هذه الفاتورة"></i>
             </label>
-            <textarea name="notes" class="form-control" rows="2" placeholder="{ t('ملاحظات_إضافية_عن_الفاتورة') }"></textarea>
+            <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات إضافية عن الفاتورة..."></textarea>
             <small class="form-text text-muted">
-              <i class="fas fa-lightbulb"></i> يمكنك كتابة أي { t('Notes') } أو تعليمات خاصة
+              <i class="fas fa-lightbulb"></i> يمكنك كتابة أي ملاحظات أو تعليمات خاصة
             </small>
           </div>
 
           <button type="submit" class="btn btn-primary btn-block btn-lg d-none d-md-block">
-            <i class="fas fa-save mr-2"></i>{ t('Save') } { t('الفاتورة') }
+            <i class="fas fa-save mr-2"></i>حفظ الفاتورة
           </button>
           <div class="d-md-none text-center text-muted small mt-2">
-            <i class="fas fa-info-circle"></i> استخدم الشريط السفلي لل{ t('Save') } على ال{ t('جوال') }
+            <i class="fas fa-info-circle"></i> استخدم الشريط السفلي للحفظ على الجوال
           </div>
         </div>
       </div>
@@ -361,10 +361,10 @@ a.btn.btn-outline-secondary span {
   <div class="sale-mobile-bottom-bar d-md-none d-flex">
     <div>
       <strong id="mobile-total">0.00 {{ base_currency }}</strong>
-      <small class="d-block text-muted"><span id="mobile-count">0</span> { t('أصناف') }</small>
+      <small class="d-block text-muted"><span id="mobile-count">0</span> أصناف</small>
     </div>
     <button type="submit" form="saleForm" class="btn btn-primary">
-      <i class="fas fa-save mr-1"></i> { t('Save') }
+      <i class="fas fa-save mr-1"></i> حفظ
     </button>
   </div>
 </form>
@@ -375,12 +375,12 @@ a.btn.btn-outline-secondary span {
 <script src="{{ url_for('static', filename='js/ai-sales.js') }}"></script>
 <script>
 $(document).ready(function() {
-  // تهيئة حقول { t('الدفع') } الديناميكية
-  // تتم { t('إدارة') } الحقول عبر sales-enhanced.js { t('باستخدام') } API موحدة
-  // لا حاجة { t('لتهيئة') } PaymentFieldsManager { t('هنا') }
+  // تهيئة حقول الدفع الديناميكية
+  // تتم إدارة الحقول عبر sales-enhanced.js باستخدام API موحدة
+  // لا حاجة لتهيئة PaymentFieldsManager هنا
   
-  // Initialize customer select - الفلتر الذكي سيعمل { t('تلقائي') }اً
-  // لكن نحتفظ ب{ t('Code') } القديم كـ fallback
+  // Initialize customer select - الفلتر الذكي سيعمل تلقائياً
+  // لكن نحتفظ بالكود القديم كـ fallback
   if (!$('#customer_id').hasClass('select2-hidden-accessible')) {
     $('#customer_id').select2({
       ajax: {
@@ -403,7 +403,7 @@ $(document).ready(function() {
       },
       language: 'ar',
       dir: 'rtl',
-      placeholder: '{ t('ابحث_عن_زبون') }',
+      placeholder: 'ابحث عن زبون...',
       minimumInputLength: 1,
       width: '100%'
     });
@@ -414,7 +414,7 @@ function validateForm() {
   const lineCount = parseInt($('#line_count').val()) || 0;
   
   if (lineCount === 0) {
-    alert('يجب إضافة منتج واحد على الأقل لل{ t('فاتورة') }.\n\nاضغط "{ t('إضافة_صف') }" واختر منتجاً.');
+    alert('يجب إضافة منتج واحد على الأقل للفاتورة.\n\nاضغط "إضافة صف" واختر منتجاً.');
     return false;
   }
   
@@ -429,7 +429,7 @@ function validateForm() {
   }
   
   if (!hasProduct) {
-    alert('يجب اختيار منتج واحد على الأقل.\n\nاختر منتجاً { t('من_القائمة_المنسدلة') }.');
+    alert('يجب اختيار منتج واحد على الأقل.\n\nاختر منتجاً من القائمة المنسدلة.');
     return false;
   } 
   return true;

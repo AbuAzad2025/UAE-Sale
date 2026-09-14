@@ -1,15 +1,15 @@
 {% extends 'base.html' %}
-{% block title %}دفتر { t('Expenses') }{% endblock %}
+{% block title %}دفتر المصروفات{% endblock %}
 {% block page_title %}
 <div class="card card-primary card-outline">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h3 class="card-title mb-0"><i class="fas fa-receipt mr-2"></i>{ t('سجل_المصروفات') }</h3>
+        <h3 class="card-title mb-0"><i class="fas fa-receipt mr-2"></i>سجل المصروفات</h3>
         <div class="btn-group" role="group">
             <a href="{{ url_for('expenses.create') }}" class="btn btn-success">
-                <i class="fas fa-plus mr-1"></i>{ t('مصروف_جديد') }
+                <i class="fas fa-plus mr-1"></i>مصروف جديد
             </a>
             <button type="button" id="printExpensesBtn" class="btn btn-primary font-weight-bold text-white">
-                <i class="fas fa-print mr-1"></i>{ t('Print') }
+                <i class="fas fa-print mr-1"></i>طباعة
             </button>
         </div>
     </div>
@@ -32,9 +32,9 @@
             <table id="expensesTable" class="table table-striped table-bordered">
                 <thead>
                     <tr>
-                        <th>{ t('المعرف') }</th>
-                        <th>{ t('التصنيف') }</th>
-                        <th>{ t('Description') }</th>
+                        <th>المعرف</th>
+                        <th>التصنيف</th>
+                        <th>الوصف</th>
                         <th>{{ t('Amount') }}</th>
                         <th>{{ t('Currency') }}</th>
                         <th>{{ t('Amount') }} ({{ base_currency }})</th>
@@ -56,12 +56,12 @@
                         <td><span class="badge badge-info">{{ expense.payment_method }}</span></td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <a href="{{ url_for('expenses.view', id=expense.id) }}" class="btn btn-info" title="{ t('View') }">
+                                <a href="{{ url_for('expenses.view', id=expense.id) }}" class="btn btn-info" title="عرض">
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 <button type="button" class="btn btn-danger" 
                                         onclick="deleteItem('expenses', {{ expense.id }}, {{ expense.expense_number|tojson }})" 
-                                        title="{ t('Delete') }">
+                                        title="حذف">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -85,7 +85,7 @@
   function initExpensesPrint() {
     const $table = $(tableSelector);
     const options = {
-      title: '{ t('سجل_المصروفات') }',
+      title: 'سجل المصروفات',
       headerColor: '#0d6efd'
     };
 

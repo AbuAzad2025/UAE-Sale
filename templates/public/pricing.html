@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{ t('شركة_أزاد_للأنظمة_الذكية_الأسعار_والعروض') }</title>
+    <title>شركة أزاد للأنظمة الذكية - الأسعار والعروض</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
@@ -13,7 +13,7 @@
 
     <!-- Language Switcher -->
     <div class="lang-switcher on-light">
-        <a href="{{ url_for('language.set_language', lang='ar') }}" class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}"><i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>{ t('العربية') }</a>
+        <a href="{{ url_for('language.set_language', lang='ar') }}" class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}"><i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>العربية</a>
         <a href="{{ url_for('language.set_language', lang='en') }}" class="lang-pill {% if session.get('language') == 'en' %}active{% endif %}"><i class="fas fa-check {% if session.get('language') != 'en' %}invisible{% endif %}"></i>English</a>
     </div>
 
@@ -21,16 +21,16 @@
         <div class="logo">{{ config.COMPANY_NAME_AR }}</div>
         <div>
             <a href="{{ url_for('public.landing') }}">{{ t('Dashboard') }}</a>
-            <a href="{{ url_for('public.features') }}">{ t('Features') }</a>
-            <a href="{{ url_for('public.pricing') }}">{ t('الأسعار') }</a>
-            <a href="{{ url_for('public.user_guide') }}">{ t('دليل_المستخدم') }</a>
-            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> { t('Sign In') }</a>
+            <a href="{{ url_for('public.features') }}">المميزات</a>
+            <a href="{{ url_for('public.pricing') }}">الأسعار</a>
+            <a href="{{ url_for('public.user_guide') }}">دليل المستخدم</a>
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> دخول</a>
         </div>
     </nav>
 
     <header class="pricing-header">
         <h1>الأسعار والعروض</h1>
-        <p>{ t('اختر_الباقة_المناسبة_لحجم_أع{ t('مالك') }_بدون_رسوم_خفية') }</p>
+        <p>اختر الباقة المناسبة لحجم أعمالك - بدون رسوم خفية</p>
     </header>
 
     <div class="pricing-container">
@@ -38,53 +38,53 @@
             
             <!-- Basic Plan -->
             <div class="price-card">
-                <div class="plan-name">{ t('الباقة_الأساسية') }</div>
-                <div class="price">$50<small>{ t('شهرياً') }</small></div>
-                <div class="price-note">أو $80 شهرياً مع استضافة مُدارة<br>{ t('للشركات_الصغيرة_والمتوسطة') }</div>
+                <div class="plan-name">الباقة الأساسية</div>
+                <div class="price">$50<small>/شهرياً</small></div>
+                <div class="price-note">أو $80 شهرياً مع استضافة مُدارة<br>للشركات الصغيرة والمتوسطة</div>
                 <ul class="features-list">
-                    <li><i class="fas fa-check"></i> { t('3_مستخدمين') }</li>
-                    <li><i class="fas fa-check"></i> { t('مبيعات_ومشتريات') }</li>
-                    <li><i class="fas fa-check"></i> { t('إدارة_مخزون') }</li>
-                    <li><i class="fas fa-check"></i> { t('فواتير_إلكترونية') }</li>
-                    <li><i class="fas fa-check"></i> { t('عملاء_وموردون') }</li>
-                    <li><i class="fas fa-check"></i> { t('تقارير_أساسية') }</li>
-                    <li><i class="fas fa-check"></i> { t('دعم_واتساب') }</li>
+                    <li><i class="fas fa-check"></i> 3 مستخدمين</li>
+                    <li><i class="fas fa-check"></i> مبيعات ومشتريات</li>
+                    <li><i class="fas fa-check"></i> إدارة مخزون</li>
+                    <li><i class="fas fa-check"></i> فواتير إلكترونية</li>
+                    <li><i class="fas fa-check"></i> عملاء وموردون</li>
+                    <li><i class="fas fa-check"></i> تقارير أساسية</li>
+                    <li><i class="fas fa-check"></i> دعم واتساب</li>
                 </ul>
                 <button class="btn-select" onclick="contact('basic')">اختر الباقة</button>
             </div>
 
             <!-- Professional Plan -->
             <div class="price-card featured">
-                <div class="badge">{ t('الأكثر_شعبية') }</div>
-                <div class="plan-name">{ t('الباقة_الاحترافية') }</div>
-                <div class="price">$100<small>{ t('شهرياً') }</small></div>
-                <div class="price-note">أو $130 شهرياً مع استضافة مُدارة<br>{ t('للشركات_النامية') }</div>
+                <div class="badge">الأكثر شعبية</div>
+                <div class="plan-name">الباقة الاحترافية</div>
+                <div class="price">$100<small>/شهرياً</small></div>
+                <div class="price-note">أو $130 شهرياً مع استضافة مُدارة<br>للشركات النامية</div>
                 <ul class="features-list">
-                    <li><i class="fas fa-check"></i> { t('10_مستخدمين') }</li>
-                    <li><i class="fas fa-check"></i> { t('كل_ميزات_الأساسية') }</li>
-                    <li><i class="fas fa-check"></i> { t('ذكاء_اصطناعي') }</li>
-                    <li><i class="fas fa-check"></i> { t('دفتر_أستاذ_GL') }</li>
-                    <li><i class="fas fa-check"></i> { t('تقارير_متقدمة') }</li>
-                    <li><i class="fas fa-check"></i> { t('API_للربط') }</li>
-                    <li><i class="fas fa-check"></i> { t('دعم_فني_24_7') }</li>
+                    <li><i class="fas fa-check"></i> 10 مستخدمين</li>
+                    <li><i class="fas fa-check"></i> كل ميزات الأساسية</li>
+                    <li><i class="fas fa-check"></i> ذكاء اصطناعي</li>
+                    <li><i class="fas fa-check"></i> دفتر أستاذ GL</li>
+                    <li><i class="fas fa-check"></i> تقارير متقدمة</li>
+                    <li><i class="fas fa-check"></i> API للربط</li>
+                    <li><i class="fas fa-check"></i> دعم فني 24/7</li>
                 </ul>
                 <button class="btn-select" onclick="contact('professional')">اختر الباقة</button>
             </div>
 
             <!-- Enterprise Plan -->
             <div class="price-card">
-                <div class="plan-name">{ t('باقة_الشركات_والمؤسسات') }</div>
-                <div class="price">$120<small>{ t('شهرياً') }</small></div>
-                <div class="price-note">أو $150 شهرياً مع استضافة مُدارة<br>{ t('حلول_مخصصة_للمؤسسات') }</div>
+                <div class="plan-name">باقة الشركات والمؤسسات</div>
+                <div class="price">$120<small>/شهرياً</small></div>
+                <div class="price-note">أو $150 شهرياً مع استضافة مُدارة<br>حلول مخصصة للمؤسسات</div>
                 <ul class="features-list">
-                    <li><i class="fas fa-check"></i> { t('مستخدمين_غير_محدودين') }</li>
-                    <li><i class="fas fa-check"></i> { t('كل_الميزات_المتقدمة') }</li>
-                    <li><i class="fas fa-check"></i> { t('تخصيص_كامل_للنظام') }</li>
-                    <li><i class="fas fa-check"></i> { t('تدريب_مجاني_للموظفين') }</li>
-                    <li><i class="fas fa-check"></i> { t('استضافة_خاصة') }</li>
-                    <li><i class="fas fa-check"></i> { t('ربط_مع_أنظمة_أخرى') }</li>
-                    <li><i class="fas fa-check"></i> { t('مدير_حساب_مخصص') }</li>
-                    <li><i class="fas fa-check"></i> { t('SLA_مضمون') }</li>
+                    <li><i class="fas fa-check"></i> مستخدمين غير محدودين</li>
+                    <li><i class="fas fa-check"></i> كل الميزات المتقدمة</li>
+                    <li><i class="fas fa-check"></i> تخصيص كامل للنظام</li>
+                    <li><i class="fas fa-check"></i> تدريب مجاني للموظفين</li>
+                    <li><i class="fas fa-check"></i> استضافة خاصة</li>
+                    <li><i class="fas fa-check"></i> ربط مع أنظمة أخرى</li>
+                    <li><i class="fas fa-check"></i> مدير حساب مخصص</li>
+                    <li><i class="fas fa-check"></i> SLA مضمون</li>
                 </ul>
                 <button class="btn-select" onclick="contact('enterprise')">تواصل معنا</button>
             </div>
@@ -93,12 +93,12 @@
 
     <!-- Comparison Table -->
     <div class="comparison">
-        <h2>{ t('مقارنة_تفصيلية_بين_الباقات') }</h2>
+        <h2>مقارنة تفصيلية بين الباقات</h2>
         <div class="comparison-table">
             <table>
                 <thead>
                     <tr>
-                        <th>{ t('الميزة') }</th>
+                        <th>الميزة</th>
                         <th>أساسية ($50)</th>
                         <th>احترافية ($100)</th>
                         <th>مؤسسات ($120)</th>
@@ -106,19 +106,19 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td style="text-align: right;">{ t('عدد_المستخدمين') }</td>
+                        <td style="text-align: right;">عدد المستخدمين</td>
                         <td>3</td>
                         <td>10</td>
-                        <td>{ t('غير_محدود') }</td>
+                        <td>غير محدود</td>
                     </tr>
                     <tr>
-                        <td style="text-align: right;">{ t('ذكاء_اصطناعي') }</td>
+                        <td style="text-align: right;">ذكاء اصطناعي</td>
                         <td><i class="cross fas fa-times"></i></td>
                         <td><i class="check fas fa-check"></i></td>
                         <td><i class="check fas fa-check"></i></td>
                     </tr>
                     <tr>
-                        <td style="text-align: right;">{ t('دفتر_أستاذ_GL') }</td>
+                        <td style="text-align: right;">دفتر أستاذ GL</td>
                         <td><i class="cross fas fa-times"></i></td>
                         <td><i class="check fas fa-check"></i></td>
                         <td><i class="check fas fa-check"></i></td>
@@ -130,16 +130,16 @@
                         <td><i class="check fas fa-check"></i></td>
                     </tr>
                     <tr>
-                        <td style="text-align: right;">{ t('استضافة_مُدارة') }</td>
+                        <td style="text-align: right;">استضافة مُدارة</td>
                         <td>+$30</td>
                         <td>+$30</td>
                         <td>+$30</td>
                     </tr>
                     <tr>
-                        <td style="text-align: right;">{ t('دعم_فني') }</td>
-                        <td>{ t('واتساب') }</td>
+                        <td style="text-align: right;">دعم فني</td>
+                        <td>واتساب</td>
                         <td>24/7</td>
-                        <td>{ t('مدير_مخصص') }</td>
+                        <td>مدير مخصص</td>
                     </tr>
                 </tbody>
             </table>
@@ -149,7 +149,7 @@
     <!-- CTA Section -->
     <section class="cta-section">
         <h2>جاهز للبدء؟</h2>
-        <p>{ t('ابدأ_تجربتك_المجانية_لمدة_14_يوم_بدون_{ t('بطاقة') }_ائتمان') }</p>
+        <p>ابدأ تجربتك المجانية لمدة 14 يوم - بدون بطاقة ائتمان</p>
         <div class="cta-buttons">
             <a href="#" onclick="contact('demo')" class="btn-cta btn-white">جرب مجاناً</a>
             <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" class="btn-cta btn-outline" target="_blank">
@@ -159,14 +159,14 @@
     </section>
 
     <footer>
-        <p>&copy; 2025 {{ config.COMPANY_NAME_AR }}. { t('جميع') } الحقوق محفوظة.</p>
+        <p>&copy; 2025 {{ config.COMPANY_NAME_AR }}. جميع الحقوق محفوظة.</p>
         <p style="margin-top: 10px;">{{ config.DEVELOPER_CREDIT }}</p>
     </footer>
 
     <script>
         function contact(plan) {
             const whatsapp = "{{ config.COMPANY_WHATSAPP }}";
-            const message = `مرحباً، أرغب في الاشتراك في { t('الباقة') }: ${plan}`;
+            const message = `مرحباً، أرغب في الاشتراك في الباقة: ${plan}`;
             window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`, '_blank');
         }
     </script>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{ t('شركة_أزاد_للأنظمة_الذكية_تسجيل_ال{ t('Sign In') }') }</title>
+  <title>شركة أزاد للأنظمة الذكية - تسجيل الدخول</title>
   <link rel="icon" href="{{ url_for('static', filename='img/azad_favicon.png') }}">
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
@@ -90,7 +90,7 @@
         <div class="dropdown-menu dropdown-menu-right">
             <a class="dropdown-item {% if session.get('language', 'ar') == 'ar' %}active{% endif %}" href="{{ url_for('language.set_language', lang='ar') }}">
                 <i class="fas fa-check mr-2 {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>
-                { t('العربية') }
+                العربية
             </a>
             <a class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}" href="{{ url_for('language.set_language', lang='en') }}">
                 <i class="fas fa-check mr-2 {% if session.get('language') != 'en' %}invisible{% endif %}"></i>
@@ -176,7 +176,7 @@
       <p class="mb-1"><small class="text-muted">{{ config.DEVELOPER_CREDIT }}</small></p>
       <p class="mb-0">
         <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank" class="text-success">
-          <i class="fab fa-whatsapp"></i> { t('واتساب') }: {{ config.COMPANY_PHONE }}
+          <i class="fab fa-whatsapp"></i> واتساب: {{ config.COMPANY_PHONE }}
         </a>
       </p>
     </div>

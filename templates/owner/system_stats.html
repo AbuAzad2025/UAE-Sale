@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('إحصائيات_النظام') } والأداء{% endblock %}
+{% block title %}شركة أزاد للأنظمة الذكية - إحصائيات النظام والأداء{% endblock %}
 
 {% block content %}
 <div class="content-wrapper">
@@ -8,15 +8,15 @@
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1 class="m-0"><i class="fas fa-chart-bar mr-2"></i>{ t('إحصائيات_النظام') }</h1>
+                    <h1 class="m-0"><i class="fas fa-chart-bar mr-2"></i>إحصائيات النظام</h1>
                 </div>
                 <div class="col-sm-6">
                     <div class="float-left">
                         <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-right mr-2"></i>{ t('لوحة_المالك') }
+                            <i class="fas fa-arrow-right mr-2"></i>لوحة المالك
                         </a>
                         <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-home mr-2"></i>{ t('الرئيسية') }
+                            <i class="fas fa-home mr-2"></i>الرئيسية
                         </a>
                     </div>
                 </div>
@@ -30,7 +30,7 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">{ t('إحصائيات_قاعدة_البيانات') }</h3>
+                            <h3 class="card-title">إحصائيات قاعدة البيانات</h3>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -38,7 +38,7 @@
                                     <thead>
                                         <tr>
                                             <th>{{ t('Table') }}</th>
-                                            <th>{ t('عدد_السجلات') }</th>
+                                            <th>عدد السجلات</th>
                                         </tr>
                                     </thead>
                                     <tbody>

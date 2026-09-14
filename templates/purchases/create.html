@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - إنشاء { t('فاتورة_شراء_جديدة') }{% endblock %}
+{% block title %}شركة أزاد للأنظمة الذكية - إنشاء فاتورة شراء جديدة{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
   <div>
-    <h1 class="mb-0"><i class="fas fa-file-invoice-dollar mr-2"></i>{ t('فاتورة_شراء_جديدة') }</h1>
+    <h1 class="mb-0"><i class="fas fa-file-invoice-dollar mr-2"></i>فاتورة شراء جديدة</h1>
   </div>
   <div class="purchase-header-actions">
     <a href="{{ url_for('purchases.index') }}" class="purchase-header-link purchase-header-link--primary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة لل{ t('مشتريات') }
+      <i class="fas fa-arrow-right mr-2"></i>العودة للمشتريات
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="purchase-header-link purchase-header-link--secondary">
-      <i class="fas fa-home mr-2"></i>{ t('الرئيسية') }
+      <i class="fas fa-home mr-2"></i>الرئيسية
     </a>
   </div>
 </div>
@@ -168,7 +168,7 @@
 {% block content %}
 <div class="card card-primary">
   <div class="card-header">
-    <h3 class="card-title"><i class="fas fa-shopping-cart"></i> { t('بيانات_فاتورة_الشراء') }</h3>
+    <h3 class="card-title"><i class="fas fa-shopping-cart"></i> بيانات فاتورة الشراء</h3>
   </div>
   
   <form method="POST" action="{{ url_for('purchases.create') }}" id="purchaseForm" class="purchase-create-form">
@@ -177,11 +177,11 @@
     <input type="hidden" name="line_count" id="line_count" value="0">
     
     <div class="card-body">
-      <!-- ================== { t('معلومات_المورد') } ================== -->
+      <!-- ================== معلومات المورد ================== -->
       <div class="row">
         <div class="col-md-12">
           <h5 class="text-primary mb-3">
-            <i class="fas fa-truck"></i> { t('معلومات_المورد') }
+            <i class="fas fa-truck"></i> معلومات المورد
           </h5>
         </div>
       </div>
@@ -190,22 +190,22 @@
         <div class="col-md-4">
           <div class="form-group">
             <label for="supplier_id">
-              <i class="fas fa-truck text-success"></i> { t('المورد') } 
+              <i class="fas fa-truck text-success"></i> المورد 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر { t('المورد') } - الفلتر الذكي (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر المورد - الفلتر الذكي (إجباري)"></i>
             </label>
             <div class="input-group">
               <select name="supplier_id" id="supplier_id" class="form-control supplier-select" required>
                 <option value="" selected>بلا</option>
               </select>
               <div class="input-group-append">
-                <a href="{{ url_for('suppliers.create') }}" class="btn btn-success" target="_blank" title="{ t('إضافة_مورد_جديد') }">
+                <a href="{{ url_for('suppliers.create') }}" class="btn btn-success" target="_blank" title="إضافة مورد جديد">
                   <i class="fas fa-plus"></i>
                 </a>
               </div>
             </div>
             <small class="form-text text-muted">
-              💡 لا يوجد { t('المورد') }؟ اضغط زر الإضافة لفتح صفحة { t('Suppliers') } في نافذة جديدة.
+              💡 لا يوجد المورد؟ اضغط زر الإضافة لفتح صفحة الموردين في نافذة جديدة.
             </small>
           </div>
         </div>
@@ -213,9 +213,9 @@
         <div class="col-md-4">
           <div class="form-group">
             <label for="warehouse_id">
-              <i class="fas fa-warehouse text-info"></i> { t('Warehouse') }
+              <i class="fas fa-warehouse text-info"></i> المستودع
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('Warehouse') } الذي ستُضاف إليه البضاعة (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المستودع الذي ستُضاف إليه البضاعة (إجباري)"></i>
             </label>
             <select name="warehouse_id" id="warehouse_id" class="form-control" required>
               <option value="" selected>بلا</option>
@@ -230,7 +230,7 @@
               {% endif %}
             </select>
             <small class="form-text text-info">
-              <i class="fas fa-info-circle"></i> ستُضاف البضاعة لهذا { t('Warehouse') }
+              <i class="fas fa-info-circle"></i> ستُضاف البضاعة لهذا المستودع
             </small>
           </div>
         </div>
@@ -238,8 +238,8 @@
         <div class="col-md-2">
           <div class="form-group">
             <label for="supplier_phone">
-              <i class="fas fa-phone text-info"></i> هاتف { t('المورد') }
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('يُملأ_تلقائياً_عند_اختيار_المورد') }"></i>
+              <i class="fas fa-phone text-info"></i> هاتف المورد
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="يُملأ تلقائياً عند اختيار المورد"></i>
             </label>
             <input type="text" name="supplier_phone" id="supplier_phone" class="form-control" readonly>
           </div>
@@ -248,19 +248,19 @@
         <div class="col-md-2">
           <div class="form-group">
             <label for="supplier_email">
-              <i class="fas fa-envelope text-secondary"></i> بريد { t('المورد') }
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('يُملأ_تلقائياً_عند_اختيار_المورد') }"></i>
+              <i class="fas fa-envelope text-secondary"></i> بريد المورد
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="يُملأ تلقائياً عند اختيار المورد"></i>
             </label>
             <input type="email" name="supplier_email" id="supplier_email" class="form-control" readonly>
           </div>
         </div>
       </div>
       
-      <!-- ================== العملة و{ t('Tax') } ================== -->
+      <!-- ================== العملة والضريبة ================== -->
       <div class="row mt-3">
         <div class="col-md-12">
           <h5 class="text-primary mb-3">
-            <i class="fas fa-dollar-sign"></i> العملة و{ t('Tax') }
+            <i class="fas fa-dollar-sign"></i> العملة والضريبة
           </h5>
         </div>
       </div>
@@ -269,11 +269,11 @@
         <div class="col-md-4">
           <div class="form-group">
             <label for="currency">
-              <i class="fas fa-dollar-sign text-success"></i> { t('العملة') }
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عملة { t('الفاتورة') } (افتراضي: {{ base_currency }})"></i>
+              <i class="fas fa-dollar-sign text-success"></i> العملة
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عملة الفاتورة (افتراضي: {{ base_currency }})"></i>
             </label>
             <select name="currency" id="currency" class="form-control">
-              <option value="AED" {% if base_currency == "AED" %}selected{% endif %}>{ t('درهم_إماراتي') } (AED)</option>
+              <option value="AED" {% if base_currency == "AED" %}selected{% endif %}>درهم إماراتي (AED)</option>
               <option value="USD">دولار أمريكي (USD)</option>
               <option value="EUR">يورو (EUR)</option>
               <option value="GBP">جنيه إسترليني (GBP)</option>
@@ -284,16 +284,16 @@
         
         <div class="col-md-4">
           <div class="form-group">
-            <label for="exchange_rate">{ t('سعر_الصرف') }</label>
+            <label for="exchange_rate">سعر الصرف</label>
             <input type="number" name="exchange_rate" id="exchange_rate" 
                    class="form-control" value="1.000000" step="0.000001" min="0">
-            <small class="form-text text-muted">{ t('سعر_الصرف_مقابل_الدرهم') }</small>
+            <small class="form-text text-muted">سعر الصرف مقابل الدرهم</small>
           </div>
         </div>
         
         <div class="col-md-4">
           <div class="form-group">
-            <label for="tax_rate">{ t('نسبة_الضريبة') } %</label>
+            <label for="tax_rate">نسبة الضريبة %</label>
             <input type="number" name="tax_rate" id="tax_rate" 
                    class="form-control" value="0" step="0.01" min="0" max="100">
             <small class="form-text text-muted">مثال: 5 للضريبة 5%</small>
@@ -301,11 +301,11 @@
         </div>
       </div>
       
-      <!-- ================== { t('Products') } ================== -->
+      <!-- ================== المنتجات ================== -->
       <div class="row mt-4">
         <div class="col-md-12">
           <h5 class="text-primary mb-3">
-            <i class="fas fa-boxes"></i> { t('المنتجات_المشتراة') }
+            <i class="fas fa-boxes"></i> المنتجات المشتراة
           </h5>
         </div>
       </div>
@@ -313,7 +313,7 @@
       <div id="linesContainer" class="mb-3"></div>
       
       <button type="button" class="btn btn-success btn-sm" onclick="addLine()">
-        <i class="fas fa-plus-circle"></i> { t('إضافة_منتج') }
+        <i class="fas fa-plus-circle"></i> إضافة منتج
       </button>
       
       <!-- ================== الملخص المالي ================== -->
@@ -322,25 +322,25 @@
           <div class="form-group">
             <label for="notes">{{ t('Notes') }}</label>
             <textarea name="notes" id="notes" class="form-control" rows="4" 
-                      placeholder="{ t('أي_ملاحظات_إضافية_عن_فاتورة_الشراء') }"></textarea>
+                      placeholder="أي ملاحظات إضافية عن فاتورة الشراء..."></textarea>
           </div>
         </div>
         
         <div class="col-md-4">
           <div class="card bg-light">
             <div class="card-body">
-              <h6 class="text-center mb-3"><i class="fas fa-calculator"></i> { t('ملخص_الفاتورة') }</h6>
+              <h6 class="text-center mb-3"><i class="fas fa-calculator"></i> ملخص الفاتورة</h6>
               <table class="table table-sm">
                 <tr>
-                  <td>{ t('Total') } الفرعي:</td>
+                  <td>المجموع الفرعي:</td>
                   <td class="text-left" id="summary_subtotal">0.00 {{ base_currency }}</td>
                 </tr>
                 <tr>
-                  <td>{ t('Tax') }:</td>
+                  <td>الضريبة:</td>
                   <td class="text-left" id="summary_tax">0.00 {{ base_currency }}</td>
                 </tr>
                 <tr class="font-weight-bold border-top">
-                  <td>{ t('الإجمالي') }:</td>
+                  <td>الإجمالي:</td>
                   <td class="text-left text-primary" id="summary_total">0.00 {{ base_currency }}</td>
                 </tr>
               </table>
@@ -353,13 +353,13 @@
     <!-- ================== الأزرار ================== -->
     <div class="card-footer">
       <button type="submit" class="btn btn-primary btn-lg">
-        <i class="fas fa-save mr-2"></i> حفظ { t('فاتورة') } الشراء
+        <i class="fas fa-save mr-2"></i> حفظ فاتورة الشراء
       </button>
       <a href="{{ url_for('purchases.index') }}" class="btn btn-secondary btn-lg">
-        <i class="fas fa-times mr-2"></i> { t('Cancel') }
+        <i class="fas fa-times mr-2"></i> إلغاء
       </a>
       <button type="button" class="btn btn-info btn-lg float-left" onclick="calculateTotals();">
-        <i class="fas fa-calculator mr-2"></i> إعادة { t('الحساب') }
+        <i class="fas fa-calculator mr-2"></i> إعادة الحساب
       </button>
       <button type="button" class="btn btn-warning btn-lg float-left ml-2" onclick="debugTotals()">
         <i class="fas fa-bug mr-2"></i> Debug
@@ -377,16 +377,16 @@
 let lineIndex = 0;
 
 // =====================================
-// إضافة سطر { t('New Product') }
+// إضافة سطر منتج جديد
 // =====================================
 function addLine() {
   const html = `
     <div class="product-line mb-3 p-3" id="line_${lineIndex}" 
          style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px;">
       <div class="row align-items-end">
-        <!-- { t('المنتج') } -->
+        <!-- المنتج -->
         <div class="col-md-4">
-          <label class="small" for="line_${lineIndex}_product_id"><i class="fas fa-box"></i> { t('المنتج') }</label>
+          <label class="small" for="line_${lineIndex}_product_id"><i class="fas fa-box"></i> المنتج</label>
           <select name="lines[${lineIndex}][product_id]" 
                   id="line_${lineIndex}_product_id"
                   class="form-control product-select line-product" 
@@ -395,25 +395,25 @@ function addLine() {
           </select>
         </div>
         
-        <!-- { t('Quantity') } -->
+        <!-- الكمية -->
         <div class="col-md-2">
-          <label class="small" for="line_${lineIndex}_quantity"><i class="fas fa-sort-numeric-up"></i> { t('Quantity') }</label>
+          <label class="small" for="line_${lineIndex}_quantity"><i class="fas fa-sort-numeric-up"></i> الكمية</label>
           <input type="number" name="lines[${lineIndex}][quantity]" 
                  id="line_${lineIndex}_quantity"
                  class="form-control line-quantity" data-line="${lineIndex}"
                  placeholder="{{ t('Quantity') }}" value="1" step="0.01" min="0.01" required>
         </div>
         
-        <!-- { t('التكلفة') } -->
+        <!-- التكلفة -->
         <div class="col-md-2">
-          <label class="small" for="line_${lineIndex}_unit_cost"><i class="fas fa-dollar-sign"></i> { t('التكلفة') }</label>
+          <label class="small" for="line_${lineIndex}_unit_cost"><i class="fas fa-dollar-sign"></i> التكلفة</label>
           <input type="number" name="lines[${lineIndex}][unit_cost]" 
                  id="line_${lineIndex}_unit_cost"
                  class="form-control line-cost" data-line="${lineIndex}"
                  placeholder="0.00" step="0.01" min="0" required>
         </div>
         
-        <!-- { t('Discount') } -->
+        <!-- الخصم -->
         <div class="col-md-2">
           <label class="small" for="line_${lineIndex}_discount"><i class="fas fa-percentage"></i> خصم%</label>
           <input type="number" name="lines[${lineIndex}][discount_percent]" 
@@ -422,14 +422,14 @@ function addLine() {
                  placeholder="0" value="0" step="0.01" min="0" max="100">
         </div>
         
-        <!-- { t('الإجمالي') } -->
+        <!-- الإجمالي -->
         <div class="col-md-1">
-          <label class="small" for="line_total_${lineIndex}"><i class="fas fa-equals"></i> { t('Total') }</label>
+          <label class="small" for="line_total_${lineIndex}"><i class="fas fa-equals"></i> المجموع</label>
           <input type="text" class="form-control line-total bg-light" 
                  id="line_total_${lineIndex}" data-line="${lineIndex}" value="0.00" readonly>
         </div>
         
-        <!-- { t('Delete') } -->
+        <!-- حذف -->
         <div class="col-md-1">
           <button type="button" class="btn btn-danger btn-block" 
                   onclick="removeLine(${lineIndex})" title="{{ t('Delete') }}">
@@ -442,14 +442,14 @@ function addLine() {
   
   $('#linesContainer').append(html);
   
-  // { t('تفعيل') } Select2 للمنتج باستخدام الفلتر الذكي
+  // تفعيل Select2 للمنتج باستخدام الفلتر الذكي
   const $productSelect = $(`select[name="lines[${lineIndex}][product_id]"]`);
   
   // استخدام نفس التكوين من customer-select.js
   if (window.SmartSelectors) {
     window.SmartSelectors.initProducts($productSelect[0]);
   } else {
-    // Fallback: تكوين { t('يدوي') }
+    // Fallback: تكوين يدوي
     $productSelect.select2({
       ajax: {
         url: "{{ url_for('api.api_search') }}",
@@ -477,14 +477,14 @@ function addLine() {
         },
         cache: true
       },
-      placeholder: '{ t('ابحث_عن_منتج') }',
+      placeholder: 'ابحث عن منتج...',
       allowClear: true,
       minimumInputLength: 0,
       dir: 'rtl',
       width: '100%',
       language: 'ar',
       templateResult: function(p) {
-        if (p.loading) return 'جاري ال{ t('Search') }...';
+        if (p.loading) return 'جاري البحث...';
         if (!p.id) return p.text;
         
         const stockIcon = (p.current_stock || 0) > 0 ? '✅' : '❌';
@@ -512,7 +512,7 @@ function addLine() {
     });
   }
   
-  // حساب { t('الإجمالي') } عند التغيير - استخدام setTimeout للتأكد من التحميل
+  // حساب الإجمالي عند التغيير - استخدام setTimeout للتأكد من التحميل
   setTimeout(function() {
     $(`.line-quantity[data-line="${lineIndex}"], .line-cost[data-line="${lineIndex}"], .line-discount[data-line="${lineIndex}"]`)
       .on('input change keyup', function() {        calculateLineTotal(lineIndex);
@@ -520,7 +520,7 @@ function addLine() {
       });
   }, 100);
   
-  // تعبئة السعر عند اختيار { t('المنتج') }
+  // تعبئة السعر عند اختيار المنتج
   $productSelect.on('select2:select', function(e) {
     const data = e.params.data;
     if (data && data.cost_price) {
@@ -535,7 +535,7 @@ function addLine() {
 }
 
 // =====================================
-// { t('Delete') } سطر
+// حذف سطر
 // =====================================
 function removeLine(index) {
   $(`#line_${index}`).remove();
@@ -558,11 +558,11 @@ function calculateLineTotal(index) {
 }
 
 // =====================================
-// حساب إجمالي { t('الفاتورة') } - Backend Calculation
+// حساب إجمالي الفاتورة - Backend Calculation
 // =====================================
 async function calculateTotals() {
   try {
-    // جمع { t('البيان') }ات من الفورم
+    // جمع البيانات من الفورم
     const lines = [];
     $('.product-line').each(function() {
       const lineId = $(this).attr('id');
@@ -583,7 +583,7 @@ async function calculateTotals() {
     
     const tax_rate = parseFloat($('#tax_rate').val()) || 0;
     
-    // { t('Submit') } للـ backend
+    // إرسال للـ backend
     const response = await fetch('{{ url_for("purchases.api_calculate_purchase_totals") }}', {
       method: 'POST',
       headers: {
@@ -598,7 +598,7 @@ async function calculateTotals() {
     const result = await response.json();
     
     if (result.success) {
-      // { t('Update') } الواجهة
+      // تحديث الواجهة
       $('#summary_subtotal').text(result.subtotal.toFixed(2) + ' ' + base_currency);
       $('#summary_tax').text(result.tax_amount.toFixed(2) + ' ' + base_currency);
       $('#summary_total').text(result.total.toFixed(2) + ' ' + base_currency);    } else {      // Fallback to client-side
@@ -684,16 +684,16 @@ function forceCalculate() {
   $('#summary_subtotal').text(subtotal.toFixed(2) + ' ' + currency);
   $('#summary_tax').text(taxAmount.toFixed(2) + ' ' + currency);
   $('#summary_total').text(total.toFixed(2) + ' ' + currency);  
-  // { t('إظهار') } رسالة للمستخدم
+  // إظهار رسالة للمستخدم
   if (subtotal > 0) {
-    alert(`تم الحساب بنجاح.\nالمجموع الفرعي: ${subtotal.toFixed(2)} ${currency}\n{ t('الإجمالي') }: ${total.toFixed(2)} ${currency}`);
+    alert(`تم الحساب بنجاح.\nالمجموع الفرعي: ${subtotal.toFixed(2)} ${currency}\nالإجمالي: ${total.toFixed(2)} ${currency}`);
   } else {
     alert('لم يتم العثور على بيانات للحساب.');
   }
 }
 
 // =====================================
-// تحديث أسعار { t('التكلفة') } عند تغيير العملة
+// تحديث أسعار التكلفة عند تغيير العملة
 // =====================================
 function updateLineCosts() {
     const currency = $('#currency').val();
@@ -717,7 +717,7 @@ function updateLineCosts() {
 }
 
 // =====================================
-// تغيير العملة - جلب { t('سعر_الصرف') }
+// تغيير العملة - جلب سعر الصرف
 // =====================================
 $('#currency').on('change', function() {
   const currency = $(this).val();
@@ -730,11 +730,11 @@ $('#currency').on('change', function() {
           $('#exchange_rate').val(data.rate.toFixed(6));
           updateLineCosts();
         } else {
-          toastr.warning('يرجى إدخال { t('سعر_الصرف') } يدوياً');
+          toastr.warning('يرجى إدخال سعر الصرف يدوياً');
         }
       },
       error: function() {
-        toastr.warning('يرجى إدخال { t('سعر_الصرف') } يدوياً');
+        toastr.warning('يرجى إدخال سعر الصرف يدوياً');
       }
     });
   } else {
@@ -748,7 +748,7 @@ $('#exchange_rate').on('input change', function() {
 });
 
 // =====================================
-// اختيار المورد - تعبئة { t('البيان') }ات
+// اختيار المورد - تعبئة البيانات
 // =====================================
 $('#supplier_id').on('change', function() {
   const selectedData = $(this).select2('data')[0];
@@ -757,15 +757,15 @@ $('#supplier_id').on('change', function() {
     $('#supplier_phone').val(selectedData.phone || '');
     $('#supplier_email').val(selectedData.email || '');
     
-    // عرض { t('معلومات_المورد') }
+    // عرض معلومات المورد
     if (selectedData.is_verified) {
-      toastr.success(`✅ { t('مورد_موثوق') }: ${selectedData.name}`);
+      toastr.success(`✅ مورد موثوق: ${selectedData.name}`);
     }
   }
 });
 
 // =====================================
-// Event Delegation - للتعامل مع العناصر ال{ t('مضافة') } ديناميكياً
+// Event Delegation - للتعامل مع العناصر المضافة ديناميكياً
 // =====================================
 $(document).on('input change keyup', '.line-quantity, .line-cost, .line-discount', function() {  const lineNumber = $(this).data('line');
   if (lineNumber !== undefined) {
@@ -778,14 +778,14 @@ $(document).on('input change keyup', '.line-quantity, .line-cost, .line-discount
 // التهيئة عند تحميل الصفحة
 // =====================================
 $(document).ready(function() {  
-  // { t('Add') } أول سطر
+  // إضافة أول سطر
   addLine();
   
-  // حساب عند تغيير { t('Tax') }
+  // حساب عند تغيير الضريبة
   $('#tax_rate').on('input change', function() {    calculateTotals();
   });
   
-  // التحقق قبل ال{ t('Submit') }
+  // التحقق قبل الإرسال
   $('#purchaseForm').on('submit', function(e) {    
     const lineCount = $('.product-line').length;    
     if (lineCount === 0) {
@@ -794,15 +794,15 @@ $(document).ready(function() {
       return false;
     }
     
-    // التحقق من اختيار { t('المورد') }
+    // التحقق من اختيار المورد
     if (!$('#supplier_id').val()) {
       e.preventDefault();
-      toastr.error('يجب اختيار { t('المورد') }');
+      toastr.error('يجب اختيار المورد');
       return false;
     }
     
-    // طباعة جميع { t('البيان') }ات قبل الإرسال    
-    // { t('Print') } بيانات كل سطر
+    // طباعة جميع البيانات قبل الإرسال    
+    // طباعة بيانات كل سطر
     $('.product-line').each(function(index) {
       const lineId = $(this).attr('id');
       const lineNumber = lineId.split('_')[1];

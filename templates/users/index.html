@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
-{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('إدارة_المستخدمين') } والصلاحيات{% endblock %}
-{% block page_title %}{ t('المستخدمين') }{% endblock %}
+{% block title %}شركة أزاد للأنظمة الذكية - إدارة المستخدمين والصلاحيات{% endblock %}
+{% block page_title %}المستخدمين{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
   <div class="col-12 d-flex justify-content-between align-items-center flex-wrap">
     <a href="{{ url_for('users.create') }}" class="btn btn-primary">
-      <i class="fas fa-user-plus mr-2"></i>{ t('إضافة_مستخدم') }
+      <i class="fas fa-user-plus mr-2"></i>إضافة مستخدم
     </a>
   </div>
 </div>
@@ -14,16 +14,16 @@
 {% if stats %}
 <div class="row mb-3">
   <div class="col-md-3 col-6">
-    <div class="small-box bg-info"><div class="inner"><h4>{{ stats.total }}</h4><p>{ t('الإجمالي') }</p></div><div class="icon"><i class="fas fa-users"></i></div></div>
+    <div class="small-box bg-info"><div class="inner"><h4>{{ stats.total }}</h4><p>الإجمالي</p></div><div class="icon"><i class="fas fa-users"></i></div></div>
   </div>
   <div class="col-md-3 col-6">
-    <div class="small-box bg-success"><div class="inner"><h4>{{ stats.active }}</h4><p>{ t('Active') }</p></div><div class="icon"><i class="fas fa-check"></i></div></div>
+    <div class="small-box bg-success"><div class="inner"><h4>{{ stats.active }}</h4><p>نشط</p></div><div class="icon"><i class="fas fa-check"></i></div></div>
   </div>
   <div class="col-md-3 col-6">
-    <div class="small-box bg-secondary"><div class="inner"><h4>{{ stats.inactive }}</h4><p>{ t('Inactive') }</p></div><div class="icon"><i class="fas fa-ban"></i></div></div>
+    <div class="small-box bg-secondary"><div class="inner"><h4>{{ stats.inactive }}</h4><p>غير نشط</p></div><div class="icon"><i class="fas fa-ban"></i></div></div>
   </div>
   <div class="col-md-3 col-6">
-    <div class="small-box bg-warning"><div class="inner"><h4>{{ stats.owners }}</h4><p>{ t('مالكون') }</p></div><div class="icon"><i class="fas fa-crown"></i></div></div>
+    <div class="small-box bg-warning"><div class="inner"><h4>{{ stats.owners }}</h4><p>مالكون</p></div><div class="icon"><i class="fas fa-crown"></i></div></div>
   </div>
 </div>
 {% endif %}
@@ -32,20 +32,20 @@
   <div class="card-body">
     <form method="GET" class="form-inline" action="">
       <div class="form-group mr-2 mb-2">
-        <input type="text" name="search" value="{{ search or '' }}" class="form-control" placeholder="{ t('بحث_بالاسم_أو_البريد') }">
+        <input type="text" name="search" value="{{ search or '' }}" class="form-control" placeholder="بحث بالاسم أو البريد...">
       </div>
       {% if tenants %}
       <div class="form-group mr-2 mb-2">
         <select name="tenant_id" class="form-control select2">
-          <option value="">{ t('كل_المستأجرين') }</option>
+          <option value="">كل المستأجرين</option>
           {% for t in tenants %}
           <option value="{{ t.id }}" {% if tenant_filter == t.id %}selected{% endif %}>{{ t.name_ar }}</option>
           {% endfor %}
         </select>
       </div>
       {% endif %}
-      <button type="submit" class="btn btn-primary mb-2"><i class="fas fa-search mr-1"></i>{ t('Search') }</button>
-      <a href="{{ url_for('users.index') }}" class="btn btn-secondary mb-2 ml-2">{ t('Cancel') }</a>
+      <button type="submit" class="btn btn-primary mb-2"><i class="fas fa-search mr-1"></i>بحث</button>
+      <a href="{{ url_for('users.index') }}" class="btn btn-secondary mb-2 ml-2">إلغاء</a>
     </form>
   </div>
 </div>
@@ -56,18 +56,18 @@
       <thead>
         <tr>
           <th>{{ t('Username') }}</th>
-          <th>{ t('البريد') }</th>
-          <th>{ t('الدور') }</th>
-          {% if tenants %}<th>{ t('المستأجر') }</th>{% endif %}
+          <th>البريد</th>
+          <th>الدور</th>
+          {% if tenants %}<th>المستأجر</th>{% endif %}
           <th>{{ t('Status') }}</th>
           <th>آخر دخول</th>
-          <th>{ t('الإجراءات') }</th>
+          <th>الإجراءات</th>
         </tr>
       </thead>
       <tbody>
         {% for user in users %}
         <tr>
-          <td><strong>{{ user.username }}</strong>{% if user.is_owner %} <span class="badge badge-warning">{ t('مالك') }</span>{% endif %}</td>
+          <td><strong>{{ user.username }}</strong>{% if user.is_owner %} <span class="badge badge-warning">مالك</span>{% endif %}</td>
           <td>{{ user.email or '-' }}</td>
           <td><span class="badge badge-info">{{ user.role.name_ar if user.role else '-' }}</span></td>
           {% if tenants %}<td>{{ user.tenant.name_ar if user.tenant else '—' }}</td>{% endif %}
@@ -75,21 +75,21 @@
             {% if user.is_active %}
             <span class="badge badge-success">{{ t('Active') }}</span>
             {% else %}
-            <span class="badge badge-danger">{ t('معطل') }</span>
+            <span class="badge badge-danger">معطل</span>
             {% endif %}
           </td>
           <td>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else '-' }}</td>
           <td>
-            <a href="{{ url_for('users.view', id=user.id) }}" class="btn btn-sm btn-info" title="{ t('View') }">
+            <a href="{{ url_for('users.view', id=user.id) }}" class="btn btn-sm btn-info" title="عرض">
               <i class="fas fa-eye"></i>
             </a>
-            <a href="{{ url_for('users.edit', id=user.id) }}" class="btn btn-sm btn-warning" title="{ t('Edit') }">
+            <a href="{{ url_for('users.edit', id=user.id) }}" class="btn btn-sm btn-warning" title="تعديل">
               <i class="fas fa-edit"></i>
             </a>
             {% if current_user.is_owner and user.id != current_user.id %}
             <button type="button" class="btn btn-sm btn-danger"
                     onclick="deleteItem('users', {{ user.id }}, {{ user.username|tojson }})"
-                    title="حذف (ال{ t('مالك') } فقط)">
+                    title="حذف (المالك فقط)">
               <i class="fas fa-trash"></i>
             </button>
             {% endif %}

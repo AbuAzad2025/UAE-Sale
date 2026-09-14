@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شركة أزاد للأنظمة الذكية - دليل المستخدم</title>
+    <title>{ t('شركة_أزاد_للأنظمة_الذكية_دليل_{ t('المستخدم') }') }</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
@@ -56,29 +56,29 @@
         <div class="logo">{{ config.COMPANY_NAME_AR }}</div>
         <div>
             <a href="{{ url_for('public.landing') }}">{{ t('Dashboard') }}</a>
-            <a href="{{ url_for('public.pricing') }}">الأسعار</a>
-            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> دخول</a>
+            <a href="{{ url_for('public.pricing') }}">{ t('الأسعار') }</a>
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> { t('Sign In') }</a>
         </div>
     </nav>
 
     <header class="guide-header">
-        <h1>📚 دليل المستخدم الشامل</h1>
-        <p>كل ما تحتاج معرفته لاستخدام النظام بكفاءة</p>
+        <h1>📚 { t('دليل') } المستخدم الشامل</h1>
+        <p>{ t('كل_ما_تحتاج_معرفته_لاستخدام_{ t('النظام') }_بكفاءة') }</p>
     </header>
 
     <div class="guide-container">
         <aside class="sidebar">
-            <h3>المحتويات</h3>
+            <h3>{ t('المحتويات') }</h3>
             <ul>
-                <li class="active" onclick="scrollToSection('start')"><i class="fas fa-play-circle"></i> البداية السريعة</li>
-                <li onclick="scrollToSection('login')"><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</li>
-                <li onclick="scrollToSection('products')"><i class="fas fa-boxes"></i> إدارة المنتجات</li>
-                <li onclick="scrollToSection('customers')"><i class="fas fa-users"></i> إدارة العملاء</li>
-                <li onclick="scrollToSection('sales')"><i class="fas fa-cash-register"></i> المبيعات</li>
-                <li onclick="scrollToSection('purchases')"><i class="fas fa-shopping-cart"></i> المشتريات</li>
-                <li onclick="scrollToSection('payments')"><i class="fas fa-money-bill-wave"></i> المدفوعات</li>
-                <li onclick="scrollToSection('reports')"><i class="fas fa-chart-line"></i> التقارير</li>
-                <li onclick="scrollToSection('ai')"><i class="fas fa-brain"></i> الذكاء الاصطناعي</li>
+                <li class="active" onclick="scrollToSection('start')"><i class="fas fa-play-circle"></i> { t('البداية_السريعة') }</li>
+                <li onclick="scrollToSection('login')"><i class="fas fa-sign-in-alt"></i> { t('Login') }</li>
+                <li onclick="scrollToSection('products')"><i class="fas fa-boxes"></i> { t('Products Management') }</li>
+                <li onclick="scrollToSection('customers')"><i class="fas fa-users"></i> { t('إدارة_العملاء') }</li>
+                <li onclick="scrollToSection('sales')"><i class="fas fa-cash-register"></i> { t('Sales') }</li>
+                <li onclick="scrollToSection('purchases')"><i class="fas fa-shopping-cart"></i> { t('Purchases') }</li>
+                <li onclick="scrollToSection('payments')"><i class="fas fa-money-bill-wave"></i> { t('Payments') }</li>
+                <li onclick="scrollToSection('reports')"><i class="fas fa-chart-line"></i> { t('Reports') }</li>
+                <li onclick="scrollToSection('ai')"><i class="fas fa-brain"></i> { t('الذكاء_الاصطناعي') }</li>
             </ul>
         </aside>
 
@@ -86,162 +86,162 @@
             <!-- Start Section -->
             <section id="start" class="section">
                 <h2><i class="fas fa-rocket"></i> البداية السريعة</h2>
-                <p>مرحباً بك في نظام إدارة المستودعات والمبيعات الأكثر تطوراً في المنطقة. هذا الدليل سيساعدك على الانطلاق بسرعة.</p>
+                <p>{ t('مرحباً_بك_في_نظام_إدارة_المستودعات_و{ t('Sales') }_الأكثر_تطوراً_في_المنطقة_هذا_ال{ t('دليل') }') }</p>
                 
                 <div class="step-box">
-                    <h4>الخطوة 1: الحصول على حساب</h4>
-                    <p>تواصل معنا عبر واتساب {{ config.COMPANY_WHATSAPP }} للحصول على بيانات تسجيل الدخول.</p>
+                    <h4>{ t('الخطوة') } 1: الحصول على حساب</h4>
+                    <p>{ t('تواصل_معنا') } عبر واتساب {{ config.COMPANY_WHATSAPP }} للحصول على بيانات { t('Login') }.</p>
                 </div>
                 
                 <div class="step-box">
-                    <h4>الخطوة 2: تسجيل الدخول</h4>
-                    <p>استخدم اسم المستخدم وكلمة المرور المرسلة إليك للدخول على http://localhost:5000</p>
+                    <h4>الخطوة 2: { t('Login') }</h4>
+                    <p>استخدم { t('Username') } وكلمة المرور المرسلة إليك لل{ t('Sign In') } على http://localhost:5000</p>
                 </div>
                 
                 <div class="step-box">
-                    <h4>الخطوة 3: إعداد الشركة</h4>
-                    <p>من لوحة التحكم، قم بإعداد معلومات شركتك والعملات والمستودعات.</p>
+                    <h4>{ t('الخطوة') } 3: إعداد الشركة</h4>
+                    <p>{ t('من_لوحة_التحكم،_قم_بإعداد_معلومات_شركتك_والعملات_و{ t('المستودعات') }') }</p>
                 </div>
                 
                 <div class="tip">
-                    <strong><i class="fas fa-lightbulb"></i> نصيحة:</strong> شاهد فيديو البداية السريعة أدناه للحصول على نظرة عامة.
+                    <strong><i class="fas fa-lightbulb"></i> نصيحة:</strong> شاهد فيديو { t('البداية_السريعة') } أدناه للحصول على نظرة عامة.
                 </div>
             </section>
 
             <!-- Login Section -->
             <section id="login" class="section">
-                <h2><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</h2>
+                <h2><i class="fas fa-sign-in-alt"></i> { t('Login') }</h2>
                 
                 <h3>الأدوار والصلاحيات</h3>
-                <p>النظام يدعم 3 مستويات من المستخدمين:</p>
+                <p>النظام يدعم 3 مستويات من { t('المستخدمين') }:</p>
                 <ul>
-                    <li><strong>Super Admin:</strong> صلاحيات كاملة على النظام</li>
-                    <li><strong>Manager:</strong> إدارة المبيعات والمشتريات والتقارير</li>
-                    <li><strong>Seller:</strong> المبيعات فقط</li>
+                    <li><strong>Super Admin:</strong> { t('صلاحيات_كاملة_على_النظام') }</li>
+                    <li><strong>Manager:</strong> { t('إدارة_المبيعات_والمشتريات_والتقارير') }</li>
+                    <li><strong>Seller:</strong> { t('المبيعات_فقط') }</li>
                 </ul>
                 
                 <div class="note">
-                    <strong><i class="fas fa-exclamation-triangle"></i> تحذير:</strong> حساب Owner (المالك) سري للغاية ولا يجب مشاركته. يُستخدم فقط لإدارة قاعدة البيانات والإعدادات الحرجة.
+                    <strong><i class="fas fa-exclamation-triangle"></i> { t('Warning') }:</strong> حساب Owner (ال{ t('مالك') }) سري للغاية ولا يجب مشاركته. يُستخدم فقط لإدارة { t('قاعدة_البيانات') } والإعدادات ال{ t('حرجة') }.
                 </div>
                 
                 <h3>تغيير كلمة المرور</h3>
-                <p>من ملفك الشخصي، يمكنك تغيير كلمة المرور في أي وقت. يُنصح بتغييرها بعد أول دخول.</p>
+                <p>{ t('من_ملفك_الشخصي،_يمكنك_تغيير_كلمة_المرور_في_أي_وقت_يُنصح_بتغييرها_بعد_أول_{ t('Sign In') }') }</p>
             </section>
 
             <!-- Products Section -->
             <section id="products" class="section">
-                <h2><i class="fas fa-boxes"></i> إدارة المنتجات</h2>
+                <h2><i class="fas fa-boxes"></i> { t('Products Management') }</h2>
                 
-                <h3>إضافة منتج جديد</h3>
+                <h3>{ t('إضافة_منتج_جديد') }</h3>
                 <ol>
-                    <li>من القائمة الجانبية، اختر "المنتجات"</li>
-                    <li>اضغط على "منتج جديد"</li>
-                    <li>أدخل المعلومات الأساسية:</li>
+                    <li>{ t('من_القائمة_الجانبية،_اختر_المنتجات') }</li>
+                    <li>{ t('اضغط_على_منتج_جديد') }</li>
+                    <li>أدخل { t('المعلومات_الأساسية') }:</li>
                     <ul>
-                        <li>الاسم (عربي/إنجليزي)</li>
-                        <li>رقم القطعة (Part Number)</li>
+                        <li>{ t('Name') } (عربي/إنجليزي)</li>
+                        <li>{ t('رقم_القطعة') } (Part Number)</li>
                         <li>{{ t('Barcode') }}</li>
-                        <li>بلد المنشأ</li>
+                        <li>{ t('بلد_المنشأ') }</li>
                     </ul>
-                    <li>حدد الأسعار:</li>
+                    <li>حدد { t('الأسعار') }:</li>
                     <ul>
-                        <li><strong>سعر عادي:</strong> للعملاء العاديين</li>
-                        <li><strong>سعر تاجر:</strong> للتجار (خصم)</li>
-                        <li><strong>سعر شريك:</strong> للشركاء (خصم أكبر)</li>
+                        <li><strong>سعر عادي:</strong> { t('للعملاء_العاديين') }</li>
+                        <li><strong>سعر { t('تاجر') }:</strong> للتجار (خصم)</li>
+                        <li><strong>سعر { t('شريك') }:</strong> للشركاء (خصم أكبر)</li>
                     </ul>
-                    <li>أدخل الكمية الحالية والحد الأدنى للتنبيه</li>
+                    <li>{ t('أدخل_الكمية_الحالية_والحد_الأدنى_للتنبيه') }</li>
                 </ol>
                 
                 <div class="tip">
-                    <strong><i class="fas fa-magic"></i> ميزة الذكاء الاصطناعي:</strong> النظام يمكنه البحث عن المنتج في الأسواق العالمية واقتراح السعر المناسب تلقائياً!
+                    <strong><i class="fas fa-magic"></i> ميزة { t('الذكاء_الاصطناعي') }:</strong> { t('النظام') } يمكنه البحث عن المنتج في الأسواق العالمية و{ t('اقتراح_السعر_المناسب') } تلقائياً!
                 </div>
                 
-                <h3>تصنيفات المنتجات</h3>
-                <p>يمكنك تنظيم المنتجات في تصنيفات لسهولة البحث والفلترة.</p>
+                <h3>تصنيفات { t('المنتج') }ات</h3>
+                <p>{ t('يمكنك_تنظيم_المنتجات_في_تصنيفات_لسهولة_البحث_وال{ t('Filter') }') }</p>
             </section>
 
             <!-- Customers Section -->
             <section id="customers" class="section">
-                <h2><i class="fas fa-users"></i> إدارة العملاء</h2>
+                <h2><i class="fas fa-users"></i> { t('إدارة_العملاء') }</h2>
                 
-                <h3>أنواع العملاء</h3>
+                <h3>{ t('أنواع_العملاء') }</h3>
                 <ul>
-                    <li><strong>عادي:</strong> سعر البيع الكامل</li>
-                    <li><strong>تاجر:</strong> سعر مخفض</li>
-                    <li><strong>شريك:</strong> سعر الشراكة (الأقل)</li>
+                    <li><strong>عادي:</strong> { t('سعر_البيع_الكامل') }</li>
+                    <li><strong>تاجر:</strong> { t('سعر_مخفض') }</li>
+                    <li><strong>{ t('شريك') }:</strong> سعر الشراكة (الأقل)</li>
                 </ul>
                 
-                <h3>التصنيف التلقائي</h3>
-                <p>النظام يصنف العملاء تلقائياً حسب حجم المشتريات:</p>
+                <h3>{ t('التصنيف_التلقائي') }</h3>
+                <p>{ t('النظام') } يصنف العملاء تلقائياً حسب حجم { t('Purchases') }:</p>
                 <ul>
-                    <li><strong>VIP:</strong> أكثر من 50,000 درهم</li>
-                    <li><strong>Premium:</strong> 20,000 - 50,000 درهم</li>
-                    <li><strong>Regular:</strong> أقل من 20,000 درهم</li>
+                    <li><strong>VIP:</strong> { t('أكثر_من_50_000_درهم') }</li>
+                    <li><strong>Premium:</strong> { t('20_000_50_000_درهم') }</li>
+                    <li><strong>Regular:</strong> { t('أقل_من_20_000_درهم') }</li>
                 </ul>
                 
-                <h3>كشف الحساب</h3>
-                <p>من صفحة العميل، يمكنك عرض:</p>
+                <h3>{ t('كشف_الحساب') }</h3>
+                <p>من صفحة { t('العميل') }، يمكنك عرض:</p>
                 <ul>
-                    <li>جميع الفواتير والمدفوعات</li>
-                    <li>الرصيد الحالي</li>
-                    <li>المنتجات المشتراة</li>
-                    <li>المرتجعات</li>
+                    <li>{ t('جميع_الفواتير_والمدفوعات') }</li>
+                    <li>{ t('الرصيد_الحالي') }</li>
+                    <li>{ t('المنتجات_المشتراة') }</li>
+                    <li>{ t('المرتجعات') }</li>
                 </ul>
             </section>
 
             <!-- Sales Section -->
             <section id="sales" class="section">
-                <h2><i class="fas fa-cash-register"></i> المبيعات</h2>
+                <h2><i class="fas fa-cash-register"></i> { t('Sales') }</h2>
                 
-                <h3>إنشاء فاتورة بيع</h3>
+                <h3>{ t('إنشاء_فاتورة_بيع') }</h3>
                 <div class="step-box">
                     <h4>الخطوات:</h4>
                     <ol>
-                        <li>اختر العميل</li>
-                        <li>اختر العملة (درهم/دولار/يورو)</li>
-                        <li>أضف المنتجات (يظهر السعر تلقائياً حسب نوع العميل)</li>
-                        <li>أضف خصم إن وجد</li>
-                        <li>أضف تكلفة الشحن والضريبة</li>
-                        <li>اختر طريقة الدفع</li>
-                        <li>احفظ الفاتورة</li>
+                        <li>{ t('اختر_العميل') }</li>
+                        <li>اختر { t('العملة') } (درهم/دولار/يورو)</li>
+                        <li>أضف { t('Products') } (يظهر السعر تلقائياً حسب نوع { t('العميل') })</li>
+                        <li>{ t('أضف_خصم_إن_وجد') }</li>
+                        <li>{ t('أضف_تكلفة_الشحن_والضريبة') }</li>
+                        <li>{ t('اختر_طريقة_الدفع') }</li>
+                        <li>{ t('احفظ_الفاتورة') }</li>
                     </ol>
                 </div>
                 
                 <div class="tip">
-                    <strong><i class="fas fa-robot"></i> الذكاء الاصطناعي يساعدك في:</strong>
+                    <strong><i class="fas fa-robot"></i> { t('الذكاء_الاصطناعي') } يساعدك في:</strong>
                     <ul>
-                        <li>اقتراح السعر المناسب</li>
-                        <li>تنبيه نقص المخزون</li>
-                        <li>عرض السيارات المتوافقة مع القطعة</li>
-                        <li>اقتراح سعر الصرف</li>
+                        <li>{ t('اقتراح_السعر_المناسب') }</li>
+                        <li>{ t('تنبيه_نقص_المخزون') }</li>
+                        <li>{ t('عرض_السيارات_المتوافقة_مع_القطعة') }</li>
+                        <li>{ t('اقتراح_سعر_الصرف') }</li>
                     </ul>
                 </div>
                 
-                <h3>طباعة الفاتورة</h3>
-                <p>بعد حفظ الفاتورة، يمكنك طباعتها بتصميم احترافي خليجي يتضمن شعار الشركة والعلم الفلسطيني.</p>
+                <h3>{ t('Print') } الفاتورة</h3>
+                <p>{ t('بعد_حفظ_الفاتورة،_يمكنك_طباعتها_بتصميم_احترافي_خليجي_يتضمن_شعار_الشركة_والعلم_ال') }</p>
             </section>
 
             <!-- Payments Section -->
             <section id="payments" class="section">
-                <h2><i class="fas fa-money-bill-wave"></i> المدفوعات</h2>
+                <h2><i class="fas fa-money-bill-wave"></i> { t('Payments') }</h2>
                 
-                <h3>طرق الدفع المدعومة</h3>
+                <h3>{ t('طرق_الدفع_المدعومة') }</h3>
                 <ul>
-                    <li>نقدي</li>
-                    <li>بطاقة ائتمان</li>
-                    <li>تحويل بنكي</li>
-                    <li>شيك</li>
-                    <li>محفظة إلكترونية</li>
+                    <li>{ t('نقدي') }</li>
+                    <li>{ t('بطاقة_ائتمان') }</li>
+                    <li>{ t('تحويل_بنكي') }</li>
+                    <li>{ t('شيك') }</li>
+                    <li>{ t('محفظة_إلكترونية') }</li>
                 </ul>
                 
-                <h3>سند القبض</h3>
-                <p>لكل دفعة يتم إصدار سند قبض يحتوي على:</p>
+                <h3>{ t('سند_القبض') }</h3>
+                <p>لكل دفعة يتم إصدار { t('سند_قبض') } يحتوي على:</p>
                 <ul>
-                    <li>رقم السند</li>
+                    <li>{ t('رقم_السند') }</li>
                     <li>{{ t('Date') }}</li>
-                    <li>اسم العميل</li>
-                    <li>المبلغ بالعملات</li>
-                    <li>طريقة الدفع</li>
+                    <li>{ t('اسم_العميل') }</li>
+                    <li>{ t('المبلغ_بالعملات') }</li>
+                    <li>{ t('طريقة_الدفع') }</li>
                 </ul>
                 
                 <div class="note">
@@ -251,77 +251,77 @@
 
             <!-- Reports Section -->
             <section id="reports" class="section">
-                <h2><i class="fas fa-chart-line"></i> التقارير</h2>
+                <h2><i class="fas fa-chart-line"></i> { t('Reports') }</h2>
                 
-                <h3>التقارير المتوفرة</h3>
+                <h3>{ t('التقارير_المتوفرة') }</h3>
                 <ul>
-                    <li><strong>تقارير المبيعات:</strong> يومي/شهري/سنوي</li>
-                    <li><strong>تقارير المشتريات:</strong> حسب المورد</li>
-                    <li><strong>تقارير المخزون:</strong> كميات وقيم</li>
-                    <li><strong>الذمم المدينة:</strong> Accounts Receivable Aging</li>
-                    <li><strong>دفتر الأستاذ:</strong> General Ledger كامل</li>
+                    <li><strong>تقارير المبيعات:</strong> { t('يومي_شهري_سنوي') }</li>
+                    <li><strong>تقارير المشتريات:</strong> { t('حسب_المورد') }</li>
+                    <li><strong>تقارير المخزون:</strong> { t('كميات_وقيم') }</li>
+                    <li><strong>{ t('الذمم_المدينة') }:</strong> Accounts Receivable Aging</li>
+                    <li><strong>دفتر الأستاذ:</strong> { t('General_Ledger_كامل') }</li>
                 </ul>
                 
-                <h3>التصدير</h3>
-                <p>يمكن تصدير جميع التقارير إلى:</p>
+                <h3>{ t('التصدير') }</h3>
+                <p>يمكن تصدير جميع { t('Reports') } إلى:</p>
                 <ul>
-                    <li>PDF (للطباعة)</li>
+                    <li>PDF (لل{ t('Print') })</li>
                     <li>Excel (للتحليل)</li>
-                    <li>CSV (لنقل البيانات)</li>
+                    <li>CSV (لنقل { t('البيان') }ات)</li>
                 </ul>
             </section>
 
             <!-- AI Section -->
             <section id="ai" class="section">
-                <h2><i class="fas fa-brain"></i> الذكاء الاصطناعي</h2>
+                <h2><i class="fas fa-brain"></i> { t('الذكاء_الاصطناعي') }</h2>
                 
                 <h3>{{ t('AI Assistant') }}</h3>
-                <p>يمكنك الوصول للمساعد الذكي من دفتر الأستاذ. المساعد يمكنه:</p>
+                <p>يمكنك الوصول للمساعد الذكي من { t('Ledger') }. المساعد يمكنه:</p>
                 <ul>
-                    <li>الإجابة عن أسئلة مالية</li>
-                    <li>تحليل البيانات</li>
-                    <li>توليد تقارير فورية</li>
-                    <li>اقتراح حلول للمشاكل</li>
+                    <li>{ t('الإجابة_عن_أسئلة_مالية') }</li>
+                    <li>{ t('تحليل_البيانات') }</li>
+                    <li>{ t('توليد_تقارير_فورية') }</li>
+                    <li>{ t('اقتراح_حلول_للمشاكل') }</li>
                 </ul>
                 
-                <h3>البحث في الأسواق العالمية</h3>
-                <p>عند إضافة منتج، النظام يبحث تلقائياً عن:</p>
+                <h3>{ t('البحث_في_الأسواق_العالمية') }</h3>
+                <p>عند { t('إضافة_منتج') }، النظام يبحث { t('تلقائي') }اً عن:</p>
                 <ul>
-                    <li>سعر القطعة في الأسواق</li>
-                    <li>أفضل الموردين</li>
-                    <li>نطاق الأسعار</li>
+                    <li>{ t('سعر_القطعة_في_الأسواق') }</li>
+                    <li>{ t('أفضل_الموردين') }</li>
+                    <li>{ t('نطاق_الأسعار') }</li>
                 </ul>
                 
-                <h3>معرفة التوافق</h3>
-                <p>يعرض لك النظام السيارات والمعدات المتوافقة مع كل قطعة، مع تفاصيل:</p>
+                <h3>{ t('معرفة_التوافق') }</h3>
+                <p>يعرض لك { t('النظام') } السيارات والمعدات المتوافقة مع كل قطعة، مع { t('Details') }:</p>
                 <ul>
-                    <li>الماركات</li>
-                    <li>الموديلات</li>
-                    <li>سنوات الصنع</li>
-                    <li>نوع المحرك</li>
+                    <li>{ t('الماركات') }</li>
+                    <li>{ t('الموديلات') }</li>
+                    <li>{ t('سنوات_الصنع') }</li>
+                    <li>{ t('نوع_المحرك') }</li>
                 </ul>
                 
                 <div class="tip">
-                    <strong><i class="fas fa-key"></i> التفعيل:</strong> للاستفادة الكاملة من AI، تحتاج مفتاح API. تواصل معنا للحصول عليه.
+                    <strong><i class="fas fa-key"></i> ال{ t('تفعيل') }:</strong> للاستفادة الكاملة من AI، تحتاج مفتاح API. { t('تواصل_معنا') } للحصول عليه.
                 </div>
             </section>
 
             <!-- Contact Support -->
             <section class="section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                <h2 style="color: white;"><i class="fas fa-headset"></i> الدعم الفني</h2>
-                <p>نحن هنا لمساعدتك! تواصل معنا في أي وقت:</p>
+                <h2 style="color: white;"><i class="fas fa-headset"></i> { t('الدعم_الفني') }</h2>
+                <p>نحن هنا لمساعدتك! { t('تواصل_معنا') } في أي وقت:</p>
                 <div style="display: flex; gap: 30px; margin-top: 20px; flex-wrap: wrap;">
                     <div>
                         <i class="fab fa-whatsapp" style="font-size: 2rem;"></i><br>
-                        <strong>واتساب:</strong> {{ config.COMPANY_WHATSAPP }}
+                        <strong>{ t('واتساب') }:</strong> {{ config.COMPANY_WHATSAPP }}
                     </div>
                     <div>
                         <i class="fas fa-phone" style="font-size: 2rem;"></i><br>
-                        <strong>جوال:</strong> {{ config.COMPANY_PHONE }}
+                        <strong>{ t('جوال') }:</strong> {{ config.COMPANY_PHONE }}
                     </div>
                     <div>
                         <i class="fas fa-mobile-alt" style="font-size: 2rem;"></i><br>
-                        <strong>وطنية:</strong> {{ config.COMPANY_PHONE_2 }}
+                        <strong>{ t('وطنية') }:</strong> {{ config.COMPANY_PHONE_2 }}
                     </div>
                 </div>
             </section>
@@ -329,7 +329,7 @@
     </div>
 
     <footer>
-        <p>&copy; 2025 {{ config.COMPANY_NAME_AR }}. جميع الحقوق محفوظة.</p>
+        <p>&copy; 2025 {{ config.COMPANY_NAME_AR }}. { t('جميع') } الحقوق محفوظة.</p>
         <p style="margin-top: 10px;">{{ config.DEVELOPER_CREDIT }}</p>
     </footer>
 

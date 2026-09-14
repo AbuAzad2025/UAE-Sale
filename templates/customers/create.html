@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - إضافة عميل جديد{% endblock %}
+{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('Add') } عميل جديد{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-user-plus mr-2"></i>إضافة زبون جديد</h1>
+    <h1 class="mb-0"><i class="fas fa-user-plus mr-2"></i>{ t('إضافة_زبون_جديد') }</h1>
   </div>
   <div>
     <a href="{{ url_for('customers.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للزبائن
+      <i class="fas fa-arrow-right mr-2"></i>{ t('العودة') } للزبائن
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>الرئيسية
+      <i class="fas fa-home mr-2"></i>{ t('الرئيسية') }
     </a>
   </div>
 </div>
@@ -78,19 +78,19 @@ a.btn.btn-outline-secondary span {
         <div class="col-md-6">
           <div class="form-group">
             <label>
-              <i class="fas fa-user text-primary"></i> الاسم 
+              <i class="fas fa-user text-primary"></i> { t('Name') } 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم العميل الكامل (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('اسم_العميل') } الكامل (إجباري)"></i>
             </label>
-            {{ form.name(class="form-control", placeholder="اسم الزبون", required=true) }}
+            {{ form.name(class="form-control", placeholder="{ t('اسم_الزبون') }", required=true) }}
           </div>
         </div>
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-tag text-primary"></i> نوع الزبون 
+              <i class="fas fa-tag text-primary"></i> نوع { t('الزبون') } 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عادي: سعر التجزئة | تاجر: خصم 10% | شريك: خصم 15%"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('عادي') }: سعر التجزئة | { t('تاجر') }: خصم 10% | شريك: خصم 15%"></i>
             </label>
             {{ form.customer_type(class="form-control", required=true) }}
           </div>
@@ -99,7 +99,7 @@ a.btn.btn-outline-secondary span {
           <div class="form-group">
             <label>
               <i class="fas fa-toggle-on text-success"></i> {{ t('Status') }}
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="حالة تفعيل العميل (افتراضي: مفعّل)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('حالة_تفعيل_العميل') } (افتراضي: { t('مفعّل') })"></i>
             </label>
             <div class="custom-control custom-switch">
               {{ form.is_active(class="custom-control-input") }}
@@ -115,7 +115,7 @@ a.btn.btn-outline-secondary span {
             <label>
               <i class="fas fa-phone text-primary"></i> {{ t('Phone') }} 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="رقم الهاتف (يجب أن يكون فريداً)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('رقم_الهاتف') } (يجب أن يكون { t('فريداً') })"></i>
             </label>
             {{ form.phone(class="form-control", placeholder="+971-5x-xxx-xxxx", required=true) }}
           </div>
@@ -124,7 +124,7 @@ a.btn.btn-outline-secondary span {
           <div class="form-group">
             <label>
               <i class="fas fa-envelope text-info"></i> {{ t('Email') }}
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="البريد الإلكتروني (اختياري - للإشعارات)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('Email') } (اختياري - للإشعارات)"></i>
             </label>
             {{ form.email(class="form-control", placeholder="email@example.com") }}
           </div>
@@ -132,8 +132,8 @@ a.btn.btn-outline-secondary span {
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-dollar-sign text-success"></i> العملة الافتراضية
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="العملة المفضلة (افتراضي: ILS)"></i>
+              <i class="fas fa-dollar-sign text-success"></i> { t('العملة_الافتراضية') }
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('العملة_المفضلة') } (افتراضي: ILS)"></i>
             </label>
             {{ form.preferred_currency(class="form-control") }}
           </div>
@@ -143,26 +143,26 @@ a.btn.btn-outline-secondary span {
       <div class="form-group">
         <label>
           <i class="fas fa-map-marker-alt text-warning"></i> {{ t('Address') }}
-          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عنوان العميل (اختياري - للتوصيل)"></i>
+          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عنوان { t('العميل') } (اختياري - للتوصيل)"></i>
         </label>
-        {{ form.address(class="form-control", rows=2, placeholder="العنوان الكامل...") }}
+        {{ form.address(class="form-control", rows=2, placeholder="{ t('العنوان_الكامل') }") }}
       </div>
 
       <div class="form-group">
         <label>
           <i class="fas fa-sticky-note text-secondary"></i> {{ t('Notes') }}
-          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="ملاحظات إضافية (اختياري)"></i>
+          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('Notes') } إضافية (اختياري)"></i>
         </label>
-        {{ form.notes(class="form-control", rows=3, placeholder="أي ملاحظات عن العميل...") }}
+        {{ form.notes(class="form-control", rows=3, placeholder="{ t('أي_ملاحظات_عن_العميل') }") }}
       </div>
     </div>
 
     <div class="card-footer">
       <button type="submit" class="btn btn-primary">
-        <i class="fas fa-save mr-2"></i>حفظ
+        <i class="fas fa-save mr-2"></i>{ t('Save') }
       </button>
       <a href="{{ url_for('customers.index') }}" class="btn btn-secondary">
-        <i class="fas fa-times mr-2"></i>إلغاء
+        <i class="fas fa-times mr-2"></i>{ t('Cancel') }
       </a>
     </div>
   </form>
@@ -171,7 +171,7 @@ a.btn.btn-outline-secondary span {
 
 {% block extra_js %}
 <script>
-// تفعيل tooltips
+// { t('تفعيل') } tooltips
 $(function () {
   $('[data-toggle="tooltip"]').tooltip({
     placement: 'top',

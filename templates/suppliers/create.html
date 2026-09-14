@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - إضافة مورد جديد{% endblock %}
+{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('إضافة_مورد_جديد') }{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-truck mr-2"></i>إضافة مورد جديد</h1>
+    <h1 class="mb-0"><i class="fas fa-truck mr-2"></i>{ t('إضافة_مورد_جديد') }</h1>
   </div>
   <div>
     <a href="{{ url_for('suppliers.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للموردين
+      <i class="fas fa-arrow-right mr-2"></i>{ t('العودة') } للموردين
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>الرئيسية
+      <i class="fas fa-home mr-2"></i>{ t('الرئيسية') }
     </a>
   </div>
 </div>
@@ -89,20 +89,20 @@
 {% block content %}
 <div class="card card-success">
   <div class="card-header">
-    <h3 class="card-title"><i class="fas fa-plus-circle mr-2"></i>بيانات المورد</h3>
+    <h3 class="card-title"><i class="fas fa-plus-circle mr-2"></i>{ t('بيانات_المورد') }</h3>
   </div>
   
   <form method="POST" action="{{ url_for('suppliers.create') }}" class="supplier-create-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     
     <div class="card-body">
-      <!-- معلومات أساسية -->
+      <!-- { t('معلومات') } أساسية -->
       {% set supplier_type_value = request.form.get('supplier_type', '') %}
       {% set rating_value = request.form.get('rating', '') %}
       <div class="row">
         <div class="col-md-12">
           <h5 class="text-success mb-3">
-            <i class="fas fa-info-circle"></i> المعلومات الأساسية
+            <i class="fas fa-info-circle"></i> { t('المعلومات_الأساسية') }
           </h5>
         </div>
       </div>
@@ -111,23 +111,23 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-truck text-success"></i> الاسم 
+              <i class="fas fa-truck text-success"></i> { t('Name') } 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم المورد بالعربية (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('اسم_المورد_بالعربي') }ة (إجباري)"></i>
             </label>
             <input type="text" name="name" class="form-control" required
-                   placeholder="اسم المورد بالعربي">
+                   placeholder="{ t('اسم_المورد_بالعربي') }">
           </div>
         </div>
         
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-font text-info"></i> الاسم بالإنجليزية
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الاسم بالإنجليزية (اختياري)"></i>
+              <i class="fas fa-font text-info"></i> { t('الاسم_بالإنجليزية') }
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('الاسم_بالإنجليزية') } (اختياري)"></i>
             </label>
             <input type="text" name="name_en" class="form-control"
-                   placeholder="Supplier Name">
+                   placeholder="{ t('Supplier_Name') }">
           </div>
         </div>
         
@@ -135,10 +135,10 @@
           <div class="form-group">
             <label>
               <i class="fas fa-building text-primary"></i> اسم الشركة
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الاسم التجاري الرسمي (اختياري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('Name') } التجاري الرسمي (اختياري)"></i>
             </label>
             <input type="text" name="company_name" class="form-control"
-                   placeholder="Company Name LLC">
+                   placeholder="{ t('Company_Name_LLC') }">
           </div>
         </div>
       </div>
@@ -147,7 +147,7 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-tag text-success"></i> نوع المورد 
+              <i class="fas fa-tag text-success"></i> { t('نوع_المورد') } 
               <span class="text-danger">*</span>
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تصنيف نوع التوريد (إجباري)"></i>
             </label>
@@ -163,8 +163,8 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-star text-warning"></i> التقييم
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تقييم جودة المورد (افتراضي: 3 نجوم)"></i>
+              <i class="fas fa-star text-warning"></i> { t('التقييم') }
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تقييم جودة { t('المورد') } (افتراضي: 3 نجوم)"></i>
             </label>
             <select name="rating" class="form-control select2">
               <option value="" {% if rating_value == '' %}selected{% endif %}>بلا</option>
@@ -178,8 +178,8 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-dollar-sign text-success"></i> العملة المفضلة
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="العملة المفضلة للتعامل (افتراضي: ILS)"></i>
+              <i class="fas fa-dollar-sign text-success"></i> { t('العملة_المفضلة') }
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('العملة_المفضلة') } للتعامل (افتراضي: ILS)"></i>
             </label>
             <select name="preferred_currency" class="form-control select2">
               {% for code, meta in lookups.get('currencies', []) %}
@@ -195,19 +195,19 @@
             <div class="custom-control custom-checkbox">
               <input type="checkbox" class="custom-control-input" id="is_verified" name="is_verified">
               <label class="custom-control-label" for="is_verified">
-                <i class="fas fa-check-circle text-success"></i> مورد موثوق
+                <i class="fas fa-check-circle text-success"></i> { t('مورد_موثوق') }
               </label>
             </div>
           </div>
         </div>
       </div>
       
-      <!-- معلومات الاتصال -->
+      <!-- { t('معلومات_الاتصال') } -->
       <hr class="my-4">
       <div class="row">
         <div class="col-md-12">
           <h5 class="text-success mb-3">
-            <i class="fas fa-phone"></i> معلومات الاتصال
+            <i class="fas fa-phone"></i> { t('معلومات_الاتصال') }
           </h5>
         </div>
       </div>
@@ -216,9 +216,9 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-phone text-primary"></i> الهاتف 1
+              <i class="fas fa-phone text-primary"></i> { t('الهاتف_1') }
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="رقم الهاتف الرئيسي (إجباري - فريد)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('رقم_الهاتف') } الرئيسي (إجباري - فريد)"></i>
             </label>
             <input type="text" name="phone" class="form-control" required
                    placeholder="+971-5x-xxx-xxxx">
@@ -228,7 +228,7 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-mobile-alt text-info"></i> الهاتف 2
+              <i class="fas fa-mobile-alt text-info"></i> { t('الهاتف_2') }
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="رقم بديل للتواصل (اختياري)"></i>
             </label>
             <input type="text" name="phone2" class="form-control"
@@ -240,7 +240,7 @@
           <div class="form-group">
             <label>
               <i class="fas fa-envelope text-danger"></i> {{ t('Email') }}
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="البريد الإلكتروني (اختياري - للمراسلات)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('Email') } (اختياري - للمراسلات)"></i>
             </label>
             <input type="email" name="email" class="form-control"
                    placeholder="supplier@example.com">
@@ -250,8 +250,8 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-globe text-success"></i> الموقع الإلكتروني
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="موقع المورد على الإنترنت (اختياري)"></i>
+              <i class="fas fa-globe text-success"></i> { t('الموقع_الإلكتروني') }
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="موقع { t('المورد') } على الإنترنت (اختياري)"></i>
             </label>
             <input type="url" name="website" class="form-control"
                    placeholder="https://example.com">
@@ -263,7 +263,7 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>{{ t('City') }}</label>
-            <input type="text" name="city" class="form-control" placeholder="دبي">
+            <input type="text" name="city" class="form-control" placeholder="{ t('دبي') }">
           </div>
         </div>
         
@@ -283,12 +283,12 @@
         </div>
       </div>
       
-      <!-- معلومات قانونية ومالية -->
+      <!-- { t('معلومات_قانونية_ومالية') } -->
       <hr class="my-4">
       <div class="row">
         <div class="col-md-12">
           <h5 class="text-success mb-3">
-            <i class="fas fa-file-contract"></i> المعلومات القانونية والمالية
+            <i class="fas fa-file-contract"></i> ال{ t('معلومات') } القانونية والمالية
           </h5>
         </div>
       </div>
@@ -297,8 +297,8 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-file-invoice text-info"></i> الرقم الضريبي (TRN)
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الرقم الضريبي للمورد (15 رقم)"></i>
+              <i class="fas fa-file-invoice text-info"></i> { t('الرقم_الضريبي') } (TRN)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('الرقم_الضريبي') } للمورد (15 رقم)"></i>
             </label>
             <input type="text" name="tax_number" class="form-control"
                    placeholder="123456789012345">
@@ -308,23 +308,23 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-certificate text-warning"></i> السجل التجاري
+              <i class="fas fa-certificate text-warning"></i> { t('السجل_التجاري') }
             </label>
             <input type="text" name="commercial_registration" class="form-control"
-                   placeholder="رقم السجل التجاري">
+                   placeholder="{ t('رقم_السجل_التجاري') }">
           </div>
         </div>
         
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-wallet text-success"></i> الرصيد الابتدائي ({{ base_currency }})
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المبلغ المستحق للمورد عند بداية التسجيل"></i>
+              <i class="fas fa-wallet text-success"></i> { t('Balance') } الابتدائي ({{ base_currency }})
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('المبلغ_المستحق_للمورد_عند_بداية_التسجيل') }"></i>
             </label>
             <input type="number" name="initial_balance" class="form-control"
                    value="0" step="0.01" min="0" placeholder="0.00">
             <small class="form-text text-muted">
-              <i class="fas fa-info-circle"></i> المبلغ المستحق للمورد من قبل (إن وجد)
+              <i class="fas fa-info-circle"></i> المبلغ { t('المستحق') } للمورد من قبل (إن وجد)
             </small>
           </div>
         </div>
@@ -333,7 +333,7 @@
           <div class="form-group">
             <label>
               <i class="fas fa-coins text-info"></i> الحد الائتماني ({{ base_currency }})
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الحد الأقصى للديون المسموح به"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{ t('الحد_الأقصى_للديون_المسموح_به') }"></i>
             </label>
             <input type="number" name="credit_limit" class="form-control"
                    value="0" step="0.01" min="0" placeholder="0.00">
@@ -345,8 +345,8 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-calendar-alt text-primary"></i> شروط الدفع (أيام)
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عدد الأيام المسموح للدفع (30 يوم افتراضي)"></i>
+              <i class="fas fa-calendar-alt text-primary"></i> { t('شروط_الدفع') } (أيام)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عدد { t('الأيام') } المسموح للدفع (30 يوم افتراضي)"></i>
             </label>
             <input type="number" name="payment_terms_days" class="form-control"
                    value="30" min="0" placeholder="30">
@@ -356,12 +356,12 @@
         <div class="col-md-9">
           <div class="alert alert-info mb-0">
             <i class="fas fa-lightbulb"></i> 
-            <strong>ملاحظة:</strong> الرصيد الابتدائي يُستخدم لتسجيل المبالغ المستحقة للمورد من قبل تفعيل النظام
+            <strong>ملاحظة:</strong> الرصيد الابتدائي يُستخدم لتسجيل { t('المبالغ') } المستحقة للمورد من قبل تفعيل { t('النظام') }
           </div>
         </div>
       </div>
       
-      <!-- معلومات إضافية -->
+      <!-- { t('معلومات_إضافية') } -->
       <hr class="my-4">
       <div class="row">
         <div class="col-md-6">
@@ -379,7 +379,7 @@
           <div class="form-group">
             <label>{{ t('Notes') }}</label>
             <textarea name="notes" class="form-control" rows="3"
-                      placeholder="أي ملاحظات إضافية عن المورد..."></textarea>
+                      placeholder="{ t('أي_ملاحظات_إضافية_عن_المورد') }"></textarea>
           </div>
         </div>
       </div>
@@ -387,10 +387,10 @@
     
     <div class="card-footer">
       <button type="submit" class="btn btn-success btn-lg">
-        <i class="fas fa-save mr-2"></i> حفظ المورد
+        <i class="fas fa-save mr-2"></i> حفظ { t('المورد') }
       </button>
       <a href="{{ url_for('suppliers.index') }}" class="btn btn-secondary btn-lg">
-        <i class="fas fa-times mr-2"></i> إلغاء
+        <i class="fas fa-times mr-2"></i> { t('Cancel') }
       </a>
     </div>
   </form>
@@ -400,7 +400,7 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-  // تفعيل Tooltips
+  // { t('تفعيل') } Tooltips
   $('[data-toggle="tooltip"]').tooltip({
     placement: 'top',
     trigger: 'hover'
@@ -413,14 +413,14 @@ $(document).ready(function() {
     
     if (!name) {
       e.preventDefault();
-      toastr.error('❌ يجب إدخال اسم المورد');
+      toastr.error('❌ يجب إدخال اسم { t('المورد') }');
       $('input[name="name"]').focus();
       return false;
     }
     
     if (!phone) {
       e.preventDefault();
-      toastr.error('❌ يجب إدخال رقم الهاتف');
+      toastr.error('❌ يجب إدخال { t('رقم_الهاتف') }');
       $('input[name="phone"]').focus();
       return false;
     }

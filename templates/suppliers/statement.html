@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - كشف حساب المورد {{ supplier.name }}{% endblock %}
+{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('كشف_حساب_المورد') } {{ supplier.name }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -45,21 +45,21 @@
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-file-invoice mr-2"></i>كشف حساب المورد</h1>
+    <h1 class="mb-0"><i class="fas fa-file-invoice mr-2"></i>{ t('كشف_حساب_المورد') }</h1>
     <p class="text-muted mb-0">{{ supplier.name }}</p>
   </div>
   <div>
     <button onclick="window.print()" class="btn btn-primary">
-      <i class="fas fa-print mr-2"></i>طباعة
+      <i class="fas fa-print mr-2"></i>{ t('Print') }
     </button>
     <a href="{{ url_for('suppliers.view', id=supplier.id) }}" class="btn btn-info">
-      <i class="fas fa-truck mr-2"></i>تفاصيل المورد
+      <i class="fas fa-truck mr-2"></i>{ t('Details') } المورد
     </a>
     <a href="{{ url_for('suppliers.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للقائمة
+      <i class="fas fa-arrow-right mr-2"></i>{ t('العودة_للقائمة') }
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>الرئيسية
+      <i class="fas fa-home mr-2"></i>{ t('الرئيسية') }
     </a>
   </div>
 </div>
@@ -73,7 +73,7 @@
         <h2 class="mb-3">
           <i class="fas fa-truck mr-2"></i>{{ supplier.name }}
           {% if supplier.is_verified %}
-            <span class="badge badge-success">✓ موثوق</span>
+            <span class="badge badge-success">{ t('موثوق') }</span>
           {% endif %}
         </h2>
         {% if supplier.company_name %}
@@ -87,11 +87,11 @@
         {% endif %}
       </div>
       <div class="col-md-6 text-left">
-        <h4 class="mb-3">كشف الحساب</h4>
-        <p class="mb-1"><i class="fas fa-calendar mr-2"></i>التاريخ: {{ now().strftime('%Y-%m-%d') }}</p>
-        <p class="mb-1"><i class="fas fa-hashtag mr-2"></i>رقم المورد: #{{ supplier.id }}</p>
+        <h4 class="mb-3">{ t('كشف_الحساب') }</h4>
+        <p class="mb-1"><i class="fas fa-calendar mr-2"></i>{ t('Date') }: {{ now().strftime('%Y-%m-%d') }}</p>
+        <p class="mb-1"><i class="fas fa-hashtag mr-2"></i>رقم { t('المورد') }: #{{ supplier.id }}</p>
         {% if supplier.tax_number %}
-          <p class="mb-1"><i class="fas fa-receipt mr-2"></i>الرقم الضريبي: {{ supplier.tax_number }}</p>
+          <p class="mb-1"><i class="fas fa-receipt mr-2"></i>{ t('الرقم_الضريبي') }: {{ supplier.tax_number }}</p>
         {% endif %}
       </div>
     </div>
@@ -102,11 +102,11 @@
     <div class="statement-info">
       <div class="row text-center">
         <div class="col-md-3">
-          <h6 class="text-muted">إجمالي المشتريات</h6>
+          <h6 class="text-muted">{ t('إجمالي_المشتريات') }</h6>
           <h3 class="text-info">{{ purchases|length }}</h3>
         </div>
         <div class="col-md-3">
-          <h6 class="text-muted">إجمالي المبلغ</h6>
+          <h6 class="text-muted">{ t('إجمالي_المبلغ') }</h6>
           <h3 class="text-success">{{ '{:,.2f}'.format(supplier.total_purchases_aed or 0) }} {{ base_currency }}</h3>
         </div>
         <div class="col-md-3">
@@ -114,7 +114,7 @@
           <h3 class="text-primary">{{ '{:,.2f}'.format(supplier.total_paid_aed or 0) }} {{ base_currency }}</h3>
         </div>
         <div class="col-md-3">
-          <h6 class="text-muted">الرصيد المستحق</h6>
+          <h6 class="text-muted">{ t('الرصيد_المستحق') }</h6>
           <h3 class="{% if supplier.get_balance_aed() > 0 %}text-danger{% else %}text-success{% endif %}">
             {{ '{:,.2f}'.format(supplier.get_balance_aed()) }} {{ base_currency }}
           </h3>
@@ -131,11 +131,11 @@
             <th class="text-center">#</th>
             <th>رقم الشراء</th>
             <th>{{ t('Date') }}</th>
-            <th>العملة</th>
-            <th><i class="fas fa-exchange-alt mr-1"></i>سعر الصرف</th>
-            <th class="text-center">عدد المنتجات</th>
+            <th>{ t('العملة') }</th>
+            <th><i class="fas fa-exchange-alt mr-1"></i>{ t('سعر_الصرف') }</th>
+            <th class="text-center">{ t('عدد_المنتجات') }</th>
             <th class="text-left">{{ t('Amount') }}</th>
-            <th class="text-left">المبلغ ({{ base_currency }})</th>
+            <th class="text-left">{ t('Amount') } ({{ base_currency }})</th>
             <th class="text-center">{{ t('Status') }}</th>
           </tr>
         </thead>
@@ -148,7 +148,7 @@
             <td><span class="badge badge-info">{{ purchase.currency }}</span></td>
             <td>
               {% if purchase.exchange_rate and purchase.exchange_rate != 1 %}
-                <span class="badge badge-info" title="سعر الصرف وقت المعاملة">
+                <span class="badge badge-info" title="{ t('سعر_الصرف_وقت_المعاملة') }">
                   <i class="fas fa-exchange-alt mr-1"></i>{{ "{:.4f}".format(purchase.exchange_rate) }}
                 </span>
               {% else %}
@@ -168,14 +168,14 @@
         </tbody>
         <tfoot style="background: #f8f9fa; font-weight: bold;">
           <tr>
-            <td colspan="7" class="text-left">الإجمالي:</td>
+            <td colspan="7" class="text-left">{ t('الإجمالي') }:</td>
             <td class="text-left text-success">
               <h5 class="mb-0">{{ '{:,.2f}'.format(supplier.total_purchases_aed or 0) }} {{ base_currency }}</h5>
             </td>
             <td></td>
           </tr>
           <tr>
-            <td colspan="7" class="text-left">الرصيد المستحق:</td>
+            <td colspan="7" class="text-left">{ t('الرصيد_المستحق') }:</td>
             <td class="text-left {% if supplier.get_balance_aed() > 0 %}text-danger{% else %}text-success{% endif %}">
               <h5 class="mb-0">{{ '{:,.2f}'.format(supplier.get_balance_aed()) }} {{ base_currency }}</h5>
             </td>
@@ -188,25 +188,25 @@
     <div class="text-center text-muted py-5">
       <i class="fas fa-inbox fa-4x mb-3"></i>
       <h4>لا توجد مشتريات</h4>
-      <p>لم يتم تسجيل أي مشتريات من هذا المورد حتى الآن</p>
+      <p>{ t('لم_يتم_تسجيل_أي_مشتريات_من_هذا_{ t('المورد') }_حتى_الآن') }</p>
     </div>
     {% endif %}
     
     {% if payments %}
     <div class="mt-4">
-      <h4 class="mb-3"><i class="fas fa-money-check-alt mr-2"></i>الدفعات إلى المورد</h4>
+      <h4 class="mb-3"><i class="fas fa-money-check-alt mr-2"></i>{ t('الدفعات_إلى_المورد') }</h4>
       <div class="table-responsive">
         <table class="table table-bordered table-striped">
           <thead style="background: #17a2b8; color: white;">
             <tr>
               <th class="text-center">#</th>
-              <th>رقم السند</th>
-              <th>التاريخ</th>
-              <th>الطريقة</th>
+              <th>{ t('رقم_السند') }</th>
+              <th>{ t('Date') }</th>
+              <th>{ t('الطريقة') }</th>
               <th>الحالة</th>
-              <th>تاريخ الاستحقاق/الصرف</th>
-              <th class="text-left">المبلغ ({{ base_currency }})</th>
-              <th>ملاحظات</th>
+              <th>{ t('تاريخ_الاستحقاق_الصرف') }</th>
+              <th class="text-left">{ t('Amount') } ({{ base_currency }})</th>
+              <th>{ t('Notes') }</th>
             </tr>
           </thead>
           <tbody>
@@ -214,7 +214,7 @@
             {% set is_cheque = (p.payment_method == 'cheque') %}
             {% set method_display = (p.get_method_display('ar') if p.get_method_display else p.payment_method) %}
             {% set status_badge = ('badge-success' if p.payment_confirmed else 'badge-warning') %}
-            {% set status_text = ('مؤكدة ✅' if p.payment_confirmed else 'معلقة ⏳') %}
+            {% set status_text = ('مؤكدة ✅' if p.payment_confirmed else '{ t('Pending') }ة ⏳') %}
             {% set due_date = (p.cheque.due_date if p.cheque else p.cheque_date) %}
             {% set clearance_date = (p.cheque.clearance_date if p.cheque else None) %}
             <tr>
@@ -243,7 +243,7 @@
           </tbody>
           <tfoot style="background: #f8f9fa; font-weight: bold;">
             <tr>
-              <td colspan="6" class="text-left">إجمالي الدفعات:</td>
+              <td colspan="6" class="text-left">إجمالي { t('الدفع') }ات:</td>
               <td class="text-left text-primary">
                 <h5 class="mb-0">
                   {{ '{:,.2f}'.format(payments|sum(attribute='amount_base') or 0) }} {{ base_currency }}
@@ -255,7 +255,7 @@
         </table>
       </div>
       <small class="text-muted d-block mt-2">
-        الشيكات المعلقة تُظهر هنا كـ "معلقة" مع تاريخ الاستحقاق، ولا تُحسب في الرصيد حتى تأكيد الصرف.
+        { t('الشيكات') } المعلقة تُظهر هنا كـ "معلقة" مع { t('تاريخ_الاستحقاق') }، ولا تُحسب في { t('Balance') } حتى تأكيد الصرف.
       </small>
     </div>
     {% endif %}
@@ -266,13 +266,13 @@
         <div class="col-md-6">
           <small class="text-muted">
             <i class="fas fa-info-circle mr-1"></i>
-            تم إنشاء هذا الكشف بواسطة نظام إدارة المشتريات
+            تم إنشاء هذا الكشف بواسطة نظام { t('إدارة_المشتريات') }
           </small>
         </div>
         <div class="col-md-6 text-left">
           <small class="text-muted">
             <i class="fas fa-calendar mr-1"></i>
-            تاريخ الطباعة: {{ now().strftime('%Y-%m-%d %H:%M') }}
+            تاريخ ال{ t('Print') }: {{ now().strftime('%Y-%m-%d %H:%M') }}
           </small>
         </div>
       </div>
@@ -283,10 +283,10 @@
 <!-- Print Button (hidden on print) -->
 <div class="text-center mt-3 no-print">
   <button onclick="window.print()" class="btn btn-lg btn-primary">
-    <i class="fas fa-print mr-2"></i>طباعة كشف الحساب
+    <i class="fas fa-print mr-2"></i>طباعة { t('كشف_الحساب') }
   </button>
   <a href="{{ url_for('suppliers.view', id=supplier.id) }}" class="btn btn-lg btn-secondary">
-    <i class="fas fa-arrow-right mr-2"></i>العودة للمورد
+    <i class="fas fa-arrow-right mr-2"></i>{ t('العودة') } للمورد
   </a>
 </div>
 {% endblock %}

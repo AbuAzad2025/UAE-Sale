@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Azad Smart Systems - All-in-One Sales, Inventory & Accounting Software</title>
+    <title>{ t('Azad_Smart_Systems_All_in_One_Sales_Inventory_Accounting_Software') }</title>
     
     <!-- Enhanced SEO Meta Tags -->
     <meta name="description" content="Azad Smart Systems - an integrated sales, purchasing and inventory management system with AI assistance. Professional accounting software for businesses: e-invoicing, stock control, account statements and comprehensive financial reports.">
@@ -15,7 +15,7 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ request.url }}">
-    <meta property="og:title" content="Azad Smart Systems - All-in-One Sales and Inventory Management">
+    <meta property="og:title" content="Azad Smart Systems - All-in-One Sales and { t('Inventory_Management') }">
     <meta property="og:description" content="An integrated sales, purchasing and inventory system with advanced AI assistance. A professional solution for businesses and retail stores.">
     <meta property="og:image" content="{{ url_for('static', filename='img/azad_logo.png', _external=True) }}">
     <meta property="og:locale" content="en_US">
@@ -82,7 +82,7 @@
           "name": "Is the software suitable for auto spare parts stores?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes! The system includes specialized features such as part-to-vehicle compatibility, 3 price levels, accurate stock tracking, professional invoices and sales analytics."
+            "text": "Yes! The system includes specialized features such as part-to-vehicle compatibility, 3 price levels, accurate stock tracking, { t('professional_invoices') } and sales analytics."
           }
         },
         {
@@ -98,7 +98,7 @@
           "name": "Does the system support e-invoicing?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes! The system fully supports e-invoicing. Create professional invoices in multiple designs, print in different sizes, add your logo and details, QR codes, and export PDF."
+            "text": "Yes! The system fully supports e-invoicing. Create { t('professional_invoices') } in multiple designs, print in different sizes, add your logo and details, QR codes, and export PDF."
           }
         },
         {
@@ -149,7 +149,7 @@
         <a href="{{ url_for('language.set_language', lang='ar') }}"
            class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}">
             <i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>
-            العربية
+            { t('العربية') }
         </a>
         <a href="{{ url_for('language.set_language', lang='en') }}"
            class="lang-pill {% if session.get('language') == 'en' %}active{% endif %}">
@@ -169,7 +169,7 @@
             </div>
             <h1>{{ config.COMPANY_NAME }}</h1>
             <p class="hero-subtitle">
-                <strong>An All-in-One System for Sales, Inventory & Accounting</strong>
+                <strong>{ t('An_All_in_One_System_for_Sales_Inventory_Accounting') }</strong>
             </p>
             <p class="hero-tagline" style="font-size: 1.2rem; margin-top: 15px;">
                 Integrated accounting | E-invoicing | Stock control | Financial reports
@@ -202,34 +202,34 @@
 
     <!-- Features Section -->
     <section class="features">
-        <h2>Why Choose Azad for Your Business?</h2>
+        <h2>{ t('Why_Choose_Azad_for_Your_Business') }</h2>
         <p class="features-subtitle">
-            We offer a <strong>complete accounting and management suite</strong> with practical features that make running your business easier, faster and more profitable.
+            We offer a <strong>{ t('complete_accounting_and_management_suite') }</strong> with practical features that make running your business easier, faster and more profitable.
         </p>
         <div class="features-grid">
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-brain"></i></div>
                 <h3>AI Assistant</h3>
-                <p><strong>A smart assistant</strong> offering price recommendations, sales analysis and forecasts to help you make better decisions. <strong>Learns from your business data</strong> and keeps improving.</p>
+                <p><strong>A smart assistant</strong> { t('offering_price_recommendations_sales_analysis_and_forecasts_to_help_you_make_bet') } <strong>Learns from your business data</strong> and keeps improving.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-warehouse"></i></div>
-                <h3>Professional Stock Control</h3>
-                <p><strong>Accurate real-time stock tracking</strong>, automatic low-stock alerts, multi-branch warehouse management, barcodes, QR codes and fast stock-taking.</p>
+                <h3>{ t('Professional_Stock_Control') }</h3>
+                <p><strong>Accurate real-time stock tracking</strong>{ t('automatic_low_stock_alerts_multi_branch_warehouse_management_barcodes_QR_codes_a') }</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-cash-register"></i></div>
-                <h3>Integrated Sales & Purchasing</h3>
-                <p><strong>Professional e-invoices</strong> in multiple designs, 3 price levels (wholesale, semi-wholesale, retail), multi-currency support, thermal printing and POS integration.</p>
+                <h3>{ t('Integrated_Sales_Purchasing') }</h3>
+                <p><strong>{ t('Professional_e_invoices') }</strong> in multiple designs, 3 price levels (wholesale, semi-wholesale, retail), multi-currency support, thermal printing and POS integration.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-users"></i></div>
-                <h3>Complete Customer & Supplier Management</h3>
-                <p>A comprehensive customer and supplier database, <strong>detailed account statements</strong>, cheque and voucher management, dues follow-up and receivables reports.</p>
+                <h3>{ t('Complete_Customer_Supplier_Management') }</h3>
+                <p>A comprehensive customer and supplier database, <strong>detailed account statements</strong>{ t('cheque_and_voucher_management_dues_follow_up_and_receivables_reports') }</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
-                <h3>Comprehensive Reports</h3>
+                <h3>{ t('Comprehensive_Reports') }</h3>
                 <p>Interactive dashboards, accurate financial reports, and a general ledger (GL)</p>
             </div>
             <div class="feature-card">
@@ -250,10 +250,10 @@
                 <div class="price">$50<small>/month</small></div>
                 <p style="color: var(--gulf-gold); font-size: 0.85rem; margin-bottom: 10px;">or $80 with managed hosting</p>
                 <ul>
-                    <li><i class="fas fa-check"></i> 3 users</li>
-                    <li><i class="fas fa-check"></i> Sales & purchasing</li>
-                    <li><i class="fas fa-check"></i> Stock management</li>
-                    <li><i class="fas fa-check"></i> Basic reports</li>
+                    <li><i class="fas fa-check"></i> { t('3_users') }</li>
+                    <li><i class="fas fa-check"></i> { t('Sales_purchasing') }</li>
+                    <li><i class="fas fa-check"></i> { t('Stock_management') }</li>
+                    <li><i class="fas fa-check"></i> { t('Basic_reports') }</li>
                 </ul>
                 <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-primary" style="margin-top: 20px; display: inline-block;">Choose Plan</a>
             </div>
@@ -264,10 +264,10 @@
                 <div class="price">$100<small>/month</small></div>
                 <p style="color: var(--gulf-gold); font-size: 0.85rem; margin-bottom: 10px;">or $130 with managed hosting</p>
                 <ul>
-                    <li><i class="fas fa-check"></i> 10 users</li>
+                    <li><i class="fas fa-check"></i> { t('10_users') }</li>
                     <li><i class="fas fa-check"></i> Everything in Basic</li>
                     <li><i class="fas fa-check"></i> Artificial intelligence</li>
-                    <li><i class="fas fa-check"></i> GL general ledger</li>
+                    <li><i class="fas fa-check"></i> { t('GL_general_ledger') }</li>
                     <li><i class="fas fa-check"></i> 24/7 technical support</li>
                 </ul>
                 <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-primary" style="margin-top: 20px; display: inline-block;">Choose Plan</a>
@@ -278,7 +278,7 @@
                 <div class="price">$120<small>/month</small></div>
                 <p style="color: var(--gulf-gold); font-size: 0.85rem; margin-bottom: 10px;">or $150 with managed hosting</p>
                 <ul>
-                    <li><i class="fas fa-check"></i> Unlimited users</li>
+                    <li><i class="fas fa-check"></i> { t('Unlimited_users') }</li>
                     <li><i class="fas fa-check"></i> All advanced features</li>
                     <li><i class="fas fa-check"></i> Full customization</li>
                     <li><i class="fas fa-check"></i> Free training</li>
@@ -337,7 +337,7 @@
             </h2>
             <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
                 <p style="font-size: 1.15rem; line-height: 2; color: #333; text-align: justify; margin-bottom: 25px;">
-                    <strong>Azad Smart Systems</strong> is a company specialized in developing <strong>business management software</strong>. We provide <strong>sales and warehouse management systems</strong> that help companies grow efficiently.
+                    <strong>Azad Smart Systems</strong> is a company specialized in developing <strong>business management software</strong>. We provide <strong>{ t('sales_and_warehouse_management_systems') }</strong> that help companies grow efficiently.
                 </p>
                 <p style="font-size: 1.15rem; line-height: 2; color: #333; text-align: justify; margin-bottom: 25px;">
                     The <strong>Azad system</strong> combines advanced technology with easy-to-use design, making it <strong>the ideal choice</strong> for business owners looking for a <strong>comprehensive accounting suite</strong> that saves time and grows profits.
@@ -397,7 +397,7 @@
                         Maintenance & Service Workshops
                     </h3>
                     <p style="line-height: 1.8; opacity: 0.95;">
-                        <strong>Work order</strong> management, used-parts tracking, service invoices, appointment scheduling and full-history customer management. Ideal for <strong>auto repair and maintenance workshops</strong>.
+                        <strong>Work order</strong> { t('management_used_parts_tracking_service_invoices_appointment_scheduling_and_full_') } <strong>auto repair and maintenance workshops</strong>.
                     </p>
                 </div>
             </div>
@@ -433,7 +433,7 @@
                         Is the software suitable for auto spare parts stores?
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        Yes! The system includes specialized features such as part-to-vehicle compatibility, 3 price levels (wholesale, semi-wholesale, retail), accurate stock tracking, <strong>professional invoices</strong> with your logo, and sales analytics.
+                        Yes! The system includes specialized features such as part-to-vehicle compatibility, 3 price levels (wholesale, semi-wholesale, retail), accurate stock tracking, <strong>{ t('professional_invoices') }</strong> with your logo, and sales analytics.
                     </p>
                 </div>
                 
@@ -444,7 +444,7 @@
                         How much does a subscription cost?
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        We offer <strong>3 flexible plans</strong> for businesses of all sizes. All plans include technical support, free updates and training. <a href="{{ url_for('public.pricing') }}" style="color: var(--gulf-gold); text-decoration: underline;">See plan details</a>
+                        We offer <strong>3 flexible plans</strong> for businesses of all sizes. All plans include technical support, free updates and training. <a href="{{ url_for('public.pricing') }}" style="color: var(--gulf-gold); text-decoration: underline;">{ t('See_plan_details') }</a>
                     </p>
                 </div>
                 
@@ -455,7 +455,7 @@
                         Does the system support e-invoicing?
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        Yes! The system fully supports <strong>e-invoicing</strong>. Create professional invoices in multiple designs, print in different sizes (A4, A5, thermal), add your logo and details, QR codes, and export PDF.
+                        Yes! The system fully supports <strong>e-invoicing</strong>. Create { t('professional_invoices') } in multiple designs, print in different sizes (A4, A5, thermal), add your logo and details, QR codes, and export PDF.
                     </p>
                 </div>
                 
@@ -477,7 +477,7 @@
                         Can the software be used in multiple branches?
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        Yes! The system supports <strong>multi-warehouse</strong> and branch management. Track stock per branch, transfer goods between warehouses, and get separate reports per branch with centralized control.
+                        Yes! The system supports <strong>{ t('multi_warehouse') }</strong> and branch management. Track stock per branch, transfer goods between warehouses, and get separate reports per branch with centralized control.
                     </p>
                 </div>
                 

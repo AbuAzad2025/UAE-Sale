@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}شركة أزاد للأنظمة الذكية - قيود اليومية{% endblock %}
+{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('قيود_اليومية') }{% endblock %}
 
 {% block content %}
 <div class="content-wrapper">
@@ -8,7 +8,7 @@
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1 class="m-0">قيود اليومية</h1>
+                    <h1 class="m-0">{ t('قيود_اليومية') }</h1>
                 </div>
             </div>
         </div>
@@ -19,7 +19,7 @@
             <div class="row mb-2">
                 <div class="col-12">
                     <a href="{{ url_for('ledger.manual_entry') }}" class="btn btn-success">
-                      <i class="fas fa-plus mr-1"></i>قيد يدوي جديد
+                      <i class="fas fa-plus mr-1"></i>{ t('قيد_يدوي') } جديد
                     </a>
                 </div>
             </div>
@@ -29,25 +29,25 @@
                         <div class="form-group mr-2">
                             <select name="status" class="form-control">
                                 <option value="">كل الحالات</option>
-                                <option value="posted" {% if status == 'posted' %}selected{% endif %}>مرحّلة</option>
-                                <option value="draft" {% if status == 'draft' %}selected{% endif %}>مسودات</option>
-                                <option value="reversed" {% if status == 'reversed' %}selected{% endif %}>معكوسة</option>
+                                <option value="posted" {% if status == 'posted' %}selected{% endif %}>{ t('مرحّلة') }</option>
+                                <option value="draft" {% if status == 'draft' %}selected{% endif %}>{ t('مسودات') }</option>
+                                <option value="reversed" {% if status == 'reversed' %}selected{% endif %}>{ t('معكوسة') }</option>
                             </select>
                         </div>
                         <div class="form-group mr-2">
                             <select name="entry_type" class="form-control">
-                                <option value="">كل الأنواع</option>
-                                <option value="manual" {% if entry_type == 'manual' %}selected{% endif %}>يدوي</option>
-                                <option value="auto" {% if entry_type == 'auto' %}selected{% endif %}>تلقائي</option>
-                                <option value="reversing" {% if entry_type == 'reversing' %}selected{% endif %}>عكسي</option>
-                                <option value="closing" {% if entry_type == 'closing' %}selected{% endif %}>إقفال</option>
+                                <option value="">{ t('كل_الأنواع') }</option>
+                                <option value="manual" {% if entry_type == 'manual' %}selected{% endif %}>{ t('يدوي') }</option>
+                                <option value="auto" {% if entry_type == 'auto' %}selected{% endif %}>{ t('تلقائي') }</option>
+                                <option value="reversing" {% if entry_type == 'reversing' %}selected{% endif %}>{ t('عكسي') }</option>
+                                <option value="closing" {% if entry_type == 'closing' %}selected{% endif %}>{ t('إقفال') }</option>
                             </select>
                         </div>
                         <div class="form-group mr-2">
-                            <input type="text" name="q" class="form-control" placeholder="رقم/بيان..." value="{{ q }}">
+                            <input type="text" name="q" class="form-control" placeholder="{ t('رقم_بيان') }" value="{{ q }}">
                         </div>
-                        <button type="submit" class="btn btn-primary mr-2"><i class="fas fa-filter"></i> تطبيق</button>
-                        <a href="{{ url_for('ledger.journal_entries') }}" class="btn btn-secondary">الكل</a>
+                        <button type="submit" class="btn btn-primary mr-2"><i class="fas fa-filter"></i> { t('تطبيق') }</button>
+                        <a href="{{ url_for('ledger.journal_entries') }}" class="btn btn-secondary">{ t('All') }</a>
                     </form>
                 </div>
             </div>
@@ -55,22 +55,22 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">قيود اليومية</h3>
+                            <h3 class="card-title">{ t('قيود_اليومية') }</h3>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-bordered table-striped">
                                     <thead>
                                         <tr>
-                                            <th>رقم القيد</th>
+                                            <th>{ t('رقم_القيد') }</th>
                                             <th>{{ t('Date') }}</th>
                                             <th>{{ t('Description') }}</th>
-                                            <th>المرجع</th>
-                                            <th>الحالة</th>
-                                            <th>العملة</th>
-                                            <th>سعر الصرف</th>
-                                            <th>المستخدم</th>
-                                            <th>الإجراءات</th>
+                                            <th>{ t('المرجع') }</th>
+                                            <th>{ t('Status') }</th>
+                                            <th>{ t('العملة') }</th>
+                                            <th>{ t('سعر_الصرف') }</th>
+                                            <th>{ t('المستخدم') }</th>
+                                            <th>{ t('الإجراءات') }</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -88,11 +88,11 @@
                                             </td>
                                             <td>
                                                 {% if entry.is_reversed %}
-                                                <span class="badge badge-danger">معكوس</span>
+                                                <span class="badge badge-danger">{ t('معكوس') }</span>
                                                 {% elif not entry.is_posted %}
-                                                <span class="badge badge-secondary">مسودة</span>
+                                                <span class="badge badge-secondary">{ t('مسودة') }</span>
                                                 {% else %}
-                                                <span class="badge badge-success">مرحّل</span>
+                                                <span class="badge badge-success">{ t('مرحّل') }</span>
                                                 {% endif %}
                                             </td>
                                             <td>{{ entry.currency or base_currency }}</td>
@@ -100,7 +100,7 @@
                                             <td>{{ entry.user.username if entry.user else 'نظام' }}</td>
                                             <td>
                                                 <a href="{{ url_for('ledger.view_entry', id=entry.id) }}" class="btn btn-sm btn-info">
-                                                    <i class="fas fa-eye"></i> عرض التفاصيل
+                                                    <i class="fas fa-eye"></i> عرض { t('التفاصيل') }
                                                 </a>
                                                 {% if not entry.is_reversed and entry.entry_type != 'reversing' %}
                                                 <form method="post" action="{{ url_for('ledger.reverse_entry', id=entry.id) }}" style="display:inline">
@@ -111,11 +111,11 @@
                                                 {% if not entry.is_posted and not entry.is_reversed and current_user.is_admin() %}
                                                 <form method="post" action="{{ url_for('ledger.approve_entry', id=entry.id) }}" style="display:inline">
                                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="btn btn-sm btn-success" title="اعتماد وترحيل"><i class="fas fa-check"></i></button>
+                                                    <button type="submit" class="btn btn-sm btn-success" title="{ t('اعتماد_وترحيل') }"><i class="fas fa-check"></i></button>
                                                 </form>
                                                 <form method="post" action="{{ url_for('ledger.delete_entry', id=entry.id) }}" style="display:inline">
                                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('حذف هذه المسودة؟')" title="حذف المسودة"><i class="fas fa-trash"></i></button>
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('حذف هذه المسودة؟')" title="{ t('حذف_المسودة') }"><i class="fas fa-trash"></i></button>
                                                 </form>
                                                 {% endif %}
                                             </td>

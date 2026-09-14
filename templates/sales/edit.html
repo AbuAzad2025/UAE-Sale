@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}تعديل فاتورة #{{ sale.sale_number }}{% endblock %}
+{% block title %}{ t('Edit') } { t('فاتورة') } #{{ sale.sale_number }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -8,51 +8,51 @@
     <div class="col-12">
       <div class="alert alert-warning">
         <i class="fas fa-exclamation-triangle"></i>
-        <strong>تنبيه محاسبي:</strong> يمكن تعديل الملاحظات والخصم فقط. لا يمكن تعديل المنتجات أو الكميات بعد إنشاء الفاتورة.
+        <strong>تنبيه محاسبي:</strong> يمكن { t('Edit') } { t('الملاحظات') } والخصم فقط. لا يمكن { t('Edit') } { t('Products') } أو الكميات بعد { t('إنشاء') } { t('الفاتورة') }.
       </div>
 
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">
-            <i class="fas fa-edit"></i> تعديل فاتورة #{{ sale.sale_number }}
+            <i class="fas fa-edit"></i> { t('Edit') } { t('فاتورة') } #{{ sale.sale_number }}
           </h3>
         </div>
         <div class="card-body">
           <form method="post" action="{{ url_for('sales.edit', id=sale.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             
-            <!-- معلومات الفاتورة (للعرض فقط) -->
+            <!-- { t('معلومات_الفاتورة') } (للعرض فقط) -->
             <div class="row mb-4">
               <div class="col-md-6">
-                <h5>معلومات الفاتورة</h5>
-                <p><strong>رقم الفاتورة:</strong> {{ sale.sale_number }}</p>
-                <p><strong>التاريخ:</strong> {{ sale.sale_date.strftime('%Y-%m-%d') }}</p>
-                <p><strong>العميل:</strong> {{ sale.customer.name }}</p>
-                <p><strong>البائع:</strong> {{ sale.seller.full_name }}</p>
+                <h5>{ t('معلومات_الفاتورة') }</h5>
+                <p><strong>{ t('رقم_الفاتورة') }:</strong> {{ sale.sale_number }}</p>
+                <p><strong>{ t('Date') }:</strong> {{ sale.sale_date.strftime('%Y-%m-%d') }}</p>
+                <p><strong>{ t('العميل') }:</strong> {{ sale.customer.name }}</p>
+                <p><strong>{ t('البائع') }:</strong> {{ sale.seller.full_name }}</p>
                 {% if sale.warehouse %}
-                <p><strong><i class="fas fa-warehouse text-info"></i> المستودع:</strong> {{ sale.warehouse.name_ar or sale.warehouse.name }}</p>
+                <p><strong><i class="fas fa-warehouse text-info"></i> { t('Warehouse') }:</strong> {{ sale.warehouse.name_ar or sale.warehouse.name }}</p>
                 {% endif %}
               </div>
               <div class="col-md-6">
-                <h5>الإجماليات</h5>
-                <p><strong>المجموع الفرعي:</strong> {{ sale.subtotal }} {{ base_currency }}</p>
-                <p><strong>الضريبة:</strong> {{ sale.tax_amount }} {{ base_currency }}</p>
-                <p><strong>الإجمالي:</strong> {{ sale.total_amount }} {{ base_currency }}</p>
-                <p><strong>المدفوع:</strong> {{ sale.paid_amount }} {{ base_currency }}</p>
-                <p><strong>المتبقي:</strong> {{ sale.balance_due }} {{ base_currency }}</p>
+                <h5>{ t('الإجماليات') }</h5>
+                <p><strong>{ t('Total') } الفرعي:</strong> {{ sale.subtotal }} {{ base_currency }}</p>
+                <p><strong>{ t('Tax') }:</strong> {{ sale.tax_amount }} {{ base_currency }}</p>
+                <p><strong>{ t('الإجمالي') }:</strong> {{ sale.total_amount }} {{ base_currency }}</p>
+                <p><strong>{ t('Paid') }:</strong> {{ sale.paid_amount }} {{ base_currency }}</p>
+                <p><strong>{ t('Remaining') }:</strong> {{ sale.balance_due }} {{ base_currency }}</p>
               </div>
             </div>
 
-            <!-- المنتجات (للعرض فقط) -->
-            <h5>المنتجات (لا يمكن تعديلها)</h5>
+            <!-- { t('Products') } (للعرض فقط) -->
+            <h5>{ t('Products') } (لا يمكن تعديلها)</h5>
             <table class="table table-bordered mb-4">
               <thead>
                 <tr>
-                  <th>المنتج</th>
-                  <th>الكمية</th>
-                  <th>السعر</th>
-                  <th>الخصم</th>
-                  <th>الإجمالي</th>
+                  <th>{ t('المنتج') }</th>
+                  <th>{ t('Quantity') }</th>
+                  <th>{ t('Price') }</th>
+                  <th>{ t('Discount') }</th>
+                  <th>{ t('الإجمالي') }</th>
                 </tr>
               </thead>
               <tbody>
@@ -68,20 +68,20 @@
               </tbody>
             </table>
 
-            <!-- الحقول القابلة للتعديل -->
+            <!-- الحقول القابلة لل{ t('Edit') } -->
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>الخصم الإضافي ({{ base_currency }})</label>
+                  <label>{ t('Discount') } الإضافي ({{ base_currency }})</label>
                   <input type="number" name="discount_amount" class="form-control" 
                          value="{{ sale.discount_amount or 0 }}" step="0.01" min="0">
-                  <small class="text-muted">خصم إضافي على إجمالي الفاتورة</small>
+                  <small class="text-muted">{ t('خصم_إضافي_على_إجمالي_الفاتورة') }</small>
                 </div>
               </div>
               
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>الملاحظات</label>
+                  <label>{ t('الملاحظات') }</label>
                   <textarea name="notes" class="form-control" rows="3">{{ sale.notes or '' }}</textarea>
                 </div>
               </div>
@@ -89,10 +89,10 @@
 
             <div class="form-group">
               <button type="submit" class="btn btn-success">
-                <i class="fas fa-save"></i> حفظ التعديلات
+                <i class="fas fa-save"></i> { t('حفظ_التعديلات') }
               </button>
               <a href="{{ url_for('sales.view', id=sale.id) }}" class="btn btn-secondary">
-                <i class="fas fa-times"></i> إلغاء
+                <i class="fas fa-times"></i> { t('Cancel') }
               </a>
             </div>
           </form>

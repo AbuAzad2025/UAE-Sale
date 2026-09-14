@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - ميزان المراجعة{% endblock %}
-{% block page_title %}ميزان المراجعة - Trial Balance{% endblock %}
+{% block title %}{ t('شركة_أزاد_للأنظمة_الذكية') } - { t('Trial Balance') }{% endblock %}
+{% block page_title %}{ t('Trial Balance') } - Trial Balance{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
   <div class="col-12">
     <button onclick="window.print()" class="btn btn-secondary">
-      <i class="fas fa-print mr-2"></i>طباعة
+      <i class="fas fa-print mr-2"></i>{ t('Print') }
     </button>
-    <a href="{{ url_for('ledger.index') }}" class="btn btn-info">العودة</a>
+    <a href="{{ url_for('ledger.index') }}" class="btn btn-info">{ t('العودة') }</a>
   </div>
 </div>
 
@@ -23,8 +23,8 @@
         <label class="mr-2">إلى:</label>
         <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
       </div>
-      <button type="submit" class="btn btn-primary mr-2"><i class="fas fa-filter"></i> تطبيق</button>
-      <a href="{{ url_for('ledger.trial_balance') }}" class="btn btn-secondary">الكل</a>
+      <button type="submit" class="btn btn-primary mr-2"><i class="fas fa-filter"></i> { t('تطبيق') }</button>
+      <a href="{{ url_for('ledger.trial_balance') }}" class="btn btn-secondary">{ t('All') }</a>
     </form>
   </div>
 </div>
@@ -35,11 +35,11 @@
     <div class="card-tools">
       {% if is_balanced %}
       <span class="badge badge-success" style="font-size: 14px;">
-        <i class="fas fa-check-circle"></i> متوازن
+        <i class="fas fa-check-circle"></i> { t('متوازن') }
       </span>
       {% else %}
       <span class="badge badge-danger" style="font-size: 14px;">
-        <i class="fas fa-exclamation-triangle"></i> غير متوازن
+        <i class="fas fa-exclamation-triangle"></i> { t('غير_متوازن') }
       </span>
       {% endif %}
     </div>
@@ -48,13 +48,13 @@
     <table class="table table-bordered table-striped">
       <thead>
         <tr>
-          <th>كود الحساب</th>
-          <th>اسم الحساب</th>
-          <th>النوع</th>
-          <th class="text-danger">حركة مدينة</th>
-          <th class="text-success">حركة دائنة</th>
-          <th class="text-danger">رصيد مدين</th>
-          <th class="text-success">رصيد دائن</th>
+          <th>{ t('كود') } الحساب</th>
+          <th>{ t('اسم_الحساب') }</th>
+          <th>{ t('النوع') }</th>
+          <th class="text-danger">{ t('حركة_مدينة') }</th>
+          <th class="text-success">{ t('حركة_دائنة') }</th>
+          <th class="text-danger">{ t('رصيد_مدين') }</th>
+          <th class="text-success">{ t('رصيد_دائن') }</th>
         </tr>
       </thead>
       <tbody>
@@ -65,9 +65,9 @@
           <td>
             {% if item.account.type == 'asset' %}<span class="badge badge-success">أصل</span>
             {% elif item.account.type == 'liability' %}<span class="badge badge-danger">خصم</span>
-            {% elif item.account.type == 'equity' %}<span class="badge badge-info">حقوق ملكية</span>
-            {% elif item.account.type == 'revenue' %}<span class="badge badge-primary">إيراد</span>
-            {% else %}<span class="badge badge-warning">مصروف</span>{% endif %}
+            {% elif item.account.type == 'equity' %}<span class="badge badge-info">{ t('حقوق_ملكية') }</span>
+            {% elif item.account.type == 'revenue' %}<span class="badge badge-primary">{ t('إيراد') }</span>
+            {% else %}<span class="badge badge-warning">{ t('مصروف') }</span>{% endif %}
           </td>
           <td class="text-danger">{{ "{:,.2f}".format(item.debit) }}</td>
           <td class="text-success">{{ "{:,.2f}".format(item.credit) }}</td>
@@ -113,13 +113,13 @@
     size: A4 {{ 'landscape' if request.args.get('orientation') == 'landscape' else 'portrait' }};
     margin: 15mm;
   }
-  /* إخفاء عناصر UI */
+  /* { t('إخفاء') } عناصر UI */
   .main-sidebar, .main-header, .main-footer, 
   .content-header, .no-print, button, .btn,
   .breadcrumb, .navbar, .sidebar {
     display: none !important;
   }
-  /* تحسين المحتوى للطباعة */
+  /* تحسين المحتوى لل{ t('Print') } */
   .content-wrapper {
     margin: 0 !important;
     padding: 0 !important;
@@ -132,7 +132,7 @@
   body {
     background: white !important;
   }
-  /* تحسين الجداول */
+  /* تحسين { t('الجداول') } */
   table {
     page-break-inside: auto;
   }

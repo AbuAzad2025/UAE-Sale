@@ -84,4 +84,17 @@ describe('static/js/query-optimizer.js', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it('reports API timing to perfMonitor on cache miss', async () => {
+    const measureAPICall = vi.fn();
+    (window as any).perfMonitor = { measureAPICall };
+
+    await optimizer.fetchWithCache('/api/timed', {});
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(measureAPICall).toHaveBeenCalledTimes(1);
+    expect(measureAPICall.mock.calls[0][0]).toBe('/api/timed');
+    expect(typeof measureAPICall.mock.calls[0][1]).toBe('number');
+    delete (window as any).perfMonitor;
+  });
 });

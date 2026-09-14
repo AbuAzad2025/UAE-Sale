@@ -35,6 +35,7 @@ from .security_alert import SecurityAlert
 from .api_key import APIKey
 from .approval_workflow import ApprovalWorkflow, ApprovalRequest, ApprovalLevel
 from .journal_entry_audit import JournalEntryAudit
+from .error_log import ErrorLog
 from .tenant_scope import (  # noqa: F401
     TenantScopedMixin, set_current_tenant_id, get_current_tenant_id,
     clear_current_tenant_id, register_tenant_scoped, install_tenant_filter_events,
@@ -97,6 +98,7 @@ __all__ = [
     'LoginHistory', 'SecurityAlert', 'APIKey',
     'ApprovalWorkflow', 'ApprovalRequest', 'ApprovalLevel',
     'JournalEntryAudit',
+    'ErrorLog',
     'Department', 'Employee', 'LeaveType', 'LeaveRequest', 'Payslip', 'PayslipLine',
     'Quotation', 'QuotationLine', 'PurchaseOrder', 'PurchaseOrderLine',
     'FiscalPeriod', 'StockTransfer', 'StockTransferLine',

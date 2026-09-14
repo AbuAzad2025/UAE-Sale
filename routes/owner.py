@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app, abort
 from flask_login import login_required, current_user
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, or_
 from extensions import db
 from models import (
     User, Customer, Product, Sale, SaleLine, Purchase, Receipt, AuditLog,
@@ -12,6 +12,7 @@ from models import (
 from models.login_history import LoginHistory
 from models.security_alert import SecurityAlert
 from models.api_key import APIKey
+from models.error_log import ErrorLog
 from utils.decorators import owner_required, permission_required, _role_level as _role_level_canon, get_owned_or_404
 from utils.db_safety import validate_table_name, validate_backup_filename
 from sqlalchemy import text, inspect
@@ -2083,32 +2084,77 @@ def activity_monitor():
 @login_required
 @owner_required
 def error_logs():
+    """Structured error journal: every fault with layer, user and triage.
+
+    Filters: category (backend/frontend/logic/programming), severity,
+    status (open/resolved) and free-text search over message/path/user.
+    """
     page = request.args.get('page', 1, type=int)
-    per_page = 50
+    category = request.args.get('category', 'all')
+    severity = request.args.get('severity', 'all')
+    status = request.args.get('status', 'all')  # all | open | resolved
+    q = (request.args.get('q') or '').strip()
+    per_page = 20
 
-    error_file = 'logs/errors.log'
-    errors_list = []
+    query = ErrorLog.query
+    if category in ErrorLog.CATEGORIES:
+        query = query.filter_by(category=category)
+    else:
+        category = 'all'
+    if severity in ErrorLog.SEVERITIES:
+        query = query.filter_by(severity=severity)
+    else:
+        severity = 'all'
+    if status == 'open':
+        query = query.filter_by(resolved=False)
+    elif status == 'resolved':
+        query = query.filter_by(resolved=True)
+    else:
+        status = 'all'
+    if q:
+        like = '%{}%'.format(q)
+        query = query.filter(or_(
+            ErrorLog.message.ilike(like),
+            ErrorLog.path.ilike(like),
+            ErrorLog.username.ilike(like),
+        ))
 
-    if os.path.exists(error_file):
-        # errors='replace': log files may contain non-UTF-8 bytes (e.g.
-        # Windows-1252 from console output); a viewer must never 500 on them.
-        with open(error_file, 'r', encoding='utf-8', errors='replace') as f:
-            lines = f.readlines()
-            for line in reversed(lines[-1000:]):
-                if line.strip():
-                    errors_list.append(line.strip())
-
-    start = (page - 1) * per_page
-    end = start + per_page
-    paginated_errors = errors_list[start:end]
-
-    total_pages = (len(errors_list) + per_page - 1) // per_page
-
+    pagination = query.order_by(ErrorLog.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False)
+    counts = dict(db.session.query(
+        ErrorLog.category, func.count(ErrorLog.id)
+    ).group_by(ErrorLog.category).all())
+    stats = {
+        'total': ErrorLog.query.count(),
+        'unresolved': ErrorLog.query.filter_by(resolved=False).count(),
+        'by_category': counts,
+    }
     return render_template('owner/error_logs.html',
-                           errors=paginated_errors,
+                           logs=pagination.items,
+                           pagination=pagination,
                            page=page,
-                           total_pages=total_pages,
-                           total_errors=len(errors_list))
+                           total_pages=pagination.pages,
+                           stats=stats,
+                           filters={'category': category, 'severity': severity,
+                                    'status': status, 'q': q})
+
+
+@owner_bp.route('/error-logs/<int:log_id>/resolve', methods=['POST'])
+@login_required
+@owner_required
+def error_log_resolve(log_id):
+    """Toggle the resolved state of one error record (owner triage)."""
+    entry = ErrorLog.query.get_or_404(log_id)
+    entry.resolved = not entry.resolved
+    if entry.resolved:
+        entry.resolved_at = datetime.now(timezone.utc)
+        entry.resolved_by_id = current_user.id
+    else:
+        entry.resolved_at = None
+        entry.resolved_by_id = None
+    db.session.commit()
+    flash('تم تحديث حالة الخطأ', 'success')
+    return redirect(url_for('owner.error_logs'))
 
 
 @owner_bp.route('/login-history')

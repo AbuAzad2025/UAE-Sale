@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}سجلات الأخطاء{% endblock %}
+{% block title %}سجل الأخطاء{% endblock %}
 {% block content %}
 <div class="container-fluid">
   <div class="mb-3">
@@ -10,45 +10,162 @@
       <i class="fas fa-chart-line"></i> النشاط
     </a>
   </div>
-  <div class="card">
-    <div class="card-header">
-      <h3><i class="fas fa-exclamation-triangle"></i> سجلات الأخطاء</h3>
-      <div class="card-tools">
-        <span class="badge badge-danger">{{ total_errors }} خطأ</span>
+
+  <div class="row mb-3">
+    <div class="col-md-3">
+      <div class="info-box bg-danger">
+        <span class="info-box-icon"><i class="fas fa-exclamation-triangle"></i></span>
+        <div class="info-box-content">
+          <span class="info-box-text">إجمالي الأخطاء</span>
+          <span class="info-box-number">{{ stats.total }}</span>
+        </div>
       </div>
     </div>
-    <div class="card-body">
-      <div style="background:#1e1e1e;color:#fff;padding:20px;border-radius:8px;max-height:600px;overflow-y:auto;font-family:monospace;font-size:13px">
-        {% if errors %}
-          {% for error in errors %}
-          <div style="margin-bottom:12px;padding:12px;background:#2d2d2d;border-left:4px solid #dc3545;line-height:1.6">
-            {{ error }}
-          </div>
-          {% endfor %}
-        {% else %}
-          <div class="text-center text-white-50 py-5">
-            <i class="fas fa-check-circle fa-3x mb-3"></i>
-            <p>لا توجد أخطاء مسجلة</p>
-          </div>
-        {% endif %}
+    <div class="col-md-3">
+      <div class="info-box bg-warning">
+        <span class="info-box-icon"><i class="fas fa-exclamation-circle"></i></span>
+        <div class="info-box-content">
+          <span class="info-box-text">غير محلولة</span>
+          <span class="info-box-number">{{ stats.unresolved }}</span>
+        </div>
       </div>
-      
+    </div>
+    <div class="col-md-3">
+      <div class="info-box bg-info">
+        <span class="info-box-icon"><i class="fas fa-server"></i></span>
+        <div class="info-box-content">
+          <span class="info-box-text">باكند / برمجة</span>
+          <span class="info-box-number">{{ stats.by_category.get('backend', 0) + stats.by_category.get('programming', 0) }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="info-box bg-success">
+        <span class="info-box-icon"><i class="fas fa-desktop"></i></span>
+        <div class="info-box-content">
+          <span class="info-box-text">فرونت اند / منطق</span>
+          <span class="info-box-number">{{ stats.by_category.get('frontend', 0) + stats.by_category.get('logic', 0) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fas fa-exclamation-triangle"></i> سجل الأخطاء المنظم</h3>
+    </div>
+    <div class="card-body">
+      <form method="get" class="form-inline mb-3">
+        <select name="category" class="form-control mr-2 mb-2">
+          <option value="all" {% if filters.category == 'all' %}selected{% endif %}>كل الطبقات</option>
+          <option value="backend" {% if filters.category == 'backend' %}selected{% endif %}>باكند (خادم)</option>
+          <option value="frontend" {% if filters.category == 'frontend' %}selected{% endif %}>فرونت اند (متصفح)</option>
+          <option value="logic" {% if filters.category == 'logic' %}selected{% endif %}>منطق وظيفي</option>
+          <option value="programming" {% if filters.category == 'programming' %}selected{% endif %}>برمجي</option>
+        </select>
+        <select name="severity" class="form-control mr-2 mb-2">
+          <option value="all" {% if filters.severity == 'all' %}selected{% endif %}>كل الخطورة</option>
+          <option value="critical" {% if filters.severity == 'critical' %}selected{% endif %}>حرج</option>
+          <option value="error" {% if filters.severity == 'error' %}selected{% endif %}>خطأ</option>
+          <option value="warning" {% if filters.severity == 'warning' %}selected{% endif %}>تحذير</option>
+        </select>
+        <select name="status" class="form-control mr-2 mb-2">
+          <option value="all" {% if filters.status == 'all' %}selected{% endif %}>الكل</option>
+          <option value="open" {% if filters.status == 'open' %}selected{% endif %}>مفتوحة</option>
+          <option value="resolved" {% if filters.status == 'resolved' %}selected{% endif %}>محلولة</option>
+        </select>
+        <input type="text" name="q" value="{{ filters.q }}" placeholder="بحث: رسالة / مسار / مستخدم" class="form-control mr-2 mb-2" style="min-width:260px">
+        <button type="submit" class="btn btn-primary mb-2"><i class="fas fa-search"></i> فلترة</button>
+        <a href="{{ url_for('owner.error_logs') }}" class="btn btn-secondary mb-2 ml-2">إعادة ضبط</a>
+      </form>
+
+      {% if logs %}
+      <div class="table-responsive">
+        <table class="table table-bordered table-striped">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>الوقت</th>
+              <th>الطبقة</th>
+              <th>الخطورة</th>
+              <th>المستخدم</th>
+              <th>الطلب</th>
+              <th>الرسالة</th>
+              <th>الحالة</th>
+              <th>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+            <tr class="{% if not log.resolved and log.severity == 'critical' %}table-danger{% elif not log.resolved %}table-warning{% endif %}">
+              <td>{{ log.id }}</td>
+              <td style="white-space:nowrap">{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '-' }}</td>
+              <td>
+                {% if log.category == 'backend' %}<span class="badge badge-info">باكند</span>
+                {% elif log.category == 'frontend' %}<span class="badge badge-success">فرونت اند</span>
+                {% elif log.category == 'logic' %}<span class="badge badge-warning">منطق وظيفي</span>
+                {% else %}<span class="badge badge-danger">برمجي</span>{% endif %}
+              </td>
+              <td>
+                {% if log.severity == 'critical' %}<span class="badge badge-danger">حرج</span>
+                {% elif log.severity == 'warning' %}<span class="badge badge-warning">تحذير</span>
+                {% else %}<span class="badge badge-secondary">خطأ</span>{% endif %}
+              </td>
+              <td>{{ log.username or '—' }}{% if log.user_role %}<br><small class="text-muted">{{ log.user_role }}</small>{% endif %}</td>
+              <td><small dir="ltr">{{ log.method or '' }} {{ (log.path or '')[:80] }}</small></td>
+              <td>
+                {{ log.message[:160] }}{% if log.message|length > 160 %}…{% endif %}
+                <details>
+                  <summary style="cursor:pointer;color:#007bff">التفاصيل الكاملة</summary>
+                  <div class="mt-2"><strong>المصدر:</strong> {{ log.source or '—' }}</div>
+                  <div><strong>المسار:</strong> <span dir="ltr">{{ log.path or '—' }}</span></div>
+                  <div><strong>الوظيفة:</strong> {{ log.endpoint or '—' }}</div>
+                  <div><strong>الطلب:</strong> <code dir="ltr">{{ log.request_id or '—' }}</code></div>
+                  <div><strong>IP:</strong> <span dir="ltr">{{ log.ip_address or '—' }}</span></div>
+                  {% if log.traceback_text %}
+                  <div class="mt-2"><strong>التتبع:</strong></div>
+                  <pre dir="ltr" style="background:#1e1e1e;color:#f8f8f2;padding:10px;border-radius:6px;max-height:300px;overflow:auto;font-size:12px">{{ log.traceback_text }}</pre>
+                  {% endif %}
+                </details>
+              </td>
+              <td>
+                {% if log.resolved %}<span class="badge badge-success">محلول</span>
+                {% else %}<span class="badge badge-danger">مفتوح</span>{% endif %}
+              </td>
+              <td style="white-space:nowrap">
+                <form method="post" action="{{ url_for('owner.error_log_resolve', log_id=log.id) }}" style="display:inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm {% if log.resolved %}btn-secondary{% else %}btn-success{% endif %}">
+                    {% if log.resolved %}إعادة فتح{% else %}حل{% endif %}
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center text-muted py-5">
+        <i class="fas fa-check-circle fa-3x mb-3"></i>
+        <p>لا توجد أخطاء مطابقة للفلترة</p>
+      </div>
+      {% endif %}
+
       {% if total_pages > 1 %}
       <nav class="mt-4">
         <ul class="pagination justify-content-center">
           {% if page > 1 %}
           <li class="page-item">
-            <a class="page-link" href="?page={{ page-1 }}">السابق</a>
+            <a class="page-link" href="?page={{ page-1 }}&category={{ filters.category }}&severity={{ filters.severity }}&status={{ filters.status }}&q={{ filters.q }}">السابق</a>
           </li>
           {% endif %}
-          
           <li class="page-item active">
             <span class="page-link">{{ page }} / {{ total_pages }}</span>
           </li>
-          
           {% if page < total_pages %}
           <li class="page-item">
-            <a class="page-link" href="?page={{ page+1 }}">التالي</a>
+            <a class="page-link" href="?page={{ page+1 }}&category={{ filters.category }}&severity={{ filters.severity }}&status={{ filters.status }}&q={{ filters.q }}">التالي</a>
           </li>
           {% endif %}
         </ul>

@@ -19,7 +19,8 @@ export default defineConfig({
         'static/js/advanced-search.js',
         'static/js/query-optimizer.js',
         'static/js/dark-mode.js',
-        'static/js/lazy-loader.js'
+        'static/js/lazy-loader.js',
+        'static/js/error-reporter.js'
       ],
       thresholds: {
         lines: 70,

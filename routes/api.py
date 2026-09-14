@@ -1,6 +1,6 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from flask_login import login_required, current_user
-from extensions import db
+from extensions import db, csrf, limiter
 from models import Customer, Supplier, Product, User
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
@@ -281,3 +281,53 @@ def products_low_stock():
 def echo():
     payload = request.get_json(silent=True) or {}
     return jsonify({'success': True, 'data': payload}), 200
+
+
+@api_bp.route('/client-errors', methods=['POST'])
+@csrf.exempt  # beacon/fetch from pages without a CSRF token; Origin + rate limit below
+@limiter.limit("30 per minute")
+def client_errors():
+    """Receive browser error reports (window.onerror / unhandledrejection).
+
+    Public by design (visitors hit JS errors before login), hardened by:
+    Origin check (same host or CORS list), strict rate limit, server-side
+    length caps + secret redaction. Always answers 200 on accepted payloads
+    so a failing reporter can never break the page it reports from.
+    """
+    from services.error_report_service import (
+        CATEGORY_FRONTEND, report_error)
+
+    if not request.is_json:
+        return jsonify({'success': False,
+                        'error': 'Content-Type must be application/json'}), 400
+    # Same-host rule (mirrors the language-switch referrer guard): the
+    # page reporting the error must live on this host, or the Origin must
+    # be explicitly allowed. Blocks cross-site report flooding.
+    origin = request.headers.get('Origin', '')
+    if origin:
+        own_host = (request.host or '').split(':')[0].lower()
+        try:
+            origin_host = origin.split(
+                '://', 1)[1].split('/')[0].split(':')[0].lower()
+        except Exception:
+            origin_host = ''
+        allowed = current_app.config.get('CORS_ORIGINS', [])
+        if origin_host != own_host and not any(
+                origin.startswith(o) for o in allowed):
+            return jsonify({'success': False, 'error': 'Invalid origin'}), 403
+
+    data = request.get_json(silent=True) or {}
+    message = data.get('message', '')
+    if not isinstance(message, str) or not message.strip():
+        return jsonify({'success': False, 'error': 'message is required'}), 400
+    kind = data.get('kind', 'onerror')
+    source = ('js-unhandledrejection'
+              if kind == 'unhandledrejection' else 'js-onerror')
+    entry = report_error(
+        CATEGORY_FRONTEND, message,
+        severity='error',
+        traceback_text=data.get('stack'),
+        source=source,
+        path=data.get('page'))
+    return jsonify({'success': True,
+                    'report_id': entry.id if entry else None})

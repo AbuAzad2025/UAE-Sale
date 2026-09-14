@@ -95,4 +95,20 @@ describe('static/js/advanced-search.js', () => {
 
     expect(onResult).toHaveBeenCalledWith({ success: false, error: 'Network down' });
   });
+
+  it('reports API timing to perfMonitor when available', async () => {
+    const measureAPICall = vi.fn();
+    (window as any).perfMonitor = { measureAPICall };
+    const onResult = vi.fn();
+    const searcher = new AdvancedSearch({ onResult });
+
+    await searcher.executeSearch('invoice');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(measureAPICall).toHaveBeenCalledTimes(1);
+    expect(measureAPICall.mock.calls[0][0]).toBe('/api/v2/search');
+    expect(typeof measureAPICall.mock.calls[0][1]).toBe('number');
+    expect(onResult).toHaveBeenCalledTimes(1);
+    delete (window as any).perfMonitor;
+  });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 describe('static/js/dark-mode.js', () => {
   beforeEach(() => {
@@ -64,5 +64,48 @@ describe('static/js/dark-mode.js', () => {
     document.dispatchEvent(new Event('DOMContentLoaded'));
 
     expect(document.body.classList.contains('dark-mode')).toBe(false);
+  });
+
+  it('reacts to OS theme changes while theme is auto', async () => {
+    vi.resetModules();
+    const listeners: Record<string, (e: any) => void> = {};
+    (window as any).matchMedia = () => ({
+      matches: false,
+      addEventListener: (ev: string, cb: (e: any) => void) => {
+        listeners[ev] = cb;
+      },
+      removeEventListener: () => {}
+    });
+    localStorage.clear();
+    document.body.innerHTML = '';
+    document.body.classList.remove('dark-mode');
+    localStorage.setItem('theme', 'auto');
+
+    await import('../../static/js/dark-mode.js');
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+
+    expect(document.body.classList.contains('dark-mode')).toBe(false);
+    listeners['change']({ matches: true });
+    expect(document.body.classList.contains('dark-mode')).toBe(true);
+    listeners['change']({ matches: false });
+    expect(document.body.classList.contains('dark-mode')).toBe(false);
+  });
+
+  it('applies dark mode on load when OS prefers dark and theme is auto', async () => {
+    vi.resetModules();
+    (window as any).matchMedia = () => ({
+      matches: true,
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    });
+    localStorage.clear();
+    document.body.innerHTML = '';
+    document.body.classList.remove('dark-mode');
+    localStorage.setItem('theme', 'auto');
+
+    await import('../../static/js/dark-mode.js');
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+
+    expect(document.body.classList.contains('dark-mode')).toBe(true);
   });
 });

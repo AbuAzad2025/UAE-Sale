@@ -24,8 +24,22 @@
       return ch;
     });
 
-  const normalizeDecimal = s =>
-    s == null ? '' : String(s).replace(/[٬،]/g, ',').replace(/[٫]/g, '.').replace(',', '.').trim();
+  const normalizeDecimal = s => {
+    if (s == null) return '';
+    let t = String(s).replace(/[٬،]/g, ',').replace(/[٫]/g, '.').trim();
+    const hasComma = t.includes(','), hasDot = t.includes('.');
+    if (hasComma && hasDot) {
+      // Last separator wins as the decimal mark; the other is a thousands mark.
+      if (t.lastIndexOf(',') > t.lastIndexOf('.')) {
+        t = t.replace(/\./g, '').replace(',', '.');
+      } else {
+        t = t.replace(/,/g, '');
+      }
+    } else if (hasComma) {
+      t = t.replace(',', '.');
+    }
+    return t;
+  };
 
   const debounce = (fn, tmo = 200) => {
     let id;
@@ -202,14 +216,18 @@
   };
 
   const postJSON = async (url, payload = {}) => {
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf(), 'X-CSRF-Token': csrf() },
-      body: JSON.stringify(payload)
-    });
-    let data;
-    try { data = await r.json(); } catch { data = { message: r.ok ? 'ok' : 'error' }; }
-    return { ok: r.ok, data };
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf(), 'X-CSRF-Token': csrf() },
+        body: JSON.stringify(payload)
+      });
+      let data;
+      try { data = await r.json(); } catch { data = { message: r.ok ? 'ok' : 'error' }; }
+      return { ok: r.ok, data };
+    } catch {
+      return { ok: false, data: { message: 'تعذر الاتصال' } };
+    }
   };
 
   const hideBsModal = id => {
@@ -292,7 +310,7 @@
           const off = badge.classList.contains('badge-inactive');
           badge.classList.toggle('badge-inactive', off === false);
           badge.classList.toggle('badge-active', off === true);
-          badge.textContent = off ? 'غير مفعل' : 'مفعل';
+          badge.textContent = off ? 'مفعَل' : 'غير مفعَل';
           toggleBtn.innerHTML = off ? '<i class="fas fa-play me-1"></i> تفعيل' : '<i class="fas fa-pause me-1"></i> تعطيل';
           alert(data.message || 'تم التحديث');
         } else alert(data.message || 'تعذر التحديث');
@@ -424,7 +442,7 @@
         const payload = {};
         const p = (priceEl?.value || '').trim();
         if (p !== '') {
-          const s = p.replace(/[٬،]/g, ',').replace(/[٫]/g, '.').replace(',', '.').replace(/[^0-9.]/g, '');
+          const s = normalizeDecimal(p).replace(/[^0-9.]/g, '');
           const n = Number(s);
           if (Number.isFinite(n)) payload.online_price = n;
         }
@@ -524,6 +542,8 @@
   }
 
   function wireCartInteractions() {
+    if (document.body.dataset.cartWired === '1') return;
+    document.body.dataset.cartWired = '1';
     document.body.addEventListener('submit', e => {
       const form = e.target;
       if (form.matches('.cart-update-form,form[action*="/cart/update/"],.cart-remove-form,form[action*="/cart/remove/"]')) {
@@ -618,10 +638,16 @@
       });
     }
     
-    document.querySelectorAll('.alert').forEach(el => {
-      setTimeout(() => {
-        try { new bootstrap.Alert(el).close(); } catch { }
-      }, 5000);
-    });
+document.querySelectorAll('.alert').forEach(el => {
+    setTimeout(() => {
+        try {
+            if (window.bootstrap && bootstrap.Alert) {
+                new bootstrap.Alert(el).close();
+            } else {
+                el.remove();
+            }
+        } catch { }
+    }, 5000);
+});
   });
 })();

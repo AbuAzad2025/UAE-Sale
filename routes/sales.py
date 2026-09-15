@@ -583,13 +583,23 @@ def api_calculate_sale_totals():
                     line_discount = line_subtotal * (discount_percent / Decimal('100'))
                     line_total = line_subtotal - line_discount
                     subtotal += line_total
-            except (ValueError, TypeError, KeyError):
+            except Exception:
                 continue
 
         # حساب الإجماليات
         after_discount = subtotal - discount_amount + shipping_cost
         tax_amount = after_discount * (tax_rate / Decimal('100'))
         total = after_discount + tax_amount
+
+        # Count only lines with valid quantity > 0; skip lines where qty parsing fails
+        line_count = 0
+        for ln in lines:
+            try:
+                qty = Decimal(str(ln.get('quantity', 0)))
+                if qty > 0:
+                    line_count += 1
+            except Exception:
+                continue
 
         return jsonify({
             'success': True,
@@ -599,7 +609,7 @@ def api_calculate_sale_totals():
             'tax_rate': float(tax_rate),
             'tax_amount': float(tax_amount),
             'total': float(total),
-            'line_count': len([ln for ln in lines if Decimal(str(ln.get('quantity', 0))) > 0])
+            'line_count': line_count
         }), 200
 
     except Exception as e:

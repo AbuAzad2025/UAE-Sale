@@ -5,18 +5,42 @@ import logging
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
 config = context.config
 fileConfig(config.config_file_name)
 logger = logging.getLogger('alembic.env')
 
-# Import db from extensions (Flask-SQLAlchemy)
-from extensions import db
-target_metadata = db.metadata
+# IMPORTANT: Import models FIRST to register them with db.metadata
+# This must happen before accessing db.metadata
+try:
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+    import models  # This registers all models with db.metadata
+    from extensions import db
+    target_metadata = db.metadata
+except Exception as e:
+    logger.warning(f"Could not load models: {e}")
+    target_metadata = None
+
+# Try to get metadata from Flask app context (for Flask-Migrate) as fallback
+if target_metadata is None:
+    try:
+        from flask import current_app
+        if current_app:
+            target_metadata = current_app.extensions['migrate'].db.metadata
+    except (RuntimeError, ImportError, KeyError):
+        pass
+
+def get_engine_url():
+    """Get database URL from config, with fallbacks."""
+    section = config.get_section(config.config_ini_section)
+    if section and 'sqlalchemy.url' in section:
+        return section['sqlalchemy.url']
+    url = config.get_main_option('sqlalchemy.url')
+    if url:
+        return url
+    return os.environ.get('DATABASE_URL', 'postgresql+psycopg2://postgres:123@localhost:5432/uae_sale')
 
 def run_migrations_offline():
-    url = config.get_main_option("sqlalchemy.url")
+    url = get_engine_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -27,8 +51,9 @@ def run_migrations_offline():
         context.run_migrations()
 
 def run_migrations_online():
+    url = get_engine_url()
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
+        {'sqlalchemy.url': url},
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

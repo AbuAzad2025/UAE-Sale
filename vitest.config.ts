@@ -16,6 +16,7 @@ export default defineConfig({
       reportsDirectory: './coverage',
       include: [
         'static/js/i18n.js',
+        'static/js/shop.js',
         'static/js/advanced-search.js',
         'static/js/query-optimizer.js',
         'static/js/dark-mode.js',
@@ -23,10 +24,10 @@ export default defineConfig({
         'static/js/error-reporter.js'
       ],
       thresholds: {
-        lines: 70,
-        functions: 70,
-        branches: 50,
-        statements: 70
+        lines: 97,
+        functions: 97,
+        branches: 98,
+        statements: 97
       }
     }
   }

@@ -37,6 +37,7 @@ from .approval_workflow import ApprovalWorkflow, ApprovalRequest, ApprovalLevel
 from .journal_entry_audit import JournalEntryAudit
 from .error_log import ErrorLog
 from .shipment import Shipment, ShipmentLine
+from .inbound_shipment import InboundShipment, InboundShipmentLine
 from .tenant_scope import (  # noqa: F401
     TenantScopedMixin, set_current_tenant_id, get_current_tenant_id,
     clear_current_tenant_id, register_tenant_scoped, install_tenant_filter_events,
@@ -63,7 +64,7 @@ from .validators import (
 # Register all tenant-scoped models for automatic filtering
 for _model_cls in [Sale, SaleLine, Purchase, PurchaseLine, Payment, Receipt,
                    Customer, Supplier, Product, StockMovement, Cheque,
-                   GLJournalEntry, GLJournalLine, Warehouse, Shipment]:
+                   GLJournalEntry, GLJournalLine, Warehouse, Shipment, InboundShipment]:
     register_tenant_scoped(_model_cls)
 
 __all__ = [
@@ -101,6 +102,7 @@ __all__ = [
     'JournalEntryAudit',
     'ErrorLog',
     'Shipment', 'ShipmentLine',
+    'InboundShipment', 'InboundShipmentLine',
     'Department', 'Employee', 'LeaveType', 'LeaveRequest', 'Payslip', 'PayslipLine',
     'Quotation', 'QuotationLine', 'PurchaseOrder', 'PurchaseOrderLine',
     'FiscalPeriod', 'StockTransfer', 'StockTransferLine',

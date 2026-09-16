@@ -660,6 +660,7 @@
               {% endif %}
               {% if current_user.has_permission('manage_warehouse') %}
               <li class="nav-item"><a href="{{ url_for('shipments.list_shipments') }}" class="nav-link"><i class="fas fa-truck nav-icon"></i><p>الإرساليات</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('inbound_shipments.list_inbound') }}" class="nav-link"><i class="fas fa-dolly nav-icon"></i><p>الشحنات الواردة</p></a></li>
               <li class="nav-item"><a href="{{ url_for('erp_modules.stock_transfers') }}" class="nav-link"><i class="fas fa-exchange-alt nav-icon"></i><p>نقل المخزون</p></a></li>
               <li class="nav-item"><a href="{{ url_for('erp_modules.stock_takes') }}" class="nav-link"><i class="fas fa-clipboard-check nav-icon"></i><p>جرد المخزون</p></a></li>
               <li class="nav-item"><a href="{{ url_for('erp_modules.lots') }}" class="nav-link"><i class="fas fa-layer-group nav-icon"></i><p>تتبع الدفعات</p></a></li>

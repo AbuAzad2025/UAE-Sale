@@ -1,0 +1,181 @@
+/**
+ * barcode-unified.js — Unified barcode handling for all multi-line forms
+ * Works for: sales (saleForm), shipments (shipment-form), inbound-shipments, purchases, stock-transfers
+ * Trusted: uses /api/products/barcode/<code> (routes/api.py:...) and /api/barcode/validate
+ */
+(function () {
+  'use strict';
+
+  function getCSRF() {
+    var m = document.querySelector('meta[name="csrf-token"]');
+    if (m && m.content) return m.content;
+    var i = document.querySelector('input[name="csrf_token"]');
+    if (i && i.value) return i.value;
+    var c = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+    return c ? decodeURIComponent(c[1]) : '';
+  }
+
+  function showMsg(msg, type) {
+    if (window.showNotification) {
+      window.showNotification(msg, type || 'info');
+      return;
+    }
+    // fallback: small toast
+    var el = document.createElement('div');
+    el.textContent = msg;
+    el.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999;padding:10px 14px;border-radius:8px;color:#fff;background:' + (type === 'danger' ? '#dc3545' : '#28a745') + ';';
+    document.body.appendChild(el);
+    setTimeout(function () { el.remove(); }, 2500);
+  }
+
+  async function fetchByBarcode(code) {
+    var res = await fetch('/api/products/barcode/' + encodeURIComponent(code), {
+      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin'
+    });
+    if (!res.ok) {
+      var data = await res.json().catch(function () { return {}; });
+      throw new Error((data && data.error) || 'المنتج غير موجود');
+    }
+    return res.json();
+  }
+
+  function findOrAddRow(product) {
+    // Try shipment-style addItemRow
+    if (typeof window.addItemRow === 'function') {
+      // check if product already in a row -> increment qty
+      var items = document.querySelectorAll('.shipment-item select[name*="product_id"]');
+      for (var k = 0; k < items.length; k++) {
+        if (String(items[k].value) === String(product.id)) {
+          var qtyEl = items[k].closest('.shipment-item')?.querySelector('.item-qty');
+          if (qtyEl) {
+            qtyEl.value = String((parseFloat(qtyEl.value) || 0) + 1);
+            qtyEl.dispatchEvent(new Event('input', { bubbles: true }));
+            showMsg('تمت زيادة الكمية: ' + product.name, 'success');
+            return true;
+          }
+        }
+      }
+      window.addItemRow({ product: { id: product.id, text: product.name }, qty: 1, cost: product.cost_price || '' });
+      showMsg('تمت إضافة: ' + product.name, 'success');
+      return true;
+    }
+    // Try sales-style addLine
+    if (typeof window.addLine === 'function') {
+      // sales form uses select[name="lines[...][product_id]"]
+      var selects = document.querySelectorAll('select[name*="[product_id]"]');
+      for (var i = 0; i < selects.length; i++) {
+        if (String(selects[i].value) === String(product.id)) {
+          var qtyInp = selects[i].closest('.product-line')?.querySelector('input[name*="[quantity]"]');
+          if (qtyInp) {
+            qtyInp.value = String((parseFloat(qtyInp.value) || 0) + 1);
+            qtyInp.dispatchEvent(new Event('input', { bubbles: true }));
+            if (typeof window.calculateTotals === 'function') window.calculateTotals();
+            showMsg('تمت زيادة الكمية: ' + product.name, 'success');
+            return true;
+          }
+        }
+      }
+      // create new line then set product
+      var before = document.querySelectorAll('.product-line').length;
+      window.addLine();
+      // after addLine, last line's select
+      var all = document.querySelectorAll('select[name*="[product_id]"]');
+      var last = all[all.length - 1];
+      if (last) {
+        // set value via jQuery select2 if present
+        if (window.jQuery && window.jQuery(last).data('select2')) {
+          var opt = new Option(product.name, product.id, true, true);
+          window.jQuery(last).append(opt).trigger('change');
+        } else {
+          last.value = String(product.id);
+          last.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        showMsg('تمت إضافة: ' + product.name, 'success');
+        return true;
+      }
+    }
+    // Fallback: try generic product select
+    var generic = document.querySelector('select[name$="product_id"]');
+    if (generic) {
+      if (window.jQuery && window.jQuery(generic).data('select2')) {
+        var o = new Option(product.name, product.id, true, true);
+        window.jQuery(generic).append(o).trigger('change');
+      } else {
+        generic.value = String(product.id);
+        generic.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      showMsg('تم اختيار: ' + product.name, 'success');
+      return true;
+    }
+    showMsg('تم العثور على المنتج: ' + product.name + ' لكن لا يوجد مكان لإضافته', 'info');
+    return false;
+  }
+
+  function bindInput(input) {
+    if (!input || input.dataset.barcodeBound) return;
+    input.dataset.barcodeBound = '1';
+    input.setAttribute('dir', 'ltr');
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('inputmode', 'numeric');
+    input.setAttribute('placeholder', input.getAttribute('placeholder') || 'امسح الباركود ثم Enter');
+    input.addEventListener('keydown', async function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      var code = (input.value || '').trim();
+      if (!code) return;
+      input.disabled = true;
+      try {
+        var product = await fetchByBarcode(code);
+        findOrAddRow(product);
+        input.value = '';
+        input.focus();
+      } catch (err) {
+        showMsg(err.message || 'الباركود غير موجود', 'danger');
+        input.select();
+      } finally {
+        input.disabled = false;
+      }
+    });
+  }
+
+  function initAll() {
+    // All known barcode inputs across forms
+    var selectors = [
+      '#barcode-input',
+      '#barcode',
+      'input[data-barcode-input]',
+      'input[data-barcode="true"]',
+      '#saleForm input[placeholder*="باركود"]',
+      '.shipment-item input[placeholder*="باركود"]'
+    ];
+    selectors.forEach(function (sel) {
+      document.querySelectorAll(sel).forEach(bindInput);
+    });
+    // Also auto-inject a barcode input at top of each multi-line form if none exists
+    var forms = [
+      { form: '#saleForm', container: '#linesContainer', label: 'امسح الباركود لإضافة صنف' },
+      { form: '#shipment-form', container: '#items-wrapper', label: 'امسح الباركود لإضافة بند' },
+      { form: 'form[action*="shipments"]', container: '#items-wrapper', label: 'امسح الباركود' },
+      { form: 'form[action*="inbound"]', container: null, label: 'امسح الباركود' }
+    ];
+    forms.forEach(function (cfg) {
+      var form = document.querySelector(cfg.form);
+      if (!form) return;
+      if (form.querySelector('[data-auto-barcode]')) return;
+      var existing = form.querySelector('#barcode-input, #barcode, [data-barcode-input]');
+      if (existing) return;
+      var wrap = document.createElement('div');
+      wrap.className = 'form-group';
+      wrap.innerHTML = '<label class="font-weight-bold"><i class="fas fa-barcode"></i> ' + cfg.label + '</label><div class="input-group"><input type="text" id="barcode-input" data-auto-barcode class="form-control" placeholder="امسح الباركود ثم Enter"><div class="input-group-append"><span class="input-group-text"><i class="fas fa-barcode"></i></span></div></div><small class="form-text text-muted">يدعم قارئ الباركود ولوحة المفاتيح — تعدد بنود تلقائي</small>';
+      var target = cfg.container ? form.querySelector(cfg.container) : null;
+      if (target && target.parentNode) target.parentNode.insertBefore(wrap, target);
+      else form.insertBefore(wrap, form.firstChild);
+      bindInput(wrap.querySelector('input'));
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', initAll);
+  // expose for tests
+  window.BarcodeUnified = { bindInput: bindInput, fetchByBarcode: fetchByBarcode, findOrAddRow: findOrAddRow };
+})();

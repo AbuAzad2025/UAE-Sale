@@ -23,6 +23,7 @@ class Sale(TenantScopedMixin, db.Model):
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id', ondelete='SET NULL'), nullable=False, index=True)
     seller_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=False)
     warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id', ondelete='SET NULL'), nullable=True, index=True)
+    shipment_id = db.Column(db.Integer, db.ForeignKey('shipments.id', ondelete='SET NULL'), nullable=True, index=True)
 
     sale_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
 
@@ -56,6 +57,7 @@ class Sale(TenantScopedMixin, db.Model):
     customer = db.relationship('Customer', back_populates='sales')
     seller = db.relationship('User', back_populates='sales', foreign_keys=[seller_id])
     warehouse = db.relationship('Warehouse', foreign_keys=[warehouse_id])
+    shipment = db.relationship('Shipment', foreign_keys=[shipment_id])
     lines = db.relationship('SaleLine', back_populates='sale', lazy='joined', cascade='all, delete-orphan')
     payments = db.relationship('Payment', back_populates='sale', lazy='dynamic')
 

@@ -5,12 +5,13 @@ from flask_login import login_required, current_user
 from sqlalchemy import func, desc, or_
 from extensions import db
 from models import (
-    User, Customer, Product, Sale, SaleLine, Purchase, Receipt, AuditLog,
-    ArchivedRecord, CardVault, InvoiceSettings, Tenant, SystemSettings, IntegrationSettings,
-    Expense
+    User, Role, Permission, Customer, Product, Sale, SaleLine, Purchase, Receipt,
+    AuditLog, ArchivedRecord, CardVault, InvoiceSettings, Tenant, SystemSettings,
+    IntegrationSettings, Expense
 )
 from models.login_history import LoginHistory
 from models.security_alert import SecurityAlert
+from utils.helpers import create_audit_log
 from models.api_key import APIKey
 from models.error_log import ErrorLog
 from utils.decorators import owner_required, permission_required, _role_level as _role_level_canon, get_owned_or_404
@@ -323,12 +324,85 @@ def archived():
                            pagination=pagination)
 
 
+# Slug of the platform-owner role: its permission set is bypass-based and
+# must never be edited from the role editor.
+_OWNER_ROLE_SLUG = 'owner'
+
+# Roles whose users legitimately see cost data through can_see_costs();
+# view_costs may only be granted to these (server-side policy).
+_COST_BEARING_ROLE_SLUGS = {'super_admin', 'manager', 'developer'}
+
+
 @owner_bp.route('/roles-permissions')
 @login_required
 @owner_required
 def roles_permissions():
-    """صفحة الأدوار والصلاحيات"""
-    return render_template('owner/roles_permissions.html')
+    """صفحة الأدوار والصلاحيات — محرر تفاعلي لصلاحيات الأدوار."""
+    # Never expose the Owner role's bypass list as editable data.
+    roles = Role.query.filter(Role.slug != _OWNER_ROLE_SLUG) \
+        .order_by(Role.name.asc()).all()
+    permissions = Permission.query.order_by(Permission.category.asc(),
+                                            Permission.name.asc()).all()
+
+    permissions_by_category = {}
+    for perm in permissions:
+        permissions_by_category.setdefault(perm.category or 'other', []) \
+            .append(perm)
+
+    return render_template('owner/roles_permissions.html',
+                           roles=roles,
+                           permissions_by_category=permissions_by_category)
+
+
+@owner_bp.route('/roles/<int:role_id>/permissions', methods=['POST'])
+@login_required
+@owner_required
+def update_role_permissions(role_id):
+    """Update a role's permission set from the role editor checkboxes.
+
+    The Owner role itself is protected (its access is bypass-based, not
+    permission-based), as is the view_costs grant on cost-bearing roles —
+    both are system-level policy enforced server-side.
+    """
+    role = Role.query.get_or_404(role_id)
+
+    if role.slug == _OWNER_ROLE_SLUG:
+        flash('❌ لا يمكن تعديل صلاحيات دور المالك (Owner).', 'danger')
+        return redirect(url_for('owner.roles_permissions'))
+
+    # view_costs drives can_see_costs() — only cost-bearing roles may carry it.
+    submitted = set(request.form.getlist('permissions'))
+    valid_codes = {p.code for p in Permission.query.all()}
+
+    if not submitted.issubset(valid_codes):
+        flash('❌ صلاحية غير معروفة في الطلب.', 'danger')
+        return redirect(url_for('owner.roles_permissions'))
+
+    if 'view_costs' in submitted and role.slug not in _COST_BEARING_ROLE_SLUGS:
+        flash('❌ صلاحية عرض التكاليف (view_costs) مقصورة على الأدوار المالية.', 'danger')
+        return redirect(url_for('owner.roles_permissions'))
+
+    previous = {p.code for p in role.permissions}
+    added = submitted - previous
+    removed = previous - submitted
+
+    if not added and not removed:
+        flash('ℹ️ لا توجد تغييرات لحفظها.', 'info')
+        return redirect(url_for('owner.roles_permissions'))
+
+    role.permissions = Permission.query.filter(
+        Permission.code.in_(submitted)).all() if submitted else []
+
+    create_audit_log('update', 'roles', role.id, changes={
+        'role': role.slug,
+        'added_permissions': sorted(added),
+        'removed_permissions': sorted(removed),
+    })
+
+    db.session.commit()
+
+    flash(f'✅ تم تحديث صلاحيات الدور «{role.name}» بنجاح.', 'success')
+    return redirect(url_for('owner.roles_permissions'))
 
 
 @owner_bp.route('/financial-overview')

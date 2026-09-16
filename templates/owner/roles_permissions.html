@@ -44,7 +44,78 @@
     <!-- نظرة عامة -->
     <div class="alert alert-info">
       <h5><i class="fas fa-info-circle"></i> نظام الصلاحيات</h5>
-      <p class="mb-0">يتحكم النظام بـ 4 أدوار رئيسية. كل دور له صلاحيات محددة لضمان الأمان والتنظيم.</p>
+      <p>يتحكم النظام بـ {{ roles|length + 1 }} أدوار رئيسية. كل دور له صلاحيات محددة لضمان الأمان والتنظيم.</p>
+      <p class="mb-0"><i class="fas fa-sliders-h"></i> استخدم <strong>محرر الصلاحيات التفاعلي</strong> أدناه لمنح أو سحب صلاحيات أي دور — كل تغيير يُسجَّل في سجل التدقيق.</p>
+    </div>
+    
+    <!-- محرر الصلاحيات التفاعلي -->
+    <div class="card card-primary card-outline">
+      <div class="card-header bg-gradient-primary">
+        <h3 class="card-title text-white">
+          <i class="fas fa-tasks mr-2"></i>محرر صلاحيات الأدوار
+        </h3>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle"></i>
+          <strong>تنبيه أمني:</strong> صلاحية <code>view_costs</code> تتحكم في رؤية أسعار التكلفة والهوامش وتقييم المخزون
+          (عبر <code>can_see_costs()</code>)، ولا تُمنح إلا للأدوار المالية. صلاحيات دور <strong>المالك (Owner)</strong>
+          غير قابلة للتعديل لأنه يتجاوز جميع الفحوصات.
+        </div>
+
+        {% for role in roles %}
+        <form method="post"
+              action="{{ url_for('owner.update_role_permissions', role_id=role.id) }}"
+              class="role-perm-form border rounded p-3 mb-4"
+              data-role-name="{{ role.name }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">
+              <i class="fas fa-user-tag text-primary"></i>
+              <strong>{{ role.name }}</strong>
+              {% if role.name_ar %}<span class="text-muted"> - {{ role.name_ar }}</span>{% endif %}
+              <code class="ml-2"><small>{{ role.slug }}</small></code>
+            </h5>
+            <span class="badge badge-info" data-changed-count hidden>0</span>
+          </div>
+
+          <div class="row">
+            {% for category, perms in permissions_by_category.items() %}
+            <div class="col-md-6 col-xl-4 mb-3">
+              <h6 class="text-uppercase text-muted mb-2">{{ category }}</h6>
+              {% for perm in perms %}
+              {% set is_cost_perm = perm.code == 'view_costs' %}
+              {% set cost_allowed = role.slug in ('super_admin', 'manager', 'developer') %}
+              <div class="custom-control custom-checkbox">
+                <input type="checkbox" class="custom-control-input perm-check"
+                       id="perm-{{ role.id }}-{{ perm.code }}"
+                       name="permissions" value="{{ perm.code }}"
+                       {% if role.has_permission(perm.code) %}checked{% endif %}
+                       {% if is_cost_perm and not cost_allowed %}disabled{% endif %}>
+                <label class="custom-control-label" for="perm-{{ role.id }}-{{ perm.code }}">
+                  {{ perm.name_ar or perm.name }}
+                  <small class="text-muted">({{ perm.code }})</small>
+                  {% if is_cost_perm %}
+                  <i class="fas fa-coins text-warning"
+                     title="تتحكم في رؤية أسعار التكلفة والهوامش وتقييم المخزون"></i>
+                  {% endif %}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+            {% endfor %}
+          </div>
+
+          <div class="d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary btn-sm" disabled>
+              <i class="fas fa-save"></i> حفظ التغييرات
+            </button>
+          </div>
+        </form>
+        {% else %}
+        <div class="alert alert-secondary mb-0">لا توجد أدوار قابلة للتعديل.</div>
+        {% endfor %}
+      </div>
     </div>
     
     <!-- بطاقات الأدوار -->
@@ -271,6 +342,13 @@
                 <td class="text-center"><i class="fas fa-times text-danger fa-2x"></i></td>
               </tr>
               <tr>
+                <td><strong>أسعار التكلفة والأرباح (view_costs)</strong></td>
+                <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
+                <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
+                <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
+                <td class="text-center"><i class="fas fa-times text-danger fa-2x"></i></td>
+              </tr>
+              <tr>
                 <td><strong>إدارة المستخدمين</strong></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-times text-danger fa-2x"></i></td>
@@ -304,6 +382,7 @@
             <ul>
               <li>كل مستخدم يرى بياناته فقط (ما لم يكن مديراً)</li>
               <li>البائع لا يرى أسعار التكلفة</li>
+              <li>رؤية التكلفة تُدار بصلاحية <code>view_costs</code> من المحرر أعلاه</li>
               <li>البائع لا يرى أرباح الفواتير</li>
               <li>المدير يرى تقارير محدودة</li>
               <li>فقط Owner يرى البطاقات المحفوظة</li>
@@ -371,6 +450,37 @@
   .quick-nav .btn + .btn {
     margin-left: 0.5rem;
   }
+
+  .role-perm-form .custom-control-label small {
+    direction: ltr;
+    display: inline-block;
+  }
 </style>
+<script>
+  // محرر الصلاحيات: تتبع التغييرات لكل نموذج دور؛
+  // تفعيل زر الحفظ وعدّاد التغييرات فقط عند وجود فرق فعلي.
+  document.querySelectorAll('.role-perm-form').forEach(function (form) {
+    var initial = {};
+    form.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+      initial[cb.id] = cb.checked;
+    });
+    var badge = form.querySelector('[data-changed-count]');
+    var saveBtn = form.querySelector('button[type="submit"]');
+    form.addEventListener('change', function () {
+      var changed = 0;
+      form.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+        if (!cb.disabled && cb.checked !== initial[cb.id]) changed++;
+      });
+      if (changed > 0) {
+        badge.textContent = changed + ' تغيير';
+        badge.hidden = false;
+        saveBtn.disabled = false;
+      } else {
+        badge.hidden = true;
+        saveBtn.disabled = true;
+      }
+    });
+  });
+</script>
 {% endblock %}
 

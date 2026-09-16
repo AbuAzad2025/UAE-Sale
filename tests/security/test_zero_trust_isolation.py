@@ -15,6 +15,26 @@ from models.tenant import Tenant
 from models.user import Role, Permission, User
 
 
+@pytest.fixture(autouse=True)
+def _clear_tenant_state(db):  # noqa: ARG001 - db ensures tables exist before clearing
+    """Prevent cross-test pollution of the thread-local tenant filter.
+
+    The suite runs 2927 tests sequentially with a function-scoped sqlite:///:memory:
+    DB. Previous tests that set thread-local tenant_id and/or left a failed flush
+    can cause the next test's INSERT to see 'no such table' or be auto-filtered.
+    """
+    from models.tenant_scope import clear_current_tenant_id
+
+    clear_current_tenant_id()
+    yield
+    clear_current_tenant_id()
+    # Ensure the next test starts with a clean session/connection for sqlite memory DB
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+
+
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------

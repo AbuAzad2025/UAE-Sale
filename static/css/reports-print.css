@@ -266,6 +266,29 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* Extremely large tables (500+ rows): ensure pagination and no clipping */
+  html, body {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+  .table th,
+  .table td,
+  #report-table th,
+  #report-table td {
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    hyphens: auto !important;
+    white-space: normal !important;
+    overflow: visible !important;
+  }
+  .table-responsive, .card, .card-body, .content-wrapper,
+  .container, .container-fluid {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
   
   /* ═══ الألوان والشارات ═══ */
   .text-danger,

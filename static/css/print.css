@@ -166,14 +166,56 @@ footer {
 
 @media print {
   @page {
-    /* الحجم والهوامش تأتي من القالب */
+    size: A4;
+    margin: 10mm 8mm 15mm 8mm;
   }
 
   html, body {
     margin: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     background: #fff !important;
+  }
+
+  /* Large tables: allow page breaks between rows but not inside a row, header repeats */
+  table {
+    page-break-inside: auto !important;
+    border-collapse: collapse !important;
+  }
+  thead { display: table-header-group !important; }
+  tfoot { display: table-footer-group !important; }
+  tbody { display: table-row-group !important; }
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
+  .table-responsive, .card, .card-body,
+  .invoice, .invoice-print, .receipt, .content-wrapper,
+  .content, .preview-area {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Invoice templates use fixed mm heights for screen preview – reset for print pagination */
+  .invoice {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Extremely large tables (500+ rows): prevent clipping of long content */
+  th, td {
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    hyphens: auto !important;
+    white-space: normal !important;
+    overflow: visible !important;
   }
 
   .container, .container-fluid {
@@ -186,6 +228,9 @@ footer {
   #receipt {
     margin: 0 auto !important;
     padding-bottom: 22mm !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .box, .totals, .receipt-header, tr {

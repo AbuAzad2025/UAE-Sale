@@ -275,7 +275,7 @@ class TestTenantScopeFailFastAndStrict:
             'sales', 'sale_lines', 'purchases', 'purchase_lines',
             'payments', 'receipts', 'customers', 'suppliers',
             'products', 'stock_movements', 'cheques', 'gl_journal_entries',
-            'gl_journal_lines', 'warehouses',
+            'gl_journal_lines', 'warehouses', 'shipments', 'inbound_shipments',
         }
         assert expected == _tenant_scoped_tables
 

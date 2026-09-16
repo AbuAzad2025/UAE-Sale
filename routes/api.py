@@ -276,6 +276,42 @@ def products_low_stock():
         }), 500
 
 
+@api_bp.route('/products/barcode/<barcode>')
+@login_required
+def product_by_barcode(barcode):
+    """Lookup product by exact barcode — unified for all multi-line forms."""
+    code = (barcode or '').strip()
+    if not code:
+        return jsonify({'error': 'barcode required'}), 400
+    product = Product.query.filter_by(barcode=code).first()
+    if not product:
+        return jsonify({'error': 'Product not found', 'code': code}), 404
+    return jsonify({
+        'id': product.id,
+        'name': product.name,
+        'sku': product.sku,
+        'barcode': product.barcode,
+        'current_stock': float(product.current_stock or 0),
+        'unit_price': float(product.regular_price or 0),
+        'regular_price': float(product.regular_price or 0),
+        'cost_price': float(product.cost_price or 0) if current_user.can_see_costs() else None,
+        'is_active': product.is_active,
+    })
+
+
+@api_bp.route('/barcode/validate')
+@login_required
+def barcode_validate():
+    """Validate barcode uniqueness and format for product create/edit."""
+    code = (request.args.get('code') or '').strip()
+    if not code:
+        return jsonify({'valid': False, 'error': 'code required'}), 400
+    exists = Product.query.filter_by(barcode=code).first()
+    if exists:
+        return jsonify({'valid': False, 'error': 'الباركود مستخدم بالفعل', 'exists': True, 'product_id': exists.id})
+    return jsonify({'valid': True, 'exists': False})
+
+
 @api_bp.route('/echo', methods=['PUT', 'PATCH', 'DELETE'])
 @login_required
 def echo():

@@ -1,24 +1,24 @@
 # Migration Contract — عقد التهجيرات (FROZEN / ثابت)
 
-> **ملخص عربي:** مجلد `migrations/` تاريخ ثابت (append-only) من 19 مراجعة مرتبة
-> برأس واحد (`19_error_log_table`). ممنوع إعادة كتابته أو دمجه أو حذف ملفاته.
+> **ملخص عربي:** مجلد `migrations/` تاريخ ثابت (append-only) من 20 مراجعة مرتبة
+> برأس واحد (`20_shipment_module`). ممنوع إعادة كتابته أو دمجه أو حذف ملفاته.
 > أي تغيير في الموديل = مراجعة جديدة في آخر السلسلة فقط. هذا الملف هو المرجع
 > الوحيد المعتمد، ولا يجوز لأي مهمة مستقبلية مخالفته.
 
-## 1. Status (verified 2026-09-16)
+## 1. Status (verified 2026-09-16 — updated shipment expedition)
 
-- **Revisions:** 19 files in `migrations/versions/`, UTF-8, no null bytes.
-- **History:** single linear chain, exactly **ONE head**: `19_error_log_table`.
+- **Revisions:** 20 files in `migrations/versions/`, UTF-8, no null bytes.
+- **History:** single linear chain, exactly **ONE head**: `20_shipment_module`.
 - **Database:** PostgreSQL 15+ only. No SQLite fallback anywhere in the chain.
 - **Engine source:** `migrations/env.py` (stock Flask-Migrate) always uses the
   Flask app engine, therefore it always respects the `DATABASE_URL`
   environment variable. There is intentionally **no** `sqlalchemy.url`
   hardcoded in `migrations/alembic.ini`.
 - **Health proofs (fresh PostgreSQL database):**
-  - `flask db upgrade head` applies all 19 revisions cleanly (81 tables).
+  - `flask db upgrade head` applies all 20 revisions cleanly (83 tables: 81 + shipments/shipment_lines).
   - `flask db downgrade <head-1>` + `flask db upgrade head` round-trips cleanly.
   - App boot passes schema verification (`[OK] Schema verification passed:
-    81 tables present`).
+    83 tables present`).
   - `bandit -c .bandit.yml -r . -ll -ii` reports no MEDIUM/HIGH issues.
   - GitHub **Alembic Round-Trip** workflow: SUCCESS.
 
@@ -44,7 +44,8 @@
 | 16 | `16_drop_legacy_audit_fk` | Drop legacy audit FK left over by #9 |
 | 17 | `17_audit_trail_survives` | Deletion audits survive their entry |
 | 18 | `18_donation_method_flags` | Per-method donation switches (owner panel) |
-| 19 | `19_error_log_table` *(HEAD)* | `error_logs` table for the centralized error journal |
+| 19 | `19_error_log_table` | `error_logs` table for the centralized error journal |
+| 20 | `20_shipment_module` *(HEAD)* | Field sales shipments — الإرسالية الميدانية (from warehouse to site, then sale→payment→invoice) |
 
 Each file's `down_revision` points to its exact predecessor above.
 `alembic history` / `flask db history` must always render one straight line.

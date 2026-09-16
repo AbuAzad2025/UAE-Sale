@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}شحنة {{ shipment.shipment_number }}{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <h3>شحنة {{ shipment.shipment_number }} <span class="badge badge-{{ shipment.status }}">{{ shipment.status_ar }}</span></h3>
+  <div class="card mb-3"><div class="card-body">
+    <p><strong>المورد:</strong> {{ shipment.supplier.name if shipment.supplier else '-' }} | <strong>المستودع:</strong> {{ shipment.warehouse.name if shipment.warehouse else '-' }}</p>
+    <p><strong>الناقل:</strong> {{ shipment.carrier or '-' }} | <strong>التتبع:</strong> {{ shipment.tracking_number or '-' }} | <strong>متوقع:</strong> {{ shipment.expected_at or '-' }}</p>
+    <p><strong>الكمية:</strong> {{ shipment.total_quantity }} | <strong>القيمة:</strong> {{ "%.3f"|format(shipment.total_value or 0) }}</p>
+    <p><strong>ملاحظات:</strong> {{ shipment.notes or '-' }}</p>
+  </div></div>
+  <div class="card mb-3"><div class="card-header">البنود</div>
+    <table class="table mb-0"><thead><tr><th>المنتج</th><th>متوقع</th><th>مستلم</th><th>مقبول</th><th>التكلفة</th></tr></thead>
+    <tbody>{% for l in shipment.lines %}<tr><td>{{ l.product.name if l.product else l.product_id }}</td><td>{{ l.quantity_expected }}</td><td>{{ l.quantity_received }}</td><td>{{ l.quantity_accepted }}</td><td>{{ l.unit_cost }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <div class="mb-3">
+    {% if shipment.status == 'in_transit' %}
+      <form method="POST" action="{{ url_for('inbound_shipments.arrive_inbound', id=shipment.id) }}" style="display:inline"><button class="btn btn-info">تأكيد الوصول</button></form>
+    {% endif %}
+    {% if shipment.status == 'arrived' %}
+      <form method="POST" action="{{ url_for('inbound_shipments.inspect_inbound', id=shipment.id) }}" style="display:inline"><button class="btn btn-warning">فحص (قبول الكل)</button></form>
+    {% endif %}
+    {% if shipment.status == 'inspected' %}
+      <form method="POST" action="{{ url_for('inbound_shipments.put_away_inbound', id=shipment.id) }}" style="display:inline"><button class="btn btn-success">إدخال للمستودعات</button></form>
+    {% endif %}
+    {% if shipment.status == 'put_away' %}
+      <form method="POST" action="{{ url_for('inbound_shipments.close_inbound', id=shipment.id) }}" style="display:inline"><button class="btn btn-secondary">إغلاق</button></form>
+    {% endif %}
+    {% if shipment.status not in ['closed','cancelled','put_away'] %}
+      <form method="POST" action="{{ url_for('inbound_shipments.cancel_inbound', id=shipment.id) }}" style="display:inline"><button class="btn btn-danger">إلغاء</button></form>
+    {% endif %}
+    {% if shipment.status == 'put_away' %}
+      <form method="POST" action="{{ url_for('inbound_shipments.close_inbound', id=shipment.id) }}" style="display:inline"><button class="btn btn-secondary">إغلاق</button></form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

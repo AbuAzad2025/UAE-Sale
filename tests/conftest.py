@@ -54,9 +54,18 @@ def db(app):
     """Create a fresh database for each test.
 
     PostgreSQL: creates all tables via SQLAlchemy metadata (fast).
-    SQLite: in-memory, same approach.
+    SQLite: in-memory, same approach. Extra cleanup prevents
+    cross-test pollution that caused the last test in the suite
+    to see 'no such table: customers' after 2927 prior tests.
     """
     with app.app_context():
+        # Clear thread-local tenant state before each test (suite runs ~3k tests sequentially)
+        try:
+            from models.tenant_scope import clear_current_tenant_id
+
+            clear_current_tenant_id()
+        except Exception:
+            pass
         if IS_POSTGRES:
             # Drop all tables first (clean slate) ignoring FK errors
             try:
@@ -69,6 +78,12 @@ def db(app):
         _db.create_all()
         yield _db
         _db.session.rollback()
+        try:
+            from models.tenant_scope import clear_current_tenant_id
+
+            clear_current_tenant_id()
+        except Exception:
+            pass
         if IS_POSTGRES:
             try:
                 _db.session.execute(_db.text(
@@ -79,6 +94,14 @@ def db(app):
                 _db.session.rollback()
         else:
             _db.drop_all()
+            # For sqlite:///:memory:, dispose the pooled connection so the next
+            # test's create_all() runs on a fresh in-memory DB. Without this,
+            # after ~3k tests the pooled connection can hold a stale schema.
+            try:
+                _db.session.remove()
+                _db.engine.dispose()
+            except Exception:
+                pass
 
 
 @pytest.fixture(scope='function')

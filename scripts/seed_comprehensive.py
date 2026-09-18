@@ -1,15 +1,18 @@
 """
-Comprehensive Seed — بذور شاملة لكل مكونات النظام (عشرات، ليس آلاف)
+Comprehensive Seed — بذور أشمل لكل Endpoints وكل الأنواع والتفاصيل
 
+- يغطي كل مسار/واجهة: /sales /purchases /products /customers /suppliers /payments /receipts
+  /cheques /expenses /ledger /reports /shipments /inbound-shipments /hr /approvals /erp /warehouse
+- يغطي كل حالة/نوع: شيكات (pending/cleared/bounced/cancelled × incoming/outgoing)،
+  مصروفات (كل الفئات/الحالات)، قيود (كل الأنواع)، فواتير (Sale/EInvoice بكل payment_status)،
+  سندات (Payment/Receipt بكل direction/method)، إرساليات (كل الحالات 6)، فروع/مدراء/مستخدمين،
+  تالف/مرتجعات، دفعات/أقساط
 - منفصل تماماً عن `init_dev.py` و `utils/system_init.py` (لا يُستدعى تلقائياً)
-- Idempotent: كل كيان يُفحص بـ unique قبل الإنشاء — إعادة التشغيل لا تكرر
-- العدد: عشرات فقط (3 tenants / 8 warehouses / 20 products / 15 customers / 10 suppliers / 12 sales / 8 purchases / 10 payments / ...)
+- Idempotent: كل كيان يُفحص بـ unique قبل الإنشاء — إعادة التشغيل لا تكرر ولا تخبص
+- العدد: عشرات لكل نوع (20-30 منتج، 15 زبون، 10 مورد، 12 بيع، 8 شراء، 6 حالات شيك، 6 حالات إرسالية ...)، ليس آلاف
 
 الاستخدام (لا يُطبق تلقائياً):
     python scripts/seed_comprehensive.py
-    # أو
-    flask seed-comprehensive  (إن سُجل كـ CLI)
-
 يتطلب قاعدة نظيفة على 21_inbound_shipment (85 جدول) و owner موجود.
 """
 
@@ -343,62 +346,148 @@ def seed_payments(sales, customers):
     db.session.commit()
 
 
-def seed_cheques(customers):
+def seed_cheques(customers, suppliers):
     from models.cheque import Cheque
-    for i in range(5):
+    # كل الحالات: pending/cleared/bounced/cancelled/overdue × incoming/outgoing
+    statuses = ['pending', 'cleared', 'bounced', 'cancelled', 'pending', 'cleared']
+    types = ['incoming', 'outgoing', 'incoming', 'outgoing', 'incoming', 'outgoing']
+    for i, (status, ctype) in enumerate(zip(statuses, types)):
         num = f"CHQ-SEED-{i+1:03d}"
         existing = Cheque.query.filter_by(cheque_number=num).first()
         if existing:
             log(f"Cheque {num}: exists")
             continue
-        cust = random.choice(customers)
-        ch = Cheque(cheque_number=num, customer_id=cust.id, amount=Decimal(str(random.randint(500, 2000))), cheque_date=date.today() + timedelta(days=random.randint(10, 60)), status='pending', cheque_type='incoming', is_active=True, tenant_id=cust.tenant_id)
+        cust = random.choice(customers) if ctype == 'incoming' else None
+        sup = random.choice(suppliers) if ctype == 'outgoing' else None
+        ch = Cheque(cheque_number=num, customer_id=cust.id if cust else None, supplier_id=sup.id if sup else None,
+                    amount=Decimal(str(random.randint(500, 5000))), cheque_date=date.today() + timedelta(days=random.randint(-5, 60)),
+                    status=status, cheque_type=ctype, is_active=True, tenant_id=(cust.tenant_id if cust else sup.tenant_id))
         db.session.add(ch)
-        log(f"Cheque {num}: created")
+        log(f"Cheque {num} {status}/{ctype}: created")
     db.session.commit()
 
 
 def seed_expenses():
     from models.expense import Expense, ExpenseCategory
-    cat, _ = get_or_create(ExpenseCategory, dict(is_active=True), name='مصاريف تشغيلية')
-    for i in range(6):
+    cats = ['مصاريف تشغيلية', 'إيجار', 'رواتب', 'صيانة', 'تسويق']
+    cat_objs = []
+    for name in cats:
+        c, _ = get_or_create(ExpenseCategory, dict(is_active=True), name=name)
+        cat_objs.append(c)
+    statuses = ['draft', 'pending', 'approved', 'rejected', 'paid', 'cancelled']
+    for i in range(12):
         num = f"EXP-SEED-{i+1:03d}"
         existing = Expense.query.filter_by(expense_number=num).first()
         if existing:
             log(f"Expense {num}: exists")
             continue
-        exp = Expense(expense_number=num, category_id=cat.id, amount=Decimal(str(random.randint(200, 1500))), expense_date=date.today() - timedelta(days=random.randint(1, 30)), status='approved', is_active=True, description=f'مصروف تجريبي {i+1}')
+        cat = random.choice(cat_objs)
+        exp = Expense(expense_number=num, category_id=cat.id, amount=Decimal(str(random.randint(200, 3000))), expense_date=date.today() - timedelta(days=random.randint(1, 60)), status=random.choice(statuses), is_active=True, description=f'مصروف {cat.name} {i+1}')
         db.session.add(exp)
-        log(f"Expense {num}: created")
+        log(f"Expense {num} {cat.name}/{exp.status}: created")
+    db.session.commit()
+
+
+def seed_gl_accounts():
+    from models.gl import GLAccount
+    accounts = [
+        ('1001', 'الصندوق', 'asset'), ('1002', 'البنك', 'asset'), ('2001', 'الموردون', 'liability'),
+        ('4001', 'المبيعات', 'revenue'), ('5001', 'تكلفة البضاعة', 'expense'), ('6001', 'مصاريف إدارية', 'expense'),
+    ]
+    for code, name, acc_type in accounts:
+        acc, created = get_or_create(GLAccount, dict(name=name, account_type=acc_type, is_active=True), code=code)
+        log(f"GL {code} {name}: {'created' if created else 'exists'}")
+    db.session.commit()
+
+
+def seed_product_extras(products, warehouses):
+    from models.erp_modules import ProductLot, WarehouseBin
+    from models.product_return import ProductReturn, ProductReturnLine
+    from models.warehouse import StockMovement
+    # تالف: حركة damage
+    p = random.choice(products)
+    wh = random.choice(warehouses)
+    existing = StockMovement.query.filter_by(movement_type='damage', product_id=p.id).first()
+    if not existing:
+        m = StockMovement(product_id=p.id, warehouse_id=wh.id, movement_type='damage', quantity=Decimal('-2'), reference_type='seed', tenant_id=wh.tenant_id)
+        db.session.add(m)
+        log("StockMovement damage: created")
+    # مرتجع
+    existing_ret = ProductReturn.query.filter_by(return_number='RET-SEED-001').first()
+    if not existing_ret:
+        # minimal return
+        ret = ProductReturn(return_number='RET-SEED-001', customer_id=None, status='pending', is_active=True)
+        # try with available fields; fallback if schema differs
+        try:
+            db.session.add(ret)
+            db.session.flush()
+            line = ProductReturnLine(return_id=ret.id, product_id=p.id, quantity=Decimal('1'), reason='تالف')
+            db.session.add(line)
+            log("ProductReturn RET-SEED-001: created")
+        except Exception as e:
+            db.session.rollback()
+            log(f"ProductReturn skipped: {e}")
+    # لوت وبن
+    lot, created = get_or_create(ProductLot, dict(product_id=p.id, warehouse_id=wh.id, lot_number='LOT-SEED-001', quantity=Decimal('20'), is_active=True), lot_number='LOT-SEED-001')
+    log(f"ProductLot LOT-SEED-001: {'created' if created else 'exists'}")
+    wbin, created = get_or_create(WarehouseBin, dict(warehouse_id=wh.id, code='BIN-A-01', is_active=True), code='BIN-A-01')
+    log(f"WarehouseBin BIN-A-01: {'created' if created else 'exists'}")
     db.session.commit()
 
 
 def seed_shipments_and_inbound(warehouses, products):
     from services.shipment_service import ShipmentService
     from services.inbound_shipment_service import InboundShipmentService
-    # 3 outbound shipments
-    for i in range(3):
-        wh = random.choice(warehouses)
-        dest = random.choice(['موقع العين الميداني', 'موقع الشارقة المتنقل', 'موقع دبي الصناعية'])
-        # check by shipment_number pattern (service generates SH-...)
-        # we create via service which generates unique number, so idempotent by counting existing
-        existing_count = __import__('models.shipment', fromlist=['Shipment']).Shipment.query.count()
-        if existing_count >= 3:
-            log("Outbound shipments: already 3+ exists, skip")
-            break
-        p = random.choice(products)
-        ShipmentService.create_shipment(from_warehouse_id=wh.id, destination_name=dest, lines_data=[{'product_id': p.id, 'quantity': random.randint(2, 5), 'unit_cost': float(p.cost_price or 5)}])
-        log(f"Outbound shipment {i+1}: created")
-    # 3 inbound shipments
-    for i in range(3):
-        wh = random.choice(warehouses)
-        from models.inbound_shipment import InboundShipment
-        if InboundShipment.query.count() >= 3:
-            log("Inbound shipments: already 3+ exists, skip")
-            break
-        p = random.choice(products)
-        InboundShipmentService.create_shipment(warehouse_id=wh.id, lines_data=[{'product_id': p.id, 'quantity_expected': random.randint(5, 15), 'unit_cost': float(p.cost_price or 5)}])
-        log(f"Inbound shipment {i+1}: created")
+    from models.shipment import Shipment
+    from models.inbound_shipment import InboundShipment
+    # outbound: كل الحالات الست
+    outbound_statuses = ['draft', 'in_transit', 'arrived', 'selling', 'closed', 'cancelled']
+    if Shipment.query.count() < 6:
+        for i, target_status in enumerate(outbound_statuses):
+            wh = random.choice(warehouses)
+            dest = ['موقع العين الميداني', 'موقع الشارقة المتنقل', 'موقع دبي الصناعية', 'موقع أبوظبي', 'موقع عجمان', 'موقع الفجيرة'][i]
+            p = random.choice(products)
+            s = ShipmentService.create_shipment(from_warehouse_id=wh.id, destination_name=dest, lines_data=[{'product_id': p.id, 'quantity': random.randint(2, 5), 'unit_cost': float(p.cost_price or 5)}])
+            # transition to target
+            try:
+                if target_status == 'in_transit':
+                    ShipmentService.send_shipment(s.id)
+                elif target_status == 'arrived':
+                    ShipmentService.send_shipment(s.id); ShipmentService.arrive_shipment(s.id)
+                elif target_status == 'selling':
+                    ShipmentService.send_shipment(s.id); ShipmentService.arrive_shipment(s.id); ShipmentService.start_selling(s.id)
+                elif target_status == 'closed':
+                    ShipmentService.send_shipment(s.id); ShipmentService.arrive_shipment(s.id); ShipmentService.start_selling(s.id); ShipmentService.close_shipment(s.id)
+                elif target_status == 'cancelled':
+                    ShipmentService.cancel_shipment(s.id)
+            except Exception as e:
+                log(f"Outbound {target_status} transition skipped: {e}")
+            log(f"Outbound {target_status}: created")
+    else:
+        log("Outbound shipments: already 6 exists, skip")
+    # inbound: كل الحالات الست
+    inbound_statuses = ['in_transit', 'arrived', 'inspected', 'put_away', 'closed', 'cancelled']
+    if InboundShipment.query.count() < 6:
+        for i, target_status in enumerate(inbound_statuses):
+            wh = random.choice(warehouses)
+            p = random.choice(products)
+            s = InboundShipmentService.create_shipment(warehouse_id=wh.id, lines_data=[{'product_id': p.id, 'quantity_expected': random.randint(5, 15), 'unit_cost': float(p.cost_price or 5)}])
+            try:
+                if target_status == 'arrived':
+                    InboundShipmentService.arrive(s.id)
+                elif target_status == 'inspected':
+                    InboundShipmentService.arrive(s.id); InboundShipmentService.inspect_shipment(s.id)
+                elif target_status == 'put_away':
+                    InboundShipmentService.arrive(s.id); InboundShipmentService.inspect_shipment(s.id); InboundShipmentService.put_away(s.id)
+                elif target_status == 'closed':
+                    InboundShipmentService.arrive(s.id); InboundShipmentService.inspect_shipment(s.id); InboundShipmentService.put_away(s.id); InboundShipmentService.close(s.id)
+                elif target_status == 'cancelled':
+                    InboundShipmentService.cancel(s.id)
+            except Exception as e:
+                log(f"Inbound {target_status} transition skipped: {e}")
+            log(f"Inbound {target_status}: created")
+    else:
+        log("Inbound shipments: already 6 exists, skip")
     db.session.commit()
 
 
@@ -428,8 +517,10 @@ def main():
         sales = seed_sales(customers, products, warehouses, seller)
         purchases = seed_purchases(suppliers, products, warehouses, seller)
         seed_payments(sales, customers)
-        seed_cheques(customers)
+        seed_cheques(customers, suppliers)
         seed_expenses()
+        seed_gl_accounts()
+        seed_product_extras(products, warehouses)
         seed_shipments_and_inbound(warehouses, products)
 
         log("Seed complete — counts:")

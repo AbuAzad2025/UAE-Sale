@@ -84,12 +84,17 @@ def create():  # noqa: C901
                 return redirect(url_for('purchases.create'))
 
             currency_value = request.form.get('currency')
-            currency = currency_value if currency_value else 'AED'
+            try:
+                from services.currency_service import CurrencyService
+                _base_purch = CurrencyService.get_base_currency()
+            except Exception:
+                _base_purch = 'ILS'
+            currency = currency_value if currency_value else _base_purch
             user_exchange_rate = request.form.get('exchange_rate', type=float)
 
             exchange_rate = CurrencyService.get_exchange_rate(
                 currency,
-                'AED',
+                _base_purch,
                 user_rate=user_exchange_rate
             )
 

@@ -259,7 +259,7 @@ def edit(id):
             cheque.account_number = request.form.get('account_number')
 
             cheque.amount = Decimal(str(request.form.get('amount')))
-            cheque.currency = request.form.get('currency', 'AED')
+            cheque.currency = (request.form.get('currency') or __import__('services.currency_service', fromlist=['CurrencyService']).CurrencyService.get_base_currency() if True else 'ILS'),
 
             exchange_rate = CurrencyService.get_exchange_rate(
                 cheque.currency,

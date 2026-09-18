@@ -105,7 +105,7 @@ def create():
                 rating=rating if rating is not None else None,
                 credit_limit=request.form.get('credit_limit', type=float, default=0),
                 payment_terms_days=request.form.get('payment_terms_days', type=int, default=30),
-                preferred_currency=request.form.get('preferred_currency', 'AED'),
+                preferred_currency=(request.form.get('preferred_currency') or __import__('services.currency_service', fromlist=['CurrencyService']).CurrencyService.get_base_currency()),
                 total_purchases_aed=initial_balance,
                 total_paid_aed=0,
                 notes=request.form.get('notes'),

@@ -192,7 +192,7 @@ def add_advanced_expense():
                 category_id=int(request.form.get('category_id')),
                 supplier_id=int(request.form.get('supplier_id')) if request.form.get('supplier_id') else None,
                 amount=Decimal(request.form.get('amount', 0)),
-                currency=request.form.get('currency', 'AED'),
+                currency=request.form.get('currency') or 'ILS',
                 exchange_rate=Decimal(request.form.get('exchange_rate', 1)),
                 amount_base=Decimal(request.form.get('amount_base', 0)),
                 taxable_amount=Decimal(request.form.get('taxable_amount', 0)),

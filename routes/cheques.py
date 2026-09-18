@@ -138,13 +138,21 @@ def create():
                 flash('⚠️ يرجى اختيار نوع الشيك.', 'warning')
                 customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
                 suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
-                exchange_rates = CurrencyService.get_all_rates('AED')
+                try:
+                    _base_c = CurrencyService.get_base_currency()
+                except Exception:
+                    _base_c = 'ILS'
+                exchange_rates = CurrencyService.get_all_rates(_base_c)
                 return render_template('cheques/create.html',
                                        customers=customers,
                                        suppliers=suppliers,
                                        exchange_rates=exchange_rates)
             amount = Decimal(str(request.form.get('amount')))
-            currency = request.form.get('currency', 'AED')
+            try:
+                _base_cc = CurrencyService.get_base_currency()
+            except Exception:
+                _base_cc = 'ILS'
+            currency = request.form.get('currency') or _base_cc
 
             # حساب سعر الصرف
             exchange_rate = CurrencyService.get_exchange_rate(

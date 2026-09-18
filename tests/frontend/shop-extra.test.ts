@@ -607,12 +607,12 @@ describe('shop extra coverage', () => {
       <table>
         <tr class="cart-row">
           <td><input name="quantity" value="٢"></td>
-          <td><span class="price-unit" data-unit="10.00">10.00 شيكل</span></td>
+          <td><span class="price-unit" data-unit="10.00">10.00 ILS</span></td>
           <td><span class="row-total">x</span></td>
         </tr>
         <tr class="cart-row">
           <td><input name="quantity" value="3"></td>
-          <td><span class="price-unit">5.00 شيكل</span></td>
+          <td><span class="price-unit">5.00 ILS</span></td>
           <td><span class="row-total">x</span></td>
         </tr>
       </table>
@@ -641,13 +641,13 @@ describe('shop extra coverage', () => {
     form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
     await new Promise(r => setTimeout(r, 50));
     expect(document.getElementById('cart-counter')!.textContent).toBe('5');
-    expect(document.getElementById('cart-subtotal')!.textContent).toContain('شيكل');
+    expect(document.getElementById('cart-subtotal')!.textContent).toContain('ILS');
     // test applyCartJSON with item null etc via html fallback path
     document.body.innerHTML = `
       <meta name="csrf-token" content="t">
       <table>
-        <tr class="cart-row" id="r1"><td><input name="quantity" value="1"><span class="price-unit" data-unit="10"></span><span class="row-total">10 شيكل</span></td><td><form class="cart-remove-form" action="/cart/remove/1"><button>r</button></form></td></tr>
-        <tr class="cart-row" id="r2"><td><input name="quantity" value="2"><span class="price-unit" data-unit="5"></span><span class="row-total">10 شيكل</span></td></tr>
+        <tr class="cart-row" id="r1"><td><input name="quantity" value="1"><span class="price-unit" data-unit="10"></span><span class="row-total">10 ILS</span></td><td><form class="cart-remove-form" action="/cart/remove/1"><button>r</button></form></td></tr>
+        <tr class="cart-row" id="r2"><td><input name="quantity" value="2"><span class="price-unit" data-unit="5"></span><span class="row-total">10 ILS</span></td></tr>
       </table>
       <div id="cart-counter">2</div><div id="cart-subtotal"></div><div id="cart-total"></div><div id="cart-prepaid"></div>
       <meta name="prepaid-rate" content="0.5">

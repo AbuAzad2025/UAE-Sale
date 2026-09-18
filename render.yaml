@@ -1,0 +1,36 @@
+database:
+  - name: ERP_azad_lite_db
+    databaseName: ERP_azad_lite
+    user: azad_owner
+    plan: starter
+    region: frankfurt  # EU central — closest to UAE
+
+services:
+  - type: web
+    name: uae-sale-app
+    runtime: python
+    plan: starter
+    region: frankfurt
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "PORT=8001 APP_ENV=development SYSTEM_INTEGRITY_FORCE=1 python app.py"
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ERP_azad_lite_db
+          property: connectionString
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OWNER_PASSWORD
+        generateValue: true
+      - key: APP_ENV
+        value: development
+      - key: PORT
+        value: "8001"
+      - key: HOST
+        value: "0.0.0.0"
+    disk:
+      name: uae-sale-disk
+      mountPath: /data
+      sizeGB: 1

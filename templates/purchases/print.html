@@ -10,7 +10,7 @@
         <div class="card-header">
           <h3 class="card-title">فاتورة شراء #{{ purchase.purchase_number }}</h3>
           <div class="card-tools">
-            <button onclick="window.print()" class="btn btn-primary">
+            <button onclick="window.print()" class="btn btn-primary" style="position:relative;z-index:9999;pointer-events:auto;cursor:pointer;">
               <i class="fas fa-print"></i> طباعة
             </button>
             <a href="{{ url_for('purchases.view', id=purchase.id) }}" class="btn btn-secondary">

@@ -98,9 +98,9 @@ $(document).ready(function() {
         });
     }
     
-    // اقتراح سعر الصرف
+    // اقتراح سعر الصرف - uses window.BASE_CURRENCY for comparison
     function suggestExchangeRate(currency) {
-        if (currency === 'AED') {
+        if (currency === (window.BASE_CURRENCY || 'AED')) {
             $('#exchange_rate').val('1.00');
             return;
         }
@@ -137,7 +137,7 @@ $(document).ready(function() {
                         <div class="alert alert-success alert-sm mt-2">
                             <strong>💰 سعر السوق العالمي:</strong><br>
                             <span class="badge badge-primary">${result.average_price_usd} USD</span>
-                            <span class="badge badge-info">${result.suggested_price_aed.toFixed(2)} AED</span><br>
+                            <span class="badge badge-info">${result.suggested_price_aed.toFixed(2)} ${window.BASE_CURRENCY || 'AED'}</span><br>
                             <small>${result.notes || ''}</small>
                             ${result.markets ? '<br><small>الأسواق: ' + result.markets.join(', ') + '</small>' : ''}
                             <button type="button" class="btn btn-xs btn-success mt-1" onclick="applyMarketPrice(${lineIndex}, ${result.suggested_price_aed})">
@@ -233,7 +233,7 @@ $(document).ready(function() {
     // Initialize
     if ($('#currency').length) {
         const initialCurrency = $('#currency').val();
-        if (initialCurrency && initialCurrency !== 'AED') {
+        if (initialCurrency && initialCurrency !== (window.BASE_CURRENCY || 'AED')) {
             suggestExchangeRate(initialCurrency);
         }
     }

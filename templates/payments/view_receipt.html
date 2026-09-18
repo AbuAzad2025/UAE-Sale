@@ -73,8 +73,8 @@
           <dt class="col-sm-5">المبلغ:</dt>
           <dd class="col-sm-7"><h4 class="text-success">{{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }}</h4></dd>
           
-          {% if receipt.currency != 'AED' %}
-          <dt class="col-sm-5">المبلغ بالدرهم:</dt>
+          {% if receipt.currency != base_currency %}
+          <dt class="col-sm-5">المبلغ بـ {{ base_currency }}:</dt>
           <dd class="col-sm-7">{{ "{:,.2f}".format(receipt.amount_base) }} {{ base_currency }}</dd>
           {% endif %}
           

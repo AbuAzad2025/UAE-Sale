@@ -64,7 +64,7 @@ def merchant_receivable_codes():
 class SaleService:
 
     @staticmethod
-    def create_sale(customer, seller, lines_data, warehouse_id=None, currency='ILS', user_exchange_rate=None,
+    def create_sale(customer, seller, lines_data, warehouse_id=None, currency=None, user_exchange_rate=None,
                     discount_amount=0, shipping_cost=0, tax_rate=0, notes=None, payment_data=None):
         """
         Create a new sale with proper validations and decimal precision
@@ -88,6 +88,13 @@ class SaleService:
                 '⚠️ الفترة المالية الحالية مغلقة.\n'
                 '💡 لا يمكن إنشاء فواتير في فترة مالية مقفلة.'
             )
+
+        # Dynamic base currency resolution
+        if not currency:
+            try:
+                currency = CurrencyService.get_base_currency()
+            except Exception:
+                currency = 'ILS'
 
         # Validate discount and tax
         discount_decimal = Decimal(str(discount_amount)) if discount_amount else Decimal('0')
@@ -221,7 +228,11 @@ class SaleService:
             # Handle payment if provided
             if payment_data:
                 paid_amount = Decimal(str(payment_data.get('amount', 0)))
-                payment_currency = payment_data.get('currency', 'ILS')
+                try:
+                    _base_pay = CurrencyService.get_base_currency()
+                except Exception:
+                    _base_pay = 'ILS'
+                payment_currency = payment_data.get('currency') or _base_pay
                 payment_exchange_rate = payment_data.get('exchange_rate', 1.0)
 
                 # Convert payment to AED
@@ -277,11 +288,15 @@ class SaleService:
             StockService.process_sale_lines(sale, warehouse_id)
 
             if payment_data and payment_data.get('amount', 0) > 0:
+                try:
+                    _base_pay2 = CurrencyService.get_base_currency()
+                except Exception:
+                    _base_pay2 = 'ILS'
                 _ = SaleService.create_payment_for_sale(
                     sale=sale,
                     amount=payment_data['amount'],
                     payment_method=payment_data['payment_method'],
-                    currency=payment_data.get('currency', 'ILS'),
+                    currency=payment_data.get('currency') or _base_pay2,
                     exchange_rate=payment_data.get('exchange_rate', 1.0),
                     reference_number=payment_data.get('reference_number'),
                     cheque_number=payment_data.get('cheque_number'),
@@ -407,7 +422,7 @@ class SaleService:
             raise
 
     @staticmethod
-    def create_payment_for_sale(sale, amount, payment_method, currency='ILS', exchange_rate=1.0,
+    def create_payment_for_sale(sale, amount, payment_method, currency=None, exchange_rate=1.0,
                                 reference_number=None, cheque_number=None, cheque_date=None,
                                 bank_name=None, notes=None):
         """
@@ -415,6 +430,13 @@ class SaleService:
         Uses Decimal for accurate financial calculations
         """
         from datetime import datetime
+
+        # Dynamic base currency fallback for payment currency
+        if not currency:
+            try:
+                currency = CurrencyService.get_base_currency()
+            except Exception:
+                currency = 'ILS'
 
         # Validate payment amount
         amount_decimal = Decimal(str(amount))

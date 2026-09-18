@@ -251,13 +251,17 @@ def create_from_sale(sale_id):
 
     if request.method == 'POST':
         try:
+            try:
+                _base_curr = CurrencyService.get_base_currency()
+            except Exception:
+                _base_curr = 'ILS'
             amount = request.form.get('amount', type=float)
-            currency = request.form.get('currency', 'AED')
+            currency = request.form.get('currency') or _base_curr
             user_exchange_rate = request.form.get('exchange_rate', type=float)
             payment_method_value = (request.form.get('payment_method') or '').strip()
             if not payment_method_value:
                 flash('يرجى اختيار طريقة الدفع.', 'warning')
-                exchange_rates = CurrencyService.get_all_rates('AED')
+                exchange_rates = CurrencyService.get_all_rates(_base_curr)
                 suggested_amount = sale.balance_due
                 return render_template('payments/create_receipt.html',
                                        customers=[sale.customer],
@@ -303,7 +307,11 @@ def create_from_sale(sale_id):
     # استخدام القالب الموحد مع بيانات إضافية
     customers = [sale.customer]  # العميل من الفاتورة
     suggested_amount = sale.balance_due
-    exchange_rates = CurrencyService.get_all_rates('AED')
+    try:
+        _base_curr_get = CurrencyService.get_base_currency()
+    except Exception:
+        _base_curr_get = 'ILS'
+    exchange_rates = CurrencyService.get_all_rates(_base_curr_get)
 
     return render_template('payments/create_receipt.html',
                            customers=customers,
@@ -348,6 +356,10 @@ def create_voucher():
 def create_voucher_submit():  # noqa: C901
     """معالجة حفظ السند المالي الموحد"""
     try:
+        try:
+            _base_curr_v = CurrencyService.get_base_currency()
+        except Exception:
+            _base_curr_v = 'ILS'
         direction = request.form.get('direction')  # incoming, outgoing
         party_type = request.form.get('party_type')  # customer, supplier
         party_id = request.form.get('party_id', type=int)
@@ -356,8 +368,8 @@ def create_voucher_submit():  # noqa: C901
         date_str = request.form.get('date')
         notes = request.form.get('notes')
 
-        # العملة وسعر الصرف (افتراضي: AED بمعدل 1)
-        currency = request.form.get('currency', 'AED')
+        # العملة وسعر الصرف (افتراضي: عملة الأساس بمعدل 1)
+        currency = request.form.get('currency') or _base_curr_v
         user_exchange_rate = request.form.get('exchange_rate', type=float, default=1.0)
 
         # بيانات الشيك
@@ -403,7 +415,7 @@ def create_voucher_submit():  # noqa: C901
                 from models import Payment
                 from utils.helpers import generate_number
 
-                exchange_rate = CurrencyService.get_exchange_rate(currency, 'AED', user_rate=user_exchange_rate)
+                exchange_rate = CurrencyService.get_exchange_rate(currency, _base_curr_v, user_rate=user_exchange_rate)
                 amount_decimal = Decimal(str(amount))
                 amount_base = amount_decimal * exchange_rate
 
@@ -461,7 +473,7 @@ def create_voucher_submit():  # noqa: C901
             from models import Payment
             from utils.helpers import generate_number
 
-            exchange_rate = CurrencyService.get_exchange_rate(currency, 'AED', user_rate=user_exchange_rate)
+            exchange_rate = CurrencyService.get_exchange_rate(currency, _base_curr_v, user_rate=user_exchange_rate)
             amount_decimal = Decimal(str(amount))
             amount_base = amount_decimal * exchange_rate
 
@@ -1023,7 +1035,11 @@ def create_payment(purchase_id):  # noqa: C901
                                        form_data=request.form)
             notes = request.form.get('notes', '')
             exchange_rate = request.form.get('exchange_rate', type=float, default=1.0)
-            currency = request.form.get('currency', default='AED')
+            try:
+                _base_curr_pay = CurrencyService.get_base_currency()
+            except Exception:
+                _base_curr_pay = 'ILS'
+            currency = request.form.get('currency') or _base_curr_pay
 
             reference_number = request.form.get('reference_number')
             cheque_number = request.form.get('cheque_number')

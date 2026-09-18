@@ -477,7 +477,7 @@ table.statement-table thead th {
                 <td>
                   <div class="font-weight-bold mb-1">
                     {{ trans.description }}
-                    {% if trans.currency and trans.currency != 'AED' %}
+                    {% if trans.currency and trans.currency != base_currency %}
                       <span class="payment-chip">
                         {{ trans.currency }}
                         {% if trans.exchange_rate and trans.exchange_rate != 1 %}

@@ -39,7 +39,7 @@
                                             <td>{{ loop.index }}</td>
                                             <td>{{ product.name }}</td>
                                             <td class="num-cell">{{ product.total_quantity }}</td>
-                                            <td class="num-cell {{ 'money-neg' if product.total_sales < 0 else 'money-pos' }}">{{ product.total_sales|money }} درهم</td>
+                                            <td class="num-cell {{ 'money-neg' if product.total_sales < 0 else 'money-pos' }}">{{ product.total_sales|money(base_currency) }}</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>

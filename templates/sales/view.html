@@ -298,9 +298,9 @@
           </strong>
         </div>
         
-        {% if sale.currency != 'AED' and sale.amount_base %}
+        {% if sale.currency != base_currency and sale.amount_base %}
         <div class="d-flex justify-content-between mb-3 text-muted">
-          <span>بالدرهم:</span>
+          <span>بـ {{ base_currency }}:</span>
           <strong>{{ "{:,.2f}".format(sale.amount_base) }} {{ base_currency }}</strong>
         </div>
         {% endif %}

@@ -57,12 +57,16 @@ def create():  # noqa: C901
         try:
             expense_number = generate_number('EXP', Expense, 'expense_number')
 
-            currency = request.form.get('currency', 'AED')
+            try:
+                _base_curr_e = CurrencyService.get_base_currency()
+            except Exception:
+                _base_curr_e = 'ILS'
+            currency = request.form.get('currency') or _base_curr_e
             user_exchange_rate = request.form.get('exchange_rate', type=float)
 
             exchange_rate = CurrencyService.get_exchange_rate(
                 currency,
-                'AED',
+                _base_curr_e,
                 user_rate=user_exchange_rate
             )
 
@@ -174,7 +178,11 @@ def create():  # noqa: C901
             flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
 
     categories = ExpenseCategory.query.filter_by(is_active=True).all()
-    exchange_rates = CurrencyService.get_all_rates('AED')
+    try:
+        _base_curr_e2 = CurrencyService.get_base_currency()
+    except Exception:
+        _base_curr_e2 = 'ILS'
+    exchange_rates = CurrencyService.get_all_rates(_base_curr_e2)
 
     return render_template('expenses/create.html',
                            categories=categories,
@@ -304,7 +312,11 @@ def edit(id):  # noqa: C901
             expense.description = request.form.get('description')
             expense.description_ar = request.form.get('description_ar')
             expense.amount = Decimal(str(request.form.get('amount') or 0))
-            expense.currency = request.form.get('currency', 'AED')
+            try:
+                _base_curr_edit = CurrencyService.get_base_currency()
+            except Exception:
+                _base_curr_edit = 'ILS'
+            expense.currency = request.form.get('currency') or _base_curr_edit
             expense.supplier_name = request.form.get('supplier_name')
             expense.notes = request.form.get('notes')
 
@@ -314,8 +326,8 @@ def edit(id):  # noqa: C901
             if new_payment_method:
                 expense.payment_method = new_payment_method
 
-            # حساب المبلغ بالدرهم
-            exchange_rate = CurrencyService.get_exchange_rate(expense.currency, 'AED')
+            # حساب المبلغ بعملة الأساس
+            exchange_rate = CurrencyService.get_exchange_rate(expense.currency, _base_curr_edit)
             expense.exchange_rate = exchange_rate
             expense.amount_base = Decimal(str(expense.amount)) * exchange_rate
 

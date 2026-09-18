@@ -102,7 +102,7 @@ def _base_currency() -> str:
     try:
         return CurrencyService.get_base_currency()
     except Exception:
-        return "AED"
+        return "ILS"
 
 
 # ---------------------------------------------------------------------------

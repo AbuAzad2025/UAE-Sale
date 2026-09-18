@@ -91,25 +91,30 @@ class Sale(TenantScopedMixin, db.Model):
             Decimal('0.001'), rounding=ROUND_HALF_UP
         )
 
-        # Calculate amount in AED (Base Currency)
-        if self.currency == 'ILS':
+        # Calculate amount in base currency (dynamic per tenant)
+        try:
+            from services.currency_service import CurrencyService
+            _base = CurrencyService.get_base_currency()
+        except Exception:
+            _base = 'ILS'
+        if (self.currency or _base) == _base:
             self.amount_base = self.total_amount
         else:
             self.amount_base = (self.total_amount * exchange_rate_decimal).quantize(
                 Decimal('0.001'), rounding=ROUND_HALF_UP
             )
 
-        # Calculate paid amount AED based on transaction currency
+        # Calculate paid amount base based on transaction currency vs base
         paid_foreign = Decimal(str(self.paid_amount)) if self.paid_amount else Decimal('0')
-        if self.currency == 'ILS':
+        if (self.currency or _base) == _base:
             self.paid_amount_base = paid_foreign
         else:
             self.paid_amount_base = (paid_foreign * exchange_rate_decimal).quantize(
                 Decimal('0.001'), rounding=ROUND_HALF_UP
             )
 
-        # Calculate balance consistently
-        if self.currency == 'ILS':
+        # Calculate balance consistently (always in base)
+        if (self.currency or _base) == _base:
             self.balance_due = (self.total_amount - self.paid_amount_base).quantize(
                 Decimal('0.001'), rounding=ROUND_HALF_UP
             )
@@ -144,7 +149,12 @@ class Sale(TenantScopedMixin, db.Model):
         self.paid_amount_base = total_confirmed_paid_aed
         try:
             ex = Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal('1')
-            if self.currency == 'ILS':
+            try:
+                from services.currency_service import CurrencyService
+                _base2 = CurrencyService.get_base_currency()
+            except Exception:
+                _base2 = 'ILS'
+            if (self.currency or _base2) == _base2:
                 self.paid_amount = total_confirmed_paid_aed
             else:
                 self.paid_amount = (total_confirmed_paid_aed / ex).quantize(

@@ -27,7 +27,7 @@ class CurrencyService:
 
     CACHE_TTL_SECONDS = 300  # 5 دقائق
     _rates_cache = {}
-    DEFAULT_BASE = 'ILS'  # يُستخدم فقط إذا لم تُعرّف عملة قاعدة للشركة/النظام
+    DEFAULT_BASE = 'ILS'  # يُستخدم فقط إذا لم تُعرّف عملة قاعدة للشركة/النظام (الافتراضي شيقل)
 
     @staticmethod
     def get_base_currency():

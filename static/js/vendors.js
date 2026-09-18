@@ -75,7 +75,7 @@
     dom.amount.setAttribute("inputmode", "numeric");
     dom.amount.setAttribute("autocomplete", "off");
     dom.amount.setAttribute("dir", "ltr");
-    dom.currency.value = String(payload.currency || "ILS").toUpperCase();
+    dom.currency.value = String(payload.currency || (window.BASE_CURRENCY || "ILS")).toUpperCase();
     dom.entityId.value = payload.id || "";
     dom.entityType.value = String(payload.entityType || "").toUpperCase();
     dom.direction.innerHTML = directionBadge(dir);
@@ -188,7 +188,7 @@
           id: btn.dataset.id,
           name: btn.dataset.name,
           balance: Number(btn.dataset.balance || 0),
-          currency: btn.dataset.currency || "ILS"
+          currency: btn.dataset.currency || (window.BASE_CURRENCY || "ILS")
         });
       });
     });

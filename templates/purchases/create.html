@@ -703,7 +703,7 @@ function updateLineCosts() {
         const baseCost = parseFloat($(this).data('base-cost'));
         if (!isNaN(baseCost)) {
             let finalCost = baseCost;
-            if (currency !== 'AED' && rate > 0) {
+            if (currency !== '{{ base_currency }}' && rate > 0) {
                 finalCost = baseCost / rate;
             }
             $(this).val(finalCost.toFixed(2));
@@ -722,7 +722,7 @@ function updateLineCosts() {
 $('#currency').on('change', function() {
   const currency = $(this).val();
   
-  if (currency !== 'AED') {
+  if (currency !== '{{ base_currency }}') {
     $.ajax({
       url: `/api/currency-rate/${currency}/{{ base_currency }}`,
       success: function(data) {

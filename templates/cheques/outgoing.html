@@ -116,7 +116,7 @@
           <td>{{ cheque.payee_name }}</td>
           <td class="text-danger"><strong>{{ "{:,.2f}".format(cheque.amount_base) }} {{ base_currency }}</strong></td>
           <td>
-            {% if cheque.status == 'cleared' and cheque.clearance_exchange_rate and cheque.currency != 'AED' %}
+            {% if cheque.status == 'cleared' and cheque.clearance_exchange_rate and cheque.currency != base_currency %}
               <!-- عرض سعري الصرف للشيكات المصروفة -->
               <div>
                 <small class="text-muted">إنشاء:</small>

@@ -65,7 +65,7 @@
     return Number.isFinite(n) ? n : 0;
   };
 
-  const money = n => (Number(n) || 0).toFixed(2) + ' شيكل';
+  const money = n => (Number(n) || 0).toFixed(2) + ' ' + (window.BASE_CURRENCY || 'ILS');
 
   const prepaidRate = () => {
     const m = document.querySelector('meta[name="prepaid-rate"]');

@@ -99,9 +99,7 @@ def seed_departments():
     deps = [('Sales', 'المبيعات', 'SALES'), ('Warehouse', 'المستودع', 'WH'), ('Accounting', 'المحاسبة', 'ACC'), ('HR', 'الموارد', 'HR')]
     out = []
     for name, name_ar, code in deps:
-        d, created = get_or_create(Department, dict(name_ar=name_ar, is_active=True), name=name)
-        if created:
-            d.code = code
+        d, created = get_or_create(Department, dict(name_ar=name_ar, code=code, is_active=True), name=name)
         out.append(d)
         log(f"Department {name}: {'created' if created else 'exists'}")
     db.session.commit()
@@ -110,19 +108,38 @@ def seed_departments():
 
 def seed_employees(departments):
     from models.hr import Employee
+    from models.user import User
+    # Link employees to existing users (created in seed_users) where possible
+    users = User.query.filter(User.username.like('seller%')).all() + User.query.filter(User.username.like('manager%')).all()
+    if len(users) < 6:
+        users = User.query.limit(6).all()
     emps = [
-        ('EMP-001', 'Ahmad Saleh', departments[0].id),
-        ('EMP-002', 'Sara Khalid', departments[0].id),
-        ('EMP-003', 'Omar Warehouse', departments[1].id),
-        ('EMP-004', 'Layla Accounts', departments[2].id),
-        ('EMP-005', 'Hassan HR', departments[3].id),
-        ('EMP-006', 'Khaled Driver', departments[1].id),
+        ('EMP-001', users[0].id if len(users) > 0 else None, departments[0].id),
+        ('EMP-002', users[1].id if len(users) > 1 else None, departments[0].id),
+        ('EMP-003', users[2].id if len(users) > 2 else None, departments[1].id),
+        ('EMP-004', users[3].id if len(users) > 3 else None, departments[2].id),
+        ('EMP-005', users[4].id if len(users) > 4 else None, departments[3].id),
+        ('EMP-006', users[5].id if len(users) > 5 else None, departments[1].id),
     ]
     out = []
-    for num, name, dep_id in emps:
-        e, created = get_or_create(Employee, dict(full_name=name, department_id=dep_id, hire_date=date.today() - timedelta(days=random.randint(30, 400)), employment_status='active', is_active=True), employee_number=num)
-        out.append(e)
-        log(f"Employee {num}: {'created' if created else 'exists'}")
+    for num, user_id, dep_id in emps:
+        if not user_id:
+            log(f"Employee {num}: skipped (no user)")
+            continue
+        existing = Employee.query.filter_by(employee_number=num).first()
+        if existing:
+            log(f"Employee {num}: exists")
+            out.append(existing)
+            continue
+        try:
+            e = Employee(user_id=user_id, employee_number=num, department_id=dep_id, hire_date=date.today() - timedelta(days=random.randint(30, 400)), employment_status='active', base_salary=Decimal(str(random.randint(3000, 8000))))
+            db.session.add(e)
+            db.session.flush()
+            log(f"Employee {num}: created")
+            out.append(e)
+        except Exception as ex:
+            db.session.rollback()
+            log(f"Employee {num} skipped: {ex}")
     db.session.commit()
     return out
 
@@ -148,12 +165,16 @@ def seed_users(tenants):
         if not role:
             log(f"Skip user {username}: role missing")
             continue
-        u, created = get_or_create(User, dict(email=email, full_name=full_name, role_id=role.id, tenant_id=tid, is_owner=False, is_active=True, email_verified=True), username=username)
-        if created:
-            u.set_password('Azad123!')
-            log(f"User {username}: created")
-        else:
+        existing = User.query.filter_by(username=username).first()
+        if existing:
             log(f"User {username}: exists")
+            out.append(existing)
+            continue
+        u = User(username=username, email=email, full_name=full_name, role_id=role.id, tenant_id=tid, is_owner=False, is_active=True, email_verified=True)
+        u.set_password('Azad123!')
+        db.session.add(u)
+        db.session.flush()
+        log(f"User {username}: created")
         out.append(u)
     db.session.commit()
     return out
@@ -309,7 +330,7 @@ def seed_purchases(suppliers, products, warehouses, user):
             log(f"Purchase {num}: exists")
             out.append(existing)
             continue
-        pur = Purchase(purchase_number=num, supplier_id=sup.id, warehouse_id=wh.id, tenant_id=sup.tenant_id, total_amount=Decimal('0'), amount_base=Decimal('0'), status='confirmed', is_active=True)
+        pur = Purchase(purchase_number=num, supplier_id=sup.id, supplier_name=sup.name, warehouse_id=wh.id, tenant_id=sup.tenant_id, total_amount=Decimal('0'), amount_base=Decimal('0'), status='confirmed', user_id=user.id, currency='AED', exchange_rate=Decimal('1'))
         db.session.add(pur)
         db.session.flush()
         chosen = random.sample(products, k=random.randint(2, 3))
@@ -359,16 +380,22 @@ def seed_cheques(customers, suppliers):
             continue
         cust = random.choice(customers) if ctype == 'incoming' else None
         sup = random.choice(suppliers) if ctype == 'outgoing' else None
-        ch = Cheque(cheque_number=num, customer_id=cust.id if cust else None, supplier_id=sup.id if sup else None,
-                    amount=Decimal(str(random.randint(500, 5000))), cheque_date=date.today() + timedelta(days=random.randint(-5, 60)),
-                    status=status, cheque_type=ctype, is_active=True, tenant_id=(cust.tenant_id if cust else sup.tenant_id))
-        db.session.add(ch)
-        log(f"Cheque {num} {status}/{ctype}: created")
+        try:
+            ch = Cheque(cheque_number=num, cheque_bank_number=num, cheque_type=ctype, bank_name='Test Bank', bank_branch='Main',
+                        amount=Decimal(str(random.randint(500, 5000))), currency='AED', issue_date=date.today(), due_date=date.today() + timedelta(days=random.randint(10, 60)),
+                        status=status, customer_id=cust.id if cust else None, supplier_id=sup.id if sup else None, tenant_id=(cust.tenant_id if cust else sup.tenant_id))
+            db.session.add(ch)
+            log(f"Cheque {num} {status}/{ctype}: created")
+        except Exception as e:
+            db.session.rollback()
+            log(f"Cheque {num} skipped: {e}")
     db.session.commit()
 
 
 def seed_expenses():
     from models.expense import Expense, ExpenseCategory
+    from models.user import User
+    user = User.query.filter_by(is_owner=True).first() or User.query.first()
     cats = ['مصاريف تشغيلية', 'إيجار', 'رواتب', 'صيانة', 'تسويق']
     cat_objs = []
     for name in cats:
@@ -382,7 +409,8 @@ def seed_expenses():
             log(f"Expense {num}: exists")
             continue
         cat = random.choice(cat_objs)
-        exp = Expense(expense_number=num, category_id=cat.id, amount=Decimal(str(random.randint(200, 3000))), expense_date=date.today() - timedelta(days=random.randint(1, 60)), status=random.choice(statuses), is_active=True, description=f'مصروف {cat.name} {i+1}')
+        amt = Decimal(str(random.randint(200, 3000)))
+        exp = Expense(expense_number=num, category_id=cat.id, amount=amt, amount_base=amt, expense_date=date.today() - timedelta(days=random.randint(1, 60)), status=random.choice(statuses), is_active=True, description=f'مصروف {cat.name} {i+1}', payment_method=random.choice(['cash','bank_transfer','card']), user_id=user.id if user else 1)
         db.session.add(exp)
         log(f"Expense {num} {cat.name}/{exp.status}: created")
     db.session.commit()
@@ -395,7 +423,7 @@ def seed_gl_accounts():
         ('4001', 'المبيعات', 'revenue'), ('5001', 'تكلفة البضاعة', 'expense'), ('6001', 'مصاريف إدارية', 'expense'),
     ]
     for code, name, acc_type in accounts:
-        acc, created = get_or_create(GLAccount, dict(name=name, account_type=acc_type, is_active=True), code=code)
+        acc, created = get_or_create(GLAccount, dict(name=name, name_ar=name, type=acc_type, is_active=True), code=code)
         log(f"GL {code} {name}: {'created' if created else 'exists'}")
     db.session.commit()
 
@@ -412,18 +440,23 @@ def seed_product_extras(products, warehouses):
         m = StockMovement(product_id=p.id, warehouse_id=wh.id, movement_type='damage', quantity=Decimal('-2'), reference_type='seed', tenant_id=wh.tenant_id)
         db.session.add(m)
         log("StockMovement damage: created")
-    # مرتجع
+    # مرتجع — نحاول بحد أدنى من الحقول المطلوبة، وإلا نتخطى
     existing_ret = ProductReturn.query.filter_by(return_number='RET-SEED-001').first()
     if not existing_ret:
-        # minimal return
-        ret = ProductReturn(return_number='RET-SEED-001', customer_id=None, status='pending', is_active=True)
-        # try with available fields; fallback if schema differs
         try:
-            db.session.add(ret)
-            db.session.flush()
-            line = ProductReturnLine(return_id=ret.id, product_id=p.id, quantity=Decimal('1'), reason='تالف')
-            db.session.add(line)
-            log("ProductReturn RET-SEED-001: created")
+            from models.sale import Sale
+            from models.customer import Customer
+            sale = Sale.query.first()
+            cust = Customer.query.first()
+            if sale and cust:
+                ret = ProductReturn(return_number='RET-SEED-001', sale_id=sale.id, customer_id=cust.id, total_amount=Decimal('10'), amount_base=Decimal('10'), status='pending')
+                db.session.add(ret)
+                db.session.flush()
+                line = ProductReturnLine(return_id=ret.id, product_id=p.id, quantity=Decimal('1'), unit_price=Decimal('10'), line_total=Decimal('10'))
+                db.session.add(line)
+                log("ProductReturn RET-SEED-001: created")
+            else:
+                log("ProductReturn skipped: no sale/customer for link")
         except Exception as e:
             db.session.rollback()
             log(f"ProductReturn skipped: {e}")
@@ -504,8 +537,8 @@ def main():
         tenants = seed_tenants()
         warehouses = seed_warehouses(tenants)
         deps = seed_departments()
-        seed_employees(deps)
         users = seed_users(tenants)
+        seed_employees(deps)
         cats = seed_categories()
         products = seed_products(cats, warehouses)
         customers = seed_customers(tenants)

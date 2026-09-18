@@ -144,7 +144,7 @@
           <td>{{ item.date.strftime('%Y-%m-%d') }}</td>
           <td>
             <strong>{{ "{:,.2f}".format(item.amount) }} {{ item.currency }}</strong>
-            {% if item.currency != 'AED' %}
+            {% if item.currency != base_currency %}
               <br><small class="text-muted">{{ "{:,.2f}".format(item.amount_base) }} {{ base_currency }}</small>
             {% endif %}
           </td>

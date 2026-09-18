@@ -299,7 +299,7 @@ $(function() {
   $('#currency').on('change', function() {
     const currency = $(this).val();
     
-    if (!currency || currency === 'AED') {
+    if (!currency || currency === '{{ base_currency }}') {
       $('input[name="exchange_rate"]').val('1.000000');
       return;
     }

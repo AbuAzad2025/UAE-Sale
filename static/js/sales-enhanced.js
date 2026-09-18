@@ -151,7 +151,7 @@ function addLine() {
                         }
                     }
                     if (data.cost_price) {
-                        $(`#cost_${currentIndex}`).text(parseFloat(data.cost_price).toFixed(2) + ' AED');
+                        $(`#cost_${currentIndex}`).text(parseFloat(data.cost_price).toFixed(2) + ' ' + (window.BASE_CURRENCY || 'AED'));
                     }
                     calculateTotals();
                 },
@@ -176,7 +176,7 @@ function addLine() {
         }
         
         if (selectedData.cost) {
-            $(`#cost_${currentIndex}`).text(parseFloat(selectedData.cost).toFixed(2) + ' AED');
+            $(`#cost_${currentIndex}`).text(parseFloat(selectedData.cost).toFixed(2) + ' ' + (window.BASE_CURRENCY || 'AED'));
         }
         
         // حساب الإجماليات
@@ -223,7 +223,7 @@ function loadProductPrice(index) {
             const currency = $('#currency').val();
             
             let finalPrice = data.price;
-            if (currency !== 'AED' && rate > 0) {
+            if (currency !== (window.BASE_CURRENCY || 'AED') && rate > 0) {
                 finalPrice = data.price / rate;
             }
             
@@ -239,7 +239,7 @@ function loadProductPrice(index) {
             }
             
             if (data.cost_price && data.cost_price > 0) {
-                $(`#cost_${index}`).text(data.cost_price.toFixed(2) + ' AED');
+                $(`#cost_${index}`).text(data.cost_price.toFixed(2) + ' ' + (window.BASE_CURRENCY || 'AED'));
             }
             
             $(`#line_info_${index}`).show();
@@ -268,7 +268,7 @@ function updateLinePrices() {
         
         if (!isNaN(basePrice)) {
             let finalPrice = basePrice;
-            if (currency !== 'AED' && rate > 0) {
+            if (currency !== (window.BASE_CURRENCY || 'AED') && rate > 0) {
                 finalPrice = basePrice / rate;
             }
             $priceInput.val(finalPrice.toFixed(2));
@@ -336,9 +336,9 @@ async function calculateTotals() {
             $('#subtotal').text(azad.formatNumber(result.subtotal));
             $('#total').text(azad.formatNumber(result.total));
             $('#line_count_display').text(result.line_count);
-            $('#mobile-total').text(azad.formatNumber(result.total) + ' AED');
+            $('#mobile-total').text(azad.formatNumber(result.total) + ' ' + (window.BASE_CURRENCY || 'AED'));
             $('#mobile-count').text(result.line_count);
-            $('#total_currency_label').text($('#currency').val() || 'AED');
+            $('#total_currency_label').text($('#currency').val() || (window.BASE_CURRENCY || 'AED'));
             
             return {
                 subtotal: result.subtotal,
@@ -408,7 +408,7 @@ $('#currency').on('change', function() {
     // Update payment currency display
     $('#payment_currency_display').text(currency);
     
-    if (currency === 'AED') {
+    if (currency === (window.BASE_CURRENCY || 'AED')) {
         $rateInput.val('1.000000');
         $rateInput.data('server-rate', 1);
         serverExchangeRate = 1;
@@ -431,7 +431,8 @@ $('#currency').on('change', function() {
                 $rateInput.css('background-color', '#d4edda');
                 const examplePayment = 100;
                 const exampleAED = (examplePayment * data.rate).toFixed(2);
-                azad.showSuccess(`✅ سعر الصرف: 1 ${currency} = ${data.rate.toFixed(3)} AED\n\n💡 التوضيح:\n• الفاتورة: بالدرهم (AED)\n• المدفوع: بالـ ${currency}\n• مثال: ${examplePayment} ${currency} = ${exampleAED} AED`);
+                const _base = window.BASE_CURRENCY || 'AED';
+                azad.showSuccess(`✅ سعر الصرف: 1 ${currency} = ${data.rate.toFixed(3)} ${_base}\n\n💡 التوضيح:\n• الفاتورة: بالدرهم (${_base})\n• المدفوع: بالـ ${currency}\n• مثال: ${examplePayment} ${currency} = ${exampleAED} ${_base}`);
                 updateLinePrices();
             } else if (data.manual_input_required) {
                 serverExchangeRate = null;

@@ -222,7 +222,7 @@
             allRows += '<tr class="' + rowClass + '">' +
                 '<td>' + (index + 1) + '</td>' +
                 '<td><strong>' + (check.check_number || '-') + '</strong></td>' +
-                '<td><strong>' + formatCurrency(check.amount || 0) + ' ₪</strong></td>' +
+                '<td><strong>' + formatCurrency(check.amount || 0) + ' ' + (window.BASE_CURRENCY || 'ILS') + '</strong></td>' +
                 '<td>' + (check.check_bank || '-') + '</td>' +
                 '<td>' + (check.entity_name || '-') + '</td>' +
                 '<td>' + (check.due_date_formatted || check.check_due_date || '-') + '</td>' +
@@ -248,16 +248,16 @@
         };
         
         $('#stat-pending-count').text(categorized.pending.length);
-        $('#stat-pending-amount').text(formatCurrency(calcTotal(categorized.pending)) + ' ₪');
+        $('#stat-pending-amount').text(formatCurrency(calcTotal(categorized.pending)) + ' ' + (window.BASE_CURRENCY || 'ILS'));
         
         $('#stat-cashed-count').text(categorized.cashed.length);
-        $('#stat-cashed-amount').text(formatCurrency(calcTotal(categorized.cashed)) + ' ₪');
+        $('#stat-cashed-amount').text(formatCurrency(calcTotal(categorized.cashed)) + ' ' + (window.BASE_CURRENCY || 'ILS'));
         
         $('#stat-returned-count').text(categorized.returned.length + categorized.bounced.length);
-        $('#stat-returned-amount').text(formatCurrency(calcTotal(categorized.returned) + calcTotal(categorized.bounced)) + ' ₪');
+        $('#stat-returned-amount').text(formatCurrency(calcTotal(categorized.returned) + calcTotal(categorized.bounced)) + ' ' + (window.BASE_CURRENCY || 'ILS'));
         
         $('#stat-overdue-count').text(categorized.overdue.length);
-        $('#stat-overdue-amount').text(formatCurrency(calcTotal(categorized.overdue)) + ' ₪');
+        $('#stat-overdue-amount').text(formatCurrency(calcTotal(categorized.overdue)) + ' ' + (window.BASE_CURRENCY || 'ILS'));
         
         console.log('✅ تم تحديث الإحصائيات!');
     };
@@ -307,8 +307,8 @@
                             <table class="table table-bordered table-sm">
                                 <tr><th width="40%">رقم الشيك:</th><td><strong>${check.check_number || '-'}</strong></td></tr>
                                 <tr><th>البنك:</th><td><i class="fas fa-university text-primary"></i> ${check.check_bank || '-'}</td></tr>
-                                <tr><th>المبلغ:</th><td><strong class="text-success" style="font-size: 1.2em;">${formatCurrency(check.amount || 0)} ₪</strong></td></tr>
-                                ${check.currency && check.currency != 'ILS' ? '<tr><th>العملة:</th><td>' + check.currency + '</td></tr>' : ''}
+                                <tr><th>المبلغ:</th><td><strong class="text-success" style="font-size: 1.2em;">${formatCurrency(check.amount || 0)} ${window.BASE_CURRENCY || 'ILS'}</strong></td></tr>
+                                ${check.currency && check.currency != (window.BASE_CURRENCY || 'ILS') ? '<tr><th>العملة:</th><td>' + check.currency + '</td></tr>' : ''}
                                 <tr><th>تاريخ الاستحقاق:</th><td>${check.due_date_formatted || check.check_due_date || '-'}</td></tr>
                                 ${check.days_until_due ? '<tr><th>الأيام المتبقية:</th><td><span class="badge badge-' + (check.days_until_due < 0 ? 'danger' : check.days_until_due <= 7 ? 'warning' : 'info') + '">' + check.days_until_due + ' يوم</span></td></tr>' : ''}
                             </table>

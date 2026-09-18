@@ -242,11 +242,14 @@ document.addEventListener('DOMContentLoaded', function() {
       const dateOnly = (p.payment_date || '').split('T')[0] || '';
       pageSum += toNumber(p.total_amount);
       
-      // حساب المبلغ بالشيكل للمجموع
+      // حساب المبلغ بعملة الأساس للمجموع - uses window.BASE_CURRENCY (dynamic via /api/currency-rate)
       let amountInILSForSum = p.total_amount;
-      if (p.currency && p.currency !== 'ILS') {
-        const rates = { 'USD': 3.31, 'EUR': 3.88, 'AED': 0.9, 'JOD': 4.67 };
-        amountInILSForSum = (parseFloat(p.total_amount) * (rates[p.currency] || 1)).toFixed(2);
+      if (p.currency && p.currency !== (window.BASE_CURRENCY || 'ILS')) {
+        // DEPRECATED hardcoded rates removed; rely on server API /api/currency-rate for live rates
+        // Fallback to window.EXCHANGE_RATES if provided, else 1:1
+        const _rates = window.EXCHANGE_RATES || {};
+        const _rate = _rates[p.currency] || 1;
+        amountInILSForSum = (parseFloat(p.total_amount) * _rate).toFixed(2);
       }
       pageSumILS += parseFloat(amountInILSForSum);
       const actions =
@@ -257,12 +260,13 @@ document.addEventListener('DOMContentLoaded', function() {
           '<a href="/hard-delete/payment/' + p.id + '" class="btn btn-outline-danger" title="حذف قوي" onclick="return confirm(\'حذف قوي - سيتم حذف جميع البيانات المرتبطة!\')">حذف قوي</a>' +
         '</div>';
       const tr = document.createElement('tr');
-      // حساب المبلغ بالشيكل
+      // حساب المبلغ بعملة الأساس - uses window.BASE_CURRENCY (dynamic via /api/currency-rate)
       let amountInILS = p.total_amount;
-      if (p.currency && p.currency !== 'ILS') {
-        // استخدام سعر الصرف الافتراضي للعرض (يمكن تحسينه لاحقاً)
-        const rates = { 'USD': 3.31, 'EUR': 3.88, 'AED': 0.9, 'JOD': 4.67 };
-        amountInILS = (parseFloat(p.total_amount) * (rates[p.currency] || 1)).toFixed(2);
+      if (p.currency && p.currency !== (window.BASE_CURRENCY || 'ILS')) {
+        // DEPRECATED hardcoded rates removed; rely on server API /api/currency-rate for live rates
+        const _rates2 = window.EXCHANGE_RATES || {};
+        const _rate2 = _rates2[p.currency] || 1;
+        amountInILS = (parseFloat(p.total_amount) * _rate2).toFixed(2);
       }
       
       // إنشاء عمود التفاصيل المحسّن
@@ -277,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
         '<td>' + dateOnly + '</td>' +
         '<td class="text-end"><strong>' + fmtAmount(p.total_amount) + '</strong></td>' +
         '<td class="text-center"><span class="badge badge-secondary">' + (p.currency || '') + '</span></td>' +
-        '<td class="text-end"><strong class="text-primary">' + fmtAmount(amountInILS) + ' ₪</strong></td>' +
+        '<td class="text-end"><strong class="text-primary">' + fmtAmount(amountInILS) + ' ' + (window.BASE_CURRENCY || 'ILS') + '</strong></td>' +
         '<td>' + (splitsHtml || '<span class="badge badge-info">' + (p.method || '') + '</span>') + '</td>' +
         '<td class="text-center">' + badgeForDirection(p.direction) + '</td>' +
         '<td class="text-center">' + badgeForStatus(p.status) + '</td>' +
@@ -286,7 +290,7 @@ document.addEventListener('DOMContentLoaded', function() {
       tbody.appendChild(tr);
     });
     const t = document.createElement('tr');
-    t.innerHTML = '<td></td><td class="text-end fw-bold">إجمالي الصفحة</td><td class="fw-bold">' + fmtAmount(pageSum) + '</td><td></td><td class="fw-bold text-primary">' + fmtAmount(pageSumILS) + ' ₪</td><td colspan="5"></td>';
+    t.innerHTML = '<td></td><td class="text-end fw-bold">إجمالي الصفحة</td><td class="fw-bold">' + fmtAmount(pageSum) + '</td><td></td><td class="fw-bold text-primary">' + fmtAmount(pageSumILS) + ' ' + (window.BASE_CURRENCY || 'ILS') + '</td><td colspan="5"></td>';
     tbody.appendChild(t);
   }
   // Event listener لحذف الدفعات

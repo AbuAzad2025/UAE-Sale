@@ -106,8 +106,13 @@ def create():  # noqa: C901
                 flash(ErrorMessages.sale_no_lines(), 'danger')
                 return redirect(url_for('sales.create'))
 
+            try:
+                from services.currency_service import CurrencyService as _CurrencyService
+                _base_currency = _CurrencyService.get_base_currency()
+            except Exception:
+                _base_currency = 'ILS'
             currency_value = request.form.get('currency')
-            currency = currency_value if currency_value else 'AED'
+            currency = currency_value if currency_value else _base_currency
             user_exchange_rate = request.form.get('exchange_rate', type=float)
 
             # Track manual exchange rate changes for audit

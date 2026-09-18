@@ -75,7 +75,7 @@
               label: function(context) {
                 const label = context.dataset.label || '';
                 const value = context.parsed.y || context.parsed;
-                return `${label}: ${formatValue(value, { currency: 'ILS' })}`;
+                return `${label}: ${formatValue(value, { currency: (window.BASE_CURRENCY || 'ILS') })}`;
               }
             }
           }
@@ -107,7 +107,7 @@
                 size: 11
               },
               callback: function(value) {
-                return formatValue(value, { currency: 'ILS' });
+                return formatValue(value, { currency: (window.BASE_CURRENCY || 'ILS') });
               }
             }
           }
@@ -139,7 +139,7 @@
             <h5 class="card-title">تفاصيل البيانات</h5>
           </div>
           <div class="card-body">
-            <p><strong>القيمة:</strong> ${formatValue(data, { currency: 'ILS' })}</p>
+            <p><strong>القيمة:</strong> ${formatValue(data, { currency: (window.BASE_CURRENCY || 'ILS') })}</p>
             <p><strong>المجموعة:</strong> ${datasetIndex + 1}</p>
             <p><strong>الفهرس:</strong> ${dataIndex + 1}</p>
           </div>

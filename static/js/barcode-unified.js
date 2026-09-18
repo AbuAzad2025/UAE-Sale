@@ -29,7 +29,8 @@
   }
 
   async function fetchByBarcode(code) {
-    var res = await fetch('/api/products/barcode/' + encodeURIComponent(code), {
+    var base = (window.BASE_URL || '');
+    var res = await fetch(base + '/api/products/barcode/' + encodeURIComponent(code), {
       headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       credentials: 'same-origin'
     });

@@ -67,6 +67,10 @@ class Config:
         '/ledger/api/calculate-journal-balance'
     ]
 
+    # All asset links are relative via <base> and window.BASE_URL so the app
+    # works when moved between sub-folders. DB is PostgreSQL (network) for
+    # both local and production, so its URL stays absolute by design;
+    # the fallback is in-memory for tests.
     _db_uri = os.environ.get("DATABASE_URL") or "sqlite:///:memory:"
 
     # Handle PythonAnywhere specific postgres URL format if needed
@@ -76,6 +80,10 @@ class Config:
         _db_uri = _db_uri.replace("postgresql://", "postgresql+psycopg2://", 1)
 
     SQLALCHEMY_DATABASE_URI = _db_uri
+    # When the app is mounted under a sub-path (e.g. /sale), set
+    # APPLICATION_ROOT=/sale so url_for respects the prefix and links stay
+    # relative to the mount point instead of domain root.
+    APPLICATION_ROOT = os.environ.get("APPLICATION_ROOT", "/")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Engine options — pool_size only for PostgreSQL (SQLite doesn't support it)

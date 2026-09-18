@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
 <head>
+  <base href="{{ request.script_root }}/">
   <meta charset="utf-8">
   <title>{% block title %}{{ config.COMPANY_NAME_AR }}{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <script>window.BASE_CURRENCY = '{{ base_currency }}';</script>
+  <script>window.BASE_URL = "{{ request.script_root }}"; window.BASE_CURRENCY = '{{ base_currency }}';</script>
   
-  <link rel="manifest" href="/static/manifest.json">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
   <meta name="theme-color" content="#667eea">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">

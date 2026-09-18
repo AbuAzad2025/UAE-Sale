@@ -6,6 +6,7 @@
   <title>{% block title %}{{ config.COMPANY_NAME_AR }}{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; media-src 'self' data:; connect-src 'self'; frame-src 'self';">
   <script>window.BASE_URL = "{{ request.script_root }}"; window.BASE_CURRENCY = '{{ base_currency }}';</script>
   
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">

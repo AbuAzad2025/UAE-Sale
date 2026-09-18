@@ -31,7 +31,7 @@ def _form(cheque_type='incoming', customer_id=None, **over):
 def pending_cheque(db, test_customer):
     ch = Cheque(
         cheque_number='CHQ-HTTP-1', cheque_bank_number='555000',
-        cheque_type='incoming', bank_name='ADCB',
+        cheque_type='incoming', bank_name='بنك معدل',
         amount=Decimal('800'), currency='AED', exchange_rate=Decimal('1'),
         amount_base=Decimal('800'),
         issue_date=date.today() - timedelta(days=3),

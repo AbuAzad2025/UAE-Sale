@@ -330,7 +330,13 @@ def seed_purchases(suppliers, products, warehouses, user):
             log(f"Purchase {num}: exists")
             out.append(existing)
             continue
-        pur = Purchase(purchase_number=num, supplier_id=sup.id, supplier_name=sup.name, warehouse_id=wh.id, tenant_id=sup.tenant_id, total_amount=Decimal('0'), amount_base=Decimal('0'), status='confirmed', user_id=user.id, currency='AED', exchange_rate=Decimal('1'))
+        # Use tenant's base currency (ILS default if not specified, AED if tenant set)
+        from services.currency_service import CurrencyService
+        try:
+            _base_p = CurrencyService.get_base_currency()
+        except Exception:
+            _base_p = 'ILS'
+        pur = Purchase(purchase_number=num, supplier_id=sup.id, supplier_name=sup.name, warehouse_id=wh.id, tenant_id=sup.tenant_id, total_amount=Decimal('0'), amount_base=Decimal('0'), status='confirmed', currency=_base_p, exchange_rate=Decimal('1'), user_id=user.id)
         db.session.add(pur)
         db.session.flush()
         chosen = random.sample(products, k=random.randint(2, 3))

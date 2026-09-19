@@ -154,10 +154,10 @@ def create():
                 _base_cc = 'ILS'
             currency = request.form.get('currency') or _base_cc
 
-            # حساب سعر الصرف
+            # حساب سعر الصرف مقابل عملة القاعدة الديناميكية
             exchange_rate = CurrencyService.get_exchange_rate(
                 currency,
-                'AED',
+                _base_cc,
                 user_rate=request.form.get('exchange_rate', type=float)
             )
 
@@ -216,7 +216,11 @@ def create():
 
     customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
     suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
-    exchange_rates = CurrencyService.get_all_rates('AED')
+    try:
+        _base_c = CurrencyService.get_base_currency()
+    except Exception:
+        _base_c = 'ILS'
+    exchange_rates = CurrencyService.get_all_rates(_base_c)
 
     return render_template('cheques/create.html',
                            customers=customers,
@@ -259,11 +263,15 @@ def edit(id):
             cheque.account_number = request.form.get('account_number')
 
             cheque.amount = Decimal(str(request.form.get('amount')))
-            cheque.currency = (request.form.get('currency') or __import__('services.currency_service', fromlist=['CurrencyService']).CurrencyService.get_base_currency() if True else 'ILS'),
+            try:
+                _base_e = CurrencyService.get_base_currency()
+            except Exception:
+                _base_e = 'ILS'
+            cheque.currency = request.form.get('currency') or _base_e
 
             exchange_rate = CurrencyService.get_exchange_rate(
                 cheque.currency,
-                'AED',
+                _base_e,
                 user_rate=request.form.get('exchange_rate', type=float)
             )
             cheque.exchange_rate = exchange_rate
@@ -295,7 +303,11 @@ def edit(id):
 
     customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
     suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
-    exchange_rates = CurrencyService.get_all_rates('AED')
+    try:
+        _base_ec = CurrencyService.get_base_currency()
+    except Exception:
+        _base_ec = 'ILS'
+    exchange_rates = CurrencyService.get_all_rates(_base_ec)
 
     return render_template('cheques/edit.html',
                            cheque=cheque,

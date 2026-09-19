@@ -158,8 +158,7 @@ class TestProcessFiles:
         assert (jsd / 'app.min.js').exists()
 
     def test_cli_registers_command(self, app):
+        # Only assert registration — never invoke compression against the
+        # real static/ tree (it would rewrite tracked .min/.gz artifacts).
         register_compression_cli(app)
-        runner = app.test_cli_runner()
-        result = runner.invoke(args=['compress-assets'])
-        assert result.exit_code == 0
-        assert 'Total savings' in result.output or 'compression completed' in result.output
+        assert 'compress-assets' in app.cli.commands

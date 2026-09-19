@@ -16,6 +16,7 @@ def _form(cheque_type='incoming', customer_id=None, **over):
         'bank_name': 'ENBD',
         'amount': '1500',
         'currency': 'AED',
+        'exchange_rate': '1',
         'issue_date': (today - timedelta(days=5)).isoformat(),
         'due_date': (today + timedelta(days=25)).isoformat(),
         'drawer_name': 'ساحب',

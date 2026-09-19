@@ -187,8 +187,8 @@ describe('frontend_store: static/js/shop.js', () => {
       await updateForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
       await new Promise(r => setTimeout(r, 50));
 
-      expect(document.getElementById('cart-subtotal')?.textContent).toContain(' شيكل');
-      expect(document.getElementById('cart-total')?.textContent).toContain(' شيكل');
+      expect(document.getElementById('cart-subtotal')?.textContent).toContain('ILS');
+      expect(document.getElementById('cart-total')?.textContent).toContain('ILS');
     });
   });
 

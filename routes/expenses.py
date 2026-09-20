@@ -208,7 +208,25 @@ def print_expense(id):
         'address': current_app.config.get('COMPANY_ADDRESS'),
         'phone': current_app.config.get('COMPANY_PHONE'),
     }
-    return render_template('expenses/print.html', expense=expense, company=company)
+    
+    # Template selection (expenses use simple template for now, can add more later)
+    template = request.args.get('template', 'simple')
+    _ALLOWED_TEMPLATES = ('simple',)
+    if template not in _ALLOWED_TEMPLATES:
+        template = 'simple'
+    
+    template_labels = {'simple': 'مبسط'}
+    available_templates = [(k, v) for k, v in template_labels.items()]
+    
+    return render_template(
+        'expenses/print.html',
+        expense=expense,
+        company=company,
+        available_templates=available_templates,
+        current_template=template,
+        document_type='expense',
+        document_id=expense.id
+    )
 
 
 def _expense_gl_accounts(expense):

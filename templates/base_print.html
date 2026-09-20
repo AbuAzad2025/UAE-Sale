@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block print_title %}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Tajawal', 'Arial', sans-serif;
+      background: #f5f5f5;
+      padding: 0;
+      margin: 0;
+      font-size: 9px;
+      min-height: 100vh;
+    }
+    
+    @page {
+      size: {{ settings.paper_size or 'A4' }} {{ settings.orientation or 'portrait' }};
+      margin: 5mm;
+    }
+    
+    .page-wrapper {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background: #f5f5f5;
+    }
+    
+    .print-header-bar {
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 10px 15px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    @media print {
+      .print-header-bar { display: none !important; }
+    }
+    
+    .document {
+      {% if settings.paper_size == 'A5' %}
+        width: 212mm;
+        height: {{ '210mm' if settings.orientation == 'portrait' else '148mm' }};
+      {% elif settings.paper_size == 'Letter' %}
+        width: 212mm;
+        height: {{ '279mm' if settings.orientation == 'portrait' else '216mm' }};
+      {% else %}
+        width: {{ '210mm' if settings.orientation == 'portrait' else '297mm' }};
+        height: {{ '297mm' if settings.orientation == 'portrait' else '210mm' }};
+      {% endif %}
+      margin: 20px auto;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      flex-shrink: 0;
+    }
+    
+    @media print {
+      body { margin: 0; padding: 0; background: white; }
+      .no-print { display: none !important; }
+      .document { 
+        box-shadow: none; 
+        border: none; 
+        border-radius: 0;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        height: auto !important;
+        min-height: 100vh;
+      }
+      .page-wrapper { background: white; }
+    }
+    
+    @media print {
+      .document {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+      }
+      body { margin: 0 !important; padding: 0 !important; background: white !important; }
+      .page-wrapper { background: white !important; }
+    }
+    
+    /* Template Selector Styles */
+    .template-selector {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      padding: 8px 0;
+    }
+    
+    .template-btn {
+      background: white;
+      border: 1px solid #ddd;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .template-btn:hover {
+      background: #f8f9fa;
+      border-color: #007A3D;
+    }
+    
+    .template-btn.active {
+      background: #007A3D;
+      color: white;
+      border-color: #007A3D;
+    }
+    
+    .print-btn-fixed {
+      background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%);
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-size: 9px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .print-btn-fixed:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+    }
+    
+    .selector-wrapper {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    
+    .template-label {
+      font-size: 8px;
+      color: #666;
+      font-weight: 600;
+    }
+  </style>
+  {% block extra_print_css %}{% endblock %}
+</head>
+<body class="print-body">
+  <div class="page-wrapper">
+    <!-- Template Selector & Print Button -->
+    <header class="no-print print-header-bar">
+      <div class="template-selector selector-wrapper">
+        <span class="template-label">القالب:</span>
+        <div class="template-buttons">
+          {% for tpl_key, tpl_name in available_templates %}
+            <button type="button" 
+                    class="template-btn {% if tpl_key == current_template %}active{% endif %}"
+                    data-template="{{ tpl_key }}"
+                    onclick="switchTemplate('{{ tpl_key }}')">
+              {{ tpl_name }}
+            </button>
+          {% endfor %}
+        </div>
+        <button type="button" class="print-btn-fixed" onclick="window.print()">
+          <i class="fas fa-print"></i> طباعة
+        </button>
+      </div>
+    </header>
+
+    <main style="flex: 1; display: flex; justify-content: center; padding: 20px 15px;">
+      <div class="document" id="document-content">
+        {% block document_content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Get base URL for template switching
+    const BASE_URL = "{{ request.script_root }}";
+    const DOCUMENT_TYPE = "{{ document_type }}"; // 'invoice', 'receipt', 'purchase', 'expense', 'voucher'
+    const DOCUMENT_ID = "{{ document_id }}";
+    const CURRENT_TEMPLATE = "{{ current_template }}";
+    
+    function switchTemplate(templateKey) {
+      // Update active button
+      document.querySelectorAll('.template-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.template === templateKey);
+      });
+      
+      // Reload page with new template parameter
+      const url = new URL(window.location.href);
+      url.searchParams.set('template', templateKey);
+      window.location.href = url.toString();
+    }
+    
+    // Initialize active button on load
+    document.addEventListener('DOMContentLoaded', function() {
+      const activeBtn = document.querySelector('.template-btn.active');
+      if (activeBtn) {
+        activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+      }
+    });
+    
+    // Keyboard shortcut for print
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        window.print();
+      }
+    });
+  </script>
+  {% block extra_print_js %}{% endblock %}
+</body>
+</html>

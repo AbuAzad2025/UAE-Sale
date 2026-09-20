@@ -280,7 +280,25 @@ def print_purchase(id):
         'address': current_app.config.get('COMPANY_ADDRESS'),
         'phone': current_app.config.get('COMPANY_PHONE'),
     }
-    return render_template('purchases/print.html', purchase=purchase, company=company)
+    
+    # Template selection (purchases use simple template for now, can add more later)
+    template = request.args.get('template', 'simple')
+    _ALLOWED_TEMPLATES = ('simple',)
+    if template not in _ALLOWED_TEMPLATES:
+        template = 'simple'
+    
+    template_labels = {'simple': 'مبسط'}
+    available_templates = [(k, v) for k, v in template_labels.items()]
+    
+    return render_template(
+        'purchases/print.html',
+        purchase=purchase,
+        company=company,
+        available_templates=available_templates,
+        current_template=template,
+        document_type='purchase',
+        document_id=purchase.id
+    )
 
 
 @purchases_bp.route('/<int:id>/edit', methods=['GET', 'POST'])

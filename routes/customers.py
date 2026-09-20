@@ -267,8 +267,7 @@ def statement(id):
     sales_ids = [s.id for s in sales]
     from sqlalchemy.orm import joinedload
     sales_with_relations = Sale.query.options(
-        joinedload(Sale.lines).joinedload(SaleLine.product),
-        joinedload(Sale.payments)
+        joinedload(Sale.lines).joinedload(SaleLine.product)
     ).filter(Sale.id.in_(sales_ids or [0])).all()
     sales_dict = {s.id: s for s in sales_with_relations}
 
@@ -297,7 +296,7 @@ def statement(id):
                 'notes': line.notes or ''
             })
 
-        sale_payments = loaded_sale.payments.order_by(Payment.payment_date.asc()).all()
+        sale_payments = sale.payments.order_by(Payment.payment_date.asc()).all()
         sale_payments_data = []
         last_payment_date = None
 

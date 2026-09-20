@@ -121,18 +121,18 @@ def partners():  # noqa: C901
         ).filter(
             Payment.direction == 'outgoing',
             Payment.customer_id.in_([c.id for c in customers])
-        )
+        ).group_by(Payment.customer_id)
         receipts_agg = db.session.query(
             Receipt.customer_id,
             func.sum(Receipt.amount_base).label('received')
-        ).filter(Receipt.customer_id.in_([c.id for c in customers]))
+        ).filter(Receipt.customer_id.in_([c.id for c in customers])).group_by(Receipt.customer_id)
         payment_in_agg = db.session.query(
             Payment.customer_id,
             func.sum(Payment.amount_base).label('received')
         ).filter(
             Payment.direction == 'incoming',
             Payment.customer_id.in_([c.id for c in customers])
-        )
+        ).group_by(Payment.customer_id)
         if date_from:
             paid_agg = paid_agg.filter(func.date(Payment.payment_date) >= date_from)
             receipts_agg = receipts_agg.filter(func.date(Receipt.receipt_date) >= date_from)

@@ -3,7 +3,7 @@ from functools import wraps
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, abort
 from flask_login import login_required, current_user
 from extensions import db, limiter
-from models import Customer, Sale
+from models import Customer, Sale, SaleLine
 from utils.decorators import permission_required, get_owned_or_404
 
 from utils.helpers import create_audit_log

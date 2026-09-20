@@ -1,0 +1,6 @@
+[flake8]
+exclude = .git,venv,.venv,env,instance,node_modules,static,ai_knowledge/models,migrations,*.html,*.htm
+select = E9,F63,F7,F82
+count = True
+show-source = True
+statistics = True

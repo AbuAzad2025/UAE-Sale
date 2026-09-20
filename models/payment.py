@@ -106,6 +106,30 @@ class Payment(TenantScopedMixin, db.Model):
     def receipt_date(self):
         return self.payment_date
 
+    def get_source_info(self):
+        """معلومات المصدر للسند"""
+        if self.sale_id:
+            from models import Sale
+            sale = db.session.get(Sale, self.sale_id)
+            if sale:
+                return {
+                    'type': 'فاتورة بيع',
+                    'number': sale.sale_number,
+                    'date': sale.sale_date.strftime('%Y-%m-%d') if sale.sale_date else None,
+                    'amount': float(sale.total_amount) if sale.total_amount else None
+                }
+        elif self.supplier_id:
+            from models import Supplier
+            supplier = db.session.get(Supplier, self.supplier_id)
+            if supplier:
+                return {
+                    'type': 'مورد',
+                    'number': supplier.name,
+                    'date': None,
+                    'amount': float(self.amount) if self.amount else None
+                }
+        return None
+
     def get_method_display(self, lang='ar'):
         methods = {
             'cash': {'ar': 'نقدي', 'en': 'Cash'},

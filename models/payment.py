@@ -102,6 +102,10 @@ class Payment(TenantScopedMixin, db.Model):
     def __repr__(self):
         return f'<Payment {self.payment_number}>'
 
+    @property
+    def receipt_date(self):
+        return self.payment_date
+
     def get_method_display(self, lang='ar'):
         methods = {
             'cash': {'ar': 'نقدي', 'en': 'Cash'},

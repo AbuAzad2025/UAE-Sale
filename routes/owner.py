@@ -158,7 +158,11 @@ def dashboard():
         balance = (sale.amount_base or Decimal('0')) - (sale.paid_amount_base or Decimal('0'))
         if balance > 0:
             total_receivables += balance
-            if sale.sale_date < cutoff_date:
+            sale_date = sale.sale_date
+            # Normalize timezone: if sale_date is naive, assume UTC (matching cutoff_date)
+            if sale_date.tzinfo is None:
+                sale_date = sale_date.replace(tzinfo=timezone.utc)
+            if sale_date < cutoff_date:
                 overdue_count += 1
 
     stats['total_receivables'] = float(total_receivables)

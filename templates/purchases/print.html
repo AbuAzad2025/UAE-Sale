@@ -1,81 +1,125 @@
-{% extends 'base.html' %}
+{% extends 'base_print.html' %}
 
-{% block title %}طباعة فاتورة الشراء #{{ purchase.purchase_number }}{% endblock %}
+{% block print_title %}فاتورة شراء #{{ purchase.purchase_number }}{% endblock %}
 
-{% block content %}
-<div class="container-fluid">
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">فاتورة شراء #{{ purchase.purchase_number }}</h3>
-          <div class="card-tools">
-            <button onclick="window.print()" class="btn btn-primary" style="position:relative;z-index:9999;pointer-events:auto;cursor:pointer;">
-              <i class="fas fa-print"></i> طباعة
-            </button>
-            <a href="{{ url_for('purchases.view', id=purchase.id) }}" class="btn btn-secondary">
-              <i class="fas fa-arrow-left"></i> رجوع
-            </a>
-          </div>
-        </div>
-        <div class="card-body">
-          <!-- معلومات المورد -->
-          <div class="row mb-4">
-            <div class="col-md-6">
-              <h4>معلومات المورد</h4>
-              <p><strong>المورد:</strong> {{ purchase.supplier_name }}</p>
-              <p><strong>الهاتف:</strong> {{ purchase.supplier_phone }}</p>
-            </div>
-            <div class="col-md-6 text-right">
-              <h4>معلومات الفاتورة</h4>
-              <p><strong>التاريخ:</strong> {{ purchase.purchase_date.strftime('%Y-%m-%d') }}</p>
-              <p><strong>المبلغ الإجمالي:</strong> {{ purchase.total_amount }} {{ base_currency }}</p>
-              <p><strong>المدفوع:</strong> {{ purchase.get_paid_amount() }} {{ base_currency }}</p>
-              <p><strong>المتبقي:</strong> {{ purchase.total_amount - purchase.get_paid_amount() }} {{ base_currency }}</p>
-            </div>
-          </div>
-
-          <!-- جدول المنتجات -->
-          <table class="table table-bordered">
-            <thead>
-              <tr>
-                <th>المنتج</th>
-                <th>الكمية</th>
-                <th>السعر</th>
-                <th>الإجمالي</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for line in purchase.lines %}
-              <tr>
-                <td>{{ line.product.name }}</td>
-                <td>{{ line.quantity }}</td>
-                <td>{{ line.unit_cost }}</td>
-                <td>{{ line.line_total }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-
-          <!-- الملاحظات -->
-          {% if purchase.notes %}
-          <div class="mt-3">
-            <strong>ملاحظات:</strong>
-            <p>{{ purchase.notes }}</p>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
+{% block extra_print_css %}
 <style>
-@media print {
-  .card-tools, .main-sidebar, .main-header, .main-footer {
-    display: none !important;
+  .document { background: white; }
+  @media print { .document { box-shadow: none; border: none; } }
+  .purchase-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 15px 20px;
+    text-align: center;
   }
-}
+  .logo { height: 50px; background: white; padding: 8px; border-radius: 8px; margin-bottom: 8px; }
+  .company-name { font-size: 9px; font-weight: 700; margin-bottom: 3px; }
+  .company-info { font-size: 8px; opacity: 0.95; }
+  .purchase-title {
+    background: linear-gradient(to right, #f8d7da 0%, #f5c6cb 100%);
+    padding: 8px;
+    text-align: center;
+    border-bottom: 1px solid #dc3545;
+  }
+  .purchase-title h2 { color: #dc3545; font-size: 9px; margin: 0; }
+  .purchase-number { color: #c82333; font-size: 9px; margin-top: 5px; font-weight: 700; }
+  .content { padding: 10px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .info-box { background: #f8f9fa; padding: 6px; border-radius: 8px; border-right: 4px solid #dc3545; }
+  .info-box h3 { color: #dc3545; margin-bottom: 8px; font-size: 9px; font-weight: 700; }
+  .info-box p { margin: 5px 0; font-size: 8px; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 8px; }
+  thead { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; }
+  th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid #e0e0e0; }
+  th { font-size: 9px; }
+  tbody tr:hover { background: #f8f9fa; }
+  .total-section { margin-top: 12px; text-align: left; background: #f8f9fa; padding: 12px 15px; border-radius: 6px; }
+  .total-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 9px; }
+  .total-row.final { border-top: 2px solid #dc3545; padding-top: 8px; margin-top: 8px; font-size: 9px; font-weight: 700; color: #dc3545; }
+  .footer { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 8px; text-align: center; margin-top: 10px; border-radius: 0 0 8px 8px; font-size: 9px; }
 </style>
 {% endblock %}
 
+{% block document_content %}
+<div class="document">
+  <div class="no-print template-selector">
+    <div class="selector-wrapper">
+      <span class="template-label">القالب:</span>
+      <div class="template-buttons">
+        {% for tpl_key, tpl_name in available_templates %}
+          <button type="button" class="template-btn {% if tpl_key == current_template %}active{% endif %}" data-template="{{ tpl_key }}" onclick="switchTemplate('{{ tpl_key }}')">{{ tpl_name }}</button>
+        {% endfor %}
+      </div>
+      <button type="button" class="print-btn-fixed" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
+    </div>
+  </div>
+
+  <div class="purchase">
+    <div class="purchase-header">
+      {% if settings and settings.show_logo %}
+      <img src="{{ url_for('static', filename=settings.logo_path if settings.logo_path else 'img/garage_logo.png') }}" alt="Logo" class="logo">
+      {% endif %}
+      <div class="company-name">{{ settings.company_name_ar if settings and settings.company_name_ar else (config.COMPANY_NAME_AR if config else 'شركة أزاد') }}</div>
+      <div class="company-info">
+        <div>{{ settings.address_ar if settings and settings.address_ar else (config.COMPANY_ADDRESS if config else 'أبو ظبي - الإمارات العربية المتحدة') }}</div>
+        <div>📞 {{ settings.phone_1 if settings and settings.phone_1 else '+970592800646' }} | 📧 {{ settings.email if settings and settings.email else config.COMPANY_EMAIL }}</div>
+        {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div style="margin-top: 3px;">الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
+      </div>
+    </div>
+
+    <div class="purchase-title">
+      <h2>📋 فاتورة شراء</h2>
+      <div class="purchase-number">{{ purchase.purchase_number }}</div>
+    </div>
+
+    <div class="content">
+      <div class="info-grid">
+        <div class="info-box">
+          <h3>🏢 معلومات المورد</h3>
+          <p><strong>المورد:</strong> {{ purchase.supplier_name }}</p>
+          <p><strong>الهاتف:</strong> {{ purchase.supplier_phone }}</p>
+        </div>
+        <div class="info-box">
+          <h3>📅 بيانات الفاتورة</h3>
+          <p><strong>التاريخ:</strong> {{ purchase.purchase_date.strftime('%Y-%m-%d') }}</p>
+          <p><strong>المبلغ الإجمالي:</strong> {{ purchase.total_amount }} {{ base_currency }}</p>
+          <p><strong>المدفوع:</strong> {{ purchase.get_paid_amount() }} {{ base_currency }}</p>
+          <p><strong>المتبقي:</strong> {{ purchase.total_amount - purchase.get_paid_amount() }} {{ base_currency }}</p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>المنتج</th>
+            <th>الكمية</th>
+            <th>السعر</th>
+            <th>الإجمالي</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in purchase.lines %}
+          <tr>
+            <td>{{ line.product.name }}</td>
+            <td>{{ line.quantity }}</td>
+            <td>{{ line.unit_cost }}</td>
+            <td>{{ line.line_total }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if purchase.notes %}
+      <div style="margin-top: 8px; padding-top: 10px; border-top: 1px dashed #ccc;">
+        <strong>ملاحظات:</strong>
+        <p>{{ purchase.notes }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="footer">
+      <p>{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else 'الدفع نقداً أو بالتحويل البنكي' }}</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

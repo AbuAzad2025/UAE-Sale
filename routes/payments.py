@@ -170,7 +170,34 @@ def print_payment(id):
         'address': current_app.config.get('COMPANY_ADDRESS'),
         'phone': current_app.config.get('COMPANY_PHONE'),
     }
-    return render_template('payments/print_receipt.html', receipt=payment, is_payment=True, company=company, printed_at=datetime.now())
+    
+    # Template selection (payments use receipt templates)
+    template = request.args.get('template', 'modern')
+    _ALLOWED_TEMPLATES = ('modern', 'classic', 'gulf', 'minimal', 'simple')
+    template = request.args.get('template') or 'modern'
+    if template not in _ALLOWED_TEMPLATES:
+        template = 'modern'
+    
+    template_labels = {
+        'modern': 'مودرن',
+        'classic': 'كلاسيك',
+        'gulf': 'خليجي',
+        'minimal': 'بسيط',
+        'simple': 'مبسط'
+    }
+    available_templates = [(k, v) for k, v in template_labels.items() if k in _ALLOWED_TEMPLATES]
+    
+    return render_template(
+        f'receipts/{template}.html',
+        receipt=payment,
+        is_payment=True,
+        company=company,
+        printed_at=datetime.now(),
+        available_templates=available_templates,
+        current_template=template,
+        document_type='payment',
+        document_id=payment.id
+    )
 
 
 @payments_bp.route('/payments/<int:id>/archive', methods=['POST'])
@@ -683,28 +710,55 @@ def print_receipt(id):
     # Get invoice settings
     settings = InvoiceSettings.get_active()
 
-    # استخدام القالب النشط من الإعدادات
-    template = settings.active_template if settings and settings.active_template else 'modern'
-    template_path = f'receipts/{template}.html'
+    # Template selection via URL param (?template=modern) or settings
+    import re
+    _ALLOWED_TEMPLATES = ('modern', 'classic', 'gulf', 'minimal', 'simple')
+    template = request.args.get('template') or (settings.active_template if settings and settings.active_template else 'modern')
+    if template not in _ALLOWED_TEMPLATES and not re.fullmatch(r'[A-Za-z0-9_-]+', template or ''):
+        template = 'modern'
+    if template not in _ALLOWED_TEMPLATES:
+        template = 'modern'
 
-    # التحقق من وجود القالب، وإلا استخدام القالب الافتراضي
+    template_labels = {
+        'modern': 'مودرن',
+        'classic': 'كلاسيك',
+        'gulf': 'خليجي',
+        'minimal': 'بسيط',
+        'simple': 'مبسط'
+    }
+    available_templates = [(k, v) for k, v in template_labels.items() if k in _ALLOWED_TEMPLATES]
+
+    from flask import current_app
+    company = {
+        'name_ar': current_app.config.get('COMPANY_NAME_AR'),
+        'address': current_app.config.get('COMPANY_ADDRESS'),
+        'phone': current_app.config.get('COMPANY_PHONE'),
+    }
+
     try:
-        from flask import current_app
-        company = {
-            'name_ar': current_app.config.get('COMPANY_NAME_AR'),
-            'address': current_app.config.get('COMPANY_ADDRESS'),
-            'phone': current_app.config.get('COMPANY_PHONE'),
-        }
-        return render_template(template_path, receipt=receipt, settings=settings, company=company, printed_at=datetime.now())
+        return render_template(
+            f'receipts/{template}.html',
+            receipt=receipt,
+            settings=settings,
+            company=company,
+            printed_at=datetime.now(),
+            available_templates=available_templates,
+            current_template=template,
+            document_type='receipt',
+            document_id=receipt.id
+        )
     except Exception:
-        # إذا لم يوجد القالب، استخدام modern كافتراضي
-        from flask import current_app
-        company = {
-            'name_ar': current_app.config.get('COMPANY_NAME_AR'),
-            'address': current_app.config.get('COMPANY_ADDRESS'),
-            'phone': current_app.config.get('COMPANY_PHONE'),
-        }
-        return render_template('receipts/modern.html', receipt=receipt, settings=settings, company=company, printed_at=datetime.now())
+        return render_template(
+            'receipts/modern.html',
+            receipt=receipt,
+            settings=settings,
+            company=company,
+            printed_at=datetime.now(),
+            available_templates=available_templates,
+            current_template='modern',
+            document_type='receipt',
+            document_id=receipt.id
+        )
 
 
 @payments_bp.route('/archived')

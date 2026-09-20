@@ -217,20 +217,46 @@ def print_invoice(id):
     from config import Config
     settings = InvoiceSettings.get_active()
 
-    # استخدام القالب النشط من الإعدادات (allowlist لمنع حقن اسم القالب)
+    # Template selection via URL param (?template=modern) or settings
     import re
     _ALLOWED_TEMPLATES = ('modern', 'classic', 'gulf', 'minimal', 'simple')
-    template = settings.active_template if settings and settings.active_template else 'modern'
+    template = request.args.get('template') or (settings.active_template if settings and settings.active_template else 'modern')
     if template not in _ALLOWED_TEMPLATES and not re.fullmatch(r'[A-Za-z0-9_-]+', template or ''):
         template = 'modern'
     if template not in _ALLOWED_TEMPLATES:
         template = 'modern'
 
+    template_labels = {
+        'modern': 'مودرن',
+        'classic': 'كلاسيك',
+        'gulf': 'خليجي',
+        'minimal': 'بسيط',
+        'simple': 'مبسط'
+    }
+    available_templates = [(k, v) for k, v in template_labels.items() if k in _ALLOWED_TEMPLATES]
+
     try:
-        return render_template(f'invoices/{template}.html', sale=sale, settings=settings, config=Config)
+        return render_template(
+            f'invoices/{template}.html',
+            sale=sale,
+            settings=settings,
+            config=Config,
+            available_templates=available_templates,
+            current_template=template,
+            document_type='invoice',
+            document_id=sale.id
+        )
     except Exception:
-        # إذا لم يوجد القالب، استخدام modern كافتراضي
-        return render_template('invoices/modern.html', sale=sale, settings=settings, config=Config)
+        return render_template(
+            'invoices/modern.html',
+            sale=sale,
+            settings=settings,
+            config=Config,
+            available_templates=available_templates,
+            current_template='modern',
+            document_type='invoice',
+            document_id=sale.id
+        )
 
 
 @sales_bp.route('/<int:id>/edit', methods=['GET', 'POST'])

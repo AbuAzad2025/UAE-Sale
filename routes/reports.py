@@ -29,34 +29,29 @@ def partners():  # noqa: C901
     date_from = request.args.get('date_from', '', type=str)
     date_to = request.args.get('date_to', '', type=str)
 
-    # --- 1. PRODUCT SHARES CALCULATION ---
-    # Find products that have partners
-    partner_products = Product.query.join(ProductPartner).filter(Product.is_active == True).distinct().all()  # noqa: E712
+    # --- 1. PRODUCT SHARES CALCULATION (aggregated at DB level) ---
+    # Aggregate sales per product in a single query
+    partner_sales_agg = db.session.query(
+        SaleLine.product_id,
+        func.sum(SaleLine.line_total).label('total_revenue'),
+        func.sum(SaleLine.quantity).label('total_qty')
+    ).join(Sale).filter(
+        Sale.status == 'confirmed'
+    )
+    if date_from:
+        partner_sales_agg = partner_sales_agg.filter(func.date(Sale.sale_date) >= date_from)
+    if date_to:
+        partner_sales_agg = partner_sales_agg.filter(func.date(Sale.sale_date) <= date_to)
+    partner_sales_agg = partner_sales_agg.group_by(SaleLine.product_id).all()
+    agg_dict = {r.product_id: (r.total_revenue or Decimal('0'), r.total_qty or 0) for r in partner_sales_agg}
 
+    partner_products = Product.query.join(ProductPartner).filter(Product.is_active == True).distinct().all()
     partners_data = []
-    # Dictionary to aggregate shares per partner: {partner_id: total_share_amount}
     partner_share_totals = {}
 
     for product in partner_products:
-        # Calculate total sales for this product within date range
-        sales_query = SaleLine.query.join(Sale).filter(
-            SaleLine.product_id == product.id,
-            Sale.status == 'confirmed'
-        )
-
-        if date_from:
-            sales_query = sales_query.filter(func.date(Sale.sale_date) >= date_from)
-        if date_to:
-            sales_query = sales_query.filter(func.date(Sale.sale_date) <= date_to)
-
-        sales_lines = sales_query.all()
-
-        total_revenue = sum(line.line_total for line in sales_lines)
-        total_qty = sum(line.quantity for line in sales_lines)
-
-        # Calculate average unit price
+        total_revenue, total_qty = agg_dict.get(product.id, (Decimal('0'), 0))
         avg_unit_price = total_revenue / total_qty if total_qty > 0 else 0
-
         if total_revenue > 0:
             for share in product.partner_shares:
                 percentage = Decimal(str(share.percentage))
@@ -70,44 +65,39 @@ def partners():  # noqa: C901
                     'total_revenue': total_revenue,
                     'partner_share_amount': partner_amount
                 })
-
-                # Aggregate for summary
                 p_id = share.partner_customer.id
                 partner_share_totals[p_id] = partner_share_totals.get(p_id, Decimal('0')) + partner_amount
 
     # Find products linked to a merchant
+    # Aggregate merchant sales at DB level
+    merchant_sales_agg = db.session.query(
+        SaleLine.product_id,
+        func.sum(SaleLine.line_total).label('total_revenue'),
+        func.sum(SaleLine.quantity).label('total_qty')
+    ).join(Sale).filter(
+        Sale.status == 'confirmed'
+    )
+    if date_from:
+        merchant_sales_agg = merchant_sales_agg.filter(func.date(Sale.sale_date) >= date_from)
+    if date_to:
+        merchant_sales_agg = merchant_sales_agg.filter(func.date(Sale.sale_date) <= date_to)
+    merchant_sales_agg = merchant_sales_agg.group_by(SaleLine.product_id).all()
+    merchant_agg_dict = {r.product_id: (r.total_revenue or Decimal('0'), r.total_qty or 0) for r in merchant_sales_agg}
+
     merchant_products = Product.query.filter(
         Product.merchant_customer_id.isnot(None),
         Product.is_active.is_(True)
     ).all()
 
     merchants_data = []
-    # Dictionary to aggregate shares per merchant: {merchant_id: total_share_amount}
     merchant_share_totals = {}
 
     for product in merchant_products:
-        sales_query = SaleLine.query.join(Sale).filter(
-            SaleLine.product_id == product.id,
-            Sale.status == 'confirmed'
-        )
-
-        if date_from:
-            sales_query = sales_query.filter(func.date(Sale.sale_date) >= date_from)
-        if date_to:
-            sales_query = sales_query.filter(func.date(Sale.sale_date) <= date_to)
-
-        sales_lines = sales_query.all()
-
-        total_revenue = sum(line.line_total for line in sales_lines)
-        total_qty = sum(line.quantity for line in sales_lines)
-
-        # Calculate average unit price
+        total_revenue, total_qty = merchant_agg_dict.get(product.id, (Decimal('0'), 0))
         avg_unit_price = total_revenue / total_qty if total_qty > 0 else 0
-
         if total_revenue > 0:
             merchant_percentage = float(product.merchant_share or 100)
             merchant_amount = total_revenue * (Decimal(merchant_percentage) / 100)
-
             merchants_data.append({
                 'product_name': product.name,
                 'merchant_name': product.merchant_customer.name,
@@ -117,8 +107,6 @@ def partners():  # noqa: C901
                 'total_revenue': total_revenue,
                 'merchant_share_amount': merchant_amount
             })
-
-            # Aggregate for summary
             m_id = product.merchant_customer.id
             merchant_share_totals[m_id] = merchant_share_totals.get(m_id, Decimal('0')) + merchant_amount
 
@@ -126,49 +114,45 @@ def partners():  # noqa: C901
     # Helper to get payments/receipts
     def get_financials(customer_type, share_totals_dict):
         customers = Customer.query.filter_by(customer_type=customer_type).all()
+        # Aggregate payments and receipts per customer at DB level
+        paid_agg = db.session.query(
+            Payment.customer_id,
+            func.sum(Payment.amount_base).label('paid')
+        ).filter(
+            Payment.direction == 'outgoing',
+            Payment.customer_id.in_([c.id for c in customers])
+        )
+        receipts_agg = db.session.query(
+            Receipt.customer_id,
+            func.sum(Receipt.amount_base).label('received')
+        ).filter(Receipt.customer_id.in_([c.id for c in customers]))
+        payment_in_agg = db.session.query(
+            Payment.customer_id,
+            func.sum(Payment.amount_base).label('received')
+        ).filter(
+            Payment.direction == 'incoming',
+            Payment.customer_id.in_([c.id for c in customers])
+        )
+        if date_from:
+            paid_agg = paid_agg.filter(func.date(Payment.payment_date) >= date_from)
+            receipts_agg = receipts_agg.filter(func.date(Receipt.receipt_date) >= date_from)
+            payment_in_agg = payment_in_agg.filter(func.date(Payment.payment_date) >= date_from)
+        if date_to:
+            paid_agg = paid_agg.filter(func.date(Payment.payment_date) <= date_to)
+            receipts_agg = receipts_agg.filter(func.date(Receipt.receipt_date) <= date_to)
+            payment_in_agg = payment_in_agg.filter(func.date(Payment.payment_date) <= date_to)
+        paid_dict = {r.customer_id: (r.paid or Decimal('0')) for r in paid_agg.all()}
+        receipts_dict = {r.customer_id: (r.received or Decimal('0')) for r in receipts_agg.all()}
+        payment_in_dict = {r.customer_id: (r.received or Decimal('0')) for r in payment_in_agg.all()}
+
         summary_list = []
-
         for cust in customers:
-            # Paid TO Customer (Outgoing Payments)
-            paid_query = db.session.query(func.sum(Payment.amount_base)).filter(
-                Payment.customer_id == cust.id,
-                Payment.direction == 'outgoing'
-            )
-            # Received FROM Customer (Receipts OR Incoming Payments)
-            # 1. Receipts
-            receipts_query = db.session.query(func.sum(Receipt.amount_base)).filter(
-                Receipt.customer_id == cust.id
-            )
-            # 2. Incoming Payments (Refunds/etc)
-            payment_in_query = db.session.query(func.sum(Payment.amount_base)).filter(
-                Payment.customer_id == cust.id,
-                Payment.direction == 'incoming'
-            )
-
-            if date_from:
-                paid_query = paid_query.filter(func.date(Payment.payment_date) >= date_from)
-                receipts_query = receipts_query.filter(func.date(Receipt.receipt_date) >= date_from)
-                payment_in_query = payment_in_query.filter(func.date(Payment.payment_date) >= date_from)
-            if date_to:
-                paid_query = paid_query.filter(func.date(Payment.payment_date) <= date_to)
-                receipts_query = receipts_query.filter(func.date(Receipt.receipt_date) <= date_to)
-                payment_in_query = payment_in_query.filter(func.date(Payment.payment_date) <= date_to)
-
-            total_paid_to = paid_query.scalar() or Decimal('0')
-            total_receipts = receipts_query.scalar() or Decimal('0')
-            total_payment_in = payment_in_query.scalar() or Decimal('0')
+            total_paid_to = paid_dict.get(cust.id, Decimal('0'))
+            total_receipts = receipts_dict.get(cust.id, Decimal('0'))
+            total_payment_in = payment_in_dict.get(cust.id, Decimal('0'))
             total_received_from = total_receipts + total_payment_in
-
             total_share = share_totals_dict.get(cust.id, Decimal('0'))
-
-            # For Partner/Merchant:
-            # Balance (Net) = (Total Share + Total Received From) - Total Paid To
-            # Assuming 'Share' is money they earned (credit to them).
-            # 'Received From' is money they gave us (credit to them, or debt repayment?).
-            # Usually: Balance = (Earnings + Deposits) - Withdrawals
             net_balance = (total_share + total_received_from) - total_paid_to
-
-            # Only add if there's any activity
             if total_share > 0 or total_paid_to > 0 or total_received_from > 0:
                 summary_list.append({
                     'name': cust.name,
@@ -182,45 +166,52 @@ def partners():  # noqa: C901
     partners_summary = get_financials('partner', partner_share_totals)
     merchants_summary = get_financials('merchant', merchant_share_totals)
 
-    # --- 3. SUPPLIERS SUMMARY ---
-    suppliers = Supplier.query.all()
+    # --- 3. SUPPLIERS SUMMARY (aggregated at DB level) ---
+    suppliers = Supplier.query.filter_by(is_active=True).all()
     suppliers_summary = []
 
+    # Aggregate purchases per supplier once
+    purchase_agg = db.session.query(
+        Purchase.supplier_id,
+        func.sum(Purchase.amount_base).label('total_purchases')
+    ).filter(Purchase.status == 'confirmed')
+    if date_from:
+        purchase_agg = purchase_agg.filter(func.date(Purchase.purchase_date) >= date_from)
+    if date_to:
+        purchase_agg = purchase_agg.filter(func.date(Purchase.purchase_date) <= date_to)
+    purchase_agg = purchase_agg.group_by(Purchase.supplier_id).all()
+    purchase_dict = {r.supplier_id: (r.total_purchases or Decimal('0')) for r in purchase_agg}
+
+    # Aggregate payments per supplier once
+    payment_agg = db.session.query(
+        Payment.supplier_id,
+        func.sum(Payment.amount_base).label('total_paid')
+    ).filter(Payment.direction == 'outgoing')
+    if date_from:
+        payment_agg = payment_agg.filter(func.date(Payment.payment_date) >= date_from)
+    if date_to:
+        payment_agg = payment_agg.filter(func.date(Payment.payment_date) <= date_to)
+    payment_agg = payment_agg.group_by(Payment.supplier_id).all()
+    paid_dict = {r.supplier_id: (r.total_paid or Decimal('0')) for r in payment_agg}
+
+    # Aggregate refunds per supplier once
+    refund_agg = db.session.query(
+        Payment.supplier_id,
+        func.sum(Payment.amount_base).label('total_refunds')
+    ).filter(Payment.direction == 'incoming', Payment.supplier_id.isnot(None))
+    if date_from:
+        refund_agg = refund_agg.filter(func.date(Payment.payment_date) >= date_from)
+    if date_to:
+        refund_agg = refund_agg.filter(func.date(Payment.payment_date) <= date_to)
+    refund_agg = refund_agg.group_by(Payment.supplier_id).all()
+    refund_dict = {r.supplier_id: (r.total_refunds or Decimal('0')) for r in refund_agg}
+
     for sup in suppliers:
-        # Total Purchases
-        purchases_query = db.session.query(func.sum(Purchase.amount_base)).filter(
-            Purchase.supplier_id == sup.id,
-            Purchase.status == 'confirmed'
-        )
-        # Paid TO Supplier (Outgoing)
-        paid_query = db.session.query(func.sum(Payment.amount_base)).filter(
-            Payment.supplier_id == sup.id,
-            Payment.direction == 'outgoing'
-        )
-        # Received FROM Supplier (Incoming - Refunds)
-        received_query = db.session.query(func.sum(Payment.amount_base)).filter(
-            Payment.supplier_id == sup.id,
-            Payment.direction == 'incoming'
-        )
-
-        if date_from:
-            purchases_query = purchases_query.filter(func.date(Purchase.purchase_date) >= date_from)
-            paid_query = paid_query.filter(func.date(Payment.payment_date) >= date_from)
-            received_query = received_query.filter(func.date(Payment.payment_date) >= date_from)
-        if date_to:
-            purchases_query = purchases_query.filter(func.date(Purchase.purchase_date) <= date_to)
-            paid_query = paid_query.filter(func.date(Payment.payment_date) <= date_to)
-            received_query = received_query.filter(func.date(Payment.payment_date) <= date_to)
-
-        total_purchases = purchases_query.scalar() or Decimal('0')
-        total_paid_to = paid_query.scalar() or Decimal('0')
-        total_refunds = received_query.scalar() or Decimal('0')
-
-        # Balance = Purchases - (Paid - Refunds)
-        # Or: Purchases - Net Paid
+        total_purchases = purchase_dict.get(sup.id, Decimal('0'))
+        total_paid_to = paid_dict.get(sup.id, Decimal('0'))
+        total_refunds = refund_dict.get(sup.id, Decimal('0'))
         net_paid = total_paid_to - total_refunds
         balance_due = total_purchases - net_paid
-
         if total_purchases > 0 or total_paid_to > 0 or total_refunds > 0:
             suppliers_summary.append({
                 'name': sup.name,
@@ -889,33 +880,27 @@ def ap_aging():  # noqa: C901
         'over_90': Decimal('0'),    # 90+ days
     }
 
+    # Aggregate at DB level
+    purchase_agg = db.session.query(
+        Purchase.supplier_id,
+        func.sum(Purchase.amount_base).label('total_purchases'),
+        func.min(Purchase.purchase_date).label('oldest_date')
+    ).filter(Purchase.status == 'confirmed').group_by(Purchase.supplier_id).all()
+    purchase_dict = {r.supplier_id: (r.total_purchases or Decimal('0'), r.oldest_date) for r in purchase_agg}
+
+    payment_agg = db.session.query(
+        Payment.supplier_id,
+        func.sum(Payment.amount_base).label('total_paid')
+    ).filter(Payment.direction == 'outgoing', Payment.payment_confirmed.is_(True)).group_by(Payment.supplier_id).all()
+    paid_dict = {r.supplier_id: (r.total_paid or Decimal('0')) for r in payment_agg}
+
     for supplier in suppliers:
-        # Get all confirmed purchases for this supplier
-        purchases = Purchase.query.filter(
-            Purchase.supplier_id == supplier.id,
-            Purchase.status == 'confirmed'
-        ).all()
-
-        # Get all confirmed outgoing payments for this supplier
-        payments = Payment.query.filter(
-            Payment.supplier_id == supplier.id,
-            Payment.direction == 'outgoing',
-            Payment.payment_confirmed.is_(True)
-        ).all()
-
-        total_purchases = sum((p.amount_base or Decimal('0') for p in purchases), Decimal('0'))
-        total_paid = sum((p.amount_base or Decimal('0') for p in payments), Decimal('0'))
+        total_purchases, oldest_purchase_date = purchase_dict.get(supplier.id, (Decimal('0'), None))
+        total_paid = paid_dict.get(supplier.id, Decimal('0'))
         balance = total_purchases - total_paid
 
         if balance <= 0:
             continue
-
-        # Age the balance using the oldest unpaid purchase
-        oldest_purchase_date = None
-        for p in purchases:
-            if p.purchase_date:
-                if oldest_purchase_date is None or p.purchase_date < oldest_purchase_date:
-                    oldest_purchase_date = p.purchase_date
 
         days_old = 0
         if oldest_purchase_date:

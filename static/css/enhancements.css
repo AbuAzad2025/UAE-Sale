@@ -246,6 +246,16 @@
 /* Centered selects via class instead of inline */
 .select2-selection__rendered--centered { text-align: center; }
 
+/* Enhanced RTL transitions and modern cards */
+.card-modern {
+  border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(102, 126, 234, 0.08);
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+.card-modern:hover { box-shadow: 0 8px 30px rgba(102, 126, 234, 0.15); transform: translateY(-2px); }
+
+/* RTL smooth scroll */
+[dir="rtl"] .sidebar { scroll-behavior: smooth; }
+
 @media (max-width: 768px) {
     .theme-toggle {
         bottom: 10px;

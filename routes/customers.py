@@ -263,11 +263,21 @@ def statement(id):
     sales = sales_query.order_by(Sale.sale_date).all()
     payments = payments_query.order_by(Payment.payment_date).all()
 
+    # Bulk load related lines and payments to avoid N+1
+    sales_ids = [s.id for s in sales]
+    from sqlalchemy.orm import joinedload
+    sales_with_relations = Sale.query.options(
+        joinedload(Sale.lines).joinedload(SaleLine.product),
+        joinedload(Sale.payments)
+    ).filter(Sale.id.in_(sales_ids or [0])).all()
+    sales_dict = {s.id: s for s in sales_with_relations}
+
     transactions = []
 
     for sale in sales:
+        loaded_sale = sales_dict.get(sale.id, sale)
         sale_lines_data = []
-        for idx, line in enumerate(sale.lines, start=1):
+        for idx, line in enumerate(loaded_sale.lines, start=1):
             quantity = Decimal(str(line.quantity or 0))
             unit_price = Decimal(str(line.unit_price or 0))
             discount_percent = Decimal(str(line.discount_percent or 0))
@@ -287,7 +297,7 @@ def statement(id):
                 'notes': line.notes or ''
             })
 
-        sale_payments = sale.payments.order_by(Payment.payment_date.asc()).all()
+        sale_payments = loaded_sale.payments.order_by(Payment.payment_date.asc()).all()
         sale_payments_data = []
         last_payment_date = None
 

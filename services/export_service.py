@@ -125,11 +125,12 @@ class ExportService:
                 if isinstance(value, (int, float)):
                     c.number_format = money_fmt
 
-        # Auto-width columns (approximate)
+        # Auto-width columns (approximate) — optimized: only scan first 100 rows
+        max_rows_to_scan = min(len(rows), 100)
         for col_idx in range(1, len(headers) + 1):
             max_len = max(len(str(headers[col_idx - 1])), 12)
             for row_idx in range(header_row + 1,
-                                 header_row + len(rows) + 1):
+                                 header_row + max_rows_to_scan + 1):
                 val = ws.cell(row=row_idx, column=col_idx).value
                 if val:
                     max_len = max(max_len, min(len(str(val)), 40))

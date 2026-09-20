@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Purchase, PurchaseLine, Product, Supplier, Warehouse
+from models import InvoiceSettings
 from services.stock_service import StockService
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
@@ -281,6 +282,8 @@ def print_purchase(id):
         'phone': current_app.config.get('COMPANY_PHONE'),
     }
     
+    settings = InvoiceSettings.get_active()
+    
     # Template selection (purchases use simple template for now, can add more later)
     template = request.args.get('template', 'simple')
     _ALLOWED_TEMPLATES = ('simple',)
@@ -293,6 +296,7 @@ def print_purchase(id):
     return render_template(
         'purchases/print.html',
         purchase=purchase,
+        settings=settings,
         company=company,
         available_templates=available_templates,
         current_template=template,

@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Expense, ExpenseCategory, Cheque
+from models import InvoiceSettings
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
 from utils.decorators import permission_required
@@ -209,6 +210,8 @@ def print_expense(id):
         'phone': current_app.config.get('COMPANY_PHONE'),
     }
     
+    settings = InvoiceSettings.get_active()
+    
     # Template selection (expenses use simple template for now, can add more later)
     template = request.args.get('template', 'simple')
     _ALLOWED_TEMPLATES = ('simple',)
@@ -221,6 +224,7 @@ def print_expense(id):
     return render_template(
         'expenses/print.html',
         expense=expense,
+        settings=settings,
         company=company,
         available_templates=available_templates,
         current_template=template,

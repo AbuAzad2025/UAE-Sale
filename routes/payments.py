@@ -171,6 +171,8 @@ def print_payment(id):
         'phone': current_app.config.get('COMPANY_PHONE'),
     }
     
+    settings = InvoiceSettings.get_active()
+    
     # Template selection (payments use receipt templates)
     template = request.args.get('template', 'modern')
     _ALLOWED_TEMPLATES = ('modern', 'classic', 'gulf', 'minimal', 'simple')
@@ -191,6 +193,7 @@ def print_payment(id):
         f'receipts/{template}.html',
         receipt=payment,
         is_payment=True,
+        settings=settings,
         company=company,
         printed_at=datetime.now(),
         available_templates=available_templates,

@@ -1858,17 +1858,30 @@ def invoice_settings():
                     import os
                     from werkzeug.utils import secure_filename
 
-                    filename = secure_filename(logo_file.filename)
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                    filename = f"logo_{timestamp}_{filename}"
+                    # Security: allowed image extensions and max size (5MB)
+                    allowed_ext = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
+                    ext = os.path.splitext(logo_file.filename)[1].lower()
+                    if ext not in allowed_ext:
+                        flash('⚠️ نوع الملف غير مدعوم للشعار. المسموح: PNG, JPG, JPEG, GIF, WEBP.', 'danger')
+                    else:
+                        max_size = 5 * 1024 * 1024  # 5MB
+                        logo_file.seek(0, os.SEEK_END)
+                        file_size = logo_file.tell()
+                        logo_file.seek(0)
+                        if file_size > max_size:
+                            flash('⚠️ حجم ملف الشعار كبير جداً. الحد الأقصى: 5 ميجابايت.', 'danger')
+                        else:
+                            filename = secure_filename(logo_file.filename)
+                            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                            filename = f"logo_{timestamp}_{filename}"
 
-                    upload_folder = os.path.join('static', 'uploads', 'logos')
-                    os.makedirs(upload_folder, exist_ok=True)
+                            upload_folder = os.path.join('static', 'uploads', 'logos')
+                            os.makedirs(upload_folder, exist_ok=True)
 
-                    filepath = os.path.join(upload_folder, filename)
-                    logo_file.save(filepath)
+                            filepath = os.path.join(upload_folder, filename)
+                            logo_file.save(filepath)
 
-                    settings.logo_path = f"uploads/logos/{filename}"
+                            settings.logo_path = f"uploads/logos/{filename}"
 
             # Handle watermark image upload
             if 'watermark_image' in request.files:

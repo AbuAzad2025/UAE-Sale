@@ -42,7 +42,7 @@ time.sleep(10)
 try:
     import urllib.request
     req = urllib.request.Request('http://127.0.0.1:8001/owner/dashboard')
-    with urllib.request.urlopen(req, timeout=10) as response:
+    with urllib.request.urlopen(req, timeout=10) as response:  # nosec B310
         status_code = response.getcode()
         print(f"Dashboard Status: {status_code}")
         if status_code == 200:

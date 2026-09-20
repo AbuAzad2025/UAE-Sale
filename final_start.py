@@ -39,7 +39,7 @@ for i in range(30):
     try:
         import urllib.request
         req = urllib.request.Request('http://127.0.0.1:8001/owner/dashboard')
-        with urllib.request.urlopen(req, timeout=2) as response:
+        with urllib.request.urlopen(req, timeout=2) as response:  # nosec B310
             status_code = response.getcode()
             print(f"\nDashboard Status: {status_code}")
 

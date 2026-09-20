@@ -1,8 +1,4 @@
-# Bandit security scanner configuration
-# Excludes directories that are not production code
-
 skips:
-  # B101: assert used — common in Flask/Django, low risk in web apps
   - B101
 
 exclude_dirs:
@@ -16,8 +12,5 @@ exclude_dirs:
   - static
   - ai_knowledge/models
 
-# Severity and confidence thresholds
-# Only report medium+ severity AND medium+ confidence
-# Lower-severity findings still appear in JSON report
 severity: medium
 confidence: medium

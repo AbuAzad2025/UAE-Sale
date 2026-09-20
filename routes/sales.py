@@ -427,12 +427,15 @@ def archived():
         ArchivedRecord.table_name == 'sales'
     )
 
-    archived_items = []
+    # Bulk-load related sales to avoid N+1
+    archived_ids = [a.record_id for a in archived_sales_query.all()]
+    sales_bulk = {s.id: s for s in db.session.query(Sale).filter(Sale.id.in_(archived_ids or [0])).all()}
 
+    archived_items = []
     for archived in archived_sales_query.all():
         data = archived.data
         # SECURITY: resolve underlying sale with tenant check; skip cross-tenant archives
-        sale = db.session.get(Sale, archived.record_id)
+        sale = sales_bulk.get(archived.record_id)
         if sale is not None and not getattr(current_user, 'is_owner', False):
             actor_tenant = getattr(current_user, 'tenant_id', None)
             if actor_tenant is not None and getattr(sale, 'tenant_id', None) != actor_tenant:

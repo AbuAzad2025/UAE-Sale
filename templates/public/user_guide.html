@@ -6,44 +6,51 @@
     <title>شركة أزاد للأنظمة الذكية - دليل المستخدم</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Tajawal', sans-serif; background: #f8f9fa; }
-        
-        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .navbar a { color: white; text-decoration: none; margin: 0 15px; }
         .navbar .logo { font-size: 1.5rem; font-weight: 900; }
-        
+
         .guide-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 60px 20px; text-align: center; }
         .guide-header h1 { font-size: 3rem; margin-bottom: 15px; }
-        
+
         .guide-container { max-width: 1200px; margin: 40px auto; padding: 0 20px; display: flex; gap: 40px; }
-        .sidebar { flex: 0 0 280px; background: white; padding: 25px; border-radius: 15px; height: fit-content; position: sticky; top: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .sidebar { flex: 0 0 300px; background: white; padding: 25px; border-radius: 15px; height: fit-content; position: sticky; top: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); max-height: 90vh; overflow-y: auto; }
         .sidebar h3 { margin-bottom: 20px; color: #2d3748; }
         .sidebar ul { list-style: none; }
-        .sidebar li { padding: 12px; margin: 5px 0; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+        .sidebar li { padding: 12px; margin: 5px 0; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-size: 0.95rem; }
         .sidebar li:hover { background: #f7fafc; }
         .sidebar li.active { background: #667eea; color: white; }
-        .sidebar li i { margin-left: 10px; }
-        
-        .content { flex: 1; }
+        .sidebar li i { margin-left: 10px; width: 20px; text-align: center; }
+
+        .content { flex: 1; min-width: 0; }
         .section { background: white; padding: 40px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
-        .section h2 { color: #667eea; margin-bottom: 20px; font-size: 2rem; }
-        .section h3 { color: #2d3748; margin: 25px 0 15px; font-size: 1.5rem; }
+        .section h2 { color: #667eea; margin-bottom: 20px; font-size: 1.8rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        .section h3 { color: #2d3748; margin: 25px 0 15px; font-size: 1.3rem; }
         .section p { line-height: 1.8; color: #4a5568; margin-bottom: 15px; }
         .section ul { margin: 15px 0 15px 30px; }
-        .section li { margin: 10px 0; line-height: 1.6; color: #4a5568; }
+        .section li { margin: 8px 0; line-height: 1.6; color: #4a5568; }
         .step-box { background: #f7fafc; padding: 20px; border-radius: 10px; border-right: 4px solid #667eea; margin: 15px 0; }
         .step-box h4 { color: #667eea; margin-bottom: 10px; }
         .note { background: #fff5f5; border-right: 4px solid #f56565; padding: 15px; border-radius: 8px; margin: 20px 0; }
         .tip { background: #f0fff4; border-right: 4px solid #48bb78; padding: 15px; border-radius: 8px; margin: 20px 0; }
-        
+
+        table.roles { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        table.roles th, table.roles td { border: 1px solid #e2e8f0; padding: 10px 14px; text-align: right; }
+        table.roles th { background: #667eea; color: white; }
+
+        .badge { display: inline-block; background: #ebf4ff; color: #2b6cb0; border-radius: 20px; padding: 3px 12px; font-size: 0.8rem; margin: 2px; }
+        .badge.green { background: #f0fff4; color: #2f855a; }
+
         .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 15px; margin: 20px 0; }
         .video-container iframe { position: absolute; top: 0; right: 0; width: 100%; height: 100%; }
-        
+
         footer { background: #2d3748; color: white; padding: 40px 20px; text-align: center; margin-top: 60px; }
-        
+
         @media (max-width: 768px) {
             .guide-container { flex-direction: column; }
             .sidebar { position: static; }
@@ -63,257 +70,466 @@
 
     <header class="guide-header">
         <h1>📚 دليل المستخدم الشامل</h1>
-        <p>كل ما تحتاج معرفته لاستخدام النظام بكفاءة</p>
+        <p>كل ما تحتاج معرفته لاستخدام نظام {{ config.COMPANY_NAME_AR }} بكفاءة</p>
     </header>
 
     <div class="guide-container">
         <aside class="sidebar">
             <h3>المحتويات</h3>
             <ul>
-                <li class="active" onclick="scrollToSection('start')"><i class="fas fa-play-circle"></i> البداية السريعة</li>
-                <li onclick="scrollToSection('login')"><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</li>
-                <li onclick="scrollToSection('products')"><i class="fas fa-boxes"></i> إدارة المنتجات</li>
-                <li onclick="scrollToSection('customers')"><i class="fas fa-users"></i> إدارة العملاء</li>
-                <li onclick="scrollToSection('sales')"><i class="fas fa-cash-register"></i> المبيعات</li>
+                <li class="active" onclick="scrollToSection('start')"><i class="fas fa-rocket"></i> البداية السريعة</li>
+                <li onclick="scrollToSection('login')"><i class="fas fa-sign-in-alt"></i> الدخول والأدوار</li>
+                <li onclick="scrollToSection('dashboard')"><i class="fas fa-tachometer-alt"></i> لوحة التحكم</li>
+                <li onclick="scrollToSection('products')"><i class="fas fa-boxes"></i> المنتجات</li>
+                <li onclick="scrollToSection('customers')"><i class="fas fa-users"></i> الزبائن</li>
+                <li onclick="scrollToSection('suppliers')"><i class="fas fa-truck"></i> الموردون</li>
+                <li onclick="scrollToSection('sales')"><i class="fas fa-cash-register"></i> المبيعات والمرتجعات</li>
                 <li onclick="scrollToSection('purchases')"><i class="fas fa-shopping-cart"></i> المشتريات</li>
-                <li onclick="scrollToSection('payments')"><i class="fas fa-money-bill-wave"></i> المدفوعات</li>
-                <li onclick="scrollToSection('reports')"><i class="fas fa-chart-line"></i> التقارير</li>
+                <li onclick="scrollToSection('payments')"><i class="fas fa-money-bill-wave"></i> المدفوعات والشيكات</li>
+                <li onclick="scrollToSection('expenses')"><i class="fas fa-file-invoice-dollar"></i> المصروفات</li>
+                <li onclick="scrollToSection('ledger')"><i class="fas fa-book"></i> دفتر الأستاذ والمحاسبة</li>
+                <li onclick="scrollToSection('warehouse')"><i class="fas fa-warehouse"></i> المستودعات والمخزون</li>
+                <li onclick="scrollToSection('shipments')"><i class="fas fa-ship"></i> الإرساليات والشحنات الواردة</li>
+                <li onclick="scrollToSection('erp')"><i class="fas fa-cubes"></i> الوحدات المتقدمة</li>
+                <li onclick="scrollToSection('hr')"><i class="fas fa-id-badge"></i> الموارد البشرية</li>
+                <li onclick="scrollToSection('approvals')"><i class="fas fa-check-double"></i> الموافقات</li>
+                <li onclick="scrollToSection('users')"><i class="fas fa-user-cog"></i> المستخدمون والصلاحيات</li>
+                <li onclick="scrollToSection('notifications')"><i class="fas fa-paper-plane"></i> الإشعارات والواتساب</li>
+                <li onclick="scrollToSection('reports')"><i class="fas fa-chart-line"></i> التقارير والتصدير</li>
                 <li onclick="scrollToSection('ai')"><i class="fas fa-brain"></i> الذكاء الاصطناعي</li>
+                <li onclick="scrollToSection('vault')"><i class="fas fa-vault"></i> خزينة المدفوعات</li>
+                <li onclick="scrollToSection('owner')"><i class="fas fa-crown"></i> لوحة المالك</li>
+                <li onclick="scrollToSection('support')"><i class="fas fa-headset"></i> الدعم الفني</li>
             </ul>
         </aside>
 
         <main class="content">
+
             <!-- Start Section -->
             <section id="start" class="section">
                 <h2><i class="fas fa-rocket"></i> البداية السريعة</h2>
-                <p>مرحباً بك في نظام إدارة المستودعات والمبيعات الأكثر تطوراً في المنطقة. هذا الدليل سيساعدك على الانطلاق بسرعة.</p>
-                
+                <p>مرحباً بك في نظام {{ config.COMPANY_NAME_AR }} - نظام إدارة متكامل للتجارة وقطع الغيار. في هذا الدليل ستتعرف على كل الوحدات المتاحة وكيفية استخدامها باحترافية.</p>
+
                 <div class="step-box">
-                    <h4>الخطوة 1: الحصول على حساب</h4>
-                    <p>تواصل معنا عبر واتساب {{ config.COMPANY_WHATSAPP }} للحصول على بيانات تسجيل الدخول.</p>
+                    <h4>الخطوة الأولى: الحصول على حساب</h4>
+                    <p>تواصل معنا عبر واتساب <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}">{{ config.COMPANY_WHATSAPP }}</a> لإنشاء حسابك وتحديد دورك وصلاحياتك.</p>
                 </div>
-                
+
                 <div class="step-box">
-                    <h4>الخطوة 2: تسجيل الدخول</h4>
-                    <p>استخدم اسم المستخدم وكلمة المرور المرسلة إليك للدخول على http://localhost:5000</p>
+                    <h4>الخطوة الثانية: تسجيل الدخول</h4>
+                    <p>افتح رابط النظام وأدخل اسم المستخدم وكلمة المرور التي استلمتها. <strong>غيّر كلمة المرور بعد أول تسجيل دخول</strong> من أيقونة ملفك الشخصي.</p>
                 </div>
-                
+
                 <div class="step-box">
-                    <h4>الخطوة 3: إعداد الشركة</h4>
-                    <p>من لوحة التحكم، قم بإعداد معلومات شركتك والعملات والمستودعات.</p>
+                    <h4>الخطوة الثالثة: إعداد الشركة</h4>
+                    <p>من <strong>لوحة المالك → معلومات الشركة</strong> يتم ضبط: اسم الشركة والشعار وبيانات VAT ورقم الجوال والواتساب، ومن <strong>إعدادات ضريبية/العملات</strong> يتم ضبط عملة الأساس (درهم AED وغيرها) وأسعار الصرف.</p>
                 </div>
-                
+
+                <div class="step-box">
+                    <h4>الخطوة الرابعة: إدخال بياناتك</h4>
+                    <p>ابدأ بإدخال: المنتجات ← الموردون ← الزبائن ← ثم أنشئ أول عملية بيع أو شراء.</p>
+                </div>
+
                 <div class="tip">
-                    <strong><i class="fas fa-lightbulb"></i> نصيحة:</strong> شاهد فيديو البداية السريعة أدناه للحصول على نظرة عامة.
+                    <strong><i class="fas fa-lightbulb"></i> نصيحة:</strong> النظام مُترجم للعربية والإنجليزية بالكامل. بدّل اللغة من أيقونة اللغة في الزاوية العلوية في أي وقت. وللوصول السريع لأي شرح، اكتب سؤالاً للمساعد الذكي مباشرة (مثال: "كيف أنشئ فاتورة؟").
                 </div>
             </section>
 
-            <!-- Login Section -->
+            <!-- Login & Roles -->
             <section id="login" class="section">
-                <h2><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</h2>
-                
-                <h3>الأدوار والصلاحيات</h3>
-                <p>النظام يدعم 3 مستويات من المستخدمين:</p>
+                <h2><i class="fas fa-sign-in-alt"></i> تسجيل الدخول والأدوار</h2>
+
+                <h3>طرق الحماية</h3>
                 <ul>
-                    <li><strong>Super Admin:</strong> صلاحيات كاملة على النظام</li>
-                    <li><strong>Manager:</strong> إدارة المبيعات والمشتريات والتقارير</li>
-                    <li><strong>Seller:</strong> المبيعات فقط</li>
+                    <li>قفل الحساب مؤقتاً بعد عدة محاولات دخول خاطئة.</li>
+                    <li>صلاحيات دقيقة لكل مستخدم — لا يرى الموظف غير صلاحياته (مخفية التكلفة والمصروفات عن غير المخوّلين).</li>
+                    <li>عزل كامل للبيانات: كل مستخدم يرى بيانات شركته (Tenant) فقط.</li>
                 </ul>
-                
+
+                <h3>الأدوار العشرة</h3>
+                <table class="roles">
+                    <tr><th>الدور</th><th>الصلاحيات الرئيسية</th></tr>
+                    <tr><td><strong>المالك Owner</strong></td><td>كامل النظام + لوحة المالك (إدارة القواعد، النسخ الاحتياطي، الأمان، الشركات).</td></tr>
+                    <tr><td><strong>مدير عام Super Admin</strong></td><td>كل الصلاحيات باستثناء الأمور السرية للمالك (Master Key).</td></tr>
+                    <tr><td><strong>مطوّر Developer</strong></td><td>جميع الصلاحيات مع إمكانية ولوج واجهة المالك.</td></tr>
+                    <tr><td><strong>مدير فرع Manager</strong></td><td>المبيعات والزبائن والمنتجات والموردين والمشتريات والمدفوعات والمصروفات والمستودعات والمستخدمين والتقارير.</td></tr>
+                    <tr><td><strong>محاسب Accountant</strong></td><td>دفتر الأستاذ والقيود والتقارير والتكاليف والمدفوعات والمصروفات.</td></tr>
+                    <tr><td><strong>موارد بشرية HR</strong></td><td>إدارة الموظفين والإجازات والرواتب.</td></tr>
+                    <tr><td><strong>بائع Seller</strong></td><td>إنشاء المبيعات وإدارة الزبائن والمنتجات.</td></tr>
+                    <tr><td><strong>كاشير Cashier</strong></td><td>المبيعات والمدفوعات.</td></tr>
+                    <tr><td><strong>أمين مخزون Inventory</strong></td><td>المستودعات والمنتجات وحركات المخزون.</td></tr>
+                    <tr><td><strong>مشاهد Viewer</strong></td><td>عرض التقارير ودفتر الأستاذ فقط (قراءة).</td></tr>
+                </table>
+
                 <div class="note">
-                    <strong><i class="fas fa-exclamation-triangle"></i> تحذير:</strong> حساب Owner (المالك) سري للغاية ولا يجب مشاركته. يُستخدم فقط لإدارة قاعدة البيانات والإعدادات الحرجة.
+                    <strong><i class="fas fa-exclamation-triangle"></i> تحذير:</strong> حساب <strong>Owner</strong> سري للغاية ولا يُشارَك. يُستخدم فقط لإدارة قاعدة البيانات والإعدادات الحرجة والنسخ الاحتياطي. أي إجراء يتم في لوحة المالك يُسجَّل في سجل التدقيق (Audit Log).
                 </div>
-                
-                <h3>تغيير كلمة المرور</h3>
-                <p>من ملفك الشخصي، يمكنك تغيير كلمة المرور في أي وقت. يُنصح بتغييرها بعد أول دخول.</p>
+
+                <h3>إدارة المستخدمين</h3>
+                <p>من <strong>/users</strong> يستطيع المديرون إضافة مستخدم جديد وتحديد دوره، ومن <strong>لوحة المالك → الأدوار والصلاحيات</strong> يمكن تخصيص الصلاحيات لكل دور بأدق تفصيل (بيع، مشتريات، منتجات، مالية، تقارير، مستودع، إدارة...).</p>
             </section>
 
-            <!-- Products Section -->
+            <!-- Dashboard -->
+            <section id="dashboard" class="section">
+                <h2><i class="fas fa-tachometer-alt"></i> لوحة التحكم</h2>
+                <p>تظهر بعد تسجيل الدخول وتلخّص حالة نشاطك اليومي:</p>
+                <ul>
+                    <li>مبيعات اليوم والمدفوعات المحصّلة.</li>
+                    <li>المنتجات منخفضة المخزون والمنتهية.</li>
+                    <li>آخر الفواتير والمدفوعات.</li>
+                    <li>عمليات الإنذار (تنبيهات الشيكات وحالات الموافقات المعلّقة).</li>
+                    <li>مؤشرات الأداء والمخططات البيانية.</li>
+                </ul>
+                <div class="tip">
+                    <strong><i class="fas fa-lightbulb"></i></strong> تتيح لك اللوحة الوصول السريع لكل الوحدات من القائمة الجانبية.
+                </div>
+            </section>
+
+            <!-- Products -->
             <section id="products" class="section">
                 <h2><i class="fas fa-boxes"></i> إدارة المنتجات</h2>
-                
+
                 <h3>إضافة منتج جديد</h3>
                 <ol>
-                    <li>من القائمة الجانبية، اختر "المنتجات"</li>
-                    <li>اضغط على "منتج جديد"</li>
-                    <li>أدخل المعلومات الأساسية:</li>
+                    <li>من القائمة الجانبية اختر "المنتجات" ثم "منتج جديد".</li>
+                    <li>المعلومات الأساسية: الاسم (عربي/إنجليزي)، رقم القطعة (Part Number)، الباركود، SKU، البلد، الفئة، الماركة.</li>
+                    <li>الأسعار الثلاثية حسب نوع الزبون:</li>
                     <ul>
-                        <li>الاسم (عربي/إنجليزي)</li>
-                        <li>رقم القطعة (Part Number)</li>
-                        <li>{{ t('Barcode') }}</li>
-                        <li>بلد المنشأ</li>
+                        <li><strong>السعر العادي:</strong> للزبائن العاديين.</li>
+                        <li><strong>سعر التاجر:</strong> خصم تلقائي لعملاء فئة "تاجر".</li>
+                        <li><strong>سعر الشريك:</strong> خصم أكبر لعملاء فئة "شريك".</li>
                     </ul>
-                    <li>حدد الأسعار:</li>
-                    <ul>
-                        <li><strong>سعر عادي:</strong> للعملاء العاديين</li>
-                        <li><strong>سعر تاجر:</strong> للتجار (خصم)</li>
-                        <li><strong>سعر شريك:</strong> للشركاء (خصم أكبر)</li>
-                    </ul>
-                    <li>أدخل الكمية الحالية والحد الأدنى للتنبيه</li>
+                    <li>سعر التكلفة، الكمية الحالية، الحد الأدنى للتنبيه، وحدة القياس، الضمان، وسيلة الارتجاع.</li>
                 </ol>
-                
+
                 <div class="tip">
-                    <strong><i class="fas fa-magic"></i> ميزة الذكاء الاصطناعي:</strong> النظام يمكنه البحث عن المنتج في الأسواق العالمية واقتراح السعر المناسب تلقائياً!
+                    <strong><i class="fas fa-magic"></i> ميزة ذكية:</strong> يمكنك إدخال المنتجات بالجملة عبر رفع ملف Excel من شاشة المنتجات. والنظام قادر على البحث عن القطعة في الأسواق العالمية واقتراح السعر — اطلب ذلك من المساعد الذكي.
                 </div>
-                
-                <h3>تصنيفات المنتجات</h3>
-                <p>يمكنك تنظيم المنتجات في تصنيفات لسهولة البحث والفلترة.</p>
+
+                <h3>التصنيفات والمستويات</h3>
+                <p>نظّم منتجاتك في تصنيفات متعددة المستويات، وسجّل تعديلات المخزون يدوياً من "تعديل المخزون"، واربط المنتج بالماركات والسيارات والموديلات وسنوات الصنع المتوافقة لفهرسة أسهل.</p>
             </section>
 
-            <!-- Customers Section -->
+            <!-- Customers -->
             <section id="customers" class="section">
-                <h2><i class="fas fa-users"></i> إدارة العملاء</h2>
-                
-                <h3>أنواع العملاء</h3>
+                <h2><i class="fas fa-users"></i> إدارة الزبائن</h2>
+
+                <h3>فئات الزبائن وأسعارها</h3>
                 <ul>
-                    <li><strong>عادي:</strong> سعر البيع الكامل</li>
-                    <li><strong>تاجر:</strong> سعر مخفض</li>
-                    <li><strong>شريك:</strong> سعر الشراكة (الأقل)</li>
+                    <li><strong>عادي Regular:</strong> السعر الكامل.</li>
+                    <li><strong>تاجر Merchant:</strong> سعر التاجر (خصم تلقائي).</li>
+                    <li><strong>شريك Partner:</strong> سعر الشراكة (الخصم الأكبر).</li>
                 </ul>
-                
-                <h3>التصنيف التلقائي</h3>
-                <p>النظام يصنف العملاء تلقائياً حسب حجم المشتريات:</p>
+
+                <h3>التصنيف التلقائي حسب حجم المشتريات</h3>
                 <ul>
-                    <li><strong>VIP:</strong> أكثر من 50,000 درهم</li>
-                    <li><strong>Premium:</strong> 20,000 - 50,000 درهم</li>
-                    <li><strong>Regular:</strong> أقل من 20,000 درهم</li>
+                    <li><strong>VIP:</strong> مشتريات تتجاوز 100,000 (يعمل النظام بالعملة الأساسية المحددة لديك).</li>
+                    <li><strong>Premium:</strong> 50,000 فأكثر.</li>
+                    <li><strong>Regular:</strong> دون ذلك، ويُحسب العملاء غير النشطين (Inactive) تلقائياً.</li>
                 </ul>
-                
-                <h3>كشف الحساب</h3>
-                <p>من صفحة العميل، يمكنك عرض:</p>
+                <p><em>تُحدَّث هذه التصنيفات تلقائياً مع نمو مشتريات الزبون.</em></p>
+
+                <h3>بيانات الزبون وكشف الحساب</h3>
                 <ul>
-                    <li>جميع الفواتير والمدفوعات</li>
-                    <li>الرصيد الحالي</li>
-                    <li>المنتجات المشتراة</li>
-                    <li>المرتجعات</li>
+                    <li>الجوال والبريد والعنوان ورقم الضريبة وسقف الائتمان والعملة المفضلة.</li>
+                    <li><strong>كشف الحساب:</strong> كل الفواتير والمدفوعات والمرتجعات والرصيد الحالي من صفحة الزبون.</li>
+                    <li>إرسال الفاتورة للزبون عبر واتساب بضغطة زر.</li>
+                    <li>البحث السريع بالاسم أو الجوال عبر شريط البحث في الرأس.</li>
                 </ul>
             </section>
 
-            <!-- Sales Section -->
+            <!-- Suppliers -->
+            <section id="suppliers" class="section">
+                <h2><i class="fas fa-truck"></i> إدارة الموردين</h2>
+                <p>وحدة مستقلة لإدارة الموردين (مع إمكانية كشف حساب لكل مورد، والبحث السريع، وربطهم بفواتير الشراء والمشتريات وبسندات الصرف).</p>
+                <ul>
+                    <li>إضافة/تعديل بيانات المورد: الاسم، الجوال، العنوان، رقم الضريبة، الحساب البنكي.</li>
+                    <li>عرض كشف حساب المورد: الفواتير والمدفوعات والرصيد.</li>
+                    <li>تصفية وتقارير حسب المورد.</li>
+                </ul>
+            </section>
+
+            <!-- Sales -->
             <section id="sales" class="section">
-                <h2><i class="fas fa-cash-register"></i> المبيعات</h2>
-                
+                <h2><i class="fas fa-cash-register"></i> المبيعات والمرتجعات</h2>
+
                 <h3>إنشاء فاتورة بيع</h3>
                 <div class="step-box">
                     <h4>الخطوات:</h4>
                     <ol>
-                        <li>اختر العميل</li>
-                        <li>اختر العملة (درهم/دولار/يورو)</li>
-                        <li>أضف المنتجات (يظهر السعر تلقائياً حسب نوع العميل)</li>
-                        <li>أضف خصم إن وجد</li>
-                        <li>أضف تكلفة الشحن والضريبة</li>
-                        <li>اختر طريقة الدفع</li>
-                        <li>احفظ الفاتورة</li>
+                        <li>اختر الزبون (يظهر اسمه وبقية حسابه وفئته).</li>
+                        <li>اختر العملة (درهم AED، دولار USD، يورو EUR...) مع سعر صرف مقترح تلقائياً.</li>
+                        <li>أضف المنتجات — يظهر السعر تلقائياً حسب فئة الزبون (عادي/تاجر/شريك).</li>
+                        <li>أضف خصماً أو تلقّ اقتراح السعر الذكي.</li>
+                        <li>أضف الشحن والضريبة (VAT قابلة للتفعيل).</li>
+                        <li>اختر طريقة الدفع (نقدي/بطاقة/تحويل/شيك/محفظة) أو آجلاً.</li>
+                        <li>احفظ الفاتورة واطبعها من القوالب المتاحة (كلاسيك/حديث/بسيط/خليجي + شعار الشركة ورقم VAT).</li>
                     </ol>
                 </div>
-                
-                <div class="tip">
-                    <strong><i class="fas fa-robot"></i> الذكاء الاصطناعي يساعدك في:</strong>
-                    <ul>
-                        <li>اقتراح السعر المناسب</li>
-                        <li>تنبيه نقص المخزون</li>
-                        <li>عرض السيارات المتوافقة مع القطعة</li>
-                        <li>اقتراح سعر الصرف</li>
-                    </ul>
-                </div>
-                
-                <h3>طباعة الفاتورة</h3>
-                <p>بعد حفظ الفاتورة، يمكنك طباعتها بتصميم احترافي خليجي يتضمن شعار الشركة والعلم الفلسطيني.</p>
+
+                <h3>ميزات إضافية</h3>
+                <ul>
+                    <li><strong>المرتجعات:</strong> تسجيل مرتجع من فاتورة بيع مع استرجاع المخزون.</li>
+                    <li><strong>الأرشيف:</strong> أرشفة الفواتير القديمة/الملغاة واسترجاعها عند الحاجة.</li>
+                    <li><strong>الموافقة:</strong> إذا فعّل صاحب النظام الموافقات، يتم إرسال الفواتير الكبيرة للموافقة بدلاً من الحفظ الفوري.</li>
+                    <li><strong>إرسال الفاتورة عبر واتساب</strong> للزبون مباشرة.</li>
+                    <li><strong>تحويل عرض سعر إلى فاتورة بيع</strong> (من الوحدات المتقدمة).</li>
+                </ul>
             </section>
 
-            <!-- Payments Section -->
+            <!-- Purchases -->
+            <section id="purchases" class="section">
+                <h2><i class="fas fa-shopping-cart"></i> المشتريات</h2>
+                <ul>
+                    <li>إنشاء فاتورة شراء من مورد مع اختيار العملة وسعر الصرف.</li>
+                    <li>إضافة المنتجات مع تحديث المخزون وسعر التكلفة تلقائياً.</li>
+                    <li>طباعة فاتورة الشراء برأس الشركة.</li>
+                    <li>تحويل أمر شراء مسبق إلى فاتورة شراء (من الوحدات المتقدمة).</li>
+                    <li>ربط المشتريات بالمدفوعات وإصدار سند صرف.</li>
+                    <li>تقرير المشتريات وتقييم الموردين.</li>
+                </ul>
+            </section>
+
+            <!-- Payments & Cheques -->
             <section id="payments" class="section">
-                <h2><i class="fas fa-money-bill-wave"></i> المدفوعات</h2>
-                
-                <h3>طرق الدفع المدعومة</h3>
+                <h2><i class="fas fa-money-bill-wave"></i> المدفوعات والشيكات</h2>
+
+                <h3>سندات القبض والصرف</h3>
                 <ul>
-                    <li>نقدي</li>
-                    <li>بطاقة ائتمان</li>
-                    <li>تحويل بنكي</li>
-                    <li>شيك</li>
-                    <li>محفظة إلكترونية</li>
+                    <li>لكل دفعة تُصدر <strong>سند قبض أو صرف</strong> برقم تسلسلي واسم العميل والمبلغ والعملة وطريقة الدفع.</li>
+                    <li>طُرق دفع مدعومة: <span class="badge">نقدي</span><span class="badge">بطاقة</span><span class="badge">تحويل بنكي</span><span class="badge">شيك</span><span class="badge">محفظة إلكترونية</span></li>
+                    <li>إصدار دفعة من فاتورة بيع أو شراء مباشرة، وأرشفة السندات واسترجاعها.</li>
                 </ul>
-                
-                <h3>سند القبض</h3>
-                <p>لكل دفعة يتم إصدار سند قبض يحتوي على:</p>
+
+                <h3>إدارة الشيكات</h3>
+                <p>وحدة متكاملة للشيكات الواردة والصادرة:</p>
                 <ul>
-                    <li>رقم السند</li>
-                    <li>{{ t('Date') }}</li>
-                    <li>اسم العميل</li>
-                    <li>المبلغ بالعملات</li>
-                    <li>طريقة الدفع</li>
+                    <li>تسجيل الشيك واستلامه وإيداعه، ومتابعة الصرف والارتداد والإلغاء.</li>
+                    <li><strong>تنبيهات الشيكات:</strong> إشعارات لمواعيد الاستحقاق لتجنب التأخير.</li>
+                    <li>تكامل محاسبي مع دفتر الأستاذ.</li>
                 </ul>
-                
+
                 <div class="note">
-                    <strong><i class="fas fa-shield-alt"></i> أمان:</strong> بيانات البطاقات الائتمانية مشفرة ولا يمكن الوصول إليها إلا من حساب Owner.
+                    <strong><i class="fas fa-shield-alt"></i> أمان:</strong> بيانات البطاقات الائتمانية مشفرة داخل "خزينة المدفوعات" ولا يمكن فك تشفيرها إلا عند الحاجة وبصلاحيات خاصة.
                 </div>
             </section>
 
-            <!-- Reports Section -->
+            <!-- Expenses -->
+            <section id="expenses" class="section">
+                <h2><i class="fas fa-file-invoice-dollar"></i> المصروفات</h2>
+                <ul>
+                    <li>تسجيل المصروفات (إيجار، كهرباء، مخالفات، مواصلات...) مع الفئات والتصنيفات.</li>
+                    <li>طباعة سند المصروف وربطه بالمحاسبة والحسابات في دفتر الأستاذ.</li>
+                    <li>أرشفة واسترجاع سندات المصروفات.</li>
+                    <li><strong>المصروفات الدورية</strong> التي تتكرر شهرياً (من الوحدات المتقدمة).</li>
+                </ul>
+            </section>
+
+            <!-- Ledger -->
+            <section id="ledger" class="section">
+                <h2><i class="fas fa-book"></i> دفتر الأستاذ والمحاسبة</h2>
+                <p>نظام محاسبة متكامل (مزدوج القيد) يشمل:</p>
+                <ul>
+                    <li><strong>القيود اليومية:</strong> قيد يدوي، وعرض وتتبع القيود بالمستندات.</li>
+                    <li><strong>شجرة الحسابات:</strong> حسابات مصنفة (أصول/خصوم/إيرادات/مصروفات).</li>
+                    <li><strong>ميزان المراجعة وقائمة الدخل والميزانية العمومية.</strong></li>
+                    <li><strong>الخزائن</strong> وتتبّع الأرصدة نقدية وبنكية.</li>
+                    <li><strong>تحليل الأعمار</strong> (Aging): الذمم المدينة والدائنة بفترات 30/60/90+ يوم.</li>
+                    <li><strong>التدفق النقدي (Cash Flow):</strong> التشغيلي والاستثماري والتمويلي.</li>
+                    <li><strong>الإدارة المتقدمة:</strong> الجمارك والضرائب، التكامل مع الشيكات والمصروفات المتقدمة، والتقارير الاحترافية والتحليلات المالية (النسب، الاتجاهات، التنبؤ).</li>
+                    <li><strong>المساعد الذكي</strong> داخل دفتر الأستاذ يجيب عن أسئلتك المالية فوراً.</li>
+                </ul>
+            </section>
+
+            <!-- Warehouse -->
+            <section id="warehouse" class="section">
+                <h2><i class="fas fa-warehouse"></i> المستودعات والمخزون</h2>
+                <ul>
+                    <li><strong>لوحة إدارة المخزون:</strong> نظرة شاملة على الكميات والقيم.</li>
+                    <li>إنشاء عدة مستودعات والتحويل بينها.</li>
+                    <li><strong>حركات المخزون:</strong> سجل كامل لكل حركة دخول وخروج وأسبابها.</li>
+                    <li><strong>المخزون المنخفض ومنفذ المخزون:</strong> تنبيهات فورية لشراء كميات جديدة.</li>
+                    <li>إضافة كمية لمنتج يدوياً وتحديث أسعار التكلفة.</li>
+                    <li>الجرد الدوري (Stock Take) ونقل المخزون بين المستودعات من الوحدات المتقدمة.</li>
+                </ul>
+            </section>
+
+            <!-- Shipments -->
+            <section id="shipments" class="section">
+                <h2><i class="fas fa-ship"></i> الإرساليات والشحنات الواردة</h2>
+                <h3>الإرساليات (Shipments)</h3>
+                <p>متابعة دورية للإرساليات بالحالات:</p>
+                <ul>
+                    <li>إرسال → وصول → بدء البيع → إغلاق، أو إلغاء عند الحاجة.</li>
+                    <li>ربط الإرسالية بالمنتجات والمخزون والمستودع.</li>
+                </ul>
+                <h3>الشحنات الواردة (Inbound Shipments)</h3>
+                <p>دورة استلام البضاعة من المورد:</p>
+                <ul>
+                    <li>وصول → <strong>معاينة (Inspect)</strong> → <strong>تخزين (Put-away)</strong> → إغلاق.</li>
+                    <li>تحديث الكميات والكلفة تلقائياً عند التخزين.</li>
+                </ul>
+                <div class="tip"><strong>💡</strong> سجّل الشحنة الواردة أولاً ثم "تخزين" — ليتحدّث المخزون والتكلفة من مصدر موثوق.</div>
+            </section>
+
+            <!-- ERP Advanced -->
+            <section id="erp" class="section">
+                <h2><i class="fas fa-cubes"></i> الوحدات المتقدمة</h2>
+                <ul>
+                    <li><strong>عروض الأسعار (Quotations):</strong> إنشاء عرض وتحويله لفاتورة بيع.</li>
+                    <li><strong>أوامر الشراء (Purchase Orders):</strong> من عرض سعر → تقديم → موافقة → استلام.</li>
+                    <li><strong>الفترات المالية:</strong> فتح وإغلاق (وإعادة فتح) الفترات المحاسبية.</li>
+                    <li><strong>نقل المخزون:</strong> تحويل كمية بين المستودعات بحالتَي إرسال/استلام.</li>
+                    <li><strong>جرد المخزون (Stock Take):</strong> جرد وعدّ ومصادقة الفروقات.</li>
+                    <li><strong>إنذارات التحصيل (Dunning):</strong> توليد رسائل تحصيل للذمم المتأخرة وإرسالها.</li>
+                    <li><strong>المصروفات الدورية:</strong> تسجيل تلقائي دوري.</li>
+                    <li><strong>الدفعات (Lots) ومواقع التخزين (Bins):</strong> تتبع دقيق للدفعات والمواقع.</li>
+                    <li><strong>الفواتير الإلكترونية (E-invoice):</strong> إنشاء الفاتورة الإلكترونية من الفاتورة المحلية.</li>
+                </ul>
+            </section>
+
+            <!-- HR -->
+            <section id="hr" class="section">
+                <h2><i class="fas fa-id-badge"></i> الموارد البشرية</h2>
+                <ul>
+                    <li><strong>الموظفون:</strong> ملف كامل ببيانات الإمارات (الهوية، الجواز، الإقامة/الفيزا، الراتب، البدلات، IBAN).</li>
+                    <li><strong>الأقسام</strong> وتوزيع الموظفين.</li>
+                    <li><strong>الإجازات:</strong> أنواع (سنوية/مرضية/شخصية)، طلبات، موافقة/رفض/إلغاء مع أرصدة الإجازات.</li>
+                    <li><strong>كشوف الرواتب (Payroll):</strong> توليد كشف → موافقة → دفع، مع بدلات السكن والمواصلات والهاتف.</li>
+                </ul>
+            </section>
+
+            <!-- Approvals -->
+            <section id="approvals" class="section">
+                <h2><i class="fas fa-check-double"></i> الموافقات</h2>
+                <p>محرك موافقات متعدد المستويات — يعمل تلقائياً بحدود مالية:</p>
+                <ul>
+                    <li>مثال: بيع فوق 10,000 درهم → مدير الفرع → المالك.</li>
+                    <li>انواع الكيانات: بيع، شراء، دفعة، مصروف، وغيرها.</li>
+                    <li>الحالات: قيد المراجعة → موافقة/رفض مع سجل تدقيق كامل.</li>
+                    <li>إعداد سير العمل من "الموافقات" (workflows) — متاح لمديري النظام.</li>
+                    <li>قائمة "طلبات معلقة" تظهر في لوحة التحكم للمعنيين.</li>
+                </ul>
+            </section>
+
+            <!-- Users -->
+            <section id="users" class="section">
+                <h2><i class="fas fa-user-cog"></i> المستخدمون والصلاحيات</h2>
+                <ul>
+                    <li>إضافة مستخدم (اسم، دور، فرع/شركة).</li>
+                    <li>تخصيص الأدوار يدوياً من لوحة المالك → الأدوار والصلاحيات بأدق التفاصيل.</li>
+                    <li>إعادة تعيين كلمة المرور، وتفعيل/تعطيل المستخدم.</li>
+                    <li>سجل دخول المستخدمين في لوحة المالك (Login History) لمراجعة النشاط.</li>
+                </ul>
+            </section>
+
+            <!-- Notifications -->
+            <section id="notifications" class="section">
+                <h2><i class="fas fa-paper-plane"></i> الإشعارات والواتساب</h2>
+                <ul>
+                    <li><strong>واتساب:</strong> إرسال الفاتورة للزبون، تذكير بالمدفوعات، رسائل إنذار التحصيل — مباشرة من الشاشة.</li>
+                    <li><strong>رسائل SMS:</strong> إعدادات من لوحة المالك → SMS Settings (مع قوالب جاهزة).</li>
+                    <li><strong>البريد الإلكتروني:</strong> إرسال إشعارات عبر SMTP من إعدادات المالك.</li>
+                    <li><strong>قوالب الإشعارات:</strong> تخصيص نصوص الرسائل مهنياً من لوحة المالك.</li>
+                    <li><strong>التنبيهات داخل النظام:</strong> انخفاض المخزون، استحقاق شيكات، طلبات موافقة.</li>
+                </ul>
+            </section>
+
+            <!-- Reports -->
             <section id="reports" class="section">
-                <h2><i class="fas fa-chart-line"></i> التقارير</h2>
-                
+                <h2><i class="fas fa-chart-line"></i> التقارير والتصدير</h2>
+
                 <h3>التقارير المتوفرة</h3>
                 <ul>
-                    <li><strong>تقارير المبيعات:</strong> يومي/شهري/سنوي</li>
-                    <li><strong>تقارير المشتريات:</strong> حسب المورد</li>
-                    <li><strong>تقارير المخزون:</strong> كميات وقيم</li>
-                    <li><strong>الذمم المدينة:</strong> Accounts Receivable Aging</li>
-                    <li><strong>دفتر الأستاذ:</strong> General Ledger كامل</li>
+                    <li><strong>تقرير المبيعات:</strong> يومي/شهري/سنوي حسب الزبون أو المنتج أو البائع.</li>
+                    <li><strong>تقرير المشتريات</strong> وبيانات الموردين.</li>
+                    <li><strong>الذمم المدينة (Receivables)</strong> وأعمارها (Aging).</li>
+                    <li><strong>تقييم المخزون (Inventory Valuation)</strong>: كمية × تكلفة حسب الفئة.</li>
+                    <li><strong>المنتجات الأكثر مبيعاً (Top-selling).</strong></li>
+                    <li><strong>الذمم الدائنة (AP Aging)</strong> حسب الفترات 0-30/31-60/61-90/90+.</li>
+                    <li><strong>التدفقات النقدية (Cash Flow):</strong> تشغيلي/استثماري/تمويلي.</li>
+                    <li><strong>تقرير VAT:</strong> ضريبة القيمة المضافة (ضريبة واردة − ضريبة خارجة = صافي المستحق) — بما يتوافق مع إعدادات الضريبة لديك.</li>
+                    <li><strong>تقرير الشركاء والتجار</strong> وتحليل الأداء العام في لوحة المالك.</li>
                 </ul>
-                
-                <h3>التصدير</h3>
-                <p>يمكن تصدير جميع التقارير إلى:</p>
-                <ul>
-                    <li>PDF (للطباعة)</li>
-                    <li>Excel (للتحليل)</li>
-                    <li>CSV (لنقل البيانات)</li>
-                </ul>
-            </section>
 
-            <!-- AI Section -->
-            <section id="ai" class="section">
-                <h2><i class="fas fa-brain"></i> الذكاء الاصطناعي</h2>
-                
-                <h3>{{ t('AI Assistant') }}</h3>
-                <p>يمكنك الوصول للمساعد الذكي من دفتر الأستاذ. المساعد يمكنه:</p>
+                <h3>التصدير</h3>
+                <p>كل التقارير تُصدَّر إلى:</p>
                 <ul>
-                    <li>الإجابة عن أسئلة مالية</li>
-                    <li>تحليل البيانات</li>
-                    <li>توليد تقارير فورية</li>
-                    <li>اقتراح حلول للمشاكل</li>
+                    <li><strong>Excel (.xlsx):</strong> للتحليل — يدعم العربية RTL والتركيب الاحترافي.</li>
+                    <li><strong>PDF:</strong> للطباعة والاعتماد.</li>
+                    <li><strong>CSV:</strong> لنقل البيانات بين الأنظمة.</li>
                 </ul>
-                
-                <h3>البحث في الأسواق العالمية</h3>
-                <p>عند إضافة منتج، النظام يبحث تلقائياً عن:</p>
-                <ul>
-                    <li>سعر القطعة في الأسواق</li>
-                    <li>أفضل الموردين</li>
-                    <li>نطاق الأسعار</li>
-                </ul>
-                
-                <h3>معرفة التوافق</h3>
-                <p>يعرض لك النظام السيارات والمعدات المتوافقة مع كل قطعة، مع تفاصيل:</p>
-                <ul>
-                    <li>الماركات</li>
-                    <li>الموديلات</li>
-                    <li>سنوات الصنع</li>
-                    <li>نوع المحرك</li>
-                </ul>
-                
                 <div class="tip">
-                    <strong><i class="fas fa-key"></i> التفعيل:</strong> للاستفادة الكاملة من AI، تحتاج مفتاح API. تواصل معنا للحصول عليه.
+                    <strong><i class="fas fa-database"></i> أدوات Excel إضافية:</strong> استيراد/تصدير البيانات بالجملة من لوحة المالك (Excel Tools).
                 </div>
             </section>
 
-            <!-- Contact Support -->
-            <section class="section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <!-- AI -->
+            <section id="ai" class="section">
+                <h2><i class="fas fa-brain"></i> الذكاء الاصطناعي</h2>
+                <p>المساعد الذكي "أزاد" مدمج في كل النظام وقادر على تنفيذ المهام فعلياً (وليس مجرد إجابات):</p>
+                <ul>
+                    <li><strong>إنشاء فواتير وعمليات</strong> بأوامر مباشرة بالعربية.</li>
+                    <li><strong>اقتراح أسعار ذكية</strong> ومراقبة هامش الربح (Margin).</li>
+                    <li><strong>تحليل الزبائن:</strong> توقع الشراء، التنبؤ بخروج الزبون (Churn)، تقسيم العملاء.</li>
+                    <li><strong>أسعار الصرف العالمية</strong> والبحث عن سعر القطعة في الأسواق.</li>
+                    <li><strong>التوافق:</strong> عرض السيارات والمعدات المتوافقة مع كل قطعة.</li>
+                    <li><strong>تحليل المخزون وصحة المخزون وتوقع الطلب.</strong></li>
+                    <li><strong>استيراد Excel تلقائياً</strong> (رفع الملف وترك النظام يقرأه).</li>
+                    <li><strong>التنبؤ بالتدفق النقدي والاتجاهات والنسب المالية.</strong></li>
+                    <li><strong>قاعدة معرفية:</strong> إضافة مواقع/مستندات لتتعلّم منها، ومراجع فنية (ECU/Sensors) للسيارات.</li>
+                    <li><strong>شرح سياقي:</strong> المساعد يفهم الصفحة التي أنت فيها ويقدم مساعدة فورية.</li>
+                </ul>
+                <div class="tip">
+                    <strong><i class="fas fa-key"></i> التفعيل:</strong> يحتاج المساعد الذكي مفتاح API (Groq/OpenAI...) — من <strong>/ai</strong> ⇒ إعداد المفاتيح، أو تواصل معنا ليتم تفعيله لديك. بدون مفتاح تبقى الوظائف الأساسية للنظام تعمل بكاملها.
+                </div>
+            </section>
+
+            <!-- Payment Vault -->
+            <section id="vault" class="section">
+                <h2><i class="fas fa-vault"></i> خزينة المدفوعات</h2>
+                <p>وحدة الفوترة الإلكترونية والتحصيل عبر الإنترنت:</p>
+                <ul>
+                    <li><strong>قفل/فتح الخزينة</strong> ولوحة تحكم ولوجات التحصيل.</li>
+                    <li>دعم <strong>بوابات دفع:</strong> بطاقة (Stripe) وعملات رقمية (NOWPayments: BTC/ETH/USDT/USDC/BNB) وباي بال وتحويل بنكي.</li>
+                    <li>البرامج والباقات (Packages) والاشتراكات والتبرعات مع حالتَي موافقة/تفعيل تلقائي.</li>
+                    <li>تخزين آمن للبطاقات بنظام تشفير مع فتح عند الطلب بصلاحية خاصة.</li>
+                    <li>صفحة دفع عامة للزبون (بيع منتج/باقة دون تسجيل دخول).</li>
+                    <li>تقارير وتصدير (مشتريات/تبرعات/بطاقات/PDF) ومؤشرات الأداء.</li>
+                </ul>
+                <div class="note">
+                    <strong><i class="fas fa-shield-alt"></i></strong> هذه الوحدة إضافية واختيارية ويُستخدم بعضها للاشتراكات والمشتريات عبر الإنترنت — تُدار من لوحة المالك (إعدادات بوابات الدفع).
+                </div>
+            </section>
+
+            <!-- Owner -->
+            <section id="owner" class="section">
+                <h2><i class="fas fa-crown"></i> لوحة المالك (OWNER MODE)</h2>
+                <p>عقلك الحقيقي في الإدارة اليومية — متاحة للمالك والمطوّر فقط، ولكل إجراء سجل تدقيق:</p>
+                <ul>
+                    <li><strong>لوحة المالك:</strong> مراجعة إجمالية للنظام، الأداء، المبيعات، ربحية المنتجات.</li>
+                    <li><strong>الأدوار والصلاحيات</strong> وتعديلها بمرونة.</li>
+                    <li><strong>أدوات قاعدة البيانات:</strong> تصفح الجداول، التجهيز، تصدير/تحويل قاعدة البيانات، ضبط الأداء.</li>
+                    <li><strong>النسخ الاحتياطي والاستعادة:</strong> نسخ فوري/مجدول، تحقق من النسخ، تنزيل واستعادة بضغطة زر.</li>
+                    <li><strong>سجل التدقيق (Audit Log)</strong> وسجل الأخطاء وسجل الدخول والمراقبة.</li>
+                    <li><strong>إعدادات الشركة:</strong> الاسم والشعار وبيانات الضريبة والعملات (فردية لكل شركة/فرع).</li>
+                    <li><strong>الأمان:</strong> القائمة البيضاء للـ IP، مفاتيح API، تنبيهات أمنية، تنظيف البيانات.</li>
+                    <li><strong>الإشعارات:</strong> إعدادات SMS وواتساب والبريد وقوالب الرسائل.</li>
+                    <li><strong>إدارة الشركات (Tenants):</strong> عند إدارة أكثر من كيان تجاري.</li>
+                </ul>
+                <div class="note">
+                    <strong><i class="fas fa-exclamation-triangle"></i> تنبيه مهني:</strong> لا تجعل حسابات الموظفين يتمتعون بصلاحيات المالك. استخدم الأدوار المتدرجة (مدير/محاسب/بائع...) وضع نسخة احتياطية أسبوعية تلقائية مجدولة.
+                </div>
+            </section>
+
+            <!-- Support -->
+            <section id="support" class="section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
                 <h2 style="color: white;"><i class="fas fa-headset"></i> الدعم الفني</h2>
-                <p>نحن هنا لمساعدتك! تواصل معنا في أي وقت:</p>
+                <p>نحن هنا لمساعدتك في أي وقت — ولأي استفسار نصيحتُنا الأولى: <strong>اسأل المساعد الذكي من داخل النظام.</strong></p>
                 <div style="display: flex; gap: 30px; margin-top: 20px; flex-wrap: wrap;">
                     <div>
                         <i class="fab fa-whatsapp" style="font-size: 2rem;"></i><br>
-                        <strong>واتساب:</strong> {{ config.COMPANY_WHATSAPP }}
+                        <strong>واتساب:</strong> <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" style="color: white;">{{ config.COMPANY_WHATSAPP }}</a>
                     </div>
                     <div>
                         <i class="fas fa-phone" style="font-size: 2rem;"></i><br>
@@ -324,12 +540,16 @@
                         <strong>وطنية:</strong> {{ config.COMPANY_PHONE_2 }}
                     </div>
                 </div>
+                <div style="margin-top: 20px; opacity: 0.9; font-size: 0.9rem;">
+                    البريد: {{ config.COMPANY_EMAIL }} — {{ config.DEVELOPER_CREDIT }}
+                </div>
             </section>
+
         </main>
     </div>
 
     <footer>
-        <p>&copy; 2025 {{ config.COMPANY_NAME_AR }}. جميع الحقوق محفوظة.</p>
+        <p>&copy; {{ current_year }} {{ config.COMPANY_NAME_AR }}. جميع الحقوق محفوظة.</p>
         <p style="margin-top: 10px;">{{ config.DEVELOPER_CREDIT }}</p>
     </footer>
 
@@ -343,4 +563,3 @@
 
 </body>
 </html>
-

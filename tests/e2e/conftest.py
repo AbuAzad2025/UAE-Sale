@@ -90,6 +90,24 @@ ROLE_PERMISSIONS = {
     'warehouse_keeper': [
         'manage_warehouse', 'view_products',
     ],
+    # The three role vectors below are taken verbatim from the application's
+    # own definitions in tests/unit/test_erp_role_isolation.py so the E2E
+    # matrix and the unit suite agree on what each role may do.
+    #   manager   -> "broader permissions but NOT manage_ledger or admin"
+    #   accountant-> "ledger + expenses + reports, but NOT sales or POS"
+    #   viewer    -> "view_reports ONLY - no write access anywhere"
+    'manager': [
+        'manage_sales', 'manage_customers', 'manage_products', 'manage_purchases',
+        'manage_payments', 'view_reports', 'manage_expenses', 'manage_warehouse',
+        'view_costs',
+    ],
+    'accountant': [
+        'view_ledger', 'manage_ledger', 'manage_expenses', 'view_reports',
+        'manage_payments',
+    ],
+    'viewer': [
+        'view_reports',
+    ],
 }
 
 ROLE_PASSWORDS = {
@@ -98,6 +116,9 @@ ROLE_PASSWORDS = {
     'senior_accountant': 'AccountantPass123!',
     'pos_cashier': 'CashierPass123!',
     'warehouse_keeper': 'KeeperPass123!',
+    'manager': 'RoleManager123!',
+    'accountant': 'RoleAccountant123!',
+    'viewer': 'RoleViewer123!',
 }
 
 _ALL_TABLES = []

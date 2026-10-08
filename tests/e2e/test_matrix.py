@@ -28,6 +28,7 @@ from models.cheque import Cheque
 from models.product import Product
 from models.warehouse import StockMovement
 from models.gl import GLJournalEntry
+from models.payment import Payment, Receipt
 
 from tests.e2e.harness import (
     ACC, manual_entry_form, sale_form, purchase_form, cheque_form,
@@ -46,12 +47,14 @@ OTHER_RATE = Decimal('3.670000')
 
 def _world_state(db):
     """Everything the scenario may have created, for side-effect assertions."""
+    from models.payment import Payment
     return {
         'entries': snapshot_entry_ids(),
         'sales': Sale.query.count(),
         'purchases': Purchase.query.count(),
         'cheques': Cheque.query.count(),
         'movements': StockMovement.query.count(),
+        'payments': Payment.query.count(),
     }
 
 
@@ -368,6 +371,121 @@ def _run_cheque(client, db, sc, fixtures):
                               (Decimal('0'), Decimal('0')))[0] > 0, merged
 
 
+def _voucher_form(sc, fixtures, direction, party_type, party_id, **over):
+    """Build the real POST body for /payments/voucher/submit.
+
+    Field names are taken from routes/payments.py::create_voucher_submit
+    (direction, party_type, party_id, amount, payment_method, date, currency,
+    exchange_rate, ...).
+    """
+    data = {
+        'direction': direction,
+        'party_type': party_type,
+        'party_id': str(party_id),
+        'amount': str(sc.amount),
+        'payment_method': 'cash',
+        'date': CHQ_TODAY.isoformat(),
+        'notes': f'e2e {sc.id}',
+        'currency': 'ILS',
+        'exchange_rate': '1',
+    }
+    data.update(over)
+    return data
+
+
+def _run_payments(client, db, sc, fixtures):
+    """Domain G — the unified payment voucher.
+
+    routes/payments.py::create_voucher_submit has four real branches, each with
+    its own GL shape. The scenario's (state, edge) selects the branch so the 525
+    payments cells do not assert one thing 525 times:
+
+      incoming  + customer -> Receipt via PaymentService.create_receipt
+      incoming  + supplier -> Payment 'refund'        DR cash/bank  CR 2110
+      outgoing  + supplier -> Payment 'bill_payment'  DR 2110       CR cash/bank
+      outgoing  + customer -> Payment 'refund'        DR customer AR CR clearing
+
+    The account codes below are read directly from that route body, not guessed.
+    """
+    from models.payment import Payment
+
+    customer = fixtures['customer']
+    supplier = fixtures['supplier']
+
+    branch = sc.index % 4
+    if branch == 0:
+        direction, party_type = 'incoming', 'customer'
+    elif branch == 1:
+        direction, party_type = 'incoming', 'supplier'
+    elif branch == 2:
+        direction, party_type = 'outgoing', 'supplier'
+    else:
+        direction, party_type = 'outgoing', 'customer'
+
+    party_id = customer.id if party_type == 'customer' else supplier.id
+
+    method = 'cash'
+    over = {}
+    expected = sc.amount
+    if sc.edge == 'foreign_currency':
+        over = {'currency': OTHER_CURRENCY, 'exchange_rate': str(OTHER_RATE)}
+    if sc.edge == 'time_based':
+        over['date'] = '2020-01-01'
+    if sc.edge == 'tax_boundary':
+        # One-filsaar voucher: the guard must reject a trivial GL, not accept it.
+        over['amount'] = '0.01'
+        expected = Decimal('0.01')
+    if sc.edge == 'insufficient_funds':
+        # There is no balance check on a manual voucher, so it posts. The
+        # assertion is that the GL still balances at that exact oversized value.
+        over['amount'] = '999999999.99'
+        expected = Decimal('999999999.99')
+    if sc.edge == 'negative_boundary':
+        over['amount'] = str(-sc.amount)
+        expected = -sc.amount
+
+    # Branch 0 is the odd one out: incoming+customer goes through
+    # PaymentService.create_receipt(), which writes a **Receipt** row. The other
+    # three branches write a **Payment**. Asserting the wrong model would make a
+    # working branch look broken.
+    is_receipt_branch = (direction == 'incoming' and party_type == 'customer')
+    model = Receipt if is_receipt_branch else Payment
+    before = model.query.count()
+
+    r = client.post('/payments/voucher/submit',
+                    data=_voucher_form(sc, fixtures, direction, party_type,
+                                       party_id, payment_method=method, **over))
+    after = model.query.count()
+
+    if sc.edge == 'negative_boundary':
+        assert after == before, (
+            f'{sc.id}: negative amount created a {model.__name__} row')
+        return
+
+    assert after == before + 1, (
+        f'{sc.id}: voucher did not create a {model.__name__} row '
+        f'({before} -> {after}); status {r.status_code}')
+
+    row = model.query.order_by(model.id.desc()).first()
+    assert q3(row.amount) == q3(expected), (
+        f'{sc.id}: {model.__name__} amount {row.amount} != {expected}')
+
+    ref_kind = 'Receipt' if is_receipt_branch else 'Payment'
+    entries = GLJournalEntry.query.filter_by(
+        reference_type=ref_kind, reference_id=row.id).all()
+    if entries:
+        merged = lines_for_entries(entries)
+        assert merged, f'{sc.id}: {ref_kind} GL posted no lines'
+        debit_total = sum(v[0] for v in merged.values())
+        credit_total = sum(v[1] for v in merged.values())
+        assert abs(debit_total - credit_total) < Decimal('0.01'), (
+            f'{sc.id}: {ref_kind} GL is out of balance: D={debit_total} '
+            f'C={credit_total}')
+        assert debit_total > 0, (
+            f'{sc.id}: {ref_kind} GL posted a trivial zero-value entry')
+        assert_no_header_account_posted(entries[0].id)
+
+
 def _run_security(client, db, sc, fixtures):
     """Domain H — access control and tenant isolation.
 
@@ -428,6 +546,7 @@ _DISPATCH = {
     'ap': _run_ap,
     'inventory': _run_inventory,
     'cheque': _run_cheque,
+    'payments': _run_payments,
     'security': _run_security,
 }
 
@@ -476,6 +595,17 @@ def _denied_request(client, db, sc, fixtures):
             issue_date=CHQ_TODAY.isoformat(),
             due_date=(CHQ_TODAY + timedelta(days=30)).isoformat(),
             cheque_type='incoming'))
+    if sc.domain == 'payments':
+        return client.post('/payments/voucher/submit', data={
+            'direction': 'incoming',
+            'party_type': 'customer',
+            'party_id': str(customer.id),
+            'amount': str(sc.amount),
+            'payment_method': 'cash',
+            'date': CHQ_TODAY.isoformat(),
+            'currency': 'ILS',
+            'exchange_rate': '1',
+        })
     return client.get('/ledger/')
 
 

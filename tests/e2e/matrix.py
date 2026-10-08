@@ -53,6 +53,7 @@ DOMAIN_PERMISSION = {
     'ap': 'manage_purchases',
     'inventory': 'manage_products',
     'cheque': 'manage_payments',
+    'payments': 'manage_payments',
     'security': None,          # read/visibility domain, handled per-op
 }
 
@@ -72,14 +73,20 @@ ROLE_PERMISSIONS = {
     },
     'pos_cashier': {'manage_sales'},
     'warehouse_keeper': {'manage_warehouse', 'view_products'},
+    # Mirrors tests/unit/test_erp_role_isolation.py. An earlier draft guessed
+    # `accountant` held manage_approvals and did not hold manage_payments; the
+    # real role is the opposite, which flipped the expected outcome for every
+    # accountant x cheque / accountant x payments cell.
     'manager': {
-        'manage_sales', 'manage_purchases', 'manage_products', 'manage_payments',
-        'manage_customers', 'view_reports', 'view_products',
+        'manage_sales', 'manage_customers', 'manage_products', 'manage_purchases',
+        'manage_payments', 'view_reports', 'manage_expenses', 'manage_warehouse',
+        'view_costs',
     },
     'accountant': {
-        'manage_ledger', 'view_ledger', 'view_reports', 'manage_approvals',
+        'view_ledger', 'manage_ledger', 'manage_expenses', 'view_reports',
+        'manage_payments',
     },
-    'viewer': set(),
+    'viewer': {'view_reports'},
 }
 
 

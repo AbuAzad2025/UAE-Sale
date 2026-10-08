@@ -1010,10 +1010,23 @@ def _run_security(client, db, sc, fixtures):
     The route matrix is exercised for authenticated roles; the cross-tenant
     cell additionally seeds a second tenant and asserts the refusal.
     """
-    if sc.edge == 'cross_tenant' or sc.state == 'cross_tenant_read':
-        if sc.state == 'cross_tenant_read':
-            # Same contract as the cross_tenant edge, reached via the state axis.
-            return _new_edge_state(client, db, sc, fixtures)
+    # This domain has no write surface of its own, so it must never delegate to
+    # the creation-oriented handlers in _new_edge_state. An earlier draft fell
+    # through to them and tried to post vouchers on a read-only domain.
+    dim = (sc.edge if sc.edge in NEW_EDGE_STATES
+           else (sc.state if sc.state in NEW_EDGE_STATES else None))
+    if dim == 'cross_tenant_read':
+        return _new_edge_state(client, db, sc, fixtures)
+    if dim is not None:
+        before = _world_state(db)
+        r = client.get('/ledger/')
+        assert r.status_code in (200, 302, 403), (
+            f'{sc.id}: unexpected status {r.status_code}')
+        _assert_world_unchanged(
+            db, before, f'{sc.id} ({dim}) on a read-only domain')
+        return None
+
+    if sc.edge == 'cross_tenant':
         from models import Tenant, Customer as _C
         a = Tenant(name=f'Tenant {sc.id} A', name_ar='أ', slug=f'ta-{sc.index}',
                    country='UAE', is_active=True)

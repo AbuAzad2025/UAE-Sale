@@ -1,0 +1,224 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: E2E
+
+# The 5880-scenario matrix takes ~2.5h as one sequential run, so it is split
+# across a GitHub Actions matrix: 7 domains x 2 shards = 14 parallel jobs.
+# Each job owns a private SQLite file (tests/e2e/conftest.py:67), so the shards
+# need no shared database and cannot interfere with one another.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/e2e/**'
+      - 'routes/**'
+      - 'services/**'
+      - 'models/**'
+      - 'utils/**'
+      - 'harness.py'
+      - 'config.py'
+      - 'app.py'
+      - 'requirements.txt'
+      - '.github/workflows/e2e.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tests/e2e/**'
+      - 'routes/**'
+      - 'services/**'
+      - 'models/**'
+      - 'utils/**'
+      - 'harness.py'
+      - 'config.py'
+      - 'app.py'
+      - 'requirements.txt'
+      - '.github/workflows/e2e.yml'
+  workflow_dispatch:
+  schedule:
+    # Nightly guard: catches defects that only appear as data accumulates.
+    - cron: '17 3 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.12'
+  SECRET_KEY: 'test-secret-key-not-for-production'
+  OWNER_PASSWORD: 'TestOwner1234567890123456'
+  APP_ENV: 'testing'
+  DEBUG: 'true'
+  WTF_CSRF_ENABLED: 'false'
+  RATELIMIT_ENABLED: 'false'
+  CACHE_TYPE: 'simple'
+  PYTHONIOENCODING: 'utf-8'
+  PYTHONDONTWRITEBYTECODE: '1'
+
+jobs:
+  # ── The 70 hand-verified vertical tests: foundations plus one file per
+  #    domain. Fast enough (~5 min) to always run in full.
+  slice:
+    name: slice (vertical suites)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+      - name: Run vertical suites
+        run: |
+          set -o pipefail
+          pytest tests/e2e/ \
+            --ignore=tests/e2e/test_matrix.py \
+            -q -p no:randomly \
+            --tb=short \
+            --junitxml=slices.xml
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-slices
+          path: slices.xml
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # ── The combinatorial matrix. One job per (domain, shard).
+  matrix:
+    name: ${{ matrix.domain }} (shard ${{ matrix.shard }}/2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        domain: [accounting, ar, ap, inventory, cheque, payments, security]
+        shard: [0, 1]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+      - name: Run matrix domain
+        # --e2e-shard-id/--e2e-num-shards are defined in
+        # tests/e2e/conftest.py. pytest-shard was rejected because it does not
+        # compose with -k (it reported 3368 and 3352 for an 840-test domain).
+        run: |
+          set -o pipefail
+          PREFIX=$(echo '${{ matrix.domain }}' | cut -c1-3 | tr '[:lower:]' '[:upper:]')
+          echo "Running domain ${{ matrix.domain }} (prefix $PREFIX), shard ${{ matrix.shard }}/2"
+          pytest tests/e2e/test_matrix.py \
+            -k "E2E-$PREFIX-" \
+            -q -p no:randomly \
+            --tb=short \
+            --e2e-shard-id ${{ matrix.shard }} \
+            --e2e-num-shards 2 \
+            --junitxml=matrix-$PREFIX-${{ matrix.shard }}.xml
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-matrix-${{ matrix.domain }}-${{ matrix.shard }}
+          path: matrix-${{ matrix.domain }}-${{ matrix.shard }}.xml
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # ── Prove the matrix is still the shape the report claims, so a silent
+  #    dimension change cannot shrink coverage without anyone noticing.
+  matrix-shape:
+    name: matrix shape
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+      - name: Assert scenario inventory
+        run: |
+          python - <<'PY'
+          from tests.e2e.matrix import (
+              MATRIX, DOMAINS, ROLES, STATES, EDGES, NEW_EDGE_STATES)
+          import collections
+          print('scenarios      :', len(MATRIX))
+          print('unique ids     :', len({s.id for s in MATRIX}))
+          print('distinct amounts:', len({s.amount for s in MATRIX}))
+          print('dimensions     :', len(DOMAINS), 'x', len(ROLES), 'x',
+                len(STATES), 'x', len(EDGES))
+          per = collections.Counter(s.domain for s in MATRIX)
+          for d in DOMAINS:
+              print(f'  {d:<12} {per[d]}')
+          assert len(MATRIX) == 5880, f'matrix is {len(MATRIX)}, expected 5880'
+          assert len({s.id for s in MATRIX}) == len(MATRIX), 'duplicate ids'
+          assert len({s.amount for s in MATRIX}) == len(MATRIX), \
+              'duplicate amounts would collapse assertions'
+          # every expansion dimension must be implemented, not silently ignored
+          for d in NEW_EDGE_STATES:
+              assert d in EDGES or d in STATES, f'{d} is unreachable'
+          print('OK')
+          PY
+
+  # ── Aggregate every junit file into one run-page summary.
+  summary:
+    name: summary
+    needs: [slice, matrix, matrix-shape]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: e2e-*
+          path: artifacts
+      - name: Build summary
+        run: |
+          python - <<'PY'
+          import glob, os, xml.etree.ElementTree as ET
+          total = fails = errs = skipped = 0
+          rows = []
+          for path in sorted(glob.glob('artifacts/**/*.xml', recursive=True)):
+              try:
+                  root = ET.parse(path).getroot()
+              except Exception as exc:
+                  print('skip', path, exc)
+                  continue
+              suites = root.iter('testsuite')
+              t = f = e = s = 0
+              for suite in suites:
+                  t += int(suite.get('tests', 0))
+                  f += int(suite.get('failures', 0))
+                  e += int(suite.get('errors', 0))
+                  s += int(suite.get('skipped', 0))
+              rows.append((os.path.basename(path), t, f, e, s))
+              total += t; fails += f; errs += e; skipped += s
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as fh:
+              fh.write('## E2E matrix summary\n\n')
+              fh.write('| shard | tests | failures | errors | skipped |\n')
+              fh.write('|---|---:|---:|---:|---:|\n')
+              for name, t, f, e, s in rows:
+                  fh.write(f'| {name} | {t} | {f} | {e} | {s} |\n')
+              fh.write(f'| **total** | **{total}** | **{fails}** | '
+                       f'**{errs}** | **{skipped}** |\n')
+              if total:
+                  fh.write(f'\npassed: {total - fails - errs - skipped} / {total}\n')
+          print(f'total={total} failures={fails} errors={errs} skipped={skipped}')
+          PY

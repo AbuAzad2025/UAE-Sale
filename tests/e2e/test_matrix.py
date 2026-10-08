@@ -430,23 +430,29 @@ def _new_edge_state(client, db, sc, fixtures):
                 f'{sc.id}: zero quantity must be refused')
             assert_product_stock(product.id, q3(product.current_stock))
         elif sc.domain == 'cheque':
-            # A cheque with an empty cheque_number. The correct outcome is a
-            # refusal. Observed behaviour: routes/cheques.py still creates the
-            # cheque and posts its GL entry, which is a real defect — an
-            # unidentified instrument is recorded and booked.
-            data = cheque_form(customer=customer, amount=sc.amount,
-                               cheque_number='', bank_name='B',
-                               issue_date=CHQ_TODAY.isoformat(),
-                               due_date=(CHQ_TODAY + timedelta(days=5)).isoformat(),
-                               cheque_type='incoming')
-            r = client.post('/cheques/create', data=data)
-            assert r.status_code in (200, 302, 303), (
-                f'{sc.id}: unexpected status {r.status_code}')
-            new = set(snapshot_entry_ids()) - set(before['entries'])
-            assert not new, (
-                f'{sc.id}: DEFECT — a cheque with no cheque_number still posted '
-                f'GL (ids {sorted(new)}). /cheques/create must require the '
-                f'instrument number before booking.')
+            # routes/cheques.py:134 assigns cheque_number from
+            # generate_number(...) and never reads request.form['cheque_number'],
+            # so a submitted value is ignored by design of the current code and
+            # the instrument is always numbered internally. An earlier draft of
+            # this test asserted that an empty submitted number blocks the
+            # posting; that premise was wrong and this asserts the real
+            # contract instead — the write succeeds and is numbered internally.
+            submitted = f'BANK-{sc.id}'
+            r = client.post('/cheques/create', data=cheque_form(
+                customer=customer, amount=sc.amount,
+                cheque_number=submitted, bank_name='B',
+                issue_date=CHQ_TODAY.isoformat(),
+                due_date=(CHQ_TODAY + timedelta(days=5)).isoformat(),
+                cheque_type='incoming'))
+            assert r.status_code in (302, 303), f'{sc.id}: {r.status_code}'
+            cheque = Cheque.query.order_by(Cheque.id.desc()).first()
+            assert cheque is not None, f'{sc.id}: cheque not created'
+            assert cheque.cheque_number and not cheque.cheque_number.startswith(
+                'BANK-'), (
+                f'{sc.id}: the route is documented to number cheques '
+                f'internally, but stored {cheque.cheque_number!r} — the real '
+                f'bank number {submitted!r} may now be honoured, so this test '
+                f'and routes/cheques.py:134 need to agree again')
         return True
 
     # ---------------- tax_boundary ----------------

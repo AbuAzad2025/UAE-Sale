@@ -10,6 +10,7 @@ from decimal import Decimal
 import pytest
 
 from models.gl import GLJournalEntry
+from services.gl_service import GLService
 from tests.e2e.harness import (
     ACC, manual_entry_form, entry_id_from_redirect, is_login_redirect,
     assert_entry_balanced_and_non_trivial, assert_entry_accounts,
@@ -122,22 +123,39 @@ class TestRealAccountingFlow:
 
     def test_zero_line_list_would_be_trivial_and_is_caught(
             self, client, db, users, login_as):
-        """Documents the exact fake-green trap and proves the guard fires.
+        """Documents the exact fake-green trap and proves the route now blocks it.
 
-        Posting only a terminator row yields lines == [], totals 0 == 0, and
-        GLService creates a 'balanced' 0/0 entry. The status code and the
-        balance check both pass — so assert_entry_balanced_and_non_trivial must
-        reject it.
+        Posting only a terminator row used to yield lines == [], totals 0 == 0,
+        and GLService would create a 'balanced' 0/0 entry — the status code and
+        the balance check both passed, so the harness guard
+        assert_entry_balanced_and_non_trivial had to be the only thing standing
+        between a user and a junk entry in the ledger.
+
+        routes/ledger.py now rejects the empty line list before calling
+        create_manual_entry, so the request re-renders the form and nothing is
+        posted. The guard stays as defence in depth for the service path.
         """
         login_as('owner')
+        before = set(snapshot_entry_ids())
         r = client.post('/ledger/manual-entry', data=manual_entry_form(
             'empty', [],
         ))
-        assert r.status_code in (302, 303)
-        eid = entry_id_from_redirect(r)
-        assert eid is not None
+        assert r.status_code == 200, (
+            f'empty entry now re-renders the form, got {r.status_code}')
+        assert entry_id_from_redirect(r) is None, (
+            'empty entry still redirected to a created entry')
+        assert set(snapshot_entry_ids()) == before, (
+            'empty entry was still written to the ledger')
+        # The guard must also reject a 0/0 entry if one is ever injected
+        # directly through the service, so the trap stays covered.
+        entry = GLService.create_manual_entry(
+            description='injected zero entry',
+            lines=[{'account_code': ACC['cash'], 'debit': 0},
+                   {'account_code': ACC['sales_revenue'], 'credit': 0}],
+            created_by=users['owner'].id,
+        )
         with pytest.raises(AssertionError, match='TRIVIAL ENTRY'):
-            assert_entry_balanced_and_non_trivial(eid)
+            assert_entry_balanced_and_non_trivial(entry.id)
 
     def test_multi_line_entry_balances_across_three_accounts(
             self, client, db, users, login_as):

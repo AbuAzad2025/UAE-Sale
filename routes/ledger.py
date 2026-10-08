@@ -431,6 +431,14 @@ def manual_entry():  # noqa: C901
 
                 i += 1
 
+            # رفض القيد الفارغ: بدون هذا التحقق كان create_manual_entry
+            # يقبل lines=[] ويخزّن قيداً بقيمة صفر داخل دفتر الأستاذ.
+            if not lines:
+                raise ValueError(
+                    '❌ القيد فارغ: أضف سطراً واحداً على الأقل بقيمة مدين أو دائن.\n'
+                    '💡 لا يمكن حفظ قيد بلا سطور مؤثرة.'
+                )
+
             # إنشاء القيد
             entry = GLService.create_manual_entry(
                 description=description,

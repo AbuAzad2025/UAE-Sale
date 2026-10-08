@@ -174,6 +174,38 @@ def fast_password_hashing():
     user_model.generate_password_hash = original
 
 
+def pytest_addoption(parser):
+    """Exact, composable sharding for the matrix.
+
+    pytest-shard was tried first and rejected: it does not compose with -k
+    (shard 0 reported 3368 and shard 1 reported 3352 of an 840-test domain,
+    i.e. they overlapped and double counted). Sharding here runs against the
+    already-filtered item list, so `-k E2E-CHE- --e2e-shard-id 0/1` splits
+    that domain exactly in half with no overlap.
+    """
+    group = parser.getgroup('e2e')
+    group.addoption('--e2e-shard-id', type=int, default=0,
+                    help='zero-based shard index')
+    group.addoption('--e2e-num-shards', type=int, default=1,
+                    help='total number of shards')
+
+
+def pytest_collection_modifyitems(config, items):
+    total = config.getoption('--e2e-num-shards', default=1) or 1
+    if total <= 1:
+        return
+    shard_id = config.getoption('--e2e-shard-id', default=0)
+    if shard_id >= total:
+        raise pytest.UsageError(
+            f'--e2e-shard-id {shard_id} is out of range for '
+            f'--e2e-num-shards {total}')
+    kept = [it for idx, it in enumerate(items) if idx % total == shard_id]
+    dropped = [it for idx, it in enumerate(items) if idx % total != shard_id]
+    if dropped:
+        config.hook.pytest_deselected(items=dropped)
+    items[:] = kept
+
+
 @pytest.fixture(scope='session')
 def app():
     application = create_app(E2ETestConfig)

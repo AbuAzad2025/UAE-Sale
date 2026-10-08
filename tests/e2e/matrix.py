@@ -46,6 +46,15 @@ EDGES = ['invalid_permission', 'foreign_currency', 'reversal',
          'insufficient_funds', 'time_based', 'duplicate_submission',
          'approval_pending', 'tax_boundary']
 
+# The five edges and two states introduced by the expansion. They are handled by
+# tests/e2e/test_matrix.py::_new_edge_state, which asserts real per-domain
+# behaviour for each one instead of falling through to the happy path.
+NEW_EDGE_STATES = frozenset({
+    'insufficient_funds', 'time_based', 'duplicate_submission',
+    'approval_pending', 'tax_boundary', 'validation_error',
+    'cross_tenant_read',
+})
+
 # The permission each domain's write endpoint actually enforces.
 DOMAIN_PERMISSION = {
     'accounting': 'manage_ledger',

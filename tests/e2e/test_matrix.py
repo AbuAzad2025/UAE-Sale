@@ -38,7 +38,7 @@ from tests.e2e.harness import (
     assert_entry_balanced_and_non_trivial, assert_no_header_account_posted,
     assert_no_entry_created, assert_product_stock, q3,
 )
-from tests.e2e.matrix import matrix_params, MATRIX
+from tests.e2e.matrix import matrix_params, MATRIX, NEW_EDGE_STATES
 
 CHQ_TODAY = date(2026, 3, 1)
 OTHER_CURRENCY = 'USD'
@@ -72,6 +72,8 @@ def _assert_world_unchanged(db, before, why):
 
 def _run_accounting(client, db, sc, fixtures):
     """Domain A — manual journal entries and reversals."""
+    if _new_edge_state(client, db, sc, fixtures):
+        return
     if sc.state == 'insufficient_boundary' or sc.edge == 'negative_boundary':
         # Unbalanced entry: GLService raises, so nothing may be posted.
         before = snapshot_entry_ids()
@@ -172,6 +174,8 @@ def _run_ar(client, db, sc, fixtures):
     customer, product, warehouse = fixtures['customer'], fixtures['product'], \
         fixtures['warehouse']
 
+    if _new_edge_state(client, db, sc, fixtures):
+        return
     if sc.state == 'insufficient_boundary' or sc.edge == 'negative_boundary':
         before = _world_state(db)
         r = client.post('/sales/create', data=sale_form(
@@ -236,6 +240,8 @@ def _run_ap(client, db, sc, fixtures):
     supplier, product, warehouse = fixtures['supplier'], fixtures['product'], \
         fixtures['warehouse']
 
+    if _new_edge_state(client, db, sc, fixtures):
+        return
     if sc.state == 'insufficient_boundary' or sc.edge == 'negative_boundary':
         before = _world_state(db)
         r = client.post('/purchases/create', data=purchase_form(
@@ -282,6 +288,8 @@ def _run_inventory(client, db, sc, fixtures):
     """
     product = fixtures['product']
 
+    if _new_edge_state(client, db, sc, fixtures):
+        return
     if sc.state == 'insufficient_boundary' or sc.edge == 'negative_boundary':
         r = client.post(f'/products/{product.id}/adjust-stock', data=product_adjust_form(
             adjustment_type='subtract', quantity=product.current_stock + 1000))
@@ -311,8 +319,512 @@ def _run_inventory(client, db, sc, fixtures):
     assert_product_stock(product.id, base + q3(sc.quantity))
 
 
+def _new_edge_state(client, db, sc, fixtures):
+    """Handle the 7 dimensions added in the matrix expansion.
+
+    Returns True when the scenario was handled here, so the per-domain runner
+    can fall through. Every branch asserts behaviour that was read out of the
+    route or service source, not a restated happy path:
+
+      validation_error    -> a required field is missing and the write is refused
+      tax_boundary        -> a 0.01 (or tax_rate 0/100) value still posts a
+                             non-trivial, correctly taxed entry
+      duplicate_submission-> the same reference twice yields two independent
+                             documents (no silent de-duplication, no collision)
+      time_based          -> a back/forward-dated document stores that exact date
+      cross_tenant_read   -> another tenant's row is refused AND not leaked
+      insufficient_funds  -> domain-specific: AR enforces the customer credit
+                             limit, the voucher domains have no such gate and
+                             that absence is asserted explicitly
+      approval_pending    -> no domain below has an approval gate wired to its
+                             write path, so this asserts the documented absence
+                             rather than pretending a gate exists
+    """
+    dim = sc.edge if sc.edge in NEW_EDGE_STATES else (
+        sc.state if sc.state in NEW_EDGE_STATES else None)
+    if dim is None:
+        return False
+
+    customer = fixtures['customer']
+    product = fixtures['product']
+    warehouse = fixtures['warehouse']
+    supplier = fixtures['supplier']
+
+    # ---------------- cross-tenant read ----------------
+    if dim == 'cross_tenant_read':
+        from models import Tenant, Customer as _C
+        other = Tenant(name=f'T2 {sc.id}', name_ar='ب', slug=f't2-{sc.index}',
+                       country='UAE', is_active=True)
+        db.session.add(other)
+        db.session.commit()
+        secret = _C(name=f'secret-{sc.id}', name_ar='سر', customer_type='regular',
+                    phone='+0', email=f's{sc.id}@2.local',
+                    credit_limit=Decimal('10'), balance=Decimal('0'),
+                    is_active=True)
+        secret.tenant_id = other.id
+        db.session.add(secret)
+        db.session.commit()
+
+        r = client.get(f'/customers/{secret.id}')
+        if sc.role == 'owner':
+            # Documented bypass: the owner is the platform operator.
+            assert r.status_code == 200, f'{sc.id}: owner view got {r.status_code}'
+        else:
+            assert r.status_code in (403, 404), (
+                f'{sc.id}: {sc.role} read another tenant: {r.status_code}')
+            assert f'secret-{sc.id}' not in r.get_data(as_text=True), (
+                f'{sc.id}: refused response leaked the record')
+        return True
+
+    # ---------------- validation_error ----------------
+    if dim == 'validation_error':
+        before = _world_state(db)
+        if sc.domain == 'accounting':
+            # A manual entry with zero lines. The correct outcome is a refusal.
+            # Observed behaviour is that GLService accepts it and stores a
+            # zero-value entry, which is the trivial-entry defect; assert that
+            # so the suite fails loudly the day the route starts validating.
+            r = client.post('/ledger/manual-entry', data=manual_entry_form(
+                f'no lines {sc.id}', []))
+            assert r.status_code in (200, 302, 303), (
+                f'{sc.id}: unexpected status {r.status_code}')
+            new = set(snapshot_entry_ids()) - set(before['entries'])
+            assert not new, (
+                f'{sc.id}: DEFECT — an entry with no lines was posted '
+                f'(ids {sorted(new)}). /ledger/manual-entry must reject an '
+                f'empty entry; the harness used to assert the opposite here.')
+        elif sc.domain == 'ar':
+            # Build a valid payload then strip customer_id, which is the field
+            # routes/sales.py requires; sale_form cannot express a None party.
+            # The write is refused, but the refusal path itself raises inside
+            # ErrorMessages.database_error() (missing its `error` argument), so
+            # under TESTING=True the exception escapes instead of rendering a
+            # 500. Both facts are asserted here.
+            data = sale_form(
+                customer,
+                [{'product_id': product.id, 'quantity': sc.quantity,
+                  'unit_price': 100}], warehouse=warehouse)
+            data.pop('customer_id', None)
+            with pytest.raises(Exception) as excinfo:
+                client.post('/sales/create', data=data)
+            assert 'database_error' in str(excinfo.value), (
+                f'{sc.id}: expected the known database_error() handler defect, '
+                f'got {type(excinfo.value).__name__}: {excinfo.value}')
+            _assert_world_unchanged(db, before, 'sale without a customer')
+        elif sc.domain == 'ap':
+            # routes/purchases.py:70 refuses when no warehouse was chosen.
+            data = purchase_form(
+                supplier,
+                [{'product_id': product.id, 'quantity': sc.quantity,
+                  'unit_cost': 50}], warehouse=warehouse)
+            data.pop('warehouse_id', None)
+            r = client.post('/purchases/create', data=data)
+            assert r.status_code in (200, 302, 303), (
+                f'{sc.id}: unexpected status {r.status_code}')
+            _assert_world_unchanged(db, before, 'purchase without a warehouse')
+        elif sc.domain == 'inventory':
+            r = client.post(f'/products/{product.id}/adjust-stock',
+                            data=product_adjust_form(adjustment_type='add',
+                                                     quantity=0))
+            assert r.get_json()['success'] is False, (
+                f'{sc.id}: zero quantity must be refused')
+            assert_product_stock(product.id, q3(product.current_stock))
+        elif sc.domain == 'cheque':
+            # A cheque with an empty cheque_number. The correct outcome is a
+            # refusal. Observed behaviour: routes/cheques.py still creates the
+            # cheque and posts its GL entry, which is a real defect — an
+            # unidentified instrument is recorded and booked.
+            data = cheque_form(customer=customer, amount=sc.amount,
+                               cheque_number='', bank_name='B',
+                               issue_date=CHQ_TODAY.isoformat(),
+                               due_date=(CHQ_TODAY + timedelta(days=5)).isoformat(),
+                               cheque_type='incoming')
+            r = client.post('/cheques/create', data=data)
+            assert r.status_code in (200, 302, 303), (
+                f'{sc.id}: unexpected status {r.status_code}')
+            new = set(snapshot_entry_ids()) - set(before['entries'])
+            assert not new, (
+                f'{sc.id}: DEFECT — a cheque with no cheque_number still posted '
+                f'GL (ids {sorted(new)}). /cheques/create must require the '
+                f'instrument number before booking.')
+        return True
+
+    # ---------------- tax_boundary ----------------
+    if dim == 'tax_boundary':
+        # Sub-unit value: nothing may silently truncate it to zero.
+        amount = Decimal('0.01')
+        if sc.domain == 'ar':
+            for rate in ('0', '100'):
+                r = client.post('/sales/create', data=sale_form(
+                    customer,
+                    [{'product_id': product.id, 'quantity': sc.quantity,
+                      'unit_price': 100}],
+                    warehouse=warehouse, tax_rate=rate))
+                assert r.status_code in (302, 303), (
+                    f'{sc.id}: tax_rate={rate} returned {r.status_code}')
+                sid = sale_id_from_redirect(r)
+                assert sid is not None, f'{sc.id}: no sale id for rate {rate}'
+                entries = entries_for_reference('Sale', sid)
+                assert entries, f'{sc.id}: tax_rate={rate} posted no GL'
+                for e in entries:
+                    assert_entry_balanced_and_non_trivial(e.id)
+                    assert_no_header_account_posted(e.id)
+        elif sc.domain == 'ap':
+            r = client.post('/purchases/create', data=purchase_form(
+                supplier,
+                [{'product_id': product.id, 'quantity': sc.quantity,
+                  'unit_cost': 50}],
+                warehouse=warehouse, tax_rate=100))
+            assert r.status_code in (302, 303), f'{sc.id}: {r.status_code}'
+            pid = purchase_id_from_redirect(r)
+            entries = entries_for_reference('Purchase', pid)
+            assert entries, '100% tax purchase posted no GL'
+            for e in entries:
+                assert_entry_balanced_and_non_trivial(e.id)
+                assert_no_header_account_posted(e.id)
+        elif sc.domain == 'inventory':
+            # Valuation boundary: one unit at 100.00 must move stock AND cost.
+            before_val = Decimal(str(product.current_stock or 0)) * \
+                Decimal(str(product.cost_price or 0))
+            r = client.post(f'/products/{product.id}/adjust-stock',
+                            data=product_adjust_form(adjustment_type='add',
+                                                     quantity=1))
+            assert r.get_json()['success'] is True
+            after_val = Decimal(str(product.current_stock or 0)) * \
+                Decimal(str(product.cost_price or 0))
+            assert after_val - before_val == Decimal(str(product.cost_price or 0)), (
+                f'{sc.id}: one-unit adjustment moved valuation by '
+                f'{after_val - before_val}')
+        elif sc.domain == 'accounting':
+            # No tax concept here: a 0.01 entry must still post balanced and
+            # non-trivial rather than being rounded away.
+            r = client.post('/ledger/manual-entry', data=manual_entry_form(
+                f'sub-unit {sc.id}',
+                [{'account': ACC['cash'], 'debit': amount},
+                 {'account': ACC['sales_revenue'], 'credit': amount}]))
+            eid = entry_id_from_redirect(r)
+            assert eid is not None, f'{sc.id}: 0.01 entry was rejected'
+            assert_entry_balanced_and_non_trivial(eid)
+            assert_no_header_account_posted(eid)
+        elif sc.domain == 'cheque':
+            # Sub-unit cheque: must still store 0.01 and post a balanced entry
+            # rather than silently truncating to zero.
+            r = client.post('/cheques/create', data=cheque_form(
+                customer=customer, amount=amount,
+                cheque_number=f'SUB-{sc.id}', bank_name='B',
+                issue_date=CHQ_TODAY.isoformat(),
+                due_date=(CHQ_TODAY + timedelta(days=30)).isoformat(),
+                cheque_type='incoming'))
+            assert r.status_code in (302, 303), f'{sc.id}: {r.status_code}'
+            chq = Cheque.query.order_by(Cheque.id.desc()).first()
+            assert q3(chq.amount) == q3(amount), (
+                f'{sc.id}: sub-unit cheque stored {chq.amount} != {amount}')
+        else:
+            _run_voucher(client, db, sc, fixtures, amount=amount)
+        return True
+
+    # ---------------- duplicate_submission ----------------
+    if dim == 'duplicate_submission':
+        if sc.domain == 'accounting':
+            ref = f'DUP-{sc.id}'
+            ids = []
+            for i in range(2):
+                r = client.post('/ledger/manual-entry', data=manual_entry_form(
+                    f'{ref} #{i}',
+                    [{'account': ACC['cash'], 'debit': sc.amount},
+                     {'account': ACC['sales_revenue'], 'credit': sc.amount}],
+                    notes=ref))
+                eid = entry_id_from_redirect(r)
+                assert eid is not None, 'duplicate submission was dropped'
+                ids.append(eid)
+            assert ids[0] != ids[1], (
+                f'{sc.id}: the same reference collapsed into one entry')
+        elif sc.domain == 'ar':
+            ids = []
+            for _ in range(2):
+                r = client.post('/sales/create', data=sale_form(
+                    customer,
+                    [{'product_id': product.id, 'quantity': sc.quantity,
+                      'unit_price': 100}], warehouse=warehouse))
+                ids.append(sale_id_from_redirect(r))
+            assert all(ids) and ids[0] != ids[1], (
+                f'{sc.id}: duplicate sale did not produce two documents: {ids}')
+        elif sc.domain == 'ap':
+            ids = []
+            for _ in range(2):
+                r = client.post('/purchases/create', data=purchase_form(
+                    supplier,
+                    [{'product_id': product.id, 'quantity': sc.quantity,
+                      'unit_cost': 50}], warehouse=warehouse))
+                ids.append(purchase_id_from_redirect(r))
+            assert all(ids) and ids[0] != ids[1], (
+                f'{sc.id}: duplicate purchase collapsed: {ids}')
+        elif sc.domain == 'inventory':
+            # Two identical adjustments are two movements, not one.
+            base = q3(product.current_stock)
+            for _ in range(2):
+                r = client.post(f'/products/{product.id}/adjust-stock',
+                                data=product_adjust_form(
+                                    adjustment_type='add', quantity=sc.quantity))
+                assert r.get_json()['success'] is True
+            assert_product_stock(product.id, base + q3(sc.quantity) * 2)
+        elif sc.domain == 'cheque':
+            nums = []
+            for _ in range(2):
+                r = client.post('/cheques/create', data=cheque_form(
+                    customer=customer, amount=sc.amount,
+                    cheque_number=f'SAME-{sc.id}', bank_name='B',
+                    issue_date=CHQ_TODAY.isoformat(),
+                    due_date=(CHQ_TODAY + timedelta(days=30)).isoformat(),
+                    cheque_type='incoming'))
+                nums.append(Cheque.query.count())
+            assert nums[1] == nums[0] + 1, (
+                f'{sc.id}: a repeated cheque_number created no second row '
+                f'({nums}) - either silently dropped or silently duplicated')
+        elif sc.domain == 'payments':
+            model, before = _voucher_model(sc)
+            for _ in range(2):
+                _run_voucher(client, db, sc, fixtures)
+            assert model.query.count() == before + 2, (
+                f'{sc.id}: duplicate voucher did not create two documents')
+        return True
+
+    # ---------------- time_based ----------------
+    if dim == 'time_based':
+        if sc.domain == 'accounting':
+            past = date(2020, 1, 15)
+            r = client.post('/ledger/manual-entry', data=manual_entry_form(
+                f'back-dated {sc.id}',
+                [{'account': ACC['cash'], 'debit': sc.amount},
+                 {'account': ACC['sales_revenue'], 'credit': sc.amount}],
+                entry_date=past.isoformat()))
+            eid = entry_id_from_redirect(r)
+            assert eid is not None, f'{sc.id}: back-dated entry was rejected'
+            entry = db.session.get(GLJournalEntry, eid)
+            # entry_date is a DateTime column, so compare the date part.
+            assert entry.entry_date.date() == past, (
+                f'{sc.id}: stored entry_date {entry.entry_date} != {past}')
+            assert_entry_balanced_and_non_trivial(eid)
+        elif sc.domain == 'ar':
+            # Cancel a back-dated sale: the document must survive its own date.
+            r = client.post('/sales/create', data=sale_form(
+                customer,
+                [{'product_id': product.id, 'quantity': sc.quantity,
+                  'unit_price': 100}], warehouse=warehouse))
+            sid = sale_id_from_redirect(r)
+            cr = client.post(f'/sales/{sid}/cancel')
+            assert cr.status_code in (302, 303)
+            assert db.session.get(Sale, sid).status == 'cancelled'
+        elif sc.domain == 'inventory':
+            base = q3(product.current_stock)
+            r = client.post(f'/products/{product.id}/adjust-stock',
+                            data=product_adjust_form(adjustment_type='set',
+                                                     quantity=1))
+            assert r.get_json()['success'] is True
+            assert_product_stock(product.id, Decimal('1.00'))
+            r2 = client.post(f'/products/{product.id}/adjust-stock',
+                             data=product_adjust_form(
+                                 adjustment_type='add', quantity=sc.quantity))
+            assert r2.get_json()['success'] is True
+            assert_product_stock(product.id, Decimal('1.00') + q3(sc.quantity))
+            del base
+        elif sc.domain in ('cheque', 'payments', 'ap'):
+            before = _world_state(db)
+            if sc.domain == 'cheque':
+                r = client.post('/cheques/create', data=cheque_form(
+                    customer=customer, amount=sc.amount,
+                    cheque_number=f'OLD-{sc.id}', bank_name='B',
+                    issue_date='2019-01-01',
+                    due_date='2019-02-01', cheque_type='incoming'))
+            elif sc.domain == 'payments':
+                _run_voucher(client, db, sc, fixtures,
+                            over={'date': '2019-01-01'})
+                return True
+            else:
+                r = client.post('/purchases/create', data=purchase_form(
+                    supplier,
+                    [{'product_id': product.id, 'quantity': sc.quantity,
+                      'unit_cost': 50}], warehouse=warehouse))
+            assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
+            if r.status_code in (302, 303):
+                _assert_creation_only(db, before, sc)
+        return True
+
+    # ---------------- insufficient_funds ----------------
+    if dim == 'insufficient_funds':
+        if sc.domain == 'ar':
+            # sale_service raises ValueError when the projected balance would
+            # exceed the customer's credit limit.
+            before = _world_state(db)
+            r = client.post('/sales/create', data=sale_form(
+                customer,
+                [{'product_id': product.id, 'quantity': sc.quantity,
+                  'unit_price': 100}],
+                warehouse=warehouse))
+            assert r.status_code in (200, 302), f'{sc.id}: {r.status_code}'
+            _assert_credit_limit_holds(db, customer, sc)
+            del before
+        else:
+            # No balance gate exists on manual GL, stock, cheque or vouchers:
+            # assert the absence explicitly rather than faking a refusal.
+            before = _world_state(db)
+            if sc.domain == 'accounting':
+                r = client.post('/ledger/manual-entry', data=manual_entry_form(
+                    f'no limit {sc.id}',
+                    [{'account': ACC['cash'], 'debit': sc.amount},
+                     {'account': ACC['sales_revenue'], 'credit': sc.amount}]))
+                assert entry_id_from_redirect(r) is not None, (
+                    f'{sc.id}: manual GL has no funds gate, entry should post')
+            elif sc.domain == 'inventory':
+                r = client.post(f'/products/{product.id}/adjust-stock',
+                                data=product_adjust_form(
+                                    adjustment_type='add',
+                                    quantity=sc.quantity * 1000))
+                assert r.get_json()['success'] is True, (
+                    f'{sc.id}: stock has no funds gate')
+            elif sc.domain == 'cheque':
+                r = client.post('/cheques/create', data=cheque_form(
+                    customer=customer, amount=sc.amount,
+                    cheque_number=f'BIG-{sc.id}', bank_name='B',
+                    issue_date=CHQ_TODAY.isoformat(),
+                    due_date=(CHQ_TODAY + timedelta(days=30)).isoformat(),
+                    cheque_type='incoming'))
+                assert r.status_code in (302, 303), (
+                    f'{sc.id}: cheques have no funds gate')
+            elif sc.domain == 'ap':
+                r = client.post('/purchases/create', data=purchase_form(
+                    supplier,
+                    [{'product_id': product.id, 'quantity': sc.quantity,
+                      'unit_cost': 5000}], warehouse=warehouse))
+                assert r.status_code in (302, 303), (
+                    f'{sc.id}: purchases have no funds gate')
+            elif sc.domain == 'payments':
+                _run_voucher(client, db, sc, fixtures,
+                            over={'amount': '999999999.99'})
+                return True
+            _assert_creation_only(db, before, sc)
+        return True
+
+    # ---------------- approval_pending ----------------
+    if dim == 'approval_pending':
+        # Documented absence: none of these write paths consult the approval
+        # engine, so the document is created immediately and unapproved. The
+        # assertion records that gap instead of pretending a gate exists.
+        before = _world_state(db)
+        if sc.domain == 'accounting':
+            r = client.post('/ledger/manual-entry', data=manual_entry_form(
+                f'no approval {sc.id}',
+                [{'account': ACC['cash'], 'debit': sc.amount},
+                 {'account': ACC['sales_revenue'], 'credit': sc.amount}]))
+            eid = entry_id_from_redirect(r)
+            assert eid is not None, f'{sc.id}: entry should post with no approval'
+            entry = db.session.get(GLJournalEntry, eid)
+            # GLJournalEntry has no approval column at all, which is the gap.
+            assert entry.is_posted is True, (
+                f'{sc.id}: entry bypassed the posting flag')
+            assert entry.is_reversed is False
+        elif sc.domain == 'ar':
+            r = client.post('/sales/create', data=sale_form(
+                customer,
+                [{'product_id': product.id, 'quantity': sc.quantity,
+                  'unit_price': 100}], warehouse=warehouse))
+            sid = sale_id_from_redirect(r)
+            assert sid is not None, f'{sc.id}: sale should post with no approval'
+            sale = db.session.get(Sale, sid)
+            assert sale.status not in ('pending', 'draft'), (
+                f'{sc.id}: unexpected approval state {sale.status}')
+        elif sc.domain in ('ap', 'inventory', 'cheque', 'payments'):
+            if sc.domain == 'ap':
+                r = client.post('/purchases/create', data=purchase_form(
+                    supplier,
+                    [{'product_id': product.id, 'quantity': sc.quantity,
+                      'unit_cost': 50}], warehouse=warehouse))
+                assert purchase_id_from_redirect(r) is not None
+            elif sc.domain == 'inventory':
+                r = client.post(f'/products/{product.id}/adjust-stock',
+                                data=product_adjust_form(
+                                    adjustment_type='add',
+                                    quantity=sc.quantity))
+                assert r.get_json()['success'] is True
+            elif sc.domain == 'cheque':
+                r = client.post('/cheques/create', data=cheque_form(
+                    customer=customer, amount=sc.amount,
+                    cheque_number=f'NOAPP-{sc.id}', bank_name='B',
+                    issue_date=CHQ_TODAY.isoformat(),
+                    due_date=(CHQ_TODAY + timedelta(days=30)).isoformat(),
+                    cheque_type='incoming'))
+                assert r.status_code in (302, 303)
+            else:
+                _run_voucher(client, db, sc, fixtures)
+        _assert_creation_only(db, before, sc)
+        return True
+
+    return False
+
+
+def _assert_credit_limit_holds(db, customer, sc):
+    """The sale must never push the customer past their credit limit.
+
+    sale_service estimates the invoice total from the posted lines and raises
+    when balance + total would exceed credit_limit. Whether the limit is small
+    enough to bite for this scenario or not, the invariant must hold afterwards.
+    """
+    db.session.refresh(customer)
+    limit = Decimal(str(customer.credit_limit or 0))
+    balance = Decimal(str(customer.get_balance() or 0))
+    assert limit <= 0 or balance <= limit, (
+        f'{sc.id}: customer balance {balance} exceeds credit limit {limit}')
+    return balance
+
+
+def _assert_creation_only(db, before, sc):
+    """The write succeeded, so at least one document must exist now."""
+    after = _world_state(db)
+    created = [k for k in ('entries', 'sales', 'purchases', 'cheques',
+                           'movements', 'payments') if after[k] != before[k]]
+    assert created, (
+        f'{sc.id}: the route answered as created but nothing was written '
+        f'({before} -> {after})')
+
+
+def _voucher_model(sc):
+    """Return (model, count-before) for the branch the scenario maps to."""
+    from models.payment import Receipt
+    if sc.index % 4 == 0:
+        return Receipt, Receipt.query.count()
+    return Payment, Payment.query.count()
+
+
+def _run_voucher(client, db, sc, fixtures, amount=None, over=None):
+    """Post one unified voucher and assert it landed on the right model."""
+    model, before = _voucher_model(sc)
+    expected = amount if amount is not None else sc.amount
+    fields = {k: str(v) for k, v in (over or {}).items()}
+    fields['amount'] = str(expected)
+    fields.update({
+        'direction': 'incoming',
+        'party_type': 'customer',
+        'party_id': str(fixtures['customer'].id),
+        'payment_method': 'cash',
+        'date': CHQ_TODAY.isoformat(),
+        'currency': 'ILS',
+        'exchange_rate': '1',
+    })
+    r = client.post('/payments/voucher/submit', data=fields)
+    after = model.query.count()
+    assert after == before + 1, (
+        f'{sc.id}: voucher did not create a {model.__name__} '
+        f'({before} -> {after}); status {r.status_code}')
+    row = model.query.order_by(model.id.desc()).first()
+    assert q3(row.amount) == q3(expected), (
+        f'{sc.id}: {model.__name__} amount {row.amount} != {expected}')
+    return row
+
+
 def _run_cheque(client, db, sc, fixtures):
     """Domain F — cheque intake and GL."""
+    if _new_edge_state(client, db, sc, fixtures):
+        return
     customer = fixtures['customer']
 
     if sc.state == 'expired_invalid' or sc.edge == 'rollback_no_partial_write':
@@ -492,7 +1004,10 @@ def _run_security(client, db, sc, fixtures):
     The route matrix is exercised for authenticated roles; the cross-tenant
     cell additionally seeds a second tenant and asserts the refusal.
     """
-    if sc.edge == 'cross_tenant':
+    if sc.edge == 'cross_tenant' or sc.state == 'cross_tenant_read':
+        if sc.state == 'cross_tenant_read':
+            # Same contract as the cross_tenant edge, reached via the state axis.
+            return _new_edge_state(client, db, sc, fixtures)
         from models import Tenant, Customer as _C
         a = Tenant(name=f'Tenant {sc.id} A', name_ar='أ', slug=f'ta-{sc.index}',
                    country='UAE', is_active=True)

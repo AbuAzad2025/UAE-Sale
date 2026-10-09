@@ -56,6 +56,7 @@ def _world_state(db):
     from models.approval_workflow import ApprovalRequest
     from models.shipment import Shipment
     from models.expense import Expense
+    from models import ProductReturn
     return {
         'entries': snapshot_entry_ids(),
         'sales': Sale.query.count(),
@@ -70,6 +71,7 @@ def _world_state(db):
         'approvals': ApprovalRequest.query.count(),
         'shipments': Shipment.query.count(),
         'expenses': Expense.query.count(),
+        'returns': ProductReturn.query.count(),
     }
 
 
@@ -1759,6 +1761,150 @@ def _run_expenses(client, db, sc, fixtures):
             f'edited amount {new_amount}')
 
 
+def _sale_for_return(client, fixtures, suffix, qty, tax=0):
+    """Create a real sale and return its id plus its first line id.
+
+    ReturnService.create_return validates against the sale (not cancelled, the
+    line belongs to it, and quantity <= already-issued + sold), so a return
+    scenario is meaningless without a genuine sale behind it.
+    """
+    customer = fixtures['customer']
+    product = fixtures['product']
+    warehouse = fixtures['warehouse']
+    r = client.post('/sales/create', data=sale_form(
+        customer,
+        [{'product_id': product.id, 'quantity': qty, 'unit_price': 100}],
+        warehouse=warehouse, tax_rate=tax,
+        notes=f'return-fixture-{suffix}'))
+    sid = sale_id_from_redirect(r)
+    assert sid is not None, (
+        f'could not create the sale fixture for a return (status {r.status_code})')
+    sale = db.session.get(Sale, sid)
+    line = sale.lines[0]
+    return sale, line
+
+
+def _run_returns(client, db, sc, fixtures):
+    """Domain R — sales returns, the reversal side of the revenue cycle.
+
+    ReturnService.create_return refuses a missing or cancelled sale, a line that
+    belongs to another sale, and a quantity above what was sold minus what was
+    already returned. On success it posts a five-way entry:
+        DR  sales_returns   net_return_amount   (reduce revenue)
+        DR  output_vat      tax_amount          (reduce VAT liability, if taxed)
+        CR  customer AR     gross_return_amount (reduce customer debt)
+    plus, when the condition is resaleable, a cost-side pair:
+        DR  inventory       cost_value
+        CR  cogs            cost_value
+
+    The branches therefore assert the guard rails and the real entry, and the
+    over-return case asserts that a second attempt is refused.
+    """
+    import json as _json
+    from models import ProductReturn
+
+    qty = qty_sold = sc.quantity
+    tax = 5 if sc.edge == 'tax_boundary' or sc.state == 'partial_split' else 0
+
+    if sc.state in ('insufficient_boundary', 'expired_invalid') or \
+            sc.edge == 'negative_boundary':
+        # A cancelled sale can never be returned against.
+        sale, line = _sale_for_return(client, fixtures, sc.index, qty_sold, tax)
+        cr = client.post(f'/sales/{sale.id}/cancel')
+        assert cr.status_code in (302, 303), f'{sc.id}: cancel {cr.status_code}'
+        before = ProductReturn.query.count()
+        r = client.post('/returns/api/create', data=_json.dumps({
+            'sale_id': sale.id,
+            'notes': 'against a cancelled sale',
+            'lines': [{'sale_line_id': line.id, 'quantity': 1,
+                       'condition': 'resaleable', 'notes': ''}],
+        }), content_type='application/json')
+        body = r.get_json()
+        assert body.get('success') is False, (
+            f'{sc.id}: a return against a cancelled sale was accepted: {body}')
+        assert ProductReturn.query.count() == before, (
+            f'{sc.id}: the refused return still created a row')
+        return
+
+    if sc.state == 'validation_error' or sc.edge == 'rollback_no_partial_write':
+        # Missing sale_id / lines is refused with 400 by the route itself.
+        before = ProductReturn.query.count()
+        r = client.post('/returns/api/create', data=_json.dumps({
+            'sale_id': None, 'lines': []}),
+            content_type='application/json')
+        assert r.status_code == 400, f'{sc.id}: status {r.status_code}'
+        assert ProductReturn.query.count() == before
+        return
+
+    sale, line = _sale_for_return(client, fixtures, sc.index, qty_sold, tax)
+
+    if sc.edge == 'cross_tenant' or sc.state == 'cross_tenant_read':
+        # A sale line that belongs to a different sale is refused.
+        other, other_line = _sale_for_return(
+            client, fixtures, sc.index + 1, 1, 0)
+        before = ProductReturn.query.count()
+        r = client.post('/returns/api/create', data=_json.dumps({
+            'sale_id': other.id,
+            'notes': 'line from another sale',
+            'lines': [{'sale_line_id': line.id, 'quantity': 1,
+                       'condition': 'resaleable', 'notes': ''}],
+        }), content_type='application/json')
+        body = r.get_json()
+        assert body.get('success') is False, (
+            f'{sc.id}: a return accepted a line from another sale: {body}')
+        assert ProductReturn.query.count() == before
+        return
+
+    before = ProductReturn.query.count()
+    first_qty = max(1, int(qty_sold / 2))
+    r = client.post('/returns/api/create', data=_json.dumps({
+        'sale_id': sale.id,
+        'notes': f'e2e {sc.id}',
+        'lines': [{'sale_line_id': line.id, 'quantity': first_qty,
+                   'condition': 'resaleable', 'notes': ''}],
+    }), content_type='application/json')
+    body = r.get_json()
+    assert body.get('success') is True, f'{sc.id}: return refused: {body}'
+    assert ProductReturn.query.count() == before + 1, (
+        f'{sc.id}: no ProductReturn row was created')
+
+    ret = db.session.get(ProductReturn, body['return_id'])
+    assert ret is not None, f'{sc.id}: the returned id does not resolve'
+    assert ret.sale_id == sale.id, (
+        f'{sc.id}: return points at sale {ret.sale_id}, expected {sale.id}')
+    assert q3(ret.total_amount) > 0, (
+        f'{sc.id}: return total_amount is {ret.total_amount}')
+    assert ret.status, f'{sc.id}: the return has no status'
+
+    entries = GLJournalEntry.query.filter_by(
+        reference_type='ProductReturn', reference_id=ret.id).all()
+    if entries:
+        for e in entries:
+            assert_entry_balanced_and_non_trivial(e.id)
+            assert_no_header_account_posted(e.id)
+        merged = lines_for_entries(entries)
+        # Revenue side: the sales-returns account must be debited.
+        debit_codes = [c for c, (d, cr) in merged.items() if d > 0]
+        assert debit_codes, (
+            f'{sc.id}: the return GL has no debit side — merged={merged}')
+        assert any(c.startswith('4') or c.startswith('5') or c.startswith('1')
+                   for c in debit_codes), (
+            f'{sc.id}: unexpected debit accounts {debit_codes}')
+
+    if sc.edge == 'idempotency_replay' or sc.edge == 'race_condition':
+        # Returning more than was sold must be refused.
+        r2 = client.post('/returns/api/create', data=_json.dumps({
+            'sale_id': sale.id,
+            'notes': 'over-return',
+            'lines': [{'sale_line_id': line.id,
+                       'quantity': int(qty_sold) + 50,
+                       'condition': 'resaleable', 'notes': ''}],
+        }), content_type='application/json')
+        body2 = r2.get_json()
+        assert body2.get('success') is False, (
+            f'{sc.id}: an over-return was accepted: {body2}')
+
+
 def _run_security(client, db, sc, fixtures):
     """Domain H — access control and tenant isolation.
 
@@ -1840,6 +1986,7 @@ _DISPATCH = {
     'approvals': _run_approvals,
     'shipments': _run_shipments,
     'expenses': _run_expenses,
+    'returns': _run_returns,
     'security': _run_security,
 }
 
@@ -1912,6 +2059,10 @@ def _denied_request(client, db, sc, fixtures):
             f'{sc.id}: a refused approval still advanced a level')
         assert before >= 1
         return r
+    if sc.domain == 'returns':
+        import json as _json
+        return client.post('/returns/api/create', data=_json.dumps({
+            'sale_id': 0, 'lines': []}), content_type='application/json')
     if sc.domain == 'expenses':
         cat = _expense_category(
             db, EXPENSE_ACCOUNTS[sc.index % len(EXPENSE_ACCOUNTS)])

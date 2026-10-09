@@ -77,7 +77,14 @@ class ReturnService:
                 sale_line = get_owned_or_raise(SaleLine, sale_line_id)
                 if not sale_line:
                     raise ValueError(f"Sale line {sale_line_id} not found.")
-                    raise ValueError(f"Sale line {sale_line_id} does not belong to sale {sale.id}.")
+                # Must sit outside the `not found` branch: it used to be nested
+                # under the raise above, where it was unreachable, so a return
+                # could book lines belonging to an unrelated sale and post GL
+                # against the wrong revenue.
+                if sale_line.sale_id != sale.id:
+                    raise ValueError(
+                        f"Sale line {sale_line_id} does not belong to "
+                        f"sale {sale.id}.")
 
                 # Validate Quantity (Cannot return more than sold)
                 # Note: This checks total sold. Ideally should check remaining returnable quantity if partial returns exist.

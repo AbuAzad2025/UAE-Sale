@@ -48,6 +48,7 @@ OTHER_RATE = Decimal('3.670000')
 def _world_state(db):
     """Everything the scenario may have created, for side-effect assertions."""
     from models.payment import Payment
+    from models.hr import Department, Employee, LeaveRequest, Payslip
     return {
         'entries': snapshot_entry_ids(),
         'sales': Sale.query.count(),
@@ -55,6 +56,10 @@ def _world_state(db):
         'cheques': Cheque.query.count(),
         'movements': StockMovement.query.count(),
         'payments': Payment.query.count(),
+        'departments': Department.query.count(),
+        'employees': Employee.query.count(),
+        'leaves': LeaveRequest.query.count(),
+        'payslips': Payslip.query.count(),
     }
 
 
@@ -786,8 +791,9 @@ def _assert_credit_limit_holds(db, customer, sc):
 def _assert_creation_only(db, before, sc):
     """The write succeeded, so at least one document must exist now."""
     after = _world_state(db)
-    created = [k for k in ('entries', 'sales', 'purchases', 'cheques',
-                           'movements', 'payments') if after[k] != before[k]]
+    created = [k for k in before
+               if after[k] != before[k] and k not in ('entries',)] or \
+              [k for k in ('entries',) if after[k] != before[k]]
     assert created, (
         f'{sc.id}: the route answered as created but nothing was written '
         f'({before} -> {after})')
@@ -1004,6 +1010,266 @@ def _run_payments(client, db, sc, fixtures):
         assert_no_header_account_posted(entries[0].id)
 
 
+def _hr_employee(client, db, users, suffix):
+    """Create an Employee bound to a real User, as /hr/employees/create requires.
+
+    routes/hr.py flashes 'يجب اختيار مستخدم' when user_id is absent, so every
+    HR scenario needs a backing user; the `owner` fixture is reused because the
+    employee row only stores the id.
+    """
+    from models.hr import Employee
+    emp = Employee.query.filter_by(employee_number=f'E2E-{suffix}').first()
+    if emp is not None:
+        return emp
+    emp = Employee(
+        employee_number=f'E2E-{suffix}',
+        user_id=users['owner'].id,
+        position='Tester',
+        position_ar='مختبر',
+        hire_date=date(2024, 1, 15),
+        base_salary=Decimal('5000'),
+        salary_currency='ILS',
+        payment_frequency='monthly',
+        is_active=True,
+        # create_leave lists employees with filter_by(is_active=True,
+        # employment_status='active'), so without this the employee is invisible
+        # to the leave form and the request silently never lands.
+        employment_status='active',
+        # HRService.request_leave compares the working-day count against
+        # _get_leave_balance, which reads these three columns by leave code.
+        # They are Float columns, so SQLite refuses a Decimal bind.
+        annual_leave_balance=30.0,
+        sick_leave_balance=15.0,
+        personal_leave_balance=10.0,
+    )
+    db.session.add(emp)
+    db.session.commit()
+    return emp
+
+
+def _hr_leave_type(db, suffix):
+    """Return one of the three leave types HRService actually recognises.
+
+    HRService._get_leave_balance switches on leave_type.code and returns 0 for
+    anything that is not exactly 'annual', 'sick' or 'personal'. A test-only
+    code therefore yields a zero balance and every request_leave call dies with
+    'رصيد الإجازة غير كافٍ'. The three codes below are taken verbatim from that
+    switch, which makes these cells a genuine test of the balance arithmetic.
+    """
+    from models.hr import LeaveType
+    codes = ['annual', 'sick', 'personal']
+    code = codes[suffix % len(codes)]
+    lt = LeaveType.query.filter_by(code=code).first()
+    if lt is None:
+        lt = LeaveType(
+            name=f'{code} leave {suffix}',
+            name_ar={'annual': 'سنوية', 'sick': 'مرضية',
+                     'personal': 'شخصية'}[code],
+            code=code,
+            default_days=21 if code == 'annual' else 10,
+            is_active=True,
+        )
+        db.session.add(lt)
+        db.session.commit()
+    return lt
+
+
+def _hr_department(db, suffix):
+    from models.hr import Department
+    dep = Department.query.filter_by(name=f'E2E-Dept-{suffix}').first()
+    if dep is None:
+        # departments.code is NOT NULL, so the helper must supply it or the
+        # employee branch dies on IntegrityError instead of testing HR.
+        dep = Department(name=f'E2E-Dept-{suffix}', name_ar='قسم',
+                         code=f'E2E{suffix}', is_active=True)
+        db.session.add(dep)
+        db.session.commit()
+    return dep
+
+
+def _run_hr(client, db, sc, fixtures):
+    """Domain H-R — HR: departments, employees, leave lifecycle, payroll.
+
+    routes/hr.py gates all 21 endpoints on manage_hr. The (state, edge) pair
+    selects the concrete HR operation, and the numbers are checked against the
+    stored rows rather than the flash message, because routes/hr.py answers 200
+    on a refusal just as it does on a success.
+
+    Branches:
+      department  -> POST /hr/departments/create, budget stored exactly
+      employee    -> POST /hr/employees/create, base_salary stored exactly
+      leave       -> POST /hr/leave/create, then approve/reject/cancel lifecycle
+      payroll     -> POST /hr/payroll/generate for the scenario period
+    """
+    from models.hr import Department, Employee, LeaveRequest, Payslip
+
+    users = fixtures['users']
+    suffix = sc.index
+
+    if sc.state == 'insufficient_boundary' or sc.edge == 'negative_boundary':
+        # routes/hr.py rejects an end date that is not after the start date.
+        emp = _hr_employee(client, db, users, suffix)
+        lt = _hr_leave_type(db, suffix)
+        before = LeaveRequest.query.count()
+        r = client.post('/hr/leave/create', data={
+            'employee_id': str(emp.id),
+            'leave_type_id': str(lt.id),
+            'start_date': '2024-06-10',
+            'end_date': '2024-06-01',
+            'reason': 'backwards range',
+        })
+        assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
+        assert LeaveRequest.query.count() == before, (
+            f'{sc.id}: an inverted leave range was accepted')
+
+        # A negative salary must not be stored on an employee.
+        before_emp = Employee.query.count()
+        client.post('/hr/employees/create', data={
+            'user_id': str(users['owner'].id),
+            'employee_number': f'E2E-NEG-{suffix}',
+            'position': 'X', 'position_ar': 'س',
+            'hire_date': '2024-01-01',
+            'base_salary': str(-sc.amount),
+            'salary_currency': 'ILS',
+            'payment_frequency': 'monthly',
+        })
+        neg = Employee.query.filter_by(
+            employee_number=f'E2E-NEG-{suffix}').first()
+        assert neg is None or Decimal(str(neg.base_salary or 0)) >= 0, (
+            f'{sc.id}: a negative salary was stored')
+        assert Employee.query.count() >= before_emp
+        return
+
+    if sc.state == 'expired_invalid' or sc.edge == 'rollback_no_partial_write':
+        # create_employee refuses without a user, and must not leave a row.
+        before = Employee.query.count()
+        r = client.post('/hr/employees/create', data={
+            'employee_number': f'E2E-NOUSER-{suffix}',
+            'position': 'X', 'position_ar': 'س',
+            'hire_date': '2024-01-01',
+            'base_salary': '1000', 'salary_currency': 'ILS',
+            'payment_frequency': 'monthly',
+        })
+        assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
+        orphan = Employee.query.filter_by(
+            employee_number=f'E2E-NOUSER-{suffix}').first()
+        assert orphan is None, (
+            f'{sc.id}: an employee was created with no user_id')
+        assert Employee.query.count() == before, (
+            f'{sc.id}: refused employee left a row behind')
+        return
+
+    branch = sc.index % 4
+
+    if branch == 0:
+        # No helper here on purpose: _hr_department() seeds the same `code`,
+        # and departments.code is unique, so calling it first would make the
+        # POST fail on the constraint instead of exercising the create path.
+        before = Department.query.count()
+        r = client.post('/hr/departments/create', data={
+            'name': f'E2E-Dep-{suffix}',
+            'name_ar': 'قسم اختبار',
+            'code': f'E2E{suffix}',
+            'description': 'e2e',
+            'budget_amount': str(sc.amount),
+        })
+        assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
+        assert Department.query.count() == before + 1, (
+            f'{sc.id}: department not created')
+        created = Department.query.filter_by(name=f'E2E-Dep-{suffix}').first()
+        assert created is not None, f'{sc.id}: department row missing'
+        assert q3(created.budget_amount) == q3(sc.amount), (
+            f'{sc.id}: budget {created.budget_amount} != {sc.amount}')
+        return
+
+    if branch == 1:
+        before = Employee.query.count()
+        r = client.post('/hr/employees/create', data={
+            'user_id': str(users['owner'].id),
+            'employee_number': f'E2E-EMP-{suffix}',
+            'position': 'Analyst', 'position_ar': 'محلل',
+            'hire_date': '2024-02-01',
+            'base_salary': str(sc.amount),
+            'salary_currency': 'ILS',
+            'payment_frequency': 'monthly',
+            'department_id': str(_hr_department(db, suffix).id),
+            'annual_leave_days': '21',
+        })
+        assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
+        assert Employee.query.count() == before + 1, (
+            f'{sc.id}: employee not created')
+        emp = Employee.query.filter_by(
+            employee_number=f'E2E-EMP-{suffix}').first()
+        assert emp is not None, f'{sc.id}: employee row missing'
+        assert q3(emp.base_salary) == q3(sc.amount), (
+            f'{sc.id}: base_salary {emp.base_salary} != {sc.amount}')
+        return
+
+    if branch == 2:
+        emp = _hr_employee(client, db, users, suffix)
+        lt = _hr_leave_type(db, suffix)
+        before = LeaveRequest.query.count()
+        r = client.post('/hr/leave/create', data={
+            'employee_id': str(emp.id),
+            'leave_type_id': str(lt.id),
+            'start_date': '2024-06-03',
+            'end_date': '2024-06-07',
+            'reason': f'e2e {sc.id}',
+        })
+        assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
+        assert LeaveRequest.query.count() == before + 1, (
+            f'{sc.id}: leave request not created')
+        req = LeaveRequest.query.order_by(LeaveRequest.id.desc()).first()
+        assert req is not None, f'{sc.id}: leave row missing'
+
+        # Walk the lifecycle the edge selects so the cells differ.
+        action = {'reversal': 'reject', 'idempotency_replay': 'approve',
+                  'race_condition': 'cancel'}.get(sc.edge, 'approve')
+        if action == 'approve':
+            ar = client.post(f'/hr/leave/{req.id}/approve')
+            assert ar.status_code in (302, 303), f'{sc.id}: {ar.status_code}'
+            req = db.session.get(LeaveRequest, req.id)
+            assert req.status == 'approved', (
+                f'{sc.id}: leave status {req.status} != approved')
+        elif action == 'reject':
+            rr = client.post(f'/hr/leave/{req.id}/reject',
+                             data={'rejection_reason': 'e2e'})
+            assert rr.status_code in (302, 303), f'{sc.id}: {rr.status_code}'
+            req = db.session.get(LeaveRequest, req.id)
+            assert req.status == 'rejected', (
+                f'{sc.id}: leave status {req.status} != rejected')
+        else:
+            cr = client.post(f'/hr/leave/{req.id}/cancel')
+            assert cr.status_code in (302, 303), f'{sc.id}: {cr.status_code}'
+            req = db.session.get(LeaveRequest, req.id)
+            assert req.status == 'cancelled', (
+                f'{sc.id}: leave status {req.status} != cancelled')
+        return
+
+    # branch 3: payroll
+    emp = _hr_employee(client, db, users, suffix)
+    before = Payslip.query.count()
+    r = client.post('/hr/payroll/generate', data={
+        'period_start': '2024-03-01',
+        'period_end': '2024-03-31',
+        'working_days': '26',
+        'pay_date': '2024-04-01',
+    })
+    assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
+    slips = Payslip.query.filter_by(employee_id=emp.id).all()
+    if slips:
+        # If a payslip exists its net must not exceed the gross it derives from.
+        slip = slips[-1]
+        gross = Decimal(str(slip.total_earnings or 0))
+        net = Decimal(str(slip.net_salary or 0))
+        assert net <= gross + Decimal('0.01'), (
+            f'{sc.id}: net {net} exceeds gross {gross}')
+    else:
+        assert Payslip.query.count() == before, (
+            f'{sc.id}: payroll run changed the payslip count without a slip '
+            f'for the employee')
+
+
 def _run_security(client, db, sc, fixtures):
     """Domain H — access control and tenant isolation.
 
@@ -1081,6 +1347,7 @@ _DISPATCH = {
     'inventory': _run_inventory,
     'cheque': _run_cheque,
     'payments': _run_payments,
+    'hr': _run_hr,
     'security': _run_security,
 }
 
@@ -1140,16 +1407,26 @@ def _denied_request(client, db, sc, fixtures):
             'currency': 'ILS',
             'exchange_rate': '1',
         })
+    if sc.domain == 'hr':
+        # Every /hr/* route is gated on manage_hr, so a department POST is the
+        # canonical refused write.
+        return client.post('/hr/departments/create', data={
+            'name': f'denied {sc.id}',
+            'name_ar': 'مرفوض',
+            'code': f'D{sc.index}',
+            'budget_amount': str(sc.amount),
+        })
     return client.get('/ledger/')
 
 
 @pytest.mark.parametrize('sc', matrix_params(), ids=lambda s: s.id)
 def test_matrix_scenario(sc, client, db, users, login_as, customer, product,
                          warehouse, supplier):
-    """Execute one cell of the 6 x 5 x 5 x 10 matrix."""
+    """Execute one cell of the 8 x 9 x 7 x 15 matrix."""
     login_as(sc.role)
     fixtures = {'customer': customer, 'product': product,
-                'warehouse': warehouse, 'supplier': supplier}
+                'warehouse': warehouse, 'supplier': supplier,
+                'users': users}
 
     if not sc.permitted:
         # The permission gate must refuse the write AND leave no trace.

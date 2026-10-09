@@ -108,6 +108,11 @@ ROLE_PERMISSIONS = {
     'viewer': [
         'view_reports',
     ],
+    # utils/system_init.py:228 defines the 'hr' role with manage_hr as its only
+    # permission, which is the sole gate on all 21 /hr/* routes.
+    'hr': [
+        'manage_hr',
+    ],
 }
 
 ROLE_PASSWORDS = {
@@ -119,6 +124,7 @@ ROLE_PASSWORDS = {
     'manager': 'RoleManager123!',
     'accountant': 'RoleAccountant123!',
     'viewer': 'RoleViewer123!',
+    'hr': 'RoleHrOfficer123!',
 }
 
 _ALL_TABLES = []

@@ -44,6 +44,9 @@ from tests.e2e.matrix import matrix_params, MATRIX, NEW_EDGE_STATES
 CHQ_TODAY = date(2026, 3, 1)
 OTHER_CURRENCY = 'USD'
 OTHER_RATE = Decimal('3.670000')
+# Shipment lines are valued at cost: ShipmentLine.calculate_line_total multiplies
+# quantity by unit_cost, so this constant must match the payload builder.
+UNIT_COST = Decimal('50')
 
 
 def _world_state(db):
@@ -51,6 +54,7 @@ def _world_state(db):
     from models.payment import Payment
     from models.hr import Department, Employee, LeaveRequest, Payslip
     from models.approval_workflow import ApprovalRequest
+    from models.shipment import Shipment
     return {
         'entries': snapshot_entry_ids(),
         'sales': Sale.query.count(),
@@ -63,6 +67,7 @@ def _world_state(db):
         'leaves': LeaveRequest.query.count(),
         'payslips': Payslip.query.count(),
         'approvals': ApprovalRequest.query.count(),
+        'shipments': Shipment.query.count(),
     }
 
 
@@ -1397,6 +1402,154 @@ def _run_approvals(client, db, sc, fixtures):
             f'{sc.id}: replaying approve changed the level count')
 
 
+def _shipment_create(client, product, warehouse, amount, qty, suffix, **over):
+    """POST the real shipment form.
+
+    routes/shipments.py reads its line items as lines[{i}][product_id],
+    lines[{i}][quantity], ... which is a different convention from the
+    purchase and sale forms (line_{i}_*), so the payload is built by hand.
+    """
+    data = {
+        'from_warehouse_id': str(warehouse.id),
+        'destination_name': f'E2E site {suffix}',
+        'destination_type': 'site',
+        'lines[0][product_id]': str(product.id),
+        'lines[0][quantity]': str(qty),
+        'lines[0][unit_cost]': str(UNIT_COST),
+        'lines[0][unit_price]': str(amount),
+        'notes': f'e2e {suffix}',
+    }
+    data.update(over)
+    return client.post('/shipments/create', data=data)
+
+
+def _shipment_id_from(response):
+    """The create route redirects to /shipments/<id>."""
+    loc = response.headers.get('Location', '')
+    if '/shipments/' in loc:
+        return int(loc.rstrip('/').split('/')[-1])
+    return None
+
+
+def _run_shipments(client, db, sc, fixtures):
+    """Domain S — field-sales shipments and their state machine.
+
+    ShipmentService enforces a strict chain:
+        draft -> in_transit -> arrived -> selling -> closed
+    and every method refuses a shipment that is not in the exact state it
+    expects, raising ValueError which routes/shipments.py turns into a flash
+    and a redirect. The shipments table also carries two CHECK constraints
+    (status IN the six valid values, total_value >= 0).
+
+    The branches therefore assert the machine itself:
+      create      -> draft, with the line total stored exactly
+      full_chain  -> walks all four transitions and lands on 'closed'
+      illegal     -> every out-of-order transition is refused and the stored
+                     status is unchanged
+      cancel      -> draft/in_transit becomes 'cancelled' and stays there
+      no_lines    -> an empty line list is refused, nothing is created
+    """
+    from models.shipment import Shipment, ShipmentLine
+
+    product = fixtures['product']
+    warehouse = fixtures['warehouse']
+    suffix = sc.index
+
+    if sc.state in ('insufficient_boundary', 'negative_boundary') or \
+            sc.edge == 'negative_boundary':
+        # An empty line list must be refused: routes/shipments.py flashes
+        # 'يجب إضافة منتج واحد على الأقل' and redirects.
+        before = Shipment.query.count()
+        r = _shipment_create(client, product, warehouse, sc.amount,
+                             sc.quantity, suffix, **{
+                                 'lines[0][product_id]': '',
+                                 'lines[0][quantity]': '0'})
+        assert r.status_code in (302, 303), f'{sc.id}: {r.status_code}'
+        assert Shipment.query.count() == before, (
+            f'{sc.id}: a shipment with no usable line was created')
+        return
+
+    if sc.edge == 'validation_error' or sc.state == 'expired_invalid':
+        # A negative quantity never reaches lines_data, so it is also a
+        # zero-line submission and must be refused.
+        before = Shipment.query.count()
+        _shipment_create(client, product, warehouse, sc.amount,
+                         -sc.quantity, suffix)
+        assert Shipment.query.count() == before, (
+            f'{sc.id}: a negative-quantity shipment was created')
+        return
+
+    before = Shipment.query.count()
+    r = _shipment_create(client, product, warehouse, sc.amount,
+                         sc.quantity, suffix)
+    assert r.status_code in (302, 303), f'{sc.id}: create returned {r.status_code}'
+    sid = _shipment_id_from(r)
+    if sid is None:
+        shipment = Shipment.query.order_by(Shipment.id.desc()).first()
+        assert shipment is not None, f'{sc.id}: no shipment created'
+        sid = shipment.id
+    shipment = db.session.get(Shipment, sid)
+
+    assert shipment.status == 'draft', (
+        f'{sc.id}: a new shipment is {shipment.status}, expected draft')
+    assert Shipment.query.count() == before + 1, f'{sc.id}: no new shipment'
+
+    lines = ShipmentLine.query.filter_by(shipment_id=sid).all()
+    assert lines, f'{sc.id}: shipment stored no lines'
+    assert q3(lines[0].quantity) == q3(sc.quantity), (
+        f'{sc.id}: line quantity {lines[0].quantity} != {sc.quantity}')
+
+    # ShipmentLine.calculate_line_total is quantity * unit_cost (not
+    # unit_price), and Shipment.calculate_totals sums those line totals.
+    # The field-sales expedition is valued at cost, so total_value must equal
+    # quantity x unit_cost and NOT quantity x unit_price.
+    expected_total = q3(sc.quantity) * q3(UNIT_COST)
+    assert q3(lines[0].line_total) == expected_total, (
+        f'{sc.id}: line_total {lines[0].line_total} != '
+        f'{sc.quantity} x {UNIT_COST} = {expected_total}')
+    assert q3(shipment.total_value) == expected_total, (
+        f'{sc.id}: total_value {shipment.total_value} != {expected_total}')
+    assert q3(shipment.total_quantity) == q3(sc.quantity), (
+        f'{sc.id}: total_quantity {shipment.total_quantity} != {sc.quantity}')
+
+    def step(action, expect):
+        resp = client.post(f'/shipments/{sid}/{action}')
+        assert resp.status_code in (302, 303), (
+            f'{sc.id}: {action} returned {resp.status_code}')
+        db.session.refresh(shipment)
+        assert shipment.status == expect, (
+            f'{sc.id}: {action} left status {shipment.status}, '
+            f'expected {expect}')
+
+    if sc.edge == 'reversal':
+        step('cancel', 'cancelled')
+        # A cancelled shipment must refuse the rest of the machine.
+        step('send', 'cancelled')
+        return
+
+    if sc.edge in ('race_condition', 'concurrent_repeat'):
+        # send() twice: the second must be refused because the status is no
+        # longer 'draft'.
+        step('send', 'in_transit')
+        step('send', 'in_transit')
+        return
+
+    if sc.edge == 'split_transaction':
+        # arrive before send is out of order and must not move the status.
+        step('arrive', 'draft')
+        step('start-selling', 'draft')
+        step('close', 'draft')
+        return
+
+    # The full chain.
+    step('send', 'in_transit')
+    step('arrive', 'arrived')
+    step('start-selling', 'selling')
+    step('close', 'closed')
+    assert shipment.total_value is not None and q3(shipment.total_value) >= 0, (
+        f'{sc.id}: a closed shipment has total_value {shipment.total_value}')
+
+
 def _run_security(client, db, sc, fixtures):
     """Domain H — access control and tenant isolation.
 
@@ -1476,6 +1629,7 @@ _DISPATCH = {
     'payments': _run_payments,
     'hr': _run_hr,
     'approvals': _run_approvals,
+    'shipments': _run_shipments,
     'security': _run_security,
 }
 
@@ -1548,6 +1702,11 @@ def _denied_request(client, db, sc, fixtures):
             f'{sc.id}: a refused approval still advanced a level')
         assert before >= 1
         return r
+    if sc.domain == 'shipments':
+        # A valid payload: the permission decorator must refuse it before the
+        # handler ever inspects the lines, so 403 is the expected answer.
+        return _shipment_create(client, product, warehouse, sc.amount,
+                                sc.quantity, sc.index)
     if sc.domain == 'hr':
         # Every /hr/* route is gated on manage_hr, so a department POST is the
         # canonical refused write.

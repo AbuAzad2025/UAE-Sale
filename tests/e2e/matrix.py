@@ -31,7 +31,7 @@ from tests.e2e.harness import ACC
 # --------------------------------------------------------------------------
 
 DOMAINS = ['accounting', 'ar', 'ap', 'inventory', 'cheque', 'security',
-           'payments', 'hr', 'approvals']
+           'payments', 'hr', 'approvals', 'shipments']
 
 ROLES = ['owner', 'branch_manager', 'senior_accountant', 'pos_cashier',
          'warehouse_keeper', 'manager', 'accountant', 'viewer', 'hr']
@@ -68,6 +68,7 @@ DOMAIN_PERMISSION = {
     # routes/approvals.py splits its gates: the decision endpoints are
     # manage_approvals while /approvals/workflows/* is manage_settings.
     'approvals': 'manage_approvals',
+    'shipments': 'manage_warehouse',
     'security': None,          # read/visibility domain, handled per-op
 }
 
@@ -180,9 +181,9 @@ def build_matrix() -> List[Scenario]:
 
 MATRIX: List[Scenario] = build_matrix()
 
-# Sanity: the matrix must be exactly 8505 and fully populated.
-# 9 domains x 9 roles x 7 states x 15 edges
-_EXPECTED_TOTAL = 8505
+# Sanity: the matrix must be exactly 9450 and fully populated.
+# 10 domains x 9 roles x 7 states x 15 edges
+_EXPECTED_TOTAL = 9450
 _EXPECTED_PER_DOMAIN = 945
 
 assert len(MATRIX) == _EXPECTED_TOTAL, (

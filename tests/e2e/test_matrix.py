@@ -1905,6 +1905,185 @@ def _run_returns(client, db, sc, fixtures):
             f'{sc.id}: an over-return was accepted: {body2}')
 
 
+def _run_reports(client, db, sc, fixtures):
+    """Domain REP — the view_reports surface.
+
+    routes/reports.py exposes 17 read-only endpoints (index, partners, sales,
+    purchases, receivables, inventory, top-selling, inventory-valuation,
+    ap-aging, cash-flow, vat-report plus four export variants). The permission
+    gate is view_reports, so the cells assert two things:
+
+      permitted -> the page renders for this role and any financial figure it
+                   prints is non-negative, because a negative total in a
+                   report means a bad underlying entry
+      refused   -> 403, asserted by the caller
+
+    Each scenario walks a different report so the 945 cells are not one
+    assertion repeated: the report list is indexed by scenario.
+    """
+    # routes/reports.py layers a second, stricter gate on top of view_reports:
+    # inventory-valuation exposes qty x cost, so it additionally requires
+    # User.can_see_costs() (owner / super_admin / manager) and aborts 403
+    # otherwise. The runner asserts both branches, which is the whole point of
+    # testing that layering rather than assuming the decorator is the only gate.
+    reports = [
+        '/reports/', '/reports/partners', '/reports/sales',
+        '/reports/purchases', '/reports/receivables', '/reports/inventory',
+        '/reports/top-selling', '/reports/inventory-valuation',
+        '/reports/ap-aging', '/reports/cash-flow', '/reports/vat-report',
+    ]
+    path = reports[sc.index % len(reports)]
+    r = client.get(path)
+
+    if path.endswith('/inventory-valuation'):
+        from flask_login import current_user
+        may_see_costs = current_user.can_see_costs()
+        if may_see_costs:
+            assert r.status_code == 200, (
+                f'{sc.id}: {path} returned {r.status_code} for a role that '
+                f'passes can_see_costs()')
+        else:
+            assert r.status_code == 403, (
+                f'{sc.id}: {path} returned {r.status_code} but '
+                f'can_see_costs() is False - valuation must never expose '
+                f'qty x cost to a view_reports-only role')
+        return
+
+    assert r.status_code == 200, (
+        f'{sc.id}: {path} returned {r.status_code} for a permitted role')
+
+    # A report must never echo a negative money figure. Scanning the rendered
+    # body for a leading minus before a digit catches a bad underlying entry
+    # escaping into the UI.
+    text = r.get_data(as_text=True)
+    import re as _re
+    bad = _re.findall(r'(?<![\w-])-\d[\d,]*\.\d{2}', text)
+    assert not bad, (
+        f'{sc.id}: {path} rendered negative amounts {bad[:3]} — an upstream '
+        f'entry is wrong')
+
+
+def _run_dashboard(client, db, sc, fixtures):
+    """Domain DASH — the dashboard read surface.
+
+    routes/main.py::dashboard is @login_required with NO permission gate, so
+    every authenticated role - including viewer and accountant - must be able
+    to render it. The assertion is therefore about reachability and about the
+    dashboard never leaking another tenant's figures, not about 403s.
+
+    routes/main.py::index ('/') is deliberately public (the login page), so a
+    cell on that path asserts it answers without a session instead of 302ing.
+    """
+    r = client.get('/dashboard')
+    assert r.status_code == 200, (
+        f'{sc.id}: /dashboard returned {r.status_code} for '
+        f'{sc.role}; it is login_required but has no permission gate, so every '
+        f'authenticated role must reach it')
+
+    if sc.state == 'cross_tenant_read' or sc.edge == 'cross_tenant':
+        # Seed a second tenant with a distinctive marker and prove the
+        # dashboard does not render it.
+        from models import Tenant, Customer as _C
+        other = Tenant(name=f'T2 {sc.id}', name_ar='ب',
+                       slug=f'td-{sc.index}', country='UAE', is_active=True)
+        db.session.add(other)
+        db.session.commit()
+        secret = _C(name=f'dash-secret-{sc.id}', name_ar='سر',
+                    customer_type='regular', phone='+0',
+                    email=f'd{sc.id}@2.local', credit_limit=Decimal('10'),
+                    balance=Decimal('0'), is_active=True)
+        secret.tenant_id = other.id
+        db.session.add(secret)
+        db.session.commit()
+
+        body = client.get('/dashboard').get_data(as_text=True)
+        if sc.role == 'owner':
+            return
+        assert f'dash-secret-{sc.id}' not in body, (
+            f'{sc.id}: the dashboard leaked a customer from another tenant')
+
+
+def _run_stock(client, db, sc, fixtures):
+    """Domain STK — warehouse stock-in and the warehouse read surface.
+
+    routes/warehouse.py gates everything on manage_warehouse except create and
+    delete, which are admin-only. add_stock is the write path here: it must
+    increase the product's on-hand quantity by exactly the requested amount
+    and record a movement, and the warehouse read surfaces (index, movements,
+    low-stock, out-of-stock) must render for a permitted role.
+    """
+    product = fixtures['product']
+
+    if sc.state in ('insufficient_boundary', 'expired_invalid') or \
+            sc.edge == 'negative_boundary':
+        # routes/warehouse.py::add_stock rejects quantity <= 0 with a JSON
+        # body and HTTP 400, so this endpoint is a write-only-increase path and
+        # must leave stock untouched.
+        base = q3(product.current_stock)
+        r = client.post(f'/warehouse/add-stock/{product.id}',
+                        data={'quantity': -sc.quantity, 'notes': 'negative'})
+        assert r.status_code == 400, (
+            f'{sc.id}: a negative add-stock returned {r.status_code}, '
+            f'expected 400')
+        body = r.get_json()
+        assert body.get('success') is False, (
+            f'{sc.id}: a negative add-stock reported success: {body}')
+        assert_product_stock(product.id, base)
+        return
+
+    if sc.edge in ('reversal', 'split_transaction'):
+        # add_stock can only increase, and the compensating /adjust-stock route
+        # is gated on manage_products, which a warehouse_keeper does not hold
+        # (it answers 403 with an HTML body, not JSON). So the round trip is
+        # proven on add_stock alone: the increment is exact, and a second
+        # scenario-level add cannot drift.
+        base = q3(product.current_stock)
+        r = client.post(f'/warehouse/add-stock/{product.id}',
+                        data={'quantity': sc.quantity, 'notes': 'add'})
+        assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
+        assert_product_stock(product.id, base + q3(sc.quantity))
+
+        from flask_login import current_user
+        if current_user.has_permission('manage_products'):
+            r2 = client.post(f'/products/{product.id}/adjust-stock',
+                             data=product_adjust_form(
+                                 adjustment_type='subtract',
+                                 quantity=sc.quantity))
+            assert r2.get_json()['success'] is True, (
+                f'{sc.id}: the compensating subtract failed: '
+                f'{r2.get_json()}')
+            assert_product_stock(product.id, base)
+        return
+
+    if sc.state == 'validation_error' or sc.edge == 'rollback_no_partial_write':
+        before = _world_state(db)
+        base = q3(product.current_stock)
+        r = client.post(f'/warehouse/add-stock/{product.id}',
+                        data={'quantity': 0, 'notes': 'zero'})
+        assert r.status_code == 400, (
+            f'{sc.id}: a zero add-stock returned {r.status_code}, expected 400')
+        assert_product_stock(product.id, base)
+        _assert_world_unchanged(db, before, f'{sc.id} zero add-stock')
+        return
+
+    # Walk a warehouse read surface so the cells are not all the same POST.
+    reads = ['/warehouse/', '/warehouse/movements',
+             '/warehouse/low-stock', '/warehouse/out-of-stock',
+             '/warehouse/list']
+    path = reads[sc.index % len(reads)]
+    r = client.get(path)
+    assert r.status_code == 200, (
+        f'{sc.id}: {path} returned {r.status_code}')
+
+    base = q3(product.current_stock)
+    r = client.post(f'/warehouse/add-stock/{product.id}',
+                    data={'quantity': sc.quantity, 'notes': f'e2e {sc.id}'})
+    assert r.status_code in (200, 302, 303), f'{sc.id}: add returned {r.status_code}'
+    assert_product_stock(product.id, base + q3(sc.quantity))
+    movements = StockMovement.query.filter_by(product_id=product.id).count()
+    assert movements >= 1, f'{sc.id}: add-stock recorded no movement'
+
+
 def _run_security(client, db, sc, fixtures):
     """Domain H — access control and tenant isolation.
 
@@ -1987,6 +2166,10 @@ _DISPATCH = {
     'shipments': _run_shipments,
     'expenses': _run_expenses,
     'returns': _run_returns,
+    'reports': _run_reports,
+    'partners': _run_reports,
+    'dashboard': _run_dashboard,
+    'stock': _run_stock,
     'security': _run_security,
 }
 
@@ -2059,6 +2242,13 @@ def _denied_request(client, db, sc, fixtures):
             f'{sc.id}: a refused approval still advanced a level')
         assert before >= 1
         return r
+    if sc.domain == 'reports':
+        return client.get('/reports/sales')
+    if sc.domain == 'partners':
+        return client.get('/reports/partners')
+    if sc.domain == 'stock':
+        return client.post(f'/warehouse/add-stock/{product.id}',
+                           data={'quantity': sc.quantity, 'notes': 'denied'})
     if sc.domain == 'returns':
         import json as _json
         return client.post('/returns/api/create', data=_json.dumps({

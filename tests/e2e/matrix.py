@@ -31,7 +31,8 @@ from tests.e2e.harness import ACC
 # --------------------------------------------------------------------------
 
 DOMAINS = ['accounting', 'ar', 'ap', 'inventory', 'cheque', 'security',
-           'payments', 'hr', 'approvals', 'shipments', 'expenses', 'returns']
+           'payments', 'hr', 'approvals', 'shipments', 'expenses', 'returns',
+           'reports', 'partners', 'dashboard', 'stock']
 
 ROLES = ['owner', 'branch_manager', 'senior_accountant', 'pos_cashier',
          'warehouse_keeper', 'manager', 'accountant', 'viewer', 'hr']
@@ -71,6 +72,12 @@ DOMAIN_PERMISSION = {
     'shipments': 'manage_warehouse',
     'expenses': 'manage_expenses',
     'returns': 'manage_sales',
+    # Read/report surfaces. These have no write path of their own, so their
+    # cells assert the visibility contract instead of a created document.
+    'reports': 'view_reports',
+    'partners': 'view_reports',
+    'dashboard': None,          # login_required only, no permission gate
+    'stock': 'manage_warehouse',
     'security': None,          # read/visibility domain, handled per-op
 }
 
@@ -113,6 +120,11 @@ ROLE_PERMISSIONS = {
 
 def role_may_write(role: str, domain: str) -> bool:
     """Would this role pass the domain's permission gate?"""
+    if domain == 'dashboard':
+        # routes/main.py::dashboard is login_required with no permission gate,
+        # so every authenticated role reaches it. Returning True here keeps the
+        # runner on the reachability assertions rather than the 403 path.
+        return True
     perm = DOMAIN_PERMISSION.get(domain)
     if perm is None:
         return role == 'owner' or role in ('branch_manager', 'senior_accountant')
@@ -184,9 +196,9 @@ def build_matrix() -> List[Scenario]:
 
 MATRIX: List[Scenario] = build_matrix()
 
-# Sanity: the matrix must be exactly 11340 and fully populated.
-# 12 domains x 9 roles x 7 states x 15 edges
-_EXPECTED_TOTAL = 11340
+# Sanity: the matrix must be exactly 15120 and fully populated.
+# 16 domains x 9 roles x 7 states x 15 edges
+_EXPECTED_TOTAL = 15120
 _EXPECTED_PER_DOMAIN = 945
 
 assert len(MATRIX) == _EXPECTED_TOTAL, (

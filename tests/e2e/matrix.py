@@ -30,10 +30,11 @@ from tests.e2e.harness import ACC
 # Dimensions
 # --------------------------------------------------------------------------
 
-DOMAINS = ['accounting', 'ar', 'ap', 'inventory', 'cheque', 'security', 'payments']
+DOMAINS = ['accounting', 'ar', 'ap', 'inventory', 'cheque', 'security',
+           'payments', 'hr']
 
 ROLES = ['owner', 'branch_manager', 'senior_accountant', 'pos_cashier',
-         'warehouse_keeper', 'manager', 'accountant', 'viewer']
+         'warehouse_keeper', 'manager', 'accountant', 'viewer', 'hr']
 
 STATES = ['happy_path', 'expired_invalid', 'insufficient_boundary',
           'partial_split', 'concurrent_repeat', 'validation_error',
@@ -63,6 +64,7 @@ DOMAIN_PERMISSION = {
     'inventory': 'manage_products',
     'cheque': 'manage_payments',
     'payments': 'manage_payments',
+    'hr': 'manage_hr',
     'security': None,          # read/visibility domain, handled per-op
 }
 
@@ -72,6 +74,7 @@ ROLE_PERMISSIONS = {
         'manage_ledger', 'manage_sales', 'manage_purchases', 'manage_products',
         'manage_payments', 'manage_customers', 'manage_warehouse',
         'view_ledger', 'view_reports', 'manage_approvals',
+        'manage_hr',
     },
     'branch_manager': {
         'manage_sales', 'manage_purchases', 'manage_products', 'manage_payments',
@@ -96,6 +99,8 @@ ROLE_PERMISSIONS = {
         'manage_payments',
     },
     'viewer': {'view_reports'},
+    # utils/system_init.py:228 - the 'hr' role holds manage_hr and nothing else.
+    'hr': {'manage_hr'},
 }
 
 
@@ -172,15 +177,21 @@ def build_matrix() -> List[Scenario]:
 
 MATRIX: List[Scenario] = build_matrix()
 
-# Sanity: the matrix must be exactly 5880 and fully populated.
-assert len(MATRIX) == 5880, f'matrix built {len(MATRIX)} scenarios, expected 5880'
-assert len({s.id for s in MATRIX}) == 5880, 'scenario ids are not unique'
-assert len({s.amount for s in MATRIX}) >= 5000, (
-    f'only {len({s.amount for s in MATRIX})} distinct amounts across 5880 '
-    f'scenarios — assertions would repeat')
+# Sanity: the matrix must be exactly 7560 and fully populated.
+# 8 domains x 9 roles x 7 states x 15 edges
+_EXPECTED_TOTAL = 7560
+_EXPECTED_PER_DOMAIN = 945
+
+assert len(MATRIX) == _EXPECTED_TOTAL, (
+    f'matrix built {len(MATRIX)} scenarios, expected {_EXPECTED_TOTAL}')
+assert len({s.id for s in MATRIX}) == _EXPECTED_TOTAL, 'scenario ids are not unique'
+assert len({s.amount for s in MATRIX}) == _EXPECTED_TOTAL, (
+    f'only {len({s.amount for s in MATRIX})} distinct amounts across '
+    f'{_EXPECTED_TOTAL} scenarios — assertions would repeat')
 for _d in DOMAINS:
     _n = sum(1 for s in MATRIX if s.domain == _d)
-    assert _n == 840, f'domain {_d} produced {_n}, expected 840'
+    assert _n == _EXPECTED_PER_DOMAIN, (
+        f'domain {_d} produced {_n}, expected {_EXPECTED_PER_DOMAIN}')
 
 
 def matrix_params() -> List[object]:

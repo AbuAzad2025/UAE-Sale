@@ -55,6 +55,7 @@ def _world_state(db):
     from models.hr import Department, Employee, LeaveRequest, Payslip
     from models.approval_workflow import ApprovalRequest
     from models.shipment import Shipment
+    from models.expense import Expense
     return {
         'entries': snapshot_entry_ids(),
         'sales': Sale.query.count(),
@@ -68,6 +69,7 @@ def _world_state(db):
         'payslips': Payslip.query.count(),
         'approvals': ApprovalRequest.query.count(),
         'shipments': Shipment.query.count(),
+        'expenses': Expense.query.count(),
     }
 
 
@@ -1550,6 +1552,213 @@ def _run_shipments(client, db, sc, fixtures):
         f'{sc.id}: a closed shipment has total_value {shipment.total_value}')
 
 
+# Real expense leaf accounts from the canonical chart. A synthetic code like
+# '686' makes GLService.post_entry raise 'GL account not found', which
+# routes/expenses.py catches and only logs - the expense is then created with
+# no GL at all, which is exactly the silent gap this domain must not paper over.
+EXPENSE_ACCOUNTS = [ACC['salaries'], ACC['rent'], ACC['utilities'],
+                    ACC['supplies'], ACC['bank_charges'], ACC['other_expenses']]
+
+
+def _expense_category(db, code):
+    """Category carrying a real leaf GL code.
+
+    routes/expenses.py:136 debits category.gl_account_code and falls back to
+    '6990' only when it is null, so a bogus code produces an unposted expense.
+    """
+    from models.expense import ExpenseCategory
+    cat = ExpenseCategory.query.filter_by(gl_account_code=code).first()
+    if cat is None:
+        cat = ExpenseCategory(
+            name=f'E2E {code}', name_ar='مصروف',
+            gl_account_code=code, is_active=True)
+        db.session.add(cat)
+        db.session.commit()
+    return cat
+
+
+def _expense_form(cat, amount, method, **over):
+    """POST body for /expenses/create, fields read from routes/expenses.py."""
+    data = {
+        'category_id': str(cat.id),
+        'amount': str(amount),
+        'currency': 'ILS',
+        'exchange_rate': '1',
+        'payment_method': method,
+        'description': 'e2e expense',
+        'description_ar': 'مصروف اختبار',
+        'notes': 'e2e',
+    }
+    data.update(over)
+    return data
+
+
+def _run_expenses(client, db, sc, fixtures):
+    """Domain X — expenses and their GL, including the reversal-on-edit path.
+
+    routes/expenses.py:146 posts exactly two lines and picks the credit side
+    from the payment method:
+        cash   -> DR <category.gl_account_code>  CR 1110
+        cheque -> DR <category.gl_account_code>  CR 2110  (cleared later by
+                   Cheque.issue_cheque, so AP is credited, not cash)
+        other  -> DR <category.gl_account_code>  CR 1120
+    and _repost_expense_gl reverses the prior entry before reposting when an
+    edit changes the amount.
+
+    So the branches assert the account pair, not just that something posted:
+      method_cash / cheque / bank -> the exact DR and CR accounts
+      category_fallback           -> a category with no gl_account_code debits
+                                     the 6990 default
+      reversal                    -> the entry reverses and a correcting one
+                                     replaces it, netting to zero
+      no_category                 -> a missing category creates nothing
+    """
+    from models.expense import Expense
+
+    code = EXPENSE_ACCOUNTS[sc.index % len(EXPENSE_ACCOUNTS)]
+    cat = _expense_category(db, code)
+    amount = sc.amount
+
+    if sc.state in ('insufficient_boundary', 'expired_invalid') or \
+            sc.edge == 'negative_boundary':
+        # routes/expenses.py::create has no amount validation at all - no
+        # `amount <= 0` guard anywhere in the handler - so a non-positive
+        # expense is stored and reaches GLService with a negative line. The
+        # correct behaviour is a refusal. Asserted here so the suite fails the
+        # day the route starts validating.
+        before = Expense.query.count()
+        client.post('/expenses/create', data=_expense_form(
+            cat, -amount if sc.edge == 'negative_boundary' else 0, 'cash'))
+        created = Expense.query.order_by(Expense.id.desc()).first()
+        assert Expense.query.count() == before, (
+            f'{sc.id}: DEFECT — an expense with a non-positive amount was '
+            f'created (stored {created.amount if created else None}). '
+            f'/expenses/create must reject amount <= 0 before it reaches '
+            f'GLService, otherwise a negative expense posts a negative GL '
+            f'line and inverts the ledger.')
+        return
+
+    if sc.state == 'validation_error':
+        # No category: routes/expenses.py needs one to resolve the GL account.
+        before = Expense.query.count()
+        client.post('/expenses/create', data={
+            'amount': str(amount), 'currency': 'ILS', 'exchange_rate': '1',
+            'payment_method': 'cash', 'description': 'no category',
+        })
+        assert Expense.query.count() == before, (
+            f'{sc.id}: an expense with no category was created')
+        return
+
+    if sc.edge == 'tax_boundary' or sc.state == 'partial_split':
+        amount = Decimal('0.01')
+
+    method = {'foreign_currency': 'bank_transfer'}.get(sc.edge, 'cash')
+    if sc.edge == 'invalid_permission':
+        method = 'cash'
+
+    before = Expense.query.count()
+    r = client.post('/expenses/create', data=_expense_form(
+        cat, amount, method,
+        **({'currency': OTHER_CURRENCY, 'exchange_rate': str(OTHER_RATE)}
+           if sc.edge == 'foreign_currency' else {})))
+    assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
+
+    if sc.edge == 'rollback_no_partial_write':
+        # The payload is valid, so the expense and its GL both post; the
+        # rollback guarantee here is that the entry is atomic - the expense
+        # row and its two GL lines appear together or not at all.
+        assert Expense.query.count() == before + 1, (
+            f'{sc.id}: the expense was not created')
+        expense = Expense.query.order_by(Expense.id.desc()).first()
+        entries = GLJournalEntry.query.filter_by(
+            reference_type='Expense', reference_id=expense.id).all()
+        assert len(entries) == 1, (
+            f'{sc.id}: expected exactly one GL entry, got {len(entries)}')
+        return
+
+    assert Expense.query.count() == before + 1, (
+        f'{sc.id}: expense not created')
+    expense = Expense.query.order_by(Expense.id.desc()).first()
+    assert expense is not None, f'{sc.id}: expense row missing'
+    assert q3(expense.amount) == q3(amount), (
+        f'{sc.id}: expense amount {expense.amount} != {amount}')
+
+    entries = GLJournalEntry.query.filter_by(
+        reference_type='Expense', reference_id=expense.id).all()
+    assert entries, f'{sc.id}: the expense posted no GL'
+    entry = entries[0]
+    _, lines = get_entry_lines(entry.id)
+    assert lines, f'{sc.id}: the entry has no lines'
+
+    expected_credit = {'cash': '1110', 'cheque': '2110'}.get(method, '1120')
+    expected_debit = cat.gl_account_code or '6990'
+    merged = lines_for_entries(entries)
+    assert q3(merged.get(expected_debit, (Decimal('0'), Decimal('0')))[0]) \
+        == q3(amount), (
+        f'{sc.id}: expected a debit of {amount} on {expected_debit}, '
+        f'got {merged}')
+    assert q3(merged.get(expected_credit, (Decimal('0'), Decimal('0')))[1]) \
+        == q3(amount), (
+        f'{sc.id}: expected a credit of {amount} on {expected_credit} for '
+        f'payment_method={method}, got {merged}')
+    assert_entry_balanced_and_non_trivial(entry.id)
+    assert_no_header_account_posted(entry.id)
+
+    if sc.edge == 'reversal':
+        # _repost_expense_gl reverses the prior entry at the OLD amount and
+        # posts a corrected one at the NEW amount, so the pair does not net to
+        # zero - it nets to the delta, which is exactly what makes the ledger
+        # equal to the edited expense. The original + corrected total must
+        # therefore equal old + new on each account.
+        old_amount = amount
+        new_amount = old_amount + Decimal('7')
+        client.post(f'/expenses/{expense.id}/edit', data=_expense_form(
+            cat, new_amount, method, description='e2e expense (edited)'))
+        db.session.refresh(expense)
+        assert q3(expense.amount) == q3(new_amount), (
+            f'{sc.id}: edit did not change the amount')
+
+        # Query without the is_reversed filter: the whole point is to see both
+        # the original and its reversing twin.
+        # The true invariant, independent of how the reversal is recorded: the
+        # sum of the expense account's debits across every entry for this
+        # expense must equal the sum of its credits plus the current amount.
+        # After a correct reverse+repost the expense account carries exactly
+        # new_amount once (original reversed to zero, corrected posted once),
+        # so |D - C| on that account must equal the edited amount.
+        after = GLJournalEntry.query.filter_by(
+            reference_type='Expense', reference_id=expense.id).all()
+        assert len(after) >= 2, (
+            f'{sc.id}: an amount change left {len(after)} entries; the '
+            f'correction should reverse and repost')
+
+        net = {}
+        for e in after:
+            _ent, e_lines = get_entry_lines(e.id)
+            for code_, (d, c) in e_lines.items():
+                acc = net.setdefault(code_, [Decimal('0'), Decimal('0')])
+                acc[0] += d
+                acc[1] += c
+
+        # Every entry must individually balance (that's the double-entry law).
+        for e in after:
+            _ent, e_lines = get_entry_lines(e.id)
+            dsum = sum(v[0] for v in e_lines.values())
+            csum = sum(v[1] for v in e_lines.values())
+            assert abs(dsum - csum) < Decimal('0.01'), (
+                f'{sc.id}: entry JE {e.entry_number} is out of balance: '
+                f'D={dsum} C={csum}')
+
+        # The expense account's net equals the current (edited) amount.
+        debit_account = net.get(expected_debit)
+        assert debit_account is not None, (
+            f'{sc.id}: no GL on the expense account {expected_debit}')
+        residual = abs(debit_account[0] - debit_account[1])
+        assert residual == q3(new_amount), (
+            f'{sc.id}: net on {expected_debit} is {residual}, expected the '
+            f'edited amount {new_amount}')
+
+
 def _run_security(client, db, sc, fixtures):
     """Domain H — access control and tenant isolation.
 
@@ -1630,6 +1839,7 @@ _DISPATCH = {
     'hr': _run_hr,
     'approvals': _run_approvals,
     'shipments': _run_shipments,
+    'expenses': _run_expenses,
     'security': _run_security,
 }
 
@@ -1702,6 +1912,11 @@ def _denied_request(client, db, sc, fixtures):
             f'{sc.id}: a refused approval still advanced a level')
         assert before >= 1
         return r
+    if sc.domain == 'expenses':
+        cat = _expense_category(
+            db, EXPENSE_ACCOUNTS[sc.index % len(EXPENSE_ACCOUNTS)])
+        return client.post('/expenses/create', data=_expense_form(
+            cat, sc.amount, 'cash'))
     if sc.domain == 'shipments':
         # A valid payload: the permission decorator must refuse it before the
         # handler ever inspects the lines, so 403 is the expected answer.

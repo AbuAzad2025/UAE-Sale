@@ -73,6 +73,12 @@ def create():  # noqa: C901
 
             amount = Decimal(str(request.form.get('amount')))
 
+            # رفض المبلغ غير الموجب: بدون هذا التحقق كان المبلغ صفراً أو سالباً
+            # يُخزَّن ويُرحَّل، فتنقلب سطور القيد المحاسبي على حساب المصروف.
+            if amount <= 0:
+                flash('❌ المبلغ يجب أن يكون أكبر من صفر.', 'danger')
+                return redirect(url_for('expenses.index'))
+
             cheque_date_str = request.form.get('cheque_date')
             cheque_date_obj = None
             if cheque_date_str:

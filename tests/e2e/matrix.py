@@ -31,7 +31,7 @@ from tests.e2e.harness import ACC
 # --------------------------------------------------------------------------
 
 DOMAINS = ['accounting', 'ar', 'ap', 'inventory', 'cheque', 'security',
-           'payments', 'hr', 'approvals', 'shipments']
+           'payments', 'hr', 'approvals', 'shipments', 'expenses']
 
 ROLES = ['owner', 'branch_manager', 'senior_accountant', 'pos_cashier',
          'warehouse_keeper', 'manager', 'accountant', 'viewer', 'hr']
@@ -69,6 +69,7 @@ DOMAIN_PERMISSION = {
     # manage_approvals while /approvals/workflows/* is manage_settings.
     'approvals': 'manage_approvals',
     'shipments': 'manage_warehouse',
+    'expenses': 'manage_expenses',
     'security': None,          # read/visibility domain, handled per-op
 }
 
@@ -76,8 +77,9 @@ DOMAIN_PERMISSION = {
 ROLE_PERMISSIONS = {
     'owner': {
         'manage_ledger', 'manage_sales', 'manage_purchases', 'manage_products',
-        'manage_payments', 'manage_customers', 'manage_warehouse',
-        'view_ledger', 'view_reports', 'manage_approvals',
+        'manage_payments', 'manage_customers', 'manage_suppliers',
+        'manage_warehouse', 'manage_expenses', 'manage_users',
+        'view_ledger', 'view_reports', 'view_costs', 'manage_approvals',
         'manage_hr',
     },
     'branch_manager': {
@@ -181,9 +183,9 @@ def build_matrix() -> List[Scenario]:
 
 MATRIX: List[Scenario] = build_matrix()
 
-# Sanity: the matrix must be exactly 9450 and fully populated.
-# 10 domains x 9 roles x 7 states x 15 edges
-_EXPECTED_TOTAL = 9450
+# Sanity: the matrix must be exactly 10395 and fully populated.
+# 11 domains x 9 roles x 7 states x 15 edges
+_EXPECTED_TOTAL = 10395
 _EXPECTED_PER_DOMAIN = 945
 
 assert len(MATRIX) == _EXPECTED_TOTAL, (

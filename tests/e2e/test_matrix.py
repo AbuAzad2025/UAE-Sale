@@ -29,6 +29,7 @@ from models.product import Product
 from models.warehouse import StockMovement
 from models.gl import GLJournalEntry
 from models.payment import Payment, Receipt
+from models.approval_workflow import ApprovalLevel, ApprovalRequest
 
 from tests.e2e.harness import (
     ACC, manual_entry_form, sale_form, purchase_form, cheque_form,
@@ -49,6 +50,7 @@ def _world_state(db):
     """Everything the scenario may have created, for side-effect assertions."""
     from models.payment import Payment
     from models.hr import Department, Employee, LeaveRequest, Payslip
+    from models.approval_workflow import ApprovalRequest
     return {
         'entries': snapshot_entry_ids(),
         'sales': Sale.query.count(),
@@ -60,6 +62,7 @@ def _world_state(db):
         'employees': Employee.query.count(),
         'leaves': LeaveRequest.query.count(),
         'payslips': Payslip.query.count(),
+        'approvals': ApprovalRequest.query.count(),
     }
 
 
@@ -1270,6 +1273,130 @@ def _run_hr(client, db, sc, fixtures):
             f'for the employee')
 
 
+def _approval_seed(db, users, suffix, levels):
+    """Create a workflow + request + `levels` pending steps.
+
+    ApprovalService.approve only flips the request to 'approved' once the
+    number of approved steps reaches workflow.levels_required, so a one-level
+    and a two-level request are genuinely different outcomes for the same POST.
+    """
+    from models.approval_workflow import (ApprovalWorkflow, ApprovalRequest,
+                                          ApprovalLevel)
+    name = f'E2E-WF-{suffix}'
+    wf = ApprovalWorkflow.query.filter_by(name=name).first()
+    if wf is None:
+        wf = ApprovalWorkflow(
+            name=name, name_ar='سير موافقة', entity_type='sale',
+            min_amount=Decimal('0'), levels_required=levels, is_active=True)
+        db.session.add(wf)
+        db.session.commit()
+
+    req = ApprovalRequest(
+        request_number=f'E2E-AR-{suffix}',
+        workflow_id=wf.id,
+        entity_type='sale',
+        entity_id=900000 + suffix,
+        amount=Decimal(str(suffix)),
+        currency='ILS',
+        status='pending',
+        current_level=1,
+        requested_by=users['owner'].id,
+        description='e2e approval request',
+    )
+    db.session.add(req)
+    db.session.commit()
+
+    for lvl in range(1, levels + 1):
+        db.session.add(ApprovalLevel(
+            request_id=req.id, level=lvl,
+            required_role='owner' if lvl == 1 else 'manager',
+            status='pending'))
+    db.session.commit()
+    return wf, req
+
+
+def _run_approvals(client, db, sc, fixtures):
+    """Domain A-P — the multi-level approval engine.
+
+    routes/approvals.py gates the decision endpoints on manage_approvals and
+    calls ApprovalService, which approves one pending level at a time and only
+    resolves the request once approved_count >= workflow.levels_required.
+
+    The branches therefore assert the engine's real invariants rather than a
+    status code:
+      multi_level   -> a two-level request stays 'pending' after one approval
+      single_level  -> a one-level request becomes 'approved' immediately
+      reject        -> status becomes 'rejected' and stops advancing
+      repeat        -> approving twice must not double-count the level
+    """
+    from models.approval_workflow import ApprovalLevel, ApprovalRequest
+
+    users = fixtures['users']
+    levels = 2 if sc.index % 2 == 0 else 1
+    wf, req = _approval_seed(db, users, sc.index, levels)
+
+    before_levels = {lv.id: lv.status for lv in
+                     ApprovalLevel.query.filter_by(request_id=req.id).all()}
+
+    if sc.state in ('expired_invalid',) or sc.edge == 'negative_boundary':
+        # An already-resolved request must refuse further decisions.
+        req.status = 'approved'
+        db.session.commit()
+        r = client.post(f'/approvals/{req.id}/approve', data={'notes': 'late'})
+        assert r.status_code in (302, 303, 404), f'{sc.id}: {r.status_code}'
+        db.session.refresh(req)
+        assert req.status == 'approved', (
+            f'{sc.id}: a resolved request changed to {req.status}')
+        return
+
+    if sc.edge == 'reversal':
+        r = client.post(f'/approvals/{req.id}/reject', data={'notes': 'e2e'})
+        assert r.status_code in (302, 303), f'{sc.id}: {r.status_code}'
+        db.session.refresh(req)
+        assert req.status == 'rejected', (
+            f'{sc.id}: status {req.status} != rejected')
+        assert req.resolved_at is not None, (
+            f'{sc.id}: a rejected request left resolved_at empty')
+        return
+
+    # Approve once.
+    r = client.post(f'/approvals/{req.id}/approve', data={'notes': 'L1'})
+    assert r.status_code in (302, 303), f'{sc.id}: {r.status_code}'
+    db.session.refresh(req)
+    after = ApprovalLevel.query.filter_by(request_id=req.id).all()
+    approved_now = sum(1 for lv in after if lv.status == 'approved')
+
+    assert approved_now == 1, (
+        f'{sc.id}: one approval left {approved_now} approved levels')
+    assert before_levels, f'{sc.id}: no seeded levels'
+
+    if levels == 1:
+        assert req.status == 'approved', (
+            f'{sc.id}: single-level request is {req.status}, expected approved')
+        assert req.resolved_at is not None, (
+            f'{sc.id}: approved request left resolved_at empty')
+    else:
+        assert req.status == 'pending', (
+            f'{sc.id}: a two-level request resolved to {req.status} after only '
+            f'one approval — ApprovalService.approve only resolves at '
+            f'approved_count >= levels_required')
+        # Second approval resolves it.
+        r2 = client.post(f'/approvals/{req.id}/approve', data={'notes': 'L2'})
+        assert r2.status_code in (302, 303), f'{sc.id}: {r2.status_code}'
+        db.session.refresh(req)
+        assert req.status == 'approved', (
+            f'{sc.id}: two-level request is {req.status} after both approvals')
+
+    if sc.edge == 'idempotency_replay':
+        # A third approval on a resolved request must be inert.
+        r3 = client.post(f'/approvals/{req.id}/approve', data={'notes': 'again'})
+        assert r3.status_code in (302, 303), f'{sc.id}: {r3.status_code}'
+        db.session.refresh(req)
+        final = ApprovalLevel.query.filter_by(request_id=req.id).all()
+        assert sum(1 for lv in final if lv.status == 'approved') == levels, (
+            f'{sc.id}: replaying approve changed the level count')
+
+
 def _run_security(client, db, sc, fixtures):
     """Domain H — access control and tenant isolation.
 
@@ -1348,6 +1475,7 @@ _DISPATCH = {
     'cheque': _run_cheque,
     'payments': _run_payments,
     'hr': _run_hr,
+    'approvals': _run_approvals,
     'security': _run_security,
 }
 
@@ -1407,6 +1535,19 @@ def _denied_request(client, db, sc, fixtures):
             'currency': 'ILS',
             'exchange_rate': '1',
         })
+    if sc.domain == 'approvals':
+        # Seed a real request so the POST has a target, then assert the
+        # manage_approvals gate refuses it and leaves the level untouched.
+        _wf, req = _approval_seed(db, fixtures['users'], sc.index, 1)
+        before = ApprovalLevel.query.filter_by(request_id=req.id).count()
+        r = client.post(f'/approvals/{req.id}/approve', data={'notes': 'no'})
+        assert r.status_code == 403, (
+            f'{sc.id}: denied approvals write answered {r.status_code}')
+        assert ApprovalLevel.query.filter_by(
+            request_id=req.id, status='approved').count() == 0, (
+            f'{sc.id}: a refused approval still advanced a level')
+        assert before >= 1
+        return r
     if sc.domain == 'hr':
         # Every /hr/* route is gated on manage_hr, so a department POST is the
         # canonical refused write.
@@ -1438,6 +1579,14 @@ def test_matrix_scenario(sc, client, db, users, login_as, customer, product,
             # assertion is simply that no data leaked.
             assert r.status_code in (200, 302, 403, 404), (
                 f'{sc.id}: unexpected status {r.status_code}')
+            return
+
+        if sc.domain == 'approvals':
+            # _denied_request seeded the request and levels itself, so the
+            # world-state comparison would flag its own fixture rows. The 403
+            # and the untouched approval level are asserted inside.
+            assert r.status_code == 403, (
+                f'{sc.id}: approvals denial answered {r.status_code}')
             return
 
         assert r.status_code == 403, (

@@ -99,7 +99,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        domain: [accounting, ar, ap, inventory, cheque, payments, security, hr, approvals, shipments]
+        domain: [accounting, ar, ap, inventory, cheque, payments, security, hr, approvals, shipments, expenses]
         shard: [0, 1]
     steps:
       - uses: actions/checkout@v5
@@ -167,7 +167,7 @@ jobs:
           per = collections.Counter(s.domain for s in MATRIX)
           for d in DOMAINS:
               print(f'  {d:<12} {per[d]}')
-          assert len(MATRIX) == 9450, f'matrix is {len(MATRIX)}, expected 9450'
+          assert len(MATRIX) == 10395, f'matrix is {len(MATRIX)}, expected 10395'
           assert len({s.id for s in MATRIX}) == len(MATRIX), 'duplicate ids'
           assert len({s.amount for s in MATRIX}) == len(MATRIX), \
               'duplicate amounts would collapse assertions'

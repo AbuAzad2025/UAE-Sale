@@ -330,11 +330,21 @@ def _make_user(role_slug: str) -> User:
 
 @pytest.fixture(scope='function')
 def e2e_tenant(db):
-    """The tenant every fixture row and every non-owner user belongs to."""
+    """The tenant every fixture row and every non-owner user belongs to.
+
+    Tenant.max_users defaults to 5 and UserService._check_tenant_quota refuses
+    a create once the active non-owner users reach that ceiling. With eight
+    non-owner roles plus the users-domain creation cells, the default quota was
+    exhausted and /users/create started failing with 'بلغ المستأجر الحد
+    الأقصى للمستخدمين' - a quota refusal, not an authorisation one. The
+    ceiling is raised here so the quota check stays a separate, deliberate
+    test rather than an accidental blocker everywhere else.
+    """
     tenant = Tenant.query.filter_by(slug='e2e-tenant').first()
     if tenant is None:
         tenant = Tenant(name='E2E Tenant', name_ar='مستأجر الاختبار',
-                        slug='e2e-tenant', country='UAE', is_active=True)
+                        slug='e2e-tenant', country='UAE', is_active=True,
+                        max_users=100)
         db.session.add(tenant)
         db.session.commit()
     return tenant

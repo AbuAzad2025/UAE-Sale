@@ -32,7 +32,8 @@ from tests.e2e.harness import ACC
 
 DOMAINS = ['accounting', 'ar', 'ap', 'inventory', 'cheque', 'security',
            'payments', 'hr', 'approvals', 'shipments', 'expenses', 'returns',
-           'reports', 'partners', 'dashboard', 'stock']
+           'reports', 'partners', 'dashboard', 'stock',
+           'customers', 'analytics', 'quotations', 'vault']
 
 ROLES = ['owner', 'branch_manager', 'senior_accountant', 'pos_cashier',
          'warehouse_keeper', 'manager', 'accountant', 'viewer', 'hr']
@@ -78,6 +79,13 @@ DOMAIN_PERMISSION = {
     'partners': 'view_reports',
     'dashboard': None,          # login_required only, no permission gate
     'stock': 'manage_warehouse',
+    'customers': 'manage_customers',
+    'analytics': 'view_reports',
+    'quotations': 'manage_sales',
+    # login_required only at the decorator level; routes/payment_vault.py then
+    # checks current_user.is_owner on every sensitive branch, so the cells
+    # assert that in-handler gate rather than a decorator 403.
+    'vault': None,
     'security': None,          # read/visibility domain, handled per-op
 }
 
@@ -124,6 +132,10 @@ def role_may_write(role: str, domain: str) -> bool:
         # routes/main.py::dashboard is login_required with no permission gate,
         # so every authenticated role reaches it. Returning True here keeps the
         # runner on the reachability assertions rather than the 403 path.
+        return True
+    if domain == 'vault':
+        # login_required with no decorator gate; every role gets in and the
+        # runner asserts the in-handler is_owner checks.
         return True
     perm = DOMAIN_PERMISSION.get(domain)
     if perm is None:
@@ -196,9 +208,9 @@ def build_matrix() -> List[Scenario]:
 
 MATRIX: List[Scenario] = build_matrix()
 
-# Sanity: the matrix must be exactly 15120 and fully populated.
-# 16 domains x 9 roles x 7 states x 15 edges
-_EXPECTED_TOTAL = 15120
+# Sanity: the matrix must be exactly 18900 and fully populated.
+# 20 domains x 9 roles x 7 states x 15 edges
+_EXPECTED_TOTAL = 18900
 _EXPECTED_PER_DOMAIN = 945
 
 assert len(MATRIX) == _EXPECTED_TOTAL, (

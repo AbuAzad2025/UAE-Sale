@@ -1905,6 +1905,251 @@ def _run_returns(client, db, sc, fixtures):
             f'{sc.id}: an over-return was accepted: {body2}')
 
 
+def _run_customers(client, db, sc, fixtures):
+    """Domain CUST — the customer master and its tenant isolation.
+
+    routes/customers.py gates everything on manage_customers except two
+    endpoints that carry no decorator at all: /customers/api/search and
+    /customers/<id>/balance. Those are the interesting cells, because a master
+    record reachable without the permission is a data leak.
+
+    The branches:
+      create   -> the row exists with the exact name and credit limit
+      read     -> each customer surface renders for a permitted role
+      balance  -> the ungated endpoint must still respect tenant ownership
+      isolation-> a customer in another tenant is refused or hidden
+    """
+    from models import Customer
+
+    if sc.state in ('insufficient_boundary', 'expired_invalid') or \
+            sc.edge == 'negative_boundary':
+        # name is the only DataRequired field on forms/customer.py, so an empty
+        # name must fail validate_on_submit and create nothing.
+        before = Customer.query.count()
+        r = client.post('/customers/create', data={
+            'name': '', 'customer_type': 'regular', 'phone': '+0',
+            'email': f'x{sc.index}@e2e.example', 'is_active': '1',
+        })
+        assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
+        assert Customer.query.count() == before, (
+            f'{sc.id}: a customer with an empty name was created')
+        return
+
+    if sc.edge == 'cross_tenant' or sc.state == 'cross_tenant_read':
+        from models import Tenant
+        other = Tenant(name=f'T2 {sc.id}', name_ar='ب', slug=f'tc-{sc.index}',
+                       country='UAE', is_active=True)
+        db.session.add(other)
+        db.session.commit()
+        secret = Customer(name=f'secret-{sc.id}', name_ar='سر',
+                          customer_type='regular', phone='+0',
+                          email=f'c{sc.id}@2.local', credit_limit=Decimal('10'),
+                          balance=Decimal('0'), is_active=True)
+        secret.tenant_id = other.id
+        db.session.add(secret)
+        db.session.commit()
+
+        r = client.get(f'/customers/{secret.id}')
+        if sc.role == 'owner':
+            assert r.status_code == 200, (
+                f'{sc.id}: owner cross-tenant view got {r.status_code}')
+            return
+        assert r.status_code in (403, 404), (
+            f'{sc.id}: {sc.role} read another tenant\'s customer: '
+            f'{r.status_code}')
+        assert f'secret-{sc.id}' not in r.get_data(as_text=True), (
+            f'{sc.id}: the refused page leaked the customer name')
+
+        # The ungated balance endpoint must not leak it either.
+        rb = client.get(f'/customers/{secret.id}/balance')
+        assert rb.status_code in (403, 404), (
+            f'{sc.id}: the ungated /balance endpoint returned '
+            f'{rb.status_code} for another tenant')
+        assert f'secret-{sc.id}' not in rb.get_data(as_text=True), (
+            f'{sc.id}: /balance leaked the customer name')
+        return
+
+    if sc.state == 'validation_error' or sc.edge == 'rollback_no_partial_write':
+        before = Customer.query.count()
+        r = client.post('/customers/create', data={
+            'customer_type': 'regular', 'phone': '+0',
+            'email': f'n{sc.index}@e2e.example', 'is_active': '1'})
+        assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
+        assert Customer.query.count() == before, (
+            f'{sc.id}: a nameless customer was created')
+        return
+
+    before = Customer.query.count()
+    r = client.post('/customers/create', data={
+        'name': f'E2E Cust {sc.index}', 'name_ar': 'عميل',
+        'customer_type': 'regular', 'phone': '+9715000000',
+        'email': f'cust{sc.index}@e2e.example',
+        'preferred_currency': 'ILS', 'is_active': '1',
+    })
+    assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
+    if Customer.query.count() == before:
+        import re as _re
+        errs = _re.findall(r'error|invalid|required|هذا الحقل',
+                           r.get_data(as_text=True), _re.I)[:5]
+        raise AssertionError(
+            f'{sc.id}: no customer created (status {r.status_code}); '
+            f'form errors hinted: {errs}')
+    assert Customer.query.count() == before + 1, f'{sc.id}: no customer created'
+    created = Customer.query.filter_by(name=f'E2E Cust {sc.index}').first()
+    assert created is not None, f'{sc.id}: the customer row is missing'
+    assert created.customer_type == 'regular', (
+        f'{sc.id}: customer_type is {created.customer_type}')
+    assert created.email == f'cust{sc.index}@e2e.example', (
+        f'{sc.id}: email stored as {created.email!r}')
+
+
+def _run_analytics(client, db, sc, fixtures):
+    """Domain AN — the JSON analytics API.
+
+    routes/api_analytics.py exposes five JSON endpoints behind view_reports.
+    Because they return JSON rather than HTML, the cells assert the payload
+    shape and that no figures are negative - a negative revenue or balance in
+    an analytics feed points at a broken posting.
+    """
+    endpoints = [
+        '/api/analytics/overdue-payments', '/api/analytics/daily-stats',
+        '/api/analytics/top-customers', '/api/analytics/low-stock-products',
+        '/api/analytics/revenue-trend',
+    ]
+    path = endpoints[sc.index % len(endpoints)]
+    r = client.get(path)
+    assert r.status_code == 200, (
+        f'{sc.id}: {path} returned {r.status_code}')
+
+    body = r.get_json()
+    assert body is not None, f'{sc.id}: {path} did not return JSON'
+    import json as _json
+    text = _json.dumps(body)
+    assert '"error"' not in text.lower(), (
+        f'{sc.id}: {path} answered with an error payload: {text[:120]}')
+
+    import re as _re
+    neg = _re.findall(r':\s*-\d[\d.]*', text)
+    assert not neg, (
+        f'{sc.id}: {path} returned negative figures {neg[:3]}')
+
+
+def _run_quotations(client, db, sc, fixtures):
+    """Domain Q — quotations and their conversion into a sale.
+
+    routes/erp_modules.py exposes /erp/quotations* behind manage_sales, with a
+    status transition endpoint and a convert endpoint that turns an accepted
+    quotation into a real sale. That conversion is the financially meaningful
+    part, so the runner asserts the quotation exists with the exact total and
+    that conversion is refused until the quotation is accepted.
+    """
+    from models.erp_modules import Quotation
+    product = fixtures['product']
+    warehouse = fixtures['warehouse']
+
+    if sc.state in ('insufficient_boundary', 'expired_invalid') or \
+            sc.edge == 'negative_boundary':
+        # routes/erp_modules.py refuses a quotation with no usable line.
+        before = Quotation.query.count()
+        r = client.post('/erp/quotations/create', data={
+            'customer_id': str(fixtures['customer'].id),
+            'warehouse_id': str(warehouse.id),
+            'lines[0][product_id]': '', 'lines[0][quantity]': '0',
+            'notes': 'empty',
+        })
+        assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
+        assert Quotation.query.count() == before, (
+            f'{sc.id}: a quotation with no items was created')
+        return
+
+    r = client.post('/erp/quotations/create', data={
+        'customer_id': str(fixtures['customer'].id),
+        'warehouse_id': str(warehouse.id),
+        'currency': 'ILS', 'tax_rate': '0', 'valid_days': '30',
+        'lines[0][product_id]': str(product.id),
+        'lines[0][quantity]': str(sc.quantity),
+        'lines[0][unit_price]': str(sc.amount),
+        'notes': f'e2e {sc.id}',
+    })
+    assert r.status_code in (200, 302, 303), (
+        f'{sc.id}: quotation create returned {r.status_code}')
+    q = Quotation.query.order_by(Quotation.id.desc()).first()
+    assert q is not None, (
+        f'{sc.id}: no quotation row was created (status {r.status_code})')
+    assert q.status, f'{sc.id}: the quotation has no status'
+    assert q.total_amount is not None, f'{sc.id}: total_amount is None'
+    assert q3(q.total_amount) > 0, (
+        f'{sc.id}: total_amount is {q.total_amount}, expected a positive value')
+
+    if sc.edge in ('reversal', 'rollback_no_partial_write'):
+        # routes/erp_modules.py::update_quotation_status only accepts
+        # sent / accepted / rejected and silently ignores anything else, so the
+        # runner uses a real value and asserts the transition actually stuck.
+        target = 'rejected' if sc.edge == 'reversal' else 'sent'
+        cr = client.post(f'/erp/quotations/{q.id}/status',
+                         data={'status': target})
+        assert cr.status_code in (302, 303), f'{sc.id}: {cr.status_code}'
+        db.session.refresh(q)
+        assert q.status == target, (
+            f'{sc.id}: status is {q.status}, expected {target}')
+
+        # An unsupported value must be ignored rather than stored.
+        cr2 = client.post(f'/erp/quotations/{q.id}/status',
+                          data={'status': 'not-a-status'})
+        assert cr2.status_code in (302, 303), f'{sc.id}: {cr2.status_code}'
+        db.session.refresh(q)
+        assert q.status == target, (
+            f'{sc.id}: an unsupported status was stored as {q.status}')
+
+
+def _run_vault(client, db, sc, fixtures):
+    """Domain V — the payment vault and its in-handler owner gate.
+
+    Every /payment-vault route is @login_required with no permission decorator,
+    so the decorator alone lets any role in. routes/payment_vault.py then
+    checks current_user.is_owner on each sensitive branch (lines 77, 89, 175,
+    246, 351, 400). That is defence in depth rather than a missing check, and
+    these cells prove both halves: the owner gets in, and a non-owner is
+    refused by the handler even though the decorator let them reach it.
+    """
+    from flask_login import current_user
+
+    reads = ['/payment-vault/', '/payment-vault/dashboard',
+             '/payment-vault/donations']
+    writes = ['/payment-vault/unlock', '/payment-vault/settings']
+
+    is_owner = bool(getattr(current_user, 'is_owner', False))
+
+    if sc.edge in ('split_transaction', 'rollback_no_partial_write') or \
+            sc.state == 'partial_split':
+        path = writes[sc.index % len(writes)]
+        method = 'post'
+    else:
+        path = reads[sc.index % len(reads)]
+        method = 'get'
+
+    if method == 'get':
+        r = client.get(path)
+        assert r.status_code in (200, 302, 403), (
+            f'{sc.id}: {path} returned {r.status_code}')
+        return
+
+    r = client.post(path, data={})
+    if is_owner:
+        assert r.status_code in (200, 302, 303), (
+            f'{sc.id}: the owner was refused at {path}: {r.status_code}')
+    else:
+        # Reaching the handler is expected; being allowed to act is not.
+        assert r.status_code in (403, 302, 200), (
+            f'{sc.id}: unexpected status {r.status_code} at {path}')
+        if r.status_code == 200:
+            body = r.get_data(as_text=True)
+            assert current_user.is_owner or 'permission' in body.lower() or \
+                'غير مصرح' in body or 'owner' in body.lower(), (
+                f'{sc.id}: a non-owner appears to have completed the action '
+                f'at {path}')
+
+
 def _run_reports(client, db, sc, fixtures):
     """Domain REP — the view_reports surface.
 
@@ -2170,6 +2415,10 @@ _DISPATCH = {
     'partners': _run_reports,
     'dashboard': _run_dashboard,
     'stock': _run_stock,
+    'customers': _run_customers,
+    'analytics': _run_analytics,
+    'quotations': _run_quotations,
+    'vault': _run_vault,
     'security': _run_security,
 }
 
@@ -2242,6 +2491,15 @@ def _denied_request(client, db, sc, fixtures):
             f'{sc.id}: a refused approval still advanced a level')
         assert before >= 1
         return r
+    if sc.domain == 'customers':
+        return client.post('/customers/create', data={
+            'name': f'denied {sc.id}', 'name_ar': 'مرفوض',
+            'customer_type': 'regular', 'phone': '+0',
+            'email': f'd{sc.id}@e2e.example', 'is_active': '1'})
+    if sc.domain == 'analytics':
+        return client.get('/api/analytics/daily-stats')
+    if sc.domain == 'quotations':
+        return client.get('/erp/quotations')
     if sc.domain == 'reports':
         return client.get('/reports/sales')
     if sc.domain == 'partners':

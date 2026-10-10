@@ -2268,6 +2268,137 @@ def _run_inbound(client, db, sc, fixtures):
     step('close', 'closed')
 
 
+def _run_owner(client, db, sc, fixtures):
+    """Domain OWN — the owner control panel (73 endpoints).
+
+    routes/owner.py is guarded by @owner_required on 68 endpoints and
+    manage_backups on 5. Unlike every other domain the gate is the is_owner
+    flag rather than a permission code, so only the owner role has a positive
+    path and the other eight are refused outright.
+
+    The owner's own path is not allowed to be a smoke test, because this panel
+    can destroy data. The branches assert the three independent guards on
+    truncate_table, each of which must refuse on its own:
+      no confirm phrase  -> refused
+      protected table    -> refused even with the phrase
+      unknown table      -> refused by validate_table_name
+    plus the read surfaces and the tenant lifecycle, which is the part of this
+    panel that legitimately mutates state.
+    """
+    users = fixtures['users']
+
+    # ---- destructive: the guards must refuse in three independent ways ----
+    if sc.edge in ('negative_boundary', 'rollback_no_partial_write',
+                   'validation_error') or \
+            sc.state in ('insufficient_boundary', 'expired_invalid'):
+        before = _world_state(db)
+
+        # 1. missing the confirmation phrase
+        r = client.post('/owner/truncate-table',
+                        data={'table_name': 'gl_journal_entries'})
+        assert r.status_code in (302, 303), f'{sc.id}: {r.status_code}'
+
+        # 2. the phrase, but a protected table
+        r = client.post('/owner/truncate-table', data={
+            'table_name': 'users', 'confirm': 'YES_DELETE_ALL'})
+        assert r.status_code in (302, 303), f'{sc.id}: {r.status_code}'
+
+        # 3. the phrase, but a table that is not in the schema
+        r = client.post('/owner/truncate-table', data={
+            'table_name': 'definitely_not_a_table',
+            'confirm': 'YES_DELETE_ALL'})
+        assert r.status_code in (302, 303), f'{sc.id}: {r.status_code}'
+
+        _assert_world_unchanged(
+            db, before, f'{sc.id} refused truncate-table calls')
+        return
+
+    # ---- tenant lifecycle: a real, legitimate state change ----
+    if sc.edge in ('reversal', 'cross_tenant') or \
+            sc.state in ('partial_split', 'cross_tenant_read'):
+        from models import Tenant
+        # routes/owner.py::tenant_suspend refuses to suspend the last active
+        # tenant ("لا يمكن إيقاف آخر مستأجر نشط"), so a scenario needs a second
+        # active tenant to exist before the transition can fire.
+        keepalive = Tenant(name=f'Keepalive {sc.id}', name_ar='نشط',
+                           slug=f'ka-{sc.index}', country='UAE',
+                           is_active=True)
+        db.session.add(keepalive)
+        db.session.commit()
+
+        if sc.edge == 'idempotency_replay' or \
+                sc.state == 'concurrent_repeat':
+            # The last active tenant may not be suspended. With only the
+            # keepalive row active this must be refused, which is the rule
+            # that stops an owner from locking everyone out of the platform.
+            before = _world_state(db)
+            r = client.post(f'/owner/tenants/{keepalive.id}/suspend')
+            assert r.status_code in (302, 303), f'{sc.id}: {r.status_code}'
+            db.session.refresh(keepalive)
+            assert keepalive.is_active is True, (
+                f'{sc.id}: the last active tenant was suspended')
+            _assert_world_unchanged(db, before, f'{sc.id} last-tenant guard')
+            return
+
+        name = f'Owner-Tenant {sc.id}'
+        t = Tenant(name=name, name_ar='مستأجر', slug=f'own-{sc.index}',
+                   country='UAE', is_active=True)
+        db.session.add(t)
+        db.session.commit()
+
+        detail = client.get(f'/owner/tenants/{t.id}')
+        assert detail.status_code == 200, (
+            f'{sc.id}: tenant detail returned {detail.status_code}')
+
+        if sc.edge == 'reversal':
+            # suspend then re-activate must round-trip
+            s1 = client.post(f'/owner/tenants/{t.id}/suspend')
+            assert s1.status_code in (302, 303), f'{sc.id}: {s1.status_code}'
+            db.session.refresh(t)
+            assert t.is_active is False, (
+                f'{sc.id}: suspend left is_active={t.is_active}')
+            assert t.is_suspended is True, (
+                f'{sc.id}: suspend did not set is_suspended')
+
+            a1 = client.post(f'/owner/tenants/{t.id}/activate')
+            assert a1.status_code in (302, 303), f'{sc.id}: {a1.status_code}'
+            db.session.refresh(t)
+            assert t.is_active is True, (
+                f'{sc.id}: activate left is_active={t.is_active}')
+        else:
+            s1 = client.post(f'/owner/tenants/{t.id}/suspend')
+            assert s1.status_code in (302, 303), f'{sc.id}: {s1.status_code}'
+            db.session.refresh(t)
+            assert t.is_active is False, (
+                f'{sc.id}: suspend did not deactivate the tenant')
+        return
+
+    # ---- read surfaces: the panel must render for the owner ----
+    reads = [
+        '/owner/dashboard', '/owner/system-stats', '/owner/audit-logs',
+        '/owner/roles-permissions', '/owner/financial-overview',
+        '/owner/config', '/owner/tenants', '/owner/system-health',
+        '/owner/activity-monitor', '/owner/login-history',
+        '/owner/security-alerts', '/owner/financial-dashboard-advanced',
+        '/owner/sales-insights', '/owner/customer-insights',
+        '/owner/product-performance', '/owner/forecasting',
+        '/owner/constants', '/owner/api-keys', '/owner/database-tools',
+        '/owner/backups/list',
+    ]
+    path = reads[sc.index % len(reads)]
+    r = client.get(path)
+    assert r.status_code == 200, (
+        f'{sc.id}: {path} returned {r.status_code} for the owner')
+
+    # The owner panel must never render a negative money figure.
+    import re as _re
+    bad = _re.findall(r'(?<![\w-])-\d[\d,]*\.\d{2}', r.get_data(as_text=True))
+    assert not bad, (
+        f'{sc.id}: {path} rendered negative amounts {bad[:3]}')
+
+    del users
+
+
 def _run_reports(client, db, sc, fixtures):
     """Domain REP — the view_reports surface.
 
@@ -2539,6 +2670,7 @@ _DISPATCH = {
     'vault': _run_vault,
     'gamification': _run_gamification,
     'inbound': _run_inbound,
+    'owner': _run_owner,
     'security': _run_security,
 }
 
@@ -2611,6 +2743,14 @@ def _denied_request(client, db, sc, fixtures):
             f'{sc.id}: a refused approval still advanced a level')
         assert before >= 1
         return r
+    if sc.domain == 'owner':
+        # @owner_required must refuse this for every non-owner role, and the
+        # destructive endpoint is the one that must never be reachable by
+        # accident.
+        return client.post('/owner/truncate-table', data={
+            'table_name': 'gl_journal_entries',
+            'confirm': 'YES_DELETE_ALL',
+        })
     if sc.domain == 'inbound':
         return client.post('/inbound-shipments/create', data={
             'supplier_id': str(supplier.id),
@@ -2681,6 +2821,21 @@ def test_matrix_scenario(sc, client, db, users, login_as, customer, product,
             # assertion is simply that no data leaked.
             assert r.status_code in (200, 302, 403, 404), (
                 f'{sc.id}: unexpected status {r.status_code}')
+            return
+
+        if sc.domain == 'owner':
+            # utils/decorators.py::owner_required does NOT abort 403. It
+            # flashes a warning and redirects to the dashboard, so the refusal
+            # is a 302 to main.dashboard rather than a status code. The
+            # assertion is that it redirects there AND that the destructive
+            # call left the world untouched.
+            assert r.status_code in (302, 303), (
+                f'{sc.id}: owner denial answered {r.status_code}')
+            loc = r.headers.get('Location', '')
+            assert 'dashboard' in loc or loc == '/', (
+                f'{sc.id}: owner denial redirected to {loc!r}, expected the '
+                f'dashboard')
+            _assert_world_unchanged(db, before, f'{sc.id} refused owner write')
             return
 
         if sc.domain == 'approvals':

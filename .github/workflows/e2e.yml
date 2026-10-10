@@ -178,7 +178,7 @@ jobs:
           per = collections.Counter(s.domain for s in MATRIX)
           for d in DOMAINS:
               print(f'  {d:<12} {per[d]}')
-          assert len(MATRIX) == 23625, f'matrix is {len(MATRIX)}, expected 23625'
+          assert len(MATRIX) == 24570, f'matrix is {len(MATRIX)}, expected 24570'
           assert len({s.id for s in MATRIX}) == len(MATRIX), 'duplicate ids'
           assert len({s.amount for s in MATRIX}) == len(MATRIX), \
               'duplicate amounts would collapse assertions'
@@ -216,7 +216,7 @@ jobs:
           print('files found:', len(paths))
           # The matrix is 22 domains x 2 shards plus the slice job. If the
           # count is short, the run must not be reported as a clean pass.
-          expected = 25 * 2 + 1
+          expected = 26 * 2 + 1
           if len(paths) < expected:
               raise SystemExit(
                   f'only {len(paths)} of {expected} expected junit files were '

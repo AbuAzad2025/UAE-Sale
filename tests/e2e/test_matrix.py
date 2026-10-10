@@ -1282,12 +1282,17 @@ def _run_hr(client, db, sc, fixtures):
             f'for the employee')
 
 
-def _approval_seed(db, users, suffix, levels):
+def _approval_seed(db, users, suffix, levels, tenant=None):
     """Create a workflow + request + `levels` pending steps.
 
     ApprovalService.approve only flips the request to 'approved' once the
     number of approved steps reaches workflow.levels_required, so a one-level
     and a two-level request are genuinely different outcomes for the same POST.
+
+    `tenant` must be passed once the suite has tenant-scoped fixtures: an
+    approval request with tenant_id None is invisible to a non-owner actor
+    because models/tenant_scope.py applies the filter, so the denial cells
+    would see a 404-shaped world instead of the gate they are testing.
     """
     from models.approval_workflow import (ApprovalWorkflow, ApprovalRequest,
                                           ApprovalLevel)
@@ -1297,6 +1302,8 @@ def _approval_seed(db, users, suffix, levels):
         wf = ApprovalWorkflow(
             name=name, name_ar='سير موافقة', entity_type='sale',
             min_amount=Decimal('0'), levels_required=levels, is_active=True)
+        if tenant is not None:
+            wf.tenant_id = tenant.id
         db.session.add(wf)
         db.session.commit()
 
@@ -1312,6 +1319,8 @@ def _approval_seed(db, users, suffix, levels):
         requested_by=users['owner'].id,
         description='e2e approval request',
     )
+    if tenant is not None:
+        req.tenant_id = tenant.id
     db.session.add(req)
     db.session.commit()
 
@@ -1342,7 +1351,8 @@ def _run_approvals(client, db, sc, fixtures):
 
     users = fixtures['users']
     levels = 2 if sc.index % 2 == 0 else 1
-    wf, req = _approval_seed(db, users, sc.index, levels)
+    wf, req = _approval_seed(db, users, sc.index, levels,
+                             tenant=fixtures.get('tenant'))
 
     before_levels = {lv.id: lv.status for lv in
                      ApprovalLevel.query.filter_by(request_id=req.id).all()}
@@ -2325,7 +2335,6 @@ def _run_owner(client, db, sc, fixtures):
                            is_active=True)
         db.session.add(keepalive)
         db.session.commit()
-
         if sc.edge == 'idempotency_replay' or \
                 sc.state == 'concurrent_repeat':
             # The last active tenant may not be suspended. With only the
@@ -2510,17 +2519,32 @@ def _run_users(client, db, sc, fixtures):
 
     username = f'e2e_new_{sc.index}'
     before = User.query.count()
-    r = client.post('/users/create', data={
+    from flask_login import current_user
+    may = current_user.has_permission('manage_users')
+    # UserService._resolve_role refuses a role whose level exceeds the actor's,
+    # so the new user is given the actor's own role rather than a fixed one.
+    # That keeps the escalation guard meaningful without guessing the ladder:
+    # a manager creating a viewer (or anything else) is exactly the case the
+    # service is written to reject.
+    actor_role_id = current_user.role_id or users['viewer'].role_id
+    payload = {
         'username': username,
         'email': f'{username}@e2e.example',
         'full_name': f'E2E {sc.index}',
-        'role_id': str(users['viewer'].role_id),
+        'role_id': str(actor_role_id),
         'password': 'Str0ng-Passw0rd!',
         'confirm_password': 'Str0ng-Passw0rd!',
         'is_active': '1',
-    })
-    from flask_login import current_user
-    may = current_user.has_permission('manage_users')
+    }
+    # UserService.provision_user raises 'المستأجر المحدد غير صالح' when the
+    # tenant is absent, and routes/users.py only forwards a tenant_id the
+    # platform owner typed in. A non-owner gets the actor's tenant forced
+    # server-side, so the field is only meaningful for the owner - and the
+    # owner legitimately needs it now that the suite is tenant-scoped.
+    if current_user.is_owner and fixtures.get('tenant') is not None:
+        payload['tenant_id'] = str(fixtures['tenant'].id)
+
+    r = client.post('/users/create', data=payload, follow_redirects=True)
     if not may:
         assert r.status_code == 403, (
             f'{sc.id}: create answered {r.status_code} without manage_users')
@@ -2530,8 +2554,13 @@ def _run_users(client, db, sc, fixtures):
 
     assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
     created = User.query.filter_by(username=username).first()
-    assert created is not None, (
-        f'{sc.id}: the user {username} was not created')
+    if created is None:
+        import re as _re
+        hints = _re.findall(r'alert[^>]*>\s*([^<]{4,90})\s*<',
+                            r.get_data(as_text=True))
+        raise AssertionError(
+            f'{sc.id}: {username} was not created by {sc.role} '
+            f'(status {r.status_code}); flash: {hints[:3]}')
     # A non-platform-owner can never mint another owner.
     if not current_user.is_owner:
         assert created.is_owner is False, (
@@ -3153,7 +3182,8 @@ def _denied_request(client, db, sc, fixtures):
     if sc.domain == 'approvals':
         # Seed a real request so the POST has a target, then assert the
         # manage_approvals gate refuses it and leaves the level untouched.
-        _wf, req = _approval_seed(db, fixtures['users'], sc.index, 1)
+        _wf, req = _approval_seed(db, fixtures['users'], sc.index, 1,
+                                  tenant=fixtures.get('tenant'))
         before = ApprovalLevel.query.filter_by(request_id=req.id).count()
         r = client.post(f'/approvals/{req.id}/approve', data={'notes': 'no'})
         assert r.status_code == 403, (

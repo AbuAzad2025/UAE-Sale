@@ -189,21 +189,28 @@ jobs:
         with:
           pattern: e2e-*
           path: artifacts
+          merge-multiple: false
       - name: Build summary
         run: |
           python - <<'PY'
           import glob, os, xml.etree.ElementTree as ET
           total = fails = errs = skipped = 0
           rows = []
-          for path in sorted(glob.glob('artifacts/**/*.xml', recursive=True)):
+          # Every matrix job names its file matrix-<PREFIX>-<shard>.xml and the
+          # slice job writes slices.xml. download-artifact nests each artifact
+          # in its own directory, so the recursive glob below is what actually
+          # picks all 45 of them up; a flat glob silently summarised one file
+          # and reported a misleadingly small total.
+          paths = sorted(glob.glob('artifacts/**/*.xml', recursive=True))
+          print('files found:', len(paths))
+          for path in paths:
               try:
                   root = ET.parse(path).getroot()
               except Exception as exc:
                   print('skip', path, exc)
                   continue
-              suites = root.iter('testsuite')
               t = f = e = s = 0
-              for suite in suites:
+              for suite in root.iter('testsuite'):
                   t += int(suite.get('tests', 0))
                   f += int(suite.get('failures', 0))
                   e += int(suite.get('errors', 0))
@@ -212,6 +219,7 @@ jobs:
               total += t; fails += f; errs += e; skipped += s
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as fh:
               fh.write('## E2E matrix summary\n\n')
+              fh.write(f'artifacts parsed: **{len(rows)}**\n\n')
               fh.write('| shard | tests | failures | errors | skipped |\n')
               fh.write('|---|---:|---:|---:|---:|\n')
               for name, t, f, e, s in rows:

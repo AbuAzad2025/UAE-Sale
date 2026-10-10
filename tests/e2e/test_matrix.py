@@ -378,9 +378,8 @@ def _new_edge_state(client, db, sc, fixtures):
                     phone='+0', email=f's{sc.id}@2.local',
                     credit_limit=Decimal('10'), balance=Decimal('0'),
                     is_active=True)
-        secret.tenant_id = other.id
         db.session.add(secret)
-        db.session.commit()
+        _assign_foreign_tenant(db, secret, other.id)
 
         r = client.get(f'/customers/{secret.id}')
         if sc.role == 'owner':
@@ -1955,9 +1954,8 @@ def _run_customers(client, db, sc, fixtures):
                           customer_type='regular', phone='+0',
                           email=f'c{sc.id}@2.local', credit_limit=Decimal('10'),
                           balance=Decimal('0'), is_active=True)
-        secret.tenant_id = other.id
         db.session.add(secret)
-        db.session.commit()
+        _assign_foreign_tenant(db, secret, other.id)
 
         r = client.get(f'/customers/{secret.id}')
         if sc.role == 'owner':
@@ -2441,7 +2439,14 @@ def _run_users(client, db, sc, fixtures):
         before = User.query.count()
         owner_row = users['owner']
         r = client.post(f'/users/{owner_row.id}/delete')
-        assert r.status_code in (302, 303, 404), f'{sc.id}: {r.status_code}'
+        # The refusal here has three legitimate shapes depending on which guard
+        # fires first for the actor's role:
+        #   403   get_owned_or_404's tenant check (a non-owner may not even look
+        #         at the platform owner row)
+        #   404   user.is_owner and not _is_platform_owner() -> abort(404)
+        #   302   the manage_users redirect path for a role without the grant
+        # What must never happen is the owner account disappearing.
+        assert r.status_code in (302, 303, 403, 404), f'{sc.id}: {r.status_code}'
         still_there = db.session.get(User, owner_row.id)
         assert still_there is not None, (
             f'{sc.id}: the owner account was deleted through /users/<id>/delete')
@@ -2463,9 +2468,8 @@ def _run_users(client, db, sc, fixtures):
         # users.password_hash is NOT NULL, so a directly-built row still needs
         # a hash even though this user is never logged into.
         secret.set_password('Str0ng-Passw0rd!')
-        secret.tenant_id = other.id
         db.session.add(secret)
-        db.session.commit()
+        _assign_foreign_tenant(db, secret, other.id)
 
         r = client.get(f'/users/{secret.id}')
         if sc.role == 'owner':
@@ -2731,9 +2735,8 @@ def _C_for_api(customer, sc, other):
                       customer_type='regular', phone='+0',
                       email=f's{sc.id}@2.example', credit_limit=Decimal('10'),
                       balance=Decimal('0'), is_active=True)
-    secret.tenant_id = other.id
     db.session.add(secret)
-    db.session.commit()
+    _assign_foreign_tenant(db, secret, other.id)
     del customer
     return secret
 
@@ -2764,7 +2767,6 @@ def _make_sale_as_owner(client, db, sc, fixtures, login_as):
     """
     from models import Customer, Warehouse
 
-    owner = fixtures['users']['owner']
     cust = Customer(name=f'api-cust-{sc.index}', name_ar='عميل',
                     customer_type='regular', phone='+0000000009',
                     email=f'api{sc.index}@e2e.example',
@@ -2774,8 +2776,8 @@ def _make_sale_as_owner(client, db, sc, fixtures, login_as):
                    location='e2e', is_main=False, is_active=True)
     db.session.add_all([cust, wh])
     db.session.commit()
+    del Warehouse
 
-    saved_role = sc.role
     # Logging in again does NOT switch identity: /auth/login posts credentials
     # but Flask-Login keeps the already-loaded user, and neither /auth/logout
     # nor session_transaction().clear() was enough - the current_user proxy
@@ -2904,6 +2906,28 @@ def _run_reports(client, db, sc, fixtures):
         f'entry is wrong')
 
 
+def _assign_foreign_tenant(db, row, tenant_id):
+    """Move a freshly built row into a second tenant, bypassing the guard.
+
+    models/tenant_scope.py's before_flush hook raises "Cross-tenant insert
+    blocked" when a non-owner actor is in scope, which is the protection the
+    suite wants to verify. Provisioning the other tenant's data is privileged
+    work, so the current tenant is cleared around the insert and restored
+    straight after - the same escape hatch the platform owner has.
+    """
+    from models.tenant_scope import (clear_current_tenant_id,
+                                     get_current_tenant_id,
+                                     set_current_tenant_id)
+    previous = get_current_tenant_id()
+    clear_current_tenant_id()
+    try:
+        row.tenant_id = tenant_id
+        db.session.commit()
+    finally:
+        set_current_tenant_id(previous)
+    return row
+
+
 def _run_dashboard(client, db, sc, fixtures):
     """Domain DASH — the dashboard read surface.
 
@@ -2933,9 +2957,8 @@ def _run_dashboard(client, db, sc, fixtures):
                     customer_type='regular', phone='+0',
                     email=f'd{sc.id}@2.local', credit_limit=Decimal('10'),
                     balance=Decimal('0'), is_active=True)
-        secret.tenant_id = other.id
         db.session.add(secret)
-        db.session.commit()
+        _assign_foreign_tenant(db, secret, other.id)
 
         body = client.get('/dashboard').get_data(as_text=True)
         if sc.role == 'owner':

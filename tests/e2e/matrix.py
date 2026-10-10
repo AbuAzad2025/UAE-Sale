@@ -34,7 +34,7 @@ DOMAINS = ['accounting', 'ar', 'ap', 'inventory', 'cheque', 'security',
            'payments', 'hr', 'approvals', 'shipments', 'expenses', 'returns',
            'reports', 'partners', 'dashboard', 'stock',
            'customers', 'analytics', 'quotations', 'vault',
-           'gamification', 'inbound', 'owner', 'users', 'restapi']
+           'gamification', 'inbound', 'owner', 'users', 'restapi', 'ai']
 
 ROLES = ['owner', 'branch_manager', 'senior_accountant', 'pos_cashier',
          'warehouse_keeper', 'manager', 'accountant', 'viewer', 'hr']
@@ -104,6 +104,13 @@ DOMAIN_PERMISSION = {
     #   routes/api.py is @login_required only, with no API key and no
     #     permission code, so any authenticated role reaches it
     'restapi': None,
+    # routes/ai.py is the widest and least gated blueprint: 50 endpoints, and
+    # the ones that matter most - /ai/chat, /ai/ask-genius,
+    # /ai/system/add-customer, /ai/upload-excel - are @login_required with no
+    # permission code and (for chat and ask-genius) @csrf.exempt, while
+    # _process_user_action dispatches create_sale, create_cheque,
+    # create_purchase, record_payment and create_expense from free text.
+    'ai': None,
     'security': None,          # read/visibility domain, handled per-op
 }
 
@@ -167,6 +174,11 @@ def role_may_write(role: str, domain: str) -> bool:
         # routes/api.py half is login_required with no permission code, so every
         # authenticated role is in. The runner splits the two blueprints and
         # asserts 403 itself where api_enhanced requires one.
+        return True
+    if domain == 'ai':
+        # routes/ai.py gates its sensitive endpoints on @login_required alone,
+        # so every authenticated role reaches them. The runner asserts the
+        # consequences of that rather than pretending there is a 403.
         return True
     perm = DOMAIN_PERMISSION.get(domain)
     if perm is None:
@@ -239,9 +251,9 @@ def build_matrix() -> List[Scenario]:
 
 MATRIX: List[Scenario] = build_matrix()
 
-# Sanity: the matrix must be exactly 23625 and fully populated.
-# 25 domains x 9 roles x 7 states x 15 edges
-_EXPECTED_TOTAL = 23625
+# Sanity: the matrix must be exactly 24570 and fully populated.
+# 26 domains x 9 roles x 7 states x 15 edges
+_EXPECTED_TOTAL = 24570
 _EXPECTED_PER_DOMAIN = 945
 
 assert len(MATRIX) == _EXPECTED_TOTAL, (

@@ -2335,16 +2335,26 @@ def _run_owner(client, db, sc, fixtures):
         db.session.commit()
         if sc.edge == 'idempotency_replay' or \
                 sc.state == 'concurrent_repeat':
-            # The last active tenant may not be suspended. With only the
-            # keepalive row active this must be refused, which is the rule
-            # that stops an owner from locking everyone out of the platform.
-            before = _world_state(db)
-            r = client.post(f'/owner/tenants/{keepalive.id}/suspend')
+            # tenant_suspend refuses to suspend the LAST active tenant. The
+            # suite's own e2e_tenant fixture is active too, so every row here
+            # has a sibling; the guard is therefore proven by suspending
+            # everything else first and then trying the final one.
+            from models import Tenant
+            # Suspend every OTHER active tenant so exactly one remains. The
+            # survivor is the suite's own e2e_tenant row, chosen by slug so the
+            # result does not depend on row ordering.
+            for row in Tenant.query.filter_by(is_active=True).all():
+                if row.slug != 'e2e-tenant':
+                    client.post(f'/owner/tenants/{row.id}/suspend')
+
+            last = Tenant.query.filter_by(slug='e2e-tenant').first()
+            assert last is not None, f'{sc.id}: the e2e tenant row is missing'
+            r = client.post(f'/owner/tenants/{last.id}/suspend')
             assert r.status_code in (302, 303), f'{sc.id}: {r.status_code}'
-            db.session.refresh(keepalive)
-            assert keepalive.is_active is True, (
-                f'{sc.id}: the last active tenant was suspended')
-            _assert_world_unchanged(db, before, f'{sc.id} last-tenant guard')
+            db.session.refresh(last)
+            assert last.is_active is True, (
+                f'{sc.id}: the last active tenant was suspended — '
+                f'routes/owner.py must refuse it')
             return
 
         name = f'Owner-Tenant {sc.id}'

@@ -100,6 +100,10 @@ ROLE_PERMISSIONS = {
         'manage_sales', 'manage_customers', 'manage_products', 'manage_purchases',
         'manage_payments', 'view_reports', 'manage_expenses', 'manage_warehouse',
         'view_costs',
+        # utils/system_init.py gives 'manager' manage_users, which is the only
+        # seeded role besides owner that can reach /users/create and
+        # /users/<id>/delete.
+        'manage_users',
     ],
     'accountant': [
         'view_ledger', 'manage_ledger', 'manage_expenses', 'view_reports',

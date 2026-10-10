@@ -2150,6 +2150,124 @@ def _run_vault(client, db, sc, fixtures):
                 f'at {path}')
 
 
+def _run_gamification(client, db, sc, fixtures):
+    """Domain GAM — the points/leaderboard surface and its award whitelist.
+
+    All three routes are @login_required with no permission decorator, so any
+    role - including viewer and hr - reaches them. The only real gate is the
+    ALLOWED_AWARD_ACTIONS frozenset inside award_points, which aborts 404 for
+    anything else. That whitelist is what stops a user minting arbitrary points
+    by calling the endpoint with a made-up action, so it is what the cells
+    assert:
+
+      allowed action -> 200 and a JSON body
+      unknown action -> 404, i.e. the whitelist really is enforced
+      leaderboard / my-stats -> render for any authenticated role
+    """
+    allowed = ['first_sale', 'tenth_sale', 'daily_login', 'week_streak',
+               'month_streak', 'low_stock_report', 'customer_followup',
+               'task_completed', 'hundredth_sale']
+
+    if sc.edge in ('invalid_permission', 'cross_tenant') or \
+            sc.state == 'validation_error':
+        # Not in the whitelist -> 404. A 200 here would mean any caller could
+        # mint points for an arbitrary action.
+        r = client.get(f'/gamification/award/{sc.id}')
+        assert r.status_code == 404, (
+            f'{sc.id}: an action outside ALLOWED_AWARD_ACTIONS returned '
+            f'{r.status_code}; the whitelist must abort 404')
+        return
+
+    if sc.edge in ('rollback_no_partial_write', 'idempotency_replay') or \
+            sc.state == 'partial_split':
+        path = ['/gamification/leaderboard', '/gamification/my-stats'][
+            sc.index % 2]
+        r = client.get(path)
+        assert r.status_code == 200, f'{sc.id}: {path} returned {r.status_code}'
+        return
+
+    action = allowed[sc.index % len(allowed)]
+    r = client.get(f'/gamification/award/{action}')
+    assert r.status_code == 200, (
+        f'{sc.id}: whitelisted action {action!r} returned {r.status_code}')
+    body = r.get_json()
+    assert body is not None, f'{sc.id}: award returned no JSON'
+
+
+def _run_inbound(client, db, sc, fixtures):
+    """Domain INB — inbound shipments (receiving goods).
+
+    routes/inbound_shipments.py gates every endpoint on manage_warehouse and
+    walks a second state machine, create -> arrive -> inspect -> put-away ->
+    close, refusing any transition issued from the wrong state. The runner
+    asserts that chain and the line quantities, the same way the outbound
+    shipments domain does.
+    """
+    from models.inbound_shipment import InboundShipment
+
+    product = fixtures['product']
+    warehouse = fixtures['warehouse']
+    supplier = fixtures['supplier']
+
+    def create(qty, **over):
+        data = {
+            'supplier_id': str(supplier.id),
+            'warehouse_id': str(warehouse.id),
+            'carrier': 'DHL', 'tracking_number': f'TRK-{sc.index}',
+            'notes': f'e2e {sc.id}',
+            'lines[0][product_id]': str(product.id),
+            # inbound_shipments.py reads quantity_expected, not quantity:
+            # the receiving dock books what was expected and reconciles at
+            # inspect time.
+            'lines[0][quantity_expected]': str(qty),
+            'lines[0][unit_cost]': '50',
+        }
+        data.update(over)
+        return client.post('/inbound-shipments/create', data=data)
+
+    if sc.state in ('insufficient_boundary', 'expired_invalid') or \
+            sc.edge == 'negative_boundary':
+        before = InboundShipment.query.count()
+        create(sc.quantity, **{'lines[0][quantity_expected]': '0'})
+        assert InboundShipment.query.count() == before, (
+            f'{sc.id}: an inbound with no usable line was created')
+        return
+
+    r = create(sc.quantity)
+    assert r.status_code in (302, 303), f'{sc.id}: {r.status_code}'
+    loc = r.headers.get('Location', '')
+    s = InboundShipment.query.order_by(InboundShipment.id.desc()).first()
+    assert s is not None, f'{sc.id}: no inbound shipment created ({loc})'
+    # InboundShipmentService.create_shipment opens the record already in
+    # transit - unlike the outbound shipment domain, there is no draft step.
+    assert s.status == 'in_transit', (
+        f'{sc.id}: a new inbound is {s.status}, expected in_transit')
+
+    def step(action, expect):
+        resp = client.post(f'/inbound-shipments/{s.id}/{action}')
+        assert resp.status_code in (302, 303), (
+            f'{sc.id}: {action} returned {resp.status_code}')
+        db.session.refresh(s)
+        assert s.status == expect, (
+            f'{sc.id}: {action} left status {s.status}, expected {expect}')
+
+    if sc.edge == 'reversal':
+        step('cancel', 'cancelled')
+        step('arrive', 'cancelled')
+        return
+
+    if sc.edge in ('split_transaction', 'race_condition'):
+        # close before arrive is out of order and must not move the status.
+        step('close', 'in_transit')
+        step('put-away', 'in_transit')
+        return
+
+    step('arrive', 'arrived')
+    step('inspect', 'inspected')
+    step('put-away', 'put_away')
+    step('close', 'closed')
+
+
 def _run_reports(client, db, sc, fixtures):
     """Domain REP — the view_reports surface.
 
@@ -2419,6 +2537,8 @@ _DISPATCH = {
     'analytics': _run_analytics,
     'quotations': _run_quotations,
     'vault': _run_vault,
+    'gamification': _run_gamification,
+    'inbound': _run_inbound,
     'security': _run_security,
 }
 
@@ -2491,6 +2611,15 @@ def _denied_request(client, db, sc, fixtures):
             f'{sc.id}: a refused approval still advanced a level')
         assert before >= 1
         return r
+    if sc.domain == 'inbound':
+        return client.post('/inbound-shipments/create', data={
+            'supplier_id': str(supplier.id),
+            'warehouse_id': str(warehouse.id),
+            'carrier': 'DHL', 'tracking_number': f'D{sc.index}',
+            'lines[0][product_id]': str(product.id),
+            'lines[0][quantity_expected]': str(sc.quantity),
+            'lines[0][unit_cost]': '50',
+        })
     if sc.domain == 'customers':
         return client.post('/customers/create', data={
             'name': f'denied {sc.id}', 'name_ar': 'مرفوض',

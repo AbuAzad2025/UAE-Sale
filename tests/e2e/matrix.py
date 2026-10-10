@@ -33,7 +33,8 @@ from tests.e2e.harness import ACC
 DOMAINS = ['accounting', 'ar', 'ap', 'inventory', 'cheque', 'security',
            'payments', 'hr', 'approvals', 'shipments', 'expenses', 'returns',
            'reports', 'partners', 'dashboard', 'stock',
-           'customers', 'analytics', 'quotations', 'vault']
+           'customers', 'analytics', 'quotations', 'vault',
+           'gamification', 'inbound']
 
 ROLES = ['owner', 'branch_manager', 'senior_accountant', 'pos_cashier',
          'warehouse_keeper', 'manager', 'accountant', 'viewer', 'hr']
@@ -86,6 +87,10 @@ DOMAIN_PERMISSION = {
     # checks current_user.is_owner on every sensitive branch, so the cells
     # assert that in-handler gate rather than a decorator 403.
     'vault': None,
+    # login_required with no decorator; the whitelist inside award_points is the
+    # only gate, so the cells assert that rather than a 403.
+    'gamification': None,
+    'inbound': 'manage_warehouse',
     'security': None,          # read/visibility domain, handled per-op
 }
 
@@ -136,6 +141,9 @@ def role_may_write(role: str, domain: str) -> bool:
     if domain == 'vault':
         # login_required with no decorator gate; every role gets in and the
         # runner asserts the in-handler is_owner checks.
+        return True
+    if domain == 'gamification':
+        # Same shape: login_required only, so every role reaches the handler.
         return True
     perm = DOMAIN_PERMISSION.get(domain)
     if perm is None:
@@ -208,9 +216,9 @@ def build_matrix() -> List[Scenario]:
 
 MATRIX: List[Scenario] = build_matrix()
 
-# Sanity: the matrix must be exactly 18900 and fully populated.
-# 20 domains x 9 roles x 7 states x 15 edges
-_EXPECTED_TOTAL = 18900
+# Sanity: the matrix must be exactly 20790 and fully populated.
+# 22 domains x 9 roles x 7 states x 15 edges
+_EXPECTED_TOTAL = 20790
 _EXPECTED_PER_DOMAIN = 945
 
 assert len(MATRIX) == _EXPECTED_TOTAL, (

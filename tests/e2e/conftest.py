@@ -51,7 +51,7 @@ from config import Config                                  # noqa: E402
 from extensions import db as _db                           # noqa: E402
 from models import (                                       # noqa: E402
     User, Role, Permission, Customer, Product, ProductCategory,
-    Supplier, Warehouse,
+    Supplier, Warehouse, Tenant,
 )
 from services.gl_service import GLService                   # noqa: E402
 from models.tenant_scope import clear_current_tenant_id     # noqa: E402
@@ -329,9 +329,38 @@ def _make_user(role_slug: str) -> User:
 
 
 @pytest.fixture(scope='function')
-def users(db):
-    """All five role users, created fresh inside the rolled-back transaction."""
-    return {slug: _make_user(slug) for slug in ROLE_PERMISSIONS}
+def e2e_tenant(db):
+    """The tenant every fixture row and every non-owner user belongs to."""
+    tenant = Tenant.query.filter_by(slug='e2e-tenant').first()
+    if tenant is None:
+        tenant = Tenant(name='E2E Tenant', name_ar='مستأجر الاختبار',
+                        slug='e2e-tenant', country='UAE', is_active=True)
+        db.session.add(tenant)
+        db.session.commit()
+    return tenant
+
+
+@pytest.fixture(scope='function')
+def users(db, e2e_tenant):
+    """Every role user, created inside the rolled-back transaction.
+
+    Non-owner users are attached to a tenant on purpose. app.py:353-356 only
+    calls set_current_tenant_id() when current_user.tenant_id is set and
+    otherwise does set_current_tenant_id(None), and models/tenant_scope.py:218
+    returns the query UNFILTERED when the current tenant is None. With a
+    tenant-less user the auto-filter never engages, so every "another tenant
+    must not be visible" assertion passes vacuously and the isolation coverage
+    across the whole suite was meaningless. The owner keeps tenant_id None
+    because the platform owner legitimately bypasses the filter.
+    """
+    made = {}
+    for slug in ROLE_PERMISSIONS:
+        user = _make_user(slug)
+        if slug != 'owner':
+            user.tenant_id = e2e_tenant.id
+        made[slug] = user
+    db.session.commit()
+    return made
 
 
 @pytest.fixture(scope='function')
@@ -367,13 +396,14 @@ def anonymous(client, db):
 # --------------------------------------------------------------------------
 
 @pytest.fixture(scope='function')
-def customer(db):
+def customer(db, e2e_tenant):
     c = Customer(
         name='E2E Customer', name_ar='عميل',
         customer_type='regular', phone='+0000000000',
         email='e2e_customer@test.local',
         credit_limit=Decimal('100000'), balance=Decimal('0'), is_active=True,
     )
+    c.tenant_id = e2e_tenant.id
     db.session.add(c)
     db.session.commit()
     return c
@@ -388,7 +418,7 @@ def category(db):
 
 
 @pytest.fixture(scope='function')
-def product(db, category):
+def product(db, category, e2e_tenant):
     p = Product(
         name='E2E Brake Pad', name_ar=' pads', sku='E2E-SKU-0001',
         category_id=category.id,
@@ -396,28 +426,31 @@ def product(db, category):
         current_stock=Decimal('100'), min_stock_alert=Decimal('10'),
         is_active=True,
     )
+    p.tenant_id = e2e_tenant.id
     db.session.add(p)
     db.session.commit()
     return p
 
 
 @pytest.fixture(scope='function')
-def warehouse(db):
+def warehouse(db, e2e_tenant):
     w = Warehouse(
         name='E2E Main', name_ar='رئيسي', code='E2E-WH-1',
         location='E2E', is_main=True, is_active=True,
     )
+    w.tenant_id = e2e_tenant.id
     db.session.add(w)
     db.session.commit()
     return w
 
 
 @pytest.fixture(scope='function')
-def supplier(db):
+def supplier(db, e2e_tenant):
     s = Supplier(
         name='E2E Supplier', name_ar='مورد', phone='+0000000001',
         email='e2e_supplier@test.local', is_active=True,
     )
+    s.tenant_id = e2e_tenant.id
     db.session.add(s)
     db.session.commit()
     return s

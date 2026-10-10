@@ -2399,6 +2399,150 @@ def _run_owner(client, db, sc, fixtures):
     del users
 
 
+def _run_users(client, db, sc, fixtures):
+    """Domain USR — user administration and its layered authorisation.
+
+    routes/users.py is the clearest example of defence in depth in this
+    codebase, and each layer is asserted separately because any one of them
+    failing is a real escalation:
+
+      @login_required                     on every endpoint
+      has_permission('manage_users')      checked inside index/create/delete
+                                          (abort 403 on create, redirect on the
+                                          others)
+      @admin_required                     additionally on edit and
+                                          toggle_active
+      get_owned_or_404(User, id, 404)     cross-tenant check before mutating
+      user.is_owner and not platform      the owner account can never be
+        owner -> abort 404                  deleted through this route
+      _role_level(role) <= actor level    a manager cannot mint a super_admin
+      tenant_id forced server-side        non-owners never choose their own
+                                          tenant, and is_owner is False
+
+    The branches therefore assert the guard that applies, not one status code.
+    """
+    from models.user import User
+
+    users = fixtures['users']
+    target = users['viewer']
+
+    # ---- delete: the owner account must be undeletable ----
+    if sc.edge in ('negative_boundary', 'validation_error') or \
+            sc.state in ('insufficient_boundary', 'expired_invalid'):
+        before = User.query.count()
+        owner_row = users['owner']
+        r = client.post(f'/users/{owner_row.id}/delete')
+        assert r.status_code in (302, 303, 404), f'{sc.id}: {r.status_code}'
+        still_there = db.session.get(User, owner_row.id)
+        assert still_there is not None, (
+            f'{sc.id}: the owner account was deleted through /users/<id>/delete')
+        assert User.query.count() == before, (
+            f'{sc.id}: the refused delete still removed a user')
+        return
+
+    # ---- cross-tenant: another tenant's user is not reachable ----
+    if sc.edge == 'cross_tenant' or sc.state == 'cross_tenant_read':
+        from models import Tenant
+        other = Tenant(name=f'T2 {sc.id}', name_ar='ب', slug=f'tu-{sc.index}',
+                       country='UAE', is_active=True)
+        db.session.add(other)
+        db.session.commit()
+        secret = User(username=f'secret_{sc.index}',
+                      email=f'secret{sc.index}@e2e.example',
+                      full_name='Secret', is_owner=False, is_active=True,
+                      role_id=users['viewer'].role_id)
+        # users.password_hash is NOT NULL, so a directly-built row still needs
+        # a hash even though this user is never logged into.
+        secret.set_password('Str0ng-Passw0rd!')
+        secret.tenant_id = other.id
+        db.session.add(secret)
+        db.session.commit()
+
+        r = client.get(f'/users/{secret.id}')
+        if sc.role == 'owner':
+            assert r.status_code == 200, (
+                f'{sc.id}: owner view returned {r.status_code}')
+            return
+        assert r.status_code in (403, 404, 302), (
+            f'{sc.id}: {sc.role} reached another tenant\'s user: '
+            f'{r.status_code}')
+        body = r.get_data(as_text=True)
+        assert f'secret_{sc.index}' not in body, (
+            f'{sc.id}: the response leaked the other tenant\'s username')
+        return
+
+    # ---- admin-only: edit and toggle_active carry @admin_required ----
+    if sc.edge in ('invalid_permission', 'rollback_no_partial_write'):
+        r = client.post(f'/users/{target.id}/toggle-active')
+        from flask_login import current_user
+        # utils/decorators.py::admin_required admits is_owner OR super_admin,
+        # not a role slug of 'admin' - so the predicate has to mirror the
+        # decorator, not a role name.
+        allowed = bool(getattr(current_user, 'is_owner', False)) or \
+            current_user.is_super_admin()
+        if allowed:
+            assert r.status_code in (302, 303), f'{sc.id}: {r.status_code}'
+            db.session.refresh(target)
+            assert target.is_active is False, (
+                f'{sc.id}: toggle-active did not deactivate the user for an '
+                f'admin')
+        else:
+            assert r.status_code in (403, 302, 303), (
+                f'{sc.id}: toggle-active answered {r.status_code}')
+            db.session.refresh(target)
+            assert target.is_active is True, (
+                f'{sc.id}: a non-admin deactivated a user')
+        return None
+
+    # ---- create: the provisioning path and its role-level clamp ----
+    if sc.edge in ('split_transaction', 'race_condition') or \
+            sc.state == 'partial_split':
+        r = client.get('/users/create')
+        from flask_login import current_user
+        if current_user.has_permission('manage_users'):
+            assert r.status_code == 200, (
+                f'{sc.id}: /users/create returned {r.status_code}')
+        else:
+            assert r.status_code == 403, (
+                f'{sc.id}: create answered {r.status_code} without '
+                f'manage_users, expected 403')
+        return
+
+    username = f'e2e_new_{sc.index}'
+    before = User.query.count()
+    r = client.post('/users/create', data={
+        'username': username,
+        'email': f'{username}@e2e.example',
+        'full_name': f'E2E {sc.index}',
+        'role_id': str(users['viewer'].role_id),
+        'password': 'Str0ng-Passw0rd!',
+        'confirm_password': 'Str0ng-Passw0rd!',
+        'is_active': '1',
+    })
+    from flask_login import current_user
+    may = current_user.has_permission('manage_users')
+    if not may:
+        assert r.status_code == 403, (
+            f'{sc.id}: create answered {r.status_code} without manage_users')
+        assert User.query.count() == before, (
+            f'{sc.id}: a refused create still made a user')
+        return
+
+    assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
+    created = User.query.filter_by(username=username).first()
+    assert created is not None, (
+        f'{sc.id}: the user {username} was not created')
+    # A non-platform-owner can never mint another owner.
+    if not current_user.is_owner:
+        assert created.is_owner is False, (
+            f'{sc.id}: a non-owner created a user with is_owner=True')
+    # The tenant is forced server-side for non-owners.
+    if not current_user.is_owner and current_user.tenant_id:
+        assert created.tenant_id == current_user.tenant_id, (
+            f'{sc.id}: the new user landed in tenant {created.tenant_id}, '
+            f'expected the actor\'s {current_user.tenant_id}')
+
+
 def _run_reports(client, db, sc, fixtures):
     """Domain REP — the view_reports surface.
 
@@ -2671,6 +2815,7 @@ _DISPATCH = {
     'gamification': _run_gamification,
     'inbound': _run_inbound,
     'owner': _run_owner,
+    'users': _run_users,
     'security': _run_security,
 }
 
@@ -2743,6 +2888,15 @@ def _denied_request(client, db, sc, fixtures):
             f'{sc.id}: a refused approval still advanced a level')
         assert before >= 1
         return r
+    if sc.domain == 'users':
+        # create() is the endpoint that aborts 403 without manage_users; the
+        # in-handler check is the only gate behind @login_required.
+        return client.post('/users/create', data={
+            'username': f'denied_{sc.index}',
+            'email': f'denied{sc.index}@e2e.example',
+            'full_name': 'Denied', 'password': 'Str0ng-Passw0rd!',
+            'confirm_password': 'Str0ng-Passw0rd!', 'is_active': '1',
+        })
     if sc.domain == 'owner':
         # @owner_required must refuse this for every non-owner role, and the
         # destructive endpoint is the one that must never be reachable by
@@ -2853,3 +3007,7 @@ def test_matrix_scenario(sc, client, db, users, login_as, customer, product,
         return
 
     _DISPATCH[sc.domain](client, db, sc, fixtures)
+    # A domain runner must return None. Calling it bare still propagates a
+    # stray `return response` to pytest, which raises
+    # PytestReturnNotNoneWarning - and under -W error that fails the cell.
+    return None

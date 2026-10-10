@@ -116,24 +116,31 @@ jobs:
         # --e2e-shard-id/--e2e-num-shards are defined in
         # tests/e2e/conftest.py. pytest-shard was rejected because it does not
         # compose with -k (it reported 3368 and 3352 for an 840-test domain).
+        #
+        # The junit file is named with the lowercase domain on both sides. It
+        # used to be written as matrix-$PREFIX-<shard>.xml (uppercase) while
+        # the upload looked for matrix-<domain>-<shard>.xml, so all 44 jobs ran
+        # green and uploaded nothing - the run summary reported only the slice
+        # job's 70 tests.
         run: |
           set -o pipefail
-          PREFIX=$(echo '${{ matrix.domain }}' | cut -c1-3 | tr '[:lower:]' '[:upper:]')
-          echo "Running domain ${{ matrix.domain }} (prefix $PREFIX), shard ${{ matrix.shard }}/2"
+          DOMAIN='${{ matrix.domain }}'
+          PREFIX=$(echo "$DOMAIN" | cut -c1-3 | tr '[:lower:]' '[:upper:]')
+          echo "Running domain $DOMAIN (prefix $PREFIX), shard ${{ matrix.shard }}/2"
           pytest tests/e2e/test_matrix.py \
             -k "E2E-$PREFIX-" \
             -q -p no:randomly \
             --tb=short \
             --e2e-shard-id ${{ matrix.shard }} \
             --e2e-num-shards 2 \
-            --junitxml=matrix-$PREFIX-${{ matrix.shard }}.xml
+            --junitxml=matrix-$DOMAIN-${{ matrix.shard }}.xml
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: e2e-matrix-${{ matrix.domain }}-${{ matrix.shard }}
           path: matrix-${{ matrix.domain }}-${{ matrix.shard }}.xml
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 14
 
   # ── Prove the matrix is still the shape the report claims, so a silent
@@ -203,6 +210,13 @@ jobs:
           # and reported a misleadingly small total.
           paths = sorted(glob.glob('artifacts/**/*.xml', recursive=True))
           print('files found:', len(paths))
+          # The matrix is 22 domains x 2 shards plus the slice job. If the
+          # count is short, the run must not be reported as a clean pass.
+          expected = 22 * 2 + 1
+          if len(paths) < expected:
+              raise SystemExit(
+                  f'only {len(paths)} of {expected} expected junit files were '
+                  f'parsed: {paths}')
           for path in paths:
               try:
                   root = ET.parse(path).getroot()

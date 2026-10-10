@@ -1,0 +1,64 @@
+# Debug CI: add collect-only to see what tests are collected
+name: Debug CI
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/e2e.yml'
+      - 'tests/e2e/**'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  debug:
+    name: debug
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+      - name: Debug test collection
+        run: |
+          DOMAIN='accounting'
+          PREFIX=$(echo "$DOMAIN" | cut -c1-3 | tr '[:lower:]' '[:upper:]')
+          echo "PREFIX=$PREFIX"
+          pytest tests/e2e/test_matrix.py -k "E2E-$PREFIX-" --collect-only -q
+      - name: Check matrix shape
+        run: |
+          python -c "
+          import yaml
+          d=yaml.safe_load(open('tests/e2e/matrix.py',encoding='utf-8').read())
+          # The matrix module has MATRIX, DOMAINS, etc.
+          import tests.e2e.matrix as m
+          print('MATRIX len:', len(m.MATRIX))
+          print('DOMAINS:', m.DOMAINS)
+          import collections
+          c = __import__('collections').Counter(s.domain for s in m.MATRIX)
+          for d in m.DOMAINS:
+              print(f'  {d:<12} {c[d]}')
+          print('total:', len(m.MATRIX))
+          print('amounts:', len({s.amount for s in m.MATRIX}))
+          print('ids:', len({s.id for s in m.MATRIX}))
+          print('domains:', len({s.domain for s in m.MATRIX}))
+          print('roles:', len({s.role for s in m.MATRIX}))
+          print('states:', len({s.state for s in m.MATRIX}))
+          print('edges:', len({s.edge for s in m.MATRIX}))

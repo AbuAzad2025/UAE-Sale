@@ -34,7 +34,7 @@ DOMAINS = ['accounting', 'ar', 'ap', 'inventory', 'cheque', 'security',
            'payments', 'hr', 'approvals', 'shipments', 'expenses', 'returns',
            'reports', 'partners', 'dashboard', 'stock',
            'customers', 'analytics', 'quotations', 'vault',
-           'gamification', 'inbound', 'owner', 'users']
+           'gamification', 'inbound', 'owner', 'users', 'restapi']
 
 ROLES = ['owner', 'branch_manager', 'senior_accountant', 'pos_cashier',
          'warehouse_keeper', 'manager', 'accountant', 'viewer', 'hr']
@@ -99,6 +99,11 @@ DOMAIN_PERMISSION = {
     # has_permission('manage_users') check, and only two endpoints carry
     # @admin_required on top.
     'users': 'manage_users',
+    # Two different contracts in one domain, which is the point of it:
+    #   routes/api_enhanced.py uses @permission_required on every endpoint
+    #   routes/api.py is @login_required only, with no API key and no
+    #     permission code, so any authenticated role reaches it
+    'restapi': None,
     'security': None,          # read/visibility domain, handled per-op
 }
 
@@ -158,6 +163,11 @@ def role_may_write(role: str, domain: str) -> bool:
         # owner role sets is_owner=True in conftest, so this is the single
         # domain whose positive path is exactly one role out of nine.
         return role == 'owner'
+    if domain == 'restapi':
+        # routes/api.py half is login_required with no permission code, so every
+        # authenticated role is in. The runner splits the two blueprints and
+        # asserts 403 itself where api_enhanced requires one.
+        return True
     perm = DOMAIN_PERMISSION.get(domain)
     if perm is None:
         return role == 'owner' or role in ('branch_manager', 'senior_accountant')
@@ -229,9 +239,9 @@ def build_matrix() -> List[Scenario]:
 
 MATRIX: List[Scenario] = build_matrix()
 
-# Sanity: the matrix must be exactly 22680 and fully populated.
-# 24 domains x 9 roles x 7 states x 15 edges
-_EXPECTED_TOTAL = 22680
+# Sanity: the matrix must be exactly 23625 and fully populated.
+# 25 domains x 9 roles x 7 states x 15 edges
+_EXPECTED_TOTAL = 23625
 _EXPECTED_PER_DOMAIN = 945
 
 assert len(MATRIX) == _EXPECTED_TOTAL, (

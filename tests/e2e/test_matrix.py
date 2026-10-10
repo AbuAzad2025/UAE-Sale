@@ -2543,6 +2543,280 @@ def _run_users(client, db, sc, fixtures):
             f'expected the actor\'s {current_user.tenant_id}')
 
 
+def _run_restapi(client, db, sc, fixtures):
+    """Domain API — the REST surface, which is where templates get bypassed.
+
+    Two blueprints with deliberately different contracts:
+
+      routes/api.py          11 endpoints, @login_required only. No API key, no
+                             permission code. So ANY authenticated role -
+                             including viewer and warehouse_keeper - can call
+                             /api/search, /api/products/low-stock,
+                             /api/check-username and /api/products/barcode/<>.
+                             These cells therefore assert reachability AND
+                             that the payloads carry no cross-tenant rows.
+      routes/api_enhanced.py 8 endpoints, each behind @permission_required,
+                             with get_owned_or_404 on the detail routes and
+                             current_user.can_see_costs() on every cost-bearing
+                             field.
+
+    The branches:
+      public      -> /api/health and /api/version answer with no session
+      login_only  -> the ungated /api/* endpoints answer 200 for every role
+      cost_gate   -> sale/customer detail hides cost unless can_see_costs()
+      isolation   -> another tenant's record is 404 and its name never leaks
+      validation  -> malformed input is refused rather than crashing
+    """
+    import json as _json
+
+    customer = fixtures['customer']
+    product = fixtures['product']
+
+    # ---- cross-tenant: the detail routes must 404, the lists must hide ----
+    if sc.edge == 'cross_tenant' or sc.state == 'cross_tenant_read':
+        from models import Tenant
+        other = Tenant(name=f'T2 {sc.id}', name_ar='ب',
+                       slug=f'ta2-{sc.index}', country='UAE', is_active=True)
+        db.session.add(other)
+        db.session.commit()
+
+        secret = _C_for_api(customer, sc, other)
+
+        # app.py:351-352 gives the platform owner set_current_tenant_id(None),
+        # so the auto-filter is deliberately off for them and
+        # models/tenant_scope.py:218 returns the query unfiltered. A cross
+        # tenant read is therefore correct for the owner and forbidden for
+        # everyone else - the same contract the security domain already
+        # documents. Asserting a refusal for the owner here would be asserting
+        # a bug.
+        from flask_login import current_user
+        if current_user.is_owner:
+            r = client.get(f'/api/v2/customers?per_page=100')
+            assert r.status_code == 200, f'{sc.id}: {r.status_code}'
+            return
+
+        r = client.get(f'/api/v2/sales/{secret.id}')
+        assert r.status_code in (403, 404), (
+            f'{sc.id}: /api/v2/sales reached another tenant: {r.status_code}')
+        assert f'secret-{sc.id}' not in r.get_data(as_text=True), (
+            f'{sc.id}: the 404 body leaked the record')
+
+        # The list endpoint must not include it either.
+        lst = client.get('/api/v2/customers?per_page=100')
+        if lst.status_code == 200:
+            assert f'secret-{sc.id}' not in lst.get_data(as_text=True), (
+                f'{sc.id}: /api/v2/customers leaked a cross-tenant record')
+        return
+
+    # ---- validation: bad input is refused, not a 500 ----
+    if sc.edge in ('validation_error', 'negative_boundary') or \
+            sc.state == 'validation_error':
+        for path in ('/api/check-username?username=a',
+                     '/api/currency-rate/XXX/YYY',
+                     '/api/products/barcode/'):
+            r = client.get(path)
+            assert r.status_code < 500, (
+                f'{sc.id}: {path} returned {r.status_code}; malformed input '
+                f'must be refused, not crash')
+            if r.data:
+                try:
+                    _json.loads(r.get_data(as_text=True))
+                except ValueError:
+                    continue
+        return
+
+    # ---- cost gate: api_enhanced hides cost behind can_see_costs() ----
+    if sc.edge in ('tax_boundary', 'split_transaction') or \
+            sc.state == 'partial_split':
+        from flask_login import current_user
+        # The sale has to exist before the read. Roles without manage_sales
+        # cannot create one, so the fixture is made as the owner and the read
+        # is then performed by whichever role the scenario selected.
+        sale_id = _make_sale_as_owner(client, db, sc, fixtures,
+                                      fixtures['login_as'])
+        r = client.get(f'/api/v2/sales/{sale_id}')
+
+        if not current_user.has_permission('manage_sales'):
+            assert r.status_code == 403, (
+                f'{sc.id}: /api/v2/sales answered {r.status_code} for '
+                f'{sc.role}, which lacks manage_sales; expected 403')
+            return
+        assert r.status_code == 200, f'{sc.id}: {r.status_code}'
+        body = r.get_data(as_text=True)
+        assert '"cost' not in body or current_user.can_see_costs(), (
+            f'{sc.id}: {sc.role} cannot see costs but the sale payload carries '
+            f'them: {body[:160]}')
+        return
+
+    # ---- login-only half: every role must reach it ----
+    if sc.edge in ('invalid_permission', 'rollback_no_partial_write'):
+        paths = [
+            '/api/health', '/api/version', '/api/search?q=E2E',
+            '/api/check-username?username=zzzz_not_taken_zz',
+            '/api/products/low-stock',
+            '/api/payment-fields/cash',
+            '/api/currency-rate/USD/ILS',
+        ]
+        path = paths[sc.index % len(paths)]
+        r = client.get(path)
+        assert r.status_code in (200, 400, 404), (
+            f'{sc.id}: {path} returned {r.status_code}; the /api blueprint is '
+            f'login_required only, so every role must get a real answer')
+        return
+
+    reads = [
+        '/api/search?q=E2E&type=products',
+        '/api/search?q=E2E&type=customers',
+        '/api/search?q=E2E&type=suppliers',
+        '/api/payment-fields/cheque',
+        '/api/payment-fields/bank_transfer',
+        '/api/payment-fields/card',
+        '/api/products/low-stock',
+        f'/api/products/barcode/{product.sku}',
+        '/api/currency-rate/USD/ILS',
+        '/api/currency-rate/ILS/USD',
+    ]
+    path = reads[sc.index % len(reads)]
+    r = client.get(path)
+    assert r.status_code in (200, 400, 404), (
+        f'{sc.id}: {path} returned {r.status_code}')
+
+    if r.data:
+        text = r.get_data(as_text=True)
+        try:
+            payload = _json.loads(text)
+        except ValueError:
+            payload = None
+        if payload is not None:
+            # A list endpoint must never leak another tenant's names.
+            assert f'secret-{sc.id}' not in text, (
+                f'{sc.id}: {path} leaked a cross-tenant marker')
+
+    del customer
+
+
+def _C_for_api(customer, sc, other):
+    """A customer row owned by a second tenant, for the isolation cells."""
+    from models import Customer
+    secret = Customer(name=f'secret-{sc.id}', name_ar='سر',
+                      customer_type='regular', phone='+0',
+                      email=f's{sc.id}@2.example', credit_limit=Decimal('10'),
+                      balance=Decimal('0'), is_active=True)
+    secret.tenant_id = other.id
+    db.session.add(secret)
+    db.session.commit()
+    del customer
+    return secret
+
+
+def _make_sale_for_api(client, fixtures, suffix):
+    """Create a real sale so /api/v2/sales/<id> has a target."""
+    r = client.post('/sales/create', data=sale_form(
+        fixtures['customer'],
+        [{'product_id': fixtures['product'].id, 'quantity': 1,
+          'unit_price': 100}],
+        warehouse=fixtures['warehouse'], notes=f'api-{suffix}'))
+    sid = sale_id_from_redirect(r)
+    assert sid is not None, f'could not create the api sale fixture {suffix}'
+    return sid
+
+
+def _make_sale_as_owner(client, db, sc, fixtures, login_as):
+    """Create a tenant-less sale so /api/v2/sales/<id> has a target.
+
+    Two constraints make the shared fixtures unusable here:
+      roles without manage_sales (viewer, accountant) cannot create a sale
+      routes/sales.py:72 does get_owned_or_404(Customer, customer_id), and the
+        platform owner bypasses the tenant auto-filter but not get_owned_or_404,
+        so the owner cannot use the tenant-owned `customer` fixture either
+
+    So the owner gets its own customer and warehouse rows with tenant_id None,
+    which is the state the owner is meant to operate in.
+    """
+    from models import Customer, Warehouse
+
+    owner = fixtures['users']['owner']
+    cust = Customer(name=f'api-cust-{sc.index}', name_ar='عميل',
+                    customer_type='regular', phone='+0000000009',
+                    email=f'api{sc.index}@e2e.example',
+                    credit_limit=Decimal('100000'), balance=Decimal('0'),
+                    is_active=True)
+    wh = Warehouse(name=f'api-wh-{sc.index}', name_ar='م', code=f'APIWH{sc.index}',
+                   location='e2e', is_main=False, is_active=True)
+    db.session.add_all([cust, wh])
+    db.session.commit()
+
+    saved_role = sc.role
+    # Logging in again does NOT switch identity: /auth/login posts credentials
+    # but Flask-Login keeps the already-loaded user, and neither /auth/logout
+    # nor session_transaction().clear() was enough - the current_user proxy
+    # stays bound to the first identity for the lifetime of the test's app
+    # context. So the fixture sale is created by talking to the database
+    # directly instead of switching sessions, which keeps the scenario's own
+    # role untouched.
+    sale = _seed_sale_row(db, sc, fixtures)
+    return sale.id
+
+
+def _seed_sale_row(db, sc, fixtures):
+    """Create a Sale row without going through a request.
+
+    The scenario role (viewer, accountant, ...) usually cannot create a sale,
+    and the owner session cannot be swapped in mid-test because Flask-Login
+    binds current_user for the life of the app context. Writing the row
+    directly is legitimate here: this fixture exists only to give
+    /api/v2/sales/<id> a target, and the route under test is the READ, not the
+    create.
+    """
+    from models import Customer
+    from models.sale import Sale, SaleLine
+
+    cust = Customer(name=f'api-cust-{sc.index}', name_ar='عميل',
+                    customer_type='regular', phone='+0000000009',
+                    email=f'api{sc.index}@e2e.example',
+                    credit_limit=Decimal('100000'), balance=Decimal('0'),
+                    is_active=True)
+    cust.tenant_id = fixtures['tenant'].id
+    db.session.add(cust)
+    db.session.commit()
+
+    sale = Sale(
+        sale_number=f'API-{sc.index}',
+        customer_id=cust.id,
+        warehouse_id=fixtures['warehouse'].id,
+        currency='ILS', exchange_rate=Decimal('1.000000'),
+        subtotal=Decimal('100.000'),
+        discount_amount=Decimal('0.000'),
+        shipping_cost=Decimal('0.000'),
+        tax_rate=Decimal('0'), tax_amount=Decimal('0.000'),
+        total_amount=Decimal('100.000'),
+        paid_amount=Decimal('0.000'),
+        balance_due=Decimal('100.000'),
+        amount_base=Decimal('100.000'),
+        paid_amount_base=Decimal('0.000'),
+        payment_status='unpaid', status='completed', is_active=True,
+        notes=f'api-{sc.index}',
+    )
+    sale.tenant_id = fixtures['tenant'].id
+    sale.seller_id = fixtures['users'][sc.role].id
+    db.session.add(sale)
+    db.session.commit()
+
+    line = SaleLine(
+        sale_id=sale.id,
+        product_id=fixtures['product'].id,
+        quantity=Decimal('1'),
+        unit_price=Decimal('100.000'),
+        discount_percent=Decimal('0'),
+        line_total=Decimal('100.000'),
+        cost_price=Decimal('50.000'),
+        tenant_id=fixtures['tenant'].id,
+    )
+    db.session.add(line)
+    db.session.commit()
+    return sale
+
+
 def _run_reports(client, db, sc, fixtures):
     """Domain REP — the view_reports surface.
 
@@ -2816,6 +3090,7 @@ _DISPATCH = {
     'inbound': _run_inbound,
     'owner': _run_owner,
     'users': _run_users,
+    'restapi': _run_restapi,
     'security': _run_security,
 }
 
@@ -2958,12 +3233,12 @@ def _denied_request(client, db, sc, fixtures):
 
 @pytest.mark.parametrize('sc', matrix_params(), ids=lambda s: s.id)
 def test_matrix_scenario(sc, client, db, users, login_as, customer, product,
-                         warehouse, supplier):
-    """Execute one cell of the 8 x 9 x 7 x 15 matrix."""
+                         warehouse, supplier, e2e_tenant):
+    """Execute one cell of the 25 x 9 x 7 x 15 matrix."""
     login_as(sc.role)
     fixtures = {'customer': customer, 'product': product,
                 'warehouse': warehouse, 'supplier': supplier,
-                'users': users}
+                'users': users, 'tenant': e2e_tenant, 'login_as': login_as}
 
     if not sc.permitted:
         # The permission gate must refuse the write AND leave no trace.

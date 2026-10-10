@@ -34,7 +34,7 @@ DOMAINS = ['accounting', 'ar', 'ap', 'inventory', 'cheque', 'security',
            'payments', 'hr', 'approvals', 'shipments', 'expenses', 'returns',
            'reports', 'partners', 'dashboard', 'stock',
            'customers', 'analytics', 'quotations', 'vault',
-           'gamification', 'inbound']
+           'gamification', 'inbound', 'owner']
 
 ROLES = ['owner', 'branch_manager', 'senior_accountant', 'pos_cashier',
          'warehouse_keeper', 'manager', 'accountant', 'viewer', 'hr']
@@ -91,6 +91,10 @@ DOMAIN_PERMISSION = {
     # only gate, so the cells assert that rather than a 403.
     'gamification': None,
     'inbound': 'manage_warehouse',
+    # routes/owner.py guards 68 of its 73 endpoints with @owner_required
+    # rather than a permission code, and the other 5 with manage_backups.
+    # The gate is therefore the owner flag itself, not a permission set.
+    'owner': None,
     'security': None,          # read/visibility domain, handled per-op
 }
 
@@ -145,6 +149,11 @@ def role_may_write(role: str, domain: str) -> bool:
     if domain == 'gamification':
         # Same shape: login_required only, so every role reaches the handler.
         return True
+    if domain == 'owner':
+        # @owner_required checks User.is_owner, not a permission code. Only the
+        # owner role sets is_owner=True in conftest, so this is the single
+        # domain whose positive path is exactly one role out of nine.
+        return role == 'owner'
     perm = DOMAIN_PERMISSION.get(domain)
     if perm is None:
         return role == 'owner' or role in ('branch_manager', 'senior_accountant')
@@ -216,9 +225,9 @@ def build_matrix() -> List[Scenario]:
 
 MATRIX: List[Scenario] = build_matrix()
 
-# Sanity: the matrix must be exactly 20790 and fully populated.
-# 22 domains x 9 roles x 7 states x 15 edges
-_EXPECTED_TOTAL = 20790
+# Sanity: the matrix must be exactly 21735 and fully populated.
+# 23 domains x 9 roles x 7 states x 15 edges
+_EXPECTED_TOTAL = 21735
 _EXPECTED_PER_DOMAIN = 945
 
 assert len(MATRIX) == _EXPECTED_TOTAL, (

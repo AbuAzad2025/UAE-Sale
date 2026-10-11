@@ -3736,6 +3736,11 @@ def _denied_request(client, db, sc, fixtures):
             'code': f'D{sc.index}',
             'budget_amount': str(sc.amount),
         })
+    if sc.domain == 'security':
+        # security is a read/visibility domain. The canonical refused request
+        # is a cross-tenant customer access, which the security runner already
+        # exercises. For non-owner roles this must be refused (403/404).
+        return client.get('/customers/0')
     if sc.domain == 'erp':
         # manage_purchases is the gate on every non-quotation route in the
         # blueprint. This is the canonical write, so the refusal must happen

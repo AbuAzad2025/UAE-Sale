@@ -294,11 +294,11 @@ jobs:
           pip install -r requirements.txt
       - name: Route coverage
         # Scenario count and endpoint coverage are different things. The matrix
-        # runs 24570 scenarios, but a domain runner that cycles three paths
+        # runs 25515 scenarios, but a domain runner that cycles three paths
         # still produces 945 passes, so a fully green run can leave most of the
         # application untouched. This census reads the per-shard route reports
         # the matrix jobs uploaded and states the real number on the run page.
-run: |
+        run: |
           set -o pipefail
           # The floor is a ratchet, not decoration: raise it as modules get
           # covered, so a runner that stops reaching routes fails the

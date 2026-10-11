@@ -298,15 +298,15 @@ jobs:
         # still produces 945 passes, so a fully green run can leave most of the
         # application untouched. This census reads the per-shard route reports
         # the matrix jobs uploaded and states the real number on the run page.
-        run: |
+run: |
           set -o pipefail
           # The floor is a ratchet, not decoration: raise it as modules get
-          # covered, so a runner that silently stops reaching routes fails the
+          # covered, so a runner that stops reaching routes fails the
           # build instead of quietly shrinking coverage. The full matrix
-          # measures 152/475 today; 140 leaves headroom for shard flakiness
-          # while still catching a real regression. This started at 75.
+          # now reaches 218/475 (45.9%) with ERP + owner widening.
+          # Floor set to 200 to allow shard variance while catching regressions.
           python -m tests.e2e.route_coverage 'artifacts/**/routes-*.json' \
-            --min-covered 140 \
+            --min-covered 200 \
             --out route-coverage.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload coverage report
         if: always()

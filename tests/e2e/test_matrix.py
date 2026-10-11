@@ -56,7 +56,7 @@ def _world_state(db):
     from models.approval_workflow import ApprovalRequest
     from models.shipment import Shipment
     from models.expense import Expense
-    from models import ProductReturn
+    from models import ProductReturn, PurchaseOrder, StockTake, StockTransfer
     return {
         'entries': snapshot_entry_ids(),
         'sales': Sale.query.count(),
@@ -72,6 +72,12 @@ def _world_state(db):
         'shipments': Shipment.query.count(),
         'expenses': Expense.query.count(),
         'returns': ProductReturn.query.count(),
+        # The erp domain creates documents that are not sales or purchases, so
+        # without these a refused /erp write that still inserted a purchase
+        # order would pass the "no trace" assertion.
+        'purchase_orders': PurchaseOrder.query.count(),
+        'stock_takes': StockTake.query.count(),
+        'stock_transfers': StockTransfer.query.count(),
     }
 
 
@@ -2137,15 +2143,21 @@ def _allowed_method(path, preferred):
     a wrong verb from being reported as an application defect.
     """
     from flask import current_app
-    # iter_rules() filters by endpoint, not by path: passing a path raises
-    # KeyError. The rule string is compared directly instead.
-    for rule in current_app.url_map.iter_rules():
-        if rule.rule == path:
-            methods = rule.methods - {'HEAD', 'OPTIONS'}
-            if not methods:
-                return preferred
-            return preferred if preferred in methods else sorted(methods)[0]
-    return preferred
+    adapter = current_app.url_map.bind('localhost')
+    try:
+        endpoint, _ = adapter.match(path, method=None)
+        # endpoint is a string like 'erp_modules.view_stocktake'
+        rules = current_app.url_map._rules_by_endpoint.get(endpoint, [])
+        if not rules:
+            return preferred
+        rule = rules[0]  # take the first rule for this endpoint
+        methods = rule.methods - {'HEAD', 'OPTIONS'}
+        if not methods:
+            return preferred
+        return preferred if preferred in methods else sorted(methods)[0]
+    except Exception:
+        # Path not found in url_map - fall back to preferred
+        return preferred
 
 
 def _run_vault(client, db, sc, fixtures):
@@ -2368,7 +2380,7 @@ def _run_erp(client, db, sc, fixtures):
         })
         assert r.status_code in (302, 303), f'{sc.id}: PO create {r.status_code}'
 
-        from models.purchase_order import PurchaseOrder
+        from models import PurchaseOrder  # noqa: E402
         po = PurchaseOrder.query.order_by(PurchaseOrder.id.desc()).first()
         assert po is not None, f'{sc.id}: no purchase order was created'
         assert po.po_number, f'{sc.id}: the purchase order has no po_number'
@@ -2407,10 +2419,19 @@ def _run_erp(client, db, sc, fixtures):
 
     if path in reads or path in id_reads:
         verb = 'GET'
+        r = client.get(path)
     else:
         verb = 'POST'
-
-    r = client.open(path, method=_allowed_method(path, verb).upper())
+        # Provide required parameters for specific endpoints
+        if path == '/erp/fiscal-periods/create':
+            # Use a deterministic year based on the scenario to avoid conflicts
+            year = 2020 + (sc.index % 50)
+            r = client.post(path, data={'year': str(year)})
+        elif path == '/erp/e-invoices/generate/0':
+            # Use the sale from the PO lifecycle if available, otherwise skip
+            r = client.post(path, data={'sale_id': '0'})
+        else:
+            r = client.post(path, data={})
     assert r.status_code != 500, (
         f'{sc.id}: {path} returned 500 for {sc.role}: '
         f'{r.get_data(as_text=True)[:200]}')
@@ -3715,7 +3736,24 @@ def _denied_request(client, db, sc, fixtures):
             'code': f'D{sc.index}',
             'budget_amount': str(sc.amount),
         })
-    return client.get('/ledger/')
+    if sc.domain == 'erp':
+        # manage_purchases is the gate on every non-quotation route in the
+        # blueprint. This is the canonical write, so the refusal must happen
+        # before the handler inspects the lines.
+        return client.post('/erp/purchase-orders/create', data={
+            'supplier_id': str(supplier.id),
+            'warehouse_id': str(warehouse.id),
+            'lines[0][product_id]': str(product.id),
+            'lines[0][quantity]': str(sc.quantity),
+            'lines[0][unit_cost]': str(sc.amount),
+            'tax_rate': '0',
+        })
+    raise AssertionError(
+        f'{sc.id}: no canonical refused request is defined for domain '
+        f'{sc.domain!r}. Falling through to a read here answers 200 and the '
+        f'cell fails as "lacked write access but the endpoint answered 200", '
+        f'which reads like a missing permission gate rather than a missing '
+        f'test. Add a branch above.')
 
 
 @pytest.mark.parametrize('sc', matrix_params(), ids=lambda s: s.id)

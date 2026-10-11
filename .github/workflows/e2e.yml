@@ -221,6 +221,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # The coverage census imports the application to enumerate its url_map,
+      # so this job needs the source tree. It never needed it before: parsing
+      # junit only requires the standard library.
+      - uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
       - uses: actions/download-artifact@v6
         with:
           pattern: e2e-*

@@ -66,6 +66,19 @@ class E2ETestConfig(Config):
     so the test database must be supplied by subclassing, not by env."""
     SQLALCHEMY_DATABASE_URI = f'sqlite:///{E2E_DB_PATH.replace(os.sep, "/")}'
     SQLALCHEMY_ENGINE_OPTIONS = {'connect_args': {'check_same_thread': False}}
+    # config.py:147 reads RATELIMIT_ENABLED from the environment *at import
+    # time*, so the os.environ.setdefault above only works while this file is
+    # the first thing to import config. Anything that imports config earlier --
+    # a pytest plugin loaded with -p, a different conftest ordering, an IDE
+    # runner -- leaves it True, flask-limiter turns itself on during
+    # limiter.init_app(), and auth.login starts returning 429 roughly 75
+    # scenarios into the run. That failure looks like cross-test pollution
+    # because it depends on how many tests ran before it.
+    #
+    # Declaring it here pins it before create_app() runs, so the limiter is off
+    # regardless of import order. Updating app.config afterwards does not help:
+    # flask-limiter caches the flag when the extension is initialised.
+    RATELIMIT_ENABLED = False
 
 
 # The five role vectors from the scenario taxonomy, mapped to the permission

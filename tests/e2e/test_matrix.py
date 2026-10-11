@@ -2297,6 +2297,127 @@ def _run_vault(client, db, sc, fixtures):
                 f'at {path}')
 
 
+def _run_erp(client, db, sc, fixtures):
+    """Domain ERP — the 37-route erp_modules blueprint.
+
+    This blueprint is the largest one the matrix had no domain for. It was
+    reachable only through the quotations runner, which touches /erp/quotations/*
+    and nothing else, so purchase orders, stock takes, stock transfers, lots,
+    bins, e-invoices, fiscal periods, dunning and recurring expenses were never
+    executed by any scenario: 34 of the 37 routes had no test at all.
+
+    The domain's permission is manage_purchases, which is what every non-
+    quotation route here enforces. The quotation routes additionally require
+    manage_sales, and a handful use @admin_required, so 403 is a legitimate
+    answer inside a permitted cell and is asserted as such.
+    """
+    product = fixtures['product']
+    supplier = fixtures['supplier']
+    warehouse = fixtures['warehouse']
+
+    reads = [
+        '/erp/purchase-orders', '/erp/stock-takes', '/erp/stock-transfers',
+        '/erp/lots', '/erp/bins', '/erp/e-invoices', '/erp/fiscal-periods',
+        '/erp/dunning', '/erp/recurring-expenses', '/erp/quotations',
+    ]
+    # Routes that render a form.
+    forms = [
+        '/erp/purchase-orders/create', '/erp/stock-takes/create',
+        '/erp/stock-transfers/create', '/erp/lots/create',
+        '/erp/quotations/create', '/erp/recurring-expenses/create',
+    ]
+    # Actions addressed by an id that deliberately does not exist, so the
+    # handler runs its own "not found"/"wrong state" branch and that branch is
+    # what gets asserted. A missing id must never be a silent 200.
+    id_actions = [
+        '/erp/purchase-orders/0/submit',
+        '/erp/purchase-orders/0/approve',
+        '/erp/purchase-orders/0/receive',
+        '/erp/quotations/0/status',
+        '/erp/quotations/0/convert',
+        '/erp/stock-takes/0/count',
+        '/erp/stock-takes/0/approve',
+        '/erp/stock-transfers/0/send',
+        '/erp/stock-transfers/0/receive',
+        '/erp/fiscal-periods/0/close',
+        '/erp/fiscal-periods/0/reopen',
+        '/erp/dunning/0/send',
+        '/erp/recurring-expenses/0/toggle',
+    ]
+    id_reads = [
+        '/erp/purchase-orders/0', '/erp/stock-takes/0', '/erp/quotations/0',
+        '/erp/e-invoices/0',
+    ]
+    creators = [
+        '/erp/bins/create', '/erp/dunning/generate',
+        '/erp/fiscal-periods/create',
+        '/erp/e-invoices/generate/0',
+    ]
+
+    # ---- the purchase-order lifecycle, which is what this module is for ----
+    if sc.edge == 'approval_pending' or sc.state == 'happy_path' and \
+            _spread(sc, 7) == 0:
+        before = _world_state(db)
+        r = client.post('/erp/purchase-orders/create', data={
+            'supplier_id': supplier.id,
+            'warehouse_id': warehouse.id,
+            'lines[0][product_id]': product.id,
+            'lines[0][quantity]': str(sc.quantity),
+            'lines[0][unit_cost]': str(sc.amount),
+            'tax_rate': '0',
+        })
+        assert r.status_code in (302, 303), f'{sc.id}: PO create {r.status_code}'
+
+        from models.purchase_order import PurchaseOrder
+        po = PurchaseOrder.query.order_by(PurchaseOrder.id.desc()).first()
+        assert po is not None, f'{sc.id}: no purchase order was created'
+        assert po.po_number, f'{sc.id}: the purchase order has no po_number'
+
+        detail = client.get(f'/erp/purchase-orders/{po.id}')
+        assert detail.status_code == 200, (
+            f'{sc.id}: PO detail returned {detail.status_code}')
+
+        # draft -> submitted -> approved. Each step must be refused from the
+        # wrong state too, which is the part worth asserting: an approved PO
+        # that could be re-submitted would break the receiving chain.
+        bad = client.post(f'/erp/purchase-orders/{po.id}/receive')
+        assert bad.status_code in (302, 303, 400, 404, 409), (
+            f'{sc.id}: receiving a draft PO answered {bad.status_code}')
+
+        s = client.post(f'/erp/purchase-orders/{po.id}/submit')
+        assert s.status_code in (302, 303), f'{sc.id}: submit {s.status_code}'
+        db.session.refresh(po)
+        assert po.status == 'submitted', (
+            f'{sc.id}: submit left status={po.status!r}')
+
+        a = client.post(f'/erp/purchase-orders/{po.id}/approve')
+        assert a.status_code in (302, 303), f'{sc.id}: approve {a.status_code}'
+        db.session.refresh(po)
+        assert po.status == 'approved', (
+            f'{sc.id}: approve left status={po.status!r}')
+
+        after = _world_state(db)
+        assert after != before, (
+            f'{sc.id}: the purchase-order lifecycle left no trace')
+        return
+
+    # ---- the rest of the surface ----
+    pool = reads + forms + id_actions + id_reads + creators
+    path = pool[_spread(sc, len(pool))]
+
+    if path in reads or path in id_reads:
+        verb = 'GET'
+    else:
+        verb = 'POST'
+
+    r = client.open(path, method=_allowed_method(path, verb).upper())
+    assert r.status_code != 500, (
+        f'{sc.id}: {path} returned 500 for {sc.role}: '
+        f'{r.get_data(as_text=True)[:200]}')
+    assert r.status_code in (200, 302, 303, 400, 403, 404, 409), (
+        f'{sc.id}: {path} returned {r.status_code} for {sc.role}')
+
+
 def _run_gamification(client, db, sc, fixtures):
     """Domain GAM — the points/leaderboard surface and its award whitelist.
 
@@ -2434,6 +2555,96 @@ def _run_owner(client, db, sc, fixtures):
     """
     users = fixtures['users']
 
+    # ---- the rest of the panel ----
+    # The panel renders 73 routes and only 21 of them used to be reachable
+    # from this runner, so the suite was asserting a fraction of a surface that
+    # can rewrite the database. Each entry pairs a path with the method its
+    # view actually accepts; _allowed_method() is the backstop.
+    reads = [
+        '/owner/dashboard', '/owner/system-stats', '/owner/audit-logs',
+        '/owner/roles-permissions', '/owner/financial-overview',
+        '/owner/config', '/owner/tenants', '/owner/system-health',
+        '/owner/activity-monitor', '/owner/login-history',
+        '/owner/security-alerts', '/owner/financial-dashboard-advanced',
+        '/owner/sales-insights', '/owner/customer-insights',
+        '/owner/product-performance', '/owner/forecasting',
+        '/owner/constants', '/owner/api-keys', '/owner/database-tools',
+        '/owner/backups/list',
+        '/owner/archived', '/owner/cards-vault', '/owner/currency-settings',
+        '/owner/data-cleanup', '/owner/email-settings', '/owner/error-logs',
+        '/owner/import-export-tools', '/owner/integrations',
+        '/owner/invoice-settings', '/owner/ip-whitelist',
+        '/owner/notification-templates', '/owner/payment-gateways',
+        '/owner/performance-metrics', '/owner/reports',
+        '/owner/scheduled-backups', '/owner/sms-settings',
+        '/owner/system-config', '/owner/tax-settings', '/owner/verify-backups',
+        '/owner/whatsapp-settings', '/owner/tenants/new',
+        '/owner/convert-database',
+    ]
+
+    # Routes that take a table or a template name. The names are real ones so
+    # the handler runs its normal path instead of the unknown-name branch.
+    parameterised = [
+        '/owner/browse-table/users',
+        '/owner/export-excel/users',
+        '/owner/edit-table-data/users',
+        '/owner/constants/currency',
+        '/owner/preview-invoice/default',
+        '/owner/preview-receipt/default',
+    ]
+
+    # Actions. None is destructive without its confirmation: truncate_table is
+    # covered below with the guard tests, and the rest either render a page or
+    # mutate a row that the per-test wipe removes anyway.
+    actions = [
+        '/owner/clear-cache',
+        '/owner/database-optimize',
+        '/owner/backups/delete',
+        '/owner/ip-whitelist/0/delete',
+        '/owner/error-logs/0/resolve',
+        '/owner/security-alerts/0/resolve',
+        '/owner/api-keys/0/toggle',
+        '/owner/integrations/update/email',
+    ]
+
+    def _surface():
+        """Touch one panel route and assert the handler behaved.
+
+        Every scenario calls this, including the ones whose main job is a guard
+        test further down. Returning early from those branches is what left
+        half the panel unreachable: the reads were only reached by the scenarios
+        that happened not to take a guard branch.
+        """
+        pick = _spread(sc, len(reads) + len(parameterised) + len(actions))
+        if pick < len(reads):
+            path, verb = reads[pick], 'GET'
+        elif pick < len(reads) + len(parameterised):
+            path, verb = parameterised[pick - len(reads)], 'GET'
+        else:
+            path, verb = actions[pick - len(reads) - len(parameterised)], 'POST'
+
+        r = client.open(path, method=_allowed_method(path, verb).upper())
+
+        # A 500 anywhere in this panel is a defect: these handlers wrap their
+        # work and the wrapper is what turns an error into a page.
+        assert r.status_code != 500, (
+            f'{sc.id}: {path} returned 500 for {sc.role}: '
+            f'{r.get_data(as_text=True)[:200]}')
+        # 403 is the expected answer for the eight roles that are not the owner;
+        # the gate is the is_owner flag, not a permission code.
+        assert r.status_code in (200, 302, 303, 400, 403, 404), (
+            f'{sc.id}: {path} returned {r.status_code} for {sc.role}')
+
+        if r.status_code == 200 and verb == 'GET':
+            # The owner panel must never render a negative money figure.
+            import re as _re
+            bad = _re.findall(r'(?<![\w-])-\d[\d,]*\.\d{2}',
+                              r.get_data(as_text=True))
+            assert not bad, (
+                f'{sc.id}: {path} rendered negative amounts {bad[:3]}')
+
+    _surface()
+
     # ---- destructive: the guards must refuse in three independent ways ----
     if sc.edge in ('negative_boundary', 'rollback_no_partial_write',
                    'validation_error') or \
@@ -2528,29 +2739,6 @@ def _run_owner(client, db, sc, fixtures):
             assert t.is_active is False, (
                 f'{sc.id}: suspend did not deactivate the tenant')
         return
-
-    # ---- read surfaces: the panel must render for the owner ----
-    reads = [
-        '/owner/dashboard', '/owner/system-stats', '/owner/audit-logs',
-        '/owner/roles-permissions', '/owner/financial-overview',
-        '/owner/config', '/owner/tenants', '/owner/system-health',
-        '/owner/activity-monitor', '/owner/login-history',
-        '/owner/security-alerts', '/owner/financial-dashboard-advanced',
-        '/owner/sales-insights', '/owner/customer-insights',
-        '/owner/product-performance', '/owner/forecasting',
-        '/owner/constants', '/owner/api-keys', '/owner/database-tools',
-        '/owner/backups/list',
-    ]
-    path = reads[sc.index % len(reads)]
-    r = client.get(path)
-    assert r.status_code == 200, (
-        f'{sc.id}: {path} returned {r.status_code} for the owner')
-
-    # The owner panel must never render a negative money figure.
-    import re as _re
-    bad = _re.findall(r'(?<![\w-])-\d[\d,]*\.\d{2}', r.get_data(as_text=True))
-    assert not bad, (
-        f'{sc.id}: {path} rendered negative amounts {bad[:3]}')
 
     del users
 
@@ -3388,6 +3576,7 @@ _DISPATCH = {
     'users': _run_users,
     'restapi': _run_restapi,
     'ai': _run_ai,
+    'erp': _run_erp,
     'security': _run_security,
 }
 

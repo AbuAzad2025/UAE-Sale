@@ -153,6 +153,10 @@ jobs:
     name: matrix shape
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      # The summary job derives its artifact count from this instead of
+      # importing the package, which it has no dependencies installed for.
+      domains: ${{ steps.inventory.outputs.domains }}
     steps:
       - uses: actions/checkout@v5
       - name: Set up Python
@@ -165,11 +169,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pytest
       - name: Assert scenario inventory
+        id: inventory
         run: |
           python - <<'PY'
           from tests.e2e.matrix import (
               MATRIX, DOMAINS, ROLES, STATES, EDGES, NEW_EDGE_STATES)
-          import collections, re
+          import collections, os, re
           print('scenarios      :', len(MATRIX))
           print('unique ids     :', len({s.id for s in MATRIX}))
           print('distinct amounts:', len({s.amount for s in MATRIX}))
@@ -197,6 +202,8 @@ jobs:
           assert not missing, f'domains missing from CI matrix: {missing}'
           assert not extra, f'CI matrix runs unknown domains: {extra}'
           print('CI domains cover all', len(DOMAINS), 'matrix domains')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as fh:
+              fh.write(f'domains={len(DOMAINS)}\n')
           print('OK')
           PY
 
@@ -214,6 +221,8 @@ jobs:
           path: artifacts
           merge-multiple: false
       - name: Build summary
+        env:
+          E2E_DOMAINS: ${{ needs.matrix-shape.outputs.domains }}
         run: |
           python - <<'PY'
           import glob, os, xml.etree.ElementTree as ET
@@ -226,10 +235,9 @@ jobs:
           # and reported a misleadingly small total.
           paths = sorted(glob.glob('artifacts/**/*.xml', recursive=True))
           print('files found:', len(paths))
-          # Derive the expected artifact count from the matrix itself so a domain
-          # added in matrix.py can never silently skip CI again.
-          from tests.e2e.matrix import DOMAINS
-          expected = len(DOMAINS) * 2 + 1  # 26*2 matrix shards + 1 slice
+          # This job installs no requirements, so it cannot import tests.e2e. The
+          # domain count comes from the matrix-shape job's output instead.
+          expected = int(os.environ['E2E_DOMAINS']) * 2 + 1
           if len(paths) < expected:
               raise SystemExit(
                   f'only {len(paths)} of {expected} expected junit files were '

@@ -302,10 +302,11 @@ jobs:
           set -o pipefail
           # The floor is a ratchet, not decoration: raise it as modules get
           # covered, so a runner that silently stops reaching routes fails the
-          # build instead of quietly shrinking coverage. 85 sits below the
-          # measured full-matrix figure and well above the 20.8% this started at.
+          # build instead of quietly shrinking coverage. The full matrix
+          # measures 152/475 today; 140 leaves headroom for shard flakiness
+          # while still catching a real regression. This started at 75.
           python -m tests.e2e.route_coverage 'artifacts/**/routes-*.json' \
-            --min-covered 85 \
+            --min-covered 140 \
             --out route-coverage.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload coverage report
         if: always()

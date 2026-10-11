@@ -137,13 +137,19 @@ jobs:
             --tb=short \
             --e2e-shard-id ${{ matrix.shard }} \
             --e2e-num-shards 2 \
+            --e2e-route-report routes-$DOMAIN-${{ matrix.shard }}.json \
             --junitxml=matrix-$DOMAIN-${{ matrix.shard }}.xml
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: e2e-matrix-${{ matrix.domain }}-${{ matrix.shard }}
-          path: matrix-${{ matrix.domain }}-${{ matrix.shard }}.xml
+          # The route-report is what makes endpoint coverage visible. Without
+          # it a green run says nothing about which parts of the application
+          # the scenarios actually reached.
+          path: |
+            matrix-${{ matrix.domain }}-${{ matrix.shard }}.xml
+            routes-${{ matrix.domain }}-${{ matrix.shard }}.json
           if-no-files-found: error
           retention-days: 14
 
@@ -224,6 +230,7 @@ jobs:
         env:
           E2E_DOMAINS: ${{ needs.matrix-shape.outputs.domains }}
         run: |
+          pip install -r requirements.txt >/dev/null 2>&1
           python - <<'PY'
           import glob, os, xml.etree.ElementTree as ET
           total = fails = errs = skipped = 0
@@ -269,3 +276,25 @@ jobs:
                   fh.write(f'\npassed: {total - fails - errs - skipped} / {total}\n')
           print(f'total={total} failures={fails} errors={errs} skipped={skipped}')
           PY
+      - name: Route coverage
+        # Scenario count and endpoint coverage are different things. The matrix
+        # runs 24570 scenarios, but a domain runner that cycles three paths
+        # still produces 945 passes, so a fully green run can leave most of the
+        # application untouched. This census reads the per-shard route reports
+        # the matrix jobs uploaded and states the real number on the run page.
+        run: |
+          set -o pipefail
+          # The floor is a ratchet, not decoration: raise it as modules get
+          # covered, so a runner that silently stops reaching routes fails the
+          # build instead of quietly shrinking coverage.
+          python -m tests.e2e.route_coverage 'artifacts/**/routes-*.json' \
+            --min-covered 100 \
+            --out route-coverage.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: route-coverage
+          path: route-coverage.md
+          if-no-files-found: warn
+          retention-days: 14

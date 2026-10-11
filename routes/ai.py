@@ -3127,7 +3127,8 @@ def config():  # noqa: C901
         except Exception as e:
             from flask import current_app
             current_app.logger.error(f"Failed to save API key: {e}")
-            return jsonify({'success': False, 'message': f'خطأ في الحفظ: {str(e)}'})
+            return jsonify({'success': False,
+                            'message': 'خطأ في حفظ المفتاح'}), 500
 
     current_groq = os.environ.get('GROQ_API_KEY', '')
     current_openai = os.environ.get('OPENAI_API_KEY', '')

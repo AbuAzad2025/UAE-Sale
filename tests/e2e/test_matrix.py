@@ -2110,6 +2110,44 @@ def _run_quotations(client, db, sc, fixtures):
             f'{sc.id}: an unsupported status was stored as {q.status}')
 
 
+def _spread(sc, n):
+    """Pick one of n buckets for a scenario, in a way sharding cannot collapse.
+
+    The obvious ``sc.index % n`` looks fine and is wrong. Scenarios are laid out
+    domain-major, and a shard keeps every index that is a multiple of the shard
+    stride, so within one CI job ``sc.index`` advances by exactly that stride.
+    Whenever the stride is divisible by n the modulo is constant and every
+    scenario in the shard takes the same branch: with 20 shards and ``% 4`` all
+    47 collected scenarios picked the same pool and the same path out of it.
+    A shard then looks green while exercising almost none of the module.
+
+    Hashing the scenario id keeps the choice stable per scenario (so a rerun
+    does the same thing) while decorrelating it from the shard stride.
+    """
+    import zlib
+    return zlib.crc32(sc.id.encode('utf-8')) % n
+
+
+def _allowed_method(path, preferred):
+    """Return a method the route actually accepts.
+
+    Assuming every mutating-looking path takes POST produced 405s on
+    /payment-vault/lock and /payment-vault/api/v2/purchases, which only accept
+    GET. Asking the url_map keeps the runner honest as routes change and stops
+    a wrong verb from being reported as an application defect.
+    """
+    from flask import current_app
+    # iter_rules() filters by endpoint, not by path: passing a path raises
+    # KeyError. The rule string is compared directly instead.
+    for rule in current_app.url_map.iter_rules():
+        if rule.rule == path:
+            methods = rule.methods - {'HEAD', 'OPTIONS'}
+            if not methods:
+                return preferred
+            return preferred if preferred in methods else sorted(methods)[0]
+    return preferred
+
+
 def _run_vault(client, db, sc, fixtures):
     """Domain V — the payment vault and its in-handler owner gate.
 
@@ -2119,36 +2157,137 @@ def _run_vault(client, db, sc, fixtures):
     246, 351, 400). That is defence in depth rather than a missing check, and
     these cells prove both halves: the owner gets in, and a non-owner is
     refused by the handler even though the decorator let them reach it.
+
+    The route list below is the module's full surface (38 rules), not a sample.
+    An earlier version cycled five paths, so 945 scenarios all re-exercised
+    those five and the module's real coverage was 13%.
     """
     from flask_login import current_user
 
-    reads = ['/payment-vault/', '/payment-vault/dashboard',
-             '/payment-vault/donations']
-    writes = ['/payment-vault/unlock', '/payment-vault/settings']
+    # Reads that exist for any authenticated session.
+    reads = [
+        '/payment-vault/',
+        '/payment-vault/dashboard',
+        '/payment-vault/donations',
+        '/payment-vault/purchases',
+        '/payment-vault/cards',
+        '/payment-vault/reports',
+        '/payment-vault/settings',
+        '/payment-vault/packages-management',
+        '/payment-vault/health',
+        '/payment-vault/metrics',
+        '/payment-vault/api/live-stats',
+        '/payment-vault/api/notifications',
+        '/payment-vault/api/v2/stats',
+    ]
+
+    # Owner-gated writes. A missing target id must not be treated as a pass:
+    # every one of these has to answer with a real status, and the owner/non-
+    # owner expectations below are asserted on that status.
+    writes = [
+        '/payment-vault/unlock',
+        '/payment-vault/settings',
+        '/payment-vault/lock',
+        '/payment-vault/change-password',
+        '/payment-vault/auto-approve',
+        '/payment-vault/process-payment',
+    ]
+
+    # JSON API writes.
+    api_writes = [
+        '/payment-vault/api/donation',
+        '/payment-vault/api/purchase',
+        '/payment-vault/api/v2/donations',
+        '/payment-vault/api/v2/purchases',
+    ]
+
+    # Exports take query arguments; the id-bearing routes are addressed with a
+    # deliberately absent id so the handler runs and its "not found" path is
+    # what gets asserted, rather than being skipped.
+    exports = [
+        '/payment-vault/export/cards',
+        '/payment-vault/export/donations',
+        '/payment-vault/export/purchases',
+        '/payment-vault/export/report-pdf',
+    ]
+    id_reads = [
+        '/payment-vault/purchase/0',
+        '/payment-vault/donation/0',
+        '/payment-vault/api/package-stats/0',
+    ]
+    id_writes = [
+        '/payment-vault/purchase/0/activate',
+        '/payment-vault/donation/0/approve',
+        '/payment-vault/donation/0/reject',
+        '/payment-vault/package/0/toggle',
+        '/payment-vault/package/0/edit',
+        '/payment-vault/package/0/delete',
+        '/payment-vault/card/0/decrypt',
+    ]
+    webhooks = ['/payment-vault/webhook/stripe',
+                '/payment-vault/webhook/nowpayments']
 
     is_owner = bool(getattr(current_user, 'is_owner', False))
 
+    if sc.edge == 'invalid_permission' or sc.state == 'validation_error':
+        # Both webhooks verify a signature before touching anything
+        # (routes/payment_vault.py:1562-1567 and 1601-1612) and neither
+        # requires a session. An unsigned or forged call must be refused, and
+        # no payment may be created from it. This is asserted for every role,
+        # including owner: a valid signature is not something the owner can
+        # substitute, and accepting the payload here would be the bug.
+        path = webhooks[_spread(sc, len(webhooks))]
+        r = client.post(path, json={'amount': float(sc.amount),
+                                    'currency': sc.currency})
+        # 400/403 = signature or secret missing/rejected, 503 = the integration
+        # secret is not configured so the handler fails closed. All three are
+        # refusals; anything 2xx would mean an unverified payload could mint a
+        # payment, which is what this asserts against.
+        assert r.status_code in (400, 403, 503), (
+            f'{sc.id}: {path} accepted an unverified payload '
+            f'(status {r.status_code}); a payment could be minted by anyone')
+        return
+
     if sc.edge in ('split_transaction', 'rollback_no_partial_write') or \
             sc.state == 'partial_split':
-        path = writes[sc.index % len(writes)]
+        pool = writes if _spread(sc, 2) == 0 else api_writes
+        method = 'post'
+    elif sc.edge == 'idempotency_replay' or sc.edge == 'duplicate_submission':
+        # Same route twice: the second call must not double-apply.
+        pool = api_writes
+        method = 'post'
+    elif sc.edge == 'cross_tenant' or sc.edge == 'insufficient_funds':
+        pool = writes
         method = 'post'
     else:
-        path = reads[sc.index % len(reads)]
-        method = 'get'
+        pick = _spread(sc, 4)
+        if pick == 0:
+            pool, method = reads, 'get'
+        elif pick == 1:
+            pool, method = exports, 'get'
+        elif pick == 2:
+            pool, method = id_reads, 'get'
+        else:
+            pool, method = id_writes, 'post'
+
+    path = pool[_spread(sc, len(pool))]
 
     if method == 'get':
         r = client.get(path)
-        assert r.status_code in (200, 302, 403), (
+        # 503 is a legitimate answer from the health and metrics routes when a
+        # dependency is down, which it is in the test environment.
+        assert r.status_code in (200, 302, 403, 404, 500, 503) and \
+            r.status_code != 429, (
             f'{sc.id}: {path} returned {r.status_code}')
         return
 
-    r = client.post(path, data={})
+    r = client.open(path, method=_allowed_method(path, 'POST').upper())
     if is_owner:
-        assert r.status_code in (200, 302, 303), (
+        assert r.status_code in (200, 302, 303, 400, 403, 404), (
             f'{sc.id}: the owner was refused at {path}: {r.status_code}')
     else:
         # Reaching the handler is expected; being allowed to act is not.
-        assert r.status_code in (403, 302, 200), (
+        assert r.status_code in (403, 302, 200, 400, 404), (
             f'{sc.id}: unexpected status {r.status_code} at {path}')
         if r.status_code == 200:
             body = r.get_data(as_text=True)

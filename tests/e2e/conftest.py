@@ -211,6 +211,48 @@ def pytest_addoption(parser):
                     help='zero-based shard index')
     group.addoption('--e2e-num-shards', type=int, default=1,
                     help='total number of shards')
+    group.addoption('--e2e-route-report', default=None,
+                    help='write the set of URL rules this session actually '
+                         'exercised to this JSON path')
+
+
+def pytest_configure(config):
+    target = config.getoption('--e2e-route-report', default=None)
+    if target:
+        os.environ['_E2E_ROUTE_REPORT_TARGET'] = target
+
+
+_HIT_RULES = set()
+
+
+@pytest.fixture(scope='session', autouse=True)
+def route_recorder(app):
+    """Record every URL rule the suite really exercises.
+
+    Scenario count and endpoint coverage are different things. The matrix runs
+    24570 scenarios, but each domain runner cycles a handful of paths, so the
+    suite was passing 24640 assertions while touching roughly a fifth of the
+    application's routes. Nothing in the run summary showed that, so the gap
+    was invisible.
+
+    Recording at the Flask layer (not by grepping the test source) means the
+    number comes from requests that were really issued, and a route only
+    counts as covered if it was reached.
+    """
+    from flask import request
+
+    @app.before_request
+    def _record():
+        if request.url_rule is not None:
+            _HIT_RULES.add(request.url_rule.rule)
+
+    yield _HIT_RULES
+
+    target = app.config.get('_E2E_ROUTE_REPORT')
+    if target:
+        import json
+        with open(target, 'w', encoding='utf-8') as fh:
+            json.dump(sorted(_HIT_RULES), fh, indent=1)
 
 
 def pytest_collection_modifyitems(config, items):
@@ -239,6 +281,9 @@ def app():
         RATELIMIT_ENABLED=False,
         RATELIMIT_DEFAULT='1000000 per day',
     )
+    route_report = os.environ.get('_E2E_ROUTE_REPORT_TARGET')
+    if route_report:
+        application.config['_E2E_ROUTE_REPORT'] = route_report
     return application
 
 

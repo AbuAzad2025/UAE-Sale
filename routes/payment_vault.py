@@ -670,7 +670,12 @@ def decrypt_card(card_id):
 def process_payment():
     """معالجة الدفع (كريبتو أو بطاقة) - عام، لا يحتاج تسجيل دخول"""
     try:
-        data = request.get_json()
+        # silent=True so a missing or malformed Content-Type becomes None and
+        # falls into the 400 below. Without it, request.get_json() raises
+        # UnsupportedMediaType/BadRequest, the generic handler below catches it,
+        # and a plain malformed request is reported to the caller as a server
+        # error (500) while tripping the error monitoring.
+        data = request.get_json(silent=True)
 
         if not data:
             return jsonify({'success': False, 'error': 'بيانات غير صحيحة'}), 400
@@ -783,7 +788,9 @@ def process_payment():
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'خطأ في معالجة الدفع: {str(e)}')
-        return jsonify({'success': False, 'error': f'خطأ: {str(e)}'}), 500
+        # The exception text is logged, not returned: str(e) carries internals
+        # (SQL, paths, provider payloads) and this endpoint is public.
+        return jsonify({'success': False, 'error': 'تعذر إتمام العملية'}), 500
 
 
 @payment_vault_bp.route('/change-password', methods=['GET', 'POST'])

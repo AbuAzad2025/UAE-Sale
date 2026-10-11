@@ -635,4 +635,7 @@ def adjust_stock(id):
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+        current_app.logger.error(f'Error adjusting stock: {e}')
+        # The detail stays in the log; str(e) can expose schema and paths.
+        return jsonify({'success': False,
+                        'message': 'حدث خطأ أثناء تعديل المخزون'}), 500

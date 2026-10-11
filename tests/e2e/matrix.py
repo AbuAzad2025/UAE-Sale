@@ -34,7 +34,8 @@ DOMAINS = ['accounting', 'ar', 'ap', 'inventory', 'cheque', 'security',
            'payments', 'hr', 'approvals', 'shipments', 'expenses', 'returns',
            'reports', 'partners', 'dashboard', 'stock',
            'customers', 'analytics', 'quotations', 'vault',
-           'gamification', 'inbound', 'owner', 'users', 'restapi', 'ai']
+           'gamification', 'inbound', 'owner', 'users', 'restapi', 'ai',
+           'erp']
 
 ROLES = ['owner', 'branch_manager', 'senior_accountant', 'pos_cashier',
          'warehouse_keeper', 'manager', 'accountant', 'viewer', 'hr']
@@ -111,6 +112,13 @@ DOMAIN_PERMISSION = {
     # _process_user_action dispatches create_sale, create_cheque,
     # create_purchase, record_payment and create_expense from free text.
     'ai': None,
+    # routes/erp_modules.py is the largest blueprint the matrix never had a
+    # domain for: 37 routes covering purchase orders, stock takes, stock
+    # transfers, lots, bins, e-invoices, fiscal periods, dunning and recurring
+    # expenses. Before this domain it was reachable only through the
+    # 'quotations' runner, which touches /erp/quotations/* and nothing else,
+    # so 34 of its 37 routes were never executed by any scenario.
+    'erp': 'manage_purchases',
     'security': None,          # read/visibility domain, handled per-op
 }
 
@@ -251,9 +259,9 @@ def build_matrix() -> List[Scenario]:
 
 MATRIX: List[Scenario] = build_matrix()
 
-# Sanity: the matrix must be exactly 24570 and fully populated.
-# 26 domains x 9 roles x 7 states x 15 edges
-_EXPECTED_TOTAL = 24570
+# Sanity: the matrix must be exactly 25515 and fully populated.
+# 27 domains x 9 roles x 7 states x 15 edges
+_EXPECTED_TOTAL = 25515
 _EXPECTED_PER_DOMAIN = 945
 
 assert len(MATRIX) == _EXPECTED_TOTAL, (

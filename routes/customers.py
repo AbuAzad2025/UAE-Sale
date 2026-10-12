@@ -230,7 +230,9 @@ def delete(id):
                 db.session.commit()
                 flash(f'⚠️ تعذر الحذف النهائي للعميل "{customer.name}" بسبب ارتباطات في قاعدة البيانات. تم إلغاء تفعيله بدلاً من ذلك.', 'warning')
         except Exception:
-            flash(f'❌ حدث خطأ أثناء حذف العميل: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ حدث خطأ أثناء حذف العميل: حدث خطأ غير متوقع', 'danger')
             current_app.logger.error(f"Error deleting customer {id}: {e}")
 
     return redirect(url_for('customers.index'))

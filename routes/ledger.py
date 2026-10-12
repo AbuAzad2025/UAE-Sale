@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, abort
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, abort, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from extensions import db
@@ -454,10 +454,12 @@ def manual_entry():  # noqa: C901
             return redirect(url_for('ledger.view_entry', id=entry.id))
 
         except ValueError as e:
-            flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
 
     # الحصول على الحسابات النشطة (غير رئيسية)
     accounts = GLAccount.query.filter_by(is_active=True, is_header=False).order_by(GLAccount.code).all()
@@ -495,11 +497,15 @@ def reverse_entry(id):
         return redirect(url_for('ledger.view_entry', id=reversed_entry.id))
 
     except ValueError as e:
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('ledger.view_entry', id=id))
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('ledger.view_entry', id=id))
 
 
@@ -522,7 +528,9 @@ def approve_entry(id):
 
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('ledger.view_entry', id=id))
 
@@ -547,7 +555,9 @@ def delete_entry(id):
 
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('ledger.view_entry', id=id))
 
@@ -617,7 +627,7 @@ def api_calculate_journal_balance():
     except Exception as e:
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'حدث خطأ غير متوقع'
         }), 400
 
 
@@ -642,7 +652,8 @@ def cash_flow():
                                date_from=date_from,
                                date_to=date_to)
     except Exception as e:
-        flash(f'❌ فشل إنشاء قائمة التدفقات: {str(e)}\n💡 تحقق من الفترة المحددة وحاول مرة أخرى.', 'danger')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ فشل إنشاء قائمة التدفقات: حدث خطأ غير متوقع\n💡 تحقق من الفترة المحددة وحاول مرة أخرى.', 'danger')
         return redirect(url_for('ledger.index'))
 
 
@@ -668,7 +679,8 @@ def aging_analysis():
                                title=title,
                                as_of_date=as_of_date or date.today().strftime('%Y-%m-%d'))
     except Exception as e:
-        flash(f'❌ فشل إنشاء تحليل الأعمار: {str(e)}\n💡 تحقق من البيانات وحاول مرة أخرى.', 'danger')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ فشل إنشاء تحليل الأعمار: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.', 'danger')
         return redirect(url_for('ledger.index'))
 
 
@@ -755,7 +767,9 @@ def add_account():
 
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
             form_values = request.form.to_dict()
             form_values['is_header'] = 'on' if 'on' in request.form.getlist('is_header') else 'off'
             form_values['is_active'] = 'on' if 'on' in request.form.getlist('is_active') else 'off'
@@ -802,7 +816,9 @@ def edit_account(id):
 
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     parent_accounts = GLAccount.query.filter_by(is_header=True).order_by(GLAccount.code).all()
     return render_template('ledger/edit_account.html', account=account, parent_accounts=parent_accounts)
@@ -836,7 +852,9 @@ def delete_account(id):
 
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('ledger.accounts'))
 

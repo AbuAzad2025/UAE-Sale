@@ -945,7 +945,9 @@ def clear_cache():
         cache.clear()
         flash('✅ تم مسح الذاكرة المؤقتة بنجاح', 'success')
     except Exception as e:
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('owner.dashboard'))
 
@@ -990,7 +992,9 @@ def truncate_table():
         flash(f'✅ تم مسح جدول {table_name} بنجاح', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('owner.database_tools'))
 
@@ -1033,7 +1037,9 @@ def browse_table(table_name):
                                total=total)
 
     except Exception as e:
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('owner.database_tools'))
 
 
@@ -1061,7 +1067,9 @@ def edit_table_data(table_name):
                                rows=rows)
 
     except Exception as e:
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('owner.database_tools'))
 
 
@@ -1280,7 +1288,9 @@ def company_info():
 
         except Exception as e:
             db.session.rollback()
-            flash(f'خطأ في حفظ المعلومات: {str(e)}', 'error')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'خطأ في حفظ المعلومات: حدث خطأ غير متوقع', 'error')
 
     return render_template('owner/company_info.html', tenant=tenant)
 
@@ -1326,7 +1336,9 @@ def system_config():
 
         except Exception as e:
             db.session.rollback()
-            flash(f'خطأ في حفظ الإعدادات: {str(e)}', 'error')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'خطأ في حفظ الإعدادات: حدث خطأ غير متوقع', 'error')
 
     return render_template('owner/system_config.html', settings=settings)
 
@@ -1718,7 +1730,8 @@ def constants_add(group):
                          {'group': group, 'code': code})
         flash(f'تمت إضافة "{code}" إلى الثوابت بنجاح', 'success')
     except ValueError as e:
-        flash(str(e), 'danger')
+        current_app.logger.exception('handler failed')
+        flash('حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         current_app.logger.error(f'Lookup add error: {e}')
         flash('حدث خطأ أثناء الإضافة.', 'danger')
@@ -1739,7 +1752,8 @@ def constants_label(group):
                          {'group': group, 'code': code})
         flash('تم حفظ التسمية بنجاح', 'success')
     except ValueError as e:
-        flash(str(e), 'danger')
+        current_app.logger.exception('handler failed')
+        flash('حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         current_app.logger.error(f'Lookup label error: {e}')
         flash('حدث خطأ أثناء الحفظ.', 'danger')
@@ -1761,7 +1775,8 @@ def constants_visibility(group):
                           'disabled': disable})
         flash('تم تحديث الحالة بنجاح', 'success')
     except ValueError as e:
-        flash(str(e), 'danger')
+        current_app.logger.exception('handler failed')
+        flash('حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         current_app.logger.error(f'Lookup visibility error: {e}')
         flash('حدث خطأ أثناء التحديث.', 'danger')
@@ -1911,7 +1926,9 @@ def invoice_settings():
 
         except Exception as e:
             db.session.rollback()
-            flash(f'خطأ في حفظ الإعدادات: {str(e)}', 'error')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'خطأ في حفظ الإعدادات: حدث خطأ غير متوقع', 'error')
 
     return render_template('owner/invoice_settings.html', settings=settings)
 
@@ -2139,7 +2156,9 @@ def system_health():  # noqa: C901
         return render_template('owner/system_health.html', health=health_data)
 
     except Exception as e:
-        flash(f'خطأ في تحميل معلومات النظام: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'خطأ في تحميل معلومات النظام: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('owner.dashboard'))
 
 
@@ -2689,7 +2708,9 @@ def database_optimize():
             msg = vacuum_result.get('error') or analyze_result.get('error') or 'عملية التحسين لم تكتمل'
             flash(f'⚠️ تحذير: {msg}', 'warning')
     except Exception as e:
-        flash(f'❌ خطأ في التحسين: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ في التحسين: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('owner.system_health'))
 
@@ -2719,7 +2740,9 @@ def verify_backups():
         return render_template('owner/verify_backups.html', backups=verified)
 
     except Exception as e:
-        flash(f'خطأ في تحميل النسخ الاحتياطية: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'خطأ في تحميل النسخ الاحتياطية: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('owner.dashboard'))
 
 
@@ -2829,7 +2852,9 @@ def export_excel(table_name):
             download_name=f'{table_name}_{today_str}.xlsx'
         )
     except Exception as e:
-        flash(f'خطأ في التصدير: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'خطأ في التصدير: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('owner.import_export_tools'))
 
 

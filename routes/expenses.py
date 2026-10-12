@@ -182,7 +182,8 @@ def create():  # noqa: C901
             flash('❌ مبلغ المصروف غير صالح.\n💡 أدخل رقماً صحيحاً وحاول مرة أخرى.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
 
     categories = ExpenseCategory.query.filter_by(is_active=True).all()
     try:
@@ -393,7 +394,8 @@ def edit(id):  # noqa: C901
             flash('❌ مبلغ المصروف غير صالح.\n💡 أدخل رقماً صحيحاً وحاول مرة أخرى.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
 
     return render_template('expenses/edit.html', expense=expense, categories=categories)
 
@@ -467,7 +469,8 @@ def delete(id):
 
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ في الحذف: {str(e)}\n💡 راجع البيانات المدخلة.', 'danger')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ في الحذف: حدث خطأ غير متوقع\n💡 راجع البيانات المدخلة.', 'danger')
         return redirect(url_for('expenses.view', id=id))
 
 
@@ -526,10 +529,11 @@ def create_category():
         if request.is_json:
             return jsonify({
                 'success': False,
-                'error': str(e)
+                'error': 'حدث خطأ غير متوقع'
             }), 400
 
-        flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
         return redirect(url_for('expenses.categories'))
 
 

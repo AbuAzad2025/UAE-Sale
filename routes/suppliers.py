@@ -4,7 +4,7 @@
 """
 from datetime import datetime
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Supplier, Purchase, Payment
@@ -124,7 +124,8 @@ def create():
 
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
 
     return render_template('suppliers/create.html')
 
@@ -200,7 +201,8 @@ def edit(id):
 
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
 
     return render_template('suppliers/edit.html', supplier=supplier)
 
@@ -236,7 +238,9 @@ def delete(id):
             db.session.commit()
             flash(f'⚠️ تعذر الحذف النهائي للمورد "{supplier.name}" بسبب ارتباطات في قاعدة البيانات. تم إلغاء تفعيله بدلاً من ذلك.', 'warning')
         except Exception:
-            flash(f'❌ حدث خطأ أثناء حذف المورد: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ حدث خطأ أثناء حذف المورد: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('suppliers.index'))
 

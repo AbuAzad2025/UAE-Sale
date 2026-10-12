@@ -489,7 +489,9 @@ def edit_package(package_id):  # noqa: C901
             return redirect(url_for('payment_vault.packages_management'))
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return render_template('payment_vault/edit_package.html', package=package)
 
@@ -521,7 +523,7 @@ def delete_package(package_id):
         return jsonify({'success': True, 'message': 'تم حذف الباقة بنجاح!'})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': 'حدث خطأ غير متوقع'}), 400
 
 
 @payment_vault_bp.route('/reports')
@@ -1015,7 +1017,7 @@ def api_create_purchase():  # noqa: C901
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'حدث خطأ غير متوقع'}), 500
 
 
 @payment_vault_bp.route('/api/donation', methods=['POST'])
@@ -1154,7 +1156,7 @@ def api_create_donation():  # noqa: C901
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'حدث خطأ غير متوقع'}), 500
 
 # ==================== Routes لإدارة المشتريات (محمية) ====================
 
@@ -1248,7 +1250,9 @@ def activate_purchase(id):
         flash('✅ تم تفعيل الباقة', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('payment_vault.purchase_detail', id=id))
 
@@ -1290,7 +1294,7 @@ def toggle_package_status(package_id):
         return jsonify({'success': True, 'message': f'{status_text} الباقة {package.name_ar}'})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'حدث خطأ غير متوقع'}), 500
 
 
 @payment_vault_bp.route('/donation/<int:donation_id>')
@@ -1334,7 +1338,9 @@ def approve_donation(donation_id):
         flash('✅ تم قبول التبرع', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('payment_vault.donations'))
 
@@ -1362,7 +1368,9 @@ def reject_donation(donation_id):
         flash('✅ تم رفض التبرع', 'warning')
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('payment_vault.donations'))
 
@@ -1592,7 +1600,7 @@ def nowpayments_webhook():
 
     except Exception as e:
         logger.error(f'NOWPayments webhook error: {str(e)}')
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'حدث خطأ غير متوقع'}), 500
 
 
 @payment_vault_bp.route('/webhook/stripe', methods=['POST'])
@@ -1636,7 +1644,7 @@ def stripe_webhook():
 
     except Exception as e:
         logger.error(f'Stripe webhook error: {str(e)}')
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'حدث خطأ غير متوقع'}), 500
 
 # ==================== Health & Monitoring Routes - المراقبة ====================
 

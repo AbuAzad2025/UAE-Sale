@@ -2,7 +2,7 @@
 Inbound Shipments — استقبال شحنات البضائع الواردة
 """
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db
 from models.inbound_shipment import InboundShipment
@@ -81,7 +81,9 @@ def create_inbound():
             return redirect(url_for('inbound_shipments.view_inbound', id=s.id))
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     from models import Warehouse, Product, Supplier
     from models.erp_modules import PurchaseOrder
     warehouses = Warehouse.query.filter_by(is_active=True).all()
@@ -99,7 +101,9 @@ def arrive_inbound(id):
         InboundShipmentService.arrive(id, current_user.id)
         flash('✅ تم تأكيد وصول الشحنة', 'success')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('inbound_shipments.view_inbound', id=id))
 
 
@@ -112,7 +116,9 @@ def inspect_inbound(id):
         InboundShipmentService.inspect_shipment(id)
         flash('✅ تم الفحص', 'success')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('inbound_shipments.view_inbound', id=id))
 
 
@@ -124,7 +130,9 @@ def put_away_inbound(id):
         InboundShipmentService.put_away(id, current_user.id)
         flash('✅ تم إدخال البضاعة للمستودعات', 'success')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('inbound_shipments.view_inbound', id=id))
 
 
@@ -136,7 +144,9 @@ def close_inbound(id):
         InboundShipmentService.close(id, current_user.id)
         flash('✅ تم إغلاق الشحنة', 'success')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('inbound_shipments.view_inbound', id=id))
 
 
@@ -148,5 +158,7 @@ def cancel_inbound(id):
         InboundShipmentService.cancel(id, current_user.id)
         flash('✅ تم إلغاء الشحنة', 'success')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('inbound_shipments.view_inbound', id=id))

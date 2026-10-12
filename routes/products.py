@@ -258,7 +258,8 @@ def create():  # noqa: C901
             except Exception as e:
                 db.session.rollback()
                 current_app.logger.error(f"Error creating product: {str(e)}")
-                flash(f'❌ فشل إضافة المنتج: {str(e)}\n💡 تأكد من:\n   • اسم المنتج فريد\n   • الأسعار صحيحة\n   • SKU غير مكرر', 'danger')
+                current_app.logger.exception('handler failed')
+                flash(f'❌ فشل إضافة المنتج: حدث خطأ غير متوقع\n💡 تأكد من:\n   • اسم المنتج فريد\n   • الأسعار صحيحة\n   • SKU غير مكرر', 'danger')
         else:
             # Form validation failed
             current_app.logger.warning(f"Form validation failed. Errors: {form.errors}")
@@ -414,7 +415,9 @@ def edit(id):  # noqa: C901
 
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ فشل تحديث المنتج: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ فشل تحديث المنتج: حدث خطأ غير متوقع', 'danger')
 
     categories = ProductCategory.query.filter_by(is_active=True).all()
     return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)  # noqa: E501
@@ -451,6 +454,8 @@ def delete(id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error deleting product {id}: {e}")
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
         flash('❌ فشل حذف المنتج. حدث خطأ غير متوقع.', 'danger')
         return redirect(url_for('products.view', id=id))
 
@@ -564,10 +569,12 @@ def create_category():
         if request.is_json:
             return jsonify({
                 'success': False,
-                'error': str(e)
+                'error': 'حدث خطأ غير متوقع'
             }), 400
 
-        flash(f'❌ حدث خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ حدث خطأ: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('products.categories'))
 
 

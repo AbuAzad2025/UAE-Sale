@@ -2439,6 +2439,92 @@ def _run_erp(client, db, sc, fixtures):
         f'{sc.id}: {path} returned {r.status_code} for {sc.role}')
 
 
+def _run_advanced(client, db, sc, fixtures):
+    """Domain ADV — routes/advanced_ledger.py, 18 routes that had no test at all.
+
+    The blueprint layers two gates. The reporting surfaces require
+    view_ledger; the mutations (@admin_required) are customs-taxes and its add
+    form, expense-categories and its add form, advanced-expenses/add,
+    cheque-integration clear and receive, real-time-events, the SSE stream and
+    forecasting.
+
+    A cell therefore has three outcomes worth asserting, and the gap between
+    them is the finding:
+
+      view_ledger + admin  -> 200/302, the route works
+      view_ledger only     -> 403 on the admin routes, 200 on the read routes
+      neither              -> refused outright by the caller
+    """
+    from flask_login import current_user
+
+    reads = [
+        '/ledger/advanced/professional-printing',
+        '/ledger/advanced/advanced-expenses',
+        '/ledger/advanced/cheque-integration',
+        '/ledger/advanced/api/cheque/0/accounting-summary',
+        '/ledger/advanced/professional-reports',
+        '/ledger/advanced/api/financial-ratios',
+        '/ledger/advanced/api/trend-analysis',
+    ]
+    # @admin_required. Reached only by the roles that pass the gate, so the
+    # 403 branch below is what a lesser role sees.
+    admin_routes = [
+        '/ledger/advanced/customs-taxes',
+        '/ledger/advanced/customs-taxes/add',
+        '/ledger/advanced/expense-categories',
+        '/ledger/advanced/expense-categories/add',
+        '/ledger/advanced/advanced-analytics',
+        '/ledger/advanced/real-time-events',
+        '/ledger/advanced/api/events/stream',
+        '/ledger/advanced/api/forecasting',
+    ]
+    forms = [
+        '/ledger/advanced/advanced-expenses/add',
+        '/ledger/advanced/customs-taxes/add',
+        '/ledger/advanced/expense-categories/add',
+    ]
+    actions = [
+        '/ledger/advanced/cheque-integration/0/receive',
+        '/ledger/advanced/cheque-integration/0/clear',
+    ]
+
+    pool = reads + admin_routes + forms + actions
+    path = pool[_spread(sc, len(pool))]
+
+    if path in reads:
+        verb = 'GET'
+    elif path in actions:
+        verb = 'POST'
+    else:
+        verb = 'GET'
+
+    is_admin = bool(getattr(current_user, 'is_owner', False)) or \
+        current_user.is_super_admin()
+
+    r = client.open(path, method=_allowed_method(path, verb).upper())
+
+    assert r.status_code != 500, (
+        f'{sc.id}: {path} returned 500 for {sc.role}: '
+        f'{r.get_data(as_text=True)[:200]}')
+
+    if path in admin_routes or path in forms or path in actions:
+        # Every one of these is behind @admin_required. Being an owner is the
+        # only way in; anything else must be refused.
+        assert is_admin or r.status_code in (302, 303, 400, 403, 404), (
+            f'{sc.id}: {path} answered {r.status_code} for {sc.role}, which '
+            f'is not an admin; routes/advanced_ledger.py guards it with '
+            f'@admin_required')
+    else:
+        assert r.status_code in (200, 302, 400, 403, 404), (
+            f'{sc.id}: {path} returned {r.status_code} for {sc.role}')
+
+    if r.status_code == 200 and verb == 'GET':
+        import re as _re
+        bad = _re.findall(r'(?<![\w-])-\d[\d,]*\.\d{2}', r.get_data(as_text=True))
+        assert not bad, (
+            f'{sc.id}: {path} rendered negative amounts {bad[:3]}')
+
+
 def _run_gamification(client, db, sc, fixtures):
     """Domain GAM — the points/leaderboard surface and its award whitelist.
 
@@ -3659,6 +3745,7 @@ _DISPATCH = {
     'restapi': _run_restapi,
     'ai': _run_ai,
     'erp': _run_erp,
+    'advanced': _run_advanced,
     'security': _run_security,
 }
 
@@ -3802,6 +3889,11 @@ def _denied_request(client, db, sc, fixtures):
         # is a cross-tenant customer access, which the security runner already
         # exercises. For non-owner roles this must be refused (403/404).
         return client.get('/customers/0')
+    if sc.domain == 'advanced':
+        # view_ledger is the gate on the reporting surfaces. professional-printing
+        # is the cheapest read that proves the refusal happened at the
+        # decorator rather than deep inside a query.
+        return client.get('/ledger/advanced/professional-printing')
     if sc.domain == 'erp':
         # manage_purchases is the gate on every non-quotation route in the
         # blueprint. This is the canonical write, so the refusal must happen

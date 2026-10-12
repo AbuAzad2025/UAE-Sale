@@ -148,6 +148,25 @@ def create():
                                        suppliers=suppliers,
                                        exchange_rates=exchange_rates)
             amount = Decimal(str(request.form.get('amount')))
+
+            # A cheque is a positive instrument: a negative amount is not a
+            # reversal, it is a malformed document. It was accepted and stored
+            # as-is, so amount_base went negative and every total that sums
+            # it - the statistics panel on /cheques/incoming included - was
+            # wrong. Reverse a cheque through POST /cheques/<id>/cancel.
+            if amount <= 0:
+                flash('رقم الشيك يجب أن يكون أكبر من صفر.', 'warning')
+                customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
+                suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+                try:
+                    _base_c2 = CurrencyService.get_base_currency()
+                except Exception:
+                    _base_c2 = 'ILS'
+                return render_template('cheques/create.html',
+                                       customers=customers,
+                                       suppliers=suppliers,
+                                       exchange_rates=CurrencyService.get_all_rates(_base_c2),
+                                       form_data=request.form)
             try:
                 _base_cc = CurrencyService.get_base_currency()
             except Exception:

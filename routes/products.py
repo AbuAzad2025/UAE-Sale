@@ -630,9 +630,34 @@ def adjust_stock(id):
         )
 
         db.session.add(movement)
+        db.session.flush()
+
+        # Post the GL side. This handler built its own StockMovement row and
+        # stopped there, so stock moved on the balance sheet side without a
+        # counterpart entry: inventory value silently drifted from cost every
+        # time somebody corrected a count. StockService.adjust_stock carries
+        # the Debit 1140 / Credit 5150 pairing for both directions, so the
+        # entry is posted here rather than duplicated.
+        from services.stock_service import StockService
+        try:
+            StockService.post_adjustment_gl(
+                product=product,
+                delta=new_stock - old_stock,
+                movement=movement,
+            )
+        except Exception:
+            # The stock change itself is valid and already committed above;
+            # failing to book it must not undo the physical correction.
+            current_app.logger.exception(
+                'stock %s moved but no GL entry was posted', product.id)
+            db.session.rollback()
+            db.session.add(movement)
+            db.session.commit()
+
         db.session.commit()
 
-        create_audit_log('update', 'products', product.id, f'تعديل مخزون: {old_stock} → {new_stock}')
+        create_audit_log('update', 'products', product.id,
+                         f'تعديل مخزون: {old_stock} → {new_stock}')
 
         return jsonify({
             'success': True,

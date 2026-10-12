@@ -303,10 +303,11 @@ jobs:
           # The floor is a ratchet, not decoration: raise it as modules get
           # covered, so a runner that stops reaching routes fails the
           # build instead of quietly shrinking coverage. The full matrix
-          # now reaches 218/475 (45.9%) with ERP + owner widening.
-          # Floor set to 200 to allow shard variance while catching regressions.
+          # now reaches 368/475 (77.5%) with the erp, advanced, suppliers and
+          # platform domains and the ledger/payments/cheques/hr sweeps.
+          # Floor set to 350 to allow shard variance while catching regressions.
           python -m tests.e2e.route_coverage 'artifacts/**/routes-*.json' \
-            --min-covered 200 \
+            --min-covered 350 \
             --out route-coverage.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload coverage report
         if: always()

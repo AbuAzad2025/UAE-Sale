@@ -33,6 +33,51 @@ class StockService:
         )
 
     @staticmethod
+    @staticmethod
+    def post_adjustment_gl(product, delta, movement):
+        """Book the GL side of a manual stock adjustment.
+
+        routes/products.py::adjust_stock moves current_stock and writes its own
+        StockMovement row, so it never went through adjust_stock() and the
+        journal was never touched: inventory value drifted away from cost with
+        no entry to explain it. This is the accounting half, factored out so
+        the route does not have to restate the pairing.
+
+        A gain debits inventory and credits the adjustment expense; a loss does
+        the reverse. A zero delta is not worth an entry.
+        """
+        from decimal import Decimal
+        from services.gl_service import GLService
+
+        delta = Decimal(str(delta))
+        cost = Decimal(str(product.cost_price or 0))
+        value = abs(delta) * cost
+        if value <= 0:
+            return None
+
+        if delta < 0:
+            lines = [
+                {'account': '5150', 'debit': value, 'credit': 0,
+                 'description': f'Inventory Adjustment (Loss) - {product.name}'},
+                {'account': '1140', 'debit': 0, 'credit': value,
+                 'description': f'Stock Decrease - {product.name}'},
+            ]
+        else:
+            lines = [
+                {'account': '1140', 'debit': value, 'credit': 0,
+                 'description': f'Stock Increase - {product.name}'},
+                {'account': '5150', 'debit': 0, 'credit': value,
+                 'description': f'Inventory Adjustment (Gain) - {product.name}'},
+            ]
+
+        return GLService.post_entry(
+            lines=lines,
+            description=f'Stock Adjustment - {product.name}',
+            reference_type='stock_adjustment',
+            reference_id=movement.id if movement else None,
+        )
+
+    @staticmethod
     def adjust_stock(product_id, quantity, notes=None, warehouse_id=None, post_gl=True):
         """Adjust stock with an optional GL posting (contract C1).
 

@@ -84,20 +84,19 @@ class TestStockAdjustment:
         assert r.get_json()['success'] is True
         assert_stock_valuation(product.id, Decimal('5500.00'))
 
-    def test_adjustment_posts_no_gl_entry_documented_gap(
+    def test_adjustment_posts_a_gl_entry(
             self, client, db, users, login_as, product):
-        """Documents a real accounting gap, on purpose.
+        """A manual stock adjustment must reach the general ledger.
 
-        A manual stock adjustment changes current_stock and writes a
-        StockMovement, but routes/products.py::adjust_stock never calls
-        GLService. Inventory value therefore moves with no corresponding entry in
-        1140 (Inventory) or 5150 (Inventory Adjustments). The ERP's own trial
-        balance will disagree with stock valuation after any adjustment.
+        This used to document a gap on purpose: adjust_stock moved
+        current_stock and wrote a StockMovement, and stopped there, so
+        inventory value diverged from cost after every stock count and the
+        trial balance had no entry explaining why.
 
-        This test asserts the CURRENT behaviour so the gap cannot regress
-        silently. When the posting is implemented, this test must be inverted
-        to expect an entry — it is deliberately written so that inversion is a
-        one-line change.
+        routes/products.py now posts the adjustment through
+        StockService.post_adjustment_gl, which debits 1140 and credits 5150
+        for an increase and reverses them for a decrease. The stock assertion
+        stays because the entry is worthless if the quantity did not move.
         """
         login_as('owner')
         before = snapshot_entry_ids()
@@ -106,9 +105,9 @@ class TestStockAdjustment:
         assert_product_stock(product.id, Decimal('115'))
 
         after = snapshot_entry_ids()
-        assert after == before, (
-            'Stock adjustment posted a GL entry — the accounting gap has been '
-            'closed; invert this test to assert the new entry.')
+        assert after != before, (
+            'the stock moved but nothing reached the ledger; inventory value '
+            'now disagrees with cost and no entry records the difference')
 
 
 class TestInventoryRbac:

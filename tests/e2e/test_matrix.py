@@ -418,20 +418,25 @@ def _new_edge_state(client, db, sc, fixtures):
         elif sc.domain == 'ar':
             # Build a valid payload then strip customer_id, which is the field
             # routes/sales.py requires; sale_form cannot express a None party.
-            # The write is refused, but the refusal path itself raises inside
-            # ErrorMessages.database_error() (missing its `error` argument), so
-            # under TESTING=True the exception escapes instead of rendering a
-            # 500. Both facts are asserted here.
+            #
+            # The write is refused and the refusal is now contained. It used to
+            # escape instead: routes/sales.py called
+            # ErrorMessages.database_error() without its required argument, so
+            # the handler raised TypeError and replaced the real cause with a
+            # different crash. The signature takes an optional error and logs
+            # it instead, so the request answers with a status and the sale
+            # still does not exist.
             data = sale_form(
                 customer,
                 [{'product_id': product.id, 'quantity': sc.quantity,
                   'unit_price': 100}], warehouse=warehouse)
             data.pop('customer_id', None)
-            with pytest.raises(Exception) as excinfo:
-                client.post('/sales/create', data=data)
-            assert 'database_error' in str(excinfo.value), (
-                f'{sc.id}: expected the known database_error() handler defect, '
-                f'got {type(excinfo.value).__name__}: {excinfo.value}')
+            r = client.post('/sales/create', data=data)
+            assert r.status_code in (200, 302, 400), (
+                f'{sc.id}: a sale without a customer answered '
+                f'{r.status_code}')
+            assert Sale.query.count() == before['sales'], (
+                f'{sc.id}: a refused sale without a customer was created')
             _assert_world_unchanged(db, before, 'sale without a customer')
         elif sc.domain == 'ap':
             # routes/purchases.py:70 refuses when no warehouse was chosen.

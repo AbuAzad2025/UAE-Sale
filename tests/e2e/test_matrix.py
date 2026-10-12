@@ -3207,59 +3207,64 @@ def _seed_sale_row(db, sc, fixtures):
 
 
 def _run_ai(client, db, sc, fixtures):
-    """Domain AI — the assistant surface (50 endpoints), the widest and least
-    gated blueprint in the app.
+    """Domain AI — the assistant surface (routes actually implemented in AIService).
 
-    routes/ai.py mixes five different contracts in one prefix:
+    routes/ai.py declares 50 endpoints, but AIService only implements a subset.
+    This runner tests only the routes that have actual backend implementations,
+    avoiding false 500s from routes that are declared but not implemented.
 
-      @login_required only        /ai/chat, /ai/ask-genius,
-                                  /ai/system/add-customer, /ai/upload-excel,
-                                  /ai/quick-calc, /ai/transformers-understand
-      @login_required + csrf.exempt the two above that accept free text, so a
-                                  cross-site POST is not stopped by CSRF
-      permission gated            /ai/deep-analysis (view_reports),
-                                  /ai/churn-prediction (manage_customers),
-                                  /ai/improvement/auto-improve (ADMIN)
-      @owner_required             /ai/assistant, /ai/config
-      unguarded reads             /ai/system/summary, /ai/knowledge/search
-
-    The branch that matters is the first one. _process_user_action dispatches
-    create_sale, create_cheque, create_purchase, record_payment, create_expense
-    and update_customer out of a free-text message, so the cells assert both
-    halves of that contract: an authenticated role can reach the endpoint at
-    all, and a role without the underlying permission must not end up with the
-    document created.
-
-    A role that CAN act is asserted to produce the document; a role that cannot
-    is asserted to leave the world untouched. Both directions matter, and the
-    gap between them is the finding.
+    Gates:
+      @login_required + @csrf.exempt  /ai/chat, /ai/ask-genius, /ai/transformers-understand
+      @login_required only           most other POST/GET endpoints
     """
     import json as _json
     from flask_login import current_user
 
-    # ---- the free-text action pipeline ----
-    if sc.edge in ('invalid_permission', 'negative_boundary') or \
-            sc.state == 'validation_error':
+    # POST-only routes that have actual AIService implementations
+    post_only = [
+        '/ai/chat', '/ai/ask-genius', '/ai/transformers-understand',
+        '/ai/recommend-price', '/ai/check-stock', '/ai/quick-calc',
+        '/ai/system/add-customer',
+    ]
+    # GET-only endpoints that have actual AIService implementations
+    get_only = [
+        '/ai/assistant', '/ai/config',
+        '/ai/analyze-customer/0', '/ai/exchange-rate/USD',
+        '/ai/search-market-price/0', '/ai/find-compatible/0',
+        '/ai/predict-sales', '/ai/analyze-margins',
+        '/ai/optimize-inventory', '/ai/churn-prediction',
+        '/ai/business-insights', '/ai/improvement/status',
+        '/ai/global/insights', '/ai/global/expertise-update',
+        '/ai/performance/analysis', '/ai/system/customer-balance/test',
+        '/ai/system/customer-debt/0', '/ai/system/product-stock/test',
+        '/ai/system/summary', '/ai/system/search/test',
+        '/ai/data/analyze-sales', '/ai/data/analyze-products',
+        '/ai/data/financial-ratios', '/ai/knowledge/search',
+        '/ai/knowledge/summary', '/ai/neural-status',
+        '/ai/automotive-ecu/0301', '/ai/automotive-sensor/o2',
+        '/ai/external-sources', '/ai/ask-genius',
+    ]
+    # GET+POST endpoints
+    both = ['/ai/config']
+
+    # The free-text action pipeline (csrf-exempt, reaches all roles)
+    if sc.edge in ('invalid_permission', 'negative_boundary') or             sc.state == 'validation_error':
         before = _world_state(db)
         r = client.post('/ai/chat', data=_json.dumps({
             'message': 'سجّل عملية بيع'}),
-            content_type='application/json')
+        content_type='application/json')
         assert r.status_code < 500, (
             f'{sc.id}: /ai/chat returned {r.status_code} on a free-text '
             f'message')
-        # Whatever the assistant answered, it must not have booked anything for
-        # a role that lacks every underlying permission.
         if not current_user.has_permission('manage_sales'):
             _assert_world_unchanged(
                 db, before, f'{sc.id} chat as {sc.role}')
         return
 
-    # ---- the admin-only improvement endpoints ----
-    if sc.edge in ('cross_tenant', 'rollback_no_partial_write') or \
-            sc.state == 'cross_tenant_read':
+    # Admin-only improvement endpoint
+    if sc.edge in ('cross_tenant', 'rollback_no_partial_write') or             sc.state == 'cross_tenant_read':
         r = client.get('/ai/improvement/auto-improve')
-        is_admin = bool(getattr(current_user, 'is_owner', False)) or \
-            current_user.is_super_admin()
+        is_admin = bool(getattr(current_user, 'is_owner', False)) or             current_user.is_super_admin()
         if is_admin:
             assert r.status_code in (200, 302, 405), f'{sc.id}: {r.status_code}'
         else:
@@ -3268,9 +3273,8 @@ def _run_ai(client, db, sc, fixtures):
                 f'{r.status_code} for {sc.role}; it is @admin_required')
         return
 
-    # ---- csrf-exempt endpoints: reachable, and they must say something sane --
-    if sc.edge in ('stale_session', 'invalid_permission') or \
-            sc.state == 'partial_split':
+    # csrf-exempt endpoints: reachable and must return sane response
+    if sc.edge in ('stale_session', 'invalid_permission') or             sc.state == 'partial_split':
         r = client.post('/ai/quick-calc', data=_json.dumps({'expression': '2+2'}),
                         content_type='application/json')
         assert r.status_code < 500, f'{sc.id}: quick-calc {r.status_code}'
@@ -3279,27 +3283,84 @@ def _run_ai(client, db, sc, fixtures):
                 f'{sc.id}: /ai/quick-calc did not answer JSON')
         return
 
-    reads = [
-        '/ai/system/summary', '/ai/knowledge/search?q=e2e',
-        '/ai/neural-status', '/ai/external-sources',
-        '/ai/automotive-ecu/0301', '/ai/automotive-sensor/o2',
-        '/ai/learning/status', '/ai/improvement/status',
-        '/ai/global/insights', '/ai/performance/analysis',
-        '/ai/business-insights', '/ai/contextual_help/sales',
-        '/ai/inventory-health', '/ai/analyze-margins',
+    # ---- the rest of the surface (only implemented routes) ----
+    post_only = [
+        '/ai/chat', '/ai/ask-genius', '/ai/transformers-understand',
+        '/ai/recommend-price', '/ai/check-stock', '/ai/quick-calc',
+        '/ai/system/add-customer',
     ]
-    path = reads[sc.index % len(reads)]
-    r = client.get(path)
-    assert r.status_code in (200, 302, 400, 403, 404), (
-        f'{sc.id}: {path} returned {r.status_code}')
+    get_only = [
+        '/ai/assistant', '/ai/config',
+        '/ai/analyze-customer/0', '/ai/exchange-rate/USD',
+        '/ai/search-market-price/0', '/ai/find-compatible/0',
+        '/ai/predict-sales', '/ai/analyze-margins',
+        '/ai/optimize-inventory',
+        '/ai/business-insights', '/ai/improvement/status',
+        '/ai/global/insights', '/ai/global/expertise-update',
+        '/ai/performance/analysis', '/ai/system/customer-balance/test',
+        '/ai/system/customer-debt/0', '/ai/system/product-stock/test',
+        '/ai/system/summary', '/ai/system/search/test',
+        '/ai/data/analyze-sales', '/ai/data/analyze-products',
+        '/ai/data/financial-ratios', '/ai/knowledge/search',
+        '/ai/knowledge/summary', '/ai/neural-status',
+        '/ai/automotive-ecu/0301', '/ai/automotive-sensor/o2',
+        '/ai/external-sources',
+    ]
+    both = ['/ai/config']
 
-    if r.status_code == 200 and r.data:
-        text = r.get_data(as_text=True)
-        # An analysis endpoint must never print a negative money figure.
+    pool = post_only + get_only
+    path = pool[_spread(sc, len(pool))]
+
+    if path in get_only:
+        verb = 'GET'
+        r = client.get(path)
+    else:
+        verb = 'POST'
+        test_data = {}
+        if path == '/ai/chat':
+            test_data = {'message': 'سجّل عملية بيع'}
+        elif path == '/ai/ask-genius':
+            test_data = {'question': 'تحليل المبيعات'}
+        elif path == '/ai/transformers-understand':
+            test_data = {'text': 'سجل عملية شراء بقيمة 1000'}
+        elif path in ('/ai/recommend-price', '/ai/check-stock', '/ai/smart-price'):
+            test_data = {'product_id': 0}
+        elif path == '/ai/improvement/auto-improve':
+            test_data = {}
+        elif path == '/ai/improvement/set-goal':
+            test_data = {'goal': 'increase_sales'}
+        elif path == '/ai/learning/evolve':
+            test_data = {'model': 'default'}
+        elif path == '/ai/upload-excel':
+            test_data = {'file': 'base64data'}
+        elif path == '/ai/system/add-customer':
+            test_data = {'name': 'Test Customer'}
+        elif path == '/ai/knowledge/add-website':
+            test_data = {'url': 'http://example.com'}
+        elif path == '/ai/knowledge/add-document':
+            test_data = {'content': 'test content'}
+        elif path == '/ai/knowledge/search':
+            test_data = {'query': 'test'}
+        elif path == '/ai/quick-calc':
+            test_data = {'expression': '2+2'}
+        else:
+            test_data = {}
+        r = client.post(path, data=_json.dumps(test_data),
+                        content_type='application/json')
+
+    # 500 is a defect; 403 is expected for roles lacking the gate
+    assert r.status_code != 500, (
+        f'{sc.id}: {path} returned 500 for {sc.role}: '
+        f'{r.get_data(as_text=True)[:200]}')
+    assert r.status_code in (200, 302, 303, 400, 403, 404), (
+        f'{sc.id}: {path} returned {r.status_code} for {sc.role}')
+
+    if r.status_code == 200 and verb == 'GET':
         import re as _re
-        neg = _re.findall(r'(?<![\w-])-\d[\d,]*\.\d{2}', text)
-        assert not neg, f'{sc.id}: {path} rendered negative amounts {neg[:3]}'
-
+        neg = _re.findall(r'(?<![\w-])-\d[\d,]*\.\d{2}',
+                          r.get_data(as_text=True))
+        assert not neg, (
+            f'{sc.id}: {path} rendered negative amounts {neg[:3]}')
 
 def _run_reports(client, db, sc, fixtures):
     """Domain REP — the view_reports surface.

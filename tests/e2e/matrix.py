@@ -35,7 +35,7 @@ DOMAINS = ['accounting', 'ar', 'ap', 'inventory', 'cheque', 'security',
            'reports', 'partners', 'dashboard', 'stock',
            'customers', 'analytics', 'quotations', 'vault',
            'gamification', 'inbound', 'owner', 'users', 'restapi', 'ai',
-           'erp', 'advanced']
+           'erp', 'advanced', 'suppliers', 'platform']
 
 ROLES = ['owner', 'branch_manager', 'senior_accountant', 'pos_cashier',
          'warehouse_keeper', 'manager', 'accountant', 'viewer', 'hr']
@@ -126,6 +126,15 @@ DOMAIN_PERMISSION = {
     # view_ledger is the common denominator, and the runner asserts the admin
     # gate separately for the roles that lack it.
     'advanced': 'view_ledger',
+    # routes/suppliers.py is 7 routes and had no domain: the 'partners' domain
+    # points at the reports surface, so the supplier CRUD, the statement and
+    # the search endpoint were never executed by any scenario.
+    'suppliers': 'manage_suppliers',
+    # Everything reachable without a permission code that no other domain
+    # touched: the public pages, whatsapp, monitoring, the OpenAPI documents,
+    # the GraphQL endpoint, the language switch and the metrics probes. All of
+    # these were at 0% before this domain.
+    'platform': None,
     'security': None,          # read/visibility domain, handled per-op
 }
 
@@ -168,6 +177,11 @@ ROLE_PERMISSIONS = {
 
 def role_may_write(role: str, domain: str) -> bool:
     """Would this role pass the domain's permission gate?"""
+    if domain == 'platform':
+        # The public pages carry no gate at all and the rest are login_required
+        # with no permission code, so every role reaches them and the runner
+        # asserts the response contract rather than a refusal.
+        return True
     if domain == 'dashboard':
         # routes/main.py::dashboard is login_required with no permission gate,
         # so every authenticated role reaches it. Returning True here keeps the
@@ -266,9 +280,9 @@ def build_matrix() -> List[Scenario]:
 
 MATRIX: List[Scenario] = build_matrix()
 
-# Sanity: the matrix must be exactly 26460 and fully populated.
-# 28 domains x 9 roles x 7 states x 15 edges
-_EXPECTED_TOTAL = 26460
+# Sanity: the matrix must be exactly 28350 and fully populated.
+# 30 domains x 9 roles x 7 states x 15 edges
+_EXPECTED_TOTAL = 28350
 _EXPECTED_PER_DOMAIN = 945
 
 assert len(MATRIX) == _EXPECTED_TOTAL, (

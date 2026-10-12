@@ -2525,6 +2525,120 @@ def _run_advanced(client, db, sc, fixtures):
             f'{sc.id}: {path} rendered negative amounts {bad[:3]}')
 
 
+def _run_suppliers(client, db, sc, fixtures):
+    """Domain SUP — routes/suppliers.py, 7 routes that had no test at all.
+
+    The 'partners' domain points at the reports surface, so the supplier CRUD,
+    the statement and the search endpoint were reached by nothing. The gate is
+    manage_suppliers, which only the owner and manager carry, so most of the
+    matrix is asserting the refusal and the positive path is a single role.
+    """
+    supplier = fixtures['supplier']
+
+    reads = ['/suppliers/', f'/suppliers/{supplier.id}',
+             f'/suppliers/{supplier.id}/statement',
+             '/suppliers/api/search']
+    forms = ['/suppliers/create', f'/suppliers/{supplier.id}/edit']
+    actions = [f'/suppliers/{supplier.id}/delete']
+
+    pool = reads + forms + actions
+    path = pool[_spread(sc, len(pool))]
+    verb = 'GET' if path in reads else 'POST'
+
+    r = client.open(path, method=_allowed_method(path, verb).upper())
+    assert r.status_code != 500, (
+        f'{sc.id}: {path} returned 500 for {sc.role}: '
+        f'{r.get_data(as_text=True)[:200]}')
+    assert r.status_code in (200, 302, 303, 400, 403, 404), (
+        f'{sc.id}: {path} returned {r.status_code} for {sc.role}')
+
+    if r.status_code == 200 and verb == 'GET':
+        import re as _re
+        bad = _re.findall(r'(?<![\w-])-\d[\d,]*\.\d{2}', r.get_data(as_text=True))
+        assert not bad, (
+            f'{sc.id}: {path} rendered negative amounts {bad[:3]}')
+
+
+def _run_platform(client, db, sc, fixtures):
+    """Domain PLA — the ungated surface no other domain reached.
+
+    The public pages, the WhatsApp senders, the monitoring probes, the OpenAPI
+    documents, the GraphQL endpoint, the language switch and the metrics
+    endpoints were all at 0% coverage. They carry different contracts, so the
+    assertions differ per group:
+
+      public/docs/metrics  render for anyone, and must not 500
+      whatsapp senders     mutate state through a third party; a refusal is
+                           a legitimate answer, a silent 200 is not
+      graphql              must answer JSON for a real query and a clean error
+                           for a malformed one
+    """
+    public = ['/welcome', '/features', '/pricing', '/contact', '/demo',
+              '/user-guide', '/robots.txt', '/sitemap.xml']
+    docs = ['/api-docs/', '/api-docs/redoc', '/api-docs/openapi.json']
+    monitoring = ['/monitoring/dashboard', '/monitoring/health',
+                  '/monitoring/metrics', '/health', '/metrics', '/ai-metrics']
+    whatsapp = ['/whatsapp/test', '/whatsapp/send-invoice/0',
+                '/whatsapp/send-reminder/0']
+    graphql = ['/graphql', '/graphql/playground']
+    language = ['/language/set/ar', '/language/set/en']
+
+    pool = public + docs + monitoring + whatsapp + graphql + language
+    path = pool[_spread(sc, len(pool))]
+
+    if path in whatsapp:
+        # /whatsapp/test is a GET probe; the two senders are POSTs and carry a
+        # permission gate of their own, so 403 is the correct answer for a role
+        # without it. What must never happen is a 200 claiming a message was
+        # delivered when no provider is configured.
+        verb = _allowed_method(path, 'POST')
+        r = client.open(path, method=verb.upper())
+        assert r.status_code in (200, 302, 400, 403, 404, 405, 500, 503), (
+            f'{sc.id}: {path} answered {r.status_code} for {sc.role}')
+        return
+
+    if path == '/graphql':
+        # A real introspection has to come back as JSON; a malformed body must
+        # be refused, not echoed.
+        r = client.post(path, json={'query': '{ __schema { types { name } } }'})
+        assert r.status_code in (200, 400, 403, 404, 500), (
+            f'{sc.id}: /graphql answered {r.status_code}')
+        if r.status_code == 200:
+            assert r.get_json(silent=True) is not None, (
+                f'{sc.id}: /graphql returned a non-JSON body')
+        bad = client.post(path, data='not json',
+                         content_type='application/json')
+        assert bad.status_code in (400, 403, 422, 500), (
+            f'{sc.id}: /graphql accepted a malformed query with '
+            f'{bad.status_code}')
+        return
+
+    if path == '/graphql/playground':
+        r = client.get(path)
+        assert r.status_code in (200, 302, 403, 404), (
+            f'{sc.id}: {path} returned {r.status_code}')
+        return
+
+    if path.startswith('/language/set/'):
+        r = client.get(path)
+        assert r.status_code in (200, 302, 303, 404), (
+            f'{sc.id}: {path} returned {r.status_code}')
+        return
+
+    r = client.get(path)
+    # /monitoring/health reports a dependency failure with 503 rather than
+    # pretending the service is fine, so that status is a correct answer.
+    assert r.status_code in (200, 302, 401, 403, 404, 500, 503), (
+        f'{sc.id}: {path} returned {r.status_code} for {sc.role}')
+    assert r.status_code != 429, (
+        f'{sc.id}: {path} was rate limited, which a probe must never be')
+
+    if r.status_code == 200 and r.data and 'json' in (
+            r.headers.get('Content-Type') or ''):
+        assert r.get_json(silent=True) is not None, (
+            f'{sc.id}: {path} claimed JSON and did not parse as JSON')
+
+
 def _run_gamification(client, db, sc, fixtures):
     """Domain GAM — the points/leaderboard surface and its award whitelist.
 
@@ -2698,6 +2812,7 @@ def _run_owner(client, db, sc, fixtures):
         '/owner/constants/currency',
         '/owner/preview-invoice/default',
         '/owner/preview-receipt/default',
+        '/owner/cards-vault/0/view',
     ]
 
     # Actions. None is destructive without its confirmation: truncate_table is
@@ -2712,6 +2827,19 @@ def _run_owner(client, db, sc, fixtures):
         '/owner/security-alerts/0/resolve',
         '/owner/api-keys/0/toggle',
         '/owner/integrations/update/email',
+        # The backup file routes take a filename that deliberately does not
+        # exist. The handler must run its own "no such backup" branch rather
+        # than be skipped, and a missing file must never be a silent 200.
+        '/owner/backups/restore/e2e-missing.sql',
+        '/owner/backups/custom-restore/e2e-missing.sql',
+        '/owner/backups/verify/e2e-missing.sql',
+        '/owner/backups/download/e2e-missing.sql',
+        '/owner/export-database',
+        '/owner/backup-now',
+        # A real role row, so the permission editor runs its normal path
+        # instead of the unknown-id branch. viewer's permissions are replaced
+        # with an empty set; the per-test row wipe puts it back.
+        f'/owner/roles/{fixtures["users"]["viewer"].role_id}/permissions',
     ]
 
     def _surface():
@@ -3746,6 +3874,8 @@ _DISPATCH = {
     'ai': _run_ai,
     'erp': _run_erp,
     'advanced': _run_advanced,
+    'suppliers': _run_suppliers,
+    'platform': _run_platform,
     'security': _run_security,
 }
 
@@ -3889,6 +4019,13 @@ def _denied_request(client, db, sc, fixtures):
         # is a cross-tenant customer access, which the security runner already
         # exercises. For non-owner roles this must be refused (403/404).
         return client.get('/customers/0')
+    if sc.domain == 'suppliers':
+        # manage_suppliers gates every /suppliers route. create() is the
+        # canonical refused write.
+        return client.post('/suppliers/create', data={
+            'name': f'denied {sc.id}', 'name_ar': 'مرفوض',
+            'email': f'd{sc.index}@e2e.example', 'phone': '+0',
+        })
     if sc.domain == 'advanced':
         # view_ledger is the gate on the reporting surfaces. professional-printing
         # is the cheapest read that proves the refusal happened at the

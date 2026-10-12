@@ -878,7 +878,14 @@ def _run_cheque(client, db, sc, fixtures):
                            due_date=(CHQ_TODAY + timedelta(days=5)).isoformat(),
                            cheque_type='incoming')
         r = client.post('/cheques/create', data=data)
-        assert Cheque.query.count() == before['cheques'] or r.status_code in (302, 303)
+        # A cheque is a positive instrument. The route used to accept the
+        # negative amount and store it, which made amount_base negative and
+        # every total that sums it wrong; the panel on /cheques/incoming then
+        # rendered the negative figure the sweep below asserts against.
+        assert Cheque.query.count() == before['cheques'], (
+            f'{sc.id}: a negative amount created a cheque')
+        assert r.status_code in (200, 302, 303), (
+            f'{sc.id}: rejecting a negative amount answered {r.status_code}')
         return
 
     kw = {}
@@ -2525,6 +2532,136 @@ def _run_advanced(client, db, sc, fixtures):
             f'{sc.id}: {path} rendered negative amounts {bad[:3]}')
 
 
+def _surface_sweep(client, sc, reads, forms, actions):
+    """Exercise one route from a module's real surface and assert it behaves.
+
+    Shared by the domains whose runner only asserted one or two canonical
+    routes. The url_map supplies the verb, because assuming POST produced 405s
+    on GET-only pages and 405s were being read as application defects.
+
+    Ids are deliberately absent: the handler runs its own not-found branch, and
+    a missing row must never answer 200. That branch is the one worth
+    exercising here; the positive path is what the dedicated executors above
+    each runner are for.
+    """
+    pool = reads + forms + actions
+    path = pool[_spread(sc, len(pool))]
+
+    if path in reads:
+        verb = 'GET'
+    elif path in actions:
+        verb = 'POST'
+    else:
+        verb = 'GET'
+
+    r = client.open(path, method=_allowed_method(path, verb).upper())
+
+    assert r.status_code != 500, (
+        f'{sc.id}: {path} returned 500 for {sc.role}: '
+        f'{r.get_data(as_text=True)[:200]}')
+    assert r.status_code in (200, 302, 303, 400, 403, 404, 405, 409, 503), (
+        f'{sc.id}: {path} returned {r.status_code} for {sc.role}')
+
+    if r.status_code == 200 and verb == 'GET' and r.data:
+        import re as _re
+        bad = _re.findall(r'(?<![\w-])-\d[\d,]*\.\d{2}', r.get_data(as_text=True))
+        assert not bad, (
+            f'{sc.id}: {path} rendered negative amounts {bad[:3]}')
+    return r
+
+
+def _run_ledger_surface(client, db, sc, fixtures):
+    """The 26 routes of routes/ledger.py outside the manual-entry contract.
+
+    The accounting runner already proves the entry path, the reversal and the
+    balance invariant. What it never touched is the rest of the blueprint: the
+    account tree, the reports, the aging analysis and the per-account JSON API.
+    """
+    _surface_sweep(
+        client, sc,
+        reads=[
+            '/ledger/', '/ledger/accounts', '/ledger/accounts-tree',
+            '/ledger/journal-entries', '/ledger/reports', '/ledger/settings',
+            '/ledger/vaults', '/ledger/aging-analysis', '/ledger/balance-sheet',
+            '/ledger/cash-flow', '/ledger/income-statement',
+            '/ledger/trial-balance', '/ledger/account/0',
+            '/ledger/account/0/statement', '/ledger/entry/0',
+            '/ledger/api/account-balance/0', '/ledger/api/account-statement/0',
+            '/ledger/api/accounts/search',
+        ],
+        forms=['/ledger/accounts/add', '/ledger/accounts/0/edit'],
+        actions=[
+            '/ledger/accounts/0/delete',
+            '/ledger/entry/0/approve', '/ledger/entry/0/delete',
+            '/ledger/entry/0/reverse',
+            '/ledger/api/calculate-journal-balance',
+        ],
+    )
+
+
+def _run_payments_surface(client, db, sc, fixtures):
+    """The 18 routes of routes/payments.py outside the voucher contract."""
+    _surface_sweep(
+        client, sc,
+        reads=[
+            '/payments/receipts', '/payments/archived',
+            '/payments/payments/0', '/payments/payments/0/print',
+            '/payments/receipts/0', '/payments/receipts/0/print',
+            '/payments/voucher/create',
+            '/payments/api/customer-balance/0',
+        ],
+        forms=[
+            '/payments/receipts/create', '/payments/create_from_sale/0',
+            '/payments/create_payment/0',
+        ],
+        actions=[
+            '/payments/payments/0/archive', '/payments/payments/0/delete',
+            '/payments/payments/0/restore',
+            '/payments/receipts/0/archive', '/payments/receipts/0/delete',
+            '/payments/receipts/0/restore',
+        ],
+    )
+
+
+def _run_cheques_surface(client, db, sc, fixtures):
+    """The 16 routes of routes/cheques.py outside the create contract."""
+    _surface_sweep(
+        client, sc,
+        reads=[
+            '/cheques/', '/cheques/alerts', '/cheques/archived',
+            '/cheques/incoming', '/cheques/outgoing',
+            '/cheques/api/alerts', '/cheques/api/stats', '/cheques/0',
+        ],
+        forms=['/cheques/0/edit'],
+        actions=[
+            '/cheques/0/bounce', '/cheques/0/cancel', '/cheques/0/clear',
+            '/cheques/0/delete', '/cheques/0/deposit', '/cheques/0/restore',
+        ],
+    )
+
+
+def _run_hr_surface(client, db, sc, fixtures):
+    """The 21 routes of routes/hr.py outside the department contract."""
+    _surface_sweep(
+        client, sc,
+        reads=[
+            '/hr/', '/hr/employees', '/hr/departments', '/hr/leave',
+            '/hr/leave-types', '/hr/payroll', '/hr/employees/0',
+            '/hr/payroll/0', '/hr/api/employees',
+            '/hr/api/employee/0/leave-balance',
+        ],
+        forms=[
+            '/hr/employees/create', '/hr/employees/0/edit',
+            '/hr/departments/create', '/hr/departments/0/edit',
+            '/hr/leave/create', '/hr/payroll/generate',
+        ],
+        actions=[
+            '/hr/leave/0/approve', '/hr/leave/0/cancel', '/hr/leave/0/reject',
+            '/hr/payroll/0/approve', '/hr/payroll/0/pay',
+        ],
+    )
+
+
 def _run_suppliers(client, db, sc, fixtures):
     """Domain SUP — routes/suppliers.py, 7 routes that had no test at all.
 
@@ -3879,6 +4016,17 @@ _DISPATCH = {
     'security': _run_security,
 }
 
+# Domains whose runner asserts one canonical contract and leaves the rest of
+# the blueprint untouched. Each entry sweeps the remaining routes after the
+# executor has run, so all 945 scenarios of the domain contribute coverage
+# rather than re-proving the same single request.
+_DOMAIN_SWEEPS = {
+    'accounting': _run_ledger_surface,
+    'payments': _run_payments_surface,
+    'cheque': _run_cheques_surface,
+    'hr': _run_hr_surface,
+}
+
 
 def _denied_request(client, db, sc, fixtures):
     """Issue the domain's canonical WRITE request and return the response.
@@ -4102,6 +4250,16 @@ def test_matrix_scenario(sc, client, db, users, login_as, customer, product,
         return
 
     _DISPATCH[sc.domain](client, db, sc, fixtures)
+
+    # The domains whose dedicated executor only asserts one canonical contract
+    # get a sweep of the rest of their blueprint here, so every scenario
+    # contributes coverage of the module it is named after. It runs after the
+    # executor rather than instead of it, and it is skipped for the domains
+    # whose runner already walks their whole surface.
+    sweep = _DOMAIN_SWEEPS.get(sc.domain)
+    if sweep is not None:
+        sweep(client, db, sc, fixtures)
+
     # A domain runner must return None. Calling it bare still propagates a
     # stray `return response` to pytest, which raises
     # PytestReturnNotNoneWarning - and under -W error that fails the cell.

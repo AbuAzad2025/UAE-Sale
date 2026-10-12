@@ -238,7 +238,9 @@ def archive_payment(id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'Failed to archive payment {id}: {e}')
-        flash(f'فشلت الأرشفة: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'فشلت الأرشفة: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('payments.receipts'))
 
     return redirect(url_for('payments.receipts'))
@@ -332,7 +334,8 @@ def create_from_sale(sale_id):
             return redirect(url_for('payments.view_receipt', id=receipt.id))
 
         except Exception as e:
-            flash(f'حدث خطأ: {str(e)}\nتحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            current_app.logger.exception('handler failed')
+            flash(f'حدث خطأ: حدث خطأ غير متوقع\nتحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
 
     # استخدام القالب الموحد مع بيانات إضافية
     customers = [sale.customer]  # العميل من الفاتورة
@@ -673,7 +676,9 @@ def create_voucher_submit():  # noqa: C901
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Voucher creation error: {e}")
-        flash(f'حدث خطأ أثناء حفظ السند: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'حدث خطأ أثناء حفظ السند: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('payments.create_voucher'))
 
     return redirect(url_for('payments.receipts'))
@@ -973,7 +978,9 @@ def delete_receipt(id):  # noqa: C901
 
     except Exception as e:
         db.session.rollback()
-        flash(f'فشل الحذف: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'فشل الحذف: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('payments.view_receipt', id=id))
 
 
@@ -1052,7 +1059,9 @@ def delete_payment(id):
 
     except Exception as e:
         db.session.rollback()
-        flash(f'فشل الحذف: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'فشل الحذف: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('payments.view_payment', id=id))
 
 
@@ -1203,7 +1212,9 @@ def create_payment(purchase_id):  # noqa: C901
 
         except Exception as e:
             db.session.rollback()
-            flash(f'حدث خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'حدث خطأ: حدث خطأ غير متوقع', 'danger')
 
     # استخدام نفس القالب الموحد لسندات القبض/الصرف
     return render_template('payments/create_receipt.html',

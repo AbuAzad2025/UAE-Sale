@@ -4,7 +4,7 @@ ERP Extended Modules Routes
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from extensions import db
 from models.erp_modules import (
@@ -80,7 +80,9 @@ def create_quotation():
             return redirect(url_for('erp_modules.view_quotation', id=q.id))
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     from models import Customer, Warehouse, Product  # noqa: F811  (local import intentional)
     customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
@@ -120,7 +122,9 @@ def convert_quotation(id):
         flash(f'✅ تم التحويل إلى فاتورة {sale.sale_number}', 'success')
         return redirect(url_for('sales.view', id=sale.id))
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('erp_modules.view_quotation', id=id))
 
 # ==================== PURCHASE ORDERS ====================
@@ -181,7 +185,9 @@ def create_purchase_order():
             return redirect(url_for('erp_modules.view_purchase_order', id=po.id))
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     from models import Supplier, Warehouse, Product  # noqa: F811  (local import intentional)
     suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
@@ -219,7 +225,9 @@ def approve_purchase_order(id):
         create_audit_log('approve', 'purchase_orders', po.id)
         flash('✅ تم اعتماد أمر الشراء', 'success')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.view_purchase_order', id=id))
 
 
@@ -233,7 +241,9 @@ def receive_purchase_order(id):
         flash(f'✅ تم الاستلام وإنشاء فاتورة {purchase.purchase_number}', 'success')
         return redirect(url_for('purchases.view', id=purchase.id))
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('erp_modules.view_purchase_order', id=id))
 
 # ==================== FISCAL PERIODS ====================
@@ -256,7 +266,9 @@ def create_fiscal_period():
         _ = FiscalPeriodService.create_annual_period(year)
         flash(f'✅ تم إنشاء الفترة المالية {year}', 'success')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.fiscal_periods'))
 
 
@@ -270,7 +282,9 @@ def close_fiscal_period(id):
         create_audit_log('close', 'fiscal_periods', id)
         flash('✅ تم إغلاق الفترة المالية', 'success')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.fiscal_periods'))
 
 
@@ -329,7 +343,9 @@ def create_stock_transfer():
             return redirect(url_for('erp_modules.stock_transfers'))
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     from models import Warehouse, Product
     warehouses = Warehouse.query.filter_by(is_active=True).all()
@@ -357,7 +373,9 @@ def receive_stock_transfer(id):
         StockTransferService.receive_transfer(id, current_user.id)
         flash('✅ تم استلام الشحنة وتحديث المخزون', 'success')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.stock_transfers'))
 
 # ==================== STOCK TAKES ====================
@@ -384,7 +402,9 @@ def create_stocktake():
         )
         flash(f'✅ تم إنشاء جرد {st.stocktake_number}', 'success')
     except Exception as e:
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.stock_takes'))
 
 
@@ -423,7 +443,9 @@ def approve_stocktake(id):
         create_audit_log('approve', 'stock_takes', id)
         flash('✅ تم اعتماد الجرد وتحديث المخزون', 'success')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.view_stocktake', id=id))
 
 # ==================== DUNNING LETTERS ====================
@@ -497,7 +519,9 @@ def create_recurring_expense():
             return redirect(url_for('erp_modules.recurring_expenses'))
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     from models import ExpenseCategory  # noqa: F811  (local import intentional)
     categories = ExpenseCategory.query.filter_by(is_active=True).all()
@@ -548,7 +572,9 @@ def create_lot():
             return redirect(url_for('erp_modules.lots'))
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     from models import Product, Warehouse  # noqa: F811  (local import intentional)
     products = Product.query.filter_by(is_active=True).order_by(Product.name).all()
@@ -587,7 +613,9 @@ def create_bin():
         flash('✅ تم إنشاء الموقع', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.bins'))
 
 # ==================== E-INVOICING ====================
@@ -610,7 +638,9 @@ def generate_einvoice(sale_id):
         create_audit_log('create', 'e_invoices', einv.id)
         flash(f'✅ تم إنشاء الفاتورة الإلكترونية {einv.invoice_number}', 'success')
     except Exception as e:
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.e_invoices'))
 
 

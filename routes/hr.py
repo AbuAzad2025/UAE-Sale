@@ -3,7 +3,7 @@ HR Module Routes - Departments, Employees, Leave, Payroll
 """
 
 from datetime import datetime, date
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db
 from models.hr import (
@@ -68,10 +68,14 @@ def create_department():
             flash(f'✅ تم إنشاء قسم "{dept.name}" بنجاح!', 'success')
             return redirect(url_for('hr.departments'))
         except ValueError as e:
-            flash(f'⚠️ {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     parent_depts = Department.query.filter_by(is_active=True).order_by(Department.code).all()
     managers = User.query.filter_by(is_active=True).order_by(User.full_name).all()
@@ -99,7 +103,9 @@ def edit_department(id):
             return redirect(url_for('hr.departments'))
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     parent_depts = Department.query.filter(
         Department.is_active.is_(True), Department.id != dept.id
@@ -215,10 +221,14 @@ def create_employee():
             return redirect(url_for('hr.view_employee', id=emp.id))
 
         except ValueError as e:
-            flash(f'⚠️ {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     # Users not yet employees
     existing_emp_user_ids = [e.user_id for e in Employee.query.all()]
@@ -307,10 +317,14 @@ def edit_employee(id):
             return redirect(url_for('hr.view_employee', id=emp.id))
 
         except ValueError as e:
-            flash(f'⚠️ {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     departments = Department.query.filter_by(is_active=True).order_by(Department.code).all()
     return render_template('hr/edit_employee.html', employee=emp, departments=departments)
@@ -374,10 +388,14 @@ def create_leave():
             return redirect(url_for('hr.leave_requests'))
 
         except ValueError as e:
-            flash(f'⚠️ {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     employees = Employee.query.filter_by(is_active=True, employment_status='active').order_by(
         Employee.employee_number
@@ -400,10 +418,14 @@ def approve_leave(id):
         create_audit_log('approve', 'leave_requests', leave.id)
         flash('✅ تمت الموافقة على طلب الإجازة', 'success')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('hr.leave_requests'))
 
 
@@ -417,10 +439,14 @@ def reject_leave(id):
         create_audit_log('reject', 'leave_requests', leave.id)
         flash('⚠️ تم رفض طلب الإجازة', 'warning')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('hr.leave_requests'))
 
 
@@ -433,10 +459,14 @@ def cancel_leave(id):
         create_audit_log('cancel', 'leave_requests', leave.id)
         flash('✅ تم إلغاء طلب الإجازة', 'success')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('hr.leave_requests'))
 
 
@@ -511,7 +541,9 @@ def generate_payroll():
             return redirect(url_for('hr.payroll'))
 
         except Exception as e:
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return render_template('hr/generate_payroll.html')
 
@@ -535,10 +567,14 @@ def approve_payslip(id):
         create_audit_log('approve', 'payslips', payslip.id)
         flash('✅ تم اعتماد كشف الرواتب بنجاح', 'success')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('hr.view_payslip', id=id))
 
 
@@ -553,10 +589,14 @@ def mark_payslip_paid(id):
         create_audit_log('pay', 'payslips', payslip.id)
         flash('✅ تم تسجيل الدفع بنجاح', 'success')
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('hr.view_payslip', id=id))
 
 # ==================== API ====================

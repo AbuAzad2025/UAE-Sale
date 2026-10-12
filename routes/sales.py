@@ -171,7 +171,8 @@ def create():  # noqa: C901
 
         except ValueError as e:
             # رسالة الخطأ من SaleService (مثل: insufficient stock)
-            flash(f'⚠️ {str(e)}\n💡 تحقق من الكميات المتوفرة في المخزون.', 'danger')
+            current_app.logger.exception('handler failed')
+            flash(f'⚠️: حدث خطأ غير متوقع\n💡 تحقق من الكميات المتوفرة في المخزون.', 'danger')
         except Exception as e:
             from utils.error_messages import ErrorMessages
             current_app.logger.error(f'Sale creation error: {e}')
@@ -381,7 +382,9 @@ def cancel(id):
         flash('✅ تم إلغاء الفاتورة بنجاح!', 'success')
 
     except ValueError as e:
-        flash(f'⚠️ تعذر الإلغاء: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️ تعذر الإلغاء: حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         current_app.logger.error(f'Sale cancel error: {e}')
         flash('❌ حدث خطأ في إلغاء الفاتورة. يرجى المحاولة مرة أخرى.', 'danger')
@@ -647,4 +650,4 @@ def api_calculate_sale_totals():
         }), 200
 
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'حدث خطأ غير متوقع'}), 500

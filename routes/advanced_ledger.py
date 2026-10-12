@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from datetime import datetime, date, timedelta
 from decimal import Decimal
@@ -98,7 +98,9 @@ def add_customs_tax():
 
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
             return render_template('ledger/advanced/add_customs_tax.html',
                                    accounts=accounts,
                                    form_data=request.form)
@@ -151,7 +153,9 @@ def add_expense_category():
 
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
             return render_template('ledger/advanced/add_expense_category.html',
                                    parent_categories=parent_categories,
                                    accounts=accounts,
@@ -224,7 +228,9 @@ def add_advanced_expense():
 
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ خطأ: {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     # الحصول على البيانات المطلوبة
     categories = ExpenseCategory.query.filter_by(is_active=True).all()
@@ -269,7 +275,9 @@ def receive_cheque(cheque_id):
         flash(f'✅ تم تسجيل استلام الشيك بنجاح - القيد: {entry.entry_number}', 'success')
 
     except Exception as e:
-        flash(f'❌ خطأ في تسجيل استلام الشيك: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ في تسجيل استلام الشيك: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('advanced_ledger.cheque_integration'))
 
@@ -293,7 +301,9 @@ def clear_cheque(cheque_id):
         flash(f'✅ تم تسجيل صرف الشيك بنجاح - القيد: {entry.entry_number}', 'success')
 
     except Exception as e:
-        flash(f'❌ خطأ في تسجيل صرف الشيك: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ في تسجيل صرف الشيك: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('advanced_ledger.cheque_integration'))
 
@@ -350,7 +360,7 @@ def cheque_accounting_summary_api(cheque_id):
     except Exception as e:
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'حدث خطأ غير متوقع'
         }), 400
 
 

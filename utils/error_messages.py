@@ -163,9 +163,21 @@ class ErrorMessages:
         return f'فشل رفع الملف.\nالسبب: {error}\nتأكد من الملف وحاول مرة أخرى.'
 
     @staticmethod
-    def database_error(error):
+    def database_error(error=None):
+        """Message for a failed database operation.
+
+        The detail is deliberately not interpolated: str(e) on a SQLAlchemy
+        error carries the statement, the column names and the bound parameters,
+        so the caller is told what to do next and nothing more. Pass the error
+        to have it logged, not rendered.
+        """
+        if error is not None:
+            try:
+                from flask import current_app
+                current_app.logger.warning('database error surfaced: %s', error)
+            except Exception:
+                pass
         return ('خطأ في قاعدة البيانات.\n'
-                f'السبب: {error}\n'
                 'إذا استمرت المشكلة، اتصل بالدعم الفني.')
 
     @staticmethod
@@ -295,8 +307,3 @@ def hint(msg):
 
 def success(msg):
     return f'{msg}'
-
-
-def database_error():
-    """Generic database error message — never leaks internals."""
-    return 'حدث خطأ في قاعدة البيانات. تم تسجيل التفاصيل. يرجى المحاولة مرة أخرى.'

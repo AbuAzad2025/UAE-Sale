@@ -143,16 +143,23 @@ class TestSaleRevenueCycle:
         )
         before_sales = Sale.query.count()
 
-        # With TESTING=True Flask re-raises instead of rendering a 500 page,
-        # so the defect surfaces as an unhandled exception on the request path.
-        # In production this is an HTTP 500 for the user.
-        with pytest.raises(Exception) as excinfo:
-            client.post('/sales/create', data=data)
+        # The route still has no exchange_rate of its own, so the payment path
+        # evaluates Decimal(str(None)) and raises ConversionSyntax. What
+        # changed is the handling: routes/sales.py used to call
+        # ErrorMessages.database_error() with no argument, which raised
+        # TypeError inside the handler and lost the real cause. The signature
+        # now takes an optional error and logs it, so the failure is contained
+        # and reported instead of replacing itself with a different crash.
+        #
+        # The sale row is flushed before the handler runs, so the observable
+        # contract is: the request fails AND no sale survives.
+        resp = client.post('/sales/create', data=data)
+        assert resp.status_code in (200, 302, 400), (
+            f'partial payment without a rate answered '
+            f'{resp.status_code}')
 
-        assert 'ConversionSyntax' in type(excinfo.value).__name__ or \
-            'database_error' in str(excinfo.value), (
-            f'expected the payment/Decimal failure, got '
-            f'{type(excinfo.value).__name__}: {excinfo.value}')
+        assert Sale.query.count() == before_sales, (
+            'a failed partial payment left a sale behind')
 
 
 class TestSaleRbac:

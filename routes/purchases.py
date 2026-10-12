@@ -252,7 +252,8 @@ def create():  # noqa: C901
             import traceback
             current_app.logger.error(f"Traceback: {traceback.format_exc()}")
             db.session.rollback()
-            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
 
     exchange_rates = CurrencyService.get_all_rates('AED')
     warehouses = Warehouse.query.filter_by(is_active=True).order_by(
@@ -330,7 +331,8 @@ def edit(id):
 
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ حدث خطأ: {str(e)}\n💡 تحقق من البيانات.', 'danger')
+            current_app.logger.exception('handler failed')
+            flash(f'❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات.', 'danger')
 
     return render_template('purchases/edit.html', purchase=purchase)
 
@@ -399,7 +401,9 @@ def delete(id):
 
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ حدث خطأ: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'❌ حدث خطأ: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('purchases.view', id=id))
 
 # =====================================
@@ -453,4 +457,4 @@ def api_calculate_purchase_totals():
 
     except Exception as e:
         current_app.logger.error(f'Error in calculate_purchase_totals: {str(e)}')
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': 'حدث خطأ غير متوقع'}), 500

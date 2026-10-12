@@ -129,7 +129,9 @@ def create():
                 return redirect(url_for('owner.tenant_detail', id=fixed_tenant.id))
             return redirect(url_for('users.index'))
         except ValueError as e:
-            flash(f'⚠️ {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
             return render_template('users/create.html', roles=roles,
                                    form_data=form_values, tenants=tenants,
                                    fixed_tenant=fixed_tenant)
@@ -210,7 +212,9 @@ def edit(id):
             flash('✅ تم تحديث بيانات المستخدم بنجاح!', 'success')
             return redirect(url_for('users.view', id=user.id))
         except ValueError as e:
-            flash(f'⚠️ {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
             return redirect(url_for('users.edit', id=user.id))
         except Exception as e:
             db.session.rollback()
@@ -260,7 +264,9 @@ def delete(id):
     try:
         outcome = UserService.delete_user(user, current_user)
     except ValueError as e:
-        flash(f'⚠️ {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('users.index'))
     except Exception as e:
         db.session.rollback()
@@ -293,7 +299,9 @@ def change_password():
                 request.form.get('confirm_password', ''),
             )
         except ValueError as e:
-            flash(f'❌ {str(e)}', 'danger')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'❌: حدث خطأ غير متوقع', 'danger')
             return render_template('users/change_password.html')
 
         create_audit_log('change_password', 'users', current_user.id)

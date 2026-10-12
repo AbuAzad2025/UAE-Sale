@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db
 from models import Product, StockMovement, Warehouse
@@ -208,7 +208,9 @@ def create_warehouse():  # noqa: C901
 
         except Exception as e:
             db.session.rollback()
-            flash(f'خطأ في إنشاء المستودع: {str(e)}', 'error')
+            current_app.logger.exception('handler failed')
+            current_app.logger.exception('handler failed')
+            flash(f'خطأ في إنشاء المستودع: حدث خطأ غير متوقع', 'error')
             return render_template('warehouse/create_warehouse.html',
                                    parent_warehouses=parent_warehouses,
                                    users=users,
@@ -254,7 +256,9 @@ def delete_warehouse(id):
 
     except Exception as e:
         db.session.rollback()
-        flash(f'فشل الحذف: {str(e)}', 'danger')
+        current_app.logger.exception('handler failed')
+        current_app.logger.exception('handler failed')
+        flash(f'فشل الحذف: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('warehouse.list_warehouses'))
 

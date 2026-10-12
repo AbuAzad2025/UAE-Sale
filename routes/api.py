@@ -91,7 +91,7 @@ def currency_rate(from_currency, to_currency):
     except Exception as e:
         return jsonify({
             'success': False,
-            'error': str(e),
+            'error': 'حدث خطأ غير متوقع',
             'manual_input_required': True
         }), 400
 
@@ -272,7 +272,7 @@ def products_low_stock():
     except Exception as e:
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'حدث خطأ غير متوقع'
         }), 500
 
 

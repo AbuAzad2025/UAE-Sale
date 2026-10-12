@@ -35,7 +35,7 @@ DOMAINS = ['accounting', 'ar', 'ap', 'inventory', 'cheque', 'security',
            'reports', 'partners', 'dashboard', 'stock',
            'customers', 'analytics', 'quotations', 'vault',
            'gamification', 'inbound', 'owner', 'users', 'restapi', 'ai',
-           'erp']
+           'erp', 'advanced']
 
 ROLES = ['owner', 'branch_manager', 'senior_accountant', 'pos_cashier',
          'warehouse_keeper', 'manager', 'accountant', 'viewer', 'hr']
@@ -119,6 +119,13 @@ DOMAIN_PERMISSION = {
     # 'quotations' runner, which touches /erp/quotations/* and nothing else,
     # so 34 of its 37 routes were never executed by any scenario.
     'erp': 'manage_purchases',
+    # routes/advanced_ledger.py is 18 routes and had no domain at all, so every
+    # one of them was untested. The gate is split: the read surfaces require
+    # view_ledger while the mutations (customs-taxes, expense-categories,
+    # cheque clear/receive, real-time-events, forecasting) are @admin_required.
+    # view_ledger is the common denominator, and the runner asserts the admin
+    # gate separately for the roles that lack it.
+    'advanced': 'view_ledger',
     'security': None,          # read/visibility domain, handled per-op
 }
 
@@ -259,9 +266,9 @@ def build_matrix() -> List[Scenario]:
 
 MATRIX: List[Scenario] = build_matrix()
 
-# Sanity: the matrix must be exactly 25515 and fully populated.
-# 27 domains x 9 roles x 7 states x 15 edges
-_EXPECTED_TOTAL = 25515
+# Sanity: the matrix must be exactly 26460 and fully populated.
+# 28 domains x 9 roles x 7 states x 15 edges
+_EXPECTED_TOTAL = 26460
 _EXPECTED_PER_DOMAIN = 945
 
 assert len(MATRIX) == _EXPECTED_TOTAL, (

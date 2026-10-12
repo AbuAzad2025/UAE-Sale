@@ -244,6 +244,7 @@ class Cheque(TenantScopedMixin, db.Model):
                     self.gl_journal_entry_id = entry.id
             except Exception as e:
                 current_app.logger.error(f'Failed to create GL entry for cheque receipt {self.id}: {e}')
+            raise
 
     def issue_cheque(self):
         """تسجيل إصدار الشيك الصادر"""
@@ -280,6 +281,7 @@ class Cheque(TenantScopedMixin, db.Model):
                 self.gl_journal_entry_id = entry.id
             except Exception as e:
                 current_app.logger.error(f'Failed to create GL entry for cheque issue {self.id}: {e}')
+            raise
 
     def deposit_cheque(self, deposit_date=None):
         """إيداع الشيك في البنك"""
@@ -446,6 +448,7 @@ class Cheque(TenantScopedMixin, db.Model):
         except Exception as e:
             # لا نوقف العملية إذا فشل القيد المحاسبي
             current_app.logger.error(f'Failed to create GL entry for cheque {self.id}: {e}')
+            raise
 
     def bounce_cheque(self, reason):
         """رفض الشيك من البنك - إرجاع الدين"""
@@ -546,6 +549,7 @@ class Cheque(TenantScopedMixin, db.Model):
 
         except Exception as e:
             current_app.logger.error(f'Failed to create GL entry for bounced cheque {self.id}: {e}')
+            raise
             return None
 
     def cancel_cheque(self, reason=None):
@@ -637,6 +641,7 @@ class Cheque(TenantScopedMixin, db.Model):
                 )
         except Exception as e:
             current_app.logger.error(f'Failed to create GL entry for cancelled cheque {self.id}: {e}')
+            raise
 
     def archive(self, reason=None):
         """أرشفة الشيك - مع عكس القيد إذا كان نشطاً"""

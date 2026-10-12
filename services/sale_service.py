@@ -19,7 +19,14 @@ FALLBACK_ACCOUNTS = {
     'SHIPPING_REVENUE': '4300',
     'DISCOUNTS_GIVEN': '5200',
     'TAX_PAYABLE': '2130',
-    'COGS': '5000',
+    # 5000 is a HEADER in the canonical tree (gl_service.py:156, is_header,
+    # depth 0); 5100 is the posting leaf under it. Booking cost of sales on
+    # the header left every subtotal and every trial-balance roll-up reading
+    # zero, because a header never receives postings. AccountResolver already
+    # resolves COGS to 5100, so this literal was only reachable when that
+    # import failed - and it silently produced a wrong ledger rather than an
+    # error.
+    'COGS': '5100',
     'INVENTORY': '1140',
 }
 

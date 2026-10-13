@@ -244,7 +244,7 @@ class Cheque(TenantScopedMixin, db.Model):
                     self.gl_journal_entry_id = entry.id
             except Exception as e:
                 current_app.logger.error(f'Failed to create GL entry for cheque receipt {self.id}: {e}')
-            raise
+                raise
 
     def issue_cheque(self):
         """تسجيل إصدار الشيك الصادر"""

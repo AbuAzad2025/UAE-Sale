@@ -455,7 +455,7 @@ def manual_entry():  # noqa: C901
 
         except ValueError as e:
             current_app.logger.exception('handler failed')
-            flash(f'❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            flash(f'❌ خطأ: {e}', 'danger')
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')

@@ -177,6 +177,9 @@ class ErrorMessages:
                 current_app.logger.warning('database error surfaced: %s', error)
             except Exception:
                 pass
+            # Include error detail for tests/debugging
+            return (f'خطأ في قاعدة البيانات: {error}\n'
+                    'إذا استمرت المشكلة، اتصل بالدعم الفني.')
         return ('خطأ في قاعدة البيانات.\n'
                 'إذا استمرت المشكلة، اتصل بالدعم الفني.')
 
@@ -295,6 +298,11 @@ class ErrorMessages:
 
 def error(msg):
     return f'{msg}'
+
+
+def database_error(error=None):
+    """Module-level helper for database error message (tests expect this)."""
+    return ErrorMessages.database_error(error)
 
 
 def warning(msg):

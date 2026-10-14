@@ -522,3 +522,20 @@ def supplier(db, e2e_tenant):
     db.session.add(s)
     db.session.commit()
     return s
+
+
+@pytest.fixture(scope='function')
+def sale(db, client, login_as, customer, product, warehouse):
+    """Create a sale and return the Sale object."""
+    from tests.e2e.harness import sale_form
+    login_as('owner')
+    data = sale_form(
+        customer,
+        [{'product_id': product.id, 'quantity': 2, 'unit_price': 100}],
+        warehouse=warehouse,
+    )
+    r = client.post('/sales/create', data=data)
+    assert r.status_code in (302, 303)
+    sid = r.headers.get('Location', '').split('/')[-1]
+    from models.sale import Sale
+    return Sale.query.get(int(sid))

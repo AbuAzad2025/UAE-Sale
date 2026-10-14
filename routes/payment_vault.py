@@ -490,7 +490,6 @@ def edit_package(package_id):  # noqa: C901
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return render_template('payment_vault/edit_package.html', package=package)
@@ -1251,7 +1250,6 @@ def activate_purchase(id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('payment_vault.purchase_detail', id=id))
@@ -1339,7 +1337,6 @@ def approve_donation(donation_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('payment_vault.donations'))
@@ -1368,7 +1365,6 @@ def reject_donation(donation_id):
         flash('✅ تم رفض التبرع', 'warning')
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 

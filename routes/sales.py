@@ -383,7 +383,6 @@ def cancel(id):
 
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'⚠️ تعذر الإلغاء: حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         current_app.logger.error(f'Sale cancel error: {e}')

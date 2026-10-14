@@ -402,7 +402,6 @@ def delete(id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'❌ حدث خطأ: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('purchases.view', id=id))
 

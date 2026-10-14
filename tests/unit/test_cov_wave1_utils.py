@@ -307,7 +307,9 @@ class TestErrorMessages:
         assert 'pdf' in E.file_type_not_allowed(['pdf'])
         assert '5' in E.file_too_large(5)
         assert 'boom' in E.file_upload_failed('boom')
-        assert 'boom' in E.database_error('boom')
+        # a362501: the detail is logged, never rendered - str(e) on a
+        # SQLAlchemy error carries the statement and the bound parameters.
+        assert 'boom' not in E.database_error('boom')
 
     def test_lookup_and_success_messages(self, db):
         from utils.error_messages import ErrorMessages as E

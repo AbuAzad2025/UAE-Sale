@@ -209,7 +209,6 @@ def create_warehouse():  # noqa: C901
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'خطأ في إنشاء المستودع: حدث خطأ غير متوقع', 'error')
             return render_template('warehouse/create_warehouse.html',
                                    parent_warehouses=parent_warehouses,
@@ -256,7 +255,6 @@ def delete_warehouse(id):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'فشل الحذف: حدث خطأ غير متوقع', 'danger')
 

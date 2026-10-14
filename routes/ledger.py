@@ -498,12 +498,10 @@ def reverse_entry(id):
 
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('ledger.view_entry', id=id))
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('ledger.view_entry', id=id))
@@ -528,7 +526,6 @@ def approve_entry(id):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
@@ -555,7 +552,6 @@ def delete_entry(id):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
@@ -768,7 +764,6 @@ def add_account():
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
             form_values = request.form.to_dict()
             form_values['is_header'] = 'on' if 'on' in request.form.getlist('is_header') else 'off'
@@ -817,7 +812,6 @@ def edit_account(id):
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     parent_accounts = GLAccount.query.filter_by(is_header=True).order_by(GLAccount.code).all()
@@ -852,7 +846,6 @@ def delete_account(id):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 

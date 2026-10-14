@@ -231,7 +231,6 @@ def delete(id):
                 flash(f'⚠️ تعذر الحذف النهائي للعميل "{customer.name}" بسبب ارتباطات في قاعدة البيانات. تم إلغاء تفعيله بدلاً من ذلك.', 'warning')
         except Exception:
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ حدث خطأ أثناء حذف العميل: حدث خطأ غير متوقع', 'danger')
             current_app.logger.error(f"Error deleting customer {id}: {e}")
 

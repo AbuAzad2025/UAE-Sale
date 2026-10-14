@@ -82,7 +82,6 @@ def create_inbound():
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     from models import Warehouse, Product, Supplier
     from models.erp_modules import PurchaseOrder
@@ -102,7 +101,6 @@ def arrive_inbound(id):
         flash('✅ تم تأكيد وصول الشحنة', 'success')
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('inbound_shipments.view_inbound', id=id))
 
@@ -117,7 +115,6 @@ def inspect_inbound(id):
         flash('✅ تم الفحص', 'success')
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('inbound_shipments.view_inbound', id=id))
 
@@ -130,7 +127,6 @@ def put_away_inbound(id):
         InboundShipmentService.put_away(id, current_user.id)
         flash('✅ تم إدخال البضاعة للمستودعات', 'success')
     except ValueError as e:
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('inbound_shipments.view_inbound', id=id))
@@ -145,7 +141,6 @@ def close_inbound(id):
         flash('✅ تم إغلاق الشحنة', 'success')
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('inbound_shipments.view_inbound', id=id))
 
@@ -158,7 +153,6 @@ def cancel_inbound(id):
         InboundShipmentService.cancel(id, current_user.id)
         flash('✅ تم إلغاء الشحنة', 'success')
     except ValueError as e:
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('inbound_shipments.view_inbound', id=id))

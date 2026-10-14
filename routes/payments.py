@@ -239,7 +239,6 @@ def archive_payment(id):
         db.session.rollback()
         current_app.logger.error(f'Failed to archive payment {id}: {e}')
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'فشلت الأرشفة: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('payments.receipts'))
 
@@ -677,7 +676,6 @@ def create_voucher_submit():  # noqa: C901
         db.session.rollback()
         current_app.logger.error(f"Voucher creation error: {e}")
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'حدث خطأ أثناء حفظ السند: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('payments.create_voucher'))
 
@@ -979,7 +977,6 @@ def delete_receipt(id):  # noqa: C901
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'فشل الحذف: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('payments.view_receipt', id=id))
 
@@ -1059,7 +1056,6 @@ def delete_payment(id):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'فشل الحذف: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('payments.view_payment', id=id))
@@ -1212,7 +1208,6 @@ def create_payment(purchase_id):  # noqa: C901
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
             current_app.logger.exception('handler failed')
             flash(f'حدث خطأ: حدث خطأ غير متوقع', 'danger')
 

@@ -946,7 +946,6 @@ def clear_cache():
         flash('✅ تم مسح الذاكرة المؤقتة بنجاح', 'success')
     except Exception as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('owner.dashboard'))
@@ -993,7 +992,6 @@ def truncate_table():
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('owner.database_tools'))
@@ -1038,7 +1036,6 @@ def browse_table(table_name):
 
     except Exception as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('owner.database_tools'))
 
@@ -1067,7 +1064,6 @@ def edit_table_data(table_name):
                                rows=rows)
 
     except Exception as e:
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('owner.database_tools'))
@@ -1289,7 +1285,6 @@ def company_info():
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'خطأ في حفظ المعلومات: حدث خطأ غير متوقع', 'error')
 
     return render_template('owner/company_info.html', tenant=tenant)
@@ -1336,7 +1331,6 @@ def system_config():
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
             current_app.logger.exception('handler failed')
             flash(f'خطأ في حفظ الإعدادات: حدث خطأ غير متوقع', 'error')
 
@@ -1927,7 +1921,6 @@ def invoice_settings():
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'خطأ في حفظ الإعدادات: حدث خطأ غير متوقع', 'error')
 
     return render_template('owner/invoice_settings.html', settings=settings)
@@ -2156,7 +2149,6 @@ def system_health():  # noqa: C901
         return render_template('owner/system_health.html', health=health_data)
 
     except Exception as e:
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'خطأ في تحميل معلومات النظام: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('owner.dashboard'))
@@ -2709,7 +2701,6 @@ def database_optimize():
             flash(f'⚠️ تحذير: {msg}', 'warning')
     except Exception as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'❌ خطأ في التحسين: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('owner.system_health'))
@@ -2740,7 +2731,6 @@ def verify_backups():
         return render_template('owner/verify_backups.html', backups=verified)
 
     except Exception as e:
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'خطأ في تحميل النسخ الاحتياطية: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('owner.dashboard'))
@@ -2852,7 +2842,6 @@ def export_excel(table_name):
             download_name=f'{table_name}_{today_str}.xlsx'
         )
     except Exception as e:
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'خطأ في التصدير: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('owner.import_export_tools'))

@@ -18,6 +18,7 @@ from services.erp_modules_service import (
     EInvoiceService,
 )
 from utils.decorators import permission_required, admin_required
+from utils.errors import ValidationError
 
 from utils.helpers import create_audit_log
 
@@ -81,7 +82,6 @@ def create_quotation():
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     from models import Customer, Warehouse, Product  # noqa: F811  (local import intentional)
@@ -121,10 +121,12 @@ def convert_quotation(id):
         create_audit_log('convert', 'quotations', id)
         flash(f'✅ تم التحويل إلى فاتورة {sale.sale_number}', 'success')
         return redirect(url_for('sales.view', id=sale.id))
+    except ValidationError as e:
+        flash(f'⚠️ {e}', 'danger')
+        return redirect(url_for('erp_modules.view_quotation', id=id))
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
-        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
+        flash('⚠️ حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('erp_modules.view_quotation', id=id))
 
 # ==================== PURCHASE ORDERS ====================
@@ -186,7 +188,6 @@ def create_purchase_order():
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     from models import Supplier, Warehouse, Product  # noqa: F811  (local import intentional)
@@ -226,7 +227,6 @@ def approve_purchase_order(id):
         flash('✅ تم اعتماد أمر الشراء', 'success')
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.view_purchase_order', id=id))
 
@@ -241,7 +241,6 @@ def receive_purchase_order(id):
         flash(f'✅ تم الاستلام وإنشاء فاتورة {purchase.purchase_number}', 'success')
         return redirect(url_for('purchases.view', id=purchase.id))
     except ValueError as e:
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('erp_modules.view_purchase_order', id=id))
@@ -267,7 +266,6 @@ def create_fiscal_period():
         flash(f'✅ تم إنشاء الفترة المالية {year}', 'success')
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.fiscal_periods'))
 
@@ -282,7 +280,6 @@ def close_fiscal_period(id):
         create_audit_log('close', 'fiscal_periods', id)
         flash('✅ تم إغلاق الفترة المالية', 'success')
     except ValueError as e:
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.fiscal_periods'))
@@ -344,7 +341,6 @@ def create_stock_transfer():
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     from models import Warehouse, Product
@@ -374,7 +370,6 @@ def receive_stock_transfer(id):
         flash('✅ تم استلام الشحنة وتحديث المخزون', 'success')
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.stock_transfers'))
 
@@ -402,7 +397,6 @@ def create_stocktake():
         )
         flash(f'✅ تم إنشاء جرد {st.stocktake_number}', 'success')
     except Exception as e:
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.stock_takes'))
@@ -443,7 +437,6 @@ def approve_stocktake(id):
         create_audit_log('approve', 'stock_takes', id)
         flash('✅ تم اعتماد الجرد وتحديث المخزون', 'success')
     except ValueError as e:
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.view_stocktake', id=id))
@@ -520,7 +513,6 @@ def create_recurring_expense():
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     from models import ExpenseCategory  # noqa: F811  (local import intentional)
@@ -573,7 +565,6 @@ def create_lot():
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     from models import Product, Warehouse  # noqa: F811  (local import intentional)
@@ -614,7 +605,6 @@ def create_bin():
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.bins'))
 
@@ -638,7 +628,6 @@ def generate_einvoice(sale_id):
         create_audit_log('create', 'e_invoices', einv.id)
         flash(f'✅ تم إنشاء الفاتورة الإلكترونية {einv.invoice_number}', 'success')
     except Exception as e:
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('erp_modules.e_invoices'))

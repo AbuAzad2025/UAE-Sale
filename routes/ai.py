@@ -3076,7 +3076,6 @@ def assistant_page():
                                current_user=current_user)
     except Exception as e:
         current_app.logger.exception('AI handler failed')
-        current_app.logger.exception('AI handler failed')
         return f'Error: حدث خطأ غير متوقع', 500
 
 

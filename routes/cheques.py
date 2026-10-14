@@ -358,7 +358,6 @@ def deposit_cheque(id):
 
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'error')
         db.session.rollback()
     except Exception as e:
@@ -403,7 +402,6 @@ def clear_cheque(id):
 
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'error')
         db.session.rollback()
     except Exception as e:
@@ -436,7 +434,6 @@ def bounce_cheque(id):
         flash(f'❌ تم رفض الشيك {cheque.cheque_bank_number} - تم إرجاع الدين للزبون', 'warning')
 
     except ValueError as e:
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'error')
         db.session.rollback()

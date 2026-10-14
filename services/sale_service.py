@@ -8,6 +8,7 @@ from services.currency_service import CurrencyService
 from services.gl_service import GLService
 from utils.decorators import get_owned_or_raise
 from utils.helpers import generate_number
+from utils.errors import ValidationError
 
 # Fallback account codes (must mirror GLService.ensure_core_accounts defaults).
 # Used only when Agent1's services.account_resolution resolver is unavailable.
@@ -80,18 +81,18 @@ class SaleService:
         """
         # Input validations
         if not customer or not customer.is_active:
-            raise ValueError('⚠️ العميل غير صالح أو غير نشط.\n💡 اختر عميل نشط من القائمة أو قم بتفعيله.')
+            raise ValidationError('⚠️ العميل غير صالح أو غير نشط.\n💡 اختر عميل نشط من القائمة أو قم بتفعيله.')
 
         if not seller or not seller.is_active:
-            raise ValueError('البائع غير صالح أو غير نشط')
+            raise ValidationError('البائع غير صالح أو غير نشط')
 
         if not lines_data or len(lines_data) == 0:
-            raise ValueError('⚠️ يجب إضافة منتج واحد على الأقل للفاتورة.\n💡 اضغط زر "➕ إضافة صف" واختر منتجاً.')
+            raise ValidationError('⚠️ يجب إضافة منتج واحد على الأقل للفاتورة.\n💡 اضغط زر "➕ إضافة صف" واختر منتجاً.')
 
         # --- Fiscal Period Check ---
         from services.erp_modules_service import FiscalPeriodService
         if not FiscalPeriodService.is_period_open(date.today()):
-            raise ValueError(
+            raise ValidationError(
                 '⚠️ الفترة المالية الحالية مغلقة.\n'
                 '💡 لا يمكن إنشاء فواتير في فترة مالية مقفلة.'
             )
@@ -109,13 +110,13 @@ class SaleService:
         tax_rate_decimal = Decimal(str(tax_rate)) if tax_rate else Decimal('0')
 
         if discount_decimal < Decimal('0'):
-            raise ValueError('قيمة الخصم لا يمكن أن تكون سالبة')
+            raise ValidationError('قيمة الخصم لا يمكن أن تكون سالبة')
 
         if shipping_decimal < Decimal('0'):
-            raise ValueError('تكلفة الشحن لا يمكن أن تكون سالبة')
+            raise ValidationError('تكلفة الشحن لا يمكن أن تكون سالبة')
 
         if tax_rate_decimal < Decimal('0') or tax_rate_decimal > Decimal('100'):
-            raise ValueError('نسبة الضريبة يجب أن تكون بين 0 و 100')
+            raise ValidationError('نسبة الضريبة يجب أن تكون بين 0 و 100')
 
         # تحديد المستودع بطريقة ذكية
         from models import Warehouse
@@ -131,9 +132,9 @@ class SaleService:
             # التحقق من صحة المستودع المحدد
             warehouse = get_owned_or_raise(Warehouse, warehouse_id, missing_message='المستودع غير موجود')
             if not warehouse:
-                raise ValueError('⚠️ المستودع المحدد غير موجود.\n💡 اختر مستودع موجود من القائمة.')
+                raise ValidationError('⚠️ المستودع المحدد غير موجود.\n💡 اختر مستودع موجود من القائمة.')
             if not warehouse.is_active:
-                raise ValueError('⚠️ المستودع المحدد غير نشط.\n💡 اختر مستودع نشط من القائمة.')
+                raise ValidationError('⚠️ المستودع المحدد غير نشط.\n💡 اختر مستودع نشط من القائمة.')
 
         try:
             sale_number = generate_number('S', Sale, 'sale_number')
@@ -146,7 +147,7 @@ class SaleService:
 
             # Validate exchange rate
             if exchange_rate <= Decimal('0'):
-                raise ValueError('سعر الصرف غير صالح')
+                raise ValidationError('سعر الصرف غير صالح')
 
             # --- Credit Limit Check ---
             credit_limit = Decimal(str(customer.credit_limit)) if customer.credit_limit else Decimal('0')
@@ -160,7 +161,7 @@ class SaleService:
                 )
                 projected_balance = current_balance + estimated_total
                 if projected_balance > credit_limit:
-                    raise ValueError(
+                    raise ValidationError(
                         f'⚠️ تجاوز حد الائتمان للعميل "{customer.name}"\n'
                         f'💡 الحد: {credit_limit:,.2f} د.إ | الرصيد الحالي: {current_balance:,.2f} د.إ | '
                         f'المتوقع بعد هذه الفاتورة: {projected_balance:,.2f} د.إ'
@@ -192,12 +193,12 @@ class SaleService:
 
                 # Validate quantity
                 if quantity <= Decimal('0'):
-                    raise ValueError(f'⚠️ المنتج "{product.name}": الكمية يجب أن تكون أكبر من صفر.\n💡 أدخل كمية صحيحة مثل: 1, 2, 5, 10')
+                    raise ValidationError(f'⚠️ المنتج "{product.name}": الكمية يجب أن تكون أكبر من صفر.\n💡 أدخل كمية صحيحة مثل: 1, 2, 5, 10')
 
                 # Check stock availability
                 available, msg = StockService.check_availability(product.id, quantity)
                 if not available:
-                    raise ValueError(f'{product.name}: {msg}')
+                    raise ValidationError(f'{product.name}: {msg}')
 
                 # Get unit price
                 if line_data.get('unit_price'):
@@ -207,13 +208,13 @@ class SaleService:
 
                 # Validate unit price
                 if unit_price <= Decimal('0'):
-                    raise ValueError(f'⚠️ المنتج "{product.name}": السعر يجب أن يكون أكبر من صفر.\n💡 أدخل سعر صحيح بالدرهم.')
+                    raise ValidationError(f'⚠️ المنتج "{product.name}": السعر يجب أن يكون أكبر من صفر.\n💡 أدخل سعر صحيح بالدرهم.')
 
                 discount_percent = Decimal(str(line_data.get('discount_percent', 0)))
 
                 # Validate line discount
                 if discount_percent < Decimal('0') or discount_percent > Decimal('100'):
-                    raise ValueError(f'{product.name}: نسبة الخصم يجب أن تكون بين 0 و 100')
+                    raise ValidationError(f'{product.name}: نسبة الخصم يجب أن تكون بين 0 و 100')
 
                 line = SaleLine(
                     sale_id=sale.id,
@@ -250,7 +251,7 @@ class SaleService:
 
                 # Validate payment amount (in AED)
                 if paid_amount_base < Decimal('0'):
-                    raise ValueError('مبلغ الدفع لا يمكن أن يكون سالب')
+                    raise ValidationError('مبلغ الدفع لا يمكن أن يكون سالب')
 
                 # Store payment in AED
                 sale.paid_amount = paid_amount  # في عملة الفاتورة
@@ -448,28 +449,28 @@ class SaleService:
         # Validate payment amount
         amount_decimal = Decimal(str(amount))
         if amount_decimal <= Decimal('0'):
-            raise ValueError('مبلغ الدفع يجب أن يكون أكبر من صفر')
+            raise ValidationError('مبلغ الدفع يجب أن يكون أكبر من صفر')
 
         # Validate payment method
         valid_methods = ['cash', 'card', 'bank_transfer', 'cheque', 'e_wallet']
         if payment_method not in valid_methods:
-            raise ValueError(f'طريقة الدفع غير صالحة: {payment_method}')
+            raise ValidationError(f'طريقة الدفع غير صالحة: {payment_method}')
 
         # Validate cheque details if payment method is cheque
         if payment_method == 'cheque':
             if not cheque_number:
-                raise ValueError('⚠️ رقم الشيك مطلوب عند الدفع بشيك.\n💡 أدخل رقم الشيك وتاريخ الاستحقاق واسم البنك.')
+                raise ValidationError('⚠️ رقم الشيك مطلوب عند الدفع بشيك.\n💡 أدخل رقم الشيك وتاريخ الاستحقاق واسم البنك.')
             if not cheque_date:
-                raise ValueError('⚠️ تاريخ الاستحقاق مطلوب للشيك.\n💡 حدد تاريخ صرف الشيك من البنك.')
+                raise ValidationError('⚠️ تاريخ الاستحقاق مطلوب للشيك.\n💡 حدد تاريخ صرف الشيك من البنك.')
             if not bank_name:
-                raise ValueError('⚠️ اسم البنك مطلوب للشيك.\n💡 أدخل اسم البنك المسحوب عليه الشيك.')
+                raise ValidationError('⚠️ اسم البنك مطلوب للشيك.\n💡 أدخل اسم البنك المسحوب عليه الشيك.')
 
             # Convert cheque_date to date object if it's a string
             if isinstance(cheque_date, str):
                 try:
                     cheque_date = datetime.strptime(cheque_date, '%Y-%m-%d').date()
                 except ValueError:
-                    raise ValueError('تاريخ الشيك غير صالح')
+                    raise ValidationError('تاريخ الشيك غير صالح')
 
         payment_number = generate_number('PAY', Payment, 'payment_number')
 
@@ -601,7 +602,7 @@ class SaleService:
     @staticmethod
     def cancel_sale(sale):
         if sale.status == 'cancelled':
-            raise ValueError('الفاتورة ملغاة بالفعل')
+            raise ValidationError('الفاتورة ملغاة بالفعل')
 
         # LEAK-GUARD: cancelling a paid/partially-paid invoice orphans the
         # cash postings — Payment/Receipt entries are never reversed here —
@@ -618,7 +619,7 @@ class SaleService:
                 source_type='sale', source_id=sale.id).count() > 0
         )
         if has_payments:
-            raise ValueError(
+            raise ValidationError(
                 'لا يمكن إلغاء فاتورة مدفوعة (كلياً أو جزئياً).\n'
                 'استرد المبلغ عبر المرتجع/سند الصرف أولاً ثم ألغِ الفاتورة.')
 

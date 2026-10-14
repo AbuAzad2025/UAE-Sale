@@ -239,7 +239,6 @@ def delete(id):
             flash(f'⚠️ تعذر الحذف النهائي للمورد "{supplier.name}" بسبب ارتباطات في قاعدة البيانات. تم إلغاء تفعيله بدلاً من ذلك.', 'warning')
         except Exception:
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ حدث خطأ أثناء حذف المورد: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('suppliers.index'))

@@ -416,7 +416,6 @@ def edit(id):  # noqa: C901
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ فشل تحديث المنتج: حدث خطأ غير متوقع', 'danger')
 
     categories = ProductCategory.query.filter_by(is_active=True).all()
@@ -454,7 +453,6 @@ def delete(id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error deleting product {id}: {e}")
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash('❌ فشل حذف المنتج. حدث خطأ غير متوقع.', 'danger')
         return redirect(url_for('products.view', id=id))
@@ -572,7 +570,6 @@ def create_category():
                 'error': 'حدث خطأ غير متوقع'
             }), 400
 
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ حدث خطأ: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('products.categories'))

@@ -5,6 +5,7 @@ from extensions import db
 from models import User, Role, Tenant
 from services.user_service import UserService
 from utils.decorators import admin_required, _role_level, _current_user_level, get_owned_or_404
+from utils.errors import ValidationError
 from utils.helpers import create_audit_log
 
 users_bp = Blueprint('users', __name__, url_prefix='/users')
@@ -128,10 +129,14 @@ def create():
             if fixed_tenant:
                 return redirect(url_for('owner.tenant_detail', id=fixed_tenant.id))
             return redirect(url_for('users.index'))
+        except ValidationError as e:
+            flash(f'⚠️ {e}', 'danger')
+            return render_template('users/create.html', roles=roles,
+                                   form_data=form_values, tenants=tenants,
+                                   fixed_tenant=fixed_tenant)
         except ValueError as e:
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
-            flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
+            flash('⚠️ حدث خطأ غير متوقع', 'danger')
             return render_template('users/create.html', roles=roles,
                                    form_data=form_values, tenants=tenants,
                                    fixed_tenant=fixed_tenant)
@@ -211,10 +216,12 @@ def edit(id):
             create_audit_log('update', 'users', user.id)
             flash('✅ تم تحديث بيانات المستخدم بنجاح!', 'success')
             return redirect(url_for('users.view', id=user.id))
+        except ValidationError as e:
+            flash(f'⚠️ {e}', 'danger')
+            return redirect(url_for('users.edit', id=user.id))
         except ValueError as e:
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
-            flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
+            flash('⚠️ حدث خطأ غير متوقع', 'danger')
             return redirect(url_for('users.edit', id=user.id))
         except Exception as e:
             db.session.rollback()
@@ -263,10 +270,12 @@ def delete(id):
 
     try:
         outcome = UserService.delete_user(user, current_user)
+    except ValidationError as e:
+        flash(f'⚠️ {e}', 'danger')
+        return redirect(url_for('users.index'))
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
-        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
+        flash('⚠️ حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('users.index'))
     except Exception as e:
         db.session.rollback()
@@ -298,10 +307,12 @@ def change_password():
                 request.form.get('new_password', ''),
                 request.form.get('confirm_password', ''),
             )
+        except ValidationError as e:
+            flash(f'❌ {e}', 'danger')
+            return render_template('users/change_password.html')
         except ValueError as e:
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
-            flash(f'❌: حدث خطأ غير متوقع', 'danger')
+            flash('❌ حدث خطأ غير متوقع', 'danger')
             return render_template('users/change_password.html')
 
         create_audit_log('change_password', 'users', current_user.id)

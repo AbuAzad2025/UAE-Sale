@@ -1,6 +1,7 @@
 """Wave coverage: auth, users, api routes + sanitizer, backup/compression utils,
 fixed_asset model math. Deterministic & offline (NOWPayments/Currency/GL mocked)."""
 import gzip
+import json
 import os
 import time
 from datetime import date, datetime, timezone
@@ -645,8 +646,13 @@ class TestApiRoutes:
         assert resp.status_code == 400
         body = resp.get_json()
         assert body['success'] is False
+        # The client is told to type the rate in rather than being shown the
+        # provider's failure text: that text can carry the upstream URL (and
+        # with it the API key). Asserted in both directions so a future
+        # "helpful" re-interpolation of str(e) fails here.
         assert body['manual_input_required'] is True
-        assert 'offline' in body['error']
+        assert 'offline rate provider' not in json.dumps(body, ensure_ascii=False)
+        assert body['error']
 
     def test_search_products_shape(self, client, login_owner, test_product):
         data = client.get('/api/search?type=products&q=brake').get_json()

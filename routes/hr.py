@@ -69,11 +69,9 @@ def create_department():
             return redirect(url_for('hr.departments'))
         except ValueError as e:
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
             current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
@@ -103,7 +101,6 @@ def edit_department(id):
             return redirect(url_for('hr.departments'))
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
             current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
@@ -222,11 +219,9 @@ def create_employee():
 
         except ValueError as e:
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
             current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
@@ -318,11 +313,9 @@ def edit_employee(id):
 
         except ValueError as e:
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
             current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
@@ -389,11 +382,9 @@ def create_leave():
 
         except ValueError as e:
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
             current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
@@ -419,11 +410,9 @@ def approve_leave(id):
         flash('✅ تمت الموافقة على طلب الإجازة', 'success')
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('hr.leave_requests'))
@@ -440,11 +429,9 @@ def reject_leave(id):
         flash('⚠️ تم رفض طلب الإجازة', 'warning')
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('hr.leave_requests'))
@@ -460,11 +447,9 @@ def cancel_leave(id):
         flash('✅ تم إلغاء طلب الإجازة', 'success')
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('hr.leave_requests'))
@@ -542,7 +527,6 @@ def generate_payroll():
 
         except Exception as e:
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     return render_template('hr/generate_payroll.html')
@@ -568,11 +552,9 @@ def approve_payslip(id):
         flash('✅ تم اعتماد كشف الرواتب بنجاح', 'success')
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('hr.view_payslip', id=id))
@@ -590,11 +572,9 @@ def mark_payslip_paid(id):
         flash('✅ تم تسجيل الدفع بنجاح', 'success')
     except ValueError as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
     return redirect(url_for('hr.view_payslip', id=id))

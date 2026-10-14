@@ -177,9 +177,6 @@ class ErrorMessages:
                 current_app.logger.warning('database error surfaced: %s', error)
             except Exception:
                 pass
-            # Include error detail for tests/debugging
-            return (f'خطأ في قاعدة البيانات: {error}\n'
-                    'إذا استمرت المشكلة، اتصل بالدعم الفني.')
         return ('خطأ في قاعدة البيانات.\n'
                 'إذا استمرت المشكلة، اتصل بالدعم الفني.')
 

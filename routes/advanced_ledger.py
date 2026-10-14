@@ -99,7 +99,6 @@ def add_customs_tax():
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
             return render_template('ledger/advanced/add_customs_tax.html',
                                    accounts=accounts,
@@ -153,7 +152,6 @@ def add_expense_category():
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
             current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
             return render_template('ledger/advanced/add_expense_category.html',
@@ -229,7 +227,6 @@ def add_advanced_expense():
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
-            current_app.logger.exception('handler failed')
             flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
 
     # الحصول على البيانات المطلوبة
@@ -276,7 +273,6 @@ def receive_cheque(cheque_id):
 
     except Exception as e:
         current_app.logger.exception('handler failed')
-        current_app.logger.exception('handler failed')
         flash(f'❌ خطأ في تسجيل استلام الشيك: حدث خطأ غير متوقع', 'danger')
 
     return redirect(url_for('advanced_ledger.cheque_integration'))
@@ -301,7 +297,6 @@ def clear_cheque(cheque_id):
         flash(f'✅ تم تسجيل صرف الشيك بنجاح - القيد: {entry.entry_number}', 'success')
 
     except Exception as e:
-        current_app.logger.exception('handler failed')
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ في تسجيل صرف الشيك: حدث خطأ غير متوقع', 'danger')
 

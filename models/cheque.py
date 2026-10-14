@@ -277,7 +277,7 @@ class Cheque(TenantScopedMixin, db.Model):
                     description=f'إصدار شيك صادر رقم {self.cheque_bank_number}',
                     reference_type='cheque_issue',
                     reference_id=self.id
-                )
+)
                 self.gl_journal_entry_id = entry.id
             except Exception as e:
                 current_app.logger.error(f'Failed to create GL entry for cheque issue {self.id}: {e}')

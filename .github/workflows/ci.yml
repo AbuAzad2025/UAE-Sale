@@ -346,7 +346,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0
+            fetch-depth: 0
             clean: true
       - name: Gitleaks (secret scanning)
         uses: gitleaks/gitleaks-action@v3

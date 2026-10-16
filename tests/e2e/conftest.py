@@ -438,8 +438,26 @@ def owner(db, users):
 
 @pytest.fixture(scope='function')
 def login_as(client, users):
-    """Log in as the scenario's real role. Returns the logged-in User."""
+    """Log in as the scenario's real role. Returns the logged-in User.
+
+    The session is cleared FIRST on every call. /auth/login short-circuits
+    when current_user.is_authenticated (routes/auth.py:76) and redirects to
+    the dashboard without reading the posted credentials, so logging in
+    while a session already exists silently keeps the previous identity.
+    That made every RBAC assertion in this suite pass vacuously: the
+    "denied" roles were still the owner, so both the 200-expectation and the
+    403-expectation halves of each matrix were decided by the owner's
+    permissions rather than the role under test.
+
+    Clearing the cookie jar is what makes the switch real; /auth/logout is
+    not sufficient on its own because Flask-Login keeps current_user bound
+    for the lifetime of the app context (see test_matrix.py:3495).
+    """
     def _login(role_slug: str) -> User:
+        # Drop any existing session before authenticating.
+        client.get('/auth/logout')
+        with client.session_transaction() as sess:
+            sess.clear()
         user = users[role_slug]
         resp = client.post('/auth/login', data={
             'username': user.username,
@@ -447,6 +465,14 @@ def login_as(client, users):
         }, follow_redirects=False)
         assert resp.status_code in (302, 303), (
             f'login failed for {role_slug}: status {resp.status_code}')
+        # Guard against the silent no-op returning: the session must now
+        # belong to the role we asked for, not to whoever was logged in
+        # before this call.
+        with client.session_transaction() as sess:
+            logged_in_as = sess.get('_user_id')
+        assert str(logged_in_as) == str(user.id), (
+            f'login_as({role_slug!r}) did not switch identity: session holds '
+            f'user {logged_in_as!r}, expected {user.id!r}')
         return user
     return _login
 
@@ -522,6 +548,37 @@ def supplier(db, e2e_tenant):
     db.session.add(s)
     db.session.commit()
     return s
+
+
+@pytest.fixture(scope='function')
+def purchase(db, owner, supplier, product, warehouse):
+    """Seed a purchase directly."""
+    from models.purchase import Purchase, PurchaseLine
+    pur = Purchase(
+        purchase_number='P-CONF-001',
+        supplier_id=supplier.id,
+        warehouse_id=warehouse.id,
+        supplier_name=supplier.name,
+        currency='ILS',
+        exchange_rate=Decimal('1'),
+        subtotal=Decimal('500'),
+        tax_amount=Decimal('0'),
+        total_amount=Decimal('500'),
+        amount_base=Decimal('500'),
+        status='confirmed',
+        user_id=owner.id,
+    )
+    db.session.add(pur)
+    db.session.flush()
+    db.session.add(PurchaseLine(
+        purchase_id=pur.id,
+        product_id=product.id,
+        quantity=Decimal('10'),
+        unit_cost=Decimal('50'),
+        line_total=Decimal('500'),
+    ))
+    db.session.commit()
+    return pur
 
 
 @pytest.fixture(scope='function')

@@ -301,21 +301,28 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Route coverage
-        # Scenario count and endpoint coverage are different things. The matrix
-        # runs 25515 scenarios, but a domain runner that cycles three paths
-        # still produces 945 passes, so a fully green run can leave most of the
-        # application untouched. This census reads the per-shard route reports
-        # the matrix jobs uploaded and states the real number on the run page.
+# Scenario count and endpoint coverage are different things. The matrix
+          # runs 28350 scenarios, but a domain runner that cycles three paths
+          # still produces 945 passes, so a fully green run can leave most of
+          # the application untouched. This census reads the per-shard route reports
+          # the matrix jobs uploaded and states the real number on the run page.
         run: |
           set -o pipefail
           # The floor is a ratchet, not decoration: raise it as modules get
           # covered, so a runner that stops reaching routes fails the
-          # build instead of quietly shrinking coverage. The full matrix
-          # now reaches 368/475 (77.5%) with the erp, advanced, suppliers and
-          # platform domains and the ledger/payments/cheques/hr sweeps.
-          # Floor set to 350 to allow shard variance while catching regressions.
+          # build instead of quietly shrinking coverage.
+          #
+          # 377/475 when the vertical suites were invisible to the census and
+          # only the matrix was counted. Recording routes-slice.json plus the
+          # stock/dashboard/owner/vault/customers/approvals/ar/security/
+          # restapi/shipments/reports sweeps took it to 432/475.
+          #
+          # The sweep pools are deterministic (pool[_spread(sc, len(pool))]
+          # over all 945 scenarios of a domain), so this is not a moving
+          # target: 420 leaves room for shard variance while still failing
+          # loudly on the ~50-route regressions the old 350 floor ignored.
           python -m tests.e2e.route_coverage 'artifacts/**/routes-*.json' \
-            --min-covered 350 \
+            --min-covered 420 \
             --out route-coverage.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload coverage report
         if: always()

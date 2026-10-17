@@ -2674,12 +2674,19 @@ def _run_approvals_surface(client, db, sc, fixtures):
     endpoints. What it never touched is the workflow surface: the list, the
     create/edit forms and the cancel action. Those are what the census counts
     as uncovered (2 of 8).
+
+    The pool used to carry '/approvals/api/search'. routes/approvals.py has
+    only eight routes and none of them is that path, so it answered 404, the
+    accepted status hid it, and the census never saw it. The read side of the
+    workflow is '/approvals/workflows'.
     """
     _surface_sweep(
         client, sc,
         reads=[
             '/approvals/', '/approvals/workflows',
-            '/approvals/api/search',
+            # The detail view: /approvals/0/cancel reaches the endpoint but
+            # not this rule, which was the last uncovered route in the module.
+            '/approvals/0',
         ],
         forms=[
             '/approvals/workflows/new',
@@ -2715,10 +2722,17 @@ def _run_inbound_surface(client, db, sc, fixtures):
     The inbound runner asserts the create() gate. The arrive/inspect/put-away
     workflow, the close and the cancel were never exercised (2 of 8
     uncovered).
+
+    The list was requested as '/inbound-shipments/' and that was silently
+    wrong twice over: strict_slashes answers 404 for it, because the rule is
+    '/inbound-shipments', and a 404 is an accepted status here, so the sweep
+    looked green while the census recorded a path that matches no rule. The
+    index and the detail view were reported uncovered for as long as that
+    stood.
     """
     _surface_sweep(
         client, sc,
-        reads=['/inbound-shipments/'],
+        reads=['/inbound-shipments', '/inbound-shipments/0'],
         forms=['/inbound-shipments/create'],
         actions=[
             '/inbound-shipments/0/arrive',
@@ -2778,6 +2792,160 @@ def _run_warehouse_admin_surface(client, db, sc, fixtures):
         actions=[
             '/warehouse/0/delete',
         ],
+    )
+
+
+def _run_owner_constants_surface(client, db, sc, fixtures):
+    """The routes/owner.py writes that no scenario performed.
+
+    _run_owner walks the owner dashboard and /owner/constants/<group> itself,
+    which is why the group page is covered, but it never exercised company
+    info, tenant edit, the three constants mutations or the database export, so
+    the census reported 6 of 73 owner routes missing.
+    """
+    _surface_sweep(
+        client, sc,
+        reads=[
+            '/owner/company-info',
+            '/owner/tenants/0/edit',
+        ],
+        forms=[],
+        actions=[
+            '/owner/constants/product_units/add',
+            '/owner/constants/product_units/label',
+            '/owner/constants/product_units/visibility',
+            '/owner/export-database',
+        ],
+    )
+
+
+def _run_vault_export_surface(client, db, sc, fixtures):
+    """The three payment_vault exports.
+
+    _run_vault names '/payment-vault/export' in a docstring but never requested
+    it, so all three export routes were uncovered (35 of 38).
+    """
+    _surface_sweep(
+        client, sc,
+        reads=[
+            '/payment-vault/export/cards',
+            '/payment-vault/export/purchases',
+            '/payment-vault/export/report-pdf',
+        ],
+        forms=[],
+        actions=[],
+    )
+
+
+def _run_customers_extra_surface(client, db, sc, fixtures):
+    """The customer delete action and the autocomplete search.
+
+    _run_customers covers the CRUD contract and part of the API surface; the
+    destructive delete and /customers/api/search were the 2 of 9 left over.
+    """
+    _surface_sweep(
+        client, sc,
+        reads=[
+            '/customers/api/search',
+        ],
+        forms=[],
+        actions=[
+            '/customers/0/delete',
+        ],
+    )
+
+
+def _run_sales_print_restore_surface(client, db, sc, fixtures):
+    """The sale print view and restore action.
+
+    The AR runners cover the sale lifecycle but not these two, and sales is
+    blueprint-named rather than a matrix domain, so this rides on 'ar'.
+    """
+    _surface_sweep(
+        client, sc,
+        reads=[
+            '/sales/0/print',
+        ],
+        forms=[],
+        actions=[
+            '/sales/0/restore',
+        ],
+    )
+
+
+def _run_auth_payment_surface(client, db, sc, fixtures):
+    """The NOWPayments callback, its amount estimator and the thank-you page.
+
+    The security domain owns the auth blueprint; these three sat outside every
+    runner (6 of 9 auth routes covered before this sweep).
+    """
+    _surface_sweep(
+        client, sc,
+        reads=[
+            '/auth/payment/estimate',
+            '/auth/thank-you',
+        ],
+        forms=[],
+        actions=[
+            '/auth/payment/callback',
+        ],
+    )
+
+
+def _run_api_meta_surface(client, db, sc, fixtures):
+    """The three infrastructure endpoints of routes/api.py.
+
+    /api/health is named in _run_restapi but only reached under a condition
+    that no scenario met; /api/echo and /api/client-errors were never
+    requested at all. /api/echo only accepts PUT/PATCH/DELETE, which
+    _allowed_method resolves from the url_map.
+    """
+    _surface_sweep(
+        client, sc,
+        reads=[
+            '/api/health',
+        ],
+        forms=[],
+        actions=[
+            '/api/echo',
+            '/api/client-errors',
+        ],
+    )
+
+
+def _run_shipments_extra_surface(client, db, sc, fixtures):
+    """The shipment list, detail view and its two lookup endpoints.
+
+    _run_shipments asserts the create/tracking contract; the read side of the
+    same blueprint was untested (6 of 10).
+    """
+    _surface_sweep(
+        client, sc,
+        reads=[
+            '/shipments',
+            '/shipments/0',
+            '/shipments/api/products',
+            '/shipments/api/warehouses',
+        ],
+        forms=[],
+        actions=[],
+    )
+
+
+def _run_reports_fragment_surface(client, db, sc, fixtures):
+    """The report entity search and the entity_report_fragment partial.
+
+    The reports runner covers the export and summary routes; these two
+    endpoints feed the UI's live search and were the 2 of 17 left over.
+    """
+    _surface_sweep(
+        client, sc,
+        reads=[
+            '/reports/api/entity-search',
+            '/reports/entity_report_fragment/customer/0',
+        ],
+        forms=[],
+        actions=[],
     )
 
 
@@ -4169,6 +4337,19 @@ _DOMAIN_SWEEPS = {
     # routes/main.py::index but only ever requested /dashboard.
     'stock': _run_warehouse_admin_surface,
     'dashboard': _run_dashboard_surface,
+    # The remaining census gaps. Each sweep only touches routes that no runner
+    # requested before, so they add coverage without re-asserting contracts the
+    # dedicated executors already own. Where the blueprint has no matching
+    # domain the sweep rides on the closest one (sales on 'ar', auth on
+    # 'security'), which is why a domain can carry a foreign prefix here.
+    'owner': _run_owner_constants_surface,
+    'vault': _run_vault_export_surface,
+    'customers': _run_customers_extra_surface,
+    'ar': _run_sales_print_restore_surface,
+    'security': _run_auth_payment_surface,
+    'restapi': _run_api_meta_surface,
+    'shipments': _run_shipments_extra_surface,
+    'reports': _run_reports_fragment_surface,
 }
 
 

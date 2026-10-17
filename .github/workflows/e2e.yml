@@ -85,14 +85,22 @@ jobs:
             --ignore=tests/e2e/test_matrix.py \
             -q -p no:randomly \
             --tb=short \
+            --e2e-route-report routes-slice.json \
             --junitxml=slices.xml
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: e2e-slices
-          path: slices.xml
-          if-no-files-found: ignore
+          # The route-report is what makes endpoint coverage visible. Without
+          # it the vertical suites' 275 tests were invisible to the census:
+          # the summary job only reads artifacts/**/routes-*.json, so
+          # /sales/*, /expenses/*, /products/*, /customers/* and every other
+          # route these suites exercise were reported as uncovered.
+          path: |
+            slices.xml
+            routes-slice.json
+          if-no-files-found: error
           retention-days: 14
 
   # ── The combinatorial matrix. One job per (domain, shard).

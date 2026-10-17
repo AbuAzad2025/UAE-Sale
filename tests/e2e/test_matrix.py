@@ -2744,6 +2744,43 @@ def _run_returns_surface(client, db, sc, fixtures):
     )
 
 
+def _run_dashboard_surface(client, db, sc, fixtures):
+    """The public root of routes/main.py.
+
+    _run_dashboard documents routes/main.py::index ('/') but only ever requests
+    /dashboard, so the landing route was never executed by any scenario and the
+    census counted it as uncovered (1 of 2). It is deliberately public - the
+    login page - so the assertion is that it answers without a session.
+    """
+    _surface_sweep(client, sc, reads=['/'], forms=[], actions=[])
+
+
+def _run_warehouse_admin_surface(client, db, sc, fixtures):
+    """The warehouse routes outside the stock-in contract.
+
+    _run_stock already walks the warehouse read surface (index, movements,
+    low-stock, out-of-stock, list) and asserts add_stock. What no scenario
+    touched was the warehouse CRUD half: the detail view, the create forms and
+    the delete action, which the census reported as 4 missing of 10.
+    """
+    _surface_sweep(
+        client, sc,
+        reads=[
+            # The blueprint mounts index at '/warehouse/'. Asking for
+            # '/warehouse' answers 308 (permanent redirect to the canonical
+            # path) because strict_slashes is on, and the sweep deliberately
+            # asserts a real response rather than a redirect hop.
+            '/warehouse/', '/warehouse/0',
+        ],
+        forms=[
+            '/warehouse/create', '/warehouse/create-warehouse',
+        ],
+        actions=[
+            '/warehouse/0/delete',
+        ],
+    )
+
+
 def _run_suppliers(client, db, sc, fixtures):
     """Domain SUP — routes/suppliers.py, 7 routes that had no test at all.
 
@@ -4125,6 +4162,13 @@ _DOMAIN_SWEEPS = {
     'users': _run_users_surface,
     'inbound': _run_inbound_surface,
     'returns': _run_returns_surface,
+    # 'warehouse' and 'main' are not matrix domains, so their routes are
+    # reached through the domains that already own them. Both sweeps are
+    # strictly additive over the existing runners: _run_stock never requested
+    # the warehouse detail/create/delete paths, and _run_dashboard documents
+    # routes/main.py::index but only ever requested /dashboard.
+    'stock': _run_warehouse_admin_surface,
+    'dashboard': _run_dashboard_surface,
 }
 
 

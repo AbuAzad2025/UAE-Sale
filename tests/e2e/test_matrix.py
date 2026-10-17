@@ -2667,6 +2667,83 @@ def _run_hr_surface(client, db, sc, fixtures):
     )
 
 
+def _run_approvals_surface(client, db, sc, fixtures):
+    """The 10 routes of routes/approvals.py outside the approve/reject contract.
+
+    The approvals runner asserts the engine invariants on the decision
+    endpoints. What it never touched is the workflow surface: the list, the
+    create/edit forms and the cancel action. Those are what the census counts
+    as uncovered (2 of 8).
+    """
+    _surface_sweep(
+        client, sc,
+        reads=[
+            '/approvals/', '/approvals/workflows',
+            '/approvals/api/search',
+        ],
+        forms=[
+            '/approvals/workflows/new',
+            '/approvals/workflows/0/edit',
+        ],
+        actions=[
+            '/approvals/0/cancel',
+        ],
+    )
+
+
+def _run_users_surface(client, db, sc, fixtures):
+    """The 8 routes of routes/users.py outside the create contract.
+
+    The users runner asserts the create() gate. The edit, the toggle-active,
+    the delete and the self-service change-password were never executed by
+    any scenario (2 of 7 uncovered).
+    """
+    _surface_sweep(
+        client, sc,
+        reads=['/users/', '/users/0', '/users/change-password'],
+        forms=['/users/0/edit'],
+        actions=[
+            '/users/0/toggle-active',
+            '/users/0/delete',
+        ],
+    )
+
+
+def _run_inbound_surface(client, db, sc, fixtures):
+    """The 9 routes of routes/inbound_shipments.py.
+
+    The inbound runner asserts the create() gate. The arrive/inspect/put-away
+    workflow, the close and the cancel were never exercised (2 of 8
+    uncovered).
+    """
+    _surface_sweep(
+        client, sc,
+        reads=['/inbound-shipments/'],
+        forms=['/inbound-shipments/create'],
+        actions=[
+            '/inbound-shipments/0/arrive',
+            '/inbound-shipments/0/inspect',
+            '/inbound-shipments/0/put-away',
+            '/inbound-shipments/0/close',
+            '/inbound-shipments/0/cancel',
+        ],
+    )
+
+
+def _run_returns_surface(client, db, sc, fixtures):
+    """The 2 routes of routes/returns.py.
+
+    The returns runner asserts the create() gate. The view route was never
+    executed by any scenario (1 of 2 uncovered).
+    """
+    _surface_sweep(
+        client, sc,
+        reads=['/returns/view/0'],
+        forms=[],
+        actions=[],
+    )
+
+
 def _run_suppliers(client, db, sc, fixtures):
     """Domain SUP — routes/suppliers.py, 7 routes that had no test at all.
 
@@ -4030,6 +4107,24 @@ _DOMAIN_SWEEPS = {
     'payments': _run_payments_surface,
     'cheque': _run_cheques_surface,
     'hr': _run_hr_surface,
+    # The surface sweeps added in the coverage-expansion pass. Each one walks
+    # the routes of a module whose dedicated runner only asserted one or two
+    # canonical contracts, so the rest of the blueprint was never executed by
+    # any scenario. The census counts them as uncovered until these run.
+    #
+    # The key is the matrix domain, not the blueprint name. Two candidate keys
+    # were deliberately NOT added:
+    #   'warehouse' - not a domain; its routes belong to 'stock', whose runner
+    #                 already walks the warehouse read surface and add-stock
+    #                 (test_matrix.py::_run_stock), so a second sweep would
+    #                 double-count rather than add coverage.
+    #   'main'      - not a domain either; routes/main.py is reached by the
+    #                 'dashboard' runner and /welcome is in _run_platform's
+    #                 public list.
+    'approvals': _run_approvals_surface,
+    'users': _run_users_surface,
+    'inbound': _run_inbound_surface,
+    'returns': _run_returns_surface,
 }
 
 

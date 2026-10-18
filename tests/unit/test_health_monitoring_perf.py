@@ -216,7 +216,7 @@ class TestHealthServiceSystemResources:
         assert result['overall_status'] == 'warning'
         assert result['checks']['nowpayments']['status'] == 'warning'
         assert set(result['checks']) == {
-            'database', 'nowpayments', 'encryption', 'system',
+            'database', 'nowpayments', 'encryption', 'system', 'ai_engine',
         }
 
     def test_full_check_aggregates_to_unhealthy(self, db, monkeypatch):

@@ -14,6 +14,19 @@ def health():
     })
 
 
+@api_bp.route('/healthz')
+def healthz():
+    """Kubernetes/Load Balancer health probe.
+
+    Runs full health check (DB, encryption, NOWPayments, system resources, AI engine).
+    Returns 200 only if all critical checks pass.
+    """
+    from services.health_service import HealthCheckService
+    result = HealthCheckService.run_full_health_check()
+    status_code = 200 if result['overall_status'] == 'healthy' else 503
+    return jsonify(result), status_code
+
+
 @api_bp.route('/version')
 def version():
     return jsonify({

@@ -333,6 +333,10 @@ def get_owned_or_raise(model, pk, exc_cls=ValueError, missing_message=None, tena
     Returns ``None`` if the row is missing (caller keeps its own
     not-found handling / message) and raises *exc_cls* on cross-tenant
     access instead of aborting.  Owner / super_admin bypass the check.
+
+    SECURITY: Enforces strict tenant equality (obj_tenant == actor_tenant)
+    for all non-owner actors. Unscoped objects (obj_tenant is None) are
+    ONLY accessible by owner/super_admin — regular tenants are denied.
     """
     from extensions import db
     obj = db.session.get(model, pk)
@@ -340,18 +344,25 @@ def get_owned_or_raise(model, pk, exc_cls=ValueError, missing_message=None, tena
         return None
     from flask_login import current_user
     if not getattr(current_user, 'is_authenticated', False):
+        # Unauthenticated callers get the object — caller must enforce auth
         return obj
     actor_tenant = getattr(current_user, 'tenant_id', None)
     obj_tenant = getattr(obj, 'tenant_id', None)
-    if obj_tenant is None and actor_tenant is None:
+
+    # Owner / super_admin bypass all tenant checks
+    if getattr(current_user, 'is_owner', False) or getattr(current_user, 'is_super_admin', lambda: False)():
         return obj
-    if obj_tenant is None and actor_tenant is not None:
-        if not (getattr(current_user, 'is_owner', False) or getattr(current_user, 'is_super_admin', lambda: False)()):
-            raise exc_cls(tenant_message or 'Cross-tenant access denied')
-        return obj
+
+    # At this point: regular tenant user (not owner/super_admin)
+    # Both sides must have a tenant_id and they must match exactly
+    if actor_tenant is None:
+        raise exc_cls(tenant_message or 'User has no tenant context')
+    if obj_tenant is None:
+        # Unscoped system objects are NOT accessible to regular tenants
+        raise exc_cls(tenant_message or 'Cross-tenant access denied: object has no tenant')
     if actor_tenant != obj_tenant:
-        if not (getattr(current_user, 'is_owner', False) or getattr(current_user, 'is_super_admin', lambda: False)()):
-            raise exc_cls(tenant_message or 'Cross-tenant access denied')
+        raise exc_cls(tenant_message or 'Cross-tenant access denied')
+
     return obj
 
 

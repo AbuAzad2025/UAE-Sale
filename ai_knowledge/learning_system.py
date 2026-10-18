@@ -422,8 +422,25 @@ class AzadLearningSystem:
 
         for question_type, contexts in context_patterns.items():
             if len(contexts) > 3:  # إذا كان هناك سياقات كافية
+                # contexts are dicts, so they cannot go through set() the way
+                # strings could: hash(dict) raises, and evolve_knowledge() -
+                # which /ai/learning/evolve calls - died on that every time.
+                # Deduplicate on a stable serialisation instead, keeping the
+                # original dicts so the stored shape does not change.
+                seen = set()
+                unique_contexts = []
+                for context in contexts:
+                    try:
+                        key = json.dumps(context, sort_keys=True, default=str)
+                    except (TypeError, ValueError):
+                        key = repr(context)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    unique_contexts.append(context)
+
                 self.learned_knowledge['context_understanding'][question_type] = {
-                    'common_contexts': list(set(contexts)),
+                    'common_contexts': unique_contexts,
                     'context_count': len(contexts),
                     'last_updated': datetime.now().isoformat()
                 }

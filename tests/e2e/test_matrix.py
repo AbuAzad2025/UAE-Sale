@@ -2153,23 +2153,40 @@ def _allowed_method(path, preferred):
     /payment-vault/lock and /payment-vault/api/v2/purchases, which only accept
     GET. Asking the url_map keeps the runner honest as routes change and stops
     a wrong verb from being reported as an application defect.
+
+    The url_map is probed with real verbs rather than method=None. Werkzeug
+    rejects a method=None probe on a path that exists but accepts no such
+    method - it raises MethodNotAllowed - so the old lookup could not tell
+    "no such path" from "wrong verb" and fell through to the preferred one.
+    /api/echo accepts only PUT/PATCH/DELETE, so it was sent POST, answered 405,
+    and since 405 matches no rule the recorder stored nothing at all: the route
+    counted as uncovered no matter how many scenarios requested it.
     """
     from flask import current_app
+    from werkzeug.exceptions import MethodNotAllowed, NotFound
     adapter = current_app.url_map.bind('localhost')
     try:
-        endpoint, _ = adapter.match(path, method=None)
-        # endpoint is a string like 'erp_modules.view_stocktake'
-        rules = current_app.url_map._rules_by_endpoint.get(endpoint, [])
-        if not rules:
-            return preferred
-        rule = rules[0]  # take the first rule for this endpoint
-        methods = rule.methods - {'HEAD', 'OPTIONS'}
-        if not methods:
-            return preferred
-        return preferred if preferred in methods else sorted(methods)[0]
-    except Exception:
-        # Path not found in url_map - fall back to preferred
+        adapter.match(path, method=preferred)
         return preferred
+    except MethodNotAllowed:
+        pass
+    except NotFound:
+        return preferred
+    except Exception:
+        return preferred
+
+    # The path exists but refuses the preferred verb. Take the first verb the
+    # url_map will actually accept, asking in a fixed order so the choice is
+    # deterministic across shards.
+    for candidate in ('GET', 'POST', 'PUT', 'PATCH', 'DELETE'):
+        if candidate == preferred:
+            continue
+        try:
+            adapter.match(path, method=candidate)
+            return candidate
+        except Exception:
+            continue
+    return preferred
 
 
 def _run_vault(client, db, sc, fixtures):

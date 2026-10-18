@@ -313,16 +313,20 @@ jobs:
           # build instead of quietly shrinking coverage.
           #
           # 377/475 when the vertical suites were invisible to the census and
-          # only the matrix was counted. Recording routes-slice.json plus the
+          # only the matrix was counted. Recording routes-slice.json, then the
           # stock/dashboard/owner/vault/customers/approvals/ar/security/
-          # restapi/shipments/reports sweeps took it to 432/475.
+          # restapi/shipments/reports/ai sweeps and the _allowed_method fix
+          # took it to 463/475.
           #
           # The sweep pools are deterministic (pool[_spread(sc, len(pool))]
           # over all 945 scenarios of a domain), so this is not a moving
-          # target: 420 leaves room for shard variance while still failing
-          # loudly on the ~50-route regressions the old 350 floor ignored.
+          # target: 455 leaves room for shard variance while still failing
+          # loudly on the ~110-route regressions the old 350 floor ignored.
+          #
+          # What remains uncovered is 12 routes in routes/ai.py whose
+          # AIService methods do not exist, so they answer 500.
           python -m tests.e2e.route_coverage 'artifacts/**/routes-*.json' \
-            --min-covered 420 \
+            --min-covered 455 \
             --out route-coverage.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload coverage report
         if: always()

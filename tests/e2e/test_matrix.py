@@ -2949,6 +2949,35 @@ def _run_reports_fragment_surface(client, db, sc, fixtures):
     )
 
 
+def _run_ai_analytics_surface(client, db, sc, fixtures):
+    """The AI endpoints whose service methods actually exist.
+
+    routes/ai.py registers fifty routes but the matrix only ever reached
+    twenty. Of the fifteen it never touched, these three are backed by real
+    AIService methods and execute cleanly.
+
+    The other twelve are deliberately absent from this pool: deep-analysis,
+    cash-flow-prediction, smart-price, churn-prediction, learning/status,
+    learning/evolve, improvement/auto-improve, improvement/progress,
+    improvement/set-goal, knowledge/add-website, knowledge/add-document and
+    upload-excel all call AIService methods that do not exist (there is
+    predict_cash_flow_neural and perform_self_improvement instead), so every
+    one of them raises AttributeError and answers 500. Listing them here would
+    only turn a silent production defect into a red build; they need
+    services/ai_service.py to be implemented first.
+    """
+    _surface_sweep(
+        client, sc,
+        reads=[
+            '/ai/detect-patterns',
+            '/ai/inventory-health',
+            '/ai/contextual-help/dashboard',
+        ],
+        forms=[],
+        actions=[],
+    )
+
+
 def _run_suppliers(client, db, sc, fixtures):
     """Domain SUP — routes/suppliers.py, 7 routes that had no test at all.
 
@@ -4350,6 +4379,7 @@ _DOMAIN_SWEEPS = {
     'restapi': _run_api_meta_surface,
     'shipments': _run_shipments_extra_surface,
     'reports': _run_reports_fragment_surface,
+    'ai': _run_ai_analytics_surface,
 }
 
 

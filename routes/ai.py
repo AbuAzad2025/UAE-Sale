@@ -3399,7 +3399,11 @@ def cash_flow_prediction():
 @login_required
 def smart_price():
     """💎 API: محرك التسعير الذكي الخارق"""
-    data = request.get_json()
+    # get_json() raises on a body-less POST, and this handler has no error
+    # handler of its own, so a sweep or any client that posts without JSON got
+    # an uncaught 500 instead of the validation below. Matches the
+    # `request.get_json() or {}` idiom already used elsewhere in this file.
+    data = request.get_json(silent=True) or {}
     product_id = data.get('product_id')
     customer_id = data.get('customer_id')
     quantity = data.get('quantity', 1)
@@ -3564,7 +3568,7 @@ def improvement_progress():
 def set_improvement_goal():
     """تعيين هدف تحسين"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         area = data.get('area')
         target_score = data.get('target_score')
         timeframe = data.get('timeframe', '30_days')

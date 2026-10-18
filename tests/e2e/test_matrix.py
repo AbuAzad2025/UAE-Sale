@@ -2967,21 +2967,23 @@ def _run_reports_fragment_surface(client, db, sc, fixtures):
 
 
 def _run_ai_analytics_surface(client, db, sc, fixtures):
-    """The AI endpoints whose service methods actually exist.
+    """The three cheap AI read endpoints.
 
-    routes/ai.py registers fifty routes but the matrix only ever reached
-    twenty. Of the fifteen it never touched, these three are backed by real
-    AIService methods and execute cleanly.
+    routes/ai.py registers fifty routes and the matrix only ever reached
+    twenty. These three were the rest that the matrix can carry cheaply.
 
-    The other twelve are deliberately absent from this pool: deep-analysis,
-    cash-flow-prediction, smart-price, churn-prediction, learning/status,
-    learning/evolve, improvement/auto-improve, improvement/progress,
-    improvement/set-goal, knowledge/add-website, knowledge/add-document and
-    upload-excel all call AIService methods that do not exist (there is
-    predict_cash_flow_neural and perform_self_improvement instead), so every
-    one of them raises AttributeError and answers 500. Listing them here would
-    only turn a silent production defect into a red build; they need
-    services/ai_service.py to be implemented first.
+    The other twelve are deliberately NOT swept here. They used to be absent
+    because they failed - four called AIService methods that do not exist,
+    learning/evolve died on set() over dict contexts - and
+    tests/e2e/test_ai_endpoints_e2e.py now drives all of them as owner and
+    asserts they answer without a 500. That test lives in the slice, which
+    reports its route hits, so the census counts those routes from a focused
+    assertion instead of from here.
+
+    Sweeping them in the matrix as well would repeat each expensive endpoint -
+    deep-analysis runs five analyses, churn-prediction scores every customer -
+    roughly 63 times each for no extra coverage, and pushed the AI domain from
+    24 to over 90 minutes locally.
     """
     _surface_sweep(
         client, sc,

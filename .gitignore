@@ -127,4 +127,8 @@ ai_knowledge/patterns.pkl
 ai_knowledge/memory/*.json
 ai_knowledge/models/*.pkl
 ai_knowledge/models/*.joblib
+# The /ai/knowledge/add-website and add-document endpoints write one JSON file
+# per ingested item here. That is runtime data, not source, and the directory
+# keeps a .gitkeep precisely because its real contents are generated.
+ai_knowledge/expanded_knowledge/*.json
 

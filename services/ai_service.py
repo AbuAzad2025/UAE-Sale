@@ -1178,6 +1178,34 @@ class AIService:
             }]
 
     @staticmethod
+    def deep_business_analysis():
+        """تحليل عميق يجمع analyses القائمة في تقرير واحد.
+
+        routes/ai.py::deep_analysis calls this and it did not exist, so
+        /ai/deep-analysis raised AttributeError and answered 500.
+
+        This is a composition, not a new analysis: each section is the output
+        of a method that already exists and already carries its own error
+        handling, so a failing section degrades to that section's own error
+        rather than taking the whole report down.
+        """
+        try:
+            return {
+                'generated_at': datetime.now().isoformat(),
+                'insights': AIService.generate_business_insights(),
+                'profit_margins': AIService.analyze_profit_margins(),
+                'sales_patterns': AIService.detect_sales_patterns(),
+                'inventory_health': AIService.analyze_inventory_health(),
+                'sales_trend': AIService.predict_sales_trend(),
+            }
+        except Exception as e:
+            logger.error(f"Deep business analysis failed: {e}")
+            return {
+                'error': 'failed to run deep business analysis',
+                'generated_at': datetime.now().isoformat(),
+            }
+
+    @staticmethod
     def optimize_inventory_levels():
         """تحسين مستويات المخزون"""
         try:
@@ -1613,6 +1641,30 @@ class AIService:
             return AIService.recommend_price(product_id, customer_id)  # Fallback
 
     @staticmethod
+    def smart_pricing_engine(product_id, customer_id, quantity=1):
+        """تسعير ذكي لمنتج/عميل/كمية.
+
+        routes/ai.py::smart_price calls this. It used to be missing, so
+        /ai/smart-price raised AttributeError and answered 500. The engine
+        itself already exists as predict_price_with_neural, which takes the
+        same three arguments and already falls back to recommend_price, so
+        this is a delegation rather than a second pricing implementation.
+
+        An empty dict is returned when the neural call itself failed, because
+        the route turns a falsy result into a 404 - a product that cannot be
+        priced should not look like a priced one.
+        """
+        try:
+            pricing = AIService.predict_price_with_neural(
+                product_id, customer_id, quantity)
+            if not pricing or pricing.get('error'):
+                return {}
+            return pricing
+        except Exception as e:
+            logger.error(f"Smart pricing failed: {e}")
+            return {}
+
+    @staticmethod
     def forecast_sales_neural(days_ahead=7):
         """توقع المبيعات باستخدام Neural Network"""
         try:
@@ -1657,6 +1709,84 @@ class AIService:
         except Exception as e:
             logger.error(f"Neural customer classification failed: {e}")
             return {}
+
+    @staticmethod
+    def predict_customer_churn():
+        """قائمة العملاء المعرضين للتسرب.
+
+        routes/ai.py::churn_prediction calls this and it did not exist, so
+        /ai/churn-prediction raised AttributeError and answered 500.
+
+        There is no churn model in the codebase, and inventing one would be
+        worse than saying so. What exists is _perform_analysis, which scores
+        each customer against their own 90-day sales, payments and balance
+        and returns a real risk_level. This aggregates that existing analysis
+        into a ranked watchlist: no new scoring, only aggregation.
+
+        Customer count is capped because _perform_analysis issues several
+        queries per customer; an uncapped sweep over a large tenant would turn
+        a report endpoint into a slow one.
+        """
+        try:
+            from models import Customer
+
+            churn_risk = {'high': 0.8, 'medium': 0.5, 'low': 0.2}
+
+            customers = Customer.query.filter(
+                Customer.is_active.is_(True)
+            ).limit(100).all()
+
+            rows = []
+            for customer in customers:
+                # Per-customer isolation: analyze_customer_behavior raises on
+                # cross-tenant access, and one unreadable row must not cost
+                # the caller the whole watchlist.
+                try:
+                    analysis = AIService.analyze_customer_behavior(customer.id)
+                except Exception as e:
+                    logger.warning(
+                        f"Skipping customer {customer.id} in churn "
+                        f"watchlist: {e}")
+                    continue
+                if not analysis:
+                    continue
+                risk_level = analysis.get('risk_level', 'low')
+                rows.append({
+                    'customer_id': customer.id,
+                    'customer_name': customer.name,
+                    'churn_risk_score': churn_risk.get(risk_level, 0.2),
+                    'risk_level': risk_level,
+                    'current_balance': analysis.get('current_balance'),
+                    'avg_payment_delay_days': analysis.get(
+                        'avg_payment_delay_days'),
+                    'recommendation': analysis.get('recommendation'),
+                })
+
+            rows.sort(key=lambda r: (-r['churn_risk_score'],
+                                     -(r['current_balance'] or 0)))
+
+            at_risk = [r for r in rows if r['risk_level'] != 'low']
+
+            return {
+                'generated_at': datetime.now().isoformat(),
+                'customers_analyzed': len(rows),
+                'at_risk_count': len(at_risk),
+                'basis': '90-day sales, payments and balance per customer',
+                # Every customer scored, so a tenant whose book is healthy
+                # still gets a meaningful response instead of an empty list.
+                'customers': rows[:20],
+                'at_risk_customers': at_risk[:20],
+            }
+
+        except Exception as e:
+            logger.error(f"Churn prediction failed: {e}")
+            return {
+                'error': 'failed to build churn watchlist',
+                'customers_analyzed': 0,
+                'at_risk_count': 0,
+                'customers': [],
+                'at_risk_customers': [],
+            }
 
     @staticmethod
     def optimize_inventory_neural(product_id):
@@ -1711,6 +1841,43 @@ class AIService:
         except Exception as e:
             logger.error(f"Neural cash flow prediction failed: {e}")
             return {}
+
+    @staticmethod
+    def predict_cash_flow(days=30):
+        """توقع التدفق النقدي لعدد أيام محدد.
+
+        routes/ai.py::cash_flow_prediction calls this and it did not exist, so
+        /ai/cash-flow-prediction raised AttributeError and answered 500. The
+        neural engine already forecasts by month, so this converts the days
+        the route asked for into months and delegates.
+
+        The month count is kept on the response so the caller can see the
+        rounding rather than having to infer it.
+        """
+        try:
+            days = int(days) if days else 30
+            if days <= 0:
+                days = 30
+
+            months_ahead = max(1, -(-days // 30))  # ceiling
+
+            prediction = AIService.predict_cash_flow_neural(months_ahead)
+
+            return {
+                'generated_at': datetime.now().isoformat(),
+                'requested_days': days,
+                'months_ahead': months_ahead,
+                'prediction': prediction,
+            }
+
+        except Exception as e:
+            logger.error(f"Cash flow prediction failed: {e}")
+            return {
+                'error': 'failed to predict cash flow',
+                'requested_days': days,
+                'months_ahead': None,
+                'prediction': {},
+            }
 
     @staticmethod
     def train_all_neural_models():

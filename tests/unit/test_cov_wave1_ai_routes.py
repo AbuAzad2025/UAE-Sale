@@ -8,8 +8,6 @@ JSON shapes / DB effects. No external network is used: chat runs with
 import io
 from urllib.parse import quote
 
-import pytest
-
 
 class TestAiPricingStock:
     def test_recommend_price_missing_params_400(self, client, login_owner):
@@ -57,15 +55,23 @@ class TestAiPricingStock:
         assert resp.status_code == 400
         assert 'error' in resp.get_json()
 
-    def test_smart_price_known_ids_server_error(self, client, login_owner,
-                                                     test_product,
-                                                     test_customer):
-        # BUG (routes/ai.py:3395): AIService.smart_pricing_engine does not
-        # exist -> AttributeError propagates (TESTING=True). Documents bug.
-        with pytest.raises(AttributeError, match='smart_pricing_engine'):
-            client.post('/ai/smart-price', json={
-                'product_id': test_product.id,
-                'customer_id': test_customer.id, 'quantity': 1})
+    def test_smart_price_known_ids(self, client, login_owner,
+                                   test_product, test_customer):
+        # Was documented as a bug: AIService.smart_pricing_engine did not
+        # exist, so this raised AttributeError and the endpoint answered 500.
+        # smart_pricing_engine now delegates to predict_price_with_neural.
+        resp = client.post('/ai/smart-price', json={
+            'product_id': test_product.id,
+            'customer_id': test_customer.id, 'quantity': 1})
+        assert resp.status_code == 200
+        assert resp.get_json().get('predicted_price') is not None
+
+    def test_smart_price_missing_body_validates(self, client, login_owner):
+        # A body-less POST used to raise inside request.get_json(), which
+        # smart_price did not catch, so it surfaced as an uncaught 500.
+        resp = client.post('/ai/smart-price')
+        assert resp.status_code == 400
+        assert resp.get_json().get('error')
 
 
 class TestAiCustomerProduct:
@@ -153,26 +159,41 @@ class TestAiAnalytics:
     def test_contextual_help(self, client, login_owner):
         assert client.get('/ai/contextual-help/sales').status_code == 200
 
-    def test_deep_analysis_owner_server_error(self, client, login_owner):
-        # BUG (routes/ai.py:3369): AIService.deep_business_analysis does
-        # not exist -> AttributeError propagates. Documents current behavior.
-        with pytest.raises(AttributeError, match='deep_business_analysis'):
-            client.get('/ai/deep-analysis')
+    def test_deep_analysis_owner(self, client, login_owner):
+        # Was documented as a bug: AIService.deep_business_analysis did not
+        # exist, so this raised AttributeError. It now composes the five
+        # analyses the service already had.
+        resp = client.get('/ai/deep-analysis')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        for section in ('insights', 'profit_margins', 'sales_patterns',
+                        'inventory_health', 'sales_trend'):
+            assert section in data, f'{section} missing from deep analysis'
 
     def test_deep_analysis_seller_403(self, client, login_seller):
         assert client.get('/ai/deep-analysis').status_code == 403
 
-    def test_cash_flow_prediction_server_error(self, client, login_owner):
-        # BUG (routes/ai.py:3379): AIService.predict_cash_flow does not
-        # exist (only predict_cash_flow_neural) -> AttributeError.
-        with pytest.raises(AttributeError, match='predict_cash_flow'):
-            client.get('/ai/cash-flow-prediction')
+    def test_cash_flow_prediction(self, client, login_owner):
+        # Was documented as a bug: AIService.predict_cash_flow did not exist
+        # (only predict_cash_flow_neural), so this raised AttributeError.
+        # It now converts the requested days into the months the neural engine
+        # forecasts.
+        resp = client.get('/ai/cash-flow-prediction?days=60')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['requested_days'] == 60
+        assert data['months_ahead'] == 2
 
-    def test_churn_prediction_server_error(self, client, login_owner):
-        # BUG (routes/ai.py:3408): AIService.predict_customer_churn does
-        # not exist -> AttributeError propagates.
-        with pytest.raises(AttributeError, match='predict_customer_churn'):
-            client.get('/ai/churn-prediction')
+    def test_churn_prediction(self, client, login_owner, test_customer):
+        # Was documented as a bug: AIService.predict_customer_churn did not
+        # exist, so this raised AttributeError. It now ranks customers using
+        # the risk_level the existing per-customer analysis already computes.
+        # test_customer is requested so there is a row to score.
+        resp = client.get('/ai/churn-prediction')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['customers_analyzed'] >= 1
+        assert data['customers']
 
     def test_optimize_inventory(self, client, login_owner):
         assert client.get('/ai/optimize-inventory').status_code == 200

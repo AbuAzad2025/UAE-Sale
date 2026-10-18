@@ -10,7 +10,7 @@ from flask_login import login_required, current_user
 from extensions import csrf, db
 from flask_wtf.csrf import validate_csrf as validate_csrf_token
 from werkzeug.exceptions import BadRequest
-from services.ai_service import AIService
+from services.ai_service import AIService, AIServiceError
 import pandas as pd
 from ai_knowledge.learning_system import learning_system
 from ai_knowledge.global_knowledge import global_connector, expertise_updater
@@ -24,6 +24,22 @@ from utils.decorators import permission_required, owner_required, admin_required
 from datetime import datetime, timezone
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
+
+
+@ai_bp.errorhandler(AIServiceError)
+def handle_ai_service_error(error: AIServiceError):
+    """معالج مركزي لأخطاء خدمات AI.
+
+    يحوّل AIServiceError إلى استجابة JSON موحدة مع كود خطأ واضح.
+    """
+    current_app.logger.error(f"AIServiceError: {error.code} - {error}")
+    return jsonify({
+        'success': False,
+        'error': str(error),
+        'code': error.code,
+        'details': error.details
+    }), 500
+
 
 # ======================
 # Security Utilities

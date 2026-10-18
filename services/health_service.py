@@ -22,6 +22,30 @@ class HealthCheckService:
     """خدمة فحص صحة النظام"""
 
     @staticmethod
+    def check_ai_engine():
+        """فحص محرك الذكاء الاصطناعي"""
+        try:
+            from services.ai_service import AIService
+            # مجرد فحص أن المحرك يمكن تهيئته
+            neural = AIService.get_neural_engine()
+            # فحص بسيط أن المحرك يستجيب
+            if hasattr(neural, 'predict_cash_flow'):
+                return {
+                    'status': 'healthy',
+                    'message': 'AI engine initialized'
+                }
+            return {
+                'status': 'warning',
+                'message': 'AI engine partially initialized'
+            }
+        except Exception as e:
+            logger.error(f'AI engine health check failed: {str(e)}')
+            return {
+                'status': 'unhealthy',
+                'message': f'AI engine error: {str(e)}'
+            }
+
+    @staticmethod
     def check_database():
         """فحص الاتصال بقاعدة البيانات"""
         try:
@@ -178,7 +202,8 @@ class HealthCheckService:
             'database': HealthCheckService.check_database(),
             'nowpayments': HealthCheckService.check_nowpayments(),
             'encryption': HealthCheckService.check_encryption(),
-            'system': HealthCheckService.check_system_resources()
+            'system': HealthCheckService.check_system_resources(),
+            'ai_engine': HealthCheckService.check_ai_engine()
         }
 
         # تحديد الحالة العامة — 'unknown' is never healthy: a probe that

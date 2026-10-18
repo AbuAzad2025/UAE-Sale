@@ -9,7 +9,15 @@ import requests
 
 import services.ai_service as ai_mod
 from models import Customer, Payment, Product, Sale, SaleLine
-from services.ai_service import AIService
+from services.ai_service import AIService, AIServiceError
+
+
+@pytest.fixture(autouse=True)
+def clear_ai_cache():
+    """نظف كاش AIService قبل كل اختبار لعزل النتائج."""
+    AIService.clear_customer_analysis_cache()
+    yield
+    AIService.clear_customer_analysis_cache()
 
 
 def _noop_load_dotenv(*args, **kwargs):
@@ -680,7 +688,8 @@ class TestNeuralMethods:
             assert AIService.forecast_sales_neural(5) == {'forecast': [1, 2]}
         engine.forecast_sales.side_effect = RuntimeError('x')
         with app.app_context():
-            assert AIService.forecast_sales_neural() == {}
+            with pytest.raises(AIServiceError):
+                AIService.forecast_sales_neural()
 
     def test_detect_fraud_success_and_failure(self, monkeypatch):
         engine = _patch_engine(monkeypatch, '_neural_engine')
@@ -695,11 +704,13 @@ class TestNeuralMethods:
         ('predict_maintenance_neural', 'predict_maintenance_needs'),
         ('predict_cash_flow_neural', 'predict_cash_flow'),
     ])
-    def test_neural_failures_return_empty_dict(self, app, monkeypatch, method_name, engine_method):
+    def test_neural_failures_raise_ai_service_error(self, app, monkeypatch, method_name, engine_method):
         engine = _patch_engine(monkeypatch, '_neural_engine')
         getattr(engine, engine_method).side_effect = RuntimeError('down')
         with app.app_context():
-            assert getattr(AIService, method_name)(1) == {}
+            with pytest.raises(AIServiceError) as exc_info:
+                getattr(AIService, method_name)(1)
+            assert exc_info.value.code == f'{method_name.upper()}_FAILED'
 
     def test_train_all_models_failure(self, app, monkeypatch):
         engine = _patch_engine(monkeypatch, '_neural_engine')

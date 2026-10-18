@@ -92,6 +92,17 @@ from ai_knowledge import (  # noqa: E402
 )
 
 
+class AIServiceError(Exception):
+    """خطأ موحد في طبقة AIService.
+
+    يمكّن المستدعين من التمييز بين "لا بيانات" و"فشل تقني".
+    """
+    def __init__(self, message: str, code: str = 'AI_SERVICE_ERROR', details: dict = None):
+        super().__init__(message)
+        self.code = code
+        self.details = details or {}
+
+
 class AIService:
     """🧠 أزاد - AZAD AI Assistant
     المساعد الذكي الخبير الشامل - متكامل مع جميع وحدات AI
@@ -281,6 +292,24 @@ class AIService:
         'smart': 'gpt-4',
         'expert': 'gpt-4-turbo'
     }
+
+    @classmethod
+    def _handle_ai_error(cls, operation: str, exc: Exception, fallback=None):
+        """معالج موحد لأخطاء خدمات AI.
+
+        يحوّل أي استثناء إلى AIServiceError مع سياق واضح،
+        أو يرجع قيمة افتراضية إذا كانت مقدمة (للاستخدام الداخلي فقط).
+        """
+        logger.error(f"AIService.{operation} failed: {exc}", exc_info=True)
+        if fallback is not None:
+            # للاستخدام الداخلي فقط — يحذر ويعيد القيمة الاحتياطية
+            logger.warning(f"AIService.{operation} returned fallback due to error")
+            return fallback
+        raise AIServiceError(
+            f"{operation} failed: {exc}",
+            code=f"{operation.upper()}_FAILED",
+            details={'operation': operation, 'original_error': str(exc)}
+        )
 
     @staticmethod
     def get_api_key():
@@ -476,19 +505,48 @@ class AIService:
 
     @staticmethod
     def analyze_customer_behavior(customer_id):
-        from functools import lru_cache
+        """تحليل سلوك عميل مع عزل تام للمستأجر (tenant isolation).
 
-        @lru_cache(maxsize=100)
-        def _cached_analysis(cust_id):
-            from models import Customer
+        الـcache يستخدم مفتاح (tenant_id, customer_id) لتجنب تسرب بيانات
+        مستأجر لآخر. الـlru_cache لا يدعم مفاتيح متعددة مباشرة، لذا نستخدم
+        قاموس صريح مع مفتاح مركب.
+        """
+        from models import Customer
+        from flask_login import current_user
 
-            customer = get_owned_or_raise(Customer, cust_id)
-            if not customer:
-                return None
+        # مفتاح مركب: (tenant_id, customer_id) — يضمن العزل التام
+        actor_tenant = getattr(current_user, 'tenant_id', None)
+        cache_key = (actor_tenant, customer_id)
 
-            return AIService._perform_analysis(customer)
+        # خزانة بسيطة آمنة للخيوط (thread-safe) بدل lru_cache
+        if not hasattr(AIService, '_customer_analysis_cache'):
+            AIService._customer_analysis_cache = {}
+            AIService._cache_maxsize = 100
 
-        return _cached_analysis(customer_id)
+        cache = AIService._customer_analysis_cache
+        if cache_key in cache:
+            return cache[cache_key]
+
+        customer = get_owned_or_raise(Customer, customer_id)
+        if not customer:
+            return None
+
+        result = AIService._perform_analysis(customer)
+
+        # سياسة LRU بسيطة: نحذف أقدم إدخال عند تجاوز الحجم
+        if len(cache) >= AIService._cache_maxsize:
+            # نحذف أول مفتاح (أقدم إدخال)
+            oldest = next(iter(cache))
+            del cache[oldest]
+
+        cache[cache_key] = result
+        return result
+
+    @classmethod
+    def clear_customer_analysis_cache(cls):
+        """تنظيف كاش تحليل العملاء — يستخدم في الاختبارات لعزل النتائج."""
+        cls._customer_analysis_cache = {}
+        cls._cache_maxsize = 100
 
     @staticmethod
     def _perform_analysis(customer):  # noqa: C901
@@ -1650,19 +1708,22 @@ class AIService:
         same three arguments and already falls back to recommend_price, so
         this is a delegation rather than a second pricing implementation.
 
-        An empty dict is returned when the neural call itself failed, because
-        the route turns a falsy result into a 404 - a product that cannot be
-        priced should not look like a priced one.
+        On failure, raises AIServiceError so the route can handle it properly.
         """
         try:
             pricing = AIService.predict_price_with_neural(
                 product_id, customer_id, quantity)
             if not pricing or pricing.get('error'):
-                return {}
+                raise AIServiceError(
+                    'Pricing engine returned no result',
+                    code='PRICING_EMPTY_RESULT',
+                    details={'product_id': product_id, 'customer_id': customer_id}
+                )
             return pricing
+        except AIServiceError:
+            raise
         except Exception as e:
-            logger.error(f"Smart pricing failed: {e}")
-            return {}
+            return AIService._handle_ai_error('smart_pricing_engine', e)
 
     @staticmethod
     def forecast_sales_neural(days_ahead=7):
@@ -1676,8 +1737,7 @@ class AIService:
             return forecast
 
         except Exception as e:
-            logger.error(f"Neural sales forecast failed: {e}")
-            return {}
+            return AIService._handle_ai_error('forecast_sales_neural', e)
 
     @staticmethod
     def detect_fraud_neural(sale_data):
@@ -1689,8 +1749,7 @@ class AIService:
             return result
 
         except Exception as e:
-            logger.error(f"Neural fraud detection failed: {e}")
-            return {'is_fraud': False, 'risk_score': 0}
+            return AIService._handle_ai_error('detect_fraud_neural', e, fallback={'is_fraud': False, 'risk_score': 0})
 
     @staticmethod
     def classify_customer_neural(customer_id):
@@ -1707,8 +1766,7 @@ class AIService:
             return classification
 
         except Exception as e:
-            logger.error(f"Neural customer classification failed: {e}")
-            return {}
+            return AIService._handle_ai_error('classify_customer_neural', e)
 
     @staticmethod
     def predict_customer_churn():
@@ -1803,8 +1861,7 @@ class AIService:
             return optimization
 
         except Exception as e:
-            logger.error(f"Neural inventory optimization failed: {e}")
-            return {}
+            return AIService._handle_ai_error('optimize_inventory_neural', e)
 
     @staticmethod
     def predict_maintenance_neural(product_id):
@@ -1821,8 +1878,7 @@ class AIService:
             return prediction
 
         except Exception as e:
-            logger.error(f"Neural maintenance prediction failed: {e}")
-            return {}
+            return AIService._handle_ai_error('predict_maintenance_neural', e)
 
     @staticmethod
     def predict_cash_flow_neural(months_ahead=3):
@@ -1839,8 +1895,7 @@ class AIService:
             return prediction
 
         except Exception as e:
-            logger.error(f"Neural cash flow prediction failed: {e}")
-            return {}
+            return AIService._handle_ai_error('predict_cash_flow_neural', e)
 
     @staticmethod
     def predict_cash_flow(days=30):

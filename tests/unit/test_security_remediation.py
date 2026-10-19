@@ -276,6 +276,9 @@ class TestTenantScopeFailFastAndStrict:
             'payments', 'receipts', 'customers', 'suppliers',
             'products', 'stock_movements', 'cheques', 'gl_journal_entries',
             'gl_journal_lines', 'warehouses', 'shipments', 'inbound_shipments',
+            # `users` has a tenant_id but no module-level registration, so it
+            # was never isolated. Now registered via _BUILTIN_SCOPED_TABLES.
+            'users',
         }
         assert expected == _tenant_scoped_tables
 

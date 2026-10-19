@@ -24,6 +24,16 @@ _thread_local = threading.local()
 _tenant_scoped_tables = set()
 
 
+# Sentinel tenant id meaning "the rows that belong to no tenant".
+#
+# An authenticated non-owner whose account has no tenant_id is scoped to this
+# rather than to None. None means "no filtering at all" - the owner's global
+# view - so it must never be used as a fallback for an ordinary account. With
+# this sentinel such a user sees only tenant-less rows, which is what their
+# own account's data is, and still cannot reach another tenant's data.
+TENANT_LESS_SCOPE = -1
+
+
 def set_current_tenant_id(tenant_id):
     """Set the current tenant ID for this request/thread."""
     _thread_local.tenant_id = tenant_id
@@ -196,6 +206,10 @@ def _before_flush_tenant_guard(session, flush_context, instances):
     """
     tenant_id = get_current_tenant_id()
     owner_actor = _is_actor_owner()
+    # TENANT_LESS_SCOPE is a read scope, not a real tenant. A row must never
+    # be stamped with it - the column would hold a value that matches no
+    # tenant - so stamping falls back to the row's own (NULL) tenant.
+    stamp_tenant = None if tenant_id == TENANT_LESS_SCOPE else tenant_id
     if owner_actor:
         # Owner can do anything; still auto-stamp NULL rows so the column
         # is never accidentally left empty for the platform record.
@@ -204,8 +218,8 @@ def _before_flush_tenant_guard(session, flush_context, instances):
             if tablename not in _tenant_scoped_tables:
                 continue
             try:
-                if getattr(obj, 'tenant_id', None) is None and tenant_id is not None:
-                    obj.tenant_id = tenant_id
+                if getattr(obj, 'tenant_id', None) is None and stamp_tenant is not None:
+                    obj.tenant_id = stamp_tenant
             except Exception:
                 continue
         return
@@ -218,17 +232,17 @@ def _before_flush_tenant_guard(session, flush_context, instances):
             current_val = getattr(obj, 'tenant_id', None)
         except Exception:
             continue
-        if current_val in (None, '') and tenant_id is not None:
+        if current_val in (None, '') and stamp_tenant is not None:
             # Auto-scope new rows to the current tenant.
             try:
-                obj.tenant_id = tenant_id
+                obj.tenant_id = stamp_tenant
             except Exception:
                 pass
-        elif current_val is not None and tenant_id is not None and current_val != tenant_id:
+        elif current_val is not None and stamp_tenant is not None and current_val != stamp_tenant:
             # Cross-tenant insert from a non-owner actor.
             raise RuntimeError(
                 f"Cross-tenant insert blocked: {type(obj).__name__}.tenant_id="
-                f"{current_val} but current tenant is {tenant_id}"
+                f"{current_val} but current tenant is {stamp_tenant}"
             )
 
     for obj in session.dirty:
@@ -337,7 +351,7 @@ def install_tenant_filter_events():  # noqa: C901
         # already constrain those queries, so skip rather than fail.
         for entity in scoped_entities:
             try:
-                query = query.filter(entity.tenant_id == tenant_id)
+                query = query.filter(_tenant_predicate(entity, tenant_id))
             except Exception as exc:  # noqa: BLE001
                 current_app_logger = _safe_logger()
                 if current_app_logger:
@@ -385,7 +399,7 @@ def _apply_loader_criteria(session, tenant_id):
         try:
             session.enable_loader_criteria(
                 entity,
-                lambda cls: cls.tenant_id == tenant_id,
+                lambda cls: _tenant_predicate(cls, tenant_id),
                 include_aliases=True)
         except Exception:  # noqa: BLE001 - never break a session
             continue
@@ -393,6 +407,17 @@ def _apply_loader_criteria(session, tenant_id):
         session._tenant_criteria_tenant = tenant_id
     except Exception:  # noqa: BLE001
         pass
+
+
+def _tenant_predicate(entity, tenant_id):
+    """The WHERE predicate constraining *entity* to the current tenant.
+
+    TENANT_LESS_SCOPE means "rows with no tenant", so the predicate is
+    ``tenant_id IS NULL`` rather than an equality that could never match.
+    """
+    if tenant_id == TENANT_LESS_SCOPE:
+        return entity.tenant_id.is_(None)
+    return entity.tenant_id == tenant_id
 
 
 def _apply_query_loader_criteria(query, tenant_id):
@@ -406,7 +431,7 @@ def _apply_query_loader_criteria(query, tenant_id):
     for entity in _scoped_model_classes():
         try:
             query = query.options(with_loader_criteria(
-                entity, lambda cls: cls.tenant_id == tenant_id))
+                entity, lambda cls: _tenant_predicate(cls, tenant_id)))
         except Exception:  # noqa: BLE001 - never break a query
             continue
     return query

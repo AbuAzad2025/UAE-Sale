@@ -290,5 +290,10 @@ class TestTenantScopedRegistered:
             'payments', 'receipts', 'customers', 'suppliers',
             'products', 'stock_movements', 'cheques', 'gl_journal_entries',
             'gl_journal_lines', 'warehouses', 'shipments', 'inbound_shipments',
+            # `users` carries a tenant_id but had no module-level
+            # register_tenant_scoped() call, so user records were readable by
+            # every tenant. It is registered through
+            # _BUILTIN_SCOPED_TABLES now.
+            'users',
         }
         assert expected == _tenant_scoped_tables

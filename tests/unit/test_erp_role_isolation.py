@@ -805,7 +805,7 @@ class TestDashboardDataScoping:
             assert marker not in data, f"HR sees section {marker}"
 
     def test_dashboard_cache_is_tenant_scoped(
-        self, client, seller_user, tenant1_seller_user, db
+        self, client, seller_user, tenant1_seller_user, other_tenant_user, db
     ):
         """Regression: dashboard aggregates cached for one tenant must never
         leak into another tenant's dashboard (cache key includes tenant).
@@ -815,6 +815,15 @@ class TestDashboardDataScoping:
         bleed vector is the aggregate: seed a tenant-9999 sale big enough to
         move today_sales_amount, prime the cache, then assert the other
         tenant's page does not show it.
+
+        The cache is primed as the tenant-9999 user, who owns that sale. It
+        used to be primed as the tenant-less seller, on the assumption that a
+        tenant-less account sees everything - that assumption was the
+        fail-open bug. A tenant-less user is now scoped to tenant-less rows,
+        so the 7,777 was invisible to them and the cache was primed with
+        nothing. The point of the test is that two DIFFERENT tenants do not
+        share a cache entry, which priming as the owning tenant states
+        directly.
         """
         # Seed a confirmed TODAY sale + customer in tenant 9999
         other = Customer(
@@ -825,7 +834,7 @@ class TestDashboardDataScoping:
         db.session.flush()
         sale = Sale(
             sale_number='S-CACHE-9999', customer_id=other.id,
-            seller_id=seller_user.id,
+            seller_id=other_tenant_user.id,
             total_amount=Decimal('7777'), amount_base=Decimal('7777'),
             paid_amount=Decimal('0'), paid_amount_base=Decimal('0'),
             balance_due=Decimal('7777'), currency='AED',
@@ -835,9 +844,9 @@ class TestDashboardDataScoping:
         db.session.add(sale)
         db.session.commit()
 
-        # Prime the cache as the tenant-less seller (unfiltered context):
-        # page shows the 7,777 aggregate.
-        _login(client, seller_user)
+        # Prime the cache as the tenant-9999 user, who owns that sale:
+        # their page shows the 7,777 aggregate.
+        _login(client, other_tenant_user)
         assert '7,777' in client.get('/dashboard').data.decode()
         client.get('/auth/logout', follow_redirects=True)
 

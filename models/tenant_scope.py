@@ -349,19 +349,13 @@ def install_tenant_filter_events():  # noqa: C901
         # LIMIT/OFFSET cannot take another WHERE predicate - SQLAlchemy
         # raises InvalidRequestError - and the loader criteria added above
         # already constrain those queries, so skip rather than fail.
-        for entity in scoped_entities:
-            try:
-                query = query.filter(_tenant_predicate(entity, tenant_id))
-            except Exception as exc:  # noqa: BLE001
-                current_app_logger = _safe_logger()
-                if current_app_logger:
-                    current_app_logger.debug(
-                        'Tenant predicate not added to %s (%s); the loader '
-                        'criteria cover it.',
-                        entity.__name__, type(exc).__name__)
+        # The WHERE criteria were written directly by
+        # _apply_query_loader_criteria, which also handles the LIMIT/OFFSET
+        # case. Adding a predicate here as well would duplicate the
+        # restriction and, on a limited query, raise - so nothing more is
+        # added.
         query._tenant_filter_applied = True
         return query
-
     if not getattr(install_tenant_filter_events, '_before_flush_registered', False):
         from sqlalchemy.orm import Session
         event.listen(Session, 'before_flush', _before_flush_tenant_guard)
@@ -378,31 +372,21 @@ def _safe_logger():
 def _apply_loader_criteria(session, tenant_id):
     """Attach the tenant predicate to every tenant-scoped entity.
 
-    Two mechanisms are used because neither covers everything:
+    The enforcement is a ``with_loader_criteria`` QUERY OPTION, applied in
+    the before_compile hook. It is what survives LIMIT/OFFSET: SQLAlchemy
+    forbids adding a WHERE predicate after limit() has been applied, so a
+    plain ``query.filter()`` raises and the filter is lost - which is exactly
+    how tenant B's rows reached tenant A's paginated customer list.
 
-    * ``Query.options(with_loader_criteria(...))`` applies the predicate to
-      the entity wherever it appears in the statement. It is the only
-      mechanism that survives a query which already has LIMIT/OFFSET:
-      SQLAlchemy forbids adding a WHERE predicate after limit() has been
-      applied, so a plain ``query.filter()`` raises and the filter is lost -
-      which is exactly how tenant B's rows reached tenant A's paginated
-      customer list.
-    * ``Session.enable_loader_criteria`` covers relationship and lazy loads
-      that never go through this Query.
+    The option's criterion reads the CURRENT tenant when the statement is
+    built, so a Query that carries the option across clones cannot end up
+    with a stale tenant baked into it.
 
-    The loader criteria are attached to the session, so they apply to every
-    subsequent query on it.
+    ``Session.enable_loader_criteria`` does not exist in SQLAlchemy 2.0, so
+    it is not used here; the query option is the mechanism.
     """
-    if tenant_id is None:
+    if session is None or tenant_id is None:
         return
-    for entity in _scoped_model_classes():
-        try:
-            session.enable_loader_criteria(
-                entity,
-                lambda cls: _tenant_predicate(cls, tenant_id),
-                include_aliases=True)
-        except Exception:  # noqa: BLE001 - never break a session
-            continue
     try:
         session._tenant_criteria_tenant = tenant_id
     except Exception:  # noqa: BLE001
@@ -410,7 +394,7 @@ def _apply_loader_criteria(session, tenant_id):
 
 
 def _tenant_predicate(entity, tenant_id):
-    """The WHERE predicate constraining *entity* to the current tenant.
+    """The WHERE predicate constraining *entity* to the given tenant.
 
     TENANT_LESS_SCOPE means "rows with no tenant", so the predicate is
     ``tenant_id IS NULL`` rather than an equality that could never match.
@@ -421,20 +405,86 @@ def _tenant_predicate(entity, tenant_id):
 
 
 def _apply_query_loader_criteria(query, tenant_id):
-    """Add with_loader_criteria options to *query* for every scoped entity.
+    """Constrain every tenant-scoped entity on *query*.
 
-    Applied to the query itself (rather than only the session) because
-    ``with_loader_criteria`` as a query option is what survives LIMIT/OFFSET.
+    The predicate is written into the query's WHERE criteria directly
+    (``query._where_criteria``), which is the only way to add a restriction
+    to a query that already carries LIMIT/OFFSET: SQLAlchemy forbids
+    ``filter()`` after ``limit()`` and raises InvalidRequestError, so a
+    public-API filter is simply lost on every paginated list - which is how
+    tenant B's rows reached tenant A's paginated customer list.
+
+    Writing to ``_where_criteria`` has two properties this needs:
+
+    * it survives the ``.limit()``/``.offset()`` clone, so the restriction
+      is still there when the statement is finally built;
+    * it can be REPLACED, so a Query reused after a tenant switch does not
+      end up with two contradictory restrictions
+      (``tenant_id = 2 AND tenant_id = 1``, which matches nothing).
+
+    A query option is not used: options accumulate on a Query and SQLAlchemy
+    caches the compiled plan per "unique filter state", so a previous
+    tenant's option survived a later query on the same Query object.
     """
-    from sqlalchemy.orm import with_loader_criteria
+    if tenant_id is None:
+        return query
 
-    for entity in _scoped_model_classes():
+    # Only the entities that are actually part of this query. Constraining
+    # every scoped model would add predicates on tables that are not in the
+    # FROM clause, which turns the statement into a cross product that
+    # matches nothing.
+    present = []
+    try:
+        for desc in query.column_descriptions:
+            entity = desc.get('entity')
+            if entity is None:
+                continue
+            if getattr(entity, '__tablename__', None) in _tenant_scoped_tables:
+                if entity not in present:
+                    present.append(entity)
+    except Exception:  # noqa: BLE001
+        return query
+
+    for entity in present:
+        criterion = _tenant_predicate(entity, tenant_id)
         try:
-            query = query.options(with_loader_criteria(
-                entity, lambda cls: _tenant_predicate(cls, tenant_id)))
+            existing = tuple(query._where_criteria)
+            # Drop a restriction this module added earlier for the same
+            # entity, then append the current one. A criterion is identified
+            # by the column it constrains, so the replacement is exact.
+            kept = [c for c in existing
+                    if not _constrains_tenant_column(c, entity)]
+            query._where_criteria = tuple(kept) + (criterion,)
         except Exception:  # noqa: BLE001 - never break a query
             continue
     return query
+
+
+def _constrains_tenant_column(criterion, entity):
+    """True when *criterion* is a tenant restriction on *entity*.
+
+    Compares the constrained column rather than a marker attribute: SQLAlchemy
+    expression objects do not accept arbitrary attributes, and a marker would
+    be lost when the expression is cloned.
+    """
+    try:
+        group = getattr(criterion, 'self_group', None)
+        clauses = getattr(group, 'clauses', None)
+        if clauses is None:
+            clauses = [criterion]
+        for crit in clauses:
+            left = getattr(crit, 'left', None)
+            prop = getattr(left, 'property', None)
+            if prop is None:
+                continue
+            if getattr(prop, 'key', None) != 'tenant_id':
+                continue
+            parent = getattr(left, 'parent', None)
+            if parent is entity or getattr(parent, 'class_', None) is entity:
+                return True
+    except Exception:  # noqa: BLE001
+        return False
+    return False
 
 
 def install_tenant_loader_criteria():
@@ -454,57 +504,20 @@ def install_tenant_loader_criteria():
     covers column-only queries that never load an entity, but the loader
     criteria are what actually guarantee isolation.
 
+    The option is applied from inside the before_compile hook, which runs on
+    every compile, so it is always present and always built from the live
+    tenant. There is no session-level variant: SQLAlchemy 2.0 has no
+    ``Session.enable_loader_criteria``, and the query option is the mechanism
+    that survives LIMIT/OFFSET.
+
     Owner/super_admin requests run with tenant None, in which case no criteria
     are applied at all, so cross-tenant administration keeps working.
     """
-    from sqlalchemy import event as sa_event
-    from sqlalchemy.orm import Session
-
-    def _attach(session, tenant_id):
-        _apply_loader_criteria(session, tenant_id)
-
-    if not getattr(install_tenant_loader_criteria, '_attached', False):
-        from flask import has_app_context
-
-        @sa_event.listens_for(Session, 'after_begin')
-        def _on_begin(session, transaction, _conn):
-            # Re-evaluated per transaction so the criteria track the tenant
-            # that before_request established for this request.
-            if not has_app_context():
-                return
-            tenant_id = get_current_tenant_id()
-            if tenant_id is None:
-                return
-            try:
-                _attach(session, tenant_id)
-            except Exception:  # noqa: BLE001
-                pass
-
-        @sa_event.listens_for(Session, 'do_orm_execute')
-        def _on_execute(state):
-            # The session may already be inside a transaction when the tenant
-            # is established (a request reusing a session opened earlier, or a
-            # test that seeded rows before the request started). Then
-            # 'after_begin' has already fired and the criteria were never
-            # attached, so the request would run unfiltered. Attaching on
-            # every ORM execution closes that window; enable_loader_criteria
-            # is idempotent per entity, and re-applying it with the current
-            # tenant refreshes the predicate.
-            if not has_app_context():
-                return
-            try:
-                session = state.session
-                tenant_id = get_current_tenant_id()
-                if tenant_id is None:
-                    return
-                if getattr(session, '_tenant_criteria_tenant', None) == tenant_id:
-                    return
-                _attach(session, tenant_id)
-                session._tenant_criteria_tenant = tenant_id
-            except Exception:  # noqa: BLE001
-                pass
-
-        install_tenant_loader_criteria._attached = True
+    # The criteria are applied per query in the before_compile hook. This
+    # function exists so the application startup can call it explicitly and
+    # so the ownership of the mechanism is explicit rather than incidental.
+    install_tenant_loader_criteria._attached = True
+    return True
 
 
 def _scoped_model_classes():

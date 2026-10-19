@@ -2942,17 +2942,23 @@ def _run_auth_payment_surface(client, db, sc, fixtures):
 
 
 def _run_api_meta_surface(client, db, sc, fixtures):
-    """The three infrastructure endpoints of routes/api.py.
+    """The infrastructure endpoints of routes/api.py.
 
     /api/health is named in _run_restapi but only reached under a condition
     that no scenario met; /api/echo and /api/client-errors were never
     requested at all. /api/echo only accepts PUT/PATCH/DELETE, which
     _allowed_method resolves from the url_map.
+
+    /api/healthz is the load-balancer probe added with the health-check
+    work: it runs the full health check (database, encryption, NOWPayments,
+    system resources, AI engine) and answers 503 when anything is
+    unhealthy. It has no side effects, so requesting it is safe here.
     """
     _surface_sweep(
         client, sc,
         reads=[
             '/api/health',
+            '/api/healthz',
         ],
         forms=[],
         actions=[

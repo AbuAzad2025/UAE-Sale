@@ -176,7 +176,14 @@ def schedule_auto_approval(app):
         while True:
             try:
                 with app.app_context():
-                    result = AutoApprovalService.run_auto_approval()
+                    # Platform-level by design: this job settles pending
+                    # Donations and PackagePurchases, neither of which carries
+                    # a tenant_id - they are global payment records. A thread
+                    # inherits no tenant context, so the cross-tenant scope is
+                    # stated explicitly rather than left implicit.
+                    from models import run_in_platform_context
+                    result = run_in_platform_context(
+                        AutoApprovalService.run_auto_approval)
                     logger.info(f'✅ Auto-approval completed: {result}')
 
             except Exception as e:

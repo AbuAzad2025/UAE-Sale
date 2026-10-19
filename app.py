@@ -313,6 +313,22 @@ def create_app(config_class=Config):  # noqa: C901
             'ai_enabled': 'ai' in app.blueprints
         }
 
+    def _log_tenant_context_violation(user):
+        """Audit hook for an authenticated user with no tenant context.
+
+        Fail-closed means we deny the request, but a silent 403 leaves nobody
+        able to tell a misconfigured account from a bug, so every denial is
+        recorded with enough identity to find and fix the row.
+        """
+        try:
+            app.logger.error(
+                'SECURITY: denied request - authenticated user %s (id=%s) has '
+                'no tenant_id; tenant context is ambiguous so isolation '
+                'cannot be enforced.',
+                getattr(user, 'username', '?'), getattr(user, 'id', '?'))
+        except Exception:  # pragma: no cover - logging must never raise
+            pass
+
     @app.before_request
     def before_request():
         g.request_start_time = time.time()
@@ -347,13 +363,28 @@ def create_app(config_class=Config):  # noqa: C901
             session['last_activity'] = _dt.now().isoformat()
             session.permanent = True
 
-            # Owner sees all tenants (no filter); other users are scoped to their tenant
-            if hasattr(current_user, 'is_owner') and current_user.is_owner:
+            # Owner sees all tenants (no filter); other users are scoped to
+            # their tenant.
+            #
+            # SECURITY (fail-closed): the previous fallback here was
+            # set_current_tenant_id(None) "Default: no filtering", so an
+            # authenticated non-owner whose tenant_id was NULL read EVERY
+            # tenant's rows - users.tenant_id is nullable, so such rows can
+            # exist. An ambiguous tenant context must now deny the request
+            # instead of silently disabling isolation.
+            if getattr(current_user, 'is_owner', False):
                 set_current_tenant_id(None)  # Owner bypasses tenant filtering
-            elif hasattr(current_user, 'tenant_id') and current_user.tenant_id:
+            elif getattr(current_user, 'tenant_id', None):
                 set_current_tenant_id(current_user.tenant_id)
             else:
-                set_current_tenant_id(None)  # Default: no filtering
+                set_current_tenant_id(None)
+                _log_tenant_context_violation(current_user)
+                from flask import abort as _abort
+                _abort(
+                    403,
+                    description=(
+                        'حسابك غير مرتبط بأي شركة (tenant). '
+                        'يرجى مراجعة إدارة النظام.'))
         else:
             set_current_tenant_id(None)
 
@@ -415,8 +446,19 @@ def create_app(config_class=Config):  # noqa: C901
 
     # Initialize tenant filter events
     try:
-        from models.tenant_scope import install_tenant_filter_events
+        from models.tenant_scope import (
+            install_builtin_tenant_scoping,
+            install_tenant_filter_events,
+            install_tenant_loader_criteria,
+        )
+        # Register tables that have a tenant_id column but no module-level
+        # register_tenant_scoped() call (currently `users`) BEFORE the query
+        # hook is installed, so the first query already sees the full set.
+        install_builtin_tenant_scoping()
         install_tenant_filter_events()
+        # Load-time criteria (relationships, joinedload, session.get) which a
+        # per-query filter cannot reach.
+        install_tenant_loader_criteria()
         app.logger.info('[OK] Tenant filter events installed')
     except Exception as e:
         app.logger.warning(f'Tenant filter events not installed: {e}')
@@ -606,9 +648,14 @@ if __name__ == '__main__':  # noqa: C901
                 time.sleep(wait_seconds)
 
                 with app.app_context():
-                    # Real implementation: checks due-ness, creates the backup
-                    # and advances last_run state (safe no-op on failure).
-                    backup = BackupService.auto_backup_daily()
+                    # Platform-level scheduler: the daily backup covers the
+                    # whole database, not one tenant. run_in_platform_context
+                    # makes that cross-tenant intent explicit - without it the
+                    # thread simply inherits no tenant and runs unfiltered by
+                    # accident.
+                    from models import run_in_platform_context
+                    backup = run_in_platform_context(
+                        BackupService.auto_backup_daily)
                     if backup:
                         app.logger.info("Automatic backup completed: %s", backup['filename'])
                     else:

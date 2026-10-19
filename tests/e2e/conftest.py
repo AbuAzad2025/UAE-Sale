@@ -351,8 +351,14 @@ def client(app, db):
             yield c
 
 
-def _make_user(role_slug: str) -> User:
-    """Create one user per role with exactly that role's permissions."""
+def _make_user(role_slug: str, tenant_id=None) -> User:
+    """Create one user per role with exactly that role's permissions.
+
+    ``tenant_id`` is applied at construction rather than assigned afterwards:
+    `users` is registered as tenant-scoped, so the immutability guard in
+    models/tenant_scope.py rejects changing tenant_id on an already-persisted
+    row. Building the row correctly avoids fighting that guard.
+    """
     perms = []
     for code in ROLE_PERMISSIONS[role_slug]:
         perm = Permission.query.filter_by(code=code).first()
@@ -379,6 +385,7 @@ def _make_user(role_slug: str) -> User:
         is_owner=(role_slug == 'owner'),
         is_active=True,
         role_id=role.id,
+        tenant_id=tenant_id,
     )
     user.set_password(ROLE_PASSWORDS[role_slug])
     _db.session.add(user)
@@ -423,10 +430,11 @@ def users(db, e2e_tenant):
     """
     made = {}
     for slug in ROLE_PERMISSIONS:
-        user = _make_user(slug)
-        if slug != 'owner':
-            user.tenant_id = e2e_tenant.id
-        made[slug] = user
+        # Non-owners get the tenant at construction time; the owner keeps
+        # tenant_id None because the platform owner legitimately bypasses the
+        # tenant filter (app.py sets tenant None for is_owner).
+        tenant_for_user = None if slug == 'owner' else e2e_tenant.id
+        made[slug] = _make_user(slug, tenant_id=tenant_for_user)
     db.session.commit()
     return made
 

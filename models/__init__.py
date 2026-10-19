@@ -41,6 +41,8 @@ from .inbound_shipment import InboundShipment, InboundShipmentLine
 from .tenant_scope import (  # noqa: F401
     TenantScopedMixin, set_current_tenant_id, get_current_tenant_id,
     clear_current_tenant_id, register_tenant_scoped, install_tenant_filter_events,
+    install_builtin_tenant_scoping, install_tenant_loader_criteria,
+    run_in_tenant_context, run_in_platform_context,
 )
 from .hr import (
     Department, Employee, LeaveType, LeaveRequest, Payslip, PayslipLine,

@@ -1384,9 +1384,17 @@ def register_neural_training_listeners():  # noqa: C901
                 logger.info(f"🧠 Neural Milestone: {sales_count} sales - Checking auto-retraining...")
                 try:
                     import threading
-                    thread = threading.Thread(
-                        target=AutoRetrainingScheduler.check_and_train_if_needed
-                    )
+                    from models.tenant_scope import run_in_platform_context
+
+                    def _retrain():
+                        # Cross-tenant by design: the milestone counts sales
+                        # across every tenant and retrains one shared model.
+                        # Stated explicitly because a bare thread would run
+                        # with no tenant context at all.
+                        run_in_platform_context(
+                            AutoRetrainingScheduler.check_and_train_if_needed)
+
+                    thread = threading.Thread(target=_retrain)
                     thread.daemon = True
                     thread.start()
                 except Exception:

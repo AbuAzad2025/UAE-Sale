@@ -134,10 +134,20 @@ class TestUsersRegisteredAsScoped:
 
 
 class TestFailClosedTenantContext:
-    """Item 3: NULL tenant_id used to mean 'no filtering'."""
+    """Item 3: a NULL tenant_id must not mean 'no filtering'."""
 
-    def test_null_tenant_user_is_denied(self, app, db, client):
-        from models import User, Role
+    def test_null_tenant_user_sees_no_tenant_rows(self, app, db, client):
+        """A tenant-less user is scoped to tenant-less rows only.
+
+        They are not granted global access - that was the fail-open bug - and
+        they are not locked out either, because
+        user_service.provision_user() legitimately creates tenant-less
+        accounts. What they must not see is another tenant's data.
+        """
+        from models import User, Role, Tenant, Customer
+        from models.tenant_scope import set_current_tenant_id
+        from decimal import Decimal
+
         role = Role(name='iso-orphan', name_ar='يتيم', slug='iso-orphan',
                     permissions=[])
         db.session.add(role)
@@ -147,21 +157,48 @@ class TestFailClosedTenantContext:
                             tenant_id=None, is_active=True, is_owner=False))
         db.session.commit()
 
-        from flask_login import login_user
-        user = User.query.filter_by(username='iso-orphanuser').first()
-        login_user(user)
-        r = client.get('/dashboard')
-        assert r.status_code == 403, (
-            f'user with no tenant got {r.status_code}, expected 403')
+        # Another tenant's row must be invisible to the tenant-less user.
+        other = Tenant(name='Other', name_ar='o', slug='iso-other',
+                       country='UAE', is_active=True)
+        db.session.add(other)
+        db.session.commit()
+        db.session.add(Customer(
+            name='FOREIGN-CUSTOMER', name_ar='f', customer_type='regular',
+            balance=Decimal('0'), is_active=True, tenant_id=other.id))
+        db.session.commit()
+
+        set_current_tenant_id(-1)  # TENANT_LESS_SCOPE
+        try:
+            names = [c.name for c in Customer.query.all()]
+        finally:
+            from models.tenant_scope import clear_current_tenant_id
+            clear_current_tenant_id()
+
+        assert 'FOREIGN-CUSTOMER' not in names, (
+            f'tenant-less user saw another tenant\'s rows: {names}')
+
+    def test_tenant_less_scope_is_not_the_global_view(self, app, db):
+        """TENANT_LESS_SCOPE must differ from None (the owner's view)."""
+        from models.tenant_scope import (TENANT_LESS_SCOPE,
+                                         get_current_tenant_id,
+                                         set_current_tenant_id,
+                                         clear_current_tenant_id)
+        set_current_tenant_id(TENANT_LESS_SCOPE)
+        try:
+            assert get_current_tenant_id() == TENANT_LESS_SCOPE
+            assert get_current_tenant_id() is not None
+        finally:
+            clear_current_tenant_id()
 
     def test_owner_with_null_tenant_still_allowed(self, app, db, client):
-        """Owner bypass must survive the fail-closed change."""
+        """Owner bypass must survive the scoping change."""
         from flask_login import login_user
         from models import User
         owner = User.query.filter_by(is_owner=True).first()
         if owner is None:
             pytest.skip('no owner user in this fixture set')
-        login_user(owner)
+        with app.test_request_context():
+            login_user(owner)
         r = client.get('/dashboard')
         assert r.status_code in (200, 302), (
             f'owner got {r.status_code}; owner bypass was broken')

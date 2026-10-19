@@ -316,15 +316,17 @@ def create_app(config_class=Config):  # noqa: C901
     def _log_tenant_context_violation(user):
         """Audit hook for an authenticated user with no tenant context.
 
-        Fail-closed means we deny the request, but a silent 403 leaves nobody
-        able to tell a misconfigured account from a bug, so every denial is
-        recorded with enough identity to find and fix the row.
+        Such a user is not granted global access (that is the fail-open
+        behaviour this replaced), but they are not denied either: they are
+        scoped to the rows that belong to no tenant, which is what their own
+        account can see. The record is logged because an account without a
+        tenant is usually a provisioning mistake.
         """
         try:
-            app.logger.error(
-                'SECURITY: denied request - authenticated user %s (id=%s) has '
-                'no tenant_id; tenant context is ambiguous so isolation '
-                'cannot be enforced.',
+            app.logger.warning(
+                'SECURITY: user %s (id=%s) has no tenant_id; scoping them to '
+                'tenant-less rows only. Assign a tenant to grant tenant-wide '
+                'access.',
                 getattr(user, 'username', '?'), getattr(user, 'id', '?'))
         except Exception:  # pragma: no cover - logging must never raise
             pass
@@ -340,6 +342,7 @@ def create_app(config_class=Config):  # noqa: C901
 
         # Multi-tenant: set current tenant from logged-in user
         from models import set_current_tenant_id
+        from models.tenant_scope import TENANT_LESS_SCOPE
         from flask_login import current_user  # noqa: F811  (local import intentional)
         if current_user.is_authenticated:
             # SECURITY: Session idle timeout — force logout after 30 minutes of inactivity
@@ -366,25 +369,24 @@ def create_app(config_class=Config):  # noqa: C901
             # Owner sees all tenants (no filter); other users are scoped to
             # their tenant.
             #
-            # SECURITY (fail-closed): the previous fallback here was
+            # SECURITY: the previous fallback here was
             # set_current_tenant_id(None) "Default: no filtering", so an
             # authenticated non-owner whose tenant_id was NULL read EVERY
             # tenant's rows - users.tenant_id is nullable, so such rows can
-            # exist. An ambiguous tenant context must now deny the request
-            # instead of silently disabling isolation.
+            # exist, and user_service.provision_user() allows creating one.
+            #
+            # The replacement is fail-closed WITHOUT locking the account out:
+            # a tenant-less user is scoped to the rows that belong to no
+            # tenant (their own account's data), not to all tenants. They
+            # still cannot see another tenant's data, and an owner can still
+            # see everything.
             if getattr(current_user, 'is_owner', False):
                 set_current_tenant_id(None)  # Owner bypasses tenant filtering
             elif getattr(current_user, 'tenant_id', None):
                 set_current_tenant_id(current_user.tenant_id)
             else:
-                set_current_tenant_id(None)
                 _log_tenant_context_violation(current_user)
-                from flask import abort as _abort
-                _abort(
-                    403,
-                    description=(
-                        'حسابك غير مرتبط بأي شركة (tenant). '
-                        'يرجى مراجعة إدارة النظام.'))
+                set_current_tenant_id(TENANT_LESS_SCOPE)
         else:
             set_current_tenant_id(None)
 

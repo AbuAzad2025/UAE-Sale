@@ -41,8 +41,7 @@ def _seed_customer(db, tenant, name):
     c = Customer(name=name, name_ar=name, customer_type='regular',
                  phone='+0000000000', email=f'{name}@test.local',
                  credit_limit=Decimal('1000'), balance=Decimal('0'),
-                 is_active=True)
-    c.tenant_id = tenant.id
+                 is_active=True, tenant_id=tenant.id)
     db.session.add(c)
     db.session.commit()
     return c
@@ -50,9 +49,27 @@ def _seed_customer(db, tenant, name):
 
 @pytest.fixture
 def tenant_user(db, users, tenants):
-    """branch_manager of tenant A, so it is a real non-owner scoped user."""
-    user = users['branch_manager']
-    user.tenant_id = tenants[0].id
+    """branch_manager scoped to tenant A, so a real non-owner user.
+
+    The `users` fixture stamps every non-owner with e2e_tenant.id at
+    construction time. Re-pointing a persisted row at tenants[0] is now
+    rejected by the tenant-immutability guard (`users` is tenant-scoped), so
+    this fixture builds a dedicated user for tenant A instead.
+
+    It reuses the branch_manager ROLE from the shared fixture rather than
+    building a new one: `_make_user` creates one Role per user, and a role
+    rebuilt from scratch carries a different permission set - a fresh
+    branch_manager without view_customers cannot open /customers/ at all,
+    which is a permission failure (403), not a tenant leak.
+    """
+    from models import User
+    source = users['branch_manager']
+    user = User(username='domh_branch_mgr', email='domh@branch.local',
+                full_name='DomH Branch Manager', is_owner=False,
+                is_active=True, role_id=source.role_id,
+                tenant_id=tenants[0].id)
+    user.set_password('ManagerPass123!')
+    db.session.add(user)
     db.session.commit()
     return user
 
@@ -112,53 +129,44 @@ class TestTenantScoping:
         clear_current_tenant_id()
         try:
             set_current_tenant_id(b.id)
-            assert GLJournalEntry.query.filter_by(id=eid).first() is None, (
+            assert GLJournalEntry.query.all() == [], (
                 f'entry {eid} created under no tenant leaked into tenant B')
             set_current_tenant_id(None)
             assert GLJournalEntry.query.filter_by(id=eid).first() is not None
         finally:
             clear_current_tenant_id()
 
-    def test_join_from_unscoped_primary_can_reach_other_tenant(
+    def test_join_from_unscoped_primary_cannot_reach_other_tenant(
             self, db, tenants):
-        """Documents the real limitation of the before_compile filter.
+        """The before_compile filter now scopes EVERY tenant-scoped entity.
 
-        The filter is applied to the query's PRIMARY entity only. GLJournalLine
-        is tenant-scoped, but a query whose primary entity is the unscoped
-        GLAccount still sees another tenant's journal lines unless the code
-        filters explicitly. This test records the actual behaviour so the
-        security posture is explicit rather than assumed.
+        A query rooted on the unscoped GLAccount must no longer leak another
+        tenant's GLJournalLine rows.
         """
         a, b = tenants
         entry = GLJournalEntry(entry_number='JE-T1', description='tenant A entry',
-                               total_debit=100, total_credit=100, is_posted=True)
-        entry.tenant_id = a.id
+                               total_debit=100, total_credit=100, is_posted=True,
+                               tenant_id=a.id)
         db.session.add(entry)
         db.session.flush()
         cash = db.session.query(GLAccount).filter_by(
             code=ACC['cash']).first()
         line = GLJournalLine(entry_id=entry.id, account_id=cash.id,
-                             debit=100, credit=0, amount_base=100)
-        line.tenant_id = a.id
+                             debit=100, credit=0, amount_base=100,
+                             tenant_id=a.id)
         db.session.add(line)
         db.session.commit()
 
         clear_current_tenant_id()
         try:
-            # Root the query on the UNSCOPED GLAccount so before_compile has no
-            # tenant_id column to filter on the primary entity.
             set_current_tenant_id(b.id)
             pairs = db.session.query(GLAccount, GLJournalLine).join(
                 GLJournalLine, GLJournalLine.account_id == GLAccount.id
             ).filter(GLAccount.code == ACC['cash']).all()
-            assert pairs, (
-                'expected a join rooted on the unscoped GLAccount to reach '
-                "tenant A's journal lines while scoped to tenant B; if this "
-                'now returns nothing the filter was tightened and this test '
-                'should be inverted to assert isolation')
-            leaked_tenants = {line.tenant_id for _, line in pairs}
-            assert a.id in leaked_tenants, (
-                f'expected tenant A rows, saw tenants {leaked_tenants}')
+            leaked_tenants = {ln.tenant_id for _, ln in pairs}
+            assert a.id not in leaked_tenants, (
+                f'tenant B (id={b.id}) reached tenant A journal lines: '
+                f'{leaked_tenants}')
         finally:
             clear_current_tenant_id()
 

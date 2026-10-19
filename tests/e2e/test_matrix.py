@@ -49,6 +49,38 @@ OTHER_RATE = Decimal('3.670000')
 UNIT_COST = Decimal('50')
 
 
+def _user_count_in_actor_scope(client, db):
+    """Count the users the ACTING user can see, in the acting user's scope.
+
+    `users` is a tenant-scoped table, so the count depends on the tenant
+    context in force when it runs. A request establishes that context
+    (app.py's before_request) and the teardown clears it afterwards, so a
+    count taken before the request and one taken after it are NOT looking at
+    the same set of rows: before is the previous context, after is the
+    actor's tenant.
+
+    To compare like with like, the count is taken with the actor's own
+    tenant explicitly set, both before and after the request. The assertion
+    it supports - a refused delete must leave no trace - is unchanged.
+    """
+    from flask_login import current_user
+    from models.tenant_scope import (set_current_tenant_id,
+                                     clear_current_tenant_id,
+                                     get_current_tenant_id)
+    from models.user import User
+
+    actor_tenant = getattr(current_user, 'tenant_id', None)
+    previous = get_current_tenant_id()
+    if actor_tenant is not None:
+        set_current_tenant_id(actor_tenant)
+    try:
+        return User.query.count()
+    finally:
+        clear_current_tenant_id()
+        if previous is not None:
+            set_current_tenant_id(previous)
+
+
 def _world_state(db):
     """Everything the scenario may have created, for side-effect assertions."""
     from models.payment import Payment
@@ -3480,8 +3512,8 @@ def _run_users(client, db, sc, fixtures):
     # ---- delete: the owner account must be undeletable ----
     if sc.edge in ('negative_boundary', 'validation_error') or \
             sc.state in ('insufficient_boundary', 'expired_invalid'):
-        before = User.query.count()
         owner_row = users['owner']
+        before = _user_count_in_actor_scope(client, db)
         r = client.post(f'/users/{owner_row.id}/delete')
         # The refusal here has three legitimate shapes depending on which guard
         # fires first for the actor's role:
@@ -3494,7 +3526,8 @@ def _run_users(client, db, sc, fixtures):
         still_there = db.session.get(User, owner_row.id)
         assert still_there is not None, (
             f'{sc.id}: the owner account was deleted through /users/<id>/delete')
-        assert User.query.count() == before, (
+        after = _user_count_in_actor_scope(client, db)
+        assert after == before, (
             f'{sc.id}: the refused delete still removed a user')
         return
 
@@ -3566,7 +3599,7 @@ def _run_users(client, db, sc, fixtures):
         return
 
     username = f'e2e_new_{sc.index}'
-    before = User.query.count()
+    before = _user_count_in_actor_scope(client, db)
     from flask_login import current_user
     may = current_user.has_permission('manage_users')
     # UserService._resolve_role refuses a role whose level exceeds the actor's,
@@ -3596,7 +3629,7 @@ def _run_users(client, db, sc, fixtures):
     if not may:
         assert r.status_code == 403, (
             f'{sc.id}: create answered {r.status_code} without manage_users')
-        assert User.query.count() == before, (
+        assert _user_count_in_actor_scope(client, db) == before, (
             f'{sc.id}: a refused create still made a user')
         return
 

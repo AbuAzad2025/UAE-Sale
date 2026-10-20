@@ -15,6 +15,164 @@ from utils.helpers import create_audit_log
 payments_bp = Blueprint('payments', __name__, url_prefix='/payments')
 
 
+def _archive_payment_record(record_id, reason):
+    """أرشف سند صرف أو قبض - تنفيذ واحد يستعمله المساران.
+
+    static/js/payments.js ينادي /payments/archive/<id> بصيغة JSON بينما
+    المسارات القائمة /payments/payments/<id>/archive و
+    /payments/receipts/<id>/archive تستعمل النموذج. التنفيذ هنا واحد حتى
+    لا تختلف النتائج.
+
+    يرفع الاستثناء عند الفشل، ويتولى كل مسار عرض الخطأ بطريقته.
+    """
+    from models import Payment
+    from services.archive_service import ArchiveService
+
+    reason = (reason or '').strip() or 'تم الأرشفة من الواجهة'
+
+    # get_owned_or_404 يُنهي الطلب بـ404/403 بدل أن يعيد None، لذلك
+    # يُستدعى هنا داخل try ويُلتقط الاستثناء ليعيد JSON.
+    from werkzeug.exceptions import NotFound, Forbidden
+
+    try:
+        # سند الصرف أولاً، ثم سند القبض - المعرّفات في جدولين منفصلين.
+        payment = get_owned_or_404(Payment, record_id, code=404)
+    except (NotFound, Forbidden):
+        payment = None
+    except Exception:
+        raise
+
+    if payment is not None:
+        archive_service = ArchiveService()
+        archive_service.archive_record(
+            'payments', payment, reason=reason, commit=False)
+        create_audit_log('archive', 'payments', payment.id)
+
+        # عكس القيد المحاسبي - يجب أن ينجح قبل الاعتماد.
+        from models import GLJournalEntry
+        gl_entries = GLJournalEntry.query.filter_by(
+            reference_type='Payment',
+            reference_id=record_id,
+            is_reversed=False
+        ).all()
+        for entry in gl_entries:
+            entry.reverse_entry(
+                description=f'Reverse Payment {payment.payment_number}')
+
+        db.session.commit()
+        return 'payments', payment
+
+    try:
+        receipt = get_owned_or_404(Receipt, record_id, code=404)
+    except (NotFound, Forbidden):
+        receipt = None
+
+    if receipt is not None:
+        archive_service = ArchiveService()
+        archive_service.archive_record(
+            'receipts', receipt, reason=reason, commit=False)
+        create_audit_log('archive', 'receipts', receipt.id)
+        db.session.commit()
+        return 'receipts', receipt
+
+    return None, None
+
+
+@payments_bp.route('/archive/<int:id>', methods=['POST'])
+@login_required
+@permission_required('manage_payments')
+def archive_payment_json(id):
+    """أرشفة سند صرف/قبض بصيغة JSON.
+
+    static/js/payments.js يستدعي هذا المسار_handle لكنه لم يكن موجوداً،
+    فكان زر الأرشفة يعيد 404. يقرأ السبب من النموذج أو من JSON.
+    """
+    from flask import jsonify
+
+    reason = (request.form.get('reason')
+              or (request.get_json(silent=True) or {}).get('reason') or '')
+
+    try:
+        table, record = _archive_payment_record(id, reason)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Failed to archive payment {id}: {e}')
+        current_app.logger.exception('handler failed')
+        return jsonify({
+            'status': 'error',
+            'ok': False,
+            'message': 'فشلت الأرشفة: حدث خطأ غير متوقع',
+        }), 500
+
+    if record is None:
+        return jsonify({
+            'status': 'error',
+            'ok': False,
+            'message': 'السجل غير موجود',
+        }), 404
+
+    return jsonify({
+        'status': 'success',
+        'ok': True,
+        'id': record.id,
+        'type': table,
+        'message': 'تمت الأرشفة بنجاح',
+    })
+
+
+@payments_bp.route('/search-entities')
+@login_required
+@permission_required('manage_payments')
+def search_entities():
+    """اقتراح كيانات للبحث في نموذج الدفع.
+
+    static/js/payment_form.js و static/js/payments.js يستدعيان
+    /payments/search-entities?type=<type>&q=<query> ويتوقعان مصفوفة
+    عناصر، كل عنصر فيه id و display و phone اختياري.
+    """
+    from flask import jsonify
+    from models import Customer, Supplier
+
+    entity_type = (request.args.get('type') or 'customers').lower()
+    query = (request.args.get('q') or '').strip()
+
+    if entity_type in ('suppliers', 'supplier'):
+        if not query:
+            return jsonify([])
+        rows = Supplier.query.filter(
+            Supplier.is_active == True,  # noqa: E712
+            db.or_(
+                Supplier.name.ilike(f'%{query}%'),
+                Supplier.company_name.ilike(f'%{query}%'),
+                Supplier.phone.ilike(f'%{query}%'),
+            )
+        ).order_by(Supplier.name).limit(20).all()
+        return jsonify([{
+            'id': s.id,
+            'display': s.name,
+            'name': s.name,
+            'phone': s.phone,
+        } for s in rows])
+
+    # الافتراضي: الزبائن
+    if not query:
+        return jsonify([])
+
+    rows = Customer.query.filter(
+        Customer.is_active == True,  # noqa: E712
+        db.or_(
+            Customer.name.ilike(f'%{query}%'),
+            Customer.phone.ilike(f'%{query}%'),
+        )
+    ).order_by(Customer.name).limit(20).all()
+    return jsonify([{
+        'id': c.id,
+        'display': c.name,
+        'name': c.name,
+        'phone': c.phone,
+    } for c in rows])
+
+
 @payments_bp.route('/receipts')
 @login_required
 @permission_required('manage_payments')

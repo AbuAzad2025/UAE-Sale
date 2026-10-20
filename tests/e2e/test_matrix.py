@@ -2296,6 +2296,10 @@ def _run_vault(client, db, sc, fixtures):
         '/payment-vault/package/0/edit',
         '/payment-vault/package/0/delete',
         '/payment-vault/card/0/decrypt',
+        # The JSON lock/unlock routes, added to back
+        # templates/ledger/vaults.html.
+        '/payment-vault/lock/0',
+        '/payment-vault/unlock/0',
     ]
     webhooks = ['/payment-vault/webhook/stripe',
                 '/payment-vault/webhook/nowpayments']
@@ -2654,7 +2658,12 @@ def _run_ledger_surface(client, db, sc, fixtures):
 
 
 def _run_payments_surface(client, db, sc, fixtures):
-    """The 18 routes of routes/payments.py outside the voucher contract."""
+    """The 18 routes of routes/payments.py outside the voucher contract.
+
+    /payments/search-entities and /payments/archive/<id> were added to back
+    the frontend callers in static/js/payments.js, which had no route to
+    reach.
+    """
     _surface_sweep(
         client, sc,
         reads=[
@@ -2663,6 +2672,7 @@ def _run_payments_surface(client, db, sc, fixtures):
             '/payments/receipts/0', '/payments/receipts/0/print',
             '/payments/voucher/create',
             '/payments/api/customer-balance/0',
+            '/payments/search-entities',
         ],
         forms=[
             '/payments/receipts/create', '/payments/create_from_sale/0',
@@ -2673,6 +2683,7 @@ def _run_payments_surface(client, db, sc, fixtures):
             '/payments/payments/0/restore',
             '/payments/receipts/0/archive', '/payments/receipts/0/delete',
             '/payments/receipts/0/restore',
+            '/payments/archive/0',
         ],
     )
 
@@ -2840,6 +2851,10 @@ def _run_warehouse_admin_surface(client, db, sc, fixtures):
         ],
         actions=[
             '/warehouse/0/delete',
+            # The product image upload, added to back static/js/shop.js.
+            # A POST without a file is refused with 400, which is still a
+            # completed request against the route.
+            '/warehouse/api/upload_product_image',
         ],
     )
 
@@ -2953,17 +2968,31 @@ def _run_api_meta_surface(client, db, sc, fixtures):
     work: it runs the full health check (database, encryption, NOWPayments,
     system resources, AI engine) and answers 503 when anything is
     unhealthy. It has no side effects, so requesting it is safe here.
+
+    The search and product-info routes were added to back the frontend
+    callers that had no route to reach:
+      /api/search/<target>  - the global search dropdown
+      /api/products/<id>/info - product details for the sales screen
+    Both are read-only, so sweeping them is safe.
     """
     _surface_sweep(
         client, sc,
         reads=[
             '/api/health',
             '/api/healthz',
+            '/api/search/customers',
+            '/api/search/products',
+            '/api/search/suppliers',
+            '/api/products/0/info',
         ],
         forms=[],
         actions=[
             '/api/echo',
             '/api/client-errors',
+            # The inline-edit endpoint, added to back
+            # static/js/azad-app.js. A PATCH with no body is refused with
+            # 400, which is still a completed request against the route.
+            '/api/inline-edit/customer/0',
         ],
     )
 
@@ -2992,12 +3021,16 @@ def _run_reports_fragment_surface(client, db, sc, fixtures):
 
     The reports runner covers the export and summary routes; these two
     endpoints feed the UI's live search and were the 2 of 17 left over.
+
+    /reports/api/model_fields was added to back the report builder in
+    static/js/reporting.js, which had no route to reach.
     """
     _surface_sweep(
         client, sc,
         reads=[
             '/reports/api/entity-search',
             '/reports/entity_report_fragment/customer/0',
+            '/reports/api/model_fields',
         ],
         forms=[],
         actions=[],

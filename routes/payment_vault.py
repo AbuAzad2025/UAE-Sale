@@ -579,6 +579,139 @@ def reports():
                            package_stats=package_stats)
 
 
+@payment_vault_bp.route('/lock/<int:vault_id>', methods=['POST'])
+@login_required
+def lock_vault_json(vault_id):
+    """قفل الخزينة بصيغة JSON.
+
+    templates/ledger/vaults.html ينادي /payment-vault/lock/<id> بصيغة JSON
+    بينما المسار /payment-vault/lock يستعمل النموذج. كلاهما يعمل الآن
+    والتنفيذ واحد.
+
+    الخزنة مفردة (PaymentVault.query.first())، لذلك يُتحقق أن المعرّف
+    يطابقها فعلاً قبل تنفيذ العملية.
+    """
+    from flask import jsonify
+
+    if not current_user.is_owner:
+        return jsonify({
+            'success': False,
+            'message': 'الخزينة السرية للمالك فقط',
+        }), 403
+
+    vault = PaymentVault.query.first()
+    if not vault:
+        return jsonify({
+            'success': False,
+            'message': 'لا توجد خزينة مهيأة',
+        }), 404
+
+    if vault.id != vault_id:
+        return jsonify({
+            'success': False,
+            'message': 'معرّف الخزينة غير مطابق',
+        }), 404
+
+    try:
+        vault.lock_vault()
+        PaymentLog.log_action(
+            vault_id=vault.id,
+            action='vault_locked',
+            description='تم قفل الخزينة السرية',
+            level='info',
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent')
+        )
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Failed to lock vault {vault_id}: {e}')
+        return jsonify({
+            'success': False,
+            'message': 'فشل قفل الخزينة: حدث خطأ غير متوقع',
+        }), 500
+
+    return jsonify({
+        'success': True,
+        'message': 'تم قفل الخزينة السرية بنجاح',
+    })
+
+
+@payment_vault_bp.route('/unlock/<int:vault_id>', methods=['POST'])
+@login_required
+def unlock_vault_json(vault_id):
+    """فتح الخزينة بصيغة JSON.
+
+    نفس ملاحظة /lock/<id>: الخزنة مفردة والمعرّف يُتحقق منه.
+    """
+    from flask import jsonify
+
+    if not current_user.is_owner:
+        return jsonify({
+            'success': False,
+            'message': 'الخزينة السرية للمالك فقط',
+        }), 403
+
+    vault = PaymentVault.query.first()
+    if not vault:
+        return jsonify({
+            'success': False,
+            'message': 'لا توجد خزينة مهيأة',
+        }), 404
+
+    if vault.id != vault_id:
+        return jsonify({
+            'success': False,
+            'message': 'معرّف الخزينة غير مطابق',
+        }), 404
+
+    password = (request.form.get('vault_password')
+                or (request.get_json(silent=True) or {}).get('password') or '')
+
+    if not password:
+        return jsonify({
+            'success': False,
+            'message': 'كلمة مرور الخزينة مطلوبة',
+        }), 400
+
+    try:
+        unlocked = vault.unlock_vault(password)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Failed to unlock vault {vault_id}: {e}')
+        return jsonify({
+            'success': False,
+            'message': 'فشل فتح الخزينة: حدث خطأ غير متوقع',
+        }), 500
+
+    if not unlocked:
+        PaymentLog.log_action(
+            vault_id=vault.id,
+            action='vault_unlock_failed',
+            description='محاولة فتح فاشلة',
+            level='warning',
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent')
+        )
+        return jsonify({
+            'success': False,
+            'message': 'كلمة مرور الخزينة غير صحيحة',
+        }), 401
+
+    PaymentLog.log_action(
+        vault_id=vault.id,
+        action='vault_unlocked',
+        description='تم فتح الخزينة السرية',
+        level='info',
+        ip_address=request.remote_addr,
+        user_agent=request.headers.get('User-Agent')
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'تم فتح الخزينة السرية بنجاح',
+    })
+
+
 @payment_vault_bp.route('/lock')
 @login_required
 def lock_vault():

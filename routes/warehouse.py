@@ -6,8 +6,70 @@ from services.stock_service import StockService
 from utils.decorators import permission_required, admin_required, get_owned_or_404
 
 from decimal import Decimal
+import os
 
 warehouse_bp = Blueprint('warehouse', __name__, url_prefix='/warehouse')
+
+
+@warehouse_bp.route('/api/upload_product_image', methods=['POST'])
+@login_required
+@permission_required('manage_products')
+def upload_product_image():
+    """رفع صورة منتج مع تصغيرها وإنشاء مصغّرة.
+
+    static/js/shop.js ينادي هذا المسار، ولم يكن موجوداً فكان رفع صورة
+    المنتج يعيد 404.
+
+    الملف يمرّ على utils.helpers.save_uploaded_file (قائمة امتدادات،
+    حد حجم، فحص polyglot) ثم تُفتح فعلياً بـPillow - وهذا ما يثبت أنها
+    صورة فعلاً لا ملفاً بامتداد صورة.
+    """
+    from services.image_service import (ImageProcessingError,
+                                        process_and_store)
+
+    file = request.files.get('file')
+    if not file or not file.filename:
+        return jsonify({
+            'ok': False,
+            'error': 'لم يتم إرفاق ملف',
+        }), 400
+
+    # المجلد الفرعي يأتي من الطلب، فلا يُقبل إلا من قائمة بيضاء.
+    # 'products' هو المجلد الذي تستخدمه صفحة المنتج؛ أي مسار آخر (أو أي
+    # محاولة للخروج من static) يُرفض.
+    subdir = (request.form.get('subdir') or 'products').strip().strip('/')
+    if subdir not in ('products', 'product-images'):
+        return jsonify({
+            'ok': False,
+            'error': 'مجلد غير مسموح',
+        }), 400
+
+    try:
+        url, thumb_url = process_and_store(
+            file,
+            subdir=subdir,
+            max_side=request.form.get('max_side', 1200),
+            quality=request.form.get('quality', 82),
+        )
+    except ImageProcessingError as exc:
+        current_app.logger.warning('Product image rejected: %s', exc)
+        return jsonify({
+            'ok': False,
+            'error': str(exc),
+        }), 400
+    except ValueError as exc:
+        # save_uploaded_file يرفع ValueError للامتداد/الحجم غير المسموح.
+        current_app.logger.warning('Product image rejected: %s', exc)
+        return jsonify({
+            'ok': False,
+            'error': str(exc),
+        }), 400
+
+    return jsonify({
+        'ok': True,
+        'url': url,
+        'thumb_url': thumb_url,
+    })
 
 
 @warehouse_bp.route('/')

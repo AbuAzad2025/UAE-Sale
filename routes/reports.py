@@ -456,6 +456,78 @@ def inventory():
                            can_see_costs=current_user.can_see_costs())
 
 
+@reports_bp.route('/api/model_fields')
+@login_required
+@permission_required('view_reports')
+def api_model_fields():
+    """حقول التقارير المتاحة لنموذج معيّن.
+
+    static/js/reporting.js يطلب /reports/api/model_fields?model=<name>
+    ويتوقع {columns, date_fields, all_fields}. المسار لم يكن موجوداً.
+
+    الحقول تُشتق من أعمدة النموذج نفسه، فلا يمكن أن تنحرف عن ما يعرضه
+    التقرير فعلاً. أعمدة التكلفة تُستثنى لمن لا يرى التكلفة.
+    """
+    from models import Purchase as _Purchase
+    from models import Sale as _Sale
+
+    model_name = (request.args.get('model') or '').strip().lower()
+
+    models = {
+        'sales': _Sale,
+        'sale': _Sale,
+        'purchases': _Purchase,
+        'purchase': _Purchase,
+        'products': Product,
+        'product': Product,
+        'customers': Customer,
+        'customer': Customer,
+    }
+
+    model = models.get(model_name)
+    if model is None:
+        return jsonify({
+            'success': False,
+            'error': 'نموذج غير معروف',
+            'allowed': sorted(set(models)),
+            'columns': [],
+            'date_fields': [],
+            'all_fields': [],
+        }), 400
+
+    # SECURITY: أعمدة التكلفة لا تُعرض لمن لا يملك الصلاحية، تماماً
+    # كما في بقية صفحات التقارير.
+    cost_columns = {'cost_price', 'total_cost'}
+    can_see_costs = current_user.can_see_costs()
+
+    date_fields = []
+    columns = []
+    for col in model.__table__.columns:
+        name = col.name
+        if name in ('id', 'tenant_id', 'created_at', 'updated_at'):
+            continue
+        if name in cost_columns and not can_see_costs:
+            continue
+        if isinstance(col.type, db.DateTime) or name.endswith('_date') \
+                or name.endswith('_at'):
+            date_fields.append(name)
+        columns.append(name)
+
+    # كل الحقول (بما فيها التاريخية) هي الخيارات الكاملة.
+    all_fields = list(columns)
+    # تاريخية أولاً في القائمة الكاملة لأنها الأكثر استخداماً.
+    all_fields = [f for f in date_fields if f in all_fields] + \
+                 [f for f in columns if f not in date_fields]
+
+    return jsonify({
+        'success': True,
+        'model': model_name,
+        'columns': columns,
+        'date_fields': date_fields,
+        'all_fields': all_fields,
+    })
+
+
 @reports_bp.route('/api/entity-search')
 @login_required
 @permission_required('view_reports')

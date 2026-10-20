@@ -6,6 +6,104 @@ from models import Customer, Supplier, Product, User
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 
+@api_bp.route('/inline-edit/<entity_type>/<int:entity_id>', methods=['PATCH'])
+@login_required
+def api_inline_edit(entity_type, entity_id):
+    """تعديل حقل واحد مباشرة في الجدول.
+
+    static/js/azad-app.js يستدعي هذا المسار، ولم يكن موجوداً فكان كل
+    تحرير مباشر يعيد 404. الخدمة في services/inline_edit_service.py.
+    """
+    from services.inline_edit_service import inline_edit
+    return inline_edit(entity_type, entity_id)
+
+
+@api_bp.route('/products/<int:product_id>/info')
+@login_required
+def api_product_info(product_id):
+    """معلومات المنتج مع رصيده في مستودع محدد.
+
+    static/js/sales.js يطلب /api/products/<id>/info?warehouse_id=<id> لعرض
+    الرصيد الذي ينطبق على البيع، والمسار لم يكن موجوداً.
+    """
+    from models import Warehouse
+    from utils.decorators import get_owned_or_404
+
+    product = get_owned_or_404(Product, product_id, code=404)
+    if product is None:
+        return jsonify({
+            'success': False,
+            'error': 'المنتج غير موجود',
+            'code': 'NOT_FOUND',
+        }), 404
+
+    warehouse_id = request.args.get('warehouse_id', type=int)
+    stock = float(product.current_stock or 0)
+    warehouse_name = None
+
+    if warehouse_id:
+        warehouse = get_owned_or_404(Warehouse, warehouse_id, code=404)
+        if warehouse is None:
+            return jsonify({
+                'success': False,
+                'error': 'المستودع غير موجود',
+                'code': 'NOT_FOUND',
+            }), 404
+        warehouse_name = warehouse.name
+        # الرصيد الفعلي في هذا المستودع يأتي من حركات المخزون، لا من
+        # current_stock الإجمالي للمنتج.
+        try:
+            from models import StockMovement
+            received = db.session.query(
+                db.func.coalesce(db.func.sum(StockMovement.quantity), 0)
+            ).filter(
+                StockMovement.product_id == product.id,
+                StockMovement.warehouse_id == warehouse.id,
+                StockMovement.movement_type.in_(['in', 'purchase', 'receipt'])
+            ).scalar() or 0
+            issued = db.session.query(
+                db.func.coalesce(db.func.sum(StockMovement.quantity), 0)
+            ).filter(
+                StockMovement.product_id == product.id,
+                StockMovement.warehouse_id == warehouse.id,
+                StockMovement.movement_type.in_(['out', 'sale', 'issue'])
+            ).scalar() or 0
+            stock = float(received) - float(issued)
+        except Exception:
+            # لا motions ⇒ المستودع مخصص للبيع فقط؛ يبقى الرصيد الإجمالي
+            current_app.logger.warning(
+                'Product stock breakdown unavailable for product %s',
+                product.id)
+            stock = float(product.current_stock or 0)
+
+    data = {
+        'success': True,
+        'id': product.id,
+        'name': product.name,
+        'name_ar': product.name_ar,
+        'sku': product.sku,
+        'barcode': product.barcode,
+        'unit': product.unit,
+        'current_stock': stock,
+        'default_price': float(product.regular_price or 0),
+        'unit_price': float(product.regular_price or 0),
+        'regular_price': float(product.regular_price or 0),
+        'merchant_price': (float(product.merchant_price)
+                           if product.merchant_price else None),
+        'partner_price': (float(product.partner_price)
+                          if product.partner_price else None),
+        # SECURITY: cost data only for roles allowed to see costs
+        # (owner / super_admin / manager). Cashiers and sellers use this
+        # endpoint from the POS screen — never expose cost to them.
+        'cost_price': (float(product.cost_price) if product.cost_price else 0)
+                      if current_user.can_see_costs() else None,
+        'is_low_stock': product.is_low_stock(),
+        'warehouse_id': warehouse_id,
+        'warehouse_name': warehouse_name,
+    }
+    return jsonify(data)
+
+
 @api_bp.route('/health')
 def health():
     return jsonify({
@@ -125,8 +223,53 @@ def api_search():
     query = request.args.get('q', '')
     search_type = request.args.get('type', 'customers')
     page = request.args.get('page', 1, type=int)
-    per_page = 20
 
+    results, has_more = _search_entities(query, search_type, page)
+    return jsonify({'results': results, 'has_more': has_more})
+
+
+@api_bp.route('/search/<target>')
+@login_required
+def api_search_target(target):
+    """🔍 البحث بصيغة المسار: /api/search/<target>?q=...
+
+    static/js/app.js calls this form - `$.get('/api/search/' + target, {q: query})`
+    - and renders `data.html` into a `[data-search-target="..."]` container,
+    so the response carries a ready-to-render HTML fragment next to the
+    structured rows.
+
+    The lookup itself is shared with /api/search?type= through
+    _search_entities(), so there is exactly one implementation of each search
+    and the two endpoints cannot drift apart.
+
+    `target` is matched against a fixed set, so an unknown target is a 400
+    rather than a silent empty list.
+    """
+    target = (target or '').lower()
+    if target not in ('customers', 'products', 'suppliers'):
+        return jsonify({
+            'success': False,
+            'error': 'نوع بحث غير معروف',
+            'allowed': ['customers', 'products', 'suppliers'],
+        }), 400
+
+    query = request.args.get('q', '')
+    page = request.args.get('page', 1, type=int)
+
+    results, has_more = _search_entities(query, target, page)
+    return jsonify({
+        'results': results,
+        'has_more': has_more,
+        'html': _render_search_html(results, target),
+    })
+
+
+def _search_entities(query, search_type, page=1, per_page=20):
+    """ابحث في الكيانات المطلوبة.
+
+    يقود المسار /api/search?type= والمسار /api/search/<target> معاً حتى لا
+    تختلف نتائجهما. يعيد (results, has_more).
+    """
     # ========================================
     # 1. البحث عن المنتجات
     # ========================================
@@ -160,12 +303,12 @@ def api_search():
             'is_low_stock': p.is_low_stock(),
         } for p in products]
 
-        return jsonify({'results': results, 'has_more': len(results) >= per_page})
+        return results, len(results) >= per_page
 
     # ========================================
     # 2. البحث عن الموردين
     # ========================================
-    elif search_type == 'suppliers':
+    if search_type == 'suppliers':
         base_query = Supplier.query.filter(Supplier.is_active == True).order_by(Supplier.name)  # noqa: E712  (SQLAlchemy boolean filter)
 
         if query:
@@ -197,39 +340,69 @@ def api_search():
             'is_verified': s.is_verified
         } for s in suppliers]
 
-        return jsonify({'results': results, 'has_more': has_more})
+        return results, has_more
 
     # ========================================
     # 3. البحث عن الزبائن (الافتراضي)
     # ========================================
-    else:
-        base_query = Customer.query.filter(Customer.is_active == True).order_by(Customer.name)  # noqa: E712  (SQLAlchemy boolean filter)
+    base_query = Customer.query.filter(Customer.is_active == True).order_by(Customer.name)  # noqa: E712  (SQLAlchemy boolean filter)
 
-        if query:
-            base_query = base_query.filter(
-                db.or_(
-                    Customer.name.ilike(f'%{query}%'),
-                    Customer.phone.ilike(f'%{query}%'),
-                    Customer.email.ilike(f'%{query}%') if Customer.email else False
-                )
+    if query:
+        base_query = base_query.filter(
+            db.or_(
+                Customer.name.ilike(f'%{query}%'),
+                Customer.phone.ilike(f'%{query}%'),
+                Customer.email.ilike(f'%{query}%') if Customer.email else False
             )
+        )
 
-        offset = (page - 1) * per_page
-        customers = base_query.limit(per_page + 1).offset(offset).all()
-        has_more = len(customers) > per_page
-        customers = customers[:per_page]
+    offset = (page - 1) * per_page
+    customers = base_query.limit(per_page + 1).offset(offset).all()
+    has_more = len(customers) > per_page
+    customers = customers[:per_page]
 
-        results = [{
-            'id': c.id,
-            'text': f"{c.name} - {c.phone or 'لا يوجد رقم'}",
-            'name': c.name,
-            'phone': c.phone,
-            'email': c.email,
-            'customer_type': c.customer_type,
-            'balance_aed': float(c.get_balance_aed())
-        } for c in customers]
+    results = [{
+        'id': c.id,
+        'text': f"{c.name} - {c.phone or 'لا يوجد رقم'}",
+        'name': c.name,
+        'phone': c.phone,
+        'email': c.email,
+        'customer_type': c.customer_type,
+        'balance_aed': float(c.get_balance_aed())
+    } for c in customers]
 
-        return jsonify({'results': results, 'has_more': has_more})
+    return results, has_more
+
+
+def _render_search_html(results, target):
+    """.results -> جزء HTML جاهز للقائمة المنسدلة.
+
+    يُبنى من نفس الصفوف التي تعيدها _search_entities، فلا يمكن أن يختلف
+    ما يراه المستخدم عن البيانات التي عادت من الخادم. القيم تُهرَّب لأن
+    أسماء العملاء والموردين منتجات من المستخدم.
+    """
+    from markupsafe import escape
+
+    if not results:
+        return ''
+
+    items = []
+    for row in results:
+        label = escape(str(row.get('name') or row.get('text') or ''))
+        extra = ''
+        if row.get('sku'):
+            extra = (f'<small class="text-muted">'
+                     f'SKU: {escape(str(row["sku"]))}</small>')
+        elif row.get('phone'):
+            extra = (f'<small class="text-muted">'
+                     f'{escape(str(row["phone"]))}</small>')
+        items.append(
+            f'<div class="search-result p-2 border-bottom" '
+            f'data-id="{escape(str(row.get("id")))}" '
+            f'data-type="{escape(target)}">'
+            f'<div class="fw-bold">{label}</div>{extra}</div>'
+        )
+    return ''.join(items)
 
 
 @api_bp.route('/check-username')

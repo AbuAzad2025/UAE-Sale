@@ -796,11 +796,24 @@ $(document).on('dblclick', '.editable', function() {
         const newValue = $(this).val();
         if (newValue !== originalValue) {
             try {
-                await fetch(`/api/inline-edit/${entityType}/${entityId}`, {
+                const res = await fetch(`/api/inline-edit/${entityType}/${entityId}`, {
                     method: 'PATCH',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({field: field, value: newValue})
                 });
+                // fetch لا يرمي استثناءً على 4xx/5xx - الملف نجح في النقل
+                // لكن الخادم رفض التعديل. بدون هذا الفحص كانت الخلية تعرض
+                // القيمة الجديدة رغم رفض الخادم لها.
+                if (!res.ok) {
+                    let message = 'تعذّر حفظ التعديل';
+                    try {
+                        const body = await res.json();
+                        message = body.error || body.message || message;
+                    } catch (_) { /* الرد ليس JSON */ }
+                    alert(message);
+                    $this.text(originalValue);
+                    return;
+                }
                 $this.text(newValue);
             } catch {
                 $this.text(originalValue);

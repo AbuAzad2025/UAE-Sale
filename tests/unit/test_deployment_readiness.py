@@ -73,8 +73,13 @@ def test_cache_works_without_redis(app):
     """
     from extensions import cache
 
-    assert app.config['CACHE_TYPE'].endswith('SimpleCache'), (
-        f"default cache is {app.config['CACHE_TYPE']}, which needs Redis")
+    # The backend is named either as a class path or as Flask-Caching's short
+    # alias depending on how it was resolved, so the invariant is checked
+    # directly: the default must not be a Redis backend.
+    cache_type = str(app.config['CACHE_TYPE']).lower()
+    assert 'redis' not in cache_type, (
+        f"the default cache is {app.config['CACHE_TYPE']}, which needs Redis")
+
     with app.app_context():
         cache.set('deployment-probe', 'value', timeout=10)
         assert cache.get('deployment-probe') == 'value'

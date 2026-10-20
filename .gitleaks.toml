@@ -1,0 +1,32 @@
+# gitleaks configuration for UAE-Sale
+#
+# The default ruleset is used unchanged; only the allowlist below is added.
+#
+# Why an allowlist is needed: .env.example is a TEMPLATE. It lists every
+# environment variable the application reads, with an empty value, so that a
+# new deployment knows what to fill in. The generic-api-key rule matches the
+# assignment line itself - `CURRENCY_API_KEY=` with nothing after it - and
+# reported it as a leak. The fingerprint ignore in .gitleaksignore could not
+# be used for it: those entries are commit-specific
+# (<commit>:<file>:<rule>:<line>), so the next edit to the template would
+# fail the scan again.
+#
+# The scope is deliberately narrow - template files only. A real secret
+# committed anywhere else, including in documentation, is still reported.
+title = "gitleaks config for UAE-Sale"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Environment templates hold placeholders, not secrets."
+paths = [
+  # The canonical template, and any variant of it.
+  '''(?i)(^|/)\.env\.example$''',
+  '''(?i)(^|/)\.env\.[a-z0-9_-]+\.example$''',
+  '''(?i)(^|/)\.env\.sample$''',
+  '''(?i)(^|/)\.env\.[a-z0-9_-]+\.sample$''',
+  # Other configuration templates shipped for operators to copy.
+  '''(?i)(^|/)config\.(example|sample)\.(ini|toml|ya?ml|json)$''',
+  '''(?i)(^|/)env\.(example|sample)$''',
+]

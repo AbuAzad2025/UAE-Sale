@@ -75,7 +75,7 @@ psutil==5.9.8
 
 # Misc
 packaging==23.2
-certifi==2025.8.3
+certifi==2026.10.19
 urllib3>=2.2.3
 six==1.16.0
 

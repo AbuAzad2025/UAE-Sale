@@ -153,10 +153,18 @@ class Config:
     TENANT_STRICT = _bool(os.environ.get("TENANT_STRICT"), True)
 
     REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-    CACHE_TYPE = os.environ.get("CACHE_TYPE", "flask_caching.backends.RedisCache")
+    # Cache backend. The default is SimpleCache - an in-process dictionary -
+    # because it needs no external service, which is what a single-server
+    # deployment (PythonAnywhere without a paid Redis plan) can rely on. The
+    # previous default was RedisCache, and with no Redis reachable EVERY
+    # cache.set raised ConnectionError: the dashboard silently recomputed on
+    # every request and the rate limiter never counted anything, so the
+    # limiter did not limit. Redis stays available by setting CACHE_TYPE.
+    CACHE_TYPE = os.environ.get(
+        "CACHE_TYPE", "flask_caching.backends.SimpleCache")
     CACHE_REDIS_URL = os.environ.get("CACHE_REDIS_URL", REDIS_URL)
     CACHE_DEFAULT_TIMEOUT = _int("CACHE_DEFAULT_TIMEOUT", 300)
-    CACHE_KEY_PREFIX = "garage_simple"
+    CACHE_KEY_PREFIX = os.environ.get("CACHE_KEY_PREFIX", "azad_erp")
 
     CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", REDIS_URL)
     CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", REDIS_URL)

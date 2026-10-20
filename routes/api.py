@@ -18,12 +18,19 @@ def health():
 def healthz():
     """Kubernetes/Load Balancer health probe.
 
-    Runs full health check (DB, encryption, NOWPayments, system resources, AI engine).
-    Returns 200 only if all critical checks pass.
+    Runs the full health check (DB, encryption, NOWPayments, system
+    resources, AI engine).
+
+    Only an "unhealthy" result answers 503. A "warning" - for example a
+    payment vault that has not been initialised yet, which is the normal
+    state of a fresh deployment - still answers 200: the application can
+    serve traffic, and taking it out of the load balancer's rotation over a
+    missing optional integration would be worse than the warning itself.
+    The per-check detail is in the body for monitoring.
     """
     from services.health_service import HealthCheckService
     result = HealthCheckService.run_full_health_check()
-    status_code = 200 if result['overall_status'] == 'healthy' else 503
+    status_code = 200 if result['overall_status'] != 'unhealthy' else 503
     return jsonify(result), status_code
 
 

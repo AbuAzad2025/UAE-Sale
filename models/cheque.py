@@ -467,11 +467,14 @@ class Cheque(TenantScopedMixin, db.Model):
         amount_base = self.amount_base or Decimal('0')
 
         if self.cheque_type == 'incoming' and self.customer_id:
-            from models import Customer as _Cust
-            customer = _Cust.query.get(self.customer_id)
-            if customer:
-                customer.balance = (customer.balance or Decimal('0')) + amount_base
-                customer.update_classification()
+            # F5: رصيد العميل يُشتق من مصدره الواحد
+            # (models/customer.recompute_customer_balance) — الشيك المرتد
+            # له أثر في الاشتقاق، والزيادة اليدوية كانت تتنازع معه
+            # فتُنتج رصيداً لا يطابق المستندات.
+            # flush: الاشتقاق يقرأ حالة الشيك من القاعدة (Core).
+            db.session.flush()
+            from models.customer import recompute_customer_balance
+            recompute_customer_balance(self.customer_id)
 
         elif self.cheque_type == 'outgoing' and self.supplier_id:
             from models import Supplier as _Supp
@@ -557,18 +560,25 @@ class Cheque(TenantScopedMixin, db.Model):
         if self.status == 'cancelled':
             return
 
-        # تحديث أرصدة العميل/المورد قبل تغيير الحالة
+        # F5: حالة الشيك تتغيّر أولاً — الاشتقاق يقرأ الحالة من القاعدة
+        # (Core)، والإلغاء يخفض رصيد العميل (الشيك الملغى لم يعد
+        # دَيناً على العميل، ولا أثر له في الاشتقاق).
+        self.status = 'cancelled'
+        if reason:
+            self.notes = (self.notes or '') + f'\nسبب الإلغاء: {reason}'
+
+        # تحديث أرصدة العميل/المورد بعد تغيير الحالة
         # الإلغاء يعكس تأثير الاستلام/الإصدار
         from decimal import Decimal
         amount_base = self.amount_base or Decimal('0')
 
         if self.cheque_type == 'incoming' and self.customer_id:
-            from models import Customer as _Cust
-            customer = _Cust.query.get(self.customer_id)
-            if customer:
-                # إلغاء الشيك الوارد: العميل لم يعد مدينًا بهذا المبلغ
-                customer.balance = (customer.balance or Decimal('0')) - amount_base
-                customer.update_classification()
+            # F5: رصيد العميل يُشتق من مصدره الواحد
+            # (models/customer.recompute_customer_balance) — لا كتابة
+            # يدوية للعمود (كانت تتنازع مع الاشتقاق).
+            db.session.flush()
+            from models.customer import recompute_customer_balance
+            recompute_customer_balance(self.customer_id)
 
         elif self.cheque_type == 'outgoing' and self.supplier_id:
             from models import Supplier as _Supp
@@ -576,10 +586,6 @@ class Cheque(TenantScopedMixin, db.Model):
             if supplier:
                 # إلغاء الشيك الصادر: المورد لم يعد دائنًا بهذا المبلغ
                 supplier.total_purchases_aed = (supplier.total_purchases_aed or Decimal('0')) - amount_base
-
-        self.status = 'cancelled'
-        if reason:
-            self.notes = (self.notes or '') + f'\nسبب الإلغاء: {reason}'
 
         # عكس القيد المحاسبي للإلغاء
         self._create_cancel_journal_entry()
@@ -646,18 +652,28 @@ class Cheque(TenantScopedMixin, db.Model):
     def archive(self, reason=None):
         """أرشفة الشيك - مع عكس القيد إذا كان نشطاً"""
         # إذا كان الشيك نشطاً (معلق/مودع/تحت التحصيل) يجب عكس تأثيره المالي قبل الأرشفة
-        if self.is_active and self.status in ['pending', 'deposited', 'under_collection']:
-            # نعتبر الأرشفة للشيك النشط بمثابة إلغاء محاسبي
-            # تحديث أرصدة العميل/المورد
-            from decimal import Decimal
-            amount_base = self.amount_base or Decimal('0')
+        was_active = self.is_active and self.status in [
+            'pending', 'deposited', 'under_collection']
 
+        # نعتبر الأرشفة للشيك النشط بمثابة إلغاء محاسبي
+        # تحديث أرصدة العميل/المورد
+        from decimal import Decimal
+        amount_base = self.amount_base or Decimal('0')
+
+        self.is_active = False
+        self.archived_at = datetime.now(timezone.utc)
+        if reason:
+            self.archive_reason = reason
+
+        if was_active:
             if self.cheque_type == 'incoming' and self.customer_id:
-                from models import Customer as _Cust
-                customer = _Cust.query.get(self.customer_id)
-                if customer:
-                    customer.balance = (customer.balance or Decimal('0')) - amount_base
-                    customer.update_classification()
+                # F5: رصيد العميل يُشتق من مصدره الواحد
+                # (models/customer.recompute_customer_balance) — الشيك
+                # المؤرشف يخرج من الاشتقاق فينقص الرصيد.
+                # flush: الأرشفة تُثبَّت في القاعدة قبل إعادة الاحتساب.
+                db.session.flush()
+                from models.customer import recompute_customer_balance
+                recompute_customer_balance(self.customer_id)
 
             elif self.cheque_type == 'outgoing' and self.supplier_id:
                 from models import Supplier as _Supp
@@ -667,11 +683,6 @@ class Cheque(TenantScopedMixin, db.Model):
 
             # عكس القيد المحاسبي
             self._create_cancel_journal_entry()
-
-        self.is_active = False
-        self.archived_at = datetime.now(timezone.utc)
-        if reason:
-            self.archive_reason = reason
 
     def restore(self):
         """استعادة من الأرشيف"""

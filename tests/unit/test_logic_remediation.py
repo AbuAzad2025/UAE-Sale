@@ -224,9 +224,18 @@ class TestReceiptAllocationC4:
         assert Decimal(str(newer.paid_amount)) == 0
         assert older.payment_status == 'unpaid'
 
-    def test_fx_converts_at_sale_exchange_rate_not_receipts(self, db, owner_user, test_customer):
-        """paid_amount_base grows at the SALE's booked rate (3.5), never the
-        receipt's rate (1.0)."""
+    def test_fx_converts_at_receipt_exchange_rate_not_sale_rate(self, db, owner_user, test_customer):
+        """F2: paid_amount_base grows at the RECEIPT's rate (1.0 — the rate the
+        cash actually entered at), never at the invoice's booked rate (3.5).
+
+        CHANGED (F2 fix): the old expectation (60 × 3.5 = 210) encoded the
+        bug the task describes — a receipt in one currency was added to an
+        invoice in another currency using the INVOICE's rate, which left a
+        permanent GL-vs-sub-ledger break of amount × (receipt_rate −
+        sale_rate).  The allocation is now done entirely in base currency at
+        the receipt's rate and the FX difference is posted to the FX
+        accounts.
+        """
         from services.payment_service import PaymentService
 
         sale = _make_sale(
@@ -244,8 +253,11 @@ class TestReceiptAllocationC4:
 
         db.session.refresh(sale)
         assert Decimal(str(receipt.exchange_rate)) == Decimal('1')
-        assert sale.paid_amount == Decimal('60')
-        assert sale.paid_amount_base == Decimal('210.000')  # 60 × 3.5 (sale rate)
+        # 60 AED @ 1.0 = 60 base — the cash that actually entered
+        assert sale.paid_amount_base == Decimal('60.000')
+        # the invoice keeps its own currency: 60 base at the invoice's rate
+        assert sale.paid_amount == Decimal('17.143')
+        assert sale.balance_due == Decimal('290.000')
         assert sale.payment_status == 'partial'
 
     def test_audit_row_records_auto_fifo_flag(self, db, owner_user, test_customer):

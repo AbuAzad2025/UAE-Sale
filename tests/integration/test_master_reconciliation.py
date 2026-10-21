@@ -187,56 +187,71 @@ def test_in_process_sections_against_conftest_app(app, db):
 # ─────────────────── chaos: raw unbalanced GL write ───────────────────
 
 
-def test_chaos_raw_unbalanced_entry_persists_then_trial_balance_flags_it(app, db):
-    """CHAOS CONTRACT HOLDING TODAY (documented):
+def test_chaos_raw_unbalanced_entry_is_now_refused(app, db):
+    """A raw unbalanced journal entry must NO LONGER persist.
 
-    No model/DB constraint blocks an unbalanced journal written via raw model
-    creation bypassing services — the INSERT PERSISTS SILENTLY. Detection is
-    exclusively the trial-balance audit (section 1), which must flag the break
-    and name the offending entry.
+    This test used to be called "chaos_raw_unbalanced_entry_persists" and it
+    asserted that an unbalanced entry written with raw model creation - the
+    thing the service layer exists to prevent - went into the database
+    silently, with the trial-balance audit as the only detector.
+
+    That contract is gone. models/events.py now REFUSES an unbalanced entry
+    (it compares the sum of the entry's LINES, not its header), so the
+    corruption cannot be created in the first place, and detection by the
+    trial balance is a backstop rather than the primary control.
     """
     from models import GLAccount, GLJournalEntry, GLJournalLine
 
     db.create_all()
     scenario = qmr.seed_scenario()
 
-    chaos = GLJournalEntry(
-        entry_number='JE-QACHAOS-9001',
-        description='CHAOS unbalanced raw write',
-        currency='ILS',
-        total_debit=Decimal('777.000'),
-        total_credit=Decimal('0'),
-    )
-    db.session.add(chaos)
-    db.session.flush()
-
-    cash = GLAccount.query.filter_by(code='1110').first()
-    db.session.add(GLJournalLine(
-        entry_id=chaos.id, account_id=cash.id,
-        debit=Decimal('777.000'), credit=Decimal('0'),
-        amount_base=Decimal('777.000'),
-    ))
-
+    # The refusal happens on FLUSH, not on commit: models/events.py listens on
+    # before_flush and compares the sum of the entry's LINES, so the write is
+    # rejected before it ever reaches the database. The whole write is
+    # therefore inside the guarded block.
     raised = None
+    chaos = None
     try:
+        chaos = GLJournalEntry(
+            entry_number='JE-QACHAOS-9001',
+            description='CHAOS unbalanced raw write',
+            currency='ILS',
+            total_debit=Decimal('777.000'),
+            total_credit=Decimal('0'),
+        )
+        db.session.add(chaos)
+        db.session.flush()
+
+        cash = GLAccount.query.filter_by(code='1110').first()
+        db.session.add(GLJournalLine(
+            entry_id=chaos.id, account_id=cash.id,
+            debit=Decimal('777.000'), credit=Decimal('0'),
+            amount_base=Decimal('777.000'),
+        ))
         db.session.commit()
     except Exception as exc:
         raised = exc
         db.session.rollback()
 
-    if raised is not None:
-        pytest.fail(
-            f'TODAY raw unbalanced entries persist silently; blocking '
-            f'contract appeared unexpectedly: {raised}')
-    persisted = GLJournalLine.query.filter_by(entry_id=chaos.id).count()
-    assert persisted == 1, 'chaos line vanished without exception'
+    assert raised is not None, (
+        'an unbalanced journal entry was accepted again; the blocking '
+        'contract must hold')
+    persisted = db.session.query(GLJournalLine).join(
+        GLJournalEntry,
+        GLJournalLine.entry_id == GLJournalEntry.id,
+    ).filter(GLJournalEntry.entry_number == 'JE-QACHAOS-9001').count()
+    assert persisted == 0, 'the unbalanced line survived the refusal'
+    assert GLJournalEntry.query.filter_by(
+        entry_number='JE-QACHAOS-9001').count() == 0
 
+    # The books are still whole: the audit passes, because nothing corrupt
+    # was ever written.
     sections, ok = qmr.collect_sections(scenario['period'])
-    assert ok is False, 'audit failed to flag silent corruption'
+    assert ok is True, 'the audit failed on a clean ledger'
     tb = next(s for s in sections if s['name'].startswith('Trial Balance'))
-    assert tb['passed'] is False
-    assert tb['difference'] > Decimal('0.0001')
-    assert any('JE-QACHAOS-9001' in d for d in tb['details'])
+    assert tb['passed'] is True
+    assert tb['difference'] == Decimal('0.000')
+    assert not any('JE-QACHAOS-9001' in d for d in tb['details'])
 
 
 def test_service_layer_rejects_unbalanced_manual_entry(app, db):

@@ -7,6 +7,48 @@ import os
 from sqlalchemy import inspect as sa_inspect
 
 
+#: جداول ممنوع مسحها أو إتلافها من أي مسار في التطبيق.
+#:
+#: القائمة تضم (١) جداول الهوية والصلاحيات، (٢) كل أثر التدقيق
+#: (audit trail)، (٣) دفتر الأستاذ العام، (٤) المستندات المالية.
+#: مسح أيٍّ منها يعني محو الدليل أو المحاسبة نفسها، لذلك يُرفض المسح
+#: من أي مسار — لا من مسار لوحة المالك وحده.
+PROTECTED_TABLES = frozenset({
+    # identity & access
+    'users', 'roles', 'permissions', 'tenants', 'role_permissions',
+    # audit trail
+    'audit_logs', 'journal_entry_audits', 'error_logs', 'login_history',
+    'security_alerts',
+    # general ledger
+    'gl_journal_entries', 'gl_journal_lines', 'gl_accounts',
+    # financial documents
+    'sales', 'sale_lines', 'payments', 'receipts', 'purchases',
+    'purchase_lines', 'product_returns', 'product_return_lines',
+    'expenses',
+    # stock & master data
+    'products', 'warehouses', 'stock_movements', 'customers', 'suppliers',
+})
+
+
+def is_protected_table(table_name):
+    """هل الجدول ممنوع المسح؟ (قائمة الحظر المركزية)"""
+    if not table_name or not isinstance(table_name, str):
+        return False
+    return table_name.strip().lower() in PROTECTED_TABLES
+
+
+def assert_table_not_protected(table_name):
+    """ترفض مسح جدول محمي.
+
+    Raises:
+        ValueError: إذا كان الجدول ضمن قائمة الحظر.
+    """
+    if is_protected_table(table_name):
+        raise ValueError(
+            f'Table is protected and cannot be truncated: {table_name}')
+    return table_name
+
+
 def get_allowed_table_names():
     """Get a set of all valid table names from the database schema.
 

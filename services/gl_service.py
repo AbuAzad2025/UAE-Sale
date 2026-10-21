@@ -21,6 +21,32 @@ Fixes for the 10 audit findings (2026-08-30):
    to 3 decimals) instead of float.
 10. All multi-step writes are wrapped in a safe try/except that
     calls db.session.rollback() before re-raising.
+
+P0 — general ledger integrity (2026-10)
+--------------------------------------
+F1  purge_by_reference refuses to delete a POSTED or REVERSED entry and
+    never deletes the JournalEntryAudit rows (the audit trail must
+    outlive the entry — models/journal_entry_audit.py).
+F3  every posting path (post_entry / create_journal_entry /
+    create_manual_entry) writes a JournalEntryAudit row containing the
+    account codes and the amounts.
+F4  the entry-number sequence is GLOBAL (entry_number is UNIQUE across
+    the whole table) — see models.gl.next_global_entry_number.
+F5  the balance guard is enforced in the service layer for all three
+    posting paths: no negative debit/credit, no line carrying both a
+    debit and a credit, no empty line list, and the header totals are
+    computed from the SAME quantized values that are written to the lines.
+F7  reverse_entry no longer swallows failures; it forwards entry_date and
+    created_by to the model primitive (which uses the locked number
+    generator and writes an audit row).
+F8  the posting direction is validated against the account nature
+    (models.gl.GLAccount.check_posting_direction).
+F9  is_posted is always set explicitly by the posting paths; a draft can
+    be created deliberately (is_posted=False) and posted by
+    AdvancedJournalEntryManager.approve_entry.
+F10 the fiscal period guard (services/fiscal_period_guard) is enforced on
+    every posting path: a closed period, or a date covered by NO period,
+    rejects the posting.
 """
 from __future__ import annotations
 
@@ -30,9 +56,12 @@ from typing import Any
 
 from extensions import db
 from models import GLAccount, GLJournalEntry, GLJournalLine
+from models.gl import next_global_entry_number
+from models.journal_entry_audit import JournalEntryAudit
 from services.account_resolution import AccountResolver, AccountRole
 from services.currency_service import CurrencyService
 from utils.decorators import get_owned_or_raise
+from utils.errors import ValidationError
 from utils.helpers import generate_number
 
 _PAYMENT_METHOD_ROLES = {
@@ -69,12 +98,13 @@ def _quantize_3(value: Decimal) -> Decimal:
 def _unique_entry_number() -> str:
     """Year-scoped JE-YYYY-NNNN with distributed-lock atomicity.
 
-    Uses ``generate_number`` (Redis advisory lock + retry fallback) to
-    guarantee uniqueness across concurrent workers/processes.  The old
-    in-process ``_JE_SEQ`` counter was insufficient for multi-process
-    deployments (Gunicorn, uWSGI, etc.).
+    F4: ``entry_number`` is UNIQUE across the whole table, therefore the
+    sequence MUST be global — a tenant-scoped "max existing + 1" makes two
+    tenants compute the same number and the second INSERT dies with an
+    IntegrityError. ``next_global_entry_number`` suspends the tenant scope
+    for the locked lookup only.
     """
-    return generate_number("JE", GLJournalEntry, field_name="entry_number")
+    return next_global_entry_number()
 
 
 def _current_tenant_id() -> int | None:
@@ -103,6 +133,137 @@ def _base_currency() -> str:
         return CurrencyService.get_base_currency()
     except Exception:
         return "ILS"
+
+
+def _assert_period_open(entry_date: datetime | None) -> None:
+    """F10: يمنع الترحيل إلى فترة مغلقة أو إلى تاريخ بلا فترة مالية.
+
+    الاستدعاء يتم قبل أي كتابة في قاعدة البيانات حتى لا يُترك أثر جزئي.
+    """
+    from services.fiscal_period_guard import assert_period_open
+
+    assert_period_open(entry_date)
+
+
+class _NormalizedLine:
+    """سطر مُطبَّع: حساب + مبالغ مُكمَّاة (Decimal)."""
+
+    __slots__ = ("account", "debit", "credit", "description", "amount_base")
+
+    def __init__(self, account, debit, credit, description, amount_base):
+        self.account = account
+        self.debit = debit
+        self.credit = credit
+        self.description = description
+        self.amount_base = amount_base
+
+
+def _normalize_lines(
+    lines: list[dict],
+    rate: Decimal,
+    *,
+    ensure_accounts: bool = True,
+    missing_message=None,
+    unknown_account_message=None,
+) -> tuple[list[_NormalizedLine], Decimal, Decimal]:
+    """Resolve, validate and quantize the lines of a journal entry.
+
+    F5: enforces the invariants that used to live (partially) in a single
+    path only:
+
+    * an empty line list is rejected (it used to create a POSTED entry
+      with zero lines),
+    * a negative debit or credit is rejected,
+    * a line carrying BOTH a debit and a credit is rejected,
+    * the direction of the movement is validated against the account
+      nature (F8),
+    * the returned totals are computed from the SAME quantized values that
+      are written to the lines, so the header can never disagree with the
+      lines.
+
+    Returns ``(normalized_lines, total_debit, total_credit)``.
+    """
+    if not lines:
+        raise ValidationError(
+            'لا يمكن ترحيل قيد بدون سطور — أضف سطراً واحداً على الأقل.'
+        )
+
+    total_debit = Decimal("0")
+    total_credit = Decimal("0")
+    normalized: list[_NormalizedLine] = []
+
+    for ln in lines:
+        raw = ln.get("account") or ln.get("account_code")
+        if raw is None:
+            raise ValidationError("GL line: missing 'account' / 'account_code'")
+
+        if isinstance(raw, GLAccount):
+            account = raw
+        else:
+            code = str(raw).strip()
+            account = GLAccount.query.filter_by(code=code).first()
+            if account is None and ensure_accounts:
+                GLService.ensure_core_accounts()
+                account = GLAccount.query.filter_by(code=code).first()
+            if account is None:
+                if unknown_account_message is not None:
+                    raise ValueError(unknown_account_message(raw))
+                raise ValueError(
+                    f"GL account '{raw}' not found while posting"
+                )
+
+        # FIX 6 — block postings to header accounts
+        if getattr(account, "is_header", False):
+            raise ValueError(
+                f"لا يمكن القيد على الحساب الرئيسي: {account.full_name}"
+            )
+        if not getattr(account, "is_active", True):
+            raise ValueError(f"GL account {account.code} is inactive")
+
+        debit = _quantize_3(_to_decimal(ln.get("debit", 0)))
+        credit = _quantize_3(_to_decimal(ln.get("credit", 0)))
+
+        if debit < Decimal("0") or credit < Decimal("0"):
+            raise ValueError("GL line: debit/credit must be >= 0")
+        if debit > Decimal("0") and credit > Decimal("0"):
+            raise ValueError(
+                "GL line: a line cannot carry both a debit and a credit"
+            )
+
+        # F8 — اتجاه الحركة مقابل طبيعة الحساب
+        account.check_posting_direction(debit, credit)
+
+        amount_base = _quantize_3((debit - credit) * rate)
+        total_debit += debit
+        total_credit += credit
+        normalized.append(
+            _NormalizedLine(
+                account=account,
+                debit=debit,
+                credit=credit,
+                description=ln.get("description"),
+                amount_base=amount_base,
+            )
+        )
+
+    return normalized, total_debit, total_credit
+
+
+def _audit_payload(entry: GLJournalEntry, normalized: list[_NormalizedLine]) -> dict:
+    """F3: حمولة التدقيق — رأس القيد + أكواد الحسابات والمبالغ."""
+    return JournalEntryAudit.entry_payload(
+        entry,
+        lines=[
+            {
+                'account_code': item.account.code,
+                'debit': item.debit,
+                'credit': item.credit,
+                'amount_base': item.amount_base,
+                'description': item.description,
+            }
+            for item in normalized
+        ],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -192,6 +353,7 @@ class GLService:
                 is_header=is_header,
                 level=level,
                 currency=_base_currency(),
+                is_system=True,   # F8 — حساب مُبذَر: لا يُعدَّل كوده/نوعه ولا يُحذف
             )
             db.session.add(acc)
             db.session.flush()
@@ -206,32 +368,48 @@ class GLService:
 
     @staticmethod
     def purge_by_reference(ref_type: str, ref_id: int) -> int:
-        """Delete every journal entry (and its lines/audits) for a
-        given business reference.  Returns the number of entries
-        removed.
-        """
-        from models import GLJournalLine  # local import to avoid cycle
+        """Delete the DRAFT journal entries for a given business reference.
 
+        F1: this helper used to delete POSTED entries AND their audit rows,
+        which destroyed the ledger history and the audit trail.
+
+        * A POSTED or REVERSED entry is NEVER deleted — it must be reversed
+          (a reversing entry keeps the audit trail intact). A clear error
+          is raised so the caller can reverse instead of purge.
+        * The ``JournalEntryAudit`` rows are NEVER deleted: the audit trail
+          must outlive the entry it documents (models/journal_entry_audit.py,
+          migration 17_audit_trail_survives.py).
+
+        Returns the number of entries removed.
+        """
         entries = GLJournalEntry.query.filter_by(
             reference_type=ref_type, reference_id=ref_id
         ).all()
         if not entries:
             return 0
-        ids = [e.id for e in entries]
-        try:
-            from services.advanced_journal_manager import JournalEntryAudit
 
-            JournalEntryAudit.query.filter(
-                JournalEntryAudit.journal_entry_id.in_(ids)
-            ).delete(synchronize_session=False)
-        except Exception:
-            pass
+        protected = [
+            e for e in entries
+            if getattr(e, 'is_posted', False) or getattr(e, 'is_reversed', False)
+        ]
+        if protected:
+            numbers = ', '.join(sorted(str(e.entry_number) for e in protected))
+            raise ValidationError(
+                f'لا يمكن حذف قيود مرحّلة ({numbers}). '
+                'القيد المرحّل لا يُحذف أبداً — استخدم القيد العكسي (Reverse) '
+                'للإلغاء، فيبقى الأثر المحاسبي وسجل التدقيق كما هما.'
+            )
+
+        ids = [e.id for e in entries]
+        # NOTE: JournalEntryAudit rows are deliberately NOT deleted.
+        # synchronize_session='fetch' يبقي الجلسة متسقة مع قاعدة البيانات
+        # (الكائنات المحذوفة تُزال من cache الهوية).
         GLJournalLine.query.filter(
             GLJournalLine.entry_id.in_(ids)
-        ).delete(synchronize_session=False)
+        ).delete(synchronize_session='fetch')
         count = GLJournalEntry.query.filter(
             GLJournalEntry.id.in_(ids)
-        ).delete(synchronize_session=False)
+        ).delete(synchronize_session='fetch')
         return count
 
     # ------------------------------------------------------------------
@@ -277,6 +455,7 @@ class GLService:
         entry_date: datetime | None = None,
         notes: str | None = None,
         created_by: int | None = None,
+        is_posted: bool = True,
     ) -> GLJournalEntry:
         """Post a balanced double-entry journal.
 
@@ -289,54 +468,37 @@ class GLService:
             reference_type / reference_id: Link to the business document.
             currency / exchange_rate: FX metadata for the entry.
             entry_type: ``auto`` / ``manual`` / ``reversing`` / ``closing``.
+            entry_date: تاريخ المستند — يجب أن يقع في فترة مالية مفتوحة (F10).
+            is_posted: F9 — True (ترحيل فوري) أو False (مسودة تُرحَّل لاحقاً).
         """
         currency = currency or _base_currency()
         rate = _to_decimal(exchange_rate) or Decimal("1")
-
-        # ---- 8. BALANCE VALIDATION BEFORE ANY DB MUTATION ------------
-        total_debit = Decimal("0")
-        total_credit = Decimal("0")
-        for ln in lines:
-            total_debit += _to_decimal(ln.get("debit", 0))
-            total_credit += _to_decimal(ln.get("credit", 0))
-        if total_debit != total_credit:
-            raise ValueError(f"GL entry not balanced: debit={total_debit} credit={total_credit}")
-
-        # ---- account resolution + header block (pre-session) -----------
-        resolved: list[tuple[GLAccount, Decimal, Decimal, str | None]] = []
-        for ln in lines:
-            raw = ln.get("account") or ln.get("account_code")
-            if raw is None:
-                raise ValueError("GL line: missing 'account' / 'account_code'")
-            if isinstance(raw, GLAccount):
-                account = raw
-            else:
-                account = GLAccount.query.filter_by(code=str(raw).strip()).first()
-            if account is None:
-                GLService.ensure_core_accounts()
-                account = GLAccount.query.filter_by(code=str(raw).strip()).first()
-            if account is None:
-                raise ValueError(f"GL account '{raw}' not found while posting '{description}'")
-            # FIX 6 — block postings to header accounts
-            if getattr(account, "is_header", False):
-                raise ValueError(
-                    f"GL account {account.code} ({account.full_name}) is a header "
-                    f"account and cannot receive direct postings"
-                )
-            if not getattr(account, "is_active", True):
-                raise ValueError(f"GL account {account.code} is inactive")
-            debit = _quantize_3(_to_decimal(ln.get("debit", 0)))
-            credit = _quantize_3(_to_decimal(ln.get("credit", 0)))
-            if debit < Decimal("0") or credit < Decimal("0"):
-                raise ValueError("GL line: debit/credit must be >= 0")
-            resolved.append((account, debit, credit, ln.get("description")))
-
-        entry_number = _unique_entry_number()
+        effective_date = entry_date or datetime.now(timezone.utc)
 
         try:
+            # ---- 8. BALANCE VALIDATION BEFORE ANY DB MUTATION --------
+            # F5: التطبيع والتحقق يحدثان قبل أي كتابة في الجلسة.
+            normalized, total_debit, total_credit = _normalize_lines(
+                lines,
+                rate,
+                ensure_accounts=True,
+                unknown_account_message=lambda raw: (
+                    f"GL account '{raw}' not found while posting '{description}'"
+                ),
+            )
+            if total_debit != total_credit:
+                raise ValueError(
+                    f"GL entry not balanced: debit={total_debit} credit={total_credit}"
+                )
+
+            # ---- F10: الفترة المالية ---------------------------------
+            _assert_period_open(effective_date)
+
+            entry_number = _unique_entry_number()
+
             entry = GLJournalEntry(
                 entry_number=entry_number,
-                entry_date=entry_date or datetime.now(timezone.utc),
+                entry_date=effective_date,
                 description=description,
                 reference_type=reference_type,
                 reference_id=reference_id,
@@ -345,6 +507,7 @@ class GLService:
                 exchange_rate=rate,
                 total_debit=total_debit,
                 total_credit=total_credit,
+                is_posted=bool(is_posted),
                 notes=notes,
                 created_by=created_by if created_by is not None else _current_user_id(),
                 tenant_id=_current_tenant_id(),
@@ -352,18 +515,29 @@ class GLService:
             db.session.add(entry)
             db.session.flush()
 
-            for account, debit, credit, desc in resolved:
-                amount_base = (debit - credit) * rate
+            for item in normalized:
                 db.session.add(
                     GLJournalLine(
                         entry=entry,
-                        account=account,
-                        description=desc or description,
-                        debit=debit,
-                        credit=credit,
-                        amount_base=_quantize_3(amount_base),
+                        account=item.account,
+                        description=item.description or description,
+                        debit=item.debit,
+                        credit=item.credit,
+                        amount_base=item.amount_base,
                     )
                 )
+            db.session.flush()
+
+            # ---- F3: سجل التدقيق ---------------------------------------
+            JournalEntryAudit.record(
+                journal_entry_id=entry.id,
+                action=JournalEntryAudit.ACTION_CREATE,
+                old_values=None,
+                new_values=_audit_payload(entry, normalized),
+                reason=f'ترحيل قيد: {description or entry_number}',
+                performed_by=created_by,
+                fallback_entry=entry,
+            )
             db.session.flush()
             return entry
         except Exception:
@@ -386,6 +560,7 @@ class GLService:
         entry_date: datetime | None = None,
         notes: str | None = None,
         created_by: int | None = None,
+        is_posted: bool = True,
     ) -> GLJournalEntry:
         """Create a typed journal entry.
 
@@ -395,20 +570,33 @@ class GLService:
             lines: ``[{'account_code': str, 'debit': Decimal, 'credit': Decimal}]``.
             reference_type / reference_id: Link to the business document.
             currency / exchange_rate: FX metadata (defaults to base).
+            is_posted: F9 — True (ترحيل فوري) أو False (مسودة).
         """
         currency = currency or _base_currency()
         rate = _to_decimal(exchange_rate) or Decimal("1")
+        effective_date = entry_date or datetime.now(timezone.utc)
 
-        # FIX 7 — use .get() so a missing 'debit' doesn't raise KeyError.
-        total_debit = sum(_to_decimal(ln.get("debit", 0)) for ln in lines)
-        total_credit = sum(_to_decimal(ln.get("credit", 0)) for ln in lines)
-        if total_debit != total_credit:
-            raise ValueError(f"Journal entry is not balanced: Debit={total_debit}, Credit={total_credit}")
-
-        entry_number = _unique_entry_number()
         GLService.ensure_core_accounts()
 
         try:
+            # FIX 7 — use .get() so a missing 'debit' doesn't raise KeyError.
+            # F5 — التطبيع والتحقق قبل أي كتابة.
+            normalized, total_debit, total_credit = _normalize_lines(
+                lines,
+                rate,
+                ensure_accounts=False,
+                unknown_account_message=lambda raw: f"Account {raw} not found",
+            )
+            if total_debit != total_credit:
+                raise ValueError(
+                    f"Journal entry is not balanced: Debit={total_debit}, Credit={total_credit}"
+                )
+
+            # F10 — الفترة المالية
+            _assert_period_open(effective_date)
+
+            entry_number = _unique_entry_number()
+
             entry = GLJournalEntry(
                 entry_number=entry_number,
                 description=description,
@@ -417,43 +605,40 @@ class GLService:
                 reference_id=reference_id,
                 currency=currency,
                 exchange_rate=rate,
-                entry_date=entry_date or datetime.now(timezone.utc),
+                entry_date=effective_date,
                 notes=notes,
                 total_debit=total_debit,
                 total_credit=total_credit,
+                is_posted=bool(is_posted),
                 created_by=created_by if created_by is not None else _current_user_id(),
                 tenant_id=_current_tenant_id(),
             )
             db.session.add(entry)
             db.session.flush()
 
-            for ln in lines:
-                # FIX 7
-                code = ln.get("account_code") or ln.get("account")
-                if not code:
-                    raise ValueError("Journal line: missing 'account_code' / 'account'")
-                account = GLAccount.query.filter_by(code=str(code).strip()).first()
-                if not account:
-                    raise ValueError(f"Account {code} not found")
-                # FIX 6
-                if getattr(account, "is_header", False):
-                    raise ValueError(
-                        f"GL account {account.code} is a header account and cannot receive entries"
-                    )
-                debit = _quantize_3(_to_decimal(ln.get("debit", 0)))
-                credit = _quantize_3(_to_decimal(ln.get("credit", 0)))
-                # FIX 4 — amount_base uses the entry's exchange_rate.
-                amount_base = _quantize_3((debit - credit) * rate)
+            for item in normalized:
                 db.session.add(
                     GLJournalLine(
                         entry_id=entry.id,
-                        account_id=account.id,
-                        debit=debit,
-                        credit=credit,
-                        amount_base=amount_base,
-                        description=ln.get("description", description),
+                        account_id=item.account.id,
+                        debit=item.debit,
+                        credit=item.credit,
+                        amount_base=item.amount_base,
+                        description=item.description or description,
                     )
                 )
+            db.session.flush()
+
+            # F3 — سجل التدقيق
+            JournalEntryAudit.record(
+                journal_entry_id=entry.id,
+                action=JournalEntryAudit.ACTION_CREATE,
+                old_values=None,
+                new_values=_audit_payload(entry, normalized),
+                reason=f'إنشاء قيد: {description or entry_number}',
+                performed_by=created_by,
+                fallback_entry=entry,
+            )
             db.session.flush()
             return entry
         except Exception:
@@ -475,29 +660,39 @@ class GLService:
         reference_id: int | None = None,
         currency: str | None = None,
         exchange_rate: Any = 1,
+        entry_type: str = "manual",
+        is_posted: bool = True,
     ) -> GLJournalEntry:
         """Manual entry with full FX support (FIX 5)."""
         from flask_login import current_user
 
         currency = currency or _base_currency()
         rate = _to_decimal(exchange_rate) or Decimal("1")
-
-        total_debit = Decimal("0")
-        total_credit = Decimal("0")
-        for ln in lines:
-            total_debit += _to_decimal(ln.get("debit", 0))
-            total_credit += _to_decimal(ln.get("credit", 0))
-        if total_debit != total_credit:
-            raise ValueError(f"القيد غير متوازن: مدين={total_debit}, دائن={total_credit}")
-
-        entry_number = _unique_entry_number()
+        effective_date = entry_date or datetime.now(timezone.utc)
 
         try:
+            # F5 — التطبيع والتحقق قبل أي كتابة؛ الإجماليات من نفس القيم.
+            normalized, total_debit, total_credit = _normalize_lines(
+                lines,
+                rate,
+                ensure_accounts=True,
+                unknown_account_message=lambda raw: f"الحساب {raw} غير موجود",
+            )
+            if total_debit != total_credit:
+                raise ValueError(
+                    f"القيد غير متوازن: مدين={total_debit}, دائن={total_credit}"
+                )
+
+            # F10 — الفترة المالية
+            _assert_period_open(effective_date)
+
+            entry_number = _unique_entry_number()
+
             entry = GLJournalEntry(
                 entry_number=entry_number,
-                entry_date=entry_date or datetime.now(timezone.utc),
+                entry_date=effective_date,
                 description=description,
-                entry_type="manual",
+                entry_type=entry_type,
                 notes=notes,
                 reference_type=reference_type,
                 reference_id=reference_id,
@@ -505,6 +700,7 @@ class GLService:
                 exchange_rate=rate,
                 total_debit=total_debit,
                 total_credit=total_credit,
+                is_posted=bool(is_posted),
                 created_by=created_by
                 if created_by is not None
                 else (current_user.id if getattr(current_user, "is_authenticated", False) else None),
@@ -513,30 +709,29 @@ class GLService:
             db.session.add(entry)
             db.session.flush()
 
-            for ln in lines:
-                code = ln.get("account_code") or ln.get("account")
-                account = GLAccount.query.filter_by(code=str(code).strip()).first()
-                if not account:
-                    GLService.ensure_core_accounts()
-                    account = GLAccount.query.filter_by(code=str(code).strip()).first()
-                if not account:
-                    raise ValueError(f"الحساب {code} غير موجود")
-                if getattr(account, "is_header", False):
-                    raise ValueError(f"الحساب {account.full_name} هو حساب رئيسي ولا يمكن إضافة قيود عليه")
-                debit = _quantize_3(_to_decimal(ln.get("debit", 0)))
-                credit = _quantize_3(_to_decimal(ln.get("credit", 0)))
-                # FIX 5 — multiply by the entry's exchange_rate; never bare (debit-credit).
-                amount_base = _quantize_3((debit - credit) * rate)
+            for item in normalized:
                 db.session.add(
                     GLJournalLine(
                         entry_id=entry.id,
-                        account_id=account.id,
-                        description=ln.get("description", ""),
-                        debit=debit,
-                        credit=credit,
-                        amount_base=amount_base,
+                        account_id=item.account.id,
+                        description=item.description or "",
+                        debit=item.debit,
+                        credit=item.credit,
+                        amount_base=item.amount_base,
                     )
                 )
+            db.session.flush()
+
+            # F3 — سجل التدقيق
+            JournalEntryAudit.record(
+                journal_entry_id=entry.id,
+                action=JournalEntryAudit.ACTION_CREATE,
+                old_values=None,
+                new_values=_audit_payload(entry, normalized),
+                reason=f"إنشاء قيد جديد: {description or entry_number}",
+                performed_by=created_by,
+                fallback_entry=entry,
+            )
             db.session.flush()
             return entry
         except Exception:
@@ -571,6 +766,12 @@ class GLService:
           business reference and returns the list of reversing entries.
           If no entries are found for the reference, an empty list is
           returned (no-op).
+
+        F7: the failures are NO LONGER swallowed — a caller that archives a
+        document must never believe the ledger was reversed when it was
+        not. ``entry_date`` and ``created_by`` are forwarded to the model
+        primitive (which uses the locked number generator and writes an
+        audit row).
         """
         # reference_type / reference_id form used by routes/sales.py
         # when the caller does not have the entry id handy.
@@ -586,13 +787,13 @@ class GLService:
             for ent in entries:
                 if getattr(ent, "is_reversed", False):
                     continue
-                try:
-                    rev = ent.reverse_entry(
-                        description=description or f"Reversal of {ent.entry_number}"
-                    )
-                    reversed_entries.append(rev)
-                except Exception:
-                    continue
+                # F7 — no silent swallow: a failure must reach the caller.
+                rev = ent.reverse_entry(
+                    description=description or f"Reversal of {ent.entry_number}",
+                    entry_date=entry_date,
+                    created_by=created_by,
+                )
+                reversed_entries.append(rev)
             # Return a single entry when only one was reversed to keep
             # the simple caller (routes/sales.py line 392) happy which
             # discards the return value; return the list so batch
@@ -613,7 +814,11 @@ class GLService:
             entry = entry_or_id
         if not isinstance(entry, GLJournalEntry):
             raise TypeError("GLService.reverse_entry: first argument must be an id or GLJournalEntry")
-        return entry.reverse_entry(description=description)
+        return entry.reverse_entry(
+            description=description,
+            entry_date=entry_date,
+            created_by=created_by,
+        )
 
     # optional: explicit alias used by older code
     reverse_journal_entry = reverse_entry
@@ -730,4 +935,3 @@ class GLService:
             }
 
         return [build(r, set()) for r in roots]
-

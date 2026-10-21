@@ -1,6 +1,7 @@
-﻿import os
+﻿import json
+import os
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from werkzeug.utils import secure_filename
 from flask import current_app, request
@@ -194,9 +195,49 @@ def timeago(date):
         return str(date)
 
 
-def create_audit_log(action, table_name=None, record_id=None, changes=None):
+def _json_safe_changes(value):
+    """تحويل حمولة التدقيق إلى قيم قابلة للتخزين في عمود JSON.
+
+    الأرقام العشرية (Decimal) والتواريخ لا يمرّرها مُسلسل JSON كما هي، ولو
+    فشلت عملية الكتابة لأُهملت السجلات الصامتة. التحويل هنا يمنع أن يسقط
+    سجل التدقيق بسبب قيمة رقمية في الحمولة.
+    """
+    if isinstance(value, dict):
+        return {str(k): _json_safe_changes(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe_changes(v) for v in value]
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    return value
+
+
+def create_audit_log(action, table_name=None, record_id=None, changes=None, commit=None):
+    """تسجيل عملية في سجل التدقيق ضمن معاملة المستدعي (لا تلتزم بشكل مستقل).
+
+    كان في الدالة عيبان:
+
+    * ``except Exception: logger.error(...)`` — كان الفشل يُبلع فتسير العملية
+      التجارية بلا سجل تدقيق (fail-open). الآن يُسجَّل الخطأ على مستوى ERROR
+      ويُعاد رفعه فتُلغى العملية.
+    * ``db.session.commit()`` — كان السجل يلتزم ما عدا في الجلسة، فيُثبّت
+      عملاً تجارياً لم يُقصد تثبيته ويكسر ذرّية المعاملة.
+
+    Args:
+        commit: ``None`` (الافتراضي) = ارتباط تلقائي: إن كانت الجلسة تحمل
+            عملاً معلّقاً آخر فالسجل جزء من معاملة المستدعي (الالتزام الخاص
+            به)، وإلا فالسجل مستقل فيُلتزم فوراً حتى لا يضيع. ``True`` =
+            التزام فوري صريح. ``False`` = لا يلتزم أبداً؛ المستدعي هو من
+            يلتزم.
+    """
     from models import AuditLog
     from flask_login import current_user
+
+    session = db.session
+    # هل تحمل الجلسة عملاً معلّقاً آخر؟ إن كان نعم فسجّل صف التدقيق ضمن
+    # معاملة المستدعي (commit الخاصة به)، وإلا فالصف مستقل.
+    pending_before = bool(session.new) or bool(session.dirty)
 
     try:
         log = AuditLog(
@@ -204,14 +245,84 @@ def create_audit_log(action, table_name=None, record_id=None, changes=None):
             action=action,
             table_name=table_name,
             record_id=record_id,
-            changes=changes,
+            changes=_json_safe_changes(changes),
             ip_address=request.remote_addr if request else None,
             user_agent=request.headers.get('User-Agent') if request else None,
         )
-        db.session.add(log)
-        db.session.commit()
+        session.add(log)
+        session.flush()
+        if commit is True:
+            session.commit()
+        elif commit is None and not pending_before:
+            # استدعاء مستقل (لا معاملة تجارية مفتوحة): نلتزم حتى لا يضيع
+            # السجل مع نهاية الطلب.
+            session.commit()
+        return log
     except Exception as e:
         current_app.logger.error(f'Failed to create audit log: {e}')
+        # fail-closed: السجل جزء من العملية، فشلُه يُلغي العملية.
+        raise
+
+
+def instance_audit_dir():
+    """مسار مجلد التدقيق الدائم داخل ``instance/``.
+
+    سجل التدقيق داخل قاعدة البيانات لا ينجو من استعادة نسخة احتياطية
+    (الاستعادة تعيد كتابة جدول ``audit_logs``)، لذلك تُكتب العمليات
+    الحسّاسة (الاستعادة/الحذف/المسح) في ملف دائم داخل ``instance/``.
+    """
+    try:
+        path = current_app.instance_path
+        if path:
+            return os.path.join(path, 'audit')
+    except Exception:
+        pass
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(root, 'instance', 'audit')
+
+
+def append_audit_record(payload, directory=None, filename='audit_trail.jsonl'):
+    """كتابة سجل تدقيق دائم في ملف JSONL داخل ``instance/audit``.
+
+    Used for the acts that must survive a database restore: the restore
+    itself rewrites ``audit_logs`` with the backup's contents, so the only
+    durable proof that it happened is a file on disk.
+
+    Returns the absolute path of the file that was written.
+    """
+    target_dir = directory or instance_audit_dir()
+    os.makedirs(target_dir, exist_ok=True)
+    path = os.path.join(target_dir, filename)
+
+    record = {
+        'recorded_at': datetime.now(timezone.utc).isoformat(),
+    }
+    if isinstance(payload, dict):
+        record.update(payload)
+    else:
+        record['payload'] = payload
+
+    try:
+        user_id = None
+        username = None
+        try:
+            from flask_login import current_user
+            if getattr(current_user, 'is_authenticated', False):
+                user_id = current_user.id
+                username = getattr(current_user, 'username', None)
+        except Exception:
+            pass
+        record.setdefault('user_id', user_id)
+        record.setdefault('username', username)
+        if request:
+            record.setdefault('ip_address', request.remote_addr)
+            record.setdefault('user_agent', request.headers.get('User-Agent'))
+    except Exception:
+        pass
+
+    with open(path, 'a', encoding='utf-8') as handle:
+        handle.write(json.dumps(record, ensure_ascii=False, default=str) + '\n')
+    return path
 
 
 def allowed_file(filename, allowed_extensions=None):

@@ -85,9 +85,26 @@
 
     <hr>
 
-    <div class="alert alert-primary text-center">
+    {% if not balanced %}
+    <div class="alert alert-danger text-center" role="alert" id="balance-sheet-imbalance">
+      <h4><i class="fas fa-exclamation-triangle"></i> الميزانية غير متوازنة</h4>
+      <h3 class="mb-1">
+        الفرق: {{ "{:,.2f}".format(delta|abs) }} {{ base_currency }}
+      </h3>
+      <p class="mb-0">
+        الأصول ({{ "{:,.2f}".format(total_assets) }}) ≠
+        الخصوم ({{ "{:,.2f}".format(total_liabilities) }}) +
+        حقوق الملكية ({{ "{:,.2f}".format(total_equity) }})
+      </p>
+    </div>
+    {% endif %}
+
+    <div class="alert {% if balanced %}alert-success{% else %}alert-secondary{% endif %} text-center">
       <h4>المعادلة المحاسبية</h4>
       <h3>الأصول ({{ "{:,.0f}".format(total_assets) }}) = الخصوم ({{ "{:,.0f}".format(total_liabilities) }}) + حقوق الملكية ({{ "{:,.0f}".format(total_equity) }})</h3>
+      {% if balanced %}
+      <p class="mb-0"><i class="fas fa-check-circle"></i> الميزانية متوازنة (الفريق أقل من 0.01 {{ base_currency }})</p>
+      {% endif %}
     </div>
   </div>
 </div>

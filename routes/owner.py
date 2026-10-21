@@ -11,11 +11,13 @@ from models import (
 )
 from models.login_history import LoginHistory
 from models.security_alert import SecurityAlert
-from utils.helpers import create_audit_log
+from utils.helpers import create_audit_log, append_audit_record
 from models.api_key import APIKey
 from models.error_log import ErrorLog
 from utils.decorators import owner_required, permission_required, _role_level as _role_level_canon, get_owned_or_404
-from utils.db_safety import validate_table_name, validate_backup_filename
+from utils.db_safety import (
+    validate_table_name, validate_backup_filename, is_protected_table,
+)
 from sqlalchemy import text, inspect
 
 
@@ -777,24 +779,52 @@ def restore_backup(filename):
         flash('❌ النسخة الاحتياطية تالفة أو غير صالحة!', 'danger')
         return redirect(url_for('owner.list_backups'))
 
+    # F10 (SECURITY): the restore pipes the dump into the LIVE database, so
+    # it REWRITES audit_logs with the backup's contents — the audit trail of
+    # everything that happened since that backup is destroyed by the restore
+    # itself.  The proof of the act therefore has to live OUTSIDE the
+    # database: it is written to a file under instance/ BEFORE the restore
+    # runs (and into audit_logs afterwards, for the rows the restore kept).
+    restore_audit = {
+        'action': 'restore_backup',
+        'backup_filename': filename,
+        'restored_by': getattr(current_user, 'username', None),
+        'restored_at': datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        audit_file = append_audit_record(restore_audit)
+    except Exception:
+        current_app.logger.exception('handler failed')
+        audit_file = None
+
     # الاستعادة
     success = BackupService.restore_backup(filename)
 
     if success:
         flash('✅ تمت الاستعادة بنجاح! سيتم إعادة تحميل النظام...', 'success')
 
-        # تسجيل في Audit Log
-        # AuditLog.log_action(
-        #     user_id=current_user.id,
-        #     action='restore_backup',
-        #     table_name='system',
-        #     description=f'Restored from backup: {filename}'
-        # )
-        db.session.commit()
+        # تسجيل في Audit Log (قاعدة البيانات) — بعد الاستعادة
+        try:
+            create_audit_log(
+                'restore_backup', 'system', None,
+                dict(restore_audit, audit_file=audit_file),
+                commit=True,
+            )
+        except Exception:
+            current_app.logger.exception('handler failed')
 
         # إعادة تشغيل التطبيق (optional)
         return redirect(url_for('owner.list_backups'))
     else:
+        # الفشل أيضاً عملية قابلة للتدقيق
+        try:
+            create_audit_log(
+                'restore_backup_failed', 'system', None,
+                dict(restore_audit, audit_file=audit_file),
+                commit=True,
+            )
+        except Exception:
+            current_app.logger.exception('handler failed')
         flash('❌ فشلت الاستعادة!', 'danger')
         return redirect(url_for('owner.list_backups'))
 
@@ -846,15 +876,46 @@ def custom_restore_backup(filename):
         flash('❌ النسخة الاحتياطية تالفة أو غير صالحة!', 'danger')
         return redirect(url_for('owner.list_backups'))
 
+    # F10: الاستعادة المخصصة تكتب جداول محددة فقط، لكنها مع ذلك عملية
+    # تُعيد كتابة بيانات جداول مُدقّقة — يُسجَّل أثرها في ملف دائم
+    # داخل instance/ قبل التنفيذ.
+    restore_audit = {
+        'action': 'custom_restore_backup',
+        'backup_filename': filename,
+        'tables': list(selected_tables),
+        'restored_by': getattr(current_user, 'username', None),
+        'restored_at': datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        audit_file = append_audit_record(restore_audit)
+    except Exception:
+        current_app.logger.exception('handler failed')
+        audit_file = None
+
     # الاستعادة المخصصة
     success = BackupService.restore_custom_tables(filename, selected_tables)
 
     if success:
         tables_list = ', '.join(selected_tables)
         flash(f'✅ تمت استعادة الجداول بنجاح: {tables_list}', 'success')
-        db.session.commit()
+        try:
+            create_audit_log(
+                'custom_restore_backup', 'system', None,
+                dict(restore_audit, audit_file=audit_file),
+                commit=True,
+            )
+        except Exception:
+            current_app.logger.exception('handler failed')
         return redirect(url_for('owner.list_backups'))
     else:
+        try:
+            create_audit_log(
+                'custom_restore_backup_failed', 'system', None,
+                dict(restore_audit, audit_file=audit_file),
+                commit=True,
+            )
+        except Exception:
+            current_app.logger.exception('handler failed')
         flash('❌ فشلت الاستعادة المخصصة!', 'danger')
         return redirect(url_for('owner.list_backups'))
 
@@ -891,11 +952,34 @@ def delete_backup():
         flash('❌ النسخة الاحتياطية غير موجودة!', 'danger')
         return redirect(url_for('owner.list_backups'))
 
+    # F10: حذف نقطة الاستعادة نفسه عملية قابلة للتدقيق — تُكتب في ملف
+    # دائم داخل instance/ قبل الحذف (لأن الحذف قد يمحو سجل التدقيق في
+    # القاعدة مع نسخة لاحقة).
+    delete_audit = {
+        'action': 'delete_backup',
+        'backup_filename': filename,
+        'deleted_by': getattr(current_user, 'username', None),
+        'deleted_at': datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        audit_file = append_audit_record(delete_audit)
+    except Exception:
+        current_app.logger.exception('handler failed')
+        audit_file = None
+
     # حذف النسخة
     success = BackupService.delete_backup(filename)
 
     if success:
         flash(f'✅ تم حذف النسخة الاحتياطية: {filename}', 'success')
+        try:
+            create_audit_log(
+                'delete_backup', 'system', None,
+                dict(delete_audit, audit_file=audit_file),
+                commit=True,
+            )
+        except Exception:
+            current_app.logger.exception('handler failed')
     else:
         flash('❌ فشل حذف النسخة الاحتياطية!', 'danger')
 
@@ -963,8 +1047,16 @@ def truncate_table():
         flash('❌ يجب كتابة YES_DELETE_ALL للتأكيد', 'danger')
         return redirect(url_for('owner.database_tools'))
 
-    protected_tables = ['users', 'roles', 'permissions', 'tenants', 'role_permissions']
-    if table_name in protected_tables:
+    # SECURITY: the protected list used to hold only the identity tables, so
+    # the financial and audit tables (audit_logs, gl_journal_entries,
+    # sales, payments, purchases, receipts …) were all deletable — the tool
+    # could erase the whole ledger AND the proof that it existed.
+    # utils/db_safety.PROTECTED_TABLES is the single denylist every
+    # destructive path must honour.
+    protected_tables = [
+        'users', 'roles', 'permissions', 'tenants', 'role_permissions',
+    ]
+    if table_name in protected_tables or is_protected_table(table_name):
         flash('❌ لا يمكن مسح الجداول المحمية', 'danger')
         return redirect(url_for('owner.database_tools'))
 
@@ -976,17 +1068,17 @@ def truncate_table():
         return redirect(url_for('owner.database_tools'))
 
     try:
+        # The audit row is written and COMMITTED BEFORE the destructive
+        # statement: a failure of the DELETE can then never lose the
+        # record of the attempt.
+        create_audit_log(
+            'truncate_table', 'database', 0,
+            {'table': table_name, 'confirmed': confirm},
+            commit=True,
+        )
+
         db.session.execute(text(f"DELETE FROM {table_name}"))  # nosec B608 - table_name validated by validate_table_name() allowlist
         db.session.commit()
-
-        from utils.helpers import create_audit_log
-        create_audit_log(
-            action='truncate_table',
-            entity_type='database',
-            entity_id=0,
-            details={'table': table_name},
-            user_id=current_user.id
-        )
 
         flash(f'✅ تم مسح جدول {table_name} بنجاح', 'success')
     except Exception as e:
@@ -1118,6 +1210,14 @@ def export_database():
                 json.dump(export_data, f, ensure_ascii=False, indent=2, default=str)
 
             flash(f'✅ تم التصدير: {filename}', 'success')
+
+        # F14/F15: an export of the whole database is an auditable act.
+        create_audit_log('export', 'database', None, changes={
+            'action': 'export_database',
+            'format': export_format,
+            'filename': filename,
+            'exported_by': getattr(current_user, 'username', None),
+        }, commit=True)
 
     except Exception as e:
         current_app.logger.error(f'Database export error: {e}')
@@ -1550,9 +1650,14 @@ def tenant_new():
         try:
             tenant = Tenant(**cleaned, is_active=True, is_suspended=False)
             db.session.add(tenant)
+            create_audit_log('create', 'tenants', tenant.id, changes={
+                'action': 'create_tenant',
+                'name': tenant.name,
+                'name_ar': tenant.name_ar,
+                'slug': tenant.slug,
+                'country': tenant.country,
+            }, commit=False)
             db.session.commit()
-            from utils.helpers import create_audit_log
-            create_audit_log('create', 'tenants', tenant.id)
             flash(f'تم إنشاء المستأجر "{tenant.name_ar}" بنجاح', 'success')
             return redirect(url_for('owner.tenant_detail', id=tenant.id))
         except Exception as e:
@@ -1605,9 +1710,16 @@ def tenant_edit(id):
             tenant.suspension_reason = (
                 request.form.get('suspension_reason') or '').strip() or None
             tenant.updated_by = current_user.id
+            create_audit_log('update', 'tenants', tenant.id, changes={
+                'action': 'update_tenant',
+                'name': tenant.name,
+                'name_ar': tenant.name_ar,
+                'slug': tenant.slug,
+                'is_active': tenant.is_active,
+                'is_suspended': tenant.is_suspended,
+                'suspension_reason': tenant.suspension_reason,
+            }, commit=False)
             db.session.commit()
-            from utils.helpers import create_audit_log
-            create_audit_log('update', 'tenants', tenant.id)
             flash(f'تم حفظ بيانات المستأجر "{tenant.name_ar}" بنجاح', 'success')
             return redirect(url_for('owner.tenant_detail', id=tenant.id))
         except Exception as e:
@@ -1635,9 +1747,16 @@ def tenant_suspend(id):
         tenant.is_suspended = True
         tenant.suspension_reason = reason
         tenant.updated_by = current_user.id
+        create_audit_log('suspend', 'tenants', tenant.id, changes={
+            'action': 'suspend_tenant',
+            'name': tenant.name,
+            'name_ar': tenant.name_ar,
+            'slug': tenant.slug,
+            'suspension_reason': reason,
+            'is_active': False,
+            'is_suspended': True,
+        }, commit=False)
         db.session.commit()
-        from utils.helpers import create_audit_log
-        create_audit_log('suspend', 'tenants', tenant.id)
         flash(f'تم إيقاف المستأجر "{tenant.name_ar}"', 'warning')
     except Exception as e:
         db.session.rollback()
@@ -1657,9 +1776,15 @@ def tenant_activate(id):
         tenant.is_suspended = False
         tenant.suspension_reason = None
         tenant.updated_by = current_user.id
+        create_audit_log('activate', 'tenants', tenant.id, changes={
+            'action': 'activate_tenant',
+            'name': tenant.name,
+            'name_ar': tenant.name_ar,
+            'slug': tenant.slug,
+            'is_active': True,
+            'is_suspended': False,
+        }, commit=False)
         db.session.commit()
-        from utils.helpers import create_audit_log
-        create_audit_log('activate', 'tenants', tenant.id)
         flash(f'تم تفعيل المستأجر "{tenant.name_ar}"', 'success')
     except Exception as e:
         db.session.rollback()
@@ -2768,6 +2893,26 @@ def data_cleanup():
             flash(f'❌ نوع التنظيف غير معروف: {cleanup_type}', 'danger')
             return redirect(url_for('owner.data_cleanup'))
 
+        # F14/F15: حذف سجلات التدقيق القديمة عملية تُوثَّق — وإلا اختفى
+        # الأثر دون دليل. السجل الجديد يُكتب بعد الحذف (فلا يُحذف هو
+        # الآخر) ويُثبَّت في ملف دائم داخل instance/ لمجرد في حالة حذف
+        # سجل التدقيق نفسه.
+        cleanup_record = {
+            'action': 'data_cleanup',
+            'cleanup_type': cleanup_type,
+            'days': days,
+            'deleted_count': deleted_count,
+            'cutoff': cutoff_date.isoformat(),
+            'executed_by': getattr(current_user, 'username', None),
+        }
+        try:
+            cleanup_record['audit_file'] = append_audit_record(cleanup_record)
+        except Exception:
+            current_app.logger.exception('handler failed')
+        create_audit_log('delete', 'audit_logs' if cleanup_type == 'logs'
+                         else 'archived_records', None,
+                         changes=cleanup_record, commit=True)
+
         db.session.commit()
 
         flash(f'✅ تم حذف {deleted_count} سجل قديم', 'success')
@@ -2834,6 +2979,15 @@ def export_excel(table_name):
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name=table_name)
         output.seek(0)
+
+        # F14/F15: an export is an auditable act (models/audit.py defines the
+        # 'export' action for exactly this).
+        create_audit_log('export', table_name, None, changes={
+            'action': 'export_excel',
+            'table_name': table_name,
+            'rows': len(df_data),
+            'exported_by': getattr(current_user, 'username', None),
+        }, commit=True)
 
         return send_file(
             output,

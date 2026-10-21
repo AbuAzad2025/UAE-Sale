@@ -229,11 +229,17 @@ def test_sales_owner_full_lifecycle(client, login_owner, main_wh):
     assert cancelled_edit.status_code == 302
 
     hard_id = sale1.id
+    # F1: القيد المرحَّل لا يُحذف أبداً — حذف الفاتورة يُبقي أثره المحاسبي.
+    entries_before = GLJournalEntry.query.filter_by(
+        reference_type='Sale', reference_id=hard_id).count()
     assert client.post(f'/sales/{hard_id}/delete', follow_redirects=True).status_code == 200
     assert db.session.get(Sale, hard_id) is None
     assert SaleLine.query.count() == 0
-    assert GLJournalEntry.query.filter_by(
-        reference_type='Sale', reference_id=hard_id).count() == 0
+    remaining = GLJournalEntry.query.filter_by(
+        reference_type='Sale', reference_id=hard_id).all()
+    assert len(remaining) == entries_before, \
+        'F1: القيود المرحَّلة لا تُحذف مع الفاتورة (تُعكس فقط)'
+    assert all(e.is_reversed or e.entry_type == 'reversing' for e in remaining)
 
     linked = _sale_http(client, cust.id, prod.id, payment_amount='40',
                         payment_method='cash')
@@ -393,8 +399,11 @@ def test_payments_voucher_matrix_and_receipt_pages(client, login_owner):
     assert hard_del.status_code == 200
     assert 'نهائياً' in hard_del.get_data(as_text=True)
     assert db.session.get(Receipt, vid) is None
-    assert GLJournalEntry.query.filter_by(
-        reference_type='Receipt', reference_id=vid).count() == 0
+    # F1: القيود المرحَّلة تُعكس ولا تُحذف مع السند.
+    remaining = GLJournalEntry.query.filter_by(
+        reference_type='Receipt', reference_id=vid).all()
+    assert remaining, 'F1: القيود المرحَّلة تبقى في دفتر الأستاذ'
+    assert all(e.is_reversed or e.entry_type == 'reversing' for e in remaining)
 
 
 def test_payments_from_sale_allocation_and_linked_delete_reversal(
@@ -622,8 +631,11 @@ def test_expenses_cash_cheque_edit_categories_archive_delete(client, login_owner
     keep = client.post(f'/expenses/{eid}/delete', follow_redirects=True)
     assert keep.status_code == 200 and 'نهائياً' in keep.get_data(as_text=True)
     assert db.session.get(Expense, eid) is None
-    assert GLJournalEntry.query.filter_by(
-        reference_type='Expense', reference_id=eid).count() == 0
+    # F1: قيد المصروف المرحَّل لا يُحذف — يُعكس (قيد عكسي جديد) ويبقى أثره.
+    remaining = GLJournalEntry.query.filter_by(
+        reference_type='Expense', reference_id=eid).all()
+    assert len(remaining) == 4
+    assert all(e.is_reversed or e.entry_type == 'reversing' for e in remaining)
 
 
 # ---------------------------------------------------------------- purchases ops
@@ -820,7 +832,10 @@ def test_suppliers_full_module_matrix(client, login_owner, owner_user):
     newsup = Supplier.query.filter_by(email=f'{tag}@sup.com').one()
     assert f'/suppliers/{newsup.id}' in created.headers['Location']
     assert newsup.is_verified is True and newsup.rating == 5
-    assert abs(float(newsup.total_purchases_aed) - 950.0) < 0.001
+    # F4: الرصيد الافتتاحي في أعمدته الخاصة — ولا يُخلط بإحصائية المشتريات
+    # (total_purchases_aed إحصائية تُمسح عند أول فاتورة شراء).
+    assert abs(float(newsup.opening_balance) - 950.0) < 0.001
+    assert abs(float(newsup.total_purchases_aed or 0)) < 0.001
 
     r1 = client.post('/suppliers/create', data={'name': 'بلا نوع'})
     assert r1.status_code == 200

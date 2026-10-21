@@ -1,5 +1,5 @@
 """Unit tests for GLService — دفتر الأستاذ العام."""
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
@@ -12,6 +12,33 @@ from services.gl_service import GLService
 def core_accounts(db):
     GLService.ensure_core_accounts()
     return True
+
+
+@pytest.fixture(autouse=True)
+def open_fiscal_period(db):
+    """فترة مالية مفتوحة تغطي السنة الحالية.
+
+    F10: منذ أن صار ``GLService`` يرفض الترحيل إلى فترة مغلقة أو إلى
+    تاريخ بلا فترة مالية، صار وجود فترة مفتوحة شرطاً لازماً في كل اختبار
+    يرحّل قيداً. ما تغيّر هنا هو الإعداد (وجود الفترة) لا الحاجز نفسه.
+    """
+    from models.erp_modules import FiscalPeriod
+
+    year = date.today().year
+    existing = FiscalPeriod.query.filter_by(year=year, period_type='annual').first()
+    if existing is not None:
+        return existing
+    period = FiscalPeriod(
+        name=f'FY {year}',
+        year=year,
+        period_type='annual',
+        start_date=date(year, 1, 1),
+        end_date=date(year, 12, 31),
+        is_closed=False,
+    )
+    db.session.add(period)
+    db.session.commit()
+    return period
 
 
 class TestAccountMapping:

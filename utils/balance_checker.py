@@ -75,13 +75,19 @@ def check_customer_balance(customer_id=None):
     """
     Check if a customer's stored balance matches calculated balance.
 
+    F1/F10/F12: الحساب يستعمل نفس المصدر الوحيد لرصيد العميل
+    (models/customer.derive_customer_balance) — الذي يشمل الرصيد
+    الافتتاحي والمرتجعات المعتمدة والاستردادات — فلم تعد هناك أربع صيغ
+    مختلفة لنفس الرقم.
+
     Args:
         customer_id: Specific customer to check. If None, checks all.
 
     Returns:
         list of dicts with drift details
     """
-    from models import Customer, Sale, ProductReturn
+    from models import Customer
+    from models.customer import derive_customer_balance
 
     drifts = []
 
@@ -90,26 +96,8 @@ def check_customer_balance(customer_id=None):
         query = query.filter_by(id=customer_id)
 
     for customer in query.all():
-        # Calculate balance from confirmed sales
-        sales = Sale.query.filter_by(
-            customer_id=customer.id,
-            status='confirmed',
-            is_active=True
-        ).all()
-
-        calculated = Decimal('0')
-        for sale in sales:
-            amount = Decimal(str(sale.amount_base or 0))
-            paid = Decimal(str(sale.paid_amount_base or 0))
-            calculated += (amount - paid)
-
-        # LEAK-GUARD: mirror the Sale listener formula exactly (see
-        # models/events.py) — approved returns settle debt.
-        returns = ProductReturn.query.filter_by(
-            customer_id=customer.id, status='approved').all()
-        for ret in returns:
-            rate = Decimal(str(ret.exchange_rate or 1))
-            calculated -= Decimal(str(ret.refund_amount or 0)) * rate
+        # المصدر الواحد: models/customer.derive_customer_balance
+        calculated = derive_customer_balance(customer.id)
 
         stored = Decimal(str(customer.balance or 0))
         drift = abs(stored - calculated)
@@ -171,6 +159,8 @@ def _do_repair(customer_id=None):
     for drift_info in drifts:
         customer = db.session.get(Customer, drift_info['customer_id'])
         if customer:
+            # F10: القيمة المحسوبة تشمل الرصيد الافتتاحي — فالإصلاح لا
+            # يحذف الرصيد الافتتاحي (كان يُمحى سابقاً).
             customer.balance = Decimal(str(drift_info['calculated']))
             repaired += 1
             logger.info(

@@ -405,8 +405,12 @@ class TestChequesLifecycle:
         ch_after = db.session.get(Cheque, ch.id)
         # حذف نهائي أو أرشفة both acceptable — المهم إزالة الأثر المحاسبي
         assert ch_after is None or ch_after.is_active is False
-        assert GLJournalEntry.query.filter_by(
-            reference_type='cheque_receive', reference_id=ch.id).count() == 0
+        # F1: القيد المرحَّل لا يُحذف أبداً — يُعكس (أثره المحاسبي مُبطَل
+        # وسجل التدقيق يبقى)، فتبقى القيود معلَّمة كمعكوسة.
+        entries = GLJournalEntry.query.filter_by(
+            reference_type='cheque_receive', reference_id=ch.id).all()
+        assert entries, 'F1: القيود المرحَّلة تبقى في دفتر الأستاذ'
+        assert all(e.is_reversed or e.entry_type == 'reversing' for e in entries)
 
     def test_archive_linked_status_then_restore_roundtrip(self, client, login_owner, test_sale):
         ch = Cheque(cheque_number='CHQ-WV-ARC', cheque_bank_number='778899',

@@ -52,18 +52,80 @@ class ChequeAccountingIntegration:
     الحالة 'deposited' (تحت البنك) — لا حالات مُختلقة مثل 'received'/'issued'.
     """
 
-    # حسابات الشيكات الافتراضية (fallback literals = DEFAULT_ROLE_MAP)
-    CHEQUE_ACCOUNTS = {
-        'incoming_under_collection': '1150',  # شيكات تحت التحصيل
-        'outgoing_deferred': '2120',          # شيكات مؤجلة الدفع
-        'bank_account': '1120',               # حساب البنك
-        'cash_account': '1110',              # صندوق
-        'accounts_receivable': '1130',        # الذمم المدينة
-        'accounts_payable': '2110',           # الذمم الدائنة
-        'bank_charges': '6950',              # مصروفات بنكية
-        'exchange_gain': '4400',             # أرباح فرق العملة
-        'exchange_loss': '6900',             # خسائر فرق العملة
+    # Semantic ROLES for the accounts the cheque flow posts to. The codes
+    # themselves are resolved through AccountResolver, so a tenant that
+    # remapped an account gets a statement that follows the mapping instead of
+    # hardcoded literals.
+    CHEQUE_ROLES = {
+        'incoming_under_collection': 'UNDER_COLLECTION',
+        'outgoing_deferred': 'DEFERRED_CHEQUES_PAYABLE',
+        'bank_account': 'BANK',
+        'cash_account': 'CASH',
+        'accounts_receivable': 'AR_CONTROL',
+        'accounts_payable': 'AP_CONTROL',
+        'bank_charges': 'BANK_CHARGES',
+        'exchange_gain': 'FX_GAIN',
+        'exchange_loss': 'FX_LOSS',
     }
+
+    # The seeded default codes, used when the resolver cannot answer.
+    CHEQUE_DEFAULT_CODES = {
+        'incoming_under_collection': '1150',
+        'outgoing_deferred': '2120',
+        'bank_account': '1120',
+        'cash_account': '1110',
+        'accounts_receivable': '1130',
+        'accounts_payable': '2110',
+        'bank_charges': '6950',
+        'exchange_gain': '4400',
+        'exchange_loss': '6900',
+    }
+
+    @classmethod
+    def cheque_accounts(cls, tenant_id=None):
+        """Resolve the cheque account codes for the current tenant.
+
+        Falls back to the seeded default codes when the resolver cannot
+        answer, so a tenant with no custom mapping still gets a working
+        (and correct) statement.
+        """
+        from services.account_resolution import AccountResolver
+
+        resolved = {}
+        for key, role in cls.CHEQUE_ROLES.items():
+            code = None
+            try:
+                code = AccountResolver.resolve(role, tenant_id=tenant_id)
+            except Exception:
+                code = None
+            resolved[key] = code or cls.CHEQUE_DEFAULT_CODES[key]
+        return resolved
+
+    class _Accounts:
+        """Tenant-aware view of the cheque account codes.
+
+        Keeps the historic ``CHEQUE_ACCOUNTS['...']`` call shape working
+        while resolving through the role map, so a tenant that remapped an
+        account is followed instead of the hardcoded default.
+        """
+
+        def __getitem__(self, key):
+            return ChequeAccountingIntegration.cheque_accounts()[key]
+
+        def get(self, key, default=None):
+            return ChequeAccountingIntegration.cheque_accounts().get(key,
+                                                                      default)
+
+        def __contains__(self, key):
+            return key in ChequeAccountingIntegration.cheque_accounts()
+
+        def keys(self):
+            return ChequeAccountingIntegration.cheque_accounts().keys()
+
+        def items(self):
+            return ChequeAccountingIntegration.cheque_accounts().items()
+
+    CHEQUE_ACCOUNTS = _Accounts()
 
     @staticmethod
     def _ensure_amount_base(cheque):
@@ -380,27 +442,39 @@ class ChequeAccountingIntegration:
                 notes=f'سبب الارتداد: {bounce_reason or "غير محدد"}'
             )
 
-            # تحديث أرصدة العميل/المورد - الارتداد يعيد الدين/الالتزام
-            from decimal import Decimal
-            if cheque.cheque_type == 'incoming' and cheque.customer_id:
-                from models import Customer as _Cust
-                customer = _Cust.query.get(cheque.customer_id)
-                if customer:
-                    customer.balance = (customer.balance or Decimal('0')) + amount_base
-                    customer.update_classification()
-
-            elif cheque.cheque_type == 'outgoing' and cheque.supplier_id:
-                from models import Supplier as _Supp
-                supplier = _Supp.query.get(cheque.supplier_id)
-                if supplier:
-                    supplier.total_purchases_aed = (supplier.total_purchases_aed or Decimal('0')) - amount_base
-
-            # تحديث حالة الشيك
+            # تحديث حالة الشيك — تُثبَّت في القاعدة قبل إعادة احتساب
+            # الأرصدة (الاشتقاق يقرأ الحالة من القاعدة).
             cheque.status = 'bounced'
             cheque.bounced_date = datetime.now().date()
             cheque.bounce_reason = bounce_reason
             cheque.gl_bounce_entry_id = entry.id
             cheque.updated_at = datetime.now(timezone.utc)
+
+            db.session.flush()
+
+            # F4: ارتداد الشيك يجب أن يعكس الفاتورة المرتبطة (سند القبض
+            # أو سند الصرف المرتبط بالشيك) — وإلا بقيت الفاتورة "مدفوعة"
+            # والمال لم يصل.
+            from models.payment import Payment, Receipt
+
+            linked_receipt = Receipt.query.filter_by(cheque_id=cheque.id).first()
+            if linked_receipt is not None:
+                linked_receipt.reject_receipt(bounce_reason or 'ارتداد شيك')
+
+            linked_payment = Payment.query.filter_by(cheque_id=cheque.id).first()
+            if linked_payment is not None:
+                linked_payment.reject_payment(bounce_reason or 'ارتداد شيك')
+
+            # F1: رصيد العميل يُشتق من مصدره الواحد — الزيادة اليدوية القديمة
+            # (+ amount_base) كانت تُطبَّق فوق قيمة مشتقة فتُضاعف الفرق.
+            if cheque.cheque_type == 'incoming' and cheque.customer_id:
+                from models.customer import recompute_customer_balance
+                recompute_customer_balance(cheque.customer_id)
+            elif cheque.cheque_type == 'outgoing' and cheque.supplier_id:
+                from models import Supplier as _Supp
+                supplier = _Supp.query.get(cheque.supplier_id)
+                if supplier:
+                    supplier.total_purchases_aed = (supplier.total_purchases_aed or Decimal('0')) - amount_base
 
             db.session.commit()
 

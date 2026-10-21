@@ -1,9 +1,16 @@
 from datetime import datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from extensions import db
 from models.gl import GLAccount, GLJournalEntry, GLJournalLine
 from models.journal_entry_audit import JournalEntryAudit
 from utils.decorators import get_owned_or_404
+
+_THREE_DP = Decimal('0.001')
+
+
+def _quantize_3(value):
+    """تكميم إلى 3 خانات عشرية (ROUND_HALF_UP) — لا حسابات عشوائية أبداً."""
+    return Decimal(str(value)).quantize(_THREE_DP, rounding=ROUND_HALF_UP)
 
 
 class AdvancedJournalEntryManager:
@@ -33,7 +40,12 @@ class AdvancedJournalEntryManager:
                 if account and account.is_header:
                     raise ValueError(f"لا يمكن القيد على الحساب الرئيسي: {account.full_name}")
 
+        # F9: نوع القيد يُمرَّر إلى طبقة الخدمة عند الإنشاء — لا يُعدَّل
+        # القيد بعد ترحيله (القيد المرحّل غير قابل للتعديل عبر ORM).
         entry_type = kwargs.pop('entry_type', None)
+        if entry_type:
+            kwargs['entry_type'] = entry_type
+
         # إنشاء القيد
         entry = GLService.create_manual_entry(
             description=description,
@@ -43,14 +55,9 @@ class AdvancedJournalEntryManager:
             created_by=created_by,
             **kwargs
         )
-        if entry_type:
-            entry.entry_type = entry_type
 
-        # تسجيل التدقيق
-        AdvancedJournalEntryManager._log_audit(
-            entry.id, 'create', None, entry.to_dict(),
-            f"إنشاء قيد جديد: {description}", created_by
-        )
+        # سجل التدقيق (F3) يكتبه GLService.create_manual_entry — وهو مسار
+        # واحد للجميع، فلا يُكتب صف تدقيق مزدوج لنفس العملية.
 
         return entry
 
@@ -67,6 +74,9 @@ class AdvancedJournalEntryManager:
 
         # حفظ القيم القديمة
         old_values = entry.to_dict()
+
+        # F6: سعر الصرف الخاص بالقيد — amount_base يُحسب في العملة الأساسية
+        rate = Decimal(str(entry.exchange_rate or 1)) or Decimal('1')
 
         # تطبيق التحديثات
         for field, value in updates.items():
@@ -98,16 +108,22 @@ class AdvancedJournalEntryManager:
                     account = seen_accounts[account.id]
                 else:
                     seen_accounts[account.id] = account
-                debit = Decimal(str(line_data.get('debit', 0) or 0))
-                credit = Decimal(str(line_data.get('credit', 0) or 0))
+                debit = _quantize_3(line_data.get('debit', 0) or 0)
+                credit = _quantize_3(line_data.get('credit', 0) or 0)
                 if debit < 0 or credit < 0:
                     raise ValueError('المبالغ يجب أن تكون موجبة')
+                if debit > 0 and credit > 0:
+                    raise ValueError('السطر لا يحمل مديناً ودائناً في آن واحد')
+                # F8: اتجاه الحركة مقابل طبيعة الحساب
+                account.check_posting_direction(debit, credit)
                 resolved_lines.append({
                     'account': account,
                     'description': line_data.get('description', ''),
                     'debit': debit,
                     'credit': credit,
-                    'amount_base': debit - credit,
+                    # F6: يُضرب في سعر صرف القيد — كان debit - credit فقط،
+                    # فكان amount_base بالعملة الأساسية أصغر من الصحيح.
+                    'amount_base': _quantize_3((debit - credit) * rate),
                 })
 
             # All validations passed — now atomically replace lines.
@@ -121,8 +137,9 @@ class AdvancedJournalEntryManager:
                     credit=resolved['credit'],
                     amount_base=resolved['amount_base'],
                 ))
-            entry.total_debit = total_debit
-            entry.total_credit = total_credit
+            # F5: الإجماليات من نفس القيم المُكمّاة التي كُتبت في السطور
+            entry.total_debit = sum((r['debit'] for r in resolved_lines), Decimal('0'))
+            entry.total_credit = sum((r['credit'] for r in resolved_lines), Decimal('0'))
 
         entry.updated_at = datetime.now(timezone.utc)
 
@@ -167,12 +184,12 @@ class AdvancedJournalEntryManager:
                 entry_date=datetime.now().date(),
                 notes=f"سبب العكس: {reason}",
                 created_by=reversed_by,
-                entry_type='reversing'
+                entry_type='reversing',
+                # F9: الربط بالمرجع يُحدَّد عند الإنشاء — تعديل القيد المرحّل
+                # بعد إنشائه ممنوع (حاجز ORM في models/gl.py).
+                reference_type=entry.reference_type,
+                reference_id=entry.reference_id,
             )
-
-            # ربط القيد العكسي بالمصدر الأصلي (نفس أسلوب إلغاء الشيكات)
-            reversal_entry.reference_type = entry.reference_type
-            reversal_entry.reference_id = entry.reference_id
 
             # ربط القيود
             entry.is_reversed = True

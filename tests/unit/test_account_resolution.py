@@ -25,7 +25,18 @@ from services.gl_service import GLService
 
 @pytest.fixture
 def core(db):
+    """دليل الحسابات + فترة مالية مفتوحة (F10: شرط لازم للترحيل)."""
+    from models.erp_modules import FiscalPeriod
+
     GLService.ensure_core_accounts()
+    year = date.today().year
+    if FiscalPeriod.query.filter_by(year=year, period_type='annual').first() is None:
+        db.session.add(FiscalPeriod(
+            name=f'FY {year}', year=year, period_type='annual',
+            start_date=date(year, 1, 1), end_date=date(year, 12, 31),
+            is_closed=False,
+        ))
+        db.session.commit()
     return True
 
 

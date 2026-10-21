@@ -194,6 +194,20 @@ def create():  # noqa: C901
 
                 unit_value = request.form.get('unit') or None
 
+                # SECURITY: التكلفة تُكتب فقط لمن يملك صلاحية عرض التكاليف،
+                # تماماً كما في مسار التعديل. بدون هذه البوابة يستطيع دور
+                # بلا صلاحية تكلفة إنشاء منتج بتكلفة عشوائية، وتلك التكلفة
+                # هي محرّك قيد تكلفة البضاعة.
+                submitted_cost = safe_float(request.form.get('cost_price'))
+                if current_user.can_see_costs():
+                    cost_price = submitted_cost
+                else:
+                    if submitted_cost:
+                        current_app.logger.warning(
+                            'Role without cost visibility attempted to set '
+                            'cost_price on product creation — ignored')
+                    cost_price = 0
+
                 product = Product(
                     name=request.form.get('name'),
                     name_ar=request.form.get('name_ar'),
@@ -205,7 +219,7 @@ def create():  # noqa: C901
                     merchant_price=safe_float(request.form.get('merchant_price')),
                     merchant_share=safe_float(request.form.get('merchant_share'), default=100.0),
                     partner_price=safe_float(request.form.get('partner_price')),
-                    cost_price=safe_float(request.form.get('cost_price')),
+                    cost_price=cost_price,
                     current_stock=0,
                     min_stock_alert=safe_float(request.form.get('min_stock_alert')),
                     unit=unit_value,
@@ -247,12 +261,27 @@ def create():  # noqa: C901
                         warehouse_id=warehouse_id
                     )
 
+                # The audit row carries the meaningful payload and is written
+                # INSIDE the transaction of the change it describes.
+                create_audit_log('create', 'products', product.id, changes={
+                    'action': 'create_product',
+                    'sku': product.sku,
+                    'name': product.name,
+                    'regular_price': str(product.regular_price),
+                    'cost_price': str(product.cost_price),
+                    'initial_stock': str(initial_stock),
+                    'warehouse_id': warehouse_id,
+                    'warehouse_name': warehouse.name_ar or warehouse.name,
+                }, commit=False)
+
                 db.session.commit()
                 current_app.logger.info(f"Product saved to database with ID: {product.id}")
 
-                create_audit_log('create', 'products', product.id)
-
                 flash(f'✓ تم إضافة المنتج "{product.name}" بنجاح إلى المستودع "{warehouse.name_ar or warehouse.name}"', 'success')
+                if not cost_price:
+                    # F2: منتج بلا تكلفة لا يمكن بيعه — بيعه ينتج قيد
+                    # إيراد بلا قيد تكلفةCorresponding ولا تسوية للمخزون.
+                    flash('⚠️ المنتج بدون تكلفة مسجّلة — لا يمكن بيعه قبل ضبط التكلفة، وإلا سيُسجَّل الإيراد بلا قيد تكلفة البضاعة.', 'warning')
                 return redirect(url_for('products.index'))
 
             except Exception as e:
@@ -335,6 +364,7 @@ def edit(id):  # noqa: C901
 
             old_stock = float(product.current_stock or 0)
             new_stock = safe_float(request.form.get('current_stock'), default=old_stock)
+            old_cost_price = product.cost_price
 
             if new_stock is not None and new_stock < 0:
                 flash('⚠️ لا يمكن أن تكون الكمية أقل من صفر.', 'warning')
@@ -375,7 +405,13 @@ def edit(id):  # noqa: C901
             product.merchant_customer_id = merchant_customer_id or None
 
             if current_user.can_see_costs():
-                product.cost_price = safe_float(request.form.get('cost_price'), default=0)
+                product.cost_price = safe_float(request.form.get('cost_price'))
+            elif request.form.get('cost_price'):
+                # SECURITY: دور بلا صلاحية عرض التكاليف لا يحدد التكلفة —
+                # والتكلفة هي محرّك قيد تكلفة البضاعة وتسوية المخزون.
+                current_app.logger.warning(
+                    'Role without cost visibility attempted to change '
+                    'cost_price of product %s — ignored', product.id)
 
             product.partner_shares.clear()
             if partner_rows:
@@ -389,14 +425,19 @@ def edit(id):  # noqa: C901
             if new_stock is not None and abs(new_stock - old_stock) > 1e-6:
                 if not warehouse_id:
                     warehouse_id = None
-                StockService.create_movement(
-                    product_id=product.id,
-                    quantity=new_stock - old_stock,
-                    movement_type='adjustment',
+                # The stock change goes through StockService so the movement
+                # row AND the GL entry are written in the same transaction.
+                # Editing the product form used to move current_stock with
+                # no journal entry at all: inventory value drifted away from
+                # cost with nothing to explain it.
+                StockService.adjust_stock(
+                    product.id,
+                    Decimal(str(new_stock)) - Decimal(str(old_stock)),
+                    notes=f'تعديل مخزون من {old_stock} إلى {new_stock}',
+                    warehouse_id=warehouse_id,
+                    post_gl=True,
                     reference_type='Product Update',
                     reference_id=product.id,
-                    notes=f'تعديل مخزون من {old_stock} إلى {new_stock}',
-                    warehouse_id=warehouse_id
                 )
 
             if 'image' in request.files:
@@ -406,9 +447,21 @@ def edit(id):  # noqa: C901
                     if image_path:
                         product.image_url = image_path
 
-            db.session.commit()
+            # The audit row carries the MEANINGFUL payload (what changed,
+            # not just "update") and is written inside the same
+            # transaction as the change itself.
+            create_audit_log('update', 'products', product.id, changes={
+                'action': 'edit_product',
+                'sku': product.sku,
+                'name': product.name,
+                'old_stock': str(old_stock),
+                'new_stock': str(new_stock),
+                'old_cost_price': str(old_cost_price),
+                'new_cost_price': str(product.cost_price),
+                'cost_price_visible': bool(current_user.can_see_costs()),
+            }, commit=False)
 
-            create_audit_log('update', 'products', product.id)
+            db.session.commit()
 
             flash('✅ تم تحديث بيانات المنتج بنجاح!', 'success')
             return redirect(url_for('products.view', id=product.id))
@@ -438,15 +491,32 @@ def delete(id):
         if sales_count > 0 or purchases_count > 0:
             # soft delete
             product.is_active = False
+            create_audit_log('deactivate', 'products', id, changes={
+                'action': 'deactivate_product',
+                'sku': product.sku,
+                'name': product.name,
+                'current_stock': str(product.current_stock),
+                'cost_price': str(product.cost_price),
+                'sales_count': sales_count,
+                'purchases_count': purchases_count,
+            }, commit=False)
             db.session.commit()
             flash(f'⚠️ تم إلغاء تفعيل المنتج "{product.name}" (لديه عمليات مسجلة).\n💡 لا يمكن حذفه نهائياً للحفاظ على السجلات.', 'warning')
-            create_audit_log('deactivate', 'products', id)
         else:
             # hard delete
+            audit_payload = {
+                'action': 'delete_product',
+                'sku': product.sku,
+                'name': product.name,
+                'current_stock': str(product.current_stock),
+                'cost_price': str(product.cost_price),
+                'regular_price': str(product.regular_price),
+            }
+            create_audit_log('delete', 'products', id, changes=audit_payload,
+                             commit=False)
             db.session.delete(product)
             db.session.commit()
             flash(f'✅ تم حذف المنتج "{product.name}" نهائياً!', 'success')
-            create_audit_log('delete', 'products', id)
 
         return redirect(url_for('products.index'))
 
@@ -592,69 +662,53 @@ def adjust_stock(id):
 
         old_stock = Decimal(str(product.current_stock or 0))
 
+        # Sign convention: the movement MUST carry the sign of the
+        # adjustment, otherwise SUM(stock_movements.quantity) drifts away
+        # from product.current_stock (a subtraction used to be booked as a
+        # positive quantity, i.e. the stock was counted twice).
         if adjustment_type == 'add':
-            new_stock = old_stock + Decimal(str(quantity))
+            delta = Decimal(str(quantity))
+            new_stock = old_stock + delta
         elif adjustment_type == 'subtract':
-            new_stock = old_stock - Decimal(str(quantity))
+            delta = -Decimal(str(quantity))
+            new_stock = old_stock + delta
             if new_stock < 0:
                 return jsonify({'success': False, 'message': 'لا يمكن أن يكون المخزون سالباً'})
         elif adjustment_type == 'set':
+            delta = Decimal(str(quantity)) - old_stock
             new_stock = Decimal(str(quantity))
         else:
             return jsonify({'success': False, 'message': 'نوع التعديل غير صحيح'})
 
-        product.current_stock = new_stock
-
-        from models import StockMovement, Warehouse
-        warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
-        if not warehouse:
-            warehouse = Warehouse.query.filter_by(is_active=True).first()
-        if not warehouse:
-            warehouse = Warehouse(name='Main Warehouse', name_ar='المستودع الرئيسي',
-                                  is_active=True, is_main=True)
-            db.session.add(warehouse)
-            db.session.flush()
-
-        movement = StockMovement(
-            product_id=product.id,
-            warehouse_id=warehouse.id,
-            movement_type='adjustment',
-            quantity=(Decimal(str(quantity)) if adjustment_type != 'set'
-                      else Decimal(str(new_stock)) - Decimal(str(old_stock))),
-            reference_type='Manual Adjustment',
+        # One transaction: the movement row, the stock delta AND the GL
+        # entry (Dr 1140 / Cr 5150 or the reverse). StockService fails
+        # CLOSED: if the journal entry cannot be posted the whole change
+        # is rolled back, so stock can never move off-ledger.
+        movement = StockService.adjust_stock(
+            product.id,
+            delta,
             notes=notes or f'تعديل يدوي - {reason}',
-            user_id=current_user.id
+            warehouse_id=None,
+            post_gl=True,
+            reference_type='Manual Adjustment',
         )
 
-        db.session.add(movement)
-        db.session.flush()
-
-        # Post the GL side. This handler built its own StockMovement row and
-        # stopped there, so stock moved on the balance sheet side without a
-        # counterpart entry: inventory value silently drifted from cost every
-        # time somebody corrected a count. StockService.adjust_stock carries
-        # the Debit 1140 / Credit 5150 pairing for both directions, so the
-        # entry is posted here rather than duplicated.
-        from services.stock_service import StockService
-        try:
-            StockService.post_adjustment_gl(
-                product=product,
-                delta=new_stock - old_stock,
-                movement=movement,
-            )
-        except Exception:
-            # The stock change itself is valid and already committed above;
-            # failing to book it must not undo the physical correction.
-            current_app.logger.exception(
-                'stock %s moved but no GL entry was posted', product.id)
-            db.session.rollback()
-            db.session.add(movement)
-            db.session.commit()
+        # The audit row is written INSIDE the same transaction (no
+        # independent commit): either the stock change and its audit trail
+        # both land, or neither does.
+        create_audit_log('update', 'products', product.id, changes={
+            'action': 'adjust_stock',
+            'adjustment_type': adjustment_type,
+            'quantity': str(abs(Decimal(str(quantity)))),
+            'delta': str(delta),
+            'old_stock': str(old_stock),
+            'new_stock': str(new_stock),
+            'movement_id': movement.id if movement else None,
+            'movement_quantity': str(movement.quantity) if movement else None,
+            'reason': reason,
+        }, commit=False)
 
         db.session.commit()
-
-        create_audit_log('update', 'products', product.id,
-                         f'تعديل مخزون: {old_stock} → {new_stock}')
 
         return jsonify({
             'success': True,
@@ -662,6 +716,11 @@ def adjust_stock(id):
             'new_stock': float(new_stock)
         })
 
+    except ValueError as e:
+        # StockService refuses an adjustment that would drive stock below
+        # zero — the message is safe (hand-authored, no schema leak).
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'Error adjusting stock: {e}')

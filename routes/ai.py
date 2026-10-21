@@ -5,7 +5,8 @@
 import os
 import threading
 import time
-from flask import Blueprint, request, jsonify, render_template, current_app
+from decimal import Decimal, InvalidOperation
+from flask import Blueprint, request, jsonify, render_template, current_app, abort
 from flask_login import login_required, current_user
 from extensions import csrf, db
 from flask_wtf.csrf import validate_csrf as validate_csrf_token
@@ -21,6 +22,7 @@ from ai_knowledge.knowledge_expansion import knowledge_expander
 from ai_knowledge.automotive_ecu_knowledge import get_automotive_ecu_knowledge
 from ai_knowledge.external_learning import get_external_learning, LEARNING_SOURCES_CATALOG
 from utils.decorators import permission_required, owner_required, admin_required, get_owned_or_404
+from utils.errors import ValidationError
 from datetime import datetime, timezone
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
@@ -288,6 +290,174 @@ def _ai_action_denied(user, permission_code):
         f'⛔ ليس لديك صلاحية لتنفيذ هذا الإجراء عبر المساعد الذكي. '
         f'هذه العملية تتطلب صلاحية: {label}.'
     )
+
+
+# =====================================================================
+# AI → النظام المالي: كل تعديل مالي من المساعد الذكي يمرّ عبر الخدمات
+# الرسمية (StockService / SaleService / PaymentService) حتى يُسجَّل له
+# حركة مخزون، وقيد محاسبي، وصف تدقيق.
+# =====================================================================
+
+
+def _ai_decimal(value, default=None):
+    """تحويل مبلغ إلى Decimal (لا حسابات بمؤشرات عائمة)."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return default
+    try:
+        return Decimal(str(value).replace('درهم', '').replace('د.إ', '').strip())
+    except (InvalidOperation, ValueError, TypeError):
+        return default
+
+
+def _ai_create_sale(user, customer, product, quantity, payment_method='cash', notes=None):
+    """إنشاء فاتورة من المساعد الذكي عبر مسار المبيعات الرسمي.
+
+    Old behaviour (the bug): the handler decremented
+    ``product.current_stock`` directly and created a SaleLine with NO
+    cost_price — no StockMovement, no GL entry and therefore no COGS.
+
+    Now the sale goes through ``SaleService.create_sale``: the stock
+    movement is written by StockService, the revenue and the COGS journal
+    entries are posted, and the sale line snapshots the product cost.
+
+    F2: a product without a cost basis can never produce a revenue-only
+    entry — the call is refused with a loud ValidationError naming it.
+    """
+    from services.sale_service import SaleService
+    from services.stock_service import StockService
+    from utils.errors import ValidationError
+
+    qty = _ai_decimal(quantity)
+    if qty is None or qty <= 0:
+        raise ValidationError('الكمية يجب أن تكون أكبر من صفر')
+
+    # F2 — لا فاتورة بلا أساس تكلفة (وإلا قُيّد الإيراد بلا تكلفة).
+    StockService.require_cost_basis(product, qty)
+
+    unit_price = _ai_decimal(product.get_price_for_customer(customer.customer_type))
+    if unit_price is None or unit_price <= 0:
+        raise ValidationError(
+            f'⚠️ سعر بيع غير صالح للمنتج "{product.name}".\n'
+            f'💡 اضبط سعر المنتج قبل إنشاء الفاتورة.')
+
+    payment_data = None
+    if (payment_method or '').strip().lower() == 'cash':
+        payment_data = {
+            'amount': unit_price * qty,
+            'payment_method': 'cash',
+        }
+
+    sale = SaleService.create_sale(
+        customer=customer,
+        seller=user,
+        lines_data=[{
+            'product': product,
+            'quantity': qty,
+            'unit_price': unit_price,
+        }],
+        notes=notes or 'فاتورة مُنشأة عبر المساعد الذكي',
+        payment_data=payment_data,
+    )
+
+    from utils.helpers import create_audit_log
+    # SaleService.create_sale has already committed the sale itself, so the
+    # audit row is committed on its own here (commit=True) — otherwise it
+    # would stay pending and be rolled back with the request.
+    create_audit_log('create', 'sales', sale.id, changes={
+        'action': 'ai_create_sale',
+        'source': 'ai_assistant',
+        'sale_number': sale.sale_number,
+        'customer_id': customer.id,
+        'customer_name': customer.name,
+        'product_id': product.id,
+        'quantity': str(qty),
+        'unit_price': str(unit_price),
+        'total_amount': str(sale.total_amount),
+        'amount_base': str(sale.amount_base),
+        'payment_method': payment_method,
+    }, commit=True)
+
+    return sale
+
+
+def _ai_record_receipt(user, customer, amount, payment_method='cash', notes=None):
+    """قبض دفعة من عميل عبر المساعد الذكي — عبر PaymentService.
+
+    PaymentService.create_receipt ينشئ سند قبض، ويرحّل القيد
+    (مدين الصندوق / دائن الذمم المدينة)، ويحدّث رصيد العميل، ويسجّل
+    صف تدقيق. The old path created a bare Payment row with a float amount
+    and touched customer.balance by hand: no receipt, no GL entry and no
+    audit row.
+    """
+    from services.payment_service import PaymentService
+    from services.currency_service import CurrencyService
+
+    value = _ai_decimal(amount)
+    if value is None or value <= 0:
+        raise ValueError('المبلغ يجب أن يكون أكبر من صفر')
+
+    try:
+        currency = CurrencyService.get_base_currency()
+    except Exception:
+        currency = 'ILS'
+
+    receipt = PaymentService.create_receipt({
+        'customer_id': customer.id,
+        'amount': value,
+        'currency': currency,
+        'payment_method': payment_method or 'cash',
+        'notes': notes or 'دفعة مُسجّلة عبر المساعد الذكي',
+        'user_id': getattr(user, 'id', None),
+    })
+    return receipt
+
+
+def _ai_record_refund(user, customer, amount, reason=None, payment_method='cash'):
+    """صرف مبلغ للعميل عبر المساعد الذكي (استرداد).
+
+    The money services own this. An earlier version built the Payment row and
+    the journal entry here and then wrote customer.balance by hand - the last
+    place in the codebase that bypassed the single balance derivation.
+    PaymentService.create_refund() now does all of it: the payment, the
+    balanced entry, the balance effect and the audit row, failing closed if
+    the ledger refuses.
+    """
+    from services.payment_service import PaymentService
+
+    value = _ai_decimal(amount)
+    if value is None or value <= 0:
+        raise ValueError('المبلغ يجب أن يكون أكبر من صفر')
+
+    return PaymentService.create_refund(
+        customer=customer,
+        amount=value,
+        reason=reason or 'استرداد عبر المساعد الذكي',
+        payment_method=payment_method or 'cash',
+        user_id=getattr(user, 'id', None),
+    )
+
+
+def _ai_set_customer_balance(user, customer, new_balance, reason=None):
+    """تصحيح يدوي لرصيد العميل — مسجَّل بالكامل في سجل التدقيق.
+
+    The correction is ANCHORED in the customer's opening balance rather than
+    written over the balance column, so the next receipt, return or payment
+    recomputes the same figure instead of silently wiping the correction.
+    A reason is mandatory.
+    """
+    from services.payment_service import PaymentService
+
+    value = _ai_decimal(new_balance)
+    if value is None:
+        raise ValueError('الرصيد غير صالح')
+
+    PaymentService.adjust_customer_balance(
+        customer=customer,
+        new_balance=value,
+        reason=reason or 'تصحيح رصيد عبر المساعد الذكي',
+        user_id=getattr(user, 'id', None),
+    )
+    return customer
 
 # ========== مستمعات ذكية ==========
 
@@ -588,9 +758,8 @@ def chat():
 def _process_user_action(message, user):  # noqa: C901
     """معالجة أوامر المستخدم المباشرة - جميع عمليات النظام"""
     try:
-        from models import Customer, Product, Sale, SaleLine, Supplier, Purchase, Payment, Expense, Cheque
+        from models import Customer, Product, Sale, Supplier, Purchase, Payment, Expense, Cheque
         from extensions import db
-        from datetime import datetime, timezone
         import re
 
         msg_lower = message.lower()
@@ -1355,11 +1524,23 @@ def _process_user_action(message, user):  # noqa: C901
                     del conversation_context[user_id]
                     return _denial
                 try:
-                    data['quantity'] = float(message.strip())
-                    total_amount = data['product_price'] * data['quantity']
+                    from models.customer import Customer
+                    from models.product import Product
 
-                    from services import ai_commands as cmd
-                    sale = cmd.create_sale(data['customer_id'], data['product_id'], data['quantity'], user.id)
+                    data['quantity'] = _ai_decimal(message.strip())
+
+                    customer = get_owned_or_404(Customer, data['customer_id'], code=404)
+                    product = get_owned_or_404(Product, data['product_id'], code=404)
+
+                    # F2/F4: the canonical sale path — stock movement,
+                    # revenue + COGS journal entries, cost snapshot.
+                    sale = _ai_create_sale(
+                        user=user,
+                        customer=customer,
+                        product=product,
+                        quantity=data['quantity'],
+                    )
+                    total_amount = sale.total_amount
 
                     train_local_ai('create_sale', data, {'success': True, 'sale_id': sale.id})
 
@@ -1382,6 +1563,17 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب رقم الخيار أو اكتب "عودة"
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
+
+                except ValidationError as ve:
+                    # F2: a zero-cost product must fail loudly, naming it.
+                    db.session.rollback()
+                    train_local_ai('create_sale', data, {'success': False, 'error': str(ve)})
+                    del conversation_context[user_id]
+                    return f"""❌ **خطأ في إنشاء الفاتورة:**
+
+{ve}
+
+🤖 اكتب "عودة" للعودة"""
 
                 except Exception as e:
                     train_local_ai('create_sale', data, {'success': False, 'error': 'حدث خطأ غير متوقع'})
@@ -1479,19 +1671,24 @@ def _process_user_action(message, user):  # noqa: C901
 
                 try:
                     from models.customer import Customer
-                    from services import ai_commands as cmd
-
-                    payment = cmd.record_payment(data['customer_id'], data['amount'], data['payment_method'], 'incoming', user.id, 'customer_payment')
 
                     customer = get_owned_or_404(Customer, data['customer_id'], code=404)
-                    customer.balance -= data['amount']
-                    db.session.commit()
 
-                    train_local_ai('receive_payment', data, {'success': True, 'payment_id': payment.id})
+                    # F4: PaymentService writes the receipt, the GL entry,
+                    # the customer balance and the audit row.
+                    receipt = _ai_record_receipt(
+                        user=user,
+                        customer=customer,
+                        amount=data['amount'],
+                        payment_method=data['payment_method'],
+                        notes='استلام دفعة عبر المساعد الذكي',
+                    )
+
+                    train_local_ai('receive_payment', data, {'success': True, 'payment_id': receipt.id})
 
                     del conversation_context[user_id]
 
-                    final_options = create_final_options('استلام', data['customer_name'], payment.id)
+                    final_options = create_final_options('استلام', data['customer_name'], receipt.id)
 
                     return f"""✅ **تم استلام الدفعة بنجاح!**
 
@@ -1500,7 +1697,7 @@ def _process_user_action(message, user):  # noqa: C901
 - المبلغ المستلم: {data['amount']} درهم
 - طريقة الدفع: {data['payment_method']}
 - الرصيد الجديد: {customer.balance} درهم
-- رقم الدفعة: #{payment.id}
+- رقم الدفعة: #{receipt.id}
 
 {final_options}
 
@@ -1604,13 +1801,18 @@ def _process_user_action(message, user):  # noqa: C901
 
                 try:
                     from models.customer import Customer
-                    from services import ai_commands as cmd
-
-                    payment = cmd.record_payment(data['customer_id'], data['amount'], 'refund', 'outgoing', user.id, 'refund')
 
                     customer = get_owned_or_404(Customer, data['customer_id'], code=404)
-                    customer.balance += data['amount']
-                    db.session.commit()
+
+                    # F4: Payment row + GL entry + audit row (interim refund
+                    # path — services/payment_service.py still owes a
+                    # create_refund() API).
+                    payment = _ai_record_refund(
+                        user=user,
+                        customer=customer,
+                        amount=data['amount'],
+                        reason=data['reason'],
+                    )
 
                     train_local_ai('give_payment', data, {'success': True, 'payment_id': payment.id})
 
@@ -2823,32 +3025,22 @@ http://localhost:5000/ai/assistant
                     if not product:
                         return f"❌ المنتج '{product_name}' غير موجود. أنشئه أولاً!"
 
-                    sale = Sale(
-                        sale_number=f"INV-{datetime.now().strftime('%Y%m%d%H%M%S')}",
-                        customer_id=customer.id,
-                        seller_id=user.id,
-                        sale_date=datetime.now(timezone.utc),
-                        subtotal=product.regular_price * quantity,
-                        total_amount=product.regular_price * quantity,
-                        amount_base=product.regular_price * quantity,
-                        payment_status='paid' if payment_method == 'cash' else 'unpaid',
-                        status='confirmed'
-                    )
-                    db.session.add(sale)
-                    db.session.flush()
-
-                    sale_line = SaleLine(
-                        sale_id=sale.id,
-                        product_id=product.id,
-                        quantity=quantity,
-                        unit_price=product.regular_price,
-                        line_total=product.regular_price * quantity
-                    )
-                    db.session.add(sale_line)
-
-                    product.current_stock -= quantity
-
-                    db.session.commit()
+                    # F2/F4: the sale now goes through the canonical sale
+                    # path (StockService movement + revenue/COGS journal
+                    # entries + cost snapshot on the line).  A product
+                    # without a cost basis is refused loudly instead of
+                    # posting a revenue-only entry.
+                    try:
+                        sale = _ai_create_sale(
+                            user=user,
+                            customer=customer,
+                            product=product,
+                            quantity=quantity,
+                            payment_method=payment_method,
+                        )
+                    except ValidationError as ve:
+                        db.session.rollback()
+                        return f"❌ {ve}"
 
                     return f"""✅ تم إنشاء الفاتورة بنجاح!
 
@@ -2905,18 +3097,23 @@ http://localhost:5000/ai/assistant
 
                 if len(parts) >= 3:
                     customer_name = parts[0]
-                    amount = float(parts[1].replace('درهم', '').replace('د.إ', '').strip())
+                    amount = _ai_decimal(parts[1])
                     payment_method = parts[2]
 
                     customer = Customer.query.filter_by(name=customer_name, is_active=True).first()
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
-                    from services import ai_commands as cmd
-                    payment = cmd.record_payment(customer.id, amount, payment_method, 'incoming', user.id, 'customer_payment')
-
-                    customer.balance -= amount
-                    db.session.commit()
+                    # F4: goes through PaymentService — a receipt row, the
+                    # GL entry (Dr cash / Cr AR), the customer balance and
+                    # an audit row are all written by the service.
+                    receipt = _ai_record_receipt(
+                        user=user,
+                        customer=customer,
+                        amount=amount,
+                        payment_method=payment_method,
+                        notes='دفعة مُسجّلة عبر المساعد الذكي',
+                    )
 
                     return f"""✅ تم تسجيل الدفعة بنجاح!
 
@@ -2925,7 +3122,7 @@ http://localhost:5000/ai/assistant
 - المبلغ: {amount} درهم
 - طريقة الدفع: {payment_method}
 - الرصيد الجديد: {customer.balance} درهم
-- الرقم: #{payment.id}
+- الرقم: #{receipt.id}
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
@@ -2942,16 +3139,21 @@ http://localhost:5000/ai/assistant
 
                 if len(parts) >= 2:
                     customer_name = parts[0]
-                    new_balance = float(parts[1].replace('درهم', '').replace('د.إ', '').strip())
+                    new_balance = _ai_decimal(parts[1])
 
                     customer = Customer.query.filter_by(name=customer_name, is_active=True).first()
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
                     old_balance = customer.balance
-                    customer.balance = new_balance
-
-                    db.session.commit()
+                    # F4/F14: the correction is audited with the old and the
+                    # new figure — it used to overwrite the column silently.
+                    _ai_set_customer_balance(
+                        user=user,
+                        customer=customer,
+                        new_balance=new_balance,
+                        reason='تعديل رصيد عبر المساعد الذكي',
+                    )
 
                     return f"""✅ تم تعديل رصيد العميل بنجاح!
 
@@ -2976,18 +3178,21 @@ http://localhost:5000/ai/assistant
 
                 if len(parts) >= 3:
                     customer_name = parts[0]
-                    amount = float(parts[1].replace('درهم', '').replace('د.إ', '').strip())
+                    amount = _ai_decimal(parts[1])
                     payment_method = parts[2]
 
                     customer = Customer.query.filter_by(name=customer_name, is_active=True).first()
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
-                    from services import ai_commands as cmd
-                    payment = cmd.record_payment(customer.id, amount, payment_method, 'incoming', user.id, 'customer_payment')
-
-                    customer.balance -= amount
-                    db.session.commit()
+                    # F4: PaymentService (receipt + GL + balance + audit).
+                    receipt = _ai_record_receipt(
+                        user=user,
+                        customer=customer,
+                        amount=amount,
+                        payment_method=payment_method,
+                        notes='استلام دفعة عبر المساعد الذكي',
+                    )
 
                     return f"""✅ تم استلام الدفعة بنجاح!
 
@@ -2996,7 +3201,7 @@ http://localhost:5000/ai/assistant
 - المبلغ المستلم: {amount} درهم
 - طريقة الدفع: {payment_method}
 - الرصيد الجديد: {customer.balance} درهم
-- الرقم: #{payment.id}
+- الرقم: #{receipt.id}
 
 💡 تم خصم المبلغ من رصيد العميل!
 
@@ -3045,18 +3250,22 @@ http://localhost:5000/ai/assistant
 
                 if len(parts) >= 3:
                     customer_name = parts[0]
-                    amount = float(parts[1].replace('درهم', '').replace('د.إ', '').strip())
+                    amount = _ai_decimal(parts[1])
                     reason = parts[2]
 
                     customer = Customer.query.filter_by(name=customer_name, is_active=True).first()
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
-                    from services import ai_commands as cmd
-                    payment = cmd.record_payment(customer.id, amount, 'refund', 'outgoing', user.id, 'refund')
-
-                    customer.balance += amount
-                    db.session.commit()
+                    # F4: Payment row + GL entry + audit row (the interim
+                    # refund path — services/payment_service.py still owes
+                    # a create_refund() API).
+                    payment = _ai_record_refund(
+                        user=user,
+                        customer=customer,
+                        amount=amount,
+                        reason=reason,
+                    )
 
                     return f"""✅ تم إعطاء الدفعة للعميل بنجاح!
 
@@ -3372,6 +3581,12 @@ def predict_sales():
 @login_required
 def analyze_margins():
     """💰 API: تحليل هوامش الربح"""
+    # SECURITY: the payload carries the total cost of goods sold, the total
+    # profit, the margin and the per-product profit — all of them are
+    # cost-derived. The twin endpoint (routes/api_enhanced.py) answers 403
+    # for a role without cost visibility; this one must do the same.
+    if not current_user.can_see_costs():
+        abort(403)
     analysis = AIService.analyze_profit_margins()
     return jsonify(analysis)
 
@@ -3397,6 +3612,10 @@ def inventory_health():
 @permission_required('view_reports')
 def deep_analysis():
     """📊 API: تحليل عميق شامل"""
+    # SECURITY: deep_business_analysis embeds the profit-margin section,
+    # which is cost-derived (COGS + margin per product).
+    if not current_user.can_see_costs():
+        abort(403)
     analysis = AIService.deep_business_analysis()
     return jsonify(analysis)
 
@@ -3415,6 +3634,11 @@ def cash_flow_prediction():
 @login_required
 def smart_price():
     """💎 API: محرك التسعير الذكي الخارق"""
+    # SECURITY: the pricing engine is cost-derived — the neural fallback
+    # returns predicted_price = cost_price * 1.30, so the cost is
+    # recoverable from the answer (cost = predicted / 1.30).
+    if not current_user.can_see_costs():
+        abort(403)
     # get_json() raises on a body-less POST, and this handler has no error
     # handler of its own, so a sweep or any client that posts without JSON got
     # an uncaught 500 instead of the validation below. Matches the
@@ -3449,6 +3673,10 @@ def churn_prediction():
 @permission_required('manage_warehouse')
 def optimize_inventory():
     """📦 API: تحسين مستويات المخزون"""
+    # SECURITY: the recommendation carries estimated_cost = qty *
+    # product.cost_price, i.e. the product cost itself.
+    if not current_user.can_see_costs():
+        abort(403)
     optimization = AIService.optimize_inventory_levels()
     return jsonify(optimization)
 

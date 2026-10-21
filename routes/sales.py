@@ -4,10 +4,33 @@ from extensions import db, limiter
 from models import Sale, SaleLine, Customer, Product, InvoiceSettings
 from services.sale_service import SaleService
 from utils.decorators import permission_required, get_owned_or_404
+from routes.ledger import reverse_or_purge_gl_entries
 
 from utils.helpers import create_audit_log
 
 sales_bp = Blueprint('sales', __name__, url_prefix='/sales')
+
+
+def _restore_sale_stock(sale):
+    """F6: إعادة بضاعة الفاتورة إلى المخزون (نفس مسار الإلغاء) — مرة واحدة فقط.
+
+    مسار الإلغاء (services/sale_service.py::cancel_sale) يستدعي
+    ``StockService.reverse_sale``، ومسارا الأرشفة والحذف كانا لا يفعلان ذلك
+    فتبقى البضاعة مخصومة بينما الفاتورة تختفي. تُنفَّذ الإعادة مرة واحدة
+    فقط: إن وُجدت حركة "عكس بيع" سابقة لنفس الفاتورة فلا نضاعف المخزون.
+    """
+    from models import StockMovement
+    from services.stock_service import StockService
+
+    already_reversed = StockMovement.query.filter_by(
+        reference_type='Sale-Reversed',
+        reference_id=sale.id,
+    ).first()
+    if already_reversed:
+        return False
+
+    StockService.reverse_sale(sale)
+    return True
 
 
 @sales_bp.route('/')
@@ -465,7 +488,6 @@ def delete(id):
     """حذف (أرشفة) فاتورة مبيعات"""
     from services.archive_service import ArchiveService
     from models import Payment, Cheque
-    from services.gl_service import GLService
 
     sale = get_owned_or_404(Sale, id)
 
@@ -490,16 +512,28 @@ def delete(id):
     try:
         if has_links:
             # أرشفة (Soft Delete)
-            # عكس القيد المحاسبي
+            # F2: عكس القيد المحاسبي إجباري — فشله يُعلن ولا تُؤرشف
+            # الفاتورة (الصمت كان يخفي أن دفتر الأستاذ لم يُعكس).
             if sale.status != 'cancelled':
                 try:
-                    GLService.reverse_entry(
-                        reference_type='Sale',
-                        reference_id=sale.id,
-                        description=f'Reverse Sale {sale.sale_number} (Archived)'
+                    reverse_or_purge_gl_entries(
+                        'Sale',
+                        sale.id,
+                        description=f'عكس فاتورة مبيعات {sale.sale_number} (أرشفة)',
                     )
                 except Exception as e:
-                    current_app.logger.error(f'Failed to reverse GL entry for archived sale {sale.id}: {e}')
+                    db.session.rollback()
+                    current_app.logger.error(
+                        f'Failed to reverse GL entries for archived sale {sale.id}: {e}')
+                    flash(
+                        f'❌ تعذّر عكس القيود المحاسبية للفاتورة "{sale.sale_number}" '
+                        f'— لم تُؤرشف الفاتورة.\n💡 {e}',
+                        'danger')
+                    return redirect(url_for('sales.view', id=id))
+
+                # F6: إعادة البضاعة إلى المخزون (نفس مسار الإلغاء) — وإلا
+                # بقيت البضاعة مخصومة والفاتورة اختفت.
+                _restore_sale_stock(sale)
 
             archive_service = ArchiveService()
             archive_service.archive_record('sales', sale, reason='تم أرشفة الفاتورة لوجود ارتباطات مالية', commit=False)
@@ -512,17 +546,43 @@ def delete(id):
             flash(f'✅ تم أرشفة الفاتورة "{sale.sale_number}" (لوجود ارتباطات مالية)', 'warning')
         else:
             # حذف نهائي (Hard Delete)
-            # 1. حذف البنود (SaleLines) - يتم تلقائياً عادةً عبر cascade ولكن للأمان
+            # 1. القيود المحاسبية: المرحَّلة تُعكس (لا تُحذف أبداً — القيد
+            #    المحاسبي أثر دائم) والمسودات فقط تُحذف.
+            try:
+                gl_result = reverse_or_purge_gl_entries(
+                    'Sale',
+                    sale.id,
+                    description=f'عكس فاتورة مبيعات {sale.sale_number} (حذف نهائي)',
+                )
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(
+                    f'Failed to reverse GL entries for deleted sale {sale.id}: {e}')
+                flash(
+                    f'❌ تعذّر عكس القيود المحاسبية للفاتورة "{sale.sale_number}" '
+                    f'— لم تُحذف الفاتورة.\n💡 {e}',
+                    'danger')
+                return redirect(url_for('sales.view', id=id))
+
+            # 2. F6: إعادة البضاعة إلى المخزون (نفس مسار الإلغاء)
+            if sale.status != 'cancelled':
+                _restore_sale_stock(sale)
+
+            # 3. حذف البنود (SaleLines) - يتم تلقائياً عادةً عبر cascade ولكن للأمان
             SaleLine.query.filter_by(sale_id=sale.id).delete()
 
-            # 2. حذف القيود المحاسبية (سطور ثم رؤوس — بأمان FK)
-            GLService.purge_by_reference('Sale', sale.id)
-
-            # 3. حذف الفاتورة
+            # 4. حذف الفاتورة
             db.session.delete(sale)
             create_audit_log('delete', 'sales', id)
             db.session.commit()
-            flash(f'✅ تم حذف الفاتورة "{sale.sale_number}" نهائياً', 'success')
+            if gl_result['reversed']:
+                flash(
+                    f'✅ تم حذف الفاتورة "{sale.sale_number}" نهائياً — '
+                    f'وعُكست قيودها المحاسبية ({gl_result["reversed"]} قيد) '
+                    f'بدل حذفها حفاظاً على الأثر المحاسبي.',
+                    'success')
+            else:
+                flash(f'✅ تم حذف الفاتورة "{sale.sale_number}" نهائياً', 'success')
 
         return redirect(url_for('sales.index'))
 
@@ -544,18 +604,38 @@ def archive(id):
 
     try:
         # عكس القيد المحاسبي قبل الأرشفة (إذا لم تكن ملغاة)
+        # F2: الفشل يُعلن ولا تُؤرشف الفاتورة.
         if sale.status != 'cancelled':
-            from services.sale_service import SaleService
             try:
-                SaleService.reverse_sale_gl_entries(sale, reason='Archived')
+                reverse_or_purge_gl_entries(
+                    'Sale',
+                    sale.id,
+                    description=f'عكس فاتورة مبيعات {sale.sale_number} (أرشفة)',
+                )
             except Exception as e:
-                current_app.logger.error(f'Failed to reverse GL entry for archived sale {sale.id}: {e}')
+                db.session.rollback()
+                current_app.logger.error(
+                    f'Failed to reverse GL entries for archived sale {sale.id}: {e}')
+                flash(
+                    f'❌ تعذّر عكس القيود المحاسبية للفاتورة "{sale.sale_number}" '
+                    f'— لم تُؤرشف الفاتورة.\n💡 {e}',
+                    'danger')
+                return redirect(url_for('sales.view', id=id))
+
+            # F6: إعادة البضاعة إلى المخزون (نفس مسار الإلغاء)
+            _restore_sale_stock(sale)
 
         archive_service = ArchiveService()
         archive_service.archive_record('sales', sale, reason='تم أرشفة فاتورة المبيعات')
         create_audit_log('archive', 'sales', sale.id)
-    except Exception:
+        flash(f'✅ تم أرشفة الفاتورة "{sale.sale_number}"', 'warning')
+    except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f'Sale archive error: {e}')
+        flash(
+            f'❌ تعذّر أرشفة الفاتورة "{sale.sale_number}" — '
+            f'لم تُنفَّذ الأرشفة.\n💡 {e}',
+            'danger')
 
     return redirect(url_for('sales.index'))
 

@@ -6,10 +6,14 @@ Real contract, POST /products/<id>/adjust-stock (routes/products.py:577):
   * fields: adjustment_type ('add'|'subtract'|'set'), quantity, reason, notes
   * always answers JSON; FAILURES also return HTTP 200 with success=False, so
     assertions must read the success flag and never the status code alone
-  * StockMovement is written with movement_type='adjustment' and a POSITIVE
-    quantity even for 'subtract'
+  * StockMovement is written with movement_type='adjustment' and carries the
+    SIGN of the adjustment: a 'subtract' is a NEGATIVE quantity, so that
+    SUM(stock_movements.quantity) == product.current_stock always.
+    (It used to be booked POSITIVE for a subtraction, which counted the
+    same units twice and made the ledger disagree with the stock.)
 """
 
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
@@ -19,6 +23,30 @@ from tests.e2e.harness import (
     product_adjust_form, snapshot_entry_ids,
     assert_product_stock, assert_stock_valuation, q3,
 )
+
+
+@pytest.fixture(autouse=True)
+def _open_fiscal_period(db):
+    """فترة مالية مفتوحة تغطي اليوم.
+
+    حارس الفترة المالية (services/fiscal_period_guard.py) يرفض ترحيل القيد
+    إلى تاريخ لا تغطيه فترة معرَّفة، والتسوية اليدوية تُرحَّل الآن
+    fail-closed — فلا بدّ من فترة مفتوحة حتى ينجح المسار.
+    """
+    from models.erp_modules import FiscalPeriod
+
+    today = date.today()
+    period = FiscalPeriod.query.filter_by(
+        year=today.year, period_type='annual').first()
+    if period is None:
+        period = FiscalPeriod(
+            name=f'FY {today.year}', year=today.year, period_type='annual',
+            start_date=today - timedelta(days=1),
+            end_date=today + timedelta(days=1), is_closed=False,
+        )
+        db.session.add(period)
+        db.session.commit()
+    return period
 
 
 def _adjust(client, product, **overrides):
@@ -50,6 +78,50 @@ class TestStockAdjustment:
         r = _adjust(client, product, adjustment_type='subtract', quantity=30)
         assert r.get_json()['success'] is True
         assert_product_stock(product.id, Decimal('70'))
+
+    def test_subtract_movement_carries_the_sign(
+            self, client, db, users, login_as, product):
+        """The movement must be NEGATIVE for a subtraction.
+
+        With a positive movement the ledger counted the subtracted units a
+        second time: the movements no longer mirrored the stock.  The
+        fixture seeds current_stock directly (no opening movement), so the
+        proof is on the DELTA: the movement total and the stock must move
+        by the same signed amount, and the gap between them must not
+        change.
+        """
+        from sqlalchemy import func
+
+        login_as('owner')
+
+        def _movement_total():
+            return q3(db.session.query(
+                func.coalesce(func.sum(StockMovement.quantity), 0)
+            ).filter(StockMovement.product_id == product.id).scalar())
+
+        from models.warehouse import StockMovement
+
+        before_total = _movement_total()
+        before_stock = q3(product.current_stock)
+
+        r = _adjust(client, product, adjustment_type='subtract', quantity=30)
+        assert r.get_json()['success'] is True
+
+        moves = StockMovement.query.filter_by(
+            product_id=product.id, movement_type='adjustment').all()
+        assert len(moves) == 1
+        assert q3(moves[0].quantity) == Decimal('-30.000'), moves[0].quantity
+
+        assert_product_stock(product.id, Decimal('70'))
+
+        after_total = _movement_total()
+        assert q3(after_total - before_total) == Decimal('-30.000'), (
+            'the movement total must follow the stock by the same signed '
+            'amount')
+        gap_before = q3(before_stock - before_total)
+        gap_after = q3(q3(product.current_stock) - after_total)
+        assert gap_after == gap_before, (
+            'the gap between the stock and the movements must not change')
 
     def test_subtract_beyond_stock_is_refused_with_success_false(
             self, client, db, users, login_as, product):

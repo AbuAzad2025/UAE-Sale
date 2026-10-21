@@ -532,7 +532,13 @@ class TestGLAccountExtras:
     def test_type_ar_mapping_and_fallback(self, db):
         assert GLAccount(type='asset').type_ar == 'أصول'
         assert GLAccount(type='revenue').type_ar == 'إيرادات'
-        assert GLAccount(type='odd').type_ar == 'odd'
+        # An unknown account type is REJECTED, not accepted and silently
+        # treated as credit-normal. The old behaviour let 'odd' through, and
+        # because an unrecognised type reads as credit-normal the account's
+        # balance came out with the wrong sign - in every report, with no
+        # error anywhere. A typo in the type must fail loudly instead.
+        with pytest.raises(ValueError):
+            GLAccount(type='odd')
 
     def _seed_entry(self, db, number, lines_spec, when=datetime(2026, 4, 1)):
         entry = GLJournalEntry(

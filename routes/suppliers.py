@@ -3,6 +3,7 @@
 إدارة الموردين: عرض، إضافة، تعديل، تقارير
 """
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
@@ -14,6 +15,77 @@ from utils.helpers import create_audit_log
 from sqlalchemy import desc
 
 suppliers_bp = Blueprint('suppliers', __name__, url_prefix='/suppliers')
+
+
+def _parse_opening_balance(source):
+    """F4: قراءة الرصيد الافتتاحي من النموذج (مبلغ + عملة + سعر صرف + تاريخ).
+
+    حقول النموذج (نفس أسماء أعمدة النموذج models/supplier.py):
+      ``opening_balance``          — المبلغ بالعملة المدخلة
+      ``opening_balance_currency`` — رمز العملة (ثلاثة أحرف)
+      ``opening_balance_rate``     — سعر التحويل إلى عملة الأساس
+      ``opening_balance_date``     — تاريخ الرصيد (YYYY-MM-DD)
+
+    وتُقبل أيضاً ``initial_balance`` كبديل للمبلغ (الحقل الموجود في
+    القالب الحالي) — وهو نفس الحقل الذي كان يُخزَّن خطأً في
+    ``total_purchases_aed`` (إحصائية مشتريات تُمسح عند أول فاتورة شراء).
+
+    تُرجع قاموساً بالمبلغ/العملة/السعر/التاريخ، أو ``None`` إذا لم يُدخل
+    شيء. ترفع ``ValueError`` برسالة عربية عند أي قيمة غير صالحة.
+    """
+    from datetime import datetime as _datetime
+
+    from services.currency_service import CurrencyService
+
+    raw_amount = (source.get('opening_balance') or source.get('initial_balance') or '').strip()
+    raw_currency = (source.get('opening_balance_currency') or '').strip().upper()
+    raw_rate = (source.get('opening_balance_rate') or '').strip()
+    raw_date = (source.get('opening_balance_date') or '').strip()
+
+    if not raw_amount and not raw_currency and not raw_rate and not raw_date:
+        return None
+
+    amount = Decimal('0')
+    if raw_amount:
+        try:
+            amount = Decimal(raw_amount)
+        except (InvalidOperation, ValueError):
+            raise ValueError('الرصيد الافتتاحي يجب أن يكون رقماً صحيحاً.')
+
+    if raw_currency:
+        if len(raw_currency) != 3 or not raw_currency.isalpha():
+            raise ValueError(
+                'عملة الرصيد الافتتاحي يجب أن تكون رمزاً من ثلاثة أحرف (مثل AED).')
+        currency = raw_currency
+    else:
+        try:
+            currency = CurrencyService.get_base_currency()
+        except Exception:
+            currency = 'ILS'
+
+    rate = Decimal('1')
+    if raw_rate:
+        try:
+            rate = Decimal(raw_rate)
+        except (InvalidOperation, ValueError):
+            raise ValueError('سعر صرف الرصيد الافتتاحي يجب أن يكون رقماً صحيحاً.')
+        if rate <= 0:
+            raise ValueError('سعر صرف الرصيد الافتتاحي يجب أن يكون أكبر من صفر.')
+
+    opening_date = None
+    if raw_date:
+        try:
+            opening_date = _datetime.strptime(raw_date, '%Y-%m-%d').date()
+        except ValueError:
+            raise ValueError(
+                'تاريخ الرصيد الافتتاحي يجب أن يكون بالصيغة YYYY-MM-DD.')
+
+    return {
+        'amount': amount,
+        'currency': currency,
+        'rate': rate,
+        'date': opening_date,
+    }
 
 
 @suppliers_bp.route('/')
@@ -86,7 +158,11 @@ def create():
                     flash('⚠️ قيمة التقييم غير صحيحة.', 'warning')
                     return render_template('suppliers/create.html')
 
-            initial_balance = request.form.get('initial_balance', type=float, default=0)
+            # F4: الرصيد الافتتاحي (رصيد مستحق للمورد قبل استخدام النظام).
+            # كان يُخزَّن في total_purchases_aed — وهي إحصائية مشتريات
+            # تُمسح عند أول فاتورة شراء، فيضيع الرصيد. الآن يُخزَّن في
+            # أعمدة opening_balance_* التي يقرأها اشتقاق الرصيد.
+            opening = _parse_opening_balance(request.form)
 
             supplier = Supplier(
                 name=request.form.get('name'),
@@ -106,13 +182,19 @@ def create():
                 credit_limit=request.form.get('credit_limit', type=float, default=0),
                 payment_terms_days=request.form.get('payment_terms_days', type=int, default=30),
                 preferred_currency=(request.form.get('preferred_currency') or __import__('services.currency_service', fromlist=['CurrencyService']).CurrencyService.get_base_currency()),
-                total_purchases_aed=initial_balance,
+                total_purchases_aed=0,
                 total_paid_aed=0,
                 notes=request.form.get('notes'),
                 tags=request.form.get('tags'),
                 is_verified=request.form.get('is_verified') == 'on',
                 created_by=current_user.id
             )
+
+            if opening:
+                supplier.opening_balance = opening['amount']
+                supplier.opening_balance_currency = opening['currency']
+                supplier.opening_balance_rate = opening['rate']
+                supplier.opening_balance_date = opening['date']
 
             db.session.add(supplier)
             db.session.commit()
@@ -122,6 +204,10 @@ def create():
             flash('✅ تم إضافة المورد بنجاح!', 'success')
             return redirect(url_for('suppliers.view', id=supplier.id))
 
+        except ValueError as e:
+            db.session.rollback()
+            flash(f'❌ {e}', 'danger')
+            return render_template('suppliers/create.html')
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
@@ -192,6 +278,14 @@ def edit(id):
             supplier.tags = request.form.get('tags')
             supplier.is_verified = request.form.get('is_verified') == 'on'
 
+            # F4: تعديل الرصيد الافتتاحي (مبلغ + عملة + سعر صرف + تاريخ)
+            opening = _parse_opening_balance(request.form)
+            if opening:
+                supplier.opening_balance = opening['amount']
+                supplier.opening_balance_currency = opening['currency']
+                supplier.opening_balance_rate = opening['rate']
+                supplier.opening_balance_date = opening['date']
+
             db.session.commit()
 
             create_audit_log('update', 'suppliers', supplier.id)
@@ -199,6 +293,10 @@ def edit(id):
             flash('✅ تم تحديث المورد بنجاح!', 'success')
             return redirect(url_for('suppliers.view', id=supplier.id))
 
+        except ValueError as e:
+            db.session.rollback()
+            flash(f'❌ {e}', 'danger')
+            return render_template('suppliers/edit.html', supplier=supplier)
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')

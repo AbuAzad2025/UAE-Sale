@@ -1,6 +1,6 @@
 """
 Sub-Ledger Reconciliation Service — مطابقة الذمم الفرعية مع الأستاذ العام
-=========================================================================
+=============================================================================
 
 Proves the STRICT MATCH RULE to the cent (0.01):
 
@@ -8,27 +8,64 @@ Proves the STRICT MATCH RULE to the cent (0.01):
         == GL control account(s) posted net
         == denormalized entity balance column(s)
 
-  AR:  per active customer, Σ(confirmed+active sales: amount_base − paid_amount_base)
-       vs GLAccount(AR_CONTROL, fallback '1130') debit-normal net
-       vs Customer.balance column.
+F1 — المصدر الواحد للاشتقاق (single source of truth)
+----------------------------------------------------
+كان هذا الملف يشتقّ الذمم بصيغة خاصة به:
 
-  AP:  per active supplier, Σ(confirmed purchases: amount_base − paid_amount|None→0)
-       vs GLAccounts('2115' merchants + '2110' AP_CONTROL) credit-normal net
-       vs Supplier derived column (total_purchases_aed − total_paid_aed).
+  * AR = Σ(amount_base − paid_amount_base) على الفواتير المؤكدة.
+  * AP = Σ(amount_base − paid_amount) على المشتريات المؤكدة.
+
+بينما التطبيق نفسه يستعمل:
+
+  * models.customer.derive_customer_balance — الرصيد الافتتاحي + الفواتير
+    المؤكدة النشطة − المرتجعات المعتمدة − الاستردادات المنفصلة + تعديلات
+    الشيكات Legacy.
+  * models.supplier.derive_supplier_totals — المشتريات المؤكدة − المسدّد
+    (على مستوى الفاتورة والمورد) − الاستردادات، + الرصيد الافتتاحي.
+
+النتيجة: فرق دائم (false break) بين هذا التقرير والأرقام التي يعرضها
+التطبيق. الآن يستعمل هذا الملف الدالتين نفسها — لا صيغة ثالثة.
+
+  AR:  لكل عميل نشط، models.customer.derive_customer_balance
+       vs GLAccount(AR_CONTROL, fallback '1130') مدينة-الطبيعة
+       vs عمود Customer.balance.
+  AP:  لكل مورد نشط، models.supplier.derive_supplier_totals
+       vs GLAccounts('2115' + '2110') دائنة-الطبيعة
+       vs Supplier.total_purchases_aed − total_paid_aed (+ الافتتاحي).
 
 Read-only audit service: detects and reports drift; it never mutates ledgers.
 Conventions inherited from utils.balance_checker / aging_analysis_service:
 active customers/suppliers only; confirmed sales; purchases by status
 (Purchase has no is_active column); tolerance |delta| ≤ 0.01 inclusive.
 
-Known structural break sources surfaced by design (see audit findings):
-- merchant-type customer invoices are debited to '2115' and partner invoices
-  to '3350' (sale_service), so the AR scope now includes those buckets via
-  sale_service.merchant_receivable_codes() — the proof holds for ALL
-  customer types, not just regular ones;
-- unallocated receipts credit AR control without updating sale.paid_*;
-- supplier stat listeners derive total_paid_aed from the Payment table while
-  this sub-ledger derives paid from Purchase.paid_amount (dual sources of truth).
+بنود التسوية المعروفة (reconciling_items)
+--------------------------------------------
+بند التسوية = فرق **متوقّع** بين الأستاذ والذمم الفرعية (توقيت/ترحيل/
+نطاق) وليس كسراً حقيقياً. يُعرض كل بند بمبلغه وإشارته ليعرف المحاسب
+الفرق الحقيقي من الفرق المتوقع:
+
+  * pending_incoming_cheques (+): الأستاذ يقيّد الدائن على حساب الذمم عند
+    استلام الشيك (نقل إلى "شيكات تحت التحصيل") بينما الفاتورة تبقى مفتوحة
+    لأن الشيك لم يُصرف ⇒ الفرق يختفي عند صرفه.
+  * unallocated_receipts (+): سند قبض يقيّد الدائن على حساب الذمم دون أن
+    يسوّي أي فاتورة (دفعة مقدّمة/زائدة).
+  * pending_outgoing_cheques (+): إصدار الشيك الصادر يُقيَّد مديناً على حساب
+    الذمم الدائنة بينما فاتورة الشراء تبقى مفتوحة حتى صرف الشيك.
+  * opening_balances (+): الرصيد الافتتاحي مُرحَّل من نظام سابق — ليس
+    قيداً في الأستاذ العام إلا إذا رُحّل يدوياً.
+  * inactive_parties (−): الأستاذ يحتفظ بمستندات الأطراف المعطّلة بينما
+    نطاق الذمم الفرعية = الأطراف النشطة فقط.
+
+الإشارة +1 تعني: يُضاف المبلغ إلى رصيد حساب الضبط ليطابق الذمم الفرعية.
+الإشارة −1 تعني: يُطرح.
+
+معادلة التوازن:
+    control_difference    = control_balance − subledger_sum
+    adjusted_difference   = control_difference + Σ(sign × amount)
+    balanced ⇐ لا كسر على مستوى الكيان
+              ∧ |column_sum − subledger_sum| ≤ 0.01
+              ∧ (|control_difference| ≤ 0.01            # لا فرق أصلاً
+                أو |adjusted_difference| ≤ 0.01)        # الفرق مفهوم بالكامل
 """
 
 import logging
@@ -54,6 +91,9 @@ DEFAULT_AP_CONTROL_CODES = ['2115', '2110']
 # the AR proof must include those buckets or merchant/partner customers always
 # look like breaks.
 DEFAULT_AR_MERCHANT_BUCKETS = ['2115', '3350']
+
+# حالات الشيك التي تعني: استُلم الشيك ولم يُصرف بعد (بلا تسوية للفاتورة).
+_PENDING_CHEQUE_STATUSES = ('pending', 'under_collection', 'deposited')
 
 
 def _resolve_role_codes(role_value, fallback_codes):
@@ -157,6 +197,95 @@ def _ar_debit_normal_balance(account_codes):
     return total
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# بنود التسوية المعروفة (reconciling items)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _reconciling_item(code, label, amount, sign, note=''):
+    """بند تسوية معروف: فرق متوقّع بين الأستاذ والذمم الفرعية.
+
+    sign = +1 ⇒ يُضاف المبلغ إلى رصيد حساب الضبط ليطابق الذمم الفرعية،
+                sign = −1 ⇒ يُطرح منه.
+    """
+    return {
+        'code': code,
+        'label': label,
+        'amount': _q2(amount),
+        'sign': int(sign),
+        'note': note,
+    }
+
+
+def _reconciling_total(items):
+    """Σ(sign × amount) — الأثر الصافي لبنود التسوية على رصيد الحساب."""
+    total = Decimal('0')
+    for item in items or []:
+        total += Decimal(str(item.get('sign', 1))) * to_decimal(item.get('amount'))
+    return total
+
+
+def _pending_cheques(cheque_type, tenant_id=None):
+    """Σ مبلغ الشيكات (وارد/صادر) المستلَمة التي لم تُصرف بعد.
+
+    الأستاذ يقيّد هذه الشيكات على حساب الذمم وقت الاستلام/الإصدار بينما
+    المستند الأصلي يبقى مفتوحاً ⇒ فرق توقّع معروف حتى صرف الشيك.
+
+    يُشترط وجود قيد محاسبي فعلي (gl_journal_entry_id) حتى لا يُحسب شيك لم
+    يُقيَّد أصلاً، ويُستبعد الشيك المرتد/الملغي/المؤرشف لأن عكس قيده
+    أعاد الذمم إلى حساب الضبط.
+    """
+    from sqlalchemy import func
+
+    from models import Cheque
+
+    query = db.session.query(
+        func.coalesce(func.sum(Cheque.amount_base), 0)
+    ).filter(
+        Cheque.cheque_type == cheque_type,
+        Cheque.status.in_(_PENDING_CHEQUE_STATUSES),
+        Cheque.is_active.is_(True),
+        Cheque.gl_journal_entry_id.isnot(None),
+    )
+    if tenant_id is not None:
+        query = query.filter(Cheque.tenant_id == tenant_id)
+
+    return to_decimal(query.scalar())
+
+
+def _unallocated_receipts(tenant_id=None):
+    """Σ جزء السندات المؤكدة الذي لم يُوزَّع على أي فاتورة.
+
+    السند المؤكد يُقيَّد دائناً على حساب الذمم، فإن لم يوزَّع على فاتورة
+    (دفعة مقدّمة/زائدة) بقي الفرق بين الأستاذ والذمم الفرعية.
+    """
+    from models import Receipt
+
+    query = Receipt.query.filter(
+        Receipt.payment_confirmed.is_(True),
+        Receipt.direction == 'incoming',
+        Receipt.customer_id.isnot(None),
+    )
+    if tenant_id is not None:
+        query = query.filter(Receipt.tenant_id == tenant_id)
+
+    total = Decimal('0')
+    for receipt in query.all():
+        try:
+            allocations = receipt.get_allocations() or []
+        except Exception:
+            allocations = []
+        allocated = Decimal('0')
+        for alloc in allocations:
+            try:
+                allocated += to_decimal(alloc.get('amount_base'))
+            except Exception:
+                continue
+        leftover = to_decimal(receipt.amount_base) - allocated
+        if leftover > 0:
+            total += leftover
+    return total
+
+
 class SubLedgerReconciliation:
     """Three-way sub-ledger ↔ GL control ↔ balance-column proof (AR & AP)."""
 
@@ -167,37 +296,24 @@ class SubLedgerReconciliation:
         """
         Reconcile customer receivables.
 
-        Returns dict: {section:'AR', control_accounts, control_balance,
-        subledger_sum, column_sum, breaks:[{entity, entity_id, expected,
+        المصدر الوحيد: models.customer.derive_customer_balance — فلا تُحسب
+        الذمم بصيغة ثانية تختلف عن التطبيق.
+
+        Returns dict: {section:'AR', control_accounts, control_breakdown,
+        control_balance, subledger_sum, column_sum, control_difference,
+        reconciling_items, reconciling_total, adjusted_control_balance,
+        adjusted_control_difference, breaks:[{entity, entity_id, expected,
         stored, delta}], balanced}
         """
-        from models import Customer, Sale
+        from models import Customer
+        from models.customer import derive_customer_balance
 
         codes = _ar_control_codes()
-
-        query = (
-            db.session.query(Sale.customer_id, Sale.amount_base, Sale.paid_amount_base)
-            .join(Customer, Customer.id == Sale.customer_id)
-            .filter(
-                Sale.status == 'confirmed',
-                Sale.is_active.is_(True),
-                Customer.is_active.is_(True),
-                Sale.customer_id.isnot(None),
-            )
-        )
-        if tenant_id is not None:
-            query = query.filter(Sale.tenant_id == tenant_id)
-
-        recomputed = {}
-        for customer_id, amount, paid in query.all():
-            balance = to_decimal(amount) - to_decimal(paid)
-            recomputed[customer_id] = recomputed.get(customer_id, Decimal('0')) + balance
 
         # populate_existing: model listeners mutate balances via raw SQL outside
         # the identity map — force a fresh read so stored columns are current.
         customers = (
             Customer.query
-            .filter_by(is_active=True)
             .order_by(Customer.id)
             .populate_existing()
             .all()
@@ -205,14 +321,25 @@ class SubLedgerReconciliation:
         if tenant_id is not None:
             customers = [c for c in customers if c.tenant_id == tenant_id]
 
+        connection = db.session.connection()
+
         subledger_sum = Decimal('0')
         column_sum = Decimal('0')
+        opening_sum = Decimal('0')
+        inactive_sum = Decimal('0')
         breaks = []
         for customer in customers:
-            expected = recomputed.get(customer.id, Decimal('0'))
+            expected = derive_customer_balance(customer.id, connection=connection)
+
+            if not customer.is_active:
+                # خارج نطاق الذمم الفرعية (نشط فقط) — يُعرض كبند تسوية
+                inactive_sum += expected
+                continue
+
             stored = to_decimal(customer.balance)
             subledger_sum += expected
             column_sum += stored
+            opening_sum += customer.get_opening_balance_base()
 
             delta = stored - expected
             if abs(delta) > TOLERANCE:
@@ -237,10 +364,50 @@ class SubLedgerReconciliation:
             for code in codes
         ]
 
+        reconciling_items = [
+            _reconciling_item(
+                'pending_incoming_cheques',
+                'شيكات وارد تحت التحصيل (لم تُصرف بعد)',
+                _pending_cheques('incoming', tenant_id=tenant_id),
+                1,
+                'الأستاذ يقيّد الدائن على حساب الذمم عند استلام الشيك '
+                'والفاتورة تبقى مفتوحة حتى صرفه.',
+            ),
+            _reconciling_item(
+                'unallocated_receipts',
+                'سندات قبض مؤكّدة لم تُوزَّع على فواتير',
+                _unallocated_receipts(tenant_id=tenant_id),
+                1,
+                'السند يقيّد الدائن على حساب الذمم دون أن يسوّي فاتورة.',
+            ),
+            _reconciling_item(
+                'opening_balances',
+                'أرصدة افتتاحية مُرحّلة (خارج قيود الأستاذ)',
+                opening_sum,
+                1,
+                'الرصيد الافتتاحي ليس قيداً في الأستاذ إلا إذا رُحّل يدوياً.',
+            ),
+            _reconciling_item(
+                'inactive_customers',
+                'ذمم عملاء غير نشطين (خارج نطاق المطابقة)',
+                inactive_sum,
+                -1,
+                'الأستاذ يحتفظ بمستندات العميل المعطّل، والمطابقة على النشطين.',
+            ),
+        ]
+        reconciling_total = _reconciling_total(reconciling_items)
+
+        control_difference = control_balance - subledger_sum
+        adjusted_control_balance = control_balance + reconciling_total
+        adjusted_control_difference = adjusted_control_balance - subledger_sum
+
         balanced = (
             not breaks
-            and abs(control_balance - subledger_sum) <= TOLERANCE
             and abs(column_sum - subledger_sum) <= TOLERANCE
+            and (
+                abs(control_difference) <= TOLERANCE
+                or abs(adjusted_control_difference) <= TOLERANCE
+            )
         )
 
         return {
@@ -250,6 +417,11 @@ class SubLedgerReconciliation:
             'control_balance': _q2(control_balance),
             'subledger_sum': _q2(subledger_sum),
             'column_sum': _q2(column_sum),
+            'control_difference': _q2(control_difference),
+            'reconciling_items': reconciling_items,
+            'reconciling_total': _q2(reconciling_total),
+            'adjusted_control_balance': _q2(adjusted_control_balance),
+            'adjusted_control_difference': _q2(adjusted_control_difference),
             'breaks': breaks,
             'balanced': balanced,
         }
@@ -261,46 +433,22 @@ class SubLedgerReconciliation:
         """
         Mirror reconciliation for suppliers/AP.
 
-        F41 equivalence note: Purchase.paid_amount is tracked in BASE
-        currency (see Purchase.get_paid_amount docstring) and
-        Supplier.total_paid_aed sums Payment.amount_base (also base), while
-        Supplier.total_purchases_aed sums Purchase.amount_base (base). The
-        sub-ledger below computes Σ(amount_base − paid_amount), i.e.
-        base-minus-base on both sides, so for ILS/base-currency purchases
-        (rate == 1, txn == base) the two totals are numerically identical to
-        the supplier columns once synced. None is treated as 0 on every leg
-        via to_decimal. No currency conversion is applied here — FX
-        purchases already carry their historical rate inside amount_base
-        (mirroring fx_revaluation.collect_open_ap_balances).
-        Purchase.paid_amount was added recently: None is treated as 0.
+        F1: المصدر الوحيد هو models.supplier.derive_supplier_totals
+        (المشتريات المؤكدة − المسدّد على مستوى الفاتورة والمورد −
+        الاستردادات) + الرصيد الافتتاحي (Supplier.get_opening_balance_base).
+
         Supplier has no single balance column — its denormalized state is
-        (total_purchases_aed − total_paid_aed), kept fresh by model events.
+        (total_purchases_aed − total_paid_aed) ويُقارَن بالرصيد المشتقّ
+        + الرصيد الافتتاحي (مُضمَّن في الطرفين حتى لا يُحسب مرتين).
         """
-        from models import Purchase, Supplier
+        from models import Supplier
+        from models.supplier import derive_supplier_totals
 
         codes = _ap_control_codes()
-
-        query = (
-            db.session.query(Purchase.supplier_id, Purchase.amount_base, Purchase.paid_amount)
-            .join(Supplier, Supplier.id == Purchase.supplier_id)
-            .filter(
-                Purchase.status == 'confirmed',
-                Supplier.is_active.is_(True),
-                Purchase.supplier_id.isnot(None),
-            )
-        )
-        if tenant_id is not None:
-            query = query.filter(Purchase.tenant_id == tenant_id)
-
-        recomputed = {}
-        for supplier_id, amount, paid in query.all():
-            balance = to_decimal(amount) - to_decimal(paid)
-            recomputed[supplier_id] = recomputed.get(supplier_id, Decimal('0')) + balance
 
         # populate_existing: see reconcile_receivables (raw-SQL listener writes).
         suppliers = (
             Supplier.query
-            .filter_by(is_active=True)
             .order_by(Supplier.id)
             .populate_existing()
             .all()
@@ -310,12 +458,26 @@ class SubLedgerReconciliation:
 
         subledger_sum = Decimal('0')
         column_sum = Decimal('0')
+        opening_sum = Decimal('0')
+        inactive_sum = Decimal('0')
         breaks = []
         for supplier in suppliers:
-            expected = recomputed.get(supplier.id, Decimal('0'))
-            stored = to_decimal(supplier.total_purchases_aed) - to_decimal(supplier.total_paid_aed)
+            total_purchases, total_paid = derive_supplier_totals(supplier.id)
+            opening = supplier.get_opening_balance_base()
+            expected = total_purchases - total_paid + opening
+
+            if not supplier.is_active:
+                # خارج نطاق الذمم الفرعية (نشط فقط) — يُعرض كبند تسوية
+                inactive_sum += expected
+                continue
+
+            stored = (
+                to_decimal(supplier.total_purchases_aed)
+                - to_decimal(supplier.total_paid_aed)
+            ) + opening
             subledger_sum += expected
             column_sum += stored
+            opening_sum += opening
 
             delta = stored - expected
             if abs(delta) > TOLERANCE:
@@ -339,10 +501,43 @@ class SubLedgerReconciliation:
             for code in codes
         ]
 
+        reconciling_items = [
+            _reconciling_item(
+                'pending_outgoing_cheques',
+                'شيكات صادرة لم تُصرف بعد',
+                _pending_cheques('outgoing', tenant_id=tenant_id),
+                1,
+                'إصدار الشيك يقيّده مديناً على حساب الذمم الدائنة '
+                'وفاتورة الشراء تبقى مفتوحة حتى صرفه.',
+            ),
+            _reconciling_item(
+                'opening_balances',
+                'أرصدة افتتاحية مُرحّلة (خارج قيود الأستاذ)',
+                opening_sum,
+                1,
+                'الرصيد الافتتاحي ليس قيداً في الأستاذ إلا إذا رُحّل يدوياً.',
+            ),
+            _reconciling_item(
+                'inactive_suppliers',
+                'ذمم موردين غير نشطين (خارج نطاق المطابقة)',
+                inactive_sum,
+                -1,
+                'الأستاذ يحتفظ بمستندات المورد المعطّل، والمطابقة على النشطين.',
+            ),
+        ]
+        reconciling_total = _reconciling_total(reconciling_items)
+
+        control_difference = control_balance - subledger_sum
+        adjusted_control_balance = control_balance + reconciling_total
+        adjusted_control_difference = adjusted_control_balance - subledger_sum
+
         balanced = (
             not breaks
-            and abs(control_balance - subledger_sum) <= TOLERANCE
             and abs(column_sum - subledger_sum) <= TOLERANCE
+            and (
+                abs(control_difference) <= TOLERANCE
+                or abs(adjusted_control_difference) <= TOLERANCE
+            )
         )
 
         return {
@@ -352,6 +547,11 @@ class SubLedgerReconciliation:
             'control_balance': _q2(control_balance),
             'subledger_sum': _q2(subledger_sum),
             'column_sum': _q2(column_sum),
+            'control_difference': _q2(control_difference),
+            'reconciling_items': reconciling_items,
+            'reconciling_total': _q2(reconciling_total),
+            'adjusted_control_balance': _q2(adjusted_control_balance),
+            'adjusted_control_difference': _q2(adjusted_control_difference),
             'breaks': breaks,
             'balanced': balanced,
         }

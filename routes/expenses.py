@@ -6,6 +6,7 @@ from models import InvoiceSettings
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
 from utils.decorators import permission_required
+from routes.ledger import reverse_or_purge_gl_entries
 
 from utils.helpers import create_audit_log, generate_number
 from decimal import Decimal, InvalidOperation
@@ -421,15 +422,23 @@ def delete(id):
     try:
         if has_links:
             # أرشفة (Soft Delete)
-            # عكس القيد المحاسبي للحفاظ على السجل
+            # عكس القيد المحاسبي إجباري (F2): فشله يُعلن ولا يُؤرشف
+            # المصروف (الصمت كان يخفي أن دفتر الأستاذ لم يُعكس).
             try:
-                GLService.reverse_entry(
-                    reference_type='Expense',
-                    reference_id=expense.id,
-                    description=f'Reverse Expense {expense.expense_number}'
+                reverse_or_purge_gl_entries(
+                    'Expense',
+                    expense.id,
+                    description=f'عكس مصروف {expense.expense_number}',
                 )
             except Exception as e:
-                current_app.logger.warning(f'GL reversal warning: {e}')
+                db.session.rollback()
+                current_app.logger.error(
+                    f'Failed to reverse GL entries for expense {expense.id}: {e}')
+                flash(
+                    f'❌ تعذّر عكس القيود المحاسبية للمصروف '
+                    f'"{expense.expense_number}" — لم تُؤرشف.\n💡 {e}',
+                    'danger')
+                return redirect(url_for('expenses.view', id=id))
 
             archive_service = ArchiveService()
             archive_service.archive_record('expenses', expense, reason='تم أرشفة المصروف لوجود ارتباطات', commit=False)
@@ -443,10 +452,25 @@ def delete(id):
 
         else:
             # حذف نهائي (Hard Delete)
-            # 1. حذف القيود المحاسبية للمصروف
-            GLService.purge_by_reference('Expense', expense.id)
+            # 1. القيود المحاسبية للمصروف: المرحَّلة تُعكس (لا تُحذف
+            #    أبداً) والمسودات فقط تُحذف.
+            try:
+                gl_result = reverse_or_purge_gl_entries(
+                    'Expense',
+                    expense.id,
+                    description=f'عكس مصروف {expense.expense_number} (حذف نهائي)',
+                )
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(
+                    f'Failed to reverse GL entries for expense {expense.id}: {e}')
+                flash(
+                    f'❌ تعذّر عكس القيود المحاسبية للمصروف '
+                    f'"{expense.expense_number}" — لم يُحذف.\n💡 {e}',
+                    'danger')
+                return redirect(url_for('expenses.view', id=id))
 
-            # 2. حذف الشيك إن وجد وحذف قيوده بأمان FK
+            # 2. حذف الشيك إن وُجد وحذف قيوده (المرحَّلة تُعكس)
             if cheque:
                 cheque.gl_journal_entry_id = None
                 cheque.gl_clearing_entry_id = None
@@ -455,7 +479,11 @@ def delete(id):
 
                 for ref in ('cheque_receive', 'cheque_issue', 'cheque_cancel',
                             'cheque_clear', 'cheque_bounce', 'Cheque'):
-                    GLService.purge_by_reference(ref, cheque.id)
+                    reverse_or_purge_gl_entries(
+                        ref,
+                        cheque.id,
+                        description=f'عكس قيد شيك {cheque.cheque_bank_number} (حذف مصروف)',
+                    )
 
                 db.session.delete(cheque)
 
@@ -463,7 +491,14 @@ def delete(id):
             db.session.delete(expense)
             create_audit_log('delete', 'expenses', id)
             db.session.commit()
-            flash(f'✅ تم حذف المصروف "{expense.expense_number}" نهائياً', 'success')
+            if gl_result['reversed']:
+                flash(
+                    f'✅ تم حذف المصروف "{expense.expense_number}" نهائياً — '
+                    f'وعُكست قيوده المحاسبية ({gl_result["reversed"]} قيد) '
+                    f'بدل حذفها حفاظاً على الأثر المحاسبي.',
+                    'success')
+            else:
+                flash(f'✅ تم حذف المصروف "{expense.expense_number}" نهائياً', 'success')
 
         return redirect(url_for('expenses.index'))
 

@@ -55,8 +55,9 @@ class TestJournalEntry:
         assert entry.is_balanced()
 
     def test_unbalanced_entry_detected(self, db, owner_user):
-        """Unbalanced entry is detected."""
+        """F7: القيد غير المتوازن مُكتشف ومُرفوض — لا يُحفظ في الأستاذ."""
         from models import GLJournalEntry
+        from utils.errors import ValidationError
 
         entry = GLJournalEntry(
             entry_number='JE-TEST-002',
@@ -67,10 +68,16 @@ class TestJournalEntry:
             total_credit=Decimal('50.000'),  # Unbalanced!
             created_by=owner_user.id,
         )
-        db.session.add(entry)
-        db.session.commit()
-
+        # الاكتشاف على الكائن:
         assert not entry.is_balanced()
+
+        # والرفض عند الحفظ (المستمع يرفع بدل أن يحذّر):
+        db.session.add(entry)
+        with pytest.raises(ValidationError):
+            db.session.commit()
+        db.session.rollback()
+        assert GLJournalEntry.query.filter_by(
+            entry_number='JE-TEST-002').count() == 0
 
     def test_reverse_entry(self, db, owner_user):
         """Journal entry reversal creates opposite entry."""

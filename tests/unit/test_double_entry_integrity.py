@@ -32,6 +32,35 @@ from services.sale_service import SaleService
 TOLERANCE = Decimal('0.0001')
 
 
+@pytest.fixture(autouse=True)
+def open_fiscal_period(db):
+    """فترة مالية مفتوحة تغطي السنة الحالية.
+
+    F10: الترحيل إلى دفتر الأستاذ مرفوض الآن خارج فترة مالية مفتوحة
+    (فترة مغلقة أو تاريخ بلا فترة). وجود فترة مفتوحة هو شرط لازم في كل
+    اختبار يرحّل قيداً — الإعداد فقط هو ما يتغيّر هنا.
+    """
+    from datetime import date
+
+    from models.erp_modules import FiscalPeriod
+
+    year = date.today().year
+    existing = FiscalPeriod.query.filter_by(year=year, period_type='annual').first()
+    if existing is not None:
+        return existing
+    period = FiscalPeriod(
+        name=f'FY {year}',
+        year=year,
+        period_type='annual',
+        start_date=date(year, 1, 1),
+        end_date=date(year, 12, 31),
+        is_closed=False,
+    )
+    db.session.add(period)
+    db.session.commit()
+    return period
+
+
 @pytest.fixture
 def warehouse(db):
     wh = Warehouse(name='Integrity WH', name_ar='مستودع الفحص',

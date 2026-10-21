@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 from extensions import db
 
 
@@ -23,13 +24,20 @@ def create_customer(name, phone=None, address=None):
     return customer
 
 
-def create_product(name, part_number=None, regular_price=0, current_stock=0):
+def create_product(name, part_number=None, regular_price=0, current_stock=0, cost_price=0):
+    """إنشاء منتج — مع تكلفة اختيارية.
+
+    F1/F2: `cost_price` صفر يعني "بلا تكلفة موثّقة" — وهذا المنتج **لا
+    يمكن بيعه** (قيد الإيراد لن يقابله قيد تكلفة البضاعة ولا تسوية
+    للمخزون). لذلك يجب تمرير التكلفة عند إنشاء المنتج عبر المساعد الذكي.
+    """
     from models.product import Product
     product = Product(
         name=name,
         name_ar=name,
         part_number=part_number,
         regular_price=regular_price,
+        cost_price=cost_price,
         current_stock=current_stock,
         unit='قطعة',
         is_active=True,
@@ -40,46 +48,60 @@ def create_product(name, part_number=None, regular_price=0, current_stock=0):
 
 
 def create_sale(customer_id, product_id, quantity, seller_id):
-    from models.sale import Sale, SaleLine
+    """إنشاء فاتورة بيع عبر المسار الرسمي للبيع (SaleService).
+
+    F2: كان هذا المسار يطرح الكمية من `product.current_stock` مباشرة
+    (`product.current_stock -= quantity`) ثم يحفظ — بلا حركة مخزون، وبلا
+    لقطة تكلفة على سطر البيع، وبلا قيد إيراد، وبلا قيد تكلفة بضاعة
+    مباعة. أي أن البيع كان "يختفي" من المخزون دون أثر محاسبي.
+
+    الآن يمرّ البيع عبر `SaleService.create_sale` — نفس المسار الذي
+    تستعمله شاشة المبيعات — فتُكتب:
+      * حركة المخزون (StockService.process_sale_lines)،
+      * لقطة التكلفة على سطر البيع (cost_price)،
+      * قيد الإيراد (مدين ذمم مدينة / دائن إيرادات)،
+      * قيد تكلفة البضاعة المباعة (مدين COGS / دائن المخزون).
+    ومنتج بلا تكلفة يُرفض صراحةً (ValidationError) بدل أن يولّد فاتورة
+    إيراد بلا تكلفة.
+    """
+    from models.customer import Customer
     from models.product import Product
+    from models.user import User
+    from services.sale_service import SaleService
+    from utils.errors import ValidationError
 
     product = Product.query.get(product_id)
     if product is None:
         raise ValueError('المنتج غير موجود')
 
-    total = product.regular_price * quantity
+    customer = Customer.query.get(customer_id)
+    if customer is None:
+        raise ValueError('العميل غير موجود')
 
-    sale = Sale(
-        sale_number=_number(Sale, 'sale_number', 'INV'),
-        customer_id=customer_id,
-        seller_id=seller_id,
-        total_amount=total,
-        amount_base=total,
-        subtotal=total,
-        paid_amount=0,
-        paid_amount_base=0,
-        balance_due=total,
-        currency='AED',
-        exchange_rate=1,
-        payment_status='unpaid',
-        status='confirmed',
-        is_active=True,
+    seller = User.query.get(seller_id)
+    if seller is None:
+        raise ValueError('البائع غير موجود')
+
+    quantity_decimal = Decimal(str(quantity))
+    if quantity_decimal <= 0:
+        raise ValidationError('الكمية يجب أن تكون أكبر من صفر')
+
+    unit_price = product.get_price_for_customer(customer.customer_type)
+    if unit_price is None or Decimal(str(unit_price)) <= 0:
+        raise ValidationError(
+            f'⚠️ سعر بيع غير صالح للمنتج "{product.name}".\n'
+            f'💡 اضبط سعر المنتج قبل إنشاء الفاتورة.')
+
+    return SaleService.create_sale(
+        customer=customer,
+        seller=seller,
+        lines_data=[{
+            'product': product,
+            'quantity': quantity_decimal,
+            'unit_price': Decimal(str(unit_price)),
+        }],
+        notes='فاتورة مُنشأة عبر المساعد الذكي',
     )
-    db.session.add(sale)
-    db.session.flush()
-
-    line = SaleLine(
-        sale_id=sale.id,
-        product_id=product_id,
-        quantity=quantity,
-        unit_price=product.regular_price,
-        line_total=total,
-    )
-    db.session.add(line)
-
-    product.current_stock -= quantity
-    db.session.commit()
-    return sale
 
 
 def record_payment(customer_id, amount, method, direction, user_id, payment_type):

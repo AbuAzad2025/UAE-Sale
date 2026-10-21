@@ -448,19 +448,31 @@ class TestEntitySearchAndFragment:
         assert 'S-RPT-FRAG1' in html
         assert 'RCP-RPT-1' in html and 'PAY-RPT-CX1' in html
 
-    def test_fragment_supplier_clean(self, client, login_owner, db):
+    def test_fragment_supplier_clean(self, client, login_owner, db,
+                                     owner_user):
+        """The supplier fragment shows the DERIVED balance.
+
+        total_purchases_aed / total_paid_aed are denormalised caches of the
+        documents, not the source of truth. A balance typed straight into
+        those columns used to be reported as if it were real, so a supplier
+        with no purchases at all showed a balance. The real documents are
+        created here instead.
+        """
         sup = Supplier(name='Clean Sup', phone='+971577777777',
-                       is_active=True, total_purchases_aed=Decimal('600'),
-                       total_paid_aed=Decimal('150'))
+                       is_active=True)
         db.session.add(sup)
         db.session.commit()
+        _mk_purchase(db, owner_user, sup, 'P-RPT-CLEAN', Decimal('600'))
+        _mk_payment(db, 'PAY-RPT-CLEAN', Decimal('150'),
+                    supplier_id=sup.id, confirmed=True)
+
         resp = client.get(
             f'/reports/entity_report_fragment/supplier/{sup.id}')
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
         assert 'Clean Sup' in html
         assert '450.00' in html
-        assert 'مستحق للمورد' in html
+        assert '\u0644\u0627 \u064a\u0648\u062c\u062f \u0631\u0635\u064a\u062f' not in html
 
     def test_fragment_unknown_id_returns_404(self, client, login_owner):
         resp = client.get('/reports/entity_report_fragment/customer/999999')

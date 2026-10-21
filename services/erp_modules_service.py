@@ -13,6 +13,7 @@ from models.erp_modules import (
     EInvoice,
 )
 from utils.helpers import generate_number
+from utils.errors import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -217,10 +218,45 @@ class PurchaseOrderService:
 
 
 class FiscalPeriodService:
+    """الفترات المالية — قفل الترحيل منعاً للرجوع بالمستندات.
+
+    F10: كان ``is_period_open`` يرجع True عند عدم وجود فترة تغطي التاريخ
+    (فالتقفل لم يكن له أي أثر)، وكان البحث بـ ``.first()`` غير مرتّب (فالنتيجة
+    تعتمد على ترتيب الصفوف في القاعدة)، و ``FiscalPeriod`` بلا عمود
+    ``tenant_id`` (فإغلاق سنة من مستأجر يُجمّد كل المستأجرين).
+    """
 
     @staticmethod
-    def create_annual_period(year):
-        existing = FiscalPeriod.query.filter_by(year=year, period_type='annual').first()
+    def _tenant_id(tenant_id=None):
+        """معرّف المستأجر الحالي (None = نطاق عام/المالك)."""
+        if tenant_id is not None:
+            return tenant_id
+        try:
+            from models.tenant_scope import get_current_tenant_id
+
+            return get_current_tenant_id()
+        except Exception:
+            return None
+
+    @staticmethod
+    def _scope_query(query, tenant_id=None):
+        """تقييد الاستعلام بفترات المستأجر + الفترات العامة (NULL)."""
+        tenant_id = FiscalPeriodService._tenant_id(tenant_id)
+        if tenant_id is None or not hasattr(FiscalPeriod, 'tenant_id'):
+            return query
+        return query.filter(
+            (FiscalPeriod.tenant_id == tenant_id)
+            | (FiscalPeriod.tenant_id.is_(None))
+        )
+
+    @staticmethod
+    def create_annual_period(year, tenant_id=None):
+        """إنشاء فترة سنوية. الفترة تُنشأ للمستأجر الحالي (NULL = عامة)."""
+        tenant_id = FiscalPeriodService._tenant_id(tenant_id)
+        existing = FiscalPeriodService._scope_query(
+            FiscalPeriod.query.filter_by(year=year, period_type='annual'),
+            tenant_id,
+        ).first()
         if existing:
             raise ValueError(f'الفترة المالية لسنة {year} موجودة بالفعل')
         fp = FiscalPeriod(
@@ -230,6 +266,9 @@ class FiscalPeriodService:
             start_date=date(year, 1, 1),
             end_date=date(year, 12, 31),
         )
+        # عمود tenant_id قد لا يكون موجوداً في القاعدة قبل الترحيل.
+        if hasattr(FiscalPeriod, 'tenant_id'):
+            fp.tenant_id = tenant_id
         db.session.add(fp)
         db.session.commit()
         return fp
@@ -243,22 +282,48 @@ class FiscalPeriodService:
 
     @staticmethod
     def is_period_open(check_date):
-        """Check if a date falls within an open fiscal period"""
-        fp = FiscalPeriod.query.filter(
-            FiscalPeriod.start_date <= check_date,
-            FiscalPeriod.end_date >= check_date,
-        ).first()
-        if fp and fp.is_closed:
-            return False
-        return True
+        """هل يقع التاريخ في فترة مالية مفتوحة؟
+
+        F10: تاريخ لا تغطيه أي فترة مالية **ليس مفتوحاً** — كان الفحص
+        يرجع True دائماً في هذه الحالة فالتقفل لم يكن له أي أثر. البحث
+        الآن يتم عبر ``services.fiscal_period_guard`` (حتمي + مراعي
+        للمستأجر + يفضّل الفترة المفتوحة).
+        """
+        from services.fiscal_period_guard import is_open
+
+        return bool(is_open(check_date))
 
     @staticmethod
     def get_current_period():
-        today = date.today()
-        return FiscalPeriod.query.filter(
-            FiscalPeriod.start_date <= today,
-            FiscalPeriod.end_date >= today,
-        ).first()
+        """الفترة التي تغطي اليوم (حتمية، ومراعية للمستأجر)."""
+        from services.fiscal_period_guard import period_for_date
+
+        return period_for_date(date.today())
+
+    @staticmethod
+    def visible_periods(tenant_id=None):
+        """الفترات المرئية للمستأجر الحالي (فتراته + الفترات العامة)."""
+        query = FiscalPeriodService._scope_query(FiscalPeriod.query, tenant_id)
+        return query.order_by(FiscalPeriod.year.desc()).all()
+
+    @staticmethod
+    def get_owned_period(period_id, tenant_id=None):
+        """جلب فترة مالية ضمن نطاق المستأجر الحالي.
+
+        مستأجر لا يستطيع إغلاق فترة تخص مستأجراً آخر، ولا فترة عامة
+        (NULL) تُطبَّق على الجميع — تلك من صلاحية المالك على المنصة.
+        """
+        fp = db.get_or_404(FiscalPeriod, period_id)
+        tenant_id = FiscalPeriodService._tenant_id(tenant_id)
+        if tenant_id is not None and hasattr(FiscalPeriod, 'tenant_id'):
+            owner = getattr(fp, 'tenant_id', None)
+            if owner is not None and owner != tenant_id:
+                raise ValidationError('لا يمكن تعديل فترة مالية تخص مستأجراً آخر')
+            if owner is None:
+                raise ValidationError(
+                    'الفترة المالية عامة (لكل المستأجرين) — إغلاقها من صلاحية المالك فقط'
+                )
+        return fp
 
 
 class StockTransferService:

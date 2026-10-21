@@ -55,6 +55,19 @@ class Warehouse(db.Model):
 
 
 class StockMovement(TenantScopedMixin, db.Model):
+    """حركة مخزون واحدة.
+
+    SIGN CONVENTION (contract): the quantity ALWAYS carries the sign of the
+    stock change it represents — a purchase/receipt is POSITIVE, a
+    sale/issue is NEGATIVE, and an adjustment follows its direction.  The
+    plain SUM of the movement quantities of a product (or of a
+    product/warehouse pair) is therefore the physical quantity, whatever the
+    mix of movement types is.
+
+    Computing "received − issued" is WRONG: the issued movements are
+    already negative, so the sales would be added back.
+    """
+
     __tablename__ = 'stock_movements'
 
     id = db.Column(db.Integer, primary_key=True)

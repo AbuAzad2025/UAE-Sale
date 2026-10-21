@@ -52,23 +52,24 @@ def api_product_info(product_id):
         warehouse_name = warehouse.name
         # الرصيد الفعلي في هذا المستودع يأتي من حركات المخزون، لا من
         # current_stock الإجمالي للمنتج.
+        #
+        # Sign convention (services/stock_service.py): a StockMovement
+        # ALWAYS carries the sign of the stock change it represents — a
+        # purchase/receipt is positive, a sale/issue is NEGATIVE, an
+        # adjustment follows its direction.  The old "received − issued"
+        # formula therefore ADDED the sales back (100 purchased − (−30)
+        # sold = 130 instead of 70) and ignored adjustment/return/transfer
+        # movements entirely.  The plain SUM of the movement quantities is
+        # correct whatever the movement_type mix is.
         try:
             from models import StockMovement
-            received = db.session.query(
+            total = db.session.query(
                 db.func.coalesce(db.func.sum(StockMovement.quantity), 0)
             ).filter(
                 StockMovement.product_id == product.id,
                 StockMovement.warehouse_id == warehouse.id,
-                StockMovement.movement_type.in_(['in', 'purchase', 'receipt'])
             ).scalar() or 0
-            issued = db.session.query(
-                db.func.coalesce(db.func.sum(StockMovement.quantity), 0)
-            ).filter(
-                StockMovement.product_id == product.id,
-                StockMovement.warehouse_id == warehouse.id,
-                StockMovement.movement_type.in_(['out', 'sale', 'issue'])
-            ).scalar() or 0
-            stock = float(received) - float(issued)
+            stock = float(total)
         except Exception:
             # لا motions ⇒ المستودع مخصص للبيع فقط؛ يبقى الرصيد الإجمالي
             current_app.logger.warning(
@@ -85,6 +86,10 @@ def api_product_info(product_id):
         'barcode': product.barcode,
         'unit': product.unit,
         'current_stock': stock,
+        # static/js/sales.js reads `available` (and looks for a .stock-badge
+        # element) — both keys carry the same figure so the POS screen can
+        # never show "no stock" while the API has one.
+        'available': stock,
         'default_price': float(product.regular_price or 0),
         'unit_price': float(product.regular_price or 0),
         'regular_price': float(product.regular_price or 0),

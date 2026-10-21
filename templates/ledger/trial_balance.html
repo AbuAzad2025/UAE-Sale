@@ -78,7 +78,12 @@
       </tbody>
       <tfoot class="bg-light">
         <tr style="font-weight: 700; font-size: 16px;">
-          <td colspan="3" class="text-center">{{ t('Total') }}</td>
+          <td colspan="3" class="text-center">
+            {{ t('Total') }}
+            <small class="text-muted d-block" style="font-size: 11px; font-weight: 400;">
+              جميع المبالغ بعملة الأساس ({{ base_currency }})
+            </small>
+          </td>
           <td class="text-danger">{{ "{:,.2f}".format(total_debit) }}</td>
           <td class="text-success">{{ "{:,.2f}".format(total_credit) }}</td>
           <td class="text-danger">{{ "{:,.2f}".format(total_debit_balance) }}</td>

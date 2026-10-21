@@ -1,0 +1,33 @@
+alembic head: [('b0_p0_isolation_integrity',)]
+column gl_accounts.is_system: PRESENT
+column fiscal_periods.tenant_id: PRESENT
+column customers.opening_balance: PRESENT
+column customers.opening_balance_currency: PRESENT
+column customers.opening_balance_rate: PRESENT
+column customers.opening_balance_date: PRESENT
+column suppliers.opening_balance: PRESENT
+column suppliers.opening_balance_currency: PRESENT
+column suppliers.opening_balance_rate: PRESENT
+column suppliers.opening_balance_date: PRESENT
+column payments.purchase_id: PRESENT
+column receipts.allocations_json: PRESENT
+CHECK constraints:
+   ck_payment_amount_base_positive            on payments
+   ck_payment_amount_positive                 on payments
+   ck_payment_direction_valid                 on payments
+   ck_product_cost_non_negative               on products
+   ck_product_price_non_negative              on products
+   ck_product_stock_non_negative              on products
+   ck_purchase_amount_non_negative            on purchases
+   ck_purchase_total_non_negative             on purchases
+   ck_purchaseline_cost_non_negative          on purchase_lines
+   ck_purchaseline_qty_positive               on purchase_lines
+   ck_purchaseline_total_non_negative         on purchase_lines
+   ck_receipt_amount_base_positive            on receipts
+   ck_receipt_amount_positive                 on receipts
+   ck_receipt_xor_parent                      on receipts
+   ck_saleline_discount_range                 on sale_lines
+   ck_saleline_price_non_negative             on sale_lines
+   ck_saleline_qty_positive                   on sale_lines
+   ck_saleline_total_non_negative             on sale_lines
+gl_accounts marked is_system: 0

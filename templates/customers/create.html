@@ -148,6 +148,72 @@ a.btn.btn-outline-secondary span {
         {{ form.address(class="form-control", rows=2, placeholder="العنوان الكامل...") }}
       </div>
 
+      <!-- الرصيد الافتتاحي (F10) -->
+      <div class="row">
+        <div class="col-md-12">
+          <h5 class="text-primary mb-2">
+            <i class="fas fa-scale-balanced mr-1"></i> الرصيد الافتتاحي (اختياري)
+          </h5>
+          <small class="text-muted d-block mb-2">
+            <i class="fas fa-info-circle"></i>
+            رصيد سابق على استخدام النظام — يُضاف إلى رصيد العميل
+            (بالعملة الأساسية: المبلغ × سعر الصرف) ويظهر في كشف الحساب
+            وفي مطابقة الذمم الفرعية.
+          </small>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-money-bill text-success"></i> مبلغ الرصيد الافتتاحي
+            </label>
+            <input type="number" name="opening_balance" class="form-control"
+                   step="0.001" placeholder="0.00"
+                   value="{{ request.form.get('opening_balance', '0') }}">
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-dollar-sign text-warning"></i> عملة الرصيد الافتتاحي
+            </label>
+            <select name="opening_balance_currency" class="form-control select2">
+              {% for code, meta in lookups.get('currencies', []) %}
+              <option value="{{ code }}"
+                      {% if (request.form.get('opening_balance_currency') or base_currency) == code %}selected{% endif %}>{{ code }} - {{ meta.ar }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-exchange-alt text-primary"></i> سعر الصرف إلى {{ base_currency }}
+            </label>
+            <input type="number" name="opening_balance_rate" class="form-control"
+                   step="0.000001" min="0.000001"
+                   value="{{ request.form.get('opening_balance_rate', '1') }}">
+            <small class="form-text text-muted">
+              <i class="fas fa-info-circle"></i> كم وحدة من {{ base_currency }} تساوي وحدة واحدة من عملة الرصيد
+            </small>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-calendar-alt text-secondary"></i> تاريخ الرصيد الافتتاحي
+            </label>
+            <input type="date" name="opening_balance_date" class="form-control"
+                   value="{{ request.form.get('opening_balance_date', '') }}">
+          </div>
+        </div>
+      </div>
+
       <div class="form-group">
         <label>
           <i class="fas fa-sticky-note text-secondary"></i> {{ t('Notes') }}

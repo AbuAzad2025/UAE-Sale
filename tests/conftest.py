@@ -76,6 +76,21 @@ def db(app):
             except Exception:
                 _db.session.rollback()
         _db.create_all()
+        # A posting is refused unless it lands inside an OPEN fiscal period,
+        # and this fixture rebuilds the schema between tests - so the period
+        # has to be re-opened here, exactly as the application factory does at
+        # boot. Without it every test that posts to the GL would fail with
+        # "no fiscal period for this date".
+        try:
+            from datetime import date as _date
+            from services.fiscal_period_guard import ensure_periods_for_years
+            this_year = _date.today().year
+            # A NARROW range on purpose. A test that needs a year with NO
+            # period at all (the fiscal-period lock tests) must be able to find
+            # one, so the fixtures do not open every year.
+            ensure_periods_for_years(range(this_year - 1, this_year + 2))
+        except Exception:
+            pass
         yield _db
         _db.session.rollback()
         try:

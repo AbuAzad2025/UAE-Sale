@@ -36,6 +36,18 @@ class AuditLog(db.Model):
             'view': {'ar': 'عرض', 'en': 'View'},
             'export': {'ar': 'تصدير', 'en': 'Export'},
             'print': {'ar': 'طباعة', 'en': 'Print'},
+            # عمليات تدميرية على البيانات المالية والتدقيق
+            'truncate_table': {'ar': 'مسح جدول', 'en': 'Truncate table'},
+            'restore_backup': {'ar': 'استعادة نسخة احتياطية', 'en': 'Restore backup'},
+            'restore_backup_failed': {'ar': 'فشل استعادة نسخة احتياطية', 'en': 'Restore backup failed'},
+            'custom_restore_backup': {'ar': 'استعادة مخصصة', 'en': 'Custom restore'},
+            'custom_restore_backup_failed': {'ar': 'فشل استعادة مخصصة', 'en': 'Custom restore failed'},
+            'delete_backup': {'ar': 'حذف نسخة احتياطية', 'en': 'Delete backup'},
+            'deactivate': {'ar': 'إلغاء تفعيل', 'en': 'Deactivate'},
+            'activate': {'ar': 'تفعيل', 'en': 'Activate'},
+            'suspend': {'ar': 'إيقاف', 'en': 'Suspend'},
+            'receipt_create': {'ar': 'إنشاء سند قبض', 'en': 'Receipt create'},
+            'receipt_create_failed': {'ar': 'فشل إنشاء سند قبض', 'en': 'Receipt create failed'},
         }
         return actions.get(self.action, {}).get(lang, self.action)
 
@@ -46,6 +58,7 @@ class AuditLog(db.Model):
             'action': self.action,
             'table_name': self.table_name,
             'record_id': self.record_id,
+            'changes': self.changes,
             'created_at': self.created_at.isoformat(),
             'ip_address': self.ip_address,
         }

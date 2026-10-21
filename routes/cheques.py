@@ -9,6 +9,7 @@ from extensions import db, limiter
 from models import Cheque, Customer, Supplier
 from services.currency_service import CurrencyService
 from utils.decorators import admin_required, permission_required, get_owned_or_404
+from routes.ledger import reverse_or_purge_gl_entries
 
 from utils.helpers import create_audit_log, generate_number
 from datetime import datetime
@@ -505,24 +506,46 @@ def delete(id):
             flash(f'✅ تم أرشفة الشيك {cheque.cheque_bank_number} (لوجود ارتباطات)', 'warning')
 
         else:
-            # حذف نهائي (Hard Delete) بأمان FK: رأس→سطور→تدقيق→رؤوس
-            from services.gl_service import GLService
-
+            # حذف نهائي (Hard Delete): القيود المرحَّلة تُعكس (لا تُحذف
+            # أبداً — القيد المحاسبي أثر دائم) والمسودات فقط تُحذف.
             # قطع روابط القيد المحاسبي أولاً (قبل حذف القيود نفسها)
             cheque.gl_journal_entry_id = None
             cheque.gl_clearing_entry_id = None
             cheque.gl_bounce_entry_id = None
             db.session.flush()
 
+            reversed_count = 0
             for ref in ('cheque_receive', 'cheque_issue', 'cheque_cancel',
                         'cheque_clear', 'cheque_bounce', 'Cheque'):
-                GLService.purge_by_reference(ref, cheque.id)
+                try:
+                    gl_result = reverse_or_purge_gl_entries(
+                        ref,
+                        cheque.id,
+                        description=f'عكس قيد شيك {cheque.cheque_bank_number} (حذف نهائي)',
+                    )
+                except Exception as e:
+                    db.session.rollback()
+                    current_app.logger.error(
+                        f'Failed to reverse GL entries for cheque {cheque.id}: {e}')
+                    flash(
+                        f'❌ تعذّر عكس القيود المحاسبية للشيك '
+                        f'{cheque.cheque_bank_number} — لم يُحذف الشيك.\n💡 {e}',
+                        'danger')
+                    return redirect(url_for('cheques.view', id=id))
+                reversed_count += gl_result['reversed']
 
             db.session.delete(cheque)
             db.session.commit()
 
             create_audit_log('delete', 'cheques', id)
-            flash(f'✅ تم حذف الشيك {cheque.cheque_bank_number} نهائياً', 'success')
+            if reversed_count:
+                flash(
+                    f'✅ تم حذف الشيك {cheque.cheque_bank_number} نهائياً — '
+                    f'وعُكست قيوده المحاسبية ({reversed_count} قيد) '
+                    f'بدل حذفها حفاظاً على الأثر المحاسبي.',
+                    'success')
+            else:
+                flash(f'✅ تم حذف الشيك {cheque.cheque_bank_number} نهائياً', 'success')
 
         return redirect(url_for('cheques.index'))
 

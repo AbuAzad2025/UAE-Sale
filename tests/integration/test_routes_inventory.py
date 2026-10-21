@@ -83,7 +83,10 @@ def _supplier_form(**over):
         'credit_limit': '25000.500',
         'payment_terms_days': '45',
         'preferred_currency': 'AED',
-        'initial_balance': '1500',
+        'opening_balance': '1500',
+        'opening_balance_currency': 'AED',
+        'opening_balance_rate': '1',
+        'opening_balance_date': '2026-01-01',
         'tags': 'parts,oil',
         'notes': 'مورد موثوق',
         'is_verified': 'on',
@@ -540,7 +543,11 @@ class TestSuppliersCrud:
         assert supplier.supplier_type == 'parts'
         assert supplier.rating == 4
         assert supplier.credit_limit == Decimal('25000.5')
-        assert supplier.total_purchases_aed == Decimal('1500')
+        # F4: الرصيد الافتتاحي في أعمدته الخاصة — لا في إحصائية المشتريات
+        # (total_purchases_aed تُمسح عند أول فاتورة شراء).
+        assert supplier.opening_balance == Decimal('1500')
+        assert supplier.opening_balance_currency == 'AED'
+        assert supplier.total_purchases_aed == Decimal('0')
         assert supplier.total_paid_aed == Decimal('0')
         assert supplier.is_verified is True
         assert supplier.created_by == owner_user.id
@@ -552,8 +559,10 @@ class TestSuppliersCrud:
         assert Supplier.query.count() == 0
 
     def test_view_shows_supplier(self, client, login_owner, db):
+        # رصيد المورد يُشتق من مستنداته (مشتريات/مسدّدات) + الرصيد الافتتاحي
+        # (models/supplier.py::get_balance_aed) — لا من الأعمدة المخزَّنة.
         supplier = Supplier(name='View Target', phone='+971503330001',
-                            total_purchases_aed=Decimal('1500'), total_paid_aed=Decimal('500'))
+                            opening_balance=Decimal('1000'), opening_balance_rate=Decimal('1'))
         db.session.add(supplier)
         db.session.commit()
 
@@ -639,8 +648,9 @@ class TestSuppliersCrud:
 class TestSuppliersApiAndPermissions:
     def test_api_search_by_phone_and_balance(self, client, login_owner, db):
         # Q-remediation: /suppliers/api/search now requires login + manage_suppliers
+        # الرصيد يُشتق (مشتريات − مسدّدات + رصيد افتتاحي) لا من الأعمدة.
         supplier = Supplier(name='Api Search Co', phone='+971509876599',
-                            total_purchases_aed=Decimal('1500'), total_paid_aed=Decimal('500'))
+                            opening_balance=Decimal('1000'), opening_balance_rate=Decimal('1'))
         db.session.add(supplier)
         db.session.commit()
 

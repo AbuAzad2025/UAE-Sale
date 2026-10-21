@@ -71,7 +71,7 @@ def register_all_listeners():
 
 def register_sale_listeners():  # noqa: C901
     """تسجيل مستمعات الفواتير"""
-    from models import Sale, Customer
+    from models import Sale
 
     @event.listens_for(Sale, 'after_insert')
     @event.listens_for(Sale, 'after_update')
@@ -83,6 +83,10 @@ def register_sale_listeners():  # noqa: C901
         - إنشاء فاتورة جديدة
         - تعديل فاتورة موجودة
         - تغيير حالة الفاتورة (pending → confirmed)
+
+        F1: لم يعد هذا المستمع "يعيد احتساب" بصيغته الخاصة — بل يستدعي
+        المصدر الوحيد لرصيد العميل (models/customer.recompute_customer_balance)
+        فكل مسارات الكتابة تنتج نفس القيمة.
         """
         # لا نفعل شيء إذا كانت الفاتورة ملغية أو محذوفة
         if not target.is_active or target.status == 'cancelled':
@@ -90,44 +94,9 @@ def register_sale_listeners():  # noqa: C901
 
         # تحديث رصيد العميل تلقائياً
         try:
-            # حساب الرصيد الجديد من جميع الفواتير المؤكدة
-            sales_result = connection.execute(
-                Sale.__table__.select().where(
-                    Sale.customer_id == target.customer_id,
-                    Sale.status == 'confirmed',
-                    Sale.is_active.is_(True)
-                )
-            )
+            from models.customer import recompute_customer_balance
 
-            new_balance = Decimal('0')
-            for sale_row in sales_result:
-                amount = sale_row.amount_base or Decimal('0')
-                paid = sale_row.paid_amount_base or Decimal('0')
-                new_balance += (amount - paid)
-
-            # LEAK-GUARD: approved returns settle debt (gross refund in base
-            # currency).  Without this, a returned invoice keeps inflating
-            # the customer balance forever.
-            from models import ProductReturn
-            returns_result = connection.execute(
-                ProductReturn.__table__.select().where(
-                    ProductReturn.customer_id == target.customer_id,
-                    ProductReturn.status == 'approved',
-                )
-            )
-            for ret_row in returns_result:
-                rate = ret_row.exchange_rate or Decimal('1')
-                new_balance -= (Decimal(str(ret_row.refund_amount or 0)) * Decimal(str(rate)))
-
-            # تحديث رصيد العميل في قاعدة البيانات
-            connection.execute(
-                Customer.__table__.update().where(
-                    Customer.id == target.customer_id
-                ).values(
-                    balance=new_balance,
-                    updated_at=datetime.now(timezone.utc)
-                )
-            )
+            new_balance = recompute_customer_balance(target.customer_id, connection=connection)
 
             logger.info(f"✅ Auto-updated customer {target.customer_id} balance to {new_balance} AED after sale {target.sale_number}")
 
@@ -162,43 +131,23 @@ def register_sale_listeners():  # noqa: C901
 
 def register_receipt_listeners():
     """تسجيل مستمعات سندات القبض"""
-    from models import Receipt, Customer, Sale
+    from models import Receipt
 
     @event.listens_for(Receipt, 'after_insert')
     def auto_update_customer_on_receipt(mapper, connection, target):
         """
         تحديث تلقائي لرصيد العميل عند إنشاء سند قبض
 
-        ملاحظة: تحديث الفواتير المرتبطة يتم في PaymentService
-        هذا Listener يضمن تحديث الرصيد الإجمالي
+        F1: يستخدم نفس المصدر الواحد لرصيد العميل (models/customer) — formerly
+        this listener used a DIFFERENT formula (it ignored approved returns),
+        so the next receipt silently destroyed the returns credit.
         """
         try:
             logger.info(f"📝 Receipt {target.receipt_number} created - amount: {target.amount_base} AED for customer {target.customer_id}")
 
-            # حساب رصيد العميل من جديد
-            sales_result = connection.execute(
-                Sale.__table__.select().where(
-                    Sale.customer_id == target.customer_id,
-                    Sale.status == 'confirmed',
-                    Sale.is_active.is_(True)
-                )
-            )
+            from models.customer import recompute_customer_balance
 
-            new_balance = Decimal('0')
-            for sale_row in sales_result:
-                amount = sale_row.amount_base or Decimal('0')
-                paid = sale_row.paid_amount_base or Decimal('0')
-                new_balance += (amount - paid)
-
-            # تحديث رصيد العميل
-            connection.execute(
-                Customer.__table__.update().where(
-                    Customer.id == target.customer_id
-                ).values(
-                    balance=new_balance,
-                    updated_at=datetime.now(timezone.utc)
-                )
-            )
+            new_balance = recompute_customer_balance(target.customer_id, connection=connection)
 
             logger.info(f"✅ Auto-updated customer {target.customer_id} balance to {new_balance} AED after receipt")
 
@@ -219,51 +168,27 @@ def register_receipt_listeners():
 
 def register_purchase_listeners():
     """تسجيل مستمعات فواتير المشتريات"""
-    from models import Purchase, Supplier, Payment
+    from models import Purchase
 
     @event.listens_for(Purchase, 'after_insert')
     @event.listens_for(Purchase, 'after_update')
     def auto_update_supplier_on_purchase_change(mapper, connection, target):
-        """تحديث تلقائي لبيانات المورد عند تغيير فاتورة الشراء"""
+        """تحديث تلقائي لبيانات المورد عند تغيير فاتورة الشراء
+
+        F6: يستخدم نفس الصيغة المشتركة (models/supplier.derive_supplier_totals)
+        التي يستعملها مستمع السندات — previously the two listeners used
+        different formulas (one fell back to total_amount when amount_base
+        was NULL, the other did not) so the supplier's AP balance flipped
+        depending on which listener ran last.
+        """
         if target.status == 'cancelled':
             return
 
         try:
-            # حساب إجمالي المشتريات المؤكدة (تمرير واحد على فواتير المورد)
-            purchases_result = connection.execute(
-                Purchase.__table__.select().where(
-                    Purchase.supplier_id == target.supplier_id,
-                    Purchase.status == 'confirmed'
-                )
-            )
+            from models.supplier import recompute_supplier_totals
 
-            total_purchases = Decimal('0')
-            for purchase_row in purchases_result:
-                amount = purchase_row.amount_base
-                if amount is None:
-                    amount = purchase_row.total_amount
-                total_purchases += (Decimal(str(amount)) if amount is not None else Decimal('0'))
-
-            # إجمالي المدفوعات المؤكدة للمورد — استعلام واحد خارج حلقة الفواتير.
-            # كان يُحسب داخل الحلقة سابقاً فيُضرب إجمالي المدفوعات بعدد الفواتير
-            # (N+1 double-count) ثم يُضاف مرة رابعة من حلقة المدفوعات المباشرة.
-            from sqlalchemy import select, func
-            stmt = select(func.sum(Payment.amount_base)).where(
-                Payment.supplier_id == target.supplier_id,
-                Payment.payment_confirmed.is_(True)
-            )
-            total_paid = connection.execute(stmt).scalar() or Decimal('0')
-
-            # تحديث إحصائيات المورد
-            connection.execute(
-                Supplier.__table__.update().where(
-                    Supplier.id == target.supplier_id
-                ).values(
-                    total_purchases_aed=total_purchases,
-                    total_paid_aed=total_paid,
-                    updated_at=datetime.now(timezone.utc)
-                )
-            )
+            total_purchases, total_paid = recompute_supplier_totals(
+                target.supplier_id, connection=connection)
 
             logger.info(f"✅ Auto-updated supplier {target.supplier_id} totals: purchases={total_purchases} AED, paid={total_paid} AED")
 
@@ -277,54 +202,120 @@ def register_purchase_listeners():
 
 def register_payment_listeners():
     """تسجيل مستمعات سندات الصرف"""
-    from models import Payment, Supplier, Purchase
+    from models import Payment
 
     @event.listens_for(Payment, 'after_insert')
+    @event.listens_for(Payment, 'after_update')
     def auto_update_supplier_on_payment(mapper, connection, target):
-        """تحديث تلقائي لرصيد المورد عند إنشاء سند صرف"""
+        """تحديث تلقائي لرصيد المورد عند إنشاء سند صرف
+
+        F6: كان هذا المستمع يجمع كل سندات المورد (بما فيها الاستردادات
+        direction='incoming' والشيكات غير المؤكدة) فيزيد total_paid_aed
+        thereby DECREASING the AP balance — a supplier refund must INCREASE
+        what we owe the supplier.
+        """
         try:
-            # التحقق من وجود supplier_id في Payment model
-            if not hasattr(target, 'supplier_id') or target.supplier_id is None:
-                return
+            # ---- المورد (F6) -------------------------------------------
+            if target.supplier_id is not None:
+                logger.info(f"💰 Payment created - amount: {target.amount_base} AED to supplier {target.supplier_id}")
 
-            logger.info(f"💰 Payment created - amount: {target.amount_base} AED to supplier {target.supplier_id}")
+                try:
+                    from models.supplier import recompute_supplier_totals
+                    recompute_supplier_totals(target.supplier_id, connection=connection)
+                    logger.info(f"✅ Auto-updated supplier {target.supplier_id} after payment")
+                except Exception as e:
+                    logger.error(f"❌ Failed to auto-update supplier on payment: {e}")
 
-            # حساب إجمالي المشتريات المؤكدة
-            purchases_result = connection.execute(
-                Purchase.__table__.select().where(
-                    Purchase.supplier_id == target.supplier_id,
-                    Purchase.status == 'confirmed'
-                )
-            )
+            # ---- فاتورة الشراء المرتبطة (F3) ---------------------------
+            if target.purchase_id is not None:
+                try:
+                    from models.purchase import Purchase as _Purchase
+                    purchase = connection.execute(
+                        _Purchase.__table__.select().where(
+                            _Purchase.__table__.c.id == target.purchase_id)
+                    ).first()
+                    if purchase is not None:
+                        paid = _purchase_paid_base(target.purchase_id, connection)
+                        amount_base = Decimal(str(purchase.amount_base or 0))
+                        if paid <= Decimal('0'):
+                            status = 'unpaid'
+                        elif paid + Decimal('0.01') >= amount_base:
+                            status = 'paid'
+                        else:
+                            status = 'partial'
+                        connection.execute(
+                            _Purchase.__table__.update().where(
+                                _Purchase.__table__.c.id == target.purchase_id
+                            ).values(paid_amount=paid, payment_status=status)
+                        )
+                        # مزامنة ذاكرة هوية الجلسة
+                        try:
+                            from sqlalchemy.orm.attributes import set_committed_value
+                            from sqlalchemy.orm.util import identity_key
+                            from extensions import db
+                            instance = db.session().identity_map.get(
+                                identity_key(_Purchase, target.purchase_id))
+                            if instance is not None:
+                                set_committed_value(instance, 'paid_amount', paid)
+                                set_committed_value(instance, 'payment_status', status)
+                        except Exception:
+                            pass
+                except Exception as e:
+                    logger.error(f"❌ Failed to update purchase settlement: {e}")
 
-            total_purchases = Decimal('0')
+            # ---- فاتورة البيع المرتبطة (F2/F8) --------------------------
+            if target.sale_id is not None:
+                try:
+                    from models.sale import recompute_sale_settlement
+                    recompute_sale_settlement(target.sale_id, connection=connection)
 
-            for purchase_row in purchases_result:
-                total_purchases += (purchase_row.amount_base or Decimal('0'))
+                    # F1: رصيد العميل يُشتق من مصدره الواحد (الكتابة عبر Core
+                    # لا تُطلق مستمع التحديث → نعيد الاحتساب صراحةً).
+                    from models.customer import recompute_customer_balance
+                    from models.sale import Sale as _Sale
+                    sale_row = connection.execute(
+                        _Sale.__table__.select().where(
+                            _Sale.__table__.c.id == target.sale_id)
+                    ).first()
+                    if sale_row is not None and sale_row.customer_id is not None:
+                        recompute_customer_balance(sale_row.customer_id, connection=connection)
+                except Exception as e:
+                    logger.error(f"❌ Failed to update sale settlement: {e}")
 
-            # حساب إجمالي المدفوعات من جدول المدفوعات لهذا المورد
-            # Using Core Select properly
-            from sqlalchemy import select, func
-            stmt = select(func.sum(Payment.amount_base)).where(
-                Payment.supplier_id == target.supplier_id
-            )
-            total_paid = connection.execute(stmt).scalar() or Decimal('0')
-
-            # تحديث إحصائيات المورد
-            connection.execute(
-                Supplier.__table__.update().where(
-                    Supplier.id == target.supplier_id
-                ).values(
-                    total_purchases_aed=total_purchases,
-                    total_paid_aed=total_paid,
-                    updated_at=datetime.now(timezone.utc)
-                )
-            )
-
-            logger.info(f"✅ Auto-updated supplier {target.supplier_id} after payment")
+            # ---- العميل (F11) ------------------------------------------
+            # استرداد/سحب للعميل بلا فاتورة مرتبطة: هو الذي كان يُهمَل
+            # فيستثني الذمم المدينة بكل استرداد.
+            if target.customer_id is not None and target.sale_id is None:
+                try:
+                    from models.customer import recompute_customer_balance
+                    balance = recompute_customer_balance(target.customer_id, connection=connection)
+                    logger.info(f"✅ Auto-updated customer {target.customer_id} balance to {balance} after payment")
+                except Exception as e:
+                    logger.error(f"❌ Failed to auto-update customer on payment: {e}")
 
         except Exception as e:
-            logger.error(f"❌ Failed to auto-update supplier on payment: {e}")
+            logger.error(f"❌ Failed to auto-update on payment: {e}")
+
+
+def _purchase_paid_base(purchase_id, connection):
+    """المسدّد المؤكد لفاتورة الشراء (Core — آمن أثناء الـ flush)."""
+    from sqlalchemy import select
+
+    from models import Payment
+
+    rows = connection.execute(
+        select(
+            Payment.__table__.c.amount_base,
+            Payment.__table__.c.payment_confirmed,
+        ).where(Payment.__table__.c.purchase_id == purchase_id)
+    ).fetchall()
+
+    total = Decimal('0')
+    for row in rows:
+        if row.payment_confirmed is False:
+            continue
+        total += Decimal(str(row.amount_base or 0))
+    return total.quantize(Decimal('0.001'))
 
 # ============================================================================
 # Utility Functions - دوال مساعدة
@@ -367,6 +358,13 @@ def ensure_balance_consistency(connection, model, record_id):
     """
     التأكد من تطابق الأرصدة المخزنة مع الحسابات الديناميكية
 
+    F9: هذه الدالة **تفوّض** إلى المصدرين الوحيدين للأرصدة:
+      * العميل  → models.customer.derive_customer_balance
+      * المورد  → models.supplier.derive_supplier_totals
+    فلم تعد هناك صيغة ثالثة في الملف (كانت تجمع (amount_base −
+    paid_amount_base) لفواتير العميل دون is_active ودون المرتجعات، أي
+    صيغة تختلف عن الاشتقاق الحقيقي وتُضلّل المدقّق).
+
     Args:
         connection: اتصال قاعدة البيانات
         model: النموذج (Customer أو Supplier)
@@ -374,26 +372,19 @@ def ensure_balance_consistency(connection, model, record_id):
 
     Returns:
         dict: {'stored': Decimal, 'calculated': Decimal, 'consistent': bool}
+              (وللمورد: مفاتيح paid إضافية)
     """
     # هذه دالة مساعدة يمكن استخدامها في Listeners
     # لمقارنة الأرصدة المخزنة مع المحسوبة
 
     try:
-        from models import Customer, Sale
+        from models import Customer, Supplier
 
         if model == Customer:
-            # حساب الرصيد من الفواتير
-            result = connection.execute(
-                Sale.__table__.select().where(
-                    Sale.customer_id == record_id,
-                    Sale.status == 'confirmed'
-                )
-            ).fetchall()
+            # F1/F12: نفس المصدر الواحد لرصيد العميل
+            from models.customer import derive_customer_balance
 
-            calculated_balance = sum(
-                (row.amount_base or Decimal('0')) - (row.paid_amount_base or Decimal('0'))
-                for row in result
-            )
+            calculated_balance = derive_customer_balance(record_id, connection=connection)
 
             # الحصول على الرصيد المخزن
             customer = connection.execute(
@@ -408,6 +399,31 @@ def ensure_balance_consistency(connection, model, record_id):
                 'stored': stored_balance,
                 'calculated': calculated_balance,
                 'consistent': abs(stored_balance - calculated_balance) < Decimal('0.01')
+            }
+
+        if model == Supplier:
+            # F6/F12: نفس المصدر الواحد لإحصائيات المورد
+            from models.supplier import derive_supplier_totals
+
+            total_purchases, total_paid = derive_supplier_totals(
+                record_id, connection=connection)
+
+            supplier = connection.execute(
+                Supplier.__table__.select().where(
+                    Supplier.id == record_id
+                )
+            ).first()
+
+            stored_purchases = supplier.total_purchases_aed if supplier else Decimal('0')
+            stored_paid = supplier.total_paid_aed if supplier else Decimal('0')
+
+            return {
+                'stored': stored_purchases,
+                'calculated': total_purchases,
+                'consistent': abs(stored_purchases - total_purchases) < Decimal('0.01'),
+                'stored_paid': stored_paid,
+                'calculated_paid': total_paid,
+                'paid_consistent': abs(stored_paid - total_paid) < Decimal('0.01'),
             }
 
     except Exception as e:
@@ -426,8 +442,12 @@ def register_advanced_sale_listener():
 
     ملاحظة: معطل افتراضياً - قم بتفعيله إذا كنت تريد
     التحديث التلقائي الكامل للأرصدة المخزنة
+
+    F9: لم يعد هذا المستمع يحسب الرصيد بصيغته الخاصة — بل يستدعي
+    المصدر الوحيد (models/customer.recompute_customer_balance)، فتبقى
+    صيغة واحدة في النظام.
     """
-    from models import Sale, Customer
+    from models import Sale
 
     @event.listens_for(Sale, 'after_insert')
     @event.listens_for(Sale, 'after_update')
@@ -442,29 +462,11 @@ def register_advanced_sale_listener():
             return
 
         try:
-            # حساب الرصيد الجديد
-            sales = connection.execute(
-                Sale.__table__.select().where(
-                    Sale.customer_id == target.customer_id,
-                    Sale.status == 'confirmed',
-                    Sale.is_active.is_(True)
-                )
-            ).fetchall()
+            # F9: المصدر الوحيد لرصيد العميل
+            from models.customer import recompute_customer_balance
 
-            new_balance = sum(
-                (sale.amount_base or Decimal('0')) - (sale.paid_amount_base or Decimal('0'))
-                for sale in sales
-            )
-
-            # تحديث رصيد العميل
-            connection.execute(
-                Customer.__table__.update().where(
-                    Customer.id == target.customer_id
-                ).values(
-                    balance=new_balance,
-                    updated_at=datetime.now(timezone.utc)
-                )
-            )
+            new_balance = recompute_customer_balance(
+                target.customer_id, connection=connection)
 
             logger.info(f"Auto-updated customer {target.customer_id} balance to {new_balance} AED")
 
@@ -574,6 +576,13 @@ def register_product_return_listeners():
             if target.status == 'approved':
                 logger.info(f"📦 Product return {target.return_number} approved - stock will be updated via StockMovement")
 
+            # F1/F3: المرتجع المعتمد يُلغي قيمة الفاتورة فينقص رصيد
+            # العميل — والاشتقاق هو المصدر الوحيد للرصيد
+            # (models/customer.recompute_customer_balance).
+            if target.status == 'approved' and target.customer_id:
+                from models.customer import recompute_customer_balance
+                recompute_customer_balance(target.customer_id, connection=connection)
+
         except Exception as e:
             logger.error(f"❌ Failed to process product return: {e}")
 
@@ -602,6 +611,52 @@ def register_expense_listeners():
 # ============================================================================
 
 
+def _journal_line_totals(target, connection):
+    """مجموع (مدين، دائن) لسطور القيد + هل السطور مرئية؟
+
+    السطور تُقرأ من الجلسة (السطور المُعلّقة قبل الـ flush) أو من القاعدة
+    (القيد المحفوظ). "متوازن" يعني أن مجموع سطوره المدينة = مجموع
+    سطوره الدائنة — لا أن إجماليات الرأس متساوية.
+    """
+    from models.gl import GLJournalLine
+
+    debit = Decimal('0')
+    credit = Decimal('0')
+    has_lines = False
+
+    # 1) سطور مُعلّقة في الجلسة مرتبطة بهذا القيد
+    try:
+        from extensions import db
+
+        for obj in db.session.new:
+            if isinstance(obj, GLJournalLine) and obj.entry is target:
+                has_lines = True
+                debit += Decimal(str(obj.debit or 0))
+                credit += Decimal(str(obj.credit or 0))
+    except Exception:
+        pass
+
+    if has_lines:
+        return debit, credit, True
+
+    # 2) سطور محفوظة (تحديث قيد قائم)
+    if getattr(target, 'id', None) is not None:
+        from sqlalchemy import select
+
+        rows = connection.execute(
+            select(
+                GLJournalLine.__table__.c.debit,
+                GLJournalLine.__table__.c.credit,
+            ).where(GLJournalLine.__table__.c.entry_id == target.id)
+        ).fetchall()
+        for row in rows:
+            debit += Decimal(str(row.debit or 0))
+            credit += Decimal(str(row.credit or 0))
+        has_lines = len(rows) > 0
+
+    return debit, credit, has_lines
+
+
 def register_gl_listeners():
     """تسجيل مستمعات دفتر الأستاذ"""
     from models import GLJournalEntry
@@ -609,21 +664,42 @@ def register_gl_listeners():
     @event.listens_for(GLJournalEntry, 'before_insert')
     @event.listens_for(GLJournalEntry, 'before_update')
     def validate_journal_entry_balance(mapper, connection, target):
-        """التحقق من توازن القيد المحاسبي"""
-        try:
-            # التحقق من توازن القيد
+        """يرفض القيد غير المتوازن — آخر خط دفاع (F7).
+
+        السلوك القديم: كان المستمع يكتشف القيد غير المتوازن ويسجّل خطأ
+        فقط (الرفع كان معطّلاً في التعليق)، فكان القيد غير المتوازن
+        يمرّ إلى الأستاذ.
+
+        F7: (أ) يرفع بدل التحذير، (ب) يقارن **مجموع سطور القيد**
+        (Σ rows) لا إجماليات الرأس — فالإجماليات قد تكون متساوية
+        (مُدَّعاة) بينما السطور نفسها غير متوازنة، وهذا معنى "متوازن"
+        الحقيقي. إن لم تكن السطور مرئية بعد (القيد يُدخَل رأساً ثم
+        سطوره) فالمقارنة على إجماليات الرأس تُستخدم كخط دفاع إضافي —
+        والحاجز الأول يبقى في طبقة الخدمات (GLService.post_entry).
+        """
+        from utils.errors import ValidationError
+
+        debit, credit, has_lines = _journal_line_totals(target, connection)
+
+        if not has_lines:
+            # لا سطور مرئية بعد → قارن إجماليات الرأس (خط دفاع أخير).
             debit = target.total_debit or Decimal('0')
             credit = target.total_credit or Decimal('0')
+            source = 'إجماليات الرأس'
+        else:
+            source = 'مجموع سطور القيد'
 
-            if abs(debit - credit) > Decimal('0.01'):
-                logger.error(f"❌ Journal entry {target.entry_number} is UNBALANCED! Debit: {debit}, Credit: {credit}")
-                # يمكن رفع استثناء هنا لمنع الحفظ:
-                # raise ValueError(f"القيد غير متوازن! المدين: {debit}, الدائن: {credit}")
-            else:
-                logger.info(f"✅ Journal entry {target.entry_number} is balanced: {debit} = {credit}")
+        if abs(Decimal(str(debit)) - Decimal(str(credit))) > Decimal('0.01'):
+            logger.error(
+                f"❌ Journal entry {target.entry_number} is UNBALANCED! "
+                f"Debit: {debit}, Credit: {credit} ({source})")
+            raise ValidationError(
+                f'القيد {target.entry_number or ""} غير متوازن! '
+                f'المدين: {debit} | الدائن: {credit} ({source}). '
+                f'لا يُرحَّل قيد غير متوازن.'
+            )
 
-        except Exception as e:
-            logger.error(f"❌ Failed to validate journal entry: {e}")
+        logger.info(f"✅ Journal entry {target.entry_number} is balanced: {debit} = {credit}")
 
 # ============================================================================
 # Validation Listeners - مستمعات التحقق من البيانات
@@ -643,9 +719,20 @@ def register_validation_listeners():  # noqa: C901
             if target.amount_base and target.amount_base < 0:
                 logger.error(f"❌ Sale {target.sale_number}: Negative amount detected!")
 
-            # التحقق من الرصيد المتبقي
+            # التحقق من الرصيد المتبقي — بنفس صيغة الاشتقاق الواحدة
+            # (amount_base − paid_amount_base − المرتجعات المعتمدة).
             if target.paid_amount_base and target.amount_base:
                 expected_balance = target.amount_base - target.paid_amount_base
+                try:
+                    from models.sale import compute_sale_returns_base
+                    if target.id:
+                        expected_balance -= compute_sale_returns_base(
+                            target.id, connection=connection)
+                except Exception:
+                    pass
+                # لا يمكن أن يكون الرصيد سالباً (قيد ck_sale_balance_non_negative)
+                if expected_balance < Decimal('0'):
+                    expected_balance = Decimal('0')
                 if target.balance_due and abs(target.balance_due - expected_balance) > Decimal('0.01'):
                     # تصحيح تلقائي
                     target.balance_due = expected_balance
@@ -685,21 +772,32 @@ def register_validation_listeners():  # noqa: C901
         except Exception as e:
             logger.error(f"❌ Failed to validate payment: {e}")
 
+    @event.listens_for(Product, 'before_insert')
     @event.listens_for(Product, 'before_update')
     def validate_product_stock(mapper, connection, target):
-        """التحقق من المخزون السالب — يمنع حفظ مخزون سالب"""
-        try:
-            if target.current_stock is not None and target.current_stock < 0:
-                logger.error(
-                    f"❌ BLOCKED: Product {target.name} ({target.id}): "
-                    f"Negative stock ({target.current_stock}) is not allowed. "
-                    "Setting to 0."
-                )
-                # Prevent negative stock — clamp to zero
-                target.current_stock = 0
+        """يرفض المخزون السالب — لا يقصّه إلى صفر (F6).
 
-        except Exception as e:
-            logger.error(f"❌ Failed to validate product stock: {e}")
+        السلوك القديم: كان المستمع يقصّ المخزون السالب إلى صفر ويسجّل
+        سطر خطأ فقط ("BLOCKED ... Setting to 0"). النتيجة: بيع 10 وحدات
+        على رصيد 3 كان يترك current_stock = 0 وفاتورة بقيمة 10 — أي أن
+        العجز 7 وحدات مُحيى بصمت، وسطر log لا يمنع شيئاً. الآن يُرفض
+        الحفظ برسالة واضحة (ValidationError → خطأ نظيف في الواجهة لا
+        500)، و:before_insert يغطي حالة الإدراج (INSERT) أيضاً — كان
+        المستمع يُشتعل على التحديث فقط فكان الإدراج بمخزون سالب يمرّ
+        صامتاً.
+        """
+        from utils.errors import ValidationError
+
+        if target.current_stock is None:
+            return
+
+        if Decimal(str(target.current_stock)) < 0:
+            raise ValidationError(
+                f'❌ المخزون السالب غير مسموح للمنتج "{target.name}" '
+                f'(الرصيد: {target.current_stock}).\n'
+                f'💡 صحّح الكمية أو عوّض المخزون قبل الحفظ — لا يُقصّ '
+                f'العجز إلى صفر لأن الفاتورة تبقى قائمة على مخزون غير موجود.'
+            )
 
 # ============================================================================
 # Audit Listeners - مستمعات التدقيق

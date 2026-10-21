@@ -99,12 +99,20 @@
       </div>
       <div class="card-body">
         <div class="d-flex justify-content-between mb-2">
-          <span>إجمالي المبيعات الخاضعة:</span>
+          <span>إجمالي المبيعات الخاضعة (بدون ضريبة):</span>
           <strong>{{ "{:,.2f}".format(summary.total_taxable_sales) }} {{ base_currency }}</strong>
         </div>
         <div class="d-flex justify-content-between mb-2">
           <span>إجمالي المبيعات المعفاة:</span>
           <strong>{{ "{:,.2f}".format(summary.total_exempt_sales) }} {{ base_currency }}</strong>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span>إشعارات الدائنة (المرتجعات) — أساس:</span>
+          <strong>{{ "{:,.2f}".format(summary.total_credit_notes_net) }} {{ base_currency }}</strong>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span>ضريبة إشعارات الدائنة (خصم):</span>
+          <strong>{{ "{:,.2f}".format(summary.total_credit_notes_vat) }} {{ base_currency }}</strong>
         </div>
         <hr>
         <div class="d-flex justify-content-between">
@@ -123,7 +131,7 @@
       </div>
       <div class="card-body">
         <div class="d-flex justify-content-between mb-2">
-          <span>إجمالي المشتريات الخاضعة:</span>
+          <span>إجمالي المشتريات الخاضعة (بدون ضريبة):</span>
           <strong>{{ "{:,.2f}".format(summary.total_taxable_purchases) }} {{ base_currency }}</strong>
         </div>
         <div class="d-flex justify-content-between mb-2">
@@ -155,7 +163,7 @@
           <th>رقم الفاتورة</th>
           <th>التاريخ</th>
           <th>العميل</th>
-          <th class="text-right num-cell">المبلغ</th>
+          <th class="text-right num-cell">الأساس الخاضع</th>
           <th class="text-center">نسبة الضريبة</th>
           <th class="text-right num-cell">الضريبة</th>
         </tr>
@@ -165,8 +173,8 @@
         <tr>
           <td>{{ sale.number }}</td>
           <td>{{ sale.date.strftime('%Y-%m-%d') if sale.date else '-' }}</td>
-          <td>{{ sale.customer }}</td>
-          <td class="text-right num-cell">{{ sale.amount|money }}</td>
+          <td>{{ sale.party }}</td>
+          <td class="text-right num-cell">{{ sale.net_amount|money }}</td>
           <td class="text-center">{{ sale.tax_rate }}%</td>
           <td class="text-right num-cell">{{ sale.tax_amount|money }}</td>
         </tr>
@@ -178,6 +186,91 @@
           <td class="text-right num-cell">{{ summary.total_taxable_sales|money }}</td>
           <td></td>
           <td class="text-right num-cell">{{ summary.total_output_vat|money }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- Credit Notes (Returns) Detail -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h4 class="card-title mb-0">
+      <i class="fas fa-undo mr-2"></i>إشعارات الدائنة (المرتجعات)
+      <span class="badge badge-secondary ml-2">{{ credit_notes | length }}</span>
+    </h4>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-striped table-sm mb-0">
+      <thead>
+        <tr>
+          <th>رقم الإشعار</th>
+          <th>التاريخ</th>
+          <th>العميل</th>
+          <th class="text-right num-cell">الأساس الخاضع</th>
+          <th class="text-center">نسبة الضريبة</th>
+          <th class="text-right num-cell">الضريبة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for note in credit_notes %}
+        <tr>
+          <td>{{ note.number }}</td>
+          <td>{{ note.date.strftime('%Y-%m-%d') if note.date else '-' }}</td>
+          <td>{{ note.party }}</td>
+          <td class="text-right num-cell">{{ note.net_amount|money }}</td>
+          <td class="text-center">{{ note.tax_rate }}%</td>
+          <td class="text-right num-cell">{{ note.tax_amount|money }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="font-weight-bold">
+          <td colspan="3">المجموع</td>
+          <td class="text-right num-cell">{{ summary.total_credit_notes_net|money }}</td>
+          <td></td>
+          <td class="text-right num-cell">{{ summary.total_credit_notes_vat|money }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- Exempt Sales Detail -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h4 class="card-title mb-0">
+      <i class="fas fa-ban mr-2"></i>المبيعات المعفاة من الضريبة
+      <span class="badge badge-secondary ml-2">{{ exempt_sales | length }}</span>
+    </h4>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-striped table-sm mb-0">
+      <thead>
+        <tr>
+          <th>رقم الفاتورة</th>
+          <th>التاريخ</th>
+          <th>العميل</th>
+          <th class="text-right num-cell">المبلغ</th>
+          <th class="text-center">نسبة الضريبة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sale in exempt_sales %}
+        <tr>
+          <td>{{ sale.number }}</td>
+          <td>{{ sale.date.strftime('%Y-%m-%d') if sale.date else '-' }}</td>
+          <td>{{ sale.party }}</td>
+          <td class="text-right num-cell">{{ sale.gross_amount|money }}</td>
+          <td class="text-center">{{ sale.tax_rate }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="font-weight-bold">
+          <td colspan="3">المجموع</td>
+          <td class="text-right num-cell">{{ summary.total_exempt_sales|money }}</td>
+          <td></td>
         </tr>
       </tfoot>
     </table>
@@ -199,7 +292,7 @@
           <th>رقم الفاتورة</th>
           <th>التاريخ</th>
           <th>المورد</th>
-          <th class="text-right num-cell">المبلغ</th>
+          <th class="text-right num-cell">الأساس الخاضع</th>
           <th class="text-center">نسبة الضريبة</th>
           <th class="text-right num-cell">الضريبة</th>
         </tr>
@@ -209,8 +302,8 @@
         <tr>
           <td>{{ purchase.number }}</td>
           <td>{{ purchase.date.strftime('%Y-%m-%d') if purchase.date else '-' }}</td>
-          <td>{{ purchase.supplier }}</td>
-          <td class="text-right num-cell">{{ purchase.amount|money }}</td>
+          <td>{{ purchase.party }}</td>
+          <td class="text-right num-cell">{{ purchase.net_amount|money }}</td>
           <td class="text-center">{{ purchase.tax_rate }}%</td>
           <td class="text-right num-cell">{{ purchase.tax_amount|money }}</td>
         </tr>
@@ -222,6 +315,47 @@
           <td class="text-right num-cell">{{ summary.total_taxable_purchases|money }}</td>
           <td></td>
           <td class="text-right num-cell">{{ summary.total_input_vat|money }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- Exempt Purchases Detail -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h4 class="card-title mb-0">
+      <i class="fas fa-ban mr-2"></i>المشتريات المعفاة من الضريبة
+      <span class="badge badge-secondary ml-2">{{ exempt_purchases | length }}</span>
+    </h4>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-striped table-sm mb-0">
+      <thead>
+        <tr>
+          <th>رقم الفاتورة</th>
+          <th>التاريخ</th>
+          <th>المورد</th>
+          <th class="text-right num-cell">المبلغ</th>
+          <th class="text-center">نسبة الضريبة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for purchase in exempt_purchases %}
+        <tr>
+          <td>{{ purchase.number }}</td>
+          <td>{{ purchase.date.strftime('%Y-%m-%d') if purchase.date else '-' }}</td>
+          <td>{{ purchase.party }}</td>
+          <td class="text-right num-cell">{{ purchase.gross_amount|money }}</td>
+          <td class="text-center">{{ purchase.tax_rate }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="font-weight-bold">
+          <td colspan="3">المجموع</td>
+          <td class="text-right num-cell">{{ summary.total_exempt_purchases|money }}</td>
+          <td></td>
         </tr>
       </tfoot>
     </table>

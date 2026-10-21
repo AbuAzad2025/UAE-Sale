@@ -4,6 +4,7 @@ from flask_login import current_user
 from extensions import db
 from models import Product, StockMovement, Warehouse
 from utils.decorators import get_owned_or_raise
+from utils.errors import ValidationError
 
 
 class StockService:
@@ -32,7 +33,6 @@ class StockService:
             warehouse_id=warehouse_id
         )
 
-    @staticmethod
     @staticmethod
     def post_adjustment_gl(product, delta, movement):
         """Book the GL side of a manual stock adjustment.
@@ -78,7 +78,8 @@ class StockService:
         )
 
     @staticmethod
-    def adjust_stock(product_id, quantity, notes=None, warehouse_id=None, post_gl=True):
+    def adjust_stock(product_id, quantity, notes=None, warehouse_id=None, post_gl=True,
+                     reference_type=None, reference_id=None):
         """Adjust stock with an optional GL posting (contract C1).
 
         Args:
@@ -86,11 +87,21 @@ class StockService:
                 movement row — no GL journal entry is posted at all. Callers
                 doing pair transfers (e.g. StockTransfer send/receive) use
                 this to avoid double-posting.
+            reference_type / reference_id: business reference stored on the
+                movement row (e.g. 'Manual Adjustment', 'Product Update').
+
+        LEAK-GUARD (fail-closed): the stock movement and its journal entry
+        are one economic fact.  If the entry cannot be posted the movement
+        must not survive on its own, so the transaction is rolled back and
+        the error is re-raised (same contract as
+        services/sale_service.py::create_payment_for_sale).
         """
         movement = StockService.create_movement(
             product_id=product_id,
             quantity=Decimal(str(quantity)),
             movement_type='adjustment',
+            reference_type=reference_type,
+            reference_id=reference_id,
             notes=notes,
             warehouse_id=warehouse_id
         )
@@ -100,37 +111,26 @@ class StockService:
 
         # GL Integration for Adjustment
         try:
-            from services.gl_service import GLService
             product = get_owned_or_raise(Product, product_id, missing_message='المنتج غير موجود')
-            if product and product.cost_price:
-                cost_value = abs(Decimal(str(quantity))) * Decimal(str(product.cost_price))
-
-                if cost_value > 0:
-                    lines = []
-                    if Decimal(str(quantity)) < 0:
-                        # Loss (Decrease in Stock)
-                        # Debit Expense (Inventory Adjustment), Credit Inventory
-                        lines = [
-                            {'account': '5150', 'debit': cost_value, 'credit': 0, 'description': f'Inventory Adjustment (Loss) - {product.name}'},
-                            {'account': '1140', 'debit': 0, 'credit': cost_value, 'description': f'Stock Decrease - {product.name}'}
-                        ]
-                    else:
-                        # Gain (Increase in Stock)
-                        # Debit Inventory, Credit Expense (Contra) or Revenue
-                        # Using 5150 as Credit (reducing expense)
-                        lines = [
-                            {'account': '1140', 'debit': cost_value, 'credit': 0, 'description': f'Stock Increase - {product.name}'},
-                            {'account': '5150', 'debit': 0, 'credit': cost_value, 'description': f'Inventory Adjustment (Gain) - {product.name}'}
-                        ]
-
-                    GLService.post_entry(
-                        lines=lines,
-                        description=f'Stock Adjustment - {product.name}',
-                        reference_type='stock_adjustment',
-                        reference_id=movement.id
-                    )
+            entry = StockService.post_adjustment_gl(
+                product=product,
+                delta=Decimal(str(quantity)),
+                movement=movement,
+            )
+            if entry is None and Decimal(str(quantity)) != 0:
+                # لا يوجد قيد لأن تكلفة المنتج صفر/فارغة — التحرك بلا قيمة
+                # محاسبية. يُسجَّل تحذير صريح بدل تمرير العملية صامتة.
+                current_app.logger.warning(
+                    'Stock adjustment of %s for product #%s produced no GL '
+                    'entry: the product has no cost price.',
+                    quantity, product_id)
         except Exception as e:
-            current_app.logger.error(f"Failed to post GL entry for stock adjustment: {e}")
+            # fail-closed: لا يبقى المخزون متحركاً بلا قيد في الأستاذ.
+            db.session.rollback()
+            current_app.logger.error(
+                f'Failed to post GL entry for stock adjustment '
+                f'(product #{product_id}): {e}')
+            raise
 
         return movement
 
@@ -268,7 +268,47 @@ class StockService:
             )
 
     @staticmethod
-    def check_availability(product_id, quantity):
+    def get_warehouse_quantity(product_id, warehouse_id):
+        """رصيد المنتج في مستودع محدد = المجموع البسيط لكميات حركاته.
+
+        Convention (sign): a StockMovement ALWAYS carries the sign of the
+        stock change it represents — a purchase/receipt is positive, a
+        sale/issue is negative, an adjustment follows its direction.  The
+        plain SUM of the movement quantities of a (product, warehouse) pair
+        is therefore the physical quantity in that warehouse, whatever the
+        movement_type mix is.  Summing "received − issued" is WRONG because
+        the issued movements are already negative (it would add them back).
+        """
+        from sqlalchemy import func
+
+        total = db.session.query(
+            func.coalesce(func.sum(StockMovement.quantity), 0)
+        ).filter(
+            StockMovement.product_id == product_id,
+            StockMovement.warehouse_id == warehouse_id,
+        ).scalar()
+        return Decimal(str(total or 0))
+
+    @staticmethod
+    def get_product_quantity_from_movements(product_id):
+        """إجمالي رصيد المنتج من الحركات = مجموع بسيط لكل حركاته."""
+        from sqlalchemy import func
+
+        total = db.session.query(
+            func.coalesce(func.sum(StockMovement.quantity), 0)
+        ).filter(StockMovement.product_id == product_id).scalar()
+        return Decimal(str(total or 0))
+
+    @staticmethod
+    def check_availability(product_id, quantity, warehouse_id=None):
+        """هل الكمية المطلوبة متوفرة؟
+
+        When ``warehouse_id`` is given the check is WAREHOUSE-AWARE: the
+        comparison uses the quantity physically present in that warehouse
+        (plain sum of its movements) instead of the product's global
+        ``current_stock``.  Otherwise a seller could ship stock that sits
+        in another warehouse.
+        """
         product = get_owned_or_raise(Product, product_id, missing_message='المنتج غير موجود')
 
         if not product:
@@ -277,10 +317,68 @@ class StockService:
         if not product.is_active:
             return False, 'المنتج غير نشط'
 
-        if product.current_stock < Decimal(str(quantity)):
+        requested = Decimal(str(quantity))
+
+        if warehouse_id:
+            available_qty = StockService.get_warehouse_quantity(product_id, warehouse_id)
+            if available_qty < requested:
+                return False, (
+                    f'المخزون غير كافٍ في هذا المستودع '
+                    f'(المتوفر: {available_qty})')
+            return True, 'متوفر'
+
+        if Decimal(str(product.current_stock or 0)) < requested:
             return False, f'المخزون غير كافٍ (المتوفر: {product.current_stock})'
 
         return True, 'متوفر'
+
+    @staticmethod
+    def get_cost_basis(product):
+        """أساس تكلفة المنتج (.Decimal) أو None إن لم تكن هناك تكلفة موثوقة.
+
+        A product whose ``cost_price`` is 0 (or NULL) has NO reliable cost
+        basis: it cannot produce a COGS entry nor a valuation, so it must
+        never be sold silently as a revenue-only document.
+        """
+        if product is None:
+            return None
+        raw = getattr(product, 'cost_price', None)
+        if raw is None:
+            return None
+        try:
+            cost = Decimal(str(raw))
+        except Exception:
+            return None
+        if cost <= 0:
+            return None
+        return cost
+
+    @staticmethod
+    def require_cost_basis(product, quantity=None):
+        """يمنع العملية الصامتة بلا تكلفة (فحص التكلفة قبل البيع).
+
+        Raises:
+            ValidationError: باسم المنتج، إن كانت تكلفته صفراً/فارغة.
+        """
+        cost = StockService.get_cost_basis(product)
+        if cost is None:
+            name = getattr(product, 'name', None) or 'غير معروف'
+            sku = getattr(product, 'sku', None)
+            suffix = f' (SKU: {sku})' if sku else ''
+            raise ValidationError(
+                f'⚠️ المنتج "{name}"{suffix} بلا تكلفة مسجّلة (cost_price = 0). '
+                f'لا يمكن بيعه لأن قيد الإيراد لن يقابله قيد تكلفة البضاعة '
+                f'ولا تسوية للمخزون.\n'
+                f'💡 اضبط تكلفة المنتج في بطاقة المنتج ثم أعد المحاولة.')
+        if quantity is not None:
+            try:
+                if Decimal(str(quantity)) <= 0:
+                    raise ValidationError('الكمية يجب أن تكون أكبر من صفر')
+            except ValidationError:
+                raise
+            except Exception:
+                pass
+        return cost
 
     @staticmethod
     def get_low_stock_products(limit=None):

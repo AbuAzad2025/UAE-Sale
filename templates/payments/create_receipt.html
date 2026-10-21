@@ -87,7 +87,9 @@
           </div>
           <div class="col-md-3">
             <strong>المتبقي:</strong><br>
-            <span class="text-danger">{{ "{:,.2f}".format(sale.balance_due) }} {{ sale.currency }}</span>
+            {# F6: المتبقي (balance_due) بعملة الأساس دائماً — انظر
+               models/sale.py::recompute_sale_settlement #}
+            <span class="text-danger">{{ "{:,.2f}".format(sale.balance_due) }} {{ base_currency }}</span>
           </div>
         </div>
       </div>
@@ -208,14 +210,18 @@
         <div class="col-md-12">
           <div class="form-group">
             <label>
-              <i class="fas fa-exchange-alt text-primary"></i> سعر الصرف مقابل الدرهم
+              <i class="fas fa-exchange-alt text-primary"></i> سعر الصرف مقابل {{ base_currency }}
             </label>
+            <!-- F5: الحقل قابل للتعديل (كان readonly ومحمّلاً بسعر الفاتورة:
+                 سند بعملة EUR كان يُقيَّد بسعر USD→ILS ⇒ خطأ ~10% في سند نقدي).
+                 الخادم (routes/payments.py::_resolve_document_rate) يرفض سعر
+                 مستند مختلف ويرجع لسعر السوق — والواجهة الآن تعرض السعر
+                 الصحيح حسب العملة المختارة. -->
             <input type="number" name="exchange_rate" id="exchange_rate" 
                    class="form-control" step="0.000001" min="0.000001"
-                   value="{% if purchase %}{{ purchase.exchange_rate }}{% elif sale %}{{ sale.exchange_rate }}{% else %}1{% endif %}" 
-                   readonly style="background-color: #f8f9fa;">
-            <small class="form-text text-muted">
-              <i class="fas fa-info-circle"></i> سعر الصرف من الفاتورة (ثابت)
+                   value="{% if purchase %}{{ purchase.exchange_rate }}{% elif sale %}{{ sale.exchange_rate }}{% else %}1{% endif %}">
+            <small class="form-text text-muted" id="exchange_rate_hint">
+              <i class="fas fa-info-circle"></i> يُحدَّث سعر الصرف تلقائياً عند تغيير العملة — ويمكن تعديله يدوياً
             </small>
           </div>
         </div>
@@ -375,6 +381,69 @@
 
 {% block extra_js %}
 <script>
+// ── F5: سعر الصرف يُحدَّث عند تغيير العملة ──────────────────────────────
+// جدول الأسعار المرسل من الخادم (إن وُجد): 1 وحدة من عملة الأساس = X من
+// العملة. وسعر السند المطلوب هو «وحدات الأساس لكل وحدة من عملة السند»
+// أي مقلوب الجدول. وإن لم يتوفّر الجدول في هذه الصفحة يُستدعى نفس حساب
+// الخادم (/api/currency-rate) الذي يستعمله الخادم في تثبيت السعر، وإن فشل
+// ذلك يبقى الحقل قابلاً للتعديل (لا يُقفل readonly أبداً).
+var RECEIPT_BASE_CURRENCY = '{{ base_currency }}';
+var RECEIPT_EXCHANGE_RATES = {{ (exchange_rates or {}) | tojson }};
+var RECEIPT_DOCUMENT_CURRENCY = '{{ purchase.currency if purchase else (sale.currency if sale else "") }}';
+
+function setExchangeRateHint(level, message) {
+  var $hint = $('#exchange_rate_hint');
+  if (!$hint.length) return;
+  var css = level === 'success' ? 'text-success' : (level === 'warning' ? 'text-warning' : 'text-muted');
+  $hint.removeClass('text-muted text-success text-warning text-danger')
+       .addClass(css)
+       .html('<i class="fas fa-info-circle"></i> ' + message);
+}
+
+function receiptRateFromTable(currency) {
+  if (!currency) return null;
+  if (String(currency).toUpperCase() === String(RECEIPT_BASE_CURRENCY).toUpperCase()) {
+    return 1;
+  }
+  var perBase = parseFloat(RECEIPT_EXCHANGE_RATES[currency] ||
+                           RECEIPT_EXCHANGE_RATES[String(currency).toUpperCase()]);
+  if (!perBase || !isFinite(perBase) || perBase <= 0) return null;
+  return 1 / perBase;   // وحدات الأساس لكل وحدة من عملة السند
+}
+
+function refreshExchangeRate() {
+  var currency = $('#currency').val();
+  if (!currency) return;
+
+  var rate = receiptRateFromTable(currency);
+  if (rate) {
+    $('#exchange_rate').val(rate.toFixed(6));
+    setExchangeRateHint('success', 'سعر الصرف من جدول الأسعار: 1 ' + currency +
+                        ' = ' + rate.toFixed(6) + ' ' + RECEIPT_BASE_CURRENCY);
+    return;
+  }
+
+  // لا يوجد جدول أسعار في هذه الصفحة → نفس حساب الخادم
+  $.ajax({
+    url: '/api/currency-rate/' + encodeURIComponent(currency) + '/' +
+         encodeURIComponent(RECEIPT_BASE_CURRENCY),
+    method: 'GET',
+    headers: { 'X-CSRFToken': $('input[name="csrf_token"]').val() },
+    success: function (data) {
+      if (data && data.rate) {
+        $('#exchange_rate').val(parseFloat(data.rate).toFixed(6));
+        setExchangeRateHint('success', 'سعر الصرف من الخادم: 1 ' + currency +
+                            ' = ' + parseFloat(data.rate).toFixed(6) + ' ' + RECEIPT_BASE_CURRENCY);
+      } else {
+        setExchangeRateHint('warning', 'تعذّر جلب سعر الصرف — أدخله يدوياً');
+      }
+    },
+    error: function () {
+      setExchangeRateHint('warning', 'تعذّر جلب سعر الصرف — أدخله يدوياً');
+    }
+  });
+}
+
 $(document).ready(function() {
   // تفعيل Tooltips
   $('[data-toggle="tooltip"]').tooltip({
@@ -425,6 +494,18 @@ $(document).ready(function() {
     $('#payment_method').trigger('change');
   }
   
+  // F5: تحديث سعر الصرف عند تغيير العملة (لا يبقى سعر الفاتورة)
+  $('#currency').on('change select2:select', function() {
+    refreshExchangeRate();
+  });
+
+  // F5: إذا اختلفت عملة السند عن عملة المستند (إعادة عرض بعد خطأ مثلاً)
+  // فالحقل محمَّل بسعر المستند — يُصحَّح فوراً.
+  if (RECEIPT_DOCUMENT_CURRENCY &&
+      String($('#currency').val()).toUpperCase() !== String(RECEIPT_DOCUMENT_CURRENCY).toUpperCase()) {
+    refreshExchangeRate();
+  }
+
   // تحميل بيانات العميل عند الاختيار
   $('#customer_id').on('select2:select change', function() {
     var customerId = $(this).val();

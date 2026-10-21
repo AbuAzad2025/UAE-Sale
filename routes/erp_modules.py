@@ -252,7 +252,9 @@ def receive_purchase_order(id):
 @login_required
 @permission_required('manage_ledger')
 def fiscal_periods():
-    periods = FiscalPeriod.query.order_by(FiscalPeriod.year.desc()).all()
+    # F10: لا تُعرض فترات مستأجر آخر — الفترة العامة (tenant_id = NULL)
+    # تظهر للجميع، والخاصة تظهر لصاحبها فقط.
+    periods = FiscalPeriodService.visible_periods()
     return render_template('erp/fiscal_periods.html', periods=periods)
 
 
@@ -265,9 +267,10 @@ def create_fiscal_period():
         _ = FiscalPeriodService.create_annual_period(year)
         flash(f'✅ تم إنشاء الفترة المالية {year}', 'success')
     except ValueError as e:
-        current_app.logger.exception('handler failed')
-        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
+        current_app.logger.warning('fiscal period creation failed: %s', e)
+        flash(f'⚠️: {e}', 'danger')
     return redirect(url_for('erp_modules.fiscal_periods'))
+
 
 
 @erp_bp.route('/fiscal-periods/<int:id>/close', methods=['POST'])
@@ -276,7 +279,10 @@ def create_fiscal_period():
 def close_fiscal_period(id):
     """Close fiscal period — admin only (owner/super_admin)"""
     try:
-        FiscalPeriodService.close_period(id, current_user.id)
+        # F10: no period is closed unless it belongs to the tenant (or it is
+        # a global period closed from the platform-owner level).
+        fp = FiscalPeriodService.get_owned_period(id)
+        FiscalPeriodService.close_period(fp.id, current_user.id)
         create_audit_log('close', 'fiscal_periods', id)
         flash('✅ تم إغلاق الفترة المالية', 'success')
     except ValueError as e:
@@ -290,11 +296,15 @@ def close_fiscal_period(id):
 @admin_required
 def reopen_fiscal_period(id):
     """Reopen fiscal period — admin only (owner/super_admin)"""
-    fp = db.get_or_404(FiscalPeriod, id)
-    fp.reopen()
-    db.session.commit()
-    create_audit_log('reopen', 'fiscal_periods', id)
-    flash('✅ تم إعادة فتح الفترة المالية', 'success')
+    try:
+        fp = FiscalPeriodService.get_owned_period(id)
+        fp.reopen()
+        db.session.commit()
+        create_audit_log('reopen', 'fiscal_periods', id)
+        flash('✅ تم إعادة فتح الفترة المالية', 'success')
+    except ValueError as e:
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️: {e}', 'danger')
     return redirect(url_for('erp_modules.fiscal_periods'))
 
 # ==================== STOCK TRANSFERS ====================

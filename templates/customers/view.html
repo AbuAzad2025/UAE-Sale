@@ -43,6 +43,15 @@
             </span>
           </li>
           <li class="list-group-item">
+            <b>الرصيد الافتتاحي</b>
+            <span class="float-left">
+              {{ "{:,.2f}".format(customer.get_opening_balance_base()) }} {{ base_currency }}
+              {% if customer.opening_balance_currency and customer.opening_balance_currency != base_currency %}
+                <small class="text-muted">({{ "{:,.2f}".format(customer.opening_balance or 0) }} {{ customer.opening_balance_currency }})</small>
+              {% endif %}
+            </span>
+          </li>
+          <li class="list-group-item">
             <b>إجمالي المشتريات</b>
             <span class="float-left">{{ "{:,.2f}".format(customer.total_purchases) }} {{ base_currency }}</span>
           </li>
@@ -101,9 +110,10 @@
             <tr>
               <td><a href="{{ url_for('sales.view', id=sale.id) }}">{{ sale.sale_number }}</a></td>
               <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
+              {# F6: المبلغ الإجمالي والمدفوع بعملة الفاتورة، والمتبقي بعملة الأساس #}
               <td>{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency or base_currency }}</td>
               <td>{{ "{:,.2f}".format(sale.paid_amount) }} {{ sale.currency or base_currency }}</td>
-              <td class="text-danger">{{ "{:,.2f}".format(sale.balance_due) }} {{ sale.currency or base_currency }}</td>
+              <td class="text-danger">{{ "{:,.2f}".format(sale.balance_due) }} {{ base_currency }}</td>
             </tr>
             {% endfor %}
           </tbody>

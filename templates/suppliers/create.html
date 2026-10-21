@@ -318,25 +318,77 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-wallet text-success"></i> الرصيد الابتدائي ({{ base_currency }})
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المبلغ المستحق للمورد عند بداية التسجيل"></i>
-            </label>
-            <input type="number" name="initial_balance" class="form-control"
-                   value="0" step="0.01" min="0" placeholder="0.00">
-            <small class="form-text text-muted">
-              <i class="fas fa-info-circle"></i> المبلغ المستحق للمورد من قبل (إن وجد)
-            </small>
-          </div>
-        </div>
-        
-        <div class="col-md-3">
-          <div class="form-group">
-            <label>
               <i class="fas fa-coins text-info"></i> الحد الائتماني ({{ base_currency }})
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الحد الأقصى للديون المسموح به"></i>
             </label>
             <input type="number" name="credit_limit" class="form-control"
                    value="0" step="0.01" min="0" placeholder="0.00">
+          </div>
+        </div>
+      </div>
+
+      <!-- الرصيد الافتتاحي (F10) — يستبدل حقل initial_balance القديم -->
+      <div class="row">
+        <div class="col-md-12">
+          <h5 class="text-success mb-2">
+            <i class="fas fa-scale-balanced mr-1"></i> الرصيد الافتتاحي (اختياري)
+          </h5>
+          <small class="text-muted d-block mb-2">
+            <i class="fas fa-info-circle"></i>
+            المبلغ المستحق للمورد قبل بدء استخدام النظام — يُحفظ منفصلاً عن
+            إجمالي المشتريات (كان يُدسّ داخل total_purchases_aed فيُمحى عند
+            أول فاتورة جديدة) ويُضاف إلى رصيد المورد المستحق.
+          </small>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-money-bill text-success"></i> مبلغ الرصيد الافتتاحي
+            </label>
+            <input type="number" name="opening_balance" class="form-control"
+                   step="0.001" placeholder="0.00"
+                   value="{{ request.form.get('opening_balance', '0') }}">
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-dollar-sign text-warning"></i> عملة الرصيد الافتتاحي
+            </label>
+            <select name="opening_balance_currency" class="form-control select2">
+              {% for code, meta in lookups.get('currencies', []) %}
+              <option value="{{ code }}"
+                      {% if (request.form.get('opening_balance_currency') or base_currency) == code %}selected{% endif %}>{{ code }} - {{ meta.ar }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-exchange-alt text-primary"></i> سعر الصرف إلى {{ base_currency }}
+            </label>
+            <input type="number" name="opening_balance_rate" class="form-control"
+                   step="0.000001" min="0.000001"
+                   value="{{ request.form.get('opening_balance_rate', '1') }}">
+            <small class="form-text text-muted">
+              <i class="fas fa-info-circle"></i> كم وحدة من {{ base_currency }} تساوي وحدة واحدة من عملة الرصيد
+            </small>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-calendar-alt text-secondary"></i> تاريخ الرصيد الافتتاحي
+            </label>
+            <input type="date" name="opening_balance_date" class="form-control"
+                   value="{{ request.form.get('opening_balance_date', '') }}">
           </div>
         </div>
       </div>
@@ -356,7 +408,7 @@
         <div class="col-md-9">
           <div class="alert alert-info mb-0">
             <i class="fas fa-lightbulb"></i> 
-            <strong>ملاحظة:</strong> الرصيد الابتدائي يُستخدم لتسجيل المبالغ المستحقة للمورد من قبل تفعيل النظام
+            <strong>ملاحظة:</strong> الرصيد الافتتاحي يُستخدم لتسجيل المبالغ المستحقة للمورد قبل تفعيل النظام، وهو منفصل عن إجمالي المشتريات
           </div>
         </div>
       </div>

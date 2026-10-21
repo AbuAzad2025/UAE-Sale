@@ -50,6 +50,33 @@ def resolve_account(role_name):
     return FALLBACK_ACCOUNTS.get(role_name)
 
 
+def _warehouse_stock_is_authoritative(product):
+    """هل تُغطّي حركات المخزون كامل رصيد المنتج (فتُنسب الكميات إلى المستودعات)؟
+
+    في الإنتاج يُسجَّل الرصيد الافتتاحي كحركة (routes/products.py) فتساوي
+    مجموع الحركات الرصيد العام للبطاقة، وعندها تكون كمية كل مستودع
+    (مجموع حركاته) هي المرجع الصحيح. أمّا منتج أُدخل رصيده يدوياً على
+    البطاقة (بلا أي حركة) فلا تُنسب كميته إلى مستودع واحد، فيبقى الرصيد
+    العام هو المرجع الوحيد المتاح.
+
+    Args:
+        product: كائن Product.
+
+    Returns:
+        bool: True إذا أمكن استعمال رصيد المستودع في فحص التوفر.
+    """
+    from sqlalchemy import func
+
+    from models import StockMovement
+
+    movements_total = db.session.query(
+        func.coalesce(func.sum(StockMovement.quantity), 0)
+    ).filter(StockMovement.product_id == product.id).scalar()
+    movements_total = Decimal(str(movements_total or 0))
+    current_stock = Decimal(str(product.current_stock or 0))
+    return abs(movements_total - current_stock) <= Decimal('0.001')
+
+
 def merchant_receivable_codes():
     """Non-standard AR buckets used for merchant/partner invoices.
 
@@ -195,8 +222,24 @@ class SaleService:
                 if quantity <= Decimal('0'):
                     raise ValidationError(f'⚠️ المنتج "{product.name}": الكمية يجب أن تكون أكبر من صفر.\n💡 أدخل كمية صحيحة مثل: 1, 2, 5, 10')
 
-                # Check stock availability
-                available, msg = StockService.check_availability(product.id, quantity)
+                # F1: لا فاتورة بلا تكلفة — منتج بلا cost_price لا ينتج
+                # قيد تكلفة (COGS) ولا تسوية للمخزون، فرحّل فاتورة إيراد
+                # بلا مقابل كان يجعل المخزون بلا قيمة والربح وهمياً.
+                # يُرفض البيع برسالة تسمّي المنتج (ValidationError).
+                cost_basis = StockService.require_cost_basis(product, quantity)
+
+                # Check stock availability — must be WAREHOUSE-AWARE: the
+                # seller may not ship stock that physically sits in another
+                # warehouse.  The per-warehouse figure is only
+                # authoritative when the movements account for the whole
+                # card balance (see _warehouse_stock_is_authoritative);
+                # otherwise the card's global balance is the only truth.
+                available, msg = StockService.check_availability(
+                    product.id, quantity, warehouse_id=warehouse_id)
+                if (not available and warehouse_id
+                        and not _warehouse_stock_is_authoritative(product)):
+                    available, msg = StockService.check_availability(
+                        product.id, quantity)
                 if not available:
                     raise ValidationError(f'{product.name}: {msg}')
 
@@ -222,7 +265,9 @@ class SaleService:
                     quantity=quantity,
                     unit_price=unit_price,
                     discount_percent=discount_percent,
-                    cost_price=product.cost_price
+                    # F1: لقطة التكلفة (cost basis) — التكلفة تُثبَّت على
+                    # سطر البيع وقت البيع، وتُشتق منها قيد COGS.
+                    cost_price=cost_basis
                 )
 
                 line.calculate_line_total()
@@ -258,21 +303,14 @@ class SaleService:
                 sale.paid_amount_base = paid_amount_base  # محول للدرهم
 
                 # Handle overpayment (credit to customer)
-                # FIX(base-currency mixing): compare base-vs-base.
-                # paid_amount_base is in base currency while total_amount is in
-                # transaction currency; amount_base holds the base equivalent.
+                # FIX(F1/F2): الدفعة الزائدة تبقى على الفاتورة
+                # (paid_amount_base > amount_base) فيظهر رصيد العميل السالب
+                # (رصيد دائن له) في customer.balance — وهو ناتج اشتقاق
+                # واحد — بدل زيادة يدوية تكسر التوازن.
                 if paid_amount_base > sale.amount_base:
                     overpayment = paid_amount_base - sale.amount_base
-                    customer.balance = (customer.balance or Decimal('0')) + overpayment
                     payment_note = f"\n[دفع زائد] مبلغ {overpayment} AED سُجّل كرصيد للزبون"
                     sale.notes = (sale.notes or '') + payment_note
-
-                    # FIX(negative-balance crash): only the settled portion may
-                    # sit on the invoice; the excess already became customer
-                    # credit. Letting paid exceed the total drove balance_due
-                    # negative and violated ck_sale_balance_non_negative.
-                    sale.paid_amount = Decimal(str(sale.total_amount))
-                    sale.paid_amount_base = Decimal(str(sale.amount_base))
 
                 # Add payment currency info to notes if not AED
                 if payment_currency != CurrencyService.get_base_currency():
@@ -281,11 +319,10 @@ class SaleService:
 
             sale.calculate_totals()
 
-            # FIX(negative-balance crash): an overpaid sale made
-            # calculate_totals() produce a negative balance_due, which violates
-            # the ck_sale_balance_non_negative CHECK constraint and crashed
-            # creation. The excess is already credited to customer.balance,
-            # so the invoice itself must settle at zero.
+            # FIX(negative-balance crash): calculate_totals() keeps the
+            # overpayment on the invoice, so balance_due is clamped at 0
+            # (never negative — ck_sale_balance_non_negative) and the excess
+            # shows up as a customer credit in the derived balance.
             if sale.balance_due is not None and Decimal(str(sale.balance_due)) < Decimal('0'):
                 sale.balance_due = Decimal('0')
                 sale.payment_status = 'paid'
@@ -314,8 +351,11 @@ class SaleService:
                 )
 
             customer.total_purchases += sale.amount_base
-            customer.balance += sale.amount_base
             customer.update_classification()
+
+            # F1: رصيد العميل يُشتق من مصدره الواحد (لا زيادة تدريجية)
+            from models.customer import recompute_customer_balance
+            recompute_customer_balance(customer.id)
 
             # Post to General Ledger with proper decimal precision
             GLService.ensure_core_accounts()
@@ -324,6 +364,8 @@ class SaleService:
             # FIX(base-currency mixing): cost_price is stored in base currency
             # (see StockService.process_purchase_lines), so it must NOT be
             # multiplied by the sale's exchange rate again.
+            # F1: كل سطر يحمل الآن تكلفة موثّقة > 0 (require_cost_basis)،
+            # فمجموع التكلفة على أي فاتورة ذات أسطر أكبر من صفر.
             cogs_total_base = sum(
                 (Decimal(str(line.cost_price)) * Decimal(str(line.quantity))
                     for line in sale.lines),
@@ -395,6 +437,8 @@ class SaleService:
             )
 
             # COGS Entry (Always in Base Currency — cost is base-denominated)
+            # F1: الفاتورة ذات الأسطر لها دائماً تكلفة > 0 (require_cost_basis)،
+            # فالقيد 아래 لا يُسقط ولا يُبدَّل. الشرط باقٍ كشبكة أمان.
             if cogs_total_base > Decimal('0'):
                 cogs_lines = [
                     {
@@ -495,7 +539,10 @@ class SaleService:
             cheque_date=cheque_date,
             bank_name=bank_name,
             notes=notes,
-            user_id=sale.seller_id
+            user_id=sale.seller_id,
+            # F8: شيك تحت التحصيل ليس مؤكَّداً — لا يُسوّي الفاتورة قبل
+            # صرفه (models/sale.py:136-141).
+            payment_confirmed=(payment_method != 'cheque'),
         )
 
         db.session.add(payment)
@@ -566,10 +613,14 @@ class SaleService:
             db.session.rollback()
             raise
 
+        # F1: رصيد العميل يُشتق من مصدره الواحد. تسوية الفاتورة (المدفوع
+        # والرصيد والحالة) تُحسب عبر مستمع السند (after_insert) أو عبر
+        # Sale.recalculate_payment_status.
         from models import Customer as _Cust
+        from models.customer import recompute_customer_balance
         _cust = get_owned_or_raise(_Cust, sale.customer_id, missing_message='العميل غير موجود')
         if _cust:
-            _cust.balance = (_cust.balance or Decimal('0')) - amount_base
+            recompute_customer_balance(_cust.id)
 
         return payment
 
@@ -627,7 +678,14 @@ class SaleService:
 
         customer = sale.customer
         if customer:
-            customer.balance = (customer.balance or Decimal('0')) - sale.amount_base
+            # flush: الاشتقاق يقرأ الحالة من القاعدة (Core) — يجب أن يُثبت
+            # الإلغاء قبل الحساب وإلا بقيت الفاتورة الملغاة محسوبة.
+            db.session.flush()
+
+            # F1: لا زيادة يدوية — الرصيد يُشتق (الفاتورة الملغاة تُستبعد
+            # من الاشتقاق فينقص الرصيد تلقائياً).
+            from models.customer import recompute_customer_balance
+            recompute_customer_balance(customer.id)
             customer.update_classification()
 
         StockService.reverse_sale(sale)

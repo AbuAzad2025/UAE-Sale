@@ -214,6 +214,10 @@ class FiscalPeriod(db.Model):
     __tablename__ = 'fiscal_periods'
 
     id = db.Column(db.Integer, primary_key=True)
+    # F10: الفترة المالية قد تكون خاصة بمستأجر واحد أو عامة لكل المستأجرين.
+    # NULL = فترة عامة (تغطي الجميع). بدون هذا العمود كان إغلاق سنة من
+    # مستأجر يُجمّد كل المستأجرين. (يتطلب ترحيلاً — انظر التقرير)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     name = db.Column(db.String(100), nullable=False)
     year = db.Column(db.Integer, nullable=False, index=True)
     period_type = db.Column(db.String(20), default='annual')  # annual, quarterly, monthly
@@ -241,6 +245,11 @@ class FiscalPeriod(db.Model):
 
     def contains_date(self, check_date):
         return self.start_date <= check_date <= self.end_date
+
+    @property
+    def is_global(self):
+        """True للفترة العامة (NULL = تغطي كل المستأجرين)."""
+        return getattr(self, 'tenant_id', None) is None
 
     @property
     def status_ar(self):

@@ -185,6 +185,37 @@ class AccountResolver:
         from models import GLAccount
         from services.gl_service import GLService
 
-        code = AccountResolver.resolve(role, tenant_id)
+        code = AccountResolver.resolve(role, tenant_id=tenant_id)
         GLService.ensure_core_accounts()
         return GLAccount.query.filter_by(code=str(code)).first()
+
+    # ------------------------------------------------------------------
+    # F11 — the single place where a GL account code is resolved
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def resolve_codes(*roles, tenant_id=None):
+        """Resolve several roles at once into a ``{role: code}`` mapping.
+
+        Business services MUST NOT hardcode GL account codes ('1110',
+        '1120', ...): they ask for the semantic role and get the code that
+        the chart of accounts actually uses. This helper keeps a group of
+        related resolutions together (cash-flow statements, for example)
+        so the code list lives in ONE place.
+
+        NOTE: services/cash_flow_service.py still hardcodes the codes
+        '1110', '1120', '6100', '3100', '3300' and '2210' and MUST be
+        migrated to this resolver (see the P0 report).
+        """
+        return {
+            AccountResolver._coerce_role(role).value: AccountResolver.resolve(
+                role, tenant_id=tenant_id
+            )
+            for role in roles
+        }
+
+    @staticmethod
+    def code_for(role, tenant_id=None):
+        """Resolve a single role to its account code (explicit alias)."""
+        return AccountResolver.resolve(role, tenant_id=tenant_id)
+

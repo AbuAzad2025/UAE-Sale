@@ -29,8 +29,8 @@ def _sale(customer_id, total, paid, status, days_ago, num, seller_id=None):
 def aging_customer(db, test_customer, owner_user):
     """One customer with three invoices across buckets."""
     recent = _sale(test_customer.id, 100, 40, 'partial', 10, 'S-AGE-001', seller_id=owner_user.id)   # bal 60 → 0-30
-    mid = _sale(test_customer.id, 200, 0, 'pending', 45, 'S-AGE-002', seller_id=owner_user.id)       # bal 200 → 31-60
-    old = _sale(test_customer.id, 300, 0, 'pending', 100, 'S-AGE-003', seller_id=owner_user.id)      # bal 300 → 91-120
+    mid = _sale(test_customer.id, 200, 0, 'unpaid', 45, 'S-AGE-002', seller_id=owner_user.id)       # bal 200 → 31-60
+    old = _sale(test_customer.id, 300, 0, 'unpaid', 100, 'S-AGE-003', seller_id=owner_user.id)      # bal 300 → 91-120
     db.session.add_all([recent, mid, old])
     db.session.commit()
     return test_customer
@@ -73,7 +73,7 @@ class TestReceivablesAging:
         assert result['totals']['total'] == 560.0
 
     def test_over_120_bucket(self, db, test_customer, owner_user):
-        ancient = _sale(test_customer.id, 150, 0, 'pending', 200, 'S-AGE-OLD', seller_id=owner_user.id)
+        ancient = _sale(test_customer.id, 150, 0, 'unpaid', 200, 'S-AGE-OLD', seller_id=owner_user.id)
         db.session.add(ancient)
         db.session.commit()
         result = AgingAnalysisService.get_receivables_aging()
@@ -81,7 +81,7 @@ class TestReceivablesAging:
 
     def test_invoice_dated_today_included(self, db, test_customer, owner_user):
         """انحدار: فاتورة اليوم نفسه يجب ألا تُستبعد بفلتر التاريخ المجرد."""
-        today_sale = _sale(test_customer.id, 90, 0, 'pending', 0, 'S-AGE-TODAY', seller_id=owner_user.id)
+        today_sale = _sale(test_customer.id, 90, 0, 'unpaid', 0, 'S-AGE-TODAY', seller_id=owner_user.id)
         db.session.add(today_sale)
         db.session.commit()
 

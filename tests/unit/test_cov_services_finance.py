@@ -19,11 +19,24 @@ from utils.helpers import generate_number
 
 @pytest.fixture
 def core(db):
+    """دليل الحسابات + فترة مالية مفتوحة (F10: شرط لازم للترحيل)."""
+    from datetime import date
+
+    from models.erp_modules import FiscalPeriod
+
     GLService.ensure_core_accounts()
+    year = date.today().year
+    if FiscalPeriod.query.filter_by(year=year, period_type='annual').first() is None:
+        db.session.add(FiscalPeriod(
+            name=f'FY {year}', year=year, period_type='annual',
+            start_date=date(year, 1, 1), end_date=date(year, 12, 31),
+            is_closed=False,
+        ))
+        db.session.commit()
     return True
 
 
-def _post(ref_type, ref_id, amount=Decimal("100.000")):
+def _post(ref_type, ref_id, amount=Decimal("100.000"), **kwargs):
     return GLService.post_entry(
         [
             {"account": "1110", "debit": amount},
@@ -34,13 +47,15 @@ def _post(ref_type, ref_id, amount=Decimal("100.000")):
         reference_id=ref_id,
         currency="ILS",
         exchange_rate=Decimal("1"),
+        **kwargs
     )
 
 
 class TestPurgeByReference:
-    def test_purges_entry_and_lines(self, db, core):
+    def test_purges_draft_entry_and_lines(self, db, core):
+        """F1: المسودة تُحذف، أما القيد المرحّل فلا يُحذف أبداً."""
         from models import GLJournalEntry, GLJournalLine
-        e = _post("COV-PURGE", 91001)
+        e = _post("COV-PURGE", 91001, is_posted=False)
         eid = e.id
         n = GLService.purge_by_reference("COV-PURGE", 91001)
         db.session.commit()
@@ -48,6 +63,16 @@ class TestPurgeByReference:
         assert n == 1
         assert _db.session.get(GLJournalEntry, eid) is None
         assert GLJournalLine.query.filter_by(entry_id=eid).count() == 0
+
+    def test_posted_entry_is_never_purged(self, db, core):
+        """F1: القيد المرحّل لا يُحذف — يُعكَس فقط."""
+        e = _post("COV-PURGE", 91002)
+        db.session.commit()
+        with pytest.raises(ValueError):
+            GLService.purge_by_reference("COV-PURGE", 91002)
+        db.session.rollback()
+        assert GLJournalEntry.query.filter_by(
+            reference_type="COV-PURGE", reference_id=91002).count() == 1
 
     def test_missing_reference_returns_zero(self, db, core):
         assert GLService.purge_by_reference("COV-PURGE", 999999) == 0
@@ -230,17 +255,26 @@ class TestAccountResolverGetAccount:
 
 
 class TestStockAdjustGLFailure:
-    def test_adjust_survives_gl_failure(self, db, test_product, monkeypatch):
+    def test_adjust_fails_closed_when_gl_is_down(self, db, test_product,
+                                                monkeypatch):
+        """A stock change without a ledger entry is a silent divergence.
+
+        The old behaviour kept the movement and swallowed the GL failure, so
+        the physical stock and the books disagreed with nothing to show for
+        it. The adjustment must now fail and leave the stock untouched.
+        """
         before = Decimal(str(test_product.current_stock or 0))
 
         def _boom(*a, **k):
             raise RuntimeError("GL down")
 
         monkeypatch.setattr(GLService, "post_entry", staticmethod(_boom))
-        mv = StockService.adjust_stock(test_product.id, Decimal("3"), notes="cov-gl-down")
-        assert mv is not None
+        with pytest.raises(Exception):
+            StockService.adjust_stock(test_product.id, Decimal("3"),
+                                      notes="cov-gl-down")
+        db.session.rollback()
         db.session.refresh(test_product)
-        assert Decimal(str(test_product.current_stock)) == before + Decimal("3")
+        assert Decimal(str(test_product.current_stock)) == before
 
 
 class TestReceiptOrphanContract:

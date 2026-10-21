@@ -49,6 +49,13 @@ class ProductPartner(db.Model):
 class Product(TenantScopedMixin, db.Model):
     __tablename__ = 'products'
 
+    # SCHEMA NOTE (F8): the CHECK constraints below are declared by the
+    # model, but db.create_all() is not what production runs — the
+    # constraints only exist in the database if a migration creates them.
+    # Until that migration lands, PostgreSQL accepts a negative
+    # current_stock: only the service layer (StockService.create_movement)
+    # and the route layer refuse it, while the model listener
+    # (models/events.py) silently clamps the value to 0.
     __table_args__ = (
         db.Index('idx_product_active_stock', 'is_active', 'current_stock'),
         db.Index('idx_product_category_active', 'category_id', 'is_active'),

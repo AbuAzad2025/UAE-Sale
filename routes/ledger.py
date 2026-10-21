@@ -1,17 +1,414 @@
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, abort, current_app
 from flask_login import login_required, current_user
-from sqlalchemy import func
+from sqlalchemy import and_, case, func
 from extensions import db
 from models import GLAccount, GLJournalEntry, GLJournalLine, Cheque, PaymentVault
 from services.gl_service import GLService
 from services.cash_flow_service import CashFlowService
-from services.aging_analysis_service import AgingAnalysisService
 from utils.decorators import admin_required, permission_required, get_owned_or_404
 from utils.helpers import create_audit_log
 from decimal import Decimal
 from datetime import datetime, date, timedelta
 
 ledger_bp = Blueprint('ledger', __name__, url_prefix='/ledger')
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# مساعدات مشتركة للقوائم المالية (ميزان المراجعة / قائمة الدخل / الميزانية)
+# ═══════════════════════════════════════════════════════════════════════════
+# سياسة واحدة تُطبَّق على كل القوائم حتى لا تختلف بينها:
+#   1) الحسابات المعروضة: is_active = True و is_header = False.
+#      الحسابات الرئيسية (is_header) لا تقبل قيود مباشرة، والحسابات غير
+#      النشطة لا تدخل القوائم — لذلك تُستبعد بالطريقة نفسها في كل القوائم.
+#   2) الأرقام بعملة الأساس دائماً:
+#      GLJournalLine.amount_base هو المبلغ المخزّن بعملة الأساس، بينما
+#      debit/credit هما المبلغان بعملة المعاملة. لذلك يُقرأ اتجاه الحركة من
+#      debit/credit ويُقرأ مقدارها من amount_base (أو من
+#      (debit − credit) × سعر صرف القيد إن لم يكن amount_base مسجّلاً).
+#   3) القيود المرحّلة فقط (is_posted = True)، والربط بسطر القيد إلزامي
+#      لاستبعاد السطور اليتيمة (قيد حُذف) والمسودات.
+#   4) إشارة الرصيد تأتي من طبيعة الحساب (GLAccount.type) لا من بادئة الكود.
+
+def _dec(value):
+    """تحويل آمن لنتيجة تجميع (Decimal/float/None) إلى Decimal."""
+    if value is None:
+        return Decimal('0')
+    return value if isinstance(value, Decimal) else Decimal(str(value))
+
+
+def _as_date(value):
+    """تحويل تاريخ/نص إلى date (أو None)."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.strptime(value.strip(), '%Y-%m-%d').date()
+        except ValueError:
+            return None
+    return None
+
+
+def reverse_or_purge_gl_entries(reference_type, reference_id, description=None):
+    """F1 — مصير القيود المحاسبية المرتبطة بمستند: عكس المرحَّل، وحذف المسودة.
+
+    ``GLService.purge_by_reference`` يرفض حذف قيد مرحَّل (أو معكوس) ويرفع
+    ValidationError — وهذا هو السلوك الصحيح: القيد المرحَّل لا يُحذف أبداً
+    (فقدان الإيراد أو الذمم بلا أثر يبقى متوازناً فلا ينتبه أحد)، بل يُعكس.
+    هذه الدالة هي السياسة الواحدة التي تُطبَّق على كل مسارات حذف/أرشفة
+    المستندات (مبيعات، مشتريات، سندات قبض/صرف، مصروفات، شيكات):
+
+    * القيود المرحَّلة (is_posted) → تُعكس عبر ``GLService.reverse_entry``
+      (قيد عكسي + سجل تدقيق + ربط في الاتجاهين)، فيبقى ميزان المراجعة
+      متوازناً ومُبرَّراً، ولا يفقد المستند أثره المحاسبي.
+    * القيود المسودة (is_posted=False) → تُحذف (لم تُرحَّل بعد فلا أثر لها).
+
+    الأخطاء لا تُبتلع: أي فشل في العكس يُرفع إلى المستدعي الذي يلغي
+    العملية كلّها (لا يُحذف مستند وتبقى قيوده، ولا يُحذف قيد مرحَّل).
+
+    Args:
+        reference_type: نوع المرجع ('Sale', 'Purchase', 'Receipt', 'Payment',
+            'Expense', 'cheque_receive', 'Cheque', ...).
+        reference_id: معرّف المستند المرتبط بالقيود.
+        description: وصف القيد العكسي (يظهر في اليومية).
+
+    Returns:
+        dict: ``{'reversed': n, 'purged': m, 'posted': bool}``.
+    """
+    from models import GLJournalLine
+    from services.gl_service import GLService
+
+    entries = GLJournalEntry.query.filter_by(
+        reference_type=reference_type, reference_id=reference_id
+    ).all()
+    if not entries:
+        return {'reversed': 0, 'purged': 0, 'posted': False}
+
+    # القيود المرحَّلة الأصلية فقط: القيد العكسي (entry_type='reversing')
+    # لا يُعكس أبداً — عكسه يُبطل العكس الأول (صافي الأثر = صفر).
+    posted = [
+        e for e in entries
+        if getattr(e, 'is_posted', False)
+        and not getattr(e, 'is_reversed', False)
+        and (e.entry_type or '') != 'reversing'
+    ]
+    drafts = [e for e in entries if not getattr(e, 'is_posted', False)]
+
+    # 1) المسودات: تُحذف (سطوراً ثم رؤوساً — بأمان FK).
+    purged = 0
+    if drafts:
+        draft_ids = [e.id for e in drafts]
+        GLJournalLine.query.filter(
+            GLJournalLine.entry_id.in_(draft_ids)
+        ).delete(synchronize_session='fetch')
+        purged = GLJournalEntry.query.filter(
+            GLJournalEntry.id.in_(draft_ids)
+        ).delete(synchronize_session='fetch')
+
+    # 2) القيود المرحَّلة: تُعكس (ولا تُحذف أبداً).
+    for entry in posted:
+        GLService.reverse_entry(entry, description=description)
+
+    return {'reversed': len(posted), 'purged': purged, 'posted': bool(posted)}
+
+
+def _statement_accounts(account_type=None):
+    """الحسابات التي تدخل القوائم المالية (نشطة + غير رئيسية).
+
+    policy: is_active=True و is_header=False — نفس القاعدة في ميزان المراجعة
+    وقائمة الدخل والميزانية العمومية.
+    """
+    query = GLAccount.query.filter(
+        GLAccount.is_active.is_(True),
+        GLAccount.is_header.is_(False),
+    )
+    if account_type is not None:
+        query = query.filter(GLAccount.type == account_type)
+    return query.order_by(GLAccount.code).all()
+
+
+def _gl_signed_base_expression():
+    """المبلغ الصافي الموقّع لسطر القيد بعملة الأساس (موجب = حركة مدينة).
+
+    amount_base = (debit − credit) × سعر صرف القيد (العقد المحاسبي في
+    services/gl_service.py)، فهو الصافي الموقّع بعملة الأساس. لكنه لا يفصل
+    الحركة المدينة عن الدائنة، لذلك:
+      • الاتجاه يُقرأ من debit/credit (دائماً معبّأة)،
+      • المقدار يُقرأ من amount_base عند وجوده، وإلا يُشتق من
+        (debit − credit) × سعر صرف القيد.
+    كل القوائم المالية تمرّ من هذه الدالة فلا تتناقض.
+    """
+    fallback = (GLJournalLine.debit - GLJournalLine.credit) * GLJournalEntry.exchange_rate
+    return case(
+        (GLJournalLine.amount_base.is_(None), fallback),
+        (GLJournalLine.amount_base == 0, fallback),
+        (and_(GLJournalLine.debit > 0, GLJournalLine.credit == 0),
+         func.abs(GLJournalLine.amount_base)),
+        (and_(GLJournalLine.credit > 0, GLJournalLine.debit == 0),
+         -func.abs(GLJournalLine.amount_base)),
+        else_=fallback,
+    )
+
+
+def _gl_base_debit_expression():
+    """حركة المدينة لسطر القيد بعملة الأساس."""
+    signed = _gl_signed_base_expression()
+    return case((signed > 0, signed), else_=0)
+
+
+def _gl_base_credit_expression():
+    """حركة الدائنة لسطر القيد بعملة الأساس."""
+    signed = _gl_signed_base_expression()
+    return case((signed < 0, -signed), else_=0)
+
+
+def _gl_natural_base_expression():
+    """الرصيد الطبيعي لسطر القيد بعملة الأساس حسب طبيعة الحساب.
+
+    الأصول والمصروفات مدينة الطبيعة (مدين − دائن)، والخصوم وحقوق الملكية
+    والإيرادات دائنة الطبيعة (دائن − مدين).
+    """
+    signed = _gl_signed_base_expression()
+    return case(
+        (GLAccount.type.in_(GLAccount.CREDIT_NATURE_TYPES), -signed),
+        else_=signed,
+    )
+
+
+def _statement_balances(date_from=None, date_to=None, as_of_date=None):
+    """حركة كل حساب ورصيده الطبيعي — بعملة الأساس.
+
+    يعيد قاموساً: {account_id: {'debit': Decimal, 'credit': Decimal,
+                                'balance': Decimal}}
+    debit/credit = حركتا المدينة والدائنة (مجموع كل منهما)،
+    balance = الرصيد الطبيعي بعدّل طبيعة الحساب.
+    """
+    query = (
+        db.session.query(
+            GLJournalLine.account_id.label('account_id'),
+            func.sum(_gl_base_debit_expression()).label('debit_sum'),
+            func.sum(_gl_base_credit_expression()).label('credit_sum'),
+            func.sum(_gl_natural_base_expression()).label('balance_sum'),
+        )
+        .join(GLJournalEntry, GLJournalLine.entry_id == GLJournalEntry.id)
+        .join(GLAccount, GLJournalLine.account_id == GLAccount.id)
+        .filter(GLJournalEntry.is_posted.is_(True))
+    )
+    lower = _as_date(date_from)
+    upper = _as_date(date_to) or _as_date(as_of_date)
+    if lower is not None:
+        query = query.filter(func.date(GLJournalEntry.entry_date) >= lower)
+    if upper is not None:
+        query = query.filter(func.date(GLJournalEntry.entry_date) <= upper)
+
+    query = query.group_by(GLJournalLine.account_id)
+
+    return {
+        row.account_id: {
+            'debit': _dec(row.debit_sum),
+            'credit': _dec(row.credit_sum),
+            'balance': _dec(row.balance_sum),
+        }
+        for row in query.all()
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# تحليل عمر الذمم — مصدر واحد لصفحتَي دفتر الأستاذ والتقارير
+# ═══════════════════════════════════════════════════════════════════════════
+# السياسة الموحّدة (تطبَّق على الذمم المدينة والدائنة):
+#   • العملة: عملة الأساس دائماً (amount_base − paid_amount_base).
+#   • النطاق: مستندات مؤكدة ونشطة وغير مؤرشفة، تاريخها ≤ تاريخ التقرير،
+#     والطرف المقابل (عميل/مورد) نشط.
+#   • الرصيد: الفرق بين الإجمالي والمستحق، ويشمل فقط ما هو أكبر من صفر.
+#   • الشرائح: 0-30 / 31-60 / 61-90 / 91-120 / +120 يوم.
+
+AGING_BUCKETS = ('0-30', '31-60', '61-90', '91-120', 'over_120')
+
+# مفاتيح قالب صفحة التقارير (current / days_30 / ...) ← الشرائح الدقيقة.
+# ملاحظة: مفتاح 'over_90' في قالب التقارير يحتوي فعلياً على 121 يوم
+# (وأكثر) — والحدود الدقيقة موثّقة هنا وفي AGING_BUCKETS.
+_REPORT_BUCKET_KEYS = {
+    '0-30': 'current',
+    '31-60': 'days_30',
+    '61-90': 'days_60',
+    '91-120': 'days_90',
+    'over_120': 'over_90',
+}
+
+
+def _aging_bucket(days_old):
+    """تصنيف عمر المستند إلى شريحة."""
+    if days_old <= 30:
+        return '0-30'
+    if days_old <= 60:
+        return '31-60'
+    if days_old <= 90:
+        return '61-90'
+    if days_old <= 120:
+        return '91-120'
+    return 'over_120'
+
+
+def _archived_record_ids(table_name):
+    """معرّفات السجلات المؤرشفة.
+
+    الأرشفة تعكس القيود المحاسبية وتترك حالة المستند 'confirmed'، لذلك
+    يجب استبعادها صراحةً من كل تقرير مالي.
+    """
+    from models import ArchivedRecord
+    from sqlalchemy import select
+    return select(ArchivedRecord.record_id).where(
+        ArchivedRecord.table_name == table_name)
+
+
+def _receivables_aging(as_of_date=None):
+    """تحليل عمر الذمم المدينة — مصدر واحد لصفحتي دفتر الأستاذ والتقارير.
+
+    Returns:
+        dict: {
+            'as_of_date': date,
+            'buckets': {bucket: Decimal},
+            'total': Decimal,
+            'invoices': [Sale, ...]   # مع days_old و calculated_balance
+            'customers': [{'customer': Customer, '0-30': float, ...,
+                           'total': float, 'invoices': [...]}],
+            'customer_count': int,
+        }
+    """
+    from models import Sale, Customer
+
+    as_of = _as_date(as_of_date) or date.today()
+    cutoff = datetime.combine(as_of, datetime.max.time())
+
+    query = (
+        Sale.query
+        .filter(
+            Sale.status == 'confirmed',
+            Sale.is_active.is_(True),
+            Sale.sale_date <= cutoff,
+        )
+        .filter(~Sale.id.in_(_archived_record_ids('sales')))
+        .join(Customer, Sale.customer_id == Customer.id)
+        .filter(Customer.is_active.is_(True))
+        .order_by(Sale.sale_date)
+    )
+
+    buckets = {bucket: Decimal('0') for bucket in AGING_BUCKETS}
+    total = Decimal('0')
+    invoices = []
+    customers = {}
+
+    for sale in query.all():
+        balance = ((sale.amount_base or Decimal('0'))
+                   - (sale.paid_amount_base or Decimal('0')))
+        if balance <= 0:
+            continue
+
+        days_old = (as_of - sale.sale_date.date()).days
+        bucket = _aging_bucket(days_old)
+
+        sale.days_old = days_old
+        sale.calculated_balance = balance
+        sale.aging_bucket = bucket
+
+        buckets[bucket] += balance
+        total += balance
+        invoices.append(sale)
+
+        entry = customers.setdefault(sale.customer_id, {
+            'customer': sale.customer,
+            'buckets': {b: Decimal('0') for b in AGING_BUCKETS},
+            'total': Decimal('0'),
+            'invoices': [],
+        })
+        entry['buckets'][bucket] += balance
+        entry['total'] += balance
+        entry['invoices'].append(sale)
+
+    customer_rows = []
+    for entry in customers.values():
+        row = {'customer': entry['customer'], 'invoices': entry['invoices']}
+        for bucket in AGING_BUCKETS:
+            row[bucket] = float(entry['buckets'][bucket])
+        row['total'] = float(entry['total'])
+        customer_rows.append(row)
+    customer_rows.sort(key=lambda r: r['total'], reverse=True)
+
+    return {
+        'as_of_date': as_of,
+        'buckets': buckets,
+        'total': total,
+        'invoices': invoices,
+        'customers': customer_rows,
+        'customer_count': len(customer_rows),
+    }
+
+
+def _payables_aging(as_of_date=None):
+    """تحليل عمر الذمم الدائنة — نفس سياسة الذمم المدينة."""
+    from models import Purchase, Supplier
+
+    as_of = _as_date(as_of_date) or date.today()
+    cutoff = datetime.combine(as_of, datetime.max.time())
+
+    query = (
+        Purchase.query
+        .filter(
+            Purchase.status == 'confirmed',
+            Purchase.purchase_date <= cutoff,
+        )
+        .filter(~Purchase.id.in_(_archived_record_ids('purchases')))
+        .join(Supplier, Purchase.supplier_id == Supplier.id)
+        .filter(Supplier.is_active.is_(True))
+        .order_by(Purchase.purchase_date)
+    )
+
+    buckets = {bucket: Decimal('0') for bucket in AGING_BUCKETS}
+    total = Decimal('0')
+    supplier_rows = {}
+
+    for purchase in query.all():
+        balance = ((purchase.amount_base or Decimal('0'))
+                   - (purchase.paid_amount or Decimal('0')))
+        if balance <= 0:
+            continue
+
+        days_old = (as_of - purchase.purchase_date.date()).days
+        bucket = _aging_bucket(days_old)
+        purchase.days_old = days_old
+        purchase.calculated_balance = balance
+
+        buckets[bucket] += balance
+        total += balance
+
+        entry = supplier_rows.setdefault(purchase.supplier_id, {
+            'supplier': purchase.supplier,
+            'buckets': {b: Decimal('0') for b in AGING_BUCKETS},
+            'total': Decimal('0'),
+        })
+        entry['buckets'][bucket] += balance
+        entry['total'] += balance
+
+    rows = []
+    for entry in supplier_rows.values():
+        row = {'supplier': entry['supplier']}
+        for bucket in AGING_BUCKETS:
+            row[bucket] = float(entry['buckets'][bucket])
+        row['total'] = float(entry['total'])
+        rows.append(row)
+    rows.sort(key=lambda r: r['total'], reverse=True)
+
+    return {
+        'as_of_date': as_of,
+        'buckets': buckets,
+        'total': total,
+        'suppliers': rows,
+        'supplier_count': len(rows),
+    }
 
 
 @ledger_bp.route('/')
@@ -61,15 +458,20 @@ def account_ledger(id):
     transactions = []
 
     for line in lines:
-        running_balance += line.debit - line.credit
+        # debit/credit بعملة المعاملة — تُحوَّل إلى عملة الأساس بسعر صرف
+        # القيد، لأن القالب يعرض المبالغ بعملة الأساس.
+        rate = _dec(getattr(line.entry, 'exchange_rate', 1) or 1)
+        base_debit = _dec(line.debit) * rate
+        base_credit = _dec(line.credit) * rate
+        running_balance += base_debit - base_credit
 
         transactions.append({
             'date': line.entry.entry_date,
             'entry_number': line.entry.entry_number,
             'description': line.description or line.entry.description,
             'reference': f'{line.entry.reference_type} #{line.entry.reference_id}' if line.entry.reference_type else '',
-            'debit': float(line.debit),
-            'credit': float(line.credit),
+            'debit': float(base_debit),
+            'credit': float(base_credit),
             'balance': float(running_balance)
         })
 
@@ -100,25 +502,12 @@ def trial_balance():
         df = dt = None
         date_from = date_to = None
 
-    # Single GROUP BY query: per-account debit/credit sums in one round trip.
-    sums_q = db.session.query(
-        GLJournalLine.account_id.label('account_id'),
-        func.sum(GLJournalLine.debit).label('debit_sum'),
-        func.sum(GLJournalLine.credit).label('credit_sum'),
-    )
-    if df or dt:
-        sums_q = sums_q.join(GLJournalEntry, GLJournalLine.entry_id == GLJournalEntry.id)
-        if df:
-            sums_q = sums_q.filter(func.date(GLJournalEntry.entry_date) >= df)
-        if dt:
-            sums_q = sums_q.filter(func.date(GLJournalEntry.entry_date) <= dt)
-    sums_q = sums_q.group_by(GLJournalLine.account_id)
-    sums_by_account = {
-        row.account_id: ((row.debit_sum or Decimal('0')), (row.credit_sum or Decimal('0')))
-        for row in sums_q.all()
-    }
+    # مجاميع واحدة لكل الحسابات: الحركة المدينة والدائنة بالأساس + الرصيد.
+    # نفس الاستعلام يُستخدم مع أو بدون فلتر التاريخ (انظر _statement_balances)
+    # فلا يختلف الميزان عن نفسه، ولا تُحتسب سطور يتيمة أو قيود مسودة.
+    balances = _statement_balances(date_from=df, date_to=dt)
 
-    accounts = GLAccount.query.filter_by(is_active=True).order_by(GLAccount.code).all()
+    accounts = _statement_accounts()
 
     trial_data = []
     total_debit = Decimal('0')
@@ -127,7 +516,9 @@ def trial_balance():
     total_credit_balance = Decimal('0')
 
     for account in accounts:
-        debit_sum, credit_sum = sums_by_account.get(account.id, (Decimal('0'), Decimal('0')))
+        account_balances = balances.get(account.id)
+        debit_sum = account_balances['debit'] if account_balances else Decimal('0')
+        credit_sum = account_balances['credit'] if account_balances else Decimal('0')
 
         balance = debit_sum - credit_sum
 
@@ -210,28 +601,17 @@ def income_statement():
     date_from = request.args.get('date_from', type=str)
     date_to = request.args.get('date_to', type=str)
 
-    revenue_accounts = GLAccount.query.filter(GLAccount.code.like('4%')).all()
-    expense_accounts = GLAccount.query.filter(GLAccount.code.like('5%')).all()
-    expense_accounts += GLAccount.query.filter(GLAccount.code.like('6%')).all()
+    # نفس مصدر البيانات Policy لكل القوائم: حسابات نشطة غير رئيسية + قيود
+    # مرحّلة + مبالغ بعملة الأساس.
+    balances = _statement_balances(date_from=date_from, date_to=date_to)
 
     revenues = {}
     total_revenue = Decimal('0')
 
-    for acc in revenue_accounts:
-        query_credit = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=acc.id).join(GLJournalEntry)
-        query_debit = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=acc.id).join(GLJournalEntry)
-
-        if date_from:
-            query_credit = query_credit.filter(func.date(GLJournalEntry.entry_date) >= date_from)
-            query_debit = query_debit.filter(func.date(GLJournalEntry.entry_date) >= date_from)
-
-        if date_to:
-            query_credit = query_credit.filter(func.date(GLJournalEntry.entry_date) <= date_to)
-            query_debit = query_debit.filter(func.date(GLJournalEntry.entry_date) <= date_to)
-
-        credit = query_credit.scalar() or Decimal('0')
-        debit = query_debit.scalar() or Decimal('0')
-        balance = credit - debit
+    # الإيرادات دائنة الطبيعة: الرصيد الطبيعي موجب = إيراد.
+    for acc in _statement_accounts(account_type='revenue'):
+        account_balances = balances.get(acc.id)
+        balance = account_balances['balance'] if account_balances else Decimal('0')
 
         if balance != 0:
             revenues[acc.name] = float(balance)
@@ -240,21 +620,10 @@ def income_statement():
     expenses = {}
     total_expense = Decimal('0')
 
-    for acc in expense_accounts:
-        query_debit = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=acc.id).join(GLJournalEntry)
-        query_credit = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=acc.id).join(GLJournalEntry)
-
-        if date_from:
-            query_debit = query_debit.filter(func.date(GLJournalEntry.entry_date) >= date_from)
-            query_credit = query_credit.filter(func.date(GLJournalEntry.entry_date) >= date_from)
-
-        if date_to:
-            query_debit = query_debit.filter(func.date(GLJournalEntry.entry_date) <= date_to)
-            query_credit = query_credit.filter(func.date(GLJournalEntry.entry_date) <= date_to)
-
-        debit = query_debit.scalar() or Decimal('0')
-        credit = query_credit.scalar() or Decimal('0')
-        balance = debit - credit
+    # المصروفات مدينة الطبيعة: الرصيد الطبيعي موجب = مصروف.
+    for acc in _statement_accounts(account_type='expense'):
+        account_balances = balances.get(acc.id)
+        balance = account_balances['balance'] if account_balances else Decimal('0')
 
         if balance != 0:
             expenses[acc.name] = float(balance)
@@ -285,69 +654,60 @@ def balance_sheet():
         as_of_date = None
         as_of_raw = None
 
-    def _sums(account_id):
-        dq = db.session.query(func.sum(GLJournalLine.debit)).filter_by(account_id=account_id)
-        cq = db.session.query(func.sum(GLJournalLine.credit)).filter_by(account_id=account_id)
-        if as_of_date is not None:
-            dq = dq.join(GLJournalEntry).filter(func.date(GLJournalEntry.entry_date) <= as_of_date)
-            cq = cq.join(GLJournalEntry).filter(func.date(GLJournalEntry.entry_date) <= as_of_date)
-        return (dq.scalar() or Decimal('0')), (cq.scalar() or Decimal('0'))
+    # نفس مصدر البيانات Policy لكل القوائم: حسابات نشطة غير رئيسية + قيود
+    # مرحّلة + أرصدة بعملة الأساس.
+    balances = _statement_balances(as_of_date=as_of_date)
+
+    def _balance(account_id):
+        account_balances = balances.get(account_id)
+        return account_balances['balance'] if account_balances else Decimal('0')
 
     assets = {}
     liabilities = {}
     equity = {}
 
-    asset_accounts = GLAccount.query.filter(GLAccount.code.like('1%')).all()
-    liability_accounts = GLAccount.query.filter(GLAccount.code.like('2%')).all()
-    equity_accounts = GLAccount.query.filter(GLAccount.code.like('3%')).all()
-
     total_assets = Decimal('0')
-    for acc in asset_accounts:
-        debit, credit = _sums(acc.id)
-        balance = debit - credit
-
+    for acc in _statement_accounts(account_type='asset'):
+        balance = _balance(acc.id)
         if balance != 0:
             assets[acc.name] = float(balance)
             total_assets += balance
 
     total_liabilities = Decimal('0')
-    for acc in liability_accounts:
-        debit, credit = _sums(acc.id)
-        balance = credit - debit
-
+    for acc in _statement_accounts(account_type='liability'):
+        balance = _balance(acc.id)
         if balance != 0:
             liabilities[acc.name] = float(balance)
             total_liabilities += balance
 
     total_equity = Decimal('0')
-    for acc in equity_accounts:
-        debit, credit = _sums(acc.id)
-        balance = credit - debit
-
+    for acc in _statement_accounts(account_type='equity'):
+        balance = _balance(acc.id)
         if balance != 0:
             equity[acc.name] = float(balance)
             total_equity += balance
 
-    # Calculate Net Profit (Revenue - Expenses) for Equity Section
-    revenue_accounts = GLAccount.query.filter(GLAccount.code.like('4%')).all()
-    expense_accounts = GLAccount.query.filter(GLAccount.code.like('5%')).all()
-    expense_accounts += GLAccount.query.filter(GLAccount.code.like('6%')).all()
-
+    # الأرباح المبقاة = صافي ربح الفترة التراكمي (إيرادات − مصروفات).
+    # هذا هو "قيد الإقفال" الافتراضي: لم يقفل النظام الأرباح في حساب
+    # حقوق ملكية فعلي، لذلك تُضاف هنا ليقفل الميزان.
     total_revenue_period = Decimal('0')
-    for acc in revenue_accounts:
-        debit, credit = _sums(acc.id)
-        total_revenue_period += (credit - debit)
+    for acc in _statement_accounts(account_type='revenue'):
+        total_revenue_period += _balance(acc.id)
 
     total_expense_period = Decimal('0')
-    for acc in expense_accounts:
-        debit, credit = _sums(acc.id)
-        total_expense_period += (debit - credit)
+    for acc in _statement_accounts(account_type='expense'):
+        total_expense_period += _balance(acc.id)
 
     net_profit_period = total_revenue_period - total_expense_period
 
     if net_profit_period != 0:
         equity['الأرباح المبقاة (صافي الربح التراكمي)'] = float(net_profit_period)
         total_equity += net_profit_period
+
+    # المعادلة المحاسبية: الأصول = الخصوم + حقوق الملكية.
+    # الفارق يُعرض كتنبيه أحمر — لا يُخفى ولا يُسوّى.
+    delta = total_assets - (total_liabilities + total_equity)
+    balanced = abs(delta) <= Decimal('0.01')
 
     return render_template('ledger/balance_sheet.html',
                            assets=assets,
@@ -356,6 +716,8 @@ def balance_sheet():
                            total_assets=float(total_assets),
                            total_liabilities=float(total_liabilities),
                            total_equity=float(total_equity),
+                           delta=float(delta),
+                           balanced=balanced,
                            as_of_date=as_of_raw or '')
 
 
@@ -641,7 +1003,10 @@ def cash_flow():
     date_to = request.args.get('date_to', default_end, type=str)
 
     try:
-        report = CashFlowService.generate_cash_flow(date_from, date_to)
+        # المصدر الوحيد: قائمة التدفقات من دفتر الأستاذ — نفس البيانات
+        # التي تعرضها صفحة التقارير (/reports/cash-flow) وتصديرها.
+        gl_report = CashFlowService.generate_gl_cash_flow(date_from, date_to)
+        report = CashFlowService.build_ledger_report(gl_report)
 
         return render_template('ledger/cash_flow.html',
                                report=report,
@@ -662,12 +1027,32 @@ def aging_analysis():
     as_of_date = request.args.get('as_of_date', type=str)
 
     try:
+        # نفس المصدر المستخدم في صفحة التقارير (/reports/receivables):
+        # عملة الأساس، نفس الفلاتر، ونفس حدود الشرائح.
         if analysis_type == 'receivables':
-            report = AgingAnalysisService.get_receivables_aging(as_of_date)
+            aging = _receivables_aging(as_of_date)
             title = 'تحليل عمر الذمم المدينة'
+            report = {
+                'as_of_date': aging['as_of_date'],
+                'customers': aging['customers'],
+                'customer_count': aging['customer_count'],
+                'totals': {
+                    **{bucket: float(aging['buckets'][bucket]) for bucket in AGING_BUCKETS},
+                    'total': float(aging['total']),
+                },
+            }
         else:
-            report = AgingAnalysisService.get_payables_aging(as_of_date)
+            aging = _payables_aging(as_of_date)
             title = 'تحليل عمر الذمم الدائنة'
+            report = {
+                'as_of_date': aging['as_of_date'],
+                'suppliers': aging['suppliers'],
+                'supplier_count': aging['supplier_count'],
+                'totals': {
+                    **{bucket: float(aging['buckets'][bucket]) for bucket in AGING_BUCKETS},
+                    'total': float(aging['total']),
+                },
+            }
 
         return render_template('ledger/aging_analysis.html',
                                report=report,
@@ -710,13 +1095,31 @@ def add_account():
             account_type = (request.form.get('type') or '').strip()
             parent_id_raw = (request.form.get('parent_id') or '').strip()
             parent_id = int(parent_id_raw) if parent_id_raw else None
-            currency = (request.form.get('currency') or __import__('services.currency_service', fromlist=['CurrencyService']).CurrencyService.get_base_currency()),
+            # NOTE: الفاصلة الزائدة داخل القوس كانت تُنتج tuple ('ILS',)
+            # فيفشل حفظ الحساب على SQLite ("type 'tuple' is not supported").
+            currency = (request.form.get('currency') or __import__('services.currency_service', fromlist=['CurrencyService']).CurrencyService.get_base_currency())
             is_header = 'on' in request.form.getlist('is_header')
             is_active = 'on' in request.form.getlist('is_active')
             description = request.form.get('description')
 
             if not account_type:
                 flash('⚠️ يرجى اختيار نوع الحساب.', 'warning')
+                form_values = request.form.to_dict()
+                form_values['is_header'] = 'on' if is_header else 'off'
+                form_values['is_active'] = 'on' if is_active else 'off'
+                return render_template('ledger/add_account.html',
+                                       parent_accounts=parent_accounts,
+                                       form_data=form_values)
+
+            # F3: نوع الحساب يُتحقَّق منه في المسار قبل الإسناد (نفس قائمة
+            # النموذج models/gl.py::GLAccount.VALID_TYPES) — وإلا رفضه
+            # مُتحقِّق النموذج برسالة "خطأ غير متوقع".
+            account_type = account_type.lower()
+            if account_type not in GLAccount.VALID_TYPES:
+                valid_types = ', '.join(sorted(GLAccount.VALID_TYPES))
+                flash(
+                    f'❌ نوع حساب غير صالح. الأنواع المسموحة: {valid_types}',
+                    'danger')
                 form_values = request.form.to_dict()
                 form_values['is_header'] = 'on' if is_header else 'off'
                 form_values['is_active'] = 'on' if is_active else 'off'
@@ -761,6 +1164,18 @@ def add_account():
             flash(f'✅ تم إنشاء الحساب {account.full_name} بنجاح', 'success')
             return redirect(url_for('ledger.accounts'))
 
+        except ValueError as e:
+            # F3: رسائل النموذج مكتوبة للمستخدم (نوع غير صالح) — تُعرض كما
+            # هي بدل "حدث خطأ غير متوقع".
+            db.session.rollback()
+            current_app.logger.info('GL account create rejected: %s', e)
+            flash(f'❌ {e}', 'danger')
+            form_values = request.form.to_dict()
+            form_values['is_header'] = 'on' if 'on' in request.form.getlist('is_header') else 'off'
+            form_values['is_active'] = 'on' if 'on' in request.form.getlist('is_active') else 'off'
+            return render_template('ledger/add_account.html',
+                                   parent_accounts=parent_accounts,
+                                   form_data=form_values)
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
@@ -783,15 +1198,29 @@ def add_account():
 def edit_account(id):
     """تعديل حساب محاسبي"""
     account = db.get_or_404(GLAccount, id)
+    parent_accounts = GLAccount.query.filter_by(is_header=True).order_by(GLAccount.code).all()
 
     if request.method == 'POST':
         try:
+            # F3: نوع الحساب يُتحقَّق منه في المسار قبل إسناده، تماماً كما
+            # يفعل النموذج (models/gl.py::_validate_type) — وإلا ظهر خطأ
+            # "غير متوقع" بدل رسالة تشرح الأنواع المسموحة.
+            account_type = (request.form.get('type') or '').strip().lower()
+            if account_type not in GLAccount.VALID_TYPES:
+                valid_types = ', '.join(sorted(GLAccount.VALID_TYPES))
+                flash(
+                    f'❌ نوع حساب غير صالح. الأنواع المسموحة: {valid_types}',
+                    'danger')
+                return render_template('ledger/edit_account.html',
+                                       account=account,
+                                       parent_accounts=parent_accounts)
+
             account.code = request.form.get('code')
             account.name = request.form.get('name')
             account.name_ar = request.form.get('name_ar')
-            account.type = request.form.get('type')
+            account.type = account_type
             account.parent_id = request.form.get('parent_id') or None
-            account.currency = (request.form.get('currency') or __import__('services.currency_service', fromlist=['CurrencyService']).CurrencyService.get_base_currency()),
+            account.currency = (request.form.get('currency') or __import__('services.currency_service', fromlist=['CurrencyService']).CurrencyService.get_base_currency())
             account.is_header = bool(request.form.get('is_header'))
             account.description = request.form.get('description')
             account.is_active = bool(request.form.get('is_active'))
@@ -809,6 +1238,13 @@ def edit_account(id):
             flash(f'✅ تم تحديث الحساب {account.full_name} بنجاح', 'success')
             return redirect(url_for('ledger.accounts'))
 
+        except ValueError as e:
+            # F3: حارس النموذج (models/gl.py::_guard_system_account_update)
+            # يرفض تعديل كود/نوع حساب مُبذَر — الرسالة مكتوبة للمستخدم
+            # ف تُعرض كما هي بدل "حدث خطأ غير متوقع".
+            db.session.rollback()
+            current_app.logger.info('GL account update rejected: %s', e)
+            flash(f'❌ {e}', 'danger')
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('handler failed')
@@ -844,6 +1280,12 @@ def delete_account(id):
         create_audit_log('delete', 'gl_accounts', id)
         flash(f'✅ تم حذف الحساب {account.full_name} بنجاح', 'success')
 
+    except ValueError as e:
+        # F3: حارس النموذج (models/gl.py::_guard_system_account_delete) يرفض
+        # حذف حساب مُبذَر من دليل الحسابات الأساسي — تُعرض رسالته كما هي.
+        db.session.rollback()
+        current_app.logger.info('GL account delete rejected: %s', e)
+        flash(f'❌ {e}', 'danger')
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('handler failed')

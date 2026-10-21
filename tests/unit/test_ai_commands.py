@@ -34,12 +34,33 @@ class TestProductService:
 
 class TestSaleService:
     def test_create_moves_stock(self, db, owner):
-        p = cmd.create_product('قطع', regular_price=Decimal('20'), current_stock=Decimal('10'))
+        # F1/F2: منتج بلا تكلفة لا يمكن بيعه (لا قيد COGS) — لذا يُنشأ
+        # المنتج بتكلفة، والبيع يمرّ عبر SaleService (حركة + قيدان).
+        p = cmd.create_product('قطع', regular_price=Decimal('20'),
+                               current_stock=Decimal('10'),
+                               cost_price=Decimal('10'))
         c = cmd.create_customer('عميل')
         s = cmd.create_sale(c.id, p.id, Decimal('2'), owner.id)
         assert s.id and s.total_amount == Decimal('40')
         from models import Product
         assert Product.query.get(p.id).current_stock == Decimal('8')
+        # حركة المخزون + لقطة التكلفة على سطر البيع
+        from models import SaleLine, StockMovement
+        assert StockMovement.query.filter_by(product_id=p.id).count() == 1
+        line = SaleLine.query.filter_by(sale_id=s.id).one()
+        assert Decimal(str(line.cost_price)) == Decimal('10')
+
+    def test_create_refuses_a_zero_cost_product(self, db, owner):
+        from utils.errors import ValidationError
+
+        p = cmd.create_product('قطع بلا تكلفة', regular_price=Decimal('20'),
+                               current_stock=Decimal('10'))
+        c = cmd.create_customer('عميل بلا تكلفة')
+        with pytest.raises(ValidationError):
+            cmd.create_sale(c.id, p.id, Decimal('2'), owner.id)
+        db.session.rollback()
+        from models import Sale
+        assert Sale.query.count() == 0
 
 
 class TestPaymentService:

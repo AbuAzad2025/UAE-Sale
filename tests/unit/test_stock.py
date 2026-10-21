@@ -27,16 +27,25 @@ class TestStockMovement:
         assert test_product.current_stock == initial_stock - Decimal('2')
 
     def test_negative_stock_prevented(self, db, test_product):
-        """Negative stock is clamped to zero by event listener."""
+        """F6: المخزون السالب يُرفض — لا يُقصّ إلى صفر.
+
+        السلوك القديم (قصّ إلى صفر + log) كان يمحو العجز بصمت: بيع 10
+        على رصيد 3 كان يترك current_stock = 0 وفاتورة بقيمة 10.
+        """
+        import pytest
+
+        from utils.errors import ValidationError
 
         # Try to set negative stock
         test_product.current_stock = Decimal('-5')
-        db.session.commit()
+        with pytest.raises(ValidationError):
+            db.session.commit()
 
-        # The before_update listener should clamp to 0
+        db.session.rollback()
+        # The before_update listener refuses the change — nothing is clamped.
         from extensions import db as _db
         _db.session.refresh(test_product)
-        assert test_product.current_stock >= Decimal('0')
+        assert test_product.current_stock == Decimal('100')
 
     def test_low_stock_detection(self, test_product):
         """Low stock detection works correctly."""

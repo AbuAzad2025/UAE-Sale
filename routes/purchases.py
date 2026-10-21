@@ -7,6 +7,7 @@ from services.stock_service import StockService
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
 from utils.decorators import permission_required, get_owned_or_404
+from routes.ledger import reverse_or_purge_gl_entries
 
 from utils.helpers import create_audit_log, generate_number
 from decimal import Decimal
@@ -164,33 +165,11 @@ def create():  # noqa: C901
                 flash('⚠️ يجب إضافة منتج واحد على الأقل للفاتورة.\n💡 اضغط زر "➕ إضافة صف" واختر منتجاً.', 'danger')
                 return redirect(url_for('purchases.create'))
 
-            # حساب الإجماليات يدوياً من البيانات المحفوظة
-            subtotal = Decimal('0')
-            current_app.logger.info(f"Starting calculation for {line_count} lines")
-
-            for i in range(line_count):
-                product_id = request.form.get(f'lines[{i}][product_id]', type=int)
-                quantity = Decimal(str(request.form.get(f'lines[{i}][quantity]', type=float, default=0)))
-                unit_cost = Decimal(str(request.form.get(f'lines[{i}][unit_cost]', type=float, default=0)))
-                discount_percent = Decimal(str(request.form.get(f'lines[{i}][discount_percent]', type=float, default=0)))
-
-                current_app.logger.info(f"Line {i}: product_id={product_id}, qty={quantity}, cost={unit_cost}, discount={discount_percent}")
-
-                if product_id and quantity > 0 and unit_cost:
-                    line_subtotal = quantity * unit_cost
-                    line_discount = line_subtotal * (discount_percent / Decimal('100'))
-                    line_total = line_subtotal - line_discount
-                    subtotal += line_total
-                    current_app.logger.info(f"Line {i} calculated: {line_subtotal} - {line_discount} = {line_total}")
-                else:
-                    current_app.logger.warning(f"Line {i} skipped: invalid data")
-
-            current_app.logger.info(f"Final subtotal: {subtotal}")
-
-            purchase.subtotal = subtotal
-            purchase.tax_amount = subtotal * (Decimal(str(purchase.tax_rate)) / Decimal('100'))
-            purchase.total_amount = subtotal + purchase.tax_amount
-            purchase.amount_base = purchase.total_amount * purchase.exchange_rate
+            # F13: الحساب يتم في النموذج (Purchase.calculate_totals) — كان
+            # المسار يحسب يدوياً (بلا quantize، وتجاهل خصم المستند، وبلا
+            # فرع عملة الأساس) فكانت الإجماليات تختلف عن الفاتورة المحسوبة
+            # في النموذج.
+            purchase.calculate_totals()
 
             current_app.logger.info(f"Final totals: subtotal={purchase.subtotal}, tax={purchase.tax_amount}, total={purchase.total_amount}, aed={purchase.amount_base}")  # noqa: E501
 
@@ -343,8 +322,7 @@ def edit(id):
 def delete(id):
     """حذف (أرشفة) فاتورة شراء"""
     from services.archive_service import ArchiveService
-    from models import Cheque, GLJournalEntry, PurchaseLine
-    from services.gl_service import GLService
+    from models import Cheque, PurchaseLine
 
     purchase = get_owned_or_404(Purchase, id)
 
@@ -366,16 +344,24 @@ def delete(id):
     try:
         if has_links:
             # أرشفة (Soft Delete)
-            # عكس القيد المحاسبي
+            # عكس القيد المحاسبي إجباري (F2): فشله يُعلن ولا تُؤرشف
+            # الفاتورة (الصمت كان يخفي أن دفتر الأستاذ لم يُعكس).
             if purchase.status != 'cancelled':
                 try:
-                    GLService.reverse_entry(
-                        reference_type='Purchase',
-                        reference_id=purchase.id,
-                        description=f'Reverse Purchase {purchase.purchase_number} (Archived)'
+                    reverse_or_purge_gl_entries(
+                        'Purchase',
+                        purchase.id,
+                        description=f'عكس فاتورة شراء {purchase.purchase_number} (أرشفة)',
                     )
                 except Exception as e:
-                    current_app.logger.error(f'Failed to reverse GL entry for archived purchase {purchase.id}: {e}')
+                    db.session.rollback()
+                    current_app.logger.error(
+                        f'Failed to reverse GL entries for archived purchase {purchase.id}: {e}')
+                    flash(
+                        f'❌ تعذّر عكس القيود المحاسبية لفاتورة الشراء '
+                        f'"{purchase.purchase_number}" — لم تُؤرشف.\n💡 {e}',
+                        'danger')
+                    return redirect(url_for('purchases.view', id=id))
 
             archive_service = ArchiveService()
             archive_service.archive_record('purchases', purchase, reason='تم أرشفة الفاتورة لوجود مدفوعات أو شيكات', commit=False)
@@ -385,23 +371,45 @@ def delete(id):
             flash(f'✅ تم أرشفة فاتورة الشراء "{purchase.purchase_number}" (لوجود ارتباطات مالية)', 'warning')
         else:
             # حذف نهائي (Hard Delete)
-            # 1. حذف البنود (PurchaseLines)
-            PurchaseLine.query.filter_by(purchase_id=purchase.id).delete()
+            # 1. القيود المحاسبية: المرحَّلة تُعكس (لا تُحذف أبداً — القيد
+            #    المحاسبي أثر دائم) والمسودات فقط تُحذف.
+            try:
+                gl_result = reverse_or_purge_gl_entries(
+                    'Purchase',
+                    purchase.id,
+                    description=f'عكس فاتورة شراء {purchase.purchase_number} (حذف نهائي)',
+                )
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(
+                    f'Failed to reverse GL entries for deleted purchase {purchase.id}: {e}')
+                flash(
+                    f'❌ تعذّر عكس القيود المحاسبية لفاتورة الشراء '
+                    f'"{purchase.purchase_number}" — لم تُحذف.\n💡 {e}',
+                    'danger')
+                return redirect(url_for('purchases.view', id=id))
 
-            # 2. حذف القيود المحاسبية
-            GLJournalEntry.query.filter_by(reference_type='Purchase', reference_id=purchase.id).delete()
+            # 2. حذف البنود (PurchaseLines)
+            PurchaseLine.query.filter_by(purchase_id=purchase.id).delete()
 
             # 3. حذف الفاتورة
             db.session.delete(purchase)
             create_audit_log('delete', 'purchases', id)
             db.session.commit()
-            flash(f'✅ تم حذف فاتورة الشراء "{purchase.purchase_number}" نهائياً', 'success')
+            if gl_result['reversed']:
+                flash(
+                    f'✅ تم حذف فاتورة الشراء "{purchase.purchase_number}" نهائياً — '
+                    f'وعُكست قيودها المحاسبية ({gl_result["reversed"]} قيد) '
+                    f'بدل حذفها حفاظاً على الأثر المحاسبي.',
+                    'success')
+            else:
+                flash(f'✅ تم حذف فاتورة الشراء "{purchase.purchase_number}" نهائياً', 'success')
 
         return redirect(url_for('purchases.index'))
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
+        current_app.logger.error(f'Purchase delete error: {e}')
         flash(f'❌ حدث خطأ: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('purchases.view', id=id))
 

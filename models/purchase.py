@@ -38,8 +38,10 @@ class Purchase(TenantScopedMixin, db.Model):
     status = db.Column(db.String(20), default='confirmed', index=True)
 
     # تتبع السداد (كانت خدمة أعمار الذمم الدائنة تفلتر على عمودين غير موجودين)
+    # F3: يُكتبان الآن عند تسديد فاتورة الشراء (انظر recalculate_payment_status)
+    # والقيم بعملة الأساس (amount_base) — لا تُشتق من total_amount.
     paid_amount = db.Column(db.Numeric(15, 3), default=0)
-    payment_status = db.Column(db.String(20), default='pending', index=True)
+    payment_status = db.Column(db.String(20), default='unpaid', index=True)
 
     notes = db.Column(db.Text)
 
@@ -64,13 +66,52 @@ class Purchase(TenantScopedMixin, db.Model):
     def get_paid_amount(self):
         """Return the tracked paid amount for this purchase (base currency).
 
-        Payments carry no purchase foreign key by design — supplier payments
-        are settled at the supplier level — so deriving a per-purchase figure
-        by querying the payments table was unreliable (it crashed on columns
-        that do not exist on Payment). The tracked ``paid_amount`` column is
-        the single source of truth for per-purchase settlement.
+        The tracked ``paid_amount`` column is the single source of truth for
+        per-purchase settlement: it is written by
+        :meth:`recalculate_payment_status` from the payments that carry this
+        purchase (``Payment.purchase_id``).  Supplier payments that carry no
+        purchase link keep settling at the supplier level (backward
+        compatible) and are reflected in ``Supplier.total_paid_aed``.
         """
         return Decimal(str(self.paid_amount)) if self.paid_amount is not None else Decimal('0')
+
+    def recalculate_payment_status(self, connection=None):
+        """F3: تحديث المسدّد وحالة السداد من السندات المرتبطة بالفاتورة.
+
+        المدفوع = Σ amount_base لسندات الصرف **المؤكدة** المرتبطة بهذه
+        الفاتورة (السندات المعلّقة — شيك تحت التحصيل — لا تُحسب).
+        """
+        from sqlalchemy import select
+
+        from models.payment import Payment
+
+        if connection is None:
+            connection = db.session.connection()
+
+        rows = connection.execute(
+            select(
+                Payment.__table__.c.amount_base,
+                Payment.__table__.c.payment_confirmed,
+            ).where(Payment.__table__.c.purchase_id == self.id)
+        ).fetchall()
+
+        total = Decimal('0')
+        for row in rows:
+            if row.payment_confirmed is False:
+                continue
+            total += Decimal(str(row.amount_base or 0))
+
+        self.paid_amount = total.quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
+
+        amount_base = Decimal(str(self.amount_base or 0))
+        if self.paid_amount <= Decimal('0'):
+            self.payment_status = 'unpaid'
+        elif self.paid_amount + Decimal('0.01') >= amount_base:
+            self.payment_status = 'paid'
+        else:
+            self.payment_status = 'partial'
+
+        return self.paid_amount
 
     def calculate_totals(self):
         """
@@ -96,10 +137,20 @@ class Purchase(TenantScopedMixin, db.Model):
             Decimal('0.001'), rounding=ROUND_HALF_UP
         )
 
-        # Calculate AED amount with proper rounding
-        self.amount_base = (self.total_amount * exchange_rate_decimal).quantize(
-            Decimal('0.001'), rounding=ROUND_HALF_UP
-        )
+        # Calculate base amount with proper rounding.
+        # F13: نفس فرع عملة الأساس في Sale.calculate_totals — الفاتورة بعملة
+        # الأساس لا تُضرب في سعر الصرف (كان الضرب دائماً يضاعف المبلغ).
+        try:
+            from services.currency_service import CurrencyService
+            _base = CurrencyService.get_base_currency()
+        except Exception:
+            _base = 'ILS'
+        if (self.currency or _base) == _base:
+            self.amount_base = self.total_amount
+        else:
+            self.amount_base = (self.total_amount * exchange_rate_decimal).quantize(
+                Decimal('0.001'), rounding=ROUND_HALF_UP
+            )
 
     def to_dict(self, include_lines=False):
         data = {

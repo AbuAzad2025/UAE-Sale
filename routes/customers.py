@@ -14,6 +14,77 @@ from datetime import datetime
 customers_bp = Blueprint('customers', __name__, url_prefix='/customers')
 
 
+def _parse_opening_balance(source):
+    """F4: قراءة الرصيد الافتتاحي من النموذج (مبلغ + عملة + سعر صرف + تاريخ).
+
+    حقول النموذج (نفس أسماء أعمدة النموذج models/customer.py):
+      ``opening_balance``          — المبلغ بالعملة المدخلة
+      ``opening_balance_currency`` — رمز العملة (ثلاثة أحرف)
+      ``opening_balance_rate``     — سعر التحويل إلى عملة الأساس
+      ``opening_balance_date``     — تاريخ الرصيد (YYYY-MM-DD)
+
+    وتُقبل أيضاً ``initial_balance`` كبديل للمبلغ (الحقل الموجود في
+    نموذج المورد الحالي) طلباً للتوافق مع القوالب قبل تعديلها.
+
+    تُرجع قاموساً بالمبلغ/العملة/السعر/التاريخ، أو ``None`` إذا لم يُدخل
+    شيء. ترفع ``ValueError`` برسالة عربية عند أي قيمة غير صالحة.
+    """
+    from datetime import datetime as _datetime
+    from decimal import InvalidOperation
+
+    from services.currency_service import CurrencyService
+
+    raw_amount = (source.get('opening_balance') or source.get('initial_balance') or '').strip()
+    raw_currency = (source.get('opening_balance_currency') or '').strip().upper()
+    raw_rate = (source.get('opening_balance_rate') or '').strip()
+    raw_date = (source.get('opening_balance_date') or '').strip()
+
+    if not raw_amount and not raw_currency and not raw_rate and not raw_date:
+        return None
+
+    amount = Decimal('0')
+    if raw_amount:
+        try:
+            amount = Decimal(raw_amount)
+        except (InvalidOperation, ValueError):
+            raise ValueError('الرصيد الافتتاحي يجب أن يكون رقماً صحيحاً.')
+
+    if raw_currency:
+        if len(raw_currency) != 3 or not raw_currency.isalpha():
+            raise ValueError(
+                'عملة الرصيد الافتتاحي يجب أن تكون رمزاً من ثلاثة أحرف (مثل AED).')
+        currency = raw_currency
+    else:
+        try:
+            currency = CurrencyService.get_base_currency()
+        except Exception:
+            currency = 'ILS'
+
+    rate = Decimal('1')
+    if raw_rate:
+        try:
+            rate = Decimal(raw_rate)
+        except (InvalidOperation, ValueError):
+            raise ValueError('سعر صرف الرصيد الافتتاحي يجب أن يكون رقماً صحيحاً.')
+        if rate <= 0:
+            raise ValueError('سعر صرف الرصيد الافتتاحي يجب أن يكون أكبر من صفر.')
+
+    opening_date = None
+    if raw_date:
+        try:
+            opening_date = _datetime.strptime(raw_date, '%Y-%m-%d').date()
+        except ValueError:
+            raise ValueError(
+                'تاريخ الرصيد الافتتاحي يجب أن يكون بالصيغة YYYY-MM-DD.')
+
+    return {
+        'amount': amount,
+        'currency': currency,
+        'rate': rate,
+        'date': opening_date,
+    }
+
+
 def sales_or_customers_required(f):
     """Dual-check guard: customer lookups are shared by the sales form and the
     customers screens, so either manage_sales OR manage_customers grants access.
@@ -89,6 +160,9 @@ def create():
 
     if form.validate_on_submit():
         try:
+            # F4: الرصيد الافتتاحي — عميل مُرحَّل عليه رصيد سابق.
+            opening = _parse_opening_balance(request.form)
+
             customer = Customer(
                 name=form.name.data,
                 name_ar=form.name_ar.data,
@@ -101,7 +175,19 @@ def create():
                 notes=form.notes.data
             )
 
+            if opening:
+                customer.opening_balance = opening['amount']
+                customer.opening_balance_currency = opening['currency']
+                customer.opening_balance_rate = opening['rate']
+                customer.opening_balance_date = opening['date']
+
             db.session.add(customer)
+            db.session.commit()
+
+            # F4: الرصيد الافتتاحي جزء من اشتقاق رصيد العميل — يُعاد
+            # احتساب العمود المخزَّن من المصدر الواحد (models/customer.py).
+            from models.customer import recompute_customer_balance
+            recompute_customer_balance(customer.id)
             db.session.commit()
 
             create_audit_log('create', 'customers', customer.id)
@@ -109,6 +195,9 @@ def create():
             flash('✅ تم إضافة الزبون بنجاح!', 'success')
             return redirect(url_for('customers.index'))
 
+        except ValueError as e:
+            db.session.rollback()
+            flash(f'❌ {e}', 'danger')
         except Exception as e:
             db.session.rollback()
             from utils.error_messages import ErrorMessages
@@ -179,6 +268,20 @@ def edit(id):
             customer.preferred_currency = preferred_currency or None
             customer.notes = request.form.get('notes')
 
+            # F4: تعديل الرصيد الافتتاحي (مبلغ + عملة + سعر صرف + تاريخ)
+            opening = _parse_opening_balance(request.form)
+            if opening:
+                customer.opening_balance = opening['amount']
+                customer.opening_balance_currency = opening['currency']
+                customer.opening_balance_rate = opening['rate']
+                customer.opening_balance_date = opening['date']
+
+            db.session.commit()
+
+            # F4: إعادة احتساب رصيد العميل من المصدر الواحد بعد أي تغيير
+            # في الرصيد الافتتاحي.
+            from models.customer import recompute_customer_balance
+            recompute_customer_balance(customer.id)
             db.session.commit()
 
             create_audit_log('update', 'customers', customer.id)
@@ -186,6 +289,9 @@ def edit(id):
             flash('✅ تم تحديث بيانات الزبون بنجاح!', 'success')
             return redirect(url_for('customers.view', id=customer.id))
 
+        except ValueError as e:
+            db.session.rollback()
+            flash(f'❌ {e}', 'danger')
         except Exception as e:
             db.session.rollback()
             from utils.error_messages import ErrorMessages

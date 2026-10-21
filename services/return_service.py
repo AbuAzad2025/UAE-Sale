@@ -6,7 +6,8 @@ from services.stock_service import StockService
 from services.gl_service import GLService
 from services.tax_engine import TaxEngine
 from utils.decorators import get_owned_or_404, get_owned_or_raise
-from utils.helpers import generate_number
+from utils.errors import ValidationError
+from utils.helpers import generate_number, create_audit_log
 
 
 class ReturnService:
@@ -61,6 +62,8 @@ class ReturnService:
             total_return_amount = Decimal('0')
             return_line_totals = []
             gl_lines = []
+            # cost_basis_fallback lines that need a human review.
+            review_flags = []
 
             # GL account routing via central TaxEngine/resolver (literal fallbacks
             # keep today's codes until Agent 1's account_resolution module lands).
@@ -87,22 +90,30 @@ class ReturnService:
                         f"sale {sale.id}.")
 
                 # Validate Quantity (Cannot return more than sold)
-                # Note: This checks total sold. Ideally should check remaining returnable quantity if partial returns exist.
-                # For now, let's assume simple validation against line quantity.
-                # Future improvement: sum previous returns for this line.
+                # Only APPROVED returns consume the returnable quantity: a
+                # pending or cancelled return must not permanently block the
+                # customer from returning the goods.
                 previous_returned = db.session.query(db.func.sum(ProductReturnLine.quantity))\
                     .join(ProductReturn)\
-                    .filter(ProductReturnLine.sale_line_id == sale_line.id)\
+                    .filter(ProductReturnLine.sale_line_id == sale_line.id,
+                            ProductReturn.status == 'approved')\
                     .scalar() or Decimal('0')
 
                 if (previous_returned + quantity) > sale_line.quantity:
                     raise ValueError(f"Cannot return {quantity} of {sale_line.product.name}. Already returned: {previous_returned}, Sold: {sale_line.quantity}.")  # noqa: E501
 
                 # Calculate refund amount for this line
-                # Pro-rata calculation: (Line Total / Quantity) * Return Quantity
-                # But usually it's Unit Price * Return Quantity
-                unit_price = sale_line.unit_price
-                line_total = (unit_price * quantity).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
+                # NET OF THE LINE DISCOUNT: the original revenue was booked
+                # net of discount_percent (models/sale.py::calculate_line_total),
+                # so the refund must be net of it too — and the tax reversal
+                # follows the same (discounted) base.
+                unit_price = Decimal(str(sale_line.unit_price or 0))
+                discount_percent = Decimal(str(sale_line.discount_percent or 0))
+                if discount_percent < Decimal('0') or discount_percent > Decimal('100'):
+                    discount_percent = Decimal('0')
+                net_multiplier = (Decimal('100') - discount_percent) / Decimal('100')
+                line_total = (unit_price * quantity * net_multiplier).quantize(
+                    Decimal('0.001'), rounding=ROUND_HALF_UP)
 
                 total_return_amount += line_total
                 return_line_totals.append(line_total)
@@ -134,13 +145,44 @@ class ReturnService:
 
                 # Prepare COGS Reversal GL Data (Credit COGS, Debit Inventory)
                 # Cost basis: the HISTORICAL cost captured on the sale line at
-                # sell time. Only legacy lines missing cost_price fall back to
-                # the product's current cost.
+                # sell time.  The column default is 0 (models/sale.py), so a
+                # ZERO cost is just as unreliable as a NULL one: it means the
+                # line was never costed, not that the goods were free.
+                # A zero/None line cost therefore falls back to the product's
+                # CURRENT cost (so the return is not half-posted: inventory
+                # and COGS are both reversed) and the return is escalated for
+                # review.  With no basis at all the return is refused.
                 product = get_owned_or_404(Product, sale_line.product_id)
-                cost_price = sale_line.cost_price
-                if cost_price is None and product is not None:
-                    cost_price = product.cost_price
-                cost_value = (quantity * (Decimal(str(cost_price)) if cost_price else Decimal('0'))).quantize(
+                line_cost = sale_line.cost_price
+                reliable = (line_cost is not None
+                            and Decimal(str(line_cost)) > Decimal('0'))
+                if reliable:
+                    cost_price = Decimal(str(line_cost))
+                else:
+                    product_cost = (product.cost_price
+                                    if product is not None else None)
+                    if (product_cost is not None
+                            and Decimal(str(product_cost)) > Decimal('0')):
+                        cost_price = Decimal(str(product_cost))
+                        cost_basis_source = 'product_current_cost'
+                        review_flags.append(
+                            f'سطر البيع {sale_line.id}: لا توجد تكلفة موثّقة '
+                            f'(cost_price = {line_cost}) — عُكس القيد بتكلفة '
+                            f'المنتج الحالية {cost_price} وبحاجة إلى مراجعة.')
+                        current_app.logger.error(
+                            'Return %s: sale line %s has no reliable cost '
+                            '(cost_price=%s); reversed at the product current '
+                            'cost %s — manual review required.',
+                            product_return.return_number, sale_line.id,
+                            line_cost, cost_price)
+                    else:
+                        raise ValidationError(
+                            f'لا يمكن عكس تكلفة البضاعة للمنتج '
+                            f'"{sale_line.product.name if sale_line.product else sale_line.product_id}": '
+                            f'لا توجد تكلفة على سطر البيع ولا تكلفة حالية للمنتج. '
+                            f'💡 اضبط تكلفة المنتج ثم أعد تنفيذ المرتجع.')
+
+                cost_value = (quantity * cost_price).quantize(
                     Decimal('0.001'), rounding=ROUND_HALF_UP
                 )
 
@@ -161,6 +203,13 @@ class ReturnService:
                     })
 
             product_return.calculate_totals()
+
+            # F6: a return whose cost basis had to be taken from the
+            # product's CURRENT cost is escalated for review — the marker
+            # travels with the document so it cannot be lost.
+            if review_flags:
+                marker = '\n[مراجعة مطلوبة] ' + ' | '.join(review_flags)
+                product_return.notes = (product_return.notes or '') + marker
 
             # 4. Financial GL Entries (Revenue Reversal)
             # TaxEngine policy: tax is computed PER RETURN LINE then summed,
@@ -255,27 +304,45 @@ class ReturnService:
                     payment_method='cash',
                     notes=f'استرداد نقدي للمرتجع {product_return.return_number}',
                     user_id=user_id))
-                sale.paid_amount_base = max(
-                    Decimal('0'), paid_base - cash_out_base)
-                sale.paid_amount = max(
-                    Decimal('0'), (Decimal(str(sale.paid_amount or 0))
-                                   - cash_out_txn).quantize(
-                        Decimal('0.001'), rounding=ROUND_HALF_UP))
-            # NOTE: customer.balance is NOT touched here on purpose — it is
-            # derived by the Sale after_insert/after_update listener as
-            # Σ(amount_base − paid_base) − Σ(approved refunds), which this
-            # method keeps consistent via paid_amount_base/balance_due above.
-            sale.balance_due = max(
-                Decimal('0'), (Decimal(str(sale.balance_due or 0))
-                               - ar_part_base).quantize(
-                    Decimal('0.001'), rounding=ROUND_HALF_UP))
-            _paid_now = Decimal(str(sale.paid_amount_base or 0))
-            if sale.balance_due <= 0:
-                sale.payment_status = 'paid'
-            elif _paid_now > 0:
-                sale.payment_status = 'partial'
-            else:
-                sale.payment_status = 'unpaid'
+
+            # F3: لا تحرير يدوي لـ paid_amount / balance_due / payment_status.
+            # تسوية الفاتورة تُشتق من مستنداتها (سند الاسترداد + المرتجع
+            # المعتمد) عبر المصدر الوحيد: models/sale.recompute_sale_settlement.
+            # الكتابة اليدوية كانت تتنازع مع إعادة الاحتساب فتُنتج انحرافاً
+            # بين الفاتورة ورصيد العميل.
+            # flush: الاشتقاق يقرأ المستندات من القاعدة (Core) — يجب تثبيت
+            # المرتجع وسند الاسترداد قبل إعادة الاحتساب.
+            db.session.flush()
+            from models.sale import recompute_sale_settlement
+            # NOTE: يُمرَّر الاتصال صراحةً — models/sale.py يستورد `db`
+            # محلياً بعد السطر 114 في الاستدعاء ( UnboundLocalError
+            # عند connection=None ). الملف ليس ضمن نطاق التعديل هنا.
+            recompute_sale_settlement(sale.id, connection=db.session.connection())
+
+            # F1: رصيد العميل يُشتق من مصدره الواحد بعد أن استقرت تسوية
+            # الفاتورة (المستندون الآن في القاعدة).
+            from models.customer import recompute_customer_balance
+            recompute_customer_balance(sale.customer_id)
+
+            # F14: a refund is a destructive financial operation — the audit
+            # row carries the amounts, the tax base and the cost basis.
+            create_audit_log('create', 'product_returns', product_return.id,
+                             changes={
+                                 'return_number': product_return.return_number,
+                                 'sale_id': sale.id,
+                                 'sale_number': sale.sale_number,
+                                 'customer_id': sale.customer_id,
+                                 'total_amount': str(product_return.total_amount),
+                                 'refund_amount': str(gross_return_amount),
+                                 'net_amount': str(net_return_amount),
+                                 'tax_amount': str(tax_amount),
+                                 'tax_rate': str(tax_rate),
+                                 'cash_refund_base': str(cash_out_base),
+                                 'ar_credit_base': str(ar_part_base),
+                                 'currency': sale.currency,
+                                 'exchange_rate': str(_rate),
+                                 'review_flags': review_flags,
+                             }, commit=False)
 
             db.session.commit()
             return product_return

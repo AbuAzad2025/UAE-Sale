@@ -297,11 +297,18 @@ class TestCreateAuditLog:
 
         assert log.user_id == owner_user.id
 
-    def test_commit_failure_is_swallowed_without_raising(self, app, db):
+    def test_audit_failure_raises_and_persists_nothing(self, app, db):
+        """A failed audit insert must NOT be swallowed.
+
+        The audit row is part of the business transaction: if it cannot be
+        written the operation has to fail (fail-closed) instead of
+        committing a financial change with no trace.
+        """
         from models import AuditLog
 
         with app.test_request_context('/'):
-            create_audit_log('delete', changes=object())
+            with pytest.raises(Exception):
+                create_audit_log('delete', changes=object())
         db.session.rollback()
         assert AuditLog.query.count() == 0
 

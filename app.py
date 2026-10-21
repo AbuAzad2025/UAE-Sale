@@ -547,6 +547,23 @@ def create_app(config_class=Config):  # noqa: C901
         )
         raise
 
+    # === Fiscal year provisioning ===
+    # A posting is refused unless it lands inside an OPEN fiscal period, and
+    # a date covered by no period is NOT open. Without this, a deployment whose
+    # operator has not yet created the current year would accept no document
+    # at all - the books would be unusable rather than merely unprotected.
+    # The current calendar year is therefore opened automatically, and the
+    # rollover to the next year happens the same way.
+    try:
+        with app.app_context():
+            from services.fiscal_period_guard import ensure_current_period
+            ensure_current_period()
+            app.logger.info(
+                '[OK] Fiscal period available for the current year.')
+    except Exception as e:  # never block boot on this
+        app.logger.warning(
+            'Could not auto-provision the current fiscal period: %s', e)
+
     # Step 2: Verify all critical tables exist after migration.
     # Fail-fast policy: halt boot if schema is incomplete even after migrations.
     try:

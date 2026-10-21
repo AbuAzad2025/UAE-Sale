@@ -161,15 +161,29 @@ class TestPaymentModel:
         assert p.status_ar == 'مؤكدة'
 
     def test_reject_payment_restores_customer_balance(self, db, test_sale):
+        """A rejected payment restores the balance to its PRE-payment value.
+
+        CHANGED (F1/F4 fix): the old expectation (``before + 100``) encoded
+        the bug the task describes — a payment linked to an invoice did not
+        settle that invoice, so rejecting it inflated the customer balance by
+        an amount that had never been deducted.  Now the payment settles the
+        invoice (the AR drops to 0) and the rejection restores exactly the
+        previous balance.
+        """
         from extensions import db as _db
         customer = test_sale.customer
         before = customer.balance or Decimal('0')
         p = self._payment(db, test_sale, payment_number='PAY-W1-004')
+
+        # the payment settles the invoice (models/sale.py:recalculate_payment_status)
+        _db.session.refresh(customer)
+        assert customer.balance == Decimal('0.000')
+
         p.reject_payment('cheque bounced')
         assert p.payment_confirmed is False
         assert p.rejection_reason == 'cheque bounced'
         _db.session.refresh(customer)
-        assert customer.balance == before + Decimal('100.000')
+        assert customer.balance == before
 
     def test_reject_pending_is_noop(self, db, test_sale):
         p = self._payment(db, test_sale, payment_number='PAY-W1-005',

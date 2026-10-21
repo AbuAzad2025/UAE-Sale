@@ -20,7 +20,33 @@ from services.gl_service import GLService
 
 
 @pytest.fixture
-def gl(db):
+def open_fiscal_period(db):
+    """فترة مالية مفتوحة تغطي السنة الحالية.
+
+    F10: الترحيل مرفوض خارج فترة مفتوحة — بقاء الفترة هنا هو شرط لازم
+    في كل اختبار يرحّل قيداً (وليس تخفيفاً للحاجز).
+    """
+    from models.erp_modules import FiscalPeriod
+
+    year = date.today().year
+    existing = FiscalPeriod.query.filter_by(year=year, period_type='annual').first()
+    if existing is not None:
+        return existing
+    period = FiscalPeriod(
+        name=f'FY {year}',
+        year=year,
+        period_type='annual',
+        start_date=date(year, 1, 1),
+        end_date=date(year, 12, 31),
+        is_closed=False,
+    )
+    db.session.add(period)
+    db.session.commit()
+    return period
+
+
+@pytest.fixture
+def gl(db, open_fiscal_period):
     GLService.ensure_core_accounts()
 
 
@@ -75,7 +101,7 @@ class TestQuotationService:
         assert q.lines[0].unit_price == Decimal('100.000')
         assert q.subtotal == Decimal('300.000')
 
-    def test_convert_to_sale_creates_linked_sale(self, db, owner_user, test_customer, test_product, warehouse):
+    def test_convert_to_sale_creates_linked_sale(self, db, owner_user, test_customer, test_product, warehouse, open_fiscal_period):
         stock_before = test_product.current_stock
         q = _make_quotation(db, owner_user, test_customer, test_product, warehouse)
         sale = QuotationService.convert_to_sale(q.id, owner_user.id)
@@ -186,12 +212,15 @@ class TestFiscalPeriodService:
             FiscalPeriodService.close_period(fp.id, owner_user.id)
 
     def test_is_period_open_respects_closed_periods(self, db, owner_user):
-        assert FiscalPeriodService.is_period_open(date(2032, 6, 1)) is True
+        # F10: تاريخ لا تغطيه أي فترة مالية NOT مفتوح — كان الفحص يرجع
+        # True دائماً في هذه الحالة فالتقفل لم يكن له أي أثر.
+        assert FiscalPeriodService.is_period_open(date(2032, 6, 1)) is False
         fp = FiscalPeriodService.create_annual_period(2032)
         assert FiscalPeriodService.is_period_open(date(2032, 6, 1)) is True
         FiscalPeriodService.close_period(fp.id, owner_user.id)
         assert FiscalPeriodService.is_period_open(date(2032, 6, 1)) is False
-        assert FiscalPeriodService.is_period_open(date(2033, 6, 1)) is True
+        # لا توجد فترة لـ 2033 → مرفوض أيضاً
+        assert FiscalPeriodService.is_period_open(date(2033, 6, 1)) is False
 
     def test_get_current_period(self, db):
         assert FiscalPeriodService.get_current_period() is None
@@ -256,7 +285,7 @@ class TestStockTakeService:
         assert completed.completed_at is not None
         assert completed.items[0].variance == Decimal('-3')
 
-    def test_approve_requires_completed_then_applies_variance(self, db, owner_user, test_product, warehouse):
+    def test_approve_requires_completed_then_applies_variance(self, db, owner_user, test_product, warehouse, open_fiscal_period):
         st_pending = StockTakeService.create_stocktake(warehouse.id, owner_user.id)
         with pytest.raises(ValueError, match='إكمال الجرد'):
             StockTakeService.approve_stocktake(st_pending.id, owner_user.id)

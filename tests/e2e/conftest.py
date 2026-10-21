@@ -334,6 +334,18 @@ def db(app, _schema):
     with app.app_context():
         clear_current_tenant_id()
         _wipe_rows(_db)
+        # The wipe removes the fiscal period too, and a posting is refused
+        # unless it lands inside an OPEN one - so re-open the current year,
+        # exactly as the application factory does at boot.
+        try:
+            from datetime import date as _date
+            from services.fiscal_period_guard import ensure_periods_for_years
+            this_year = _date.today().year
+            # A NARROW range on purpose - see tests/conftest.py. A test that
+            # needs a year with no period must be able to find one.
+            ensure_periods_for_years(range(this_year - 1, this_year + 2))
+        except Exception:
+            pass
         try:
             yield _db
         finally:

@@ -56,7 +56,8 @@ class TestChatShortcuts:
 
 class TestServiceLayerEndToEnd:
     def test_product_sale_payment_flow(self, db, owner_user):
-        p = cmd.create_product("فلتر E2E", "E2E-001", 100.0, 20)
+        # F1/F2: منتج بلا تكلفة لا يمكن بيعه — لذا يُنشأ بتكلفة.
+        p = cmd.create_product("فلتر E2E", "E2E-001", 100.0, 20, cost_price=40.0)
         assert p.id is not None
         c = cmd.create_customer("عميل E2E", phone="0500000001")
         assert c.id is not None

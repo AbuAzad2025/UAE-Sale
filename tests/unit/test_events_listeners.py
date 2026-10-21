@@ -10,6 +10,8 @@ import logging
 from datetime import date, timedelta
 from decimal import Decimal
 
+import pytest
+
 EVENTS_LOGGER = 'models.events'
 
 
@@ -398,15 +400,21 @@ class TestValidationListeners:
         assert raised
         assert any('Invalid amount' in r.getMessage() for r in caplog.records)
 
-    def test_product_negative_stock_clamped_to_zero(self, db, test_product, caplog):
-        with caplog.at_level(logging.ERROR, logger=EVENTS_LOGGER):
+    def test_product_negative_stock_is_refused(self, db, test_product, caplog):
+        """F6: المخزون السالب يُرفض — لا يُقصّ إلى صفر.
+
+        السلوك القديم (clamp إلى صفر + log فقط) كان يمحو العجز بصمت:
+        بيع 10 على رصيد 3 كان يترك current_stock = 0 وفاتورة بقيمة 10.
+        """
+        from utils.errors import ValidationError
+
+        with pytest.raises(ValidationError):
             test_product.current_stock = Decimal('-5')
             db.session.commit()
 
+        db.session.rollback()
         db.session.refresh(test_product)
-        assert test_product.current_stock == 0
-        assert any('BLOCKED' in r.getMessage() and 'Negative stock' in r.getMessage()
-                   for r in caplog.records)
+        assert test_product.current_stock == Decimal('100')
 
 
 class TestChequeListeners:
@@ -527,19 +535,22 @@ class TestProductReturnExpenseGLStockListeners:
         assert exp.id is not None
         assert not any('EXP-EV-INACT-1' in r.getMessage() for r in caplog.records)
 
-    def test_unbalanced_gl_entry_logs_error(self, db, caplog):
+    def test_unbalanced_gl_entry_is_refused(self, db, caplog):
+        """F7: القيد غير المتوازن يُرفض بالمستمع (لا يُسجَّل ويُحفظ)."""
         from models import GLJournalEntry
+        from utils.errors import ValidationError
 
         entry = GLJournalEntry(
             entry_number='JE-EV-UNBAL-1', total_debit=Decimal('100.000'),
             total_credit=Decimal('90.000'),
         )
-        with caplog.at_level(logging.ERROR, logger=EVENTS_LOGGER):
+        with pytest.raises(ValidationError):
             db.session.add(entry)
             db.session.commit()
 
-        assert any('JE-EV-UNBAL-1' in r.getMessage() and 'UNBALANCED' in r.getMessage()
-                   for r in caplog.records)
+        db.session.rollback()
+        assert GLJournalEntry.query.filter_by(
+            entry_number='JE-EV-UNBAL-1').count() == 0
 
     def test_balanced_gl_entry_logs_info(self, db, caplog):
         from models import GLJournalEntry

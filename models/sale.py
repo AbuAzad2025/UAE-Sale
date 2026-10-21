@@ -4,6 +4,185 @@ from extensions import db
 from models.tenant_scope import TenantScopedMixin
 
 
+def _parse_allocations(raw):
+    """قراءة تخصيصات سند القبض (JSON) — تُرجع قائمة فارغة عند أي خطأ."""
+    if not raw:
+        return []
+    try:
+        import json
+        data = json.loads(raw)
+    except Exception:
+        return []
+    return data if isinstance(data, list) else []
+
+
+def compute_sale_returns_base(sale_id, connection=None):
+    """قيمة المرتجعات المعتمدة للفاتورة (بالعملة الأساسية).
+
+    المرتجع المعتمد يُلغي قيمة الفاتورة (دائن للعميل) — فيجب أن يُخصم
+    من رصيد الفاتورة وإلا ظهرت الفاتورة مستحقة بعد إرجاعها.
+    """
+    from sqlalchemy import select
+
+    from models.product_return import ProductReturn
+
+    if connection is None:
+        connection = db.session.connection()
+
+    rows = connection.execute(
+        select(
+            ProductReturn.__table__.c.refund_amount,
+            ProductReturn.__table__.c.exchange_rate,
+        ).where(
+            ProductReturn.__table__.c.sale_id == sale_id,
+            ProductReturn.__table__.c.status == 'approved',
+        )
+    ).fetchall()
+
+    total = Decimal('0')
+    for row in rows:
+        rate = Decimal(str(row.exchange_rate or 1))
+        total += Decimal(str(row.refund_amount or 0)) * rate
+    return total
+
+
+def compute_sale_paid_base(sale_id, connection=None):
+    """المسدّد المؤكد للفاتورة بعملة الأساس (Core — آمن أثناء الـ flush).
+
+    = Σ سندات الصرف المؤكدة − استردادات المرتجع
+      + Σ تخصيصات سندات القبض المؤكدة (بعملة الأساس)
+    """
+    from sqlalchemy import select
+
+    from models.payment import Payment, Receipt
+
+    if connection is None:
+        connection = db.session.connection()
+
+    total = Decimal('0')
+
+    payment_rows = connection.execute(
+        select(
+            Payment.__table__.c.amount_base,
+            Payment.__table__.c.payment_confirmed,
+            Payment.__table__.c.payment_type,
+        ).where(Payment.__table__.c.sale_id == sale_id)
+    ).fetchall()
+    for row in payment_rows:
+        if row.payment_confirmed is False:
+            continue
+        amount = Decimal(str(row.amount_base or 0))
+        if (row.payment_type or '') == 'refund':
+            total -= amount
+        else:
+            total += amount
+
+    receipt_rows = connection.execute(
+        select(
+            Receipt.__table__.c.amount_base,
+            Receipt.__table__.c.payment_confirmed,
+            Receipt.__table__.c.allocations_json,
+        ).where(Receipt.__table__.c.sale_id == sale_id)
+    ).fetchall()
+    for row in receipt_rows:
+        if row.payment_confirmed is False:
+            continue
+        allocations = _parse_allocations(row.allocations_json)
+        if allocations:
+            for alloc in allocations:
+                try:
+                    if int(alloc.get('sale_id')) != int(sale_id):
+                        continue
+                except (TypeError, ValueError):
+                    continue
+                total += Decimal(str(alloc.get('amount_base') or 0))
+        else:
+            # سجل قديم بلا تخصيصات محفوظة: السند كاملاً كان يسدد الفاتورة
+            total += Decimal(str(row.amount_base or 0))
+
+    return total
+
+
+def recompute_sale_settlement(sale_id, connection=None):
+    """F1/F2: إعادة احتساب تسوية الفاتورة (مدفوع/رصيد/حالة) عبر Core.
+
+    آمن للاستدعاء أثناء الـ flush (المستمعات) لأنه لا يستعمل ORM.
+    """
+    from sqlalchemy import select
+
+    if connection is None:
+        connection = db.session.connection()
+
+    row = connection.execute(
+        select(
+            Sale.__table__.c.amount_base,
+            Sale.__table__.c.exchange_rate,
+            Sale.__table__.c.currency,
+        ).where(Sale.__table__.c.id == sale_id)
+    ).first()
+    if row is None:
+        return None
+
+    paid_base = compute_sale_paid_base(sale_id, connection=connection).quantize(
+        Decimal('0.001'), rounding=ROUND_HALF_UP)
+    returns_base = compute_sale_returns_base(sale_id, connection=connection).quantize(
+        Decimal('0.001'), rounding=ROUND_HALF_UP)
+    amount_base = Decimal(str(row.amount_base or 0))
+    # الرصيد المتبقي = قيمة الفاتورة − المدفوع المؤكد − المرتجعات المعتمدة
+    balance_due = (amount_base - paid_base - returns_base).quantize(
+        Decimal('0.001'), rounding=ROUND_HALF_UP)
+    if balance_due < Decimal('0'):
+        balance_due = Decimal('0')
+
+    if balance_due <= Decimal('0.01'):
+        payment_status = 'paid'
+        balance_due = Decimal('0')
+    elif paid_base > Decimal('0'):
+        payment_status = 'partial'
+    else:
+        payment_status = 'unpaid'
+
+    try:
+        from services.currency_service import CurrencyService
+        _base = CurrencyService.get_base_currency()
+    except Exception:
+        _base = 'ILS'
+    rate = Decimal(str(row.exchange_rate or 1))
+    if (row.currency or _base) == _base:
+        paid_amount = paid_base
+    else:
+        paid_amount = (paid_base / rate).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
+
+    connection.execute(
+        Sale.__table__.update().where(Sale.__table__.c.id == sale_id).values(
+            paid_amount=paid_amount,
+            paid_amount_base=paid_base,
+            balance_due=balance_due,
+            payment_status=payment_status,
+        )
+    )
+
+    # مزامنة ذاكرة هوية الجلسة (expire_on_commit=False)
+    try:
+        from sqlalchemy.orm.attributes import set_committed_value
+        from sqlalchemy.orm.util import identity_key
+
+        # db is imported at module level. Re-importing it HERE would make it
+        # a local name for the whole function, and the connection lookup
+        # above (db.session.connection()) would raise UnboundLocalError.
+        session = db.session()
+        instance = session.identity_map.get(identity_key(Sale, sale_id))
+        if instance is not None:
+            set_committed_value(instance, 'paid_amount', paid_amount)
+            set_committed_value(instance, 'paid_amount_base', paid_base)
+            set_committed_value(instance, 'balance_due', balance_due)
+            set_committed_value(instance, 'payment_status', payment_status)
+    except Exception:
+        pass
+
+    return paid_base
+
+
 class Sale(TenantScopedMixin, db.Model):
     __tablename__ = 'sales'
 
@@ -104,46 +283,58 @@ class Sale(TenantScopedMixin, db.Model):
                 Decimal('0.001'), rounding=ROUND_HALF_UP
             )
 
-        # Calculate paid amount base based on transaction currency vs base
-        paid_foreign = Decimal(str(self.paid_amount)) if self.paid_amount else Decimal('0')
+        # F2: paid_amount_base هو المرجع (يعملة الأساس) لأنه ناتج التخصيصات
+        # بسعر السند الفعلي — لا يجوز إعادة اشتقاقه من paid_amount × سعر
+        # الفاتورة (كان ذلك يمحو فرق العملة ويسبّب كسوراً من 0.001).
+        paid_base = Decimal(str(self.paid_amount_base)) if self.paid_amount_base is not None else Decimal('0')
         if (self.currency or _base) == _base:
-            self.paid_amount_base = paid_foreign
+            self.paid_amount = paid_base
         else:
-            self.paid_amount_base = (paid_foreign * exchange_rate_decimal).quantize(
+            self.paid_amount = (paid_base / exchange_rate_decimal).quantize(
                 Decimal('0.001'), rounding=ROUND_HALF_UP
             )
 
-        # Calculate balance consistently (always in base)
+        # Calculate balance consistently (always in base).
+        # الفاتورة المدفوعة بالكامل قد يكون مدفوعها أكبر من قيمتها (دفعة
+        # زائدة) → الرصيد صفر (لا سالب: قيد ck_sale_balance_non_negative)
+        # والفرق يظهر كرصيد دائن للعميل في customer.balance.
+        # المرتجعات المعتمدة تُخصم (تُلغي قيمة الفاتورة).
+        returns_base = Decimal('0')
+        if self.id:
+            returns_base = compute_sale_returns_base(self.id)
         if (self.currency or _base) == _base:
-            self.balance_due = (self.total_amount - self.paid_amount_base).quantize(
+            self.balance_due = (self.total_amount - paid_base - returns_base).quantize(
                 Decimal('0.001'), rounding=ROUND_HALF_UP
             )
         else:
-            self.balance_due = (self.amount_base - self.paid_amount_base).quantize(
+            self.balance_due = (self.amount_base - paid_base - returns_base).quantize(
                 Decimal('0.001'), rounding=ROUND_HALF_UP
             )
+        if self.balance_due < Decimal('0'):
+            self.balance_due = Decimal('0')
 
         # Update payment status
         if self.balance_due <= Decimal('0'):
             self.payment_status = 'paid'
-        elif self.paid_amount_base > Decimal('0'):
+        elif paid_base > Decimal('0'):
             self.payment_status = 'partial'
         else:
             self.payment_status = 'unpaid'
 
-    def recalculate_payment_status(self):
+    def recalculate_payment_status(self, connection=None):  # noqa: C901
         """
-        Recalculate payment status based on CONFIRMED payments only
+        Recalculate payment status based on CONFIRMED settlements only
         المعالجة المحاسبية الدقيقة: الشيكات المعلقة لا تُحسب!
+
+        F2/F8: المدفوع يُحسب من المسدّدات المؤكدة:
+            * سندات الصرف المرتبطة (Payment) المؤكدة (مخصومة استردادات المرتجع)
+            * تخصيصات سندات القبض المرتبطة (Receipt) المؤكدة
+        ويمر عبر Core (connection) ليعمل داخل الـ flush بأمان.
         """
-        # Calculate total paid from CONFIRMED payments only (AED)
-        # الشيكات المعلقة (pending) لا تُحسب في المبلغ المدفوع الفعلي
-        total_confirmed_paid_aed = Decimal('0')
-        for p in self.payments:
-            # التحقق من وجود payment_confirmed (للتوافق مع البيانات القديمة)
-            is_confirmed = getattr(p, 'payment_confirmed', True)
-            if is_confirmed:
-                total_confirmed_paid_aed += Decimal(str(p.amount_base))
+        if connection is None:
+            connection = db.session.connection()
+
+        total_confirmed_paid_aed = compute_sale_paid_base(self.id, connection=connection)
 
         # Update paid amounts (confirmed only)
         self.paid_amount_base = total_confirmed_paid_aed
@@ -163,11 +354,14 @@ class Sale(TenantScopedMixin, db.Model):
         except Exception:
             self.paid_amount = self.paid_amount or Decimal('0')
 
-        # Calculate balance consistently
+        # Calculate balance consistently (never negative — قيد قاعدة البيانات)
+        # المرتجعات المعتمدة تُخصم (تُلغي قيمة الفاتورة).
         total_aed = Decimal(str(self.amount_base))
-        self.balance_due = (total_aed - total_confirmed_paid_aed).quantize(
-            Decimal('0.001'), rounding=ROUND_HALF_UP
-        )
+        returns_base = compute_sale_returns_base(self.id, connection=connection)
+        self.balance_due = (total_aed - total_confirmed_paid_aed - returns_base).quantize(
+            Decimal('0.001'), rounding=ROUND_HALF_UP)
+        if self.balance_due < Decimal('0'):
+            self.balance_due = Decimal('0')
 
         # Update payment status
         # ملاحظة: الشيكات المعلقة لا تُغير حالة الدفع إلى "مدفوع"

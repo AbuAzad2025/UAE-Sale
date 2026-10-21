@@ -180,6 +180,19 @@
             <td class="text-success"><strong>{{ '{:,.2f}'.format(supplier.total_purchases_aed or 0) }}</strong> {{ base_currency }}</td>
           </tr>
           <tr>
+            {# F6: الرصيد الافتتاحي منفصل عن إجمالي المشتريات — لا يختلطان #}
+            <th><i class="fas fa-scale-balanced text-muted mr-2"></i>الرصيد الافتتاحي:</th>
+            <td>
+              <strong>{{ '{:,.2f}'.format(supplier.get_opening_balance_base()) }}</strong> {{ base_currency }}
+              {% if supplier.opening_balance_currency and supplier.opening_balance_currency != base_currency %}
+                <small class="text-muted">({{ '{:,.2f}'.format(supplier.opening_balance or 0) }} {{ supplier.opening_balance_currency }})</small>
+              {% endif %}
+              {% if supplier.opening_balance_date %}
+                <small class="text-muted">— {{ supplier.opening_balance_date.strftime('%Y-%m-%d') }}</small>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
             <th><i class="fas fa-hand-holding-usd text-muted mr-2"></i>المدفوع:</th>
             <td class="text-primary"><strong>{{ '{:,.2f}'.format(supplier.total_paid_aed or 0) }}</strong> {{ base_currency }}</td>
           </tr>

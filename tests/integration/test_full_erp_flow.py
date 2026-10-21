@@ -105,9 +105,14 @@ def test_zero_credit_limit_allows_all(seed):
 
 def test_sale_in_closed_period_fails(seed):
     from services.sale_service import SaleService
-    from models.erp_modules import FiscalPeriod
+    from services.erp_modules_service import FiscalPeriodService
     from extensions import db
-    fp = FiscalPeriod.query.first()
+    # Close the period that COVERS TODAY. FiscalPeriod.query.first() is
+    # unordered, and the fixtures open several years, so it could return a
+    # period that does not cover the sale's date - in which case the sale
+    # would legitimately succeed.
+    fp = FiscalPeriodService.get_current_period()
+    assert fp is not None, 'the fixtures open the current year'
     fp.close(seed['owner'].id)
     db.session.commit()
     with pytest.raises(ValueError, match='الفترة المالية الحالية مغلقة'):
@@ -119,9 +124,10 @@ def test_sale_in_closed_period_fails(seed):
 
 
 def test_fiscal_period_close_reopen(seed):
-    from models.erp_modules import FiscalPeriod
+    from services.erp_modules_service import FiscalPeriodService
     from extensions import db
-    fp = FiscalPeriod.query.first()
+    fp = FiscalPeriodService.get_current_period()
+    assert fp is not None
     assert not fp.is_closed
     fp.close(seed['owner'].id)
     db.session.commit()

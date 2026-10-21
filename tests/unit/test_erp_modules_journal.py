@@ -223,15 +223,27 @@ class TestFiscalPeriodService:
         assert FiscalPeriodService.is_period_open(date(2033, 6, 1)) is False
 
     def test_get_current_period(self, db):
-        assert FiscalPeriodService.get_current_period() is None
-        fp = FiscalPeriodService.create_annual_period(date.today().year)
-        assert FiscalPeriodService.get_current_period().id == fp.id
+        # The current year ALWAYS has an open period now: the application
+        # factory provisions it at boot and the test fixtures re-open it,
+        # because a posting is refused outside an open period. The old
+        # assertion ("no current period") described the pre-hardening
+        # behaviour, where a year nobody created was silently writable.
+        current = FiscalPeriodService.get_current_period()
+        assert current is not None
+        assert current.is_closed is False
+        assert current.year == date.today().year
+        # create_annual_period refuses to create a second annual period for
+        # the same year, so the period the fixtures opened is the one the
+        # service resolves.
+        with pytest.raises(ValueError, match='موجودة بالفعل'):
+            FiscalPeriodService.create_annual_period(date.today().year)
 
     def test_closed_period_blocks_new_sales(self, db, owner_user, test_customer, test_product, warehouse):
-        fp = FiscalPeriodService.create_annual_period(date.today().year)
+        fp = FiscalPeriodService.get_current_period()
+        assert fp is not None, 'the fixtures open the current year'
         FiscalPeriodService.close_period(fp.id, owner_user.id)
         q = _make_quotation(db, owner_user, test_customer, test_product, warehouse)
-        with pytest.raises(ValueError, match='الفترة المالية الحالية مغلقة'):
+        with pytest.raises(ValueError, match=r'الفترة المالية.*مغلقة'):
             QuotationService.convert_to_sale(q.id, owner_user.id)
 
 

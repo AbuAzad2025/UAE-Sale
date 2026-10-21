@@ -260,7 +260,11 @@ class TestReceiptListeners:
             _make_receipt(db, 'RCP-EV-1', c.id, amount='50.000')
 
         db.session.refresh(c)
-        assert c.balance == Decimal('200.000')
+        # 300 owed - 100 settled against the invoice - 50 received as an
+        # unapplied advance = 150. The old expectation of 200 ignored the
+        # unlinked receipt entirely, so a customer's advance was invisible
+        # in their own balance.
+        assert c.balance == Decimal('150.000')
         assert any('after receipt' in r.getMessage() for r in caplog.records)
 
     def test_receipt_delete_warns_use_cancellation(self, db, caplog):

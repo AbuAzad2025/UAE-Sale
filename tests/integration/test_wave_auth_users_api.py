@@ -713,11 +713,32 @@ class TestApiRoutes:
         from models import Supplier
         sup = Supplier(name='Acme Parts', company_name='Acme Trading LLC',
                        phone='+971555000111', email='acme@example.com',
-                       supplier_type='parts', rating=4, is_active=True, is_verified=True,
-                       total_purchases_aed=Decimal('300'), total_paid_aed=Decimal('100'))
+                       supplier_type='parts', rating=4, is_active=True,
+                       is_verified=True)
         db.session.add(sup)
         db.session.add(Supplier(name='Zombie Supply', supplier_type='other',
                                 is_active=False))
+        db.session.commit()
+
+        # The supplier's balance is DERIVED from its documents now, so the
+        # documents have to exist for it to be 200.
+        from models import Payment, Purchase
+        from datetime import datetime
+        purchase = Purchase(
+            purchase_number='SUP-API-1', supplier_id=sup.id,
+            supplier_name=sup.name,
+            purchase_date=datetime.utcnow(),
+            total_amount=Decimal('300'), currency='AED',
+            exchange_rate=Decimal('1'), amount_base=Decimal('300'),
+            status='confirmed', user_id=1)
+        db.session.add(purchase)
+        db.session.flush()
+        db.session.add(Payment(
+            payment_number='SUP-API-PAY-1', payment_type='supplier_payment',
+            direction='outgoing', supplier_id=sup.id,
+            amount=Decimal('100'), currency='AED', exchange_rate=Decimal('1'),
+            amount_base=Decimal('100'), payment_method='cash',
+            payment_confirmed=True, payment_date=datetime.utcnow()))
         db.session.commit()
         data = client.get('/api/search?type=suppliers&q=Acme').get_json()
         assert data['has_more'] is False

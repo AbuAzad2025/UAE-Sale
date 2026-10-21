@@ -133,9 +133,14 @@ class TestPostDepreciation:
 
 class TestDispose:
     def _sellable(self, db):
-        for code in ['1120', '4500', '6990']:
+        # 4500 is OTHER REVENUE and 6990 is an expense in the seeded chart.
+        # Creating them with the helper's default type ('asset') made the
+        # posting-direction check reject the gain, because the check trusts
+        # the seeded chart's types and these codes are part of it.
+        for code, atype in (('1120', 'asset'), ('4500', 'revenue'),
+                            ('6990', 'expense')):
             if not GLAccount.query.filter_by(code=code).first():
-                _account(code, f'A{code}')
+                _account(code, f'A{code}', atype)
         return _wired_asset(db)
 
     def test_sell_records_gain(self, db):

@@ -571,6 +571,21 @@ def delete(id):
             # 3. حذف البنود (SaleLines) - يتم تلقائياً عادةً عبر cascade ولكن للأمان
             SaleLine.query.filter_by(sale_id=sale.id).delete()
 
+            # 3b. حذف حركات المخزون الخاصة بالفاتورة.
+            #
+            # Without this, a hard-deleted sale leaves its movements behind,
+            # and a LATER sale that reuses the same id (rowids are reused
+            # after a delete) inherits the old ones. The reversal marker
+            # 'Sale-Reversed' is keyed by the sale id, so the new sale would
+            # be mistaken for one that had already been reversed - and
+            # archiving it would NOT put the goods back into stock.
+            from models import StockMovement
+            StockMovement.query.filter(
+                StockMovement.reference_type.in_(
+                    ('Sale', 'Sale-Reversed', 'Sale-Restored')),
+                StockMovement.reference_id == sale.id,
+            ).delete(synchronize_session=False)
+
             # 4. حذف الفاتورة
             db.session.delete(sale)
             create_audit_log('delete', 'sales', id)
@@ -655,9 +670,28 @@ def restore(id):
         record_id=id
     ).first_or_404()
 
+    # F6 (symmetry): archiving a sale puts its goods back into stock, so
+    # restoring it must take them out again. Without this, an
+    # archive-then-restore cycle left the stock inflated by the sold
+    # quantity - the invoice came back but the goods never left.
+    from models import StockMovement
+
+    already_reversed = StockMovement.query.filter_by(
+        reference_type='Sale-Reversed',
+        reference_id=id,
+    ).first()
+    needs_stock_back = already_reversed is not None
+
     try:
         db.session.delete(archived)
         db.session.commit()
+        if needs_stock_back:
+            # Take the goods out again, mirroring the archive. The movement
+            # carries its own reference so it does not collide with the
+            # original sale's movement, and so a second restore does not
+            # deduct twice.
+            from services.stock_service import StockService
+            StockService.deduct_stock_for_restored_sale(id)
         create_audit_log('restore', 'sales', id)
     except Exception:
         db.session.rollback()

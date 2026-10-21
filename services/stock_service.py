@@ -268,6 +268,45 @@ class StockService:
             )
 
     @staticmethod
+    def deduct_stock_for_restored_sale(sale_id):
+        """Take the goods out again when an archived sale is restored.
+
+        The mirror image of reverse_sale(). Archiving a sale puts its goods
+        back into stock, so restoring it must remove them again - otherwise
+        an archive-then-restore cycle leaves the stock inflated by the sold
+        quantity: the invoice comes back but the goods never left.
+
+        The movement carries its own reference ('Sale-Restored') so it does
+        not collide with the original sale's movement, and so restoring twice
+        does not deduct twice - a second restore finds the marker and does
+        nothing.
+        """
+        from models import Sale, StockMovement
+
+        already = StockMovement.query.filter_by(
+            reference_type='Sale-Restored',
+            reference_id=sale_id,
+        ).first()
+        if already:
+            return False
+
+        sale = Sale.query.get(sale_id)
+        if sale is None:
+            return False
+
+        warehouse_id = getattr(sale, 'warehouse_id', None)
+        for line in sale.lines:
+            StockService.remove_stock(
+                product_id=line.product_id,
+                quantity=line.quantity,
+                reference_type='Sale-Restored',
+                reference_id=sale_id,
+                notes=f'استعادة بيع: {sale.sale_number}',
+                warehouse_id=warehouse_id,
+            )
+        return True
+
+    @staticmethod
     def get_warehouse_quantity(product_id, warehouse_id):
         """رصيد المنتج في مستودع محدد = المجموع البسيط لكميات حركاته.
 

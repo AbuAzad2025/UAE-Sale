@@ -3024,6 +3024,11 @@ def _run_reports_fragment_surface(client, db, sc, fixtures):
 
     /reports/api/model_fields was added to back the report builder in
     static/js/reporting.js, which had no route to reach.
+
+    /reports/inventory-valuation/reconciliation is the JSON view of the
+    divergence between the stock ledger, the stock card and the inventory
+    control account, so the valuation is not just read but MEASURED against
+    the ledger.
     """
     _surface_sweep(
         client, sc,
@@ -3031,6 +3036,7 @@ def _run_reports_fragment_surface(client, db, sc, fixtures):
             '/reports/api/entity-search',
             '/reports/entity_report_fragment/customer/0',
             '/reports/api/model_fields',
+            '/reports/inventory-valuation/reconciliation',
         ],
         forms=[],
         actions=[],

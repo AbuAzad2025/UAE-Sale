@@ -341,9 +341,15 @@ def db(app, _schema):
             from datetime import date as _date
             from services.fiscal_period_guard import ensure_periods_for_years
             this_year = _date.today().year
-            # A NARROW range on purpose - see tests/conftest.py. A test that
-            # needs a year with no period must be able to find one.
-            ensure_periods_for_years(range(this_year - 1, this_year + 2))
+            # A WIDE range here, unlike the unit fixtures. The matrix
+            # deliberately back-dates entries (the 'time_based' dimension
+            # posts to 2020-01-15) and a posting is refused unless it
+            # lands inside an open period - so the years the matrix reaches
+            # back to have to be open. Production is unaffected: the
+            # application factory opens the current year only, so posting
+            # into a year nobody opened is refused until an operator opens
+            # it, which is the point of the guard.
+            ensure_periods_for_years(range(this_year - 15, this_year + 2))
         except Exception:
             pass
         try:

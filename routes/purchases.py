@@ -10,7 +10,7 @@ from utils.decorators import permission_required, get_owned_or_404
 from routes.ledger import reverse_or_purge_gl_entries
 
 from utils.helpers import create_audit_log, generate_number
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 purchases_bp = Blueprint('purchases', __name__, url_prefix='/purchases')
 
@@ -180,12 +180,28 @@ def create():  # noqa: C901
             # القيود المحاسبية
             GLService.ensure_core_accounts()
 
+            # F13 (balancing): the document discount is part of the totals -
+            # Purchase.calculate_totals() taxes and totals the NET amount
+            # (subtotal - discount) - but the entry used to debit inventory
+            # with the GROSS subtotal, so debit and credit differed by
+            # exactly the discount and the entry was refused as unbalanced.
+            # A purchase discount reduces the cost of the goods, so the
+            # inventory is debited with the amount actually paid for them.
+            discount_amount = Decimal(str(purchase.discount_amount or 0))
+            inventory_cost = (Decimal(str(purchase.subtotal or 0))
+                              - discount_amount).quantize(
+                                  Decimal('0.001'), rounding=ROUND_HALF_UP)
+            if inventory_cost < 0:
+                inventory_cost = Decimal('0.000')
+
             # إعداد قيود اليومية مع فصل الضريبة
             lines = [
-                # مدين: المخزون (بالمبلغ قبل الضريبة)
-                {'account': '1140', 'debit': purchase.subtotal, 'description': f'شراء بضاعة {purchase.purchase_number}'},
+                # مدين: المخزون (بالمبلغ المدفوع فعلياً، قبل الضريبة)
+                {'account': '1140', 'debit': inventory_cost,
+                 'description': f'شراء بضاعة {purchase.purchase_number}'},
                 # دائن: المورد (بالمبلغ الإجمالي)
-                {'account': '2110', 'credit': purchase.total_amount, 'description': f'ذمم دائنة - مورد: {purchase.supplier_name}'}
+                {'account': '2110', 'credit': purchase.total_amount,
+                 'description': f'ذمم دائنة - مورد: {purchase.supplier_name}'}
             ]
 
             # إذا وجدت ضريبة، تضاف كمدين (ضريبة مدخلات / قابلة للاسترداد)

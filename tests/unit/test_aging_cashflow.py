@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 
-from models import Purchase, Receipt, Sale, Supplier
+from models import Purchase, Receipt, Sale, Supplier, Payment
 from services.aging_analysis_service import AgingAnalysisService
 from services.cash_flow_service import CashFlowService
 from services.gl_service import GLService
@@ -111,12 +111,13 @@ class TestPayablesAging:
             payment_number='PAY-TEST-001',
             supplier_id=supplier.id,
             direction='outgoing',
+            payment_type='payment',
             amount=Decimal('200'),
             amount_base=Decimal('200'),
             currency='ILS',
             exchange_rate=Decimal('1'),
             payment_confirmed=True,
-            created_by=owner_user.id,
+            payment_method='cash',
         )
         db.session.add(pay)
         db.session.commit()

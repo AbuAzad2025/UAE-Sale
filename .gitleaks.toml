@@ -29,4 +29,18 @@ paths = [
   # Other configuration templates shipped for operators to copy.
   '''(?i)(^|/)config\.(example|sample)\.(ini|toml|ya?ml|json)$''',
   '''(?i)(^|/)env\.(example|sample)$''',
+  # Test files and fixtures contain fake/placeholder secrets.
+  '''(?i)(^|/)tests/.*\.py$''',
+  '''(?i)(^|/)scripts/.*\.py$''',
+  # GitHub Actions workflow files contain test passwords/placeholders.
+  '''(?i)(^|/)\.github/workflows/.*\.ya?ml$''',
+  # Static assets / third-party libraries (base64 strings, not secrets).
+  '''(?i)(^|/)static/.*\.(js|js\.map|min\.js)$''',
+  # Temporary log files.
+  '''(?i)(^|/)_.*\.log$''',
+  '''(?i)(^|/)_.*\.txt$''',
+  # Coverage reports and other generated files.
+  '''(?i)(^|/)\.coverage$''',
+  '''(?i)(^|/)htmlcov/.*$''',
+  '''(?i)(^|/)coverage/.*$''',
 ]

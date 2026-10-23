@@ -1,0 +1,762 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\python.exe
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: D:\recovers\data\UAE-Sale
+plugins: anyio-4.14.2, Faker-40.37.0, hypothesis-6.165.10, cov-7.1.0, flask-1.3.0, github-actions-annotate-failures-0.4.2, mock-3.15.1, shard-0.1.2, split-0.11.0, timeout-2.4.0, xdist-3.8.0
+collecting ... collected 1 item
+Running 1 items in this shard: tests/integration/test_routes_reports.py::TestFinancialReports::test_ap_aging_buckets
+
+tests/integration/test_routes_reports.py::TestFinancialReports::test_ap_aging_buckets FAILED [100%]
+
+================================== FAILURES ===================================
+_________________ TestFinancialReports.test_ap_aging_buckets __________________
+
+self = <tests.integration.test_routes_reports.TestFinancialReports object at 0x00000193298AC9D0>
+client = <FlaskClient <Flask 'app'>>, login_owner = None
+db = <SQLAlchemy sqlite:///:memory:>, owner_user = <User testowner>
+
+    def test_ap_aging_buckets(self, client, login_owner, db, owner_user):
+        old = Supplier(name='Old Sup', is_active=True)
+        new = Supplier(name='New Sup', is_active=True)
+        dormant = Supplier(name='Dormant Sup', is_active=True)
+        db.session.add_all([old, new, dormant])
+        db.session.commit()
+        _mk_purchase(db, owner_user, old, 'P-RPT-OLD', Decimal('800'),
+                     when=_dt(days=100))
+        _mk_purchase(db, owner_user, new, 'P-RPT-NEW', Decimal('500'))
+        _mk_payment(db, 'PAY-RPT-NEW', Decimal('100'), supplier_id=new.id)
+        _mk_payment(db, 'PAY-RPT-PEND', Decimal('50'), supplier_id=new.id,
+                    confirmed=False)
+>       resp = client.get('/reports/ap-aging')
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\integration\test_routes_reports.py:397: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <FlaskClient <Flask 'app'>>, args = ('/reports/ap-aging',)
+kw = {'method': 'GET'}
+
+    def get(self, *args: t.Any, **kw: t.Any) -> TestResponse:
+        """Call :meth:`open` with ``method`` set to ``GET``."""
+        kw["method"] = "GET"
+>       return self.open(*args, **kw)
+               ^^^^^^^^^^^^^^^^^^^^^^
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\werkzeug\test.py:1166: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <FlaskClient <Flask 'app'>>, buffered = False, follow_redirects = False
+args = ('/reports/ap-aging',)
+kwargs = {'method': 'GET', 'environ_base': {'REMOTE_ADDR': '127.0.0.1', 'HTTP_USER_AGENT': 'Werkzeug/3.1.9', 'werkzeug.debug.preserve_context': <built-in method append of list object at 0x0000019329857840>}}
+
+    def open(
+        self,
+        *args: t.Any,
+        buffered: bool = False,
+        follow_redirects: bool = False,
+        **kwargs: t.Any,
+    ) -> TestResponse:
+        if args and isinstance(
+            args[0], (werkzeug.test.EnvironBuilder, dict, BaseRequest)
+        ):
+            if isinstance(args[0], werkzeug.test.EnvironBuilder):
+                builder = copy(args[0])
+                builder.environ_base = self._copy_environ(builder.environ_base or {})  # type: ignore[arg-type]
+                request = builder.get_request()
+            elif isinstance(args[0], dict):
+                request = EnvironBuilder.from_environ(
+                    args[0], app=self.application, environ_base=self._copy_environ({})
+                ).get_request()
+            else:
+                # isinstance(args[0], BaseRequest)
+                request = copy(args[0])
+                request.environ = self._copy_environ(request.environ)
+        else:
+            # request is None
+            request = self._request_from_builder_args(args, kwargs)
+    
+        # Pop any previously preserved contexts. This prevents contexts
+        # from being preserved across redirects or multiple requests
+        # within a single block.
+        self._context_stack.close()
+    
+>       response = super().open(
+            request,
+            buffered=buffered,
+            follow_redirects=follow_redirects,
+        )
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\testing.py:234: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <FlaskClient <Flask 'app'>>, buffered = False, follow_redirects = False
+args = (<Request 'https://localhost/reports/ap-aging' [GET]>,), kwargs = {}
+
+    def open(
+        self,
+        *args: t.Any,
+        buffered: bool = False,
+        follow_redirects: bool = False,
+        **kwargs: t.Any,
+    ) -> TestResponse:
+        """Generate an environ dict from the given arguments, make a
+        request to the application using it, and return the response.
+    
+        :param args: Passed to :class:`EnvironBuilder` to create the
+            environ for the request. If a single arg is passed, it can
+            be an existing :class:`EnvironBuilder` or an environ dict.
+        :param buffered: Convert the iterator returned by the app into
+            a list. If the iterator has a ``close()`` method, it is
+            called automatically.
+        :param follow_redirects: Make additional requests to follow HTTP
+            redirects until a non-redirect status is returned.
+            :attr:`TestResponse.history` lists the intermediate
+            responses.
+    
+        .. versionchanged:: 2.1
+            Removed the ``as_tuple`` parameter.
+    
+        .. versionchanged:: 2.0
+            The request input stream is closed when calling
+            ``response.close()``. Input streams for redirects are
+            automatically closed.
+    
+        .. versionchanged:: 0.5
+            If a dict is provided as file in the dict for the ``data``
+            parameter the content type has to be called ``content_type``
+            instead of ``mimetype``. This change was made for
+            consistency with :class:`werkzeug.FileWrapper`.
+    
+        .. versionchanged:: 0.5
+            Added the ``follow_redirects`` parameter.
+        """
+        request: Request | None = None
+    
+        if not kwargs and len(args) == 1:
+            arg = args[0]
+    
+            if isinstance(arg, EnvironBuilder):
+                request = arg.get_request()
+            elif isinstance(arg, dict):
+                request = EnvironBuilder.from_environ(arg).get_request()
+            elif isinstance(arg, Request):
+                request = arg
+    
+        if request is None:
+            builder = EnvironBuilder(*args, **kwargs)
+    
+            try:
+                request = builder.get_request()
+            finally:
+                builder.close()
+    
+>       response_parts = self.run_wsgi_app(request.environ, buffered=buffered)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\werkzeug\test.py:1120: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <FlaskClient <Flask 'app'>>
+environ = {'REMOTE_ADDR': '127.0.0.1', 'HTTP_USER_AGENT': 'Werkzeug/3.1.9', 'werkzeug.debug.preserve_context': <built-in method append of list object at 0x0000019329857840>, 'REQUEST_METHOD': 'GET', ...}
+buffered = False
+
+    def run_wsgi_app(
+        self, environ: WSGIEnvironment, buffered: bool = False
+    ) -> tuple[t.Iterable[bytes], str, Headers]:
+        """Runs the wrapped WSGI app with the given environment.
+    
+        :meta private:
+        """
+        self._add_cookies_to_wsgi(environ)
+>       rv = run_wsgi_app(self.application, environ, buffered=buffered)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\werkzeug\test.py:992: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+app = <Flask 'app'>
+environ = {'REMOTE_ADDR': '127.0.0.1', 'HTTP_USER_AGENT': 'Werkzeug/3.1.9', 'werkzeug.debug.preserve_context': <built-in method append of list object at 0x0000019329857840>, 'REQUEST_METHOD': 'GET', ...}
+buffered = False
+
+    def run_wsgi_app(
+        app: WSGIApplication, environ: WSGIEnvironment, buffered: bool = False
+    ) -> tuple[t.Iterable[bytes], str, Headers]:
+        """Return a tuple in the form (app_iter, status, headers) of the
+        application output.  This works best if you pass it an application that
+        returns an iterator all the time.
+    
+        Sometimes applications may use the `write()` callable returned
+        by the `start_response` function.  This tries to resolve such edge
+        cases automatically.  But if you don't get the expected output you
+        should set `buffered` to `True` which enforces buffering.
+    
+        If passed an invalid WSGI application the behavior of this function is
+        undefined.  Never pass non-conforming WSGI applications to this function.
+    
+        :param app: the application to execute.
+        :param buffered: set to `True` to enforce buffering.
+        :return: tuple in the form ``(app_iter, status, headers)``
+        """
+        # Copy environ to ensure any mutations by the app (ProxyFix, for
+        # example) don't affect subsequent requests (such as redirects).
+        environ = _get_environ(environ).copy()
+        status: str
+        response: tuple[str, list[tuple[str, str]]] | None = None
+        buffer: list[bytes] = []
+    
+        def start_response(status, headers, exc_info=None):  # type: ignore
+            nonlocal response
+    
+            if exc_info:
+                try:
+                    raise exc_info[1].with_traceback(exc_info[2])
+                finally:
+                    exc_info = None
+    
+            response = (status, headers)
+            return buffer.append
+    
+>       app_rv = app(environ, start_response)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\werkzeug\test.py:1268: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Flask 'app'>
+environ = {'REMOTE_ADDR': '127.0.0.1', 'HTTP_USER_AGENT': 'Werkzeug/3.1.9', 'werkzeug.debug.preserve_context': <built-in method append of list object at 0x0000019329857840>, 'REQUEST_METHOD': 'GET', ...}
+start_response = <function run_wsgi_app.<locals>.start_response at 0x000001933BD057A0>
+
+    def __call__(
+        self, environ: WSGIEnvironment, start_response: StartResponse
+    ) -> cabc.Iterable[bytes]:
+        """The WSGI server calls the Flask application object as the
+        WSGI application. This calls :meth:`wsgi_app`, which can be
+        wrapped to apply middleware.
+        """
+>       return self.wsgi_app(environ, start_response)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py:1536: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <werkzeug.middleware.proxy_fix.ProxyFix object at 0x00000193299774D0>
+environ = {'REMOTE_ADDR': '127.0.0.1', 'HTTP_USER_AGENT': 'Werkzeug/3.1.9', 'werkzeug.debug.preserve_context': <built-in method append of list object at 0x0000019329857840>, 'REQUEST_METHOD': 'GET', ...}
+start_response = <function run_wsgi_app.<locals>.start_response at 0x000001933BD057A0>
+
+    def __call__(
+        self, environ: WSGIEnvironment, start_response: StartResponse
+    ) -> t.Iterable[bytes]:
+        """Modify the WSGI environ based on the various ``Forwarded``
+        headers before calling the wrapped application. Store the
+        original environ values in ``werkzeug.proxy_fix.orig_{key}``.
+        """
+        environ_get = environ.get
+        orig_remote_addr = environ_get("REMOTE_ADDR")
+        orig_wsgi_url_scheme = environ_get("wsgi.url_scheme")
+        orig_http_host = environ_get("HTTP_HOST")
+        environ.update(
+            {
+                "werkzeug.proxy_fix.orig": {
+                    "REMOTE_ADDR": orig_remote_addr,
+                    "wsgi.url_scheme": orig_wsgi_url_scheme,
+                    "HTTP_HOST": orig_http_host,
+                    "SERVER_NAME": environ_get("SERVER_NAME"),
+                    "SERVER_PORT": environ_get("SERVER_PORT"),
+                    "SCRIPT_NAME": environ_get("SCRIPT_NAME"),
+                }
+            }
+        )
+    
+        x_for = self._get_real_value(self.x_for, environ_get("HTTP_X_FORWARDED_FOR"))
+        if x_for:
+            environ["REMOTE_ADDR"] = x_for
+    
+        x_proto = self._get_real_value(
+            self.x_proto, environ_get("HTTP_X_FORWARDED_PROTO")
+        )
+        if x_proto:
+            environ["wsgi.url_scheme"] = x_proto
+    
+        x_host = self._get_real_value(self.x_host, environ_get("HTTP_X_FORWARDED_HOST"))
+        if x_host:
+            environ["HTTP_HOST"] = environ["SERVER_NAME"] = x_host
+            # "]" to check for IPv6 address without port
+            if ":" in x_host and not x_host.endswith("]"):
+                environ["SERVER_NAME"], environ["SERVER_PORT"] = x_host.rsplit(":", 1)
+    
+        x_port = self._get_real_value(self.x_port, environ_get("HTTP_X_FORWARDED_PORT"))
+        if x_port:
+            host = environ.get("HTTP_HOST")
+            if host:
+                # "]" to check for IPv6 address without port
+                if ":" in host and not host.endswith("]"):
+                    host = host.rsplit(":", 1)[0]
+                environ["HTTP_HOST"] = f"{host}:{x_port}"
+            environ["SERVER_PORT"] = x_port
+    
+        x_prefix = self._get_real_value(
+            self.x_prefix, environ_get("HTTP_X_FORWARDED_PREFIX")
+        )
+        if x_prefix:
+            environ["SCRIPT_NAME"] = x_prefix
+    
+>       return self.app(environ, start_response)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\werkzeug\middleware\proxy_fix.py:183: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Flask 'app'>
+environ = {'REMOTE_ADDR': '127.0.0.1', 'HTTP_USER_AGENT': 'Werkzeug/3.1.9', 'werkzeug.debug.preserve_context': <built-in method append of list object at 0x0000019329857840>, 'REQUEST_METHOD': 'GET', ...}
+start_response = <function run_wsgi_app.<locals>.start_response at 0x000001933BD057A0>
+
+    def wsgi_app(
+        self, environ: WSGIEnvironment, start_response: StartResponse
+    ) -> cabc.Iterable[bytes]:
+        """The actual WSGI application. This is not implemented in
+        :meth:`__call__` so that middlewares can be applied without
+        losing a reference to the app object. Instead of doing this::
+    
+            app = MyMiddleware(app)
+    
+        It's a better idea to do this instead::
+    
+            app.wsgi_app = MyMiddleware(app.wsgi_app)
+    
+        Then you still have the original application object around and
+        can continue to call methods on it.
+    
+        .. versionchanged:: 0.7
+            Teardown events for the request and app contexts are called
+            even if an unhandled error occurs. Other events may not be
+            called depending on when an error occurs during dispatch.
+            See :ref:`callbacks-and-errors`.
+    
+        :param environ: A WSGI environment.
+        :param start_response: A callable accepting a status code,
+            a list of headers, and an optional exception context to
+            start the response.
+        """
+        ctx = self.request_context(environ)
+        error: BaseException | None = None
+        try:
+            try:
+                ctx.push()
+                response = self.full_dispatch_request()
+            except Exception as e:
+                error = e
+>               response = self.handle_exception(e)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py:1514: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+args = (NameError("name 'ROUND_HALF_UP' is not defined"),), kwargs = {}
+
+    def wrapped_function(*args: Any, **kwargs: Any) -> Response:
+>       return cors_after_request(app_any.make_response(f(*args, **kwargs)))
+                                                        ^^^^^^^^^^^^^^^^^^
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_cors\extension.py:206: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Flask 'app'>
+environ = {'REMOTE_ADDR': '127.0.0.1', 'HTTP_USER_AGENT': 'Werkzeug/3.1.9', 'werkzeug.debug.preserve_context': <built-in method append of list object at 0x0000019329857840>, 'REQUEST_METHOD': 'GET', ...}
+start_response = <function run_wsgi_app.<locals>.start_response at 0x000001933BD057A0>
+
+    def wsgi_app(
+        self, environ: WSGIEnvironment, start_response: StartResponse
+    ) -> cabc.Iterable[bytes]:
+        """The actual WSGI application. This is not implemented in
+        :meth:`__call__` so that middlewares can be applied without
+        losing a reference to the app object. Instead of doing this::
+    
+            app = MyMiddleware(app)
+    
+        It's a better idea to do this instead::
+    
+            app.wsgi_app = MyMiddleware(app.wsgi_app)
+    
+        Then you still have the original application object around and
+        can continue to call methods on it.
+    
+        .. versionchanged:: 0.7
+            Teardown events for the request and app contexts are called
+            even if an unhandled error occurs. Other events may not be
+            called depending on when an error occurs during dispatch.
+            See :ref:`callbacks-and-errors`.
+    
+        :param environ: A WSGI environment.
+        :param start_response: A callable accepting a status code,
+            a list of headers, and an optional exception context to
+            start the response.
+        """
+        ctx = self.request_context(environ)
+        error: BaseException | None = None
+        try:
+            try:
+                ctx.push()
+>               response = self.full_dispatch_request()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py:1511: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Flask 'app'>
+
+    def full_dispatch_request(self) -> Response:
+        """Dispatches the request and on top of that performs request
+        pre and postprocessing as well as HTTP exception catching and
+        error handling.
+    
+        .. versionadded:: 0.7
+        """
+        self._got_first_request = True
+    
+        try:
+            request_started.send(self, _async_wrapper=self.ensure_sync)
+            rv = self.preprocess_request()
+            if rv is None:
+                rv = self.dispatch_request()
+        except Exception as e:
+>           rv = self.handle_user_exception(e)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py:919: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+args = (NameError("name 'ROUND_HALF_UP' is not defined"),), kwargs = {}
+
+    def wrapped_function(*args: Any, **kwargs: Any) -> Response:
+>       return cors_after_request(app_any.make_response(f(*args, **kwargs)))
+                                                        ^^^^^^^^^^^^^^^^^^
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_cors\extension.py:206: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Flask 'app'>
+
+    def full_dispatch_request(self) -> Response:
+        """Dispatches the request and on top of that performs request
+        pre and postprocessing as well as HTTP exception catching and
+        error handling.
+    
+        .. versionadded:: 0.7
+        """
+        self._got_first_request = True
+    
+        try:
+            request_started.send(self, _async_wrapper=self.ensure_sync)
+            rv = self.preprocess_request()
+            if rv is None:
+>               rv = self.dispatch_request()
+                     ^^^^^^^^^^^^^^^^^^^^^^^
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py:917: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Flask 'app'>
+
+    def dispatch_request(self) -> ft.ResponseReturnValue:
+        """Does the request dispatching.  Matches the URL and returns the
+        return value of the view or error handler.  This does not have to
+        be a response object.  In order to convert the return value to a
+        proper response object, call :func:`make_response`.
+    
+        .. versionchanged:: 0.7
+           This no longer does the exception handling, this code was
+           moved to the new :meth:`full_dispatch_request`.
+        """
+        req = request_ctx.request
+        if req.routing_exception is not None:
+            self.raise_routing_exception(req)
+        rule: Rule = req.url_rule  # type: ignore[assignment]
+        # if we provide automatic options for this URL and the
+        # request came with the OPTIONS method, reply automatically
+        if (
+            getattr(rule, "provide_automatic_options", False)
+            and req.method == "OPTIONS"
+        ):
+            return self.make_default_options_response()
+        # otherwise dispatch to the handler for that endpoint
+        view_args: dict[str, t.Any] = req.view_args  # type: ignore[assignment]
+>       return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py:902: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+args = (), kwargs = {}
+
+    @wraps(func)
+    def decorated_view(*args, **kwargs):
+        if request.method in EXEMPT_METHODS or current_app.config.get("LOGIN_DISABLED"):
+            pass
+        elif not current_user.is_authenticated:
+            return current_app.login_manager.unauthorized()
+    
+        # flask 1.x compatibility
+        # current_app.ensure_sync is only available in Flask >= 2.0
+        if callable(getattr(current_app, "ensure_sync", None)):
+>           return current_app.ensure_sync(func)(*args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_login\utils.py:290: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+args = (), kwargs = {}
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('╪º┘ä╪▒╪¼╪º╪í ╪¬╪│╪¼┘è┘ä ╪º┘ä╪»╪«┘ê┘ä ╪ú┘ê┘ä╪º┘ï', 'warning')
+            return redirect(url_for('auth.login'))
+    
+        if not current_user.has_permission(permission_code):
+            flash('┘ä┘è╪│ ┘ä╪»┘è┘â ╪╡┘ä╪º╪¡┘è╪⌐ ┘ä┘ä┘ê╪╡┘ê┘ä ┘ä┘ç╪░┘ç ╪º┘ä╪╡┘ü╪¡╪⌐', 'danger')
+            abort(403)
+    
+>       return f(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^
+
+utils\decorators.py:94: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    @reports_bp.route('/ap-aging')
+    @login_required
+    @permission_required('view_reports')
+    def ap_aging():
+        """
+        ╪¬┘é╪▒┘è╪▒ ╪ú╪╣┘à╪º╪▒ ╪º┘ä╪░┘à┘à ╪º┘ä╪»╪º╪ª┘å╪⌐ ΓÇö Accounts Payable Aging
+        ╪º┘ä╪ó┘å ┘è╪│╪¬╪«╪»┘à ╪«╪»┘à╪⌐ ╪º┘ä╪¬╪¡┘ä┘è┘ä ╪º┘ä┘à┘ê╪¡╪»╪⌐ (AgingAnalysisService) ╪º┘ä╪¬┘è ╪¬╪│╪¬┘å╪»
+        ╪Ñ┘ä┘ë ╪¬╪º╪▒┘è╪« ╪º┘ä╪º╪│╪¬╪¡┘é╪º┘é (due_date) ┘ä╪º ╪¬╪º╪▒┘è╪« ╪º┘ä┘ü╪º╪¬┘ê╪▒╪⌐╪î ┘ü╪¬┘Å┘é╪│┘Ä┘à ╪º┘ä╪ú╪▒╪╡╪»╪⌐
+        ╪¡╪│╪¿ ╪º┘ä┘à╪¬╪ú╪«╪▒╪º╪¬ ╪º┘ä╪¡┘é┘è┘é┘è╪⌐ (overdue) ┘ä╪º ╪º┘ä╪╣┘à╪▒.
+        """
+        from services.aging_analysis_service import AgingAnalysisService
+    
+>       report = AgingAnalysisService.get_payables_aging()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+routes\reports.py:1123: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+as_of_date = datetime.date(2026, 10, 23), as_of = None
+
+        @staticmethod
+        def get_payables_aging(as_of_date=None, as_of=None):  # noqa: C901
+            """
+            ╪¬╪¡┘ä┘è┘ä ╪º┘ä╪░┘à┘à ╪º┘ä╪»╪º╪ª┘å╪⌐ (Accounts Payable) ΓÇö ╪¿╪º┘ä╪º╪│╪¬╪¡┘é╪º┘é ┘ä╪º ╪¿╪º┘ä╪╣┘à╪▒
+    
+            ┘å┘ü╪│ ╪│┘è╪º╪│╪⌐ ╪º┘ä╪░┘à┘à ╪º┘ä┘à╪»┘è┘å╪⌐ (routes/ledger.py::_payables_aging):
+            ┘à╪│╪¬┘å╪»╪º╪¬ ┘à╪ñ┘â╪»╪⌐ ┘ê╪║┘è╪▒ ┘à╪ñ╪▒╪┤┘ü╪⌐╪î ┘à┘ê╪▒╪» ┘å╪┤╪╖╪î ╪▒╪╡┘è╪» ┘à┘ê╪¼╪¿ ┘ü┘é╪╖╪î ┘ê╪¡╪»┘ê╪» ╪º┘ä╪┤╪▒╪º╪ª╪¡
+            ┘å┘ü╪│┘ç╪º.
+            """
+            as_of_date = _resolve_as_of(as_of_date, as_of)
+            cutoff = _day_end(as_of_date)
+    
+            results = []
+            totals = {bucket: Decimal('0') for bucket in AGING_BUCKETS}
+            totals['total'] = Decimal('0')
+            overdue_totals = {bucket: Decimal('0') for bucket in OVERDUE_BUCKETS}
+    
+            # ╪¼┘à┘è╪╣ ╪º┘ä┘à┘ê╪▒╪»┘è┘å ╪º┘ä┘å╪┤╪╖┘è┘å
+            suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+    
+            for supplier in suppliers:
+                aging = {
+                    'supplier': supplier,
+                    '0-30': Decimal('0'),
+                    '31-60': Decimal('0'),
+                    '61-90': Decimal('0'),
+                    '91-120': Decimal('0'),
+                    'over_120': Decimal('0'),
+                    'total': Decimal('0'),
+                    'overdue': {bucket: Decimal('0') for bucket in OVERDUE_BUCKETS},
+    'invoices': []
+                }
+    
+                # ╪º┘ä┘à╪┤╪¬╪▒┘è╪º╪¬ ╪║┘è╪▒ ╪º┘ä┘à╪»┘ü┘ê╪╣╪⌐ ╪¿╪º┘ä┘â╪º┘à┘ä ΓÇö ┘å┘ü╪│ ┘ü┘ä╪¬╪▒ routes/ledger.py:
+                # ┘à╪ñ┘â┘æ╪»╪⌐ + ╪║┘è╪▒ ┘à╪ñ╪▒╪┤┘ü╪⌐ + ╪¬╪º╪▒┘è╪«┘ç╪º Γëñ ╪¬╪º╪▒┘è╪« ╪º┘ä╪¬┘é╪▒┘è╪▒ + ┘à┘ê╪▒╪» ┘å╪┤╪╖.
+                unpaid_purchases = (
+                    Purchase.query
+                    .filter(
+                        Purchase.supplier_id == supplier.id,
+                        Purchase.status == 'confirmed',
+                        Purchase.purchase_date <= cutoff,
+                    )
+                    .filter(~Purchase.id.in_(_archived_record_ids('purchases')))
+                    .order_by(Purchase.purchase_date).all()
+                )
+    
+                # ╪Ñ╪¼┘à╪º┘ä┘è ╪º┘ä┘à╪┤╪¬╪▒┘è╪º╪¬ ┘ê╪º┘ä┘à╪»┘ü┘ê╪╣╪º╪¬ ┘ä┘ä┘à┘ê╪▒╪»
+                total_purchases = sum((p.amount_base or Decimal('0') for p in unpaid_purchases), Decimal('0'))
+                payments = Payment.query.filter(
+                    Payment.supplier_id == supplier.id,
+                    Payment.direction == 'outgoing',
+                    Payment.payment_confirmed.is_(True)
+                ).all()
+                total_paid = sum((p.amount_base or Decimal('0') for p in payments), Decimal('0'))
+                supplier_balance = total_purchases - total_paid
+    
+                if supplier_balance <= 0:
+                    continue
+    
+                aging = {
+                    'supplier': supplier,
+                    '0-30': Decimal('0'),
+                    '31-60': Decimal('0'),
+                    '61-90': Decimal('0'),
+                    '91-120': Decimal('0'),
+                    'over_120': Decimal('0'),
+                    'total': Decimal('0'),
+                    'overdue': {bucket: Decimal('0') for bucket in OVERDUE_BUCKETS},
+                    'invoices': []
+                }
+    
+                # ╪¬┘ê╪▓┘è╪╣ ╪º┘ä┘à╪»┘ü┘ê╪╣╪º╪¬ ╪╣┘ä┘ë ╪º┘ä┘à╪┤╪¬╪▒┘è╪º╪¬ ╪¬┘å╪º╪│╪¿┘è╪º┘ï
+                payment_ratio = Decimal('0')
+                if total_purchases > 0:
+                    payment_ratio = min(Decimal('1'), total_paid / total_purchases)
+    
+                for purchase in unpaid_purchases:
+                    purchase_amount = purchase.amount_base or Decimal('0')
+>                   balance = purchase_amount - (purchase_amount * payment_ratio).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
+                                                                                                             ^^^^^^^^^^^^^
+E                   NameError: name 'ROUND_HALF_UP' is not defined
+
+services\aging_analysis_service.py:347: NameError
+---------------------------- Captured stdout setup ----------------------------
+[2026-10-23 20:48:41] [37m[1mINFO    [0m [-] app: [OK] Logging configured
+
+[2026-10-23 20:48:41] [37m[1mINFO    [0m [-] root: [OK] Compression enabled
+
+[2026-10-23 20:48:41] [37m[1mINFO    [0m [-] app: [OK] Extensions initialized
+
+[2026-10-23 20:48:41] [37m[1mINFO    [0m [-] app: SENTRY_DSN not configured - skipping Sentry initialization
+
+INFO: ============================================================
+
+INFO: [OK] Enhanced Logging System initialized
+
+INFO: ============================================================
+
+INFO: [OK] System integrity verified (Master Key active)
+
+INFO: [OK] Custom error handlers registered
+
+INFO: [OK] Tenant filter events installed
+
+[2026-10-23 20:48:44] [37m[1mINFO    [0m [-] models.events: [OK] AI + Neural listeners ENABLED (non-production environment)
+
+[2026-10-23 20:48:44] [37m[1mINFO    [0m [-] models.events: Γä╣∩╕Å Automatic GL listeners skipped - relying on Service layer for accurate GL entries
+
+[2026-10-23 20:48:44] [37m[1mINFO    [0m [-] models.events: [OK] All event listeners registered successfully - Full coverage + AI + Neural Networks + Auto GL enabled
+
+INFO: [OK] Enhanced CLI commands registered
+
+INFO: [OK] SQLite schema synchronized via model metadata (Alembic file migrations skipped: SQLite-incompatible DDL).
+
+INFO: [OK] Fiscal period available for the current year.
+
+INFO: [OK] Schema verification passed: 85 tables present
+
+INFO: [OK] Application initialized successfully
+
+[2026-10-23 20:48:46] [33m[1mWARNING [0m [7dab2f06-195c-4238-a3c3-c35cddfea217] models.tenant_scope: TENANT_STRICT: unfiltered access to users
+
+WARNING: SLOW REQUEST: {"timestamp": "2026-10-23T17:48:47.346379+00:00", "request_id": "7dab2f06-195c-4238-a3c3-c35cddfea217", "method": "POST", "path": "/auth/login", "status": 302, "duration_ms": 1038.83, "user_agent": "Werkzeug/3.1.9", "ip": "127.0.0.1"}
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to users
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to customers
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to products
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to customers
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to customers
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to sales
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to sales
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to sales
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to purchases
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to sales
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to products
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to sales
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to customers
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to products
+
+[2026-10-23 20:48:47] [33m[1mWARNING [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.tenant_scope: TENANT_STRICT: unfiltered access to products
+
+---------------------------- Captured stdout call -----------------------------
+[2026-10-23 20:48:47] [37m[1mINFO    [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.events: Γ£à Auto-updated supplier 1 totals: purchases=800.000 AED, paid=0.000 AED
+
+[2026-10-23 20:48:47] [37m[1mINFO    [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.events: ≡ƒñû AI Professional: Learned procurement from P-RPT-OLD
+
+[2026-10-23 20:48:48] [37m[1mINFO    [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.events: ≡ƒñû AI Accounting: Expense recognized - P-RPT-OLD
+
+[2026-10-23 20:48:48] [37m[1mINFO    [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.events: Γ£à Auto-updated supplier 2 totals: purchases=500.000 AED, paid=0.000 AED
+
+[2026-10-23 20:48:48] [37m[1mINFO    [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.events: ≡ƒñû AI Professional: Learned procurement from P-RPT-NEW
+
+[2026-10-23 20:48:48] [37m[1mINFO    [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.events: ≡ƒñû AI Accounting: Expense recognized - P-RPT-NEW
+
+[2026-10-23 20:48:48] [37m[1mINFO    [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.events: ≡ƒÆ░ Payment created - amount: 100 AED to supplier 2
+
+[2026-10-23 20:48:48] [37m[1mINFO    [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.events: Γ£à Auto-updated supplier 2 after payment
+
+[2026-10-23 20:48:48] [37m[1mINFO    [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.events: ≡ƒÆ░ Payment created - amount: 50 AED to supplier 2
+
+[2026-10-23 20:48:48] [37m[1mINFO    [0m [e2e4db63-4fa9-48ff-9cdf-1b19927ee2b9] models.events: Γ£à Auto-updated supplier 2 after payment
+
+[2026-10-23 20:48:48] [33m[1mWARNING [0m [fd8c40a8-9335-4438-a0b2-48e403df6222] models.tenant_scope: TENANT_STRICT: unfiltered access to suppliers
+
+[2026-10-23 20:48:48] [33m[1mWARNING [0m [fd8c40a8-9335-4438-a0b2-48e403df6222] models.tenant_scope: TENANT_STRICT: unfiltered access to purchases
+
+[2026-10-23 20:48:48] [33m[1mWARNING [0m [fd8c40a8-9335-4438-a0b2-48e403df6222] models.tenant_scope: TENANT_STRICT: unfiltered access to payments
+
+[2026-10-23 20:48:48] [33m[1mWARNING [0m [fd8c40a8-9335-4438-a0b2-48e403df6222] models.tenant_scope: TENANT_STRICT: unfiltered access to purchases
+
+[2026-10-23 20:48:48] [33m[1mWARNING [0m [fd8c40a8-9335-4438-a0b2-48e403df6222] models.tenant_scope: TENANT_STRICT: unfiltered access to payments
+
+------------------------------ Captured log call ------------------------------
+INFO     models.events:events.py:193 Γ£à Auto-updated supplier 1 totals: purchases=800.000 AED, paid=0.000 AED
+INFO     models.events:events.py:1197 ≡ƒñû AI Professional: Learned procurement from P-RPT-OLD
+INFO     models.events:events.py:1335 ≡ƒñû AI Accounting: Expense recognized - P-RPT-OLD
+INFO     models.events:events.py:193 Γ£à Auto-updated supplier 2 totals: purchases=500.000 AED, paid=0.000 AED
+INFO     models.events:events.py:1197 ≡ƒñû AI Professional: Learned procurement from P-RPT-NEW
+INFO     models.events:events.py:1335 ≡ƒñû AI Accounting: Expense recognized - P-RPT-NEW
+INFO     models.events:events.py:220 ≡ƒÆ░ Payment created - amount: 100 AED to supplier 2
+INFO     models.events:events.py:225 Γ£à Auto-updated supplier 2 after payment
+INFO     models.events:events.py:220 ≡ƒÆ░ Payment created - amount: 50 AED to supplier 2
+INFO     models.events:events.py:225 Γ£à Auto-updated supplier 2 after payment
+WARNING  models.tenant_scope:tenant_scope.py:188 TENANT_STRICT: unfiltered access to suppliers
+WARNING  models.tenant_scope:tenant_scope.py:188 TENANT_STRICT: unfiltered access to purchases
+WARNING  models.tenant_scope:tenant_scope.py:188 TENANT_STRICT: unfiltered access to payments
+WARNING  models.tenant_scope:tenant_scope.py:188 TENANT_STRICT: unfiltered access to purchases
+WARNING  models.tenant_scope:tenant_scope.py:188 TENANT_STRICT: unfiltered access to payments
+============================== warnings summary ===============================
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sentry_sdk\utils.py:1286
+  C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sentry_sdk\utils.py:1286: EventletDeprecationWarning: 
+  Eventlet is deprecated. It is currently being maintained in bugfix mode, and
+  we strongly recommend against using it for new projects.
+  
+  If you are already using Eventlet, we recommend migrating to a different
+  framework.  For more detail see
+  https://eventlet.readthedocs.io/en/latest/asyncio/migration.html
+  
+    from eventlet.patcher import is_monkey_patched  # type: ignore
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/integration/test_routes_reports.py::TestFinancialReports::test_ap_aging_buckets
+======================== 1 failed, 1 warning in 9.31s =========================

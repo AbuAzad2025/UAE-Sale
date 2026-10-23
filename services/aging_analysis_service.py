@@ -45,16 +45,19 @@ F2 — سياسة واحدة مع صفحة دفتر الأستاذ (routes/ledge
 routes/ledger.py).
 """
 
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime, date, time
 
-from models import Customer, Supplier, Sale, Purchase
+from models import Customer, Supplier, Sale, Purchase, Payment
 from services.due_date_service import (
     OVERDUE_BUCKETS,
     bucket_for_overdue,
     effective_due_date,
     overdue_days,
 )
+
+# تقريب المبالغ (3 منازل عشرية) — نفس دقة أعمدة Money في قاعدة البيانات
+MONEY_Q = Decimal('0.001')
 
 
 # حدود شرائح **العمر** — مطابقة لـ routes/ledger.py::AGING_BUCKETS
@@ -198,6 +201,7 @@ class AgingAnalysisService:
 
                     # إضافة تفاصيل الفاتورة
                     aging['invoices'].append({
+                        'id': sale.id,
                         'sale_number': sale.sale_number,
                         'sale_date': sale.sale_date.date(),
                         'due_date': due,
@@ -293,7 +297,7 @@ class AgingAnalysisService:
                 'over_120': Decimal('0'),
                 'total': Decimal('0'),
                 'overdue': {bucket: Decimal('0') for bucket in OVERDUE_BUCKETS},
-                'invoices': []
+'invoices': []
             }
 
             # المشتريات غير المدفوعة بالكامل — نفس فلتر routes/ledger.py:
@@ -309,10 +313,39 @@ class AgingAnalysisService:
                 .order_by(Purchase.purchase_date).all()
             )
 
+            # إجمالي المشتريات والمدفوعات للمورد
+            total_purchases = sum((p.amount_base or Decimal('0') for p in unpaid_purchases), Decimal('0'))
+            payments = Payment.query.filter(
+                Payment.supplier_id == supplier.id,
+                Payment.direction == 'outgoing',
+                Payment.payment_confirmed.is_(True)
+            ).all()
+            total_paid = sum((p.amount_base or Decimal('0') for p in payments), Decimal('0'))
+            supplier_balance = total_purchases - total_paid
+
+            if supplier_balance <= 0:
+                continue
+
+            aging = {
+                'supplier': supplier,
+                '0-30': Decimal('0'),
+                '31-60': Decimal('0'),
+                '61-90': Decimal('0'),
+                '91-120': Decimal('0'),
+                'over_120': Decimal('0'),
+                'total': Decimal('0'),
+                'overdue': {bucket: Decimal('0') for bucket in OVERDUE_BUCKETS},
+                'invoices': []
+            }
+
+            # توزيع المدفوعات على المشتريات تناسبياً
+            payment_ratio = Decimal('0')
+            if total_purchases > 0:
+                payment_ratio = min(Decimal('1'), total_paid / total_purchases)
+
             for purchase in unpaid_purchases:
-                # حساب الرصيد المتبقي — بعملة الأساس (amount_base −
-                # paid_amount) لأن paid_amount يُسجَّل بعملة الأساس.
-                balance = (purchase.amount_base or Decimal('0')) - (purchase.paid_amount or Decimal('0'))
+                purchase_amount = purchase.amount_base or Decimal('0')
+                balance = purchase_amount - (purchase_amount * payment_ratio).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
 
                 if balance > 0:
                     # حساب عمر الفاتورة (شرائح العمر — مرجع دفتر الأستاذ)
@@ -345,6 +378,7 @@ class AgingAnalysisService:
                     })
 
             # إضافة المورد إذا كان لديه رصيد
+            aging['total'] = supplier_balance
             if aging['total'] > 0:
                 aging_float = {
                     'supplier': supplier,

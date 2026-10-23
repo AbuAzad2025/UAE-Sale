@@ -279,6 +279,7 @@ class TestTenantScopeFailFastAndStrict:
             # `users` has a tenant_id but no module-level registration, so it
             # was never isolated. Now registered via _BUILTIN_SCOPED_TABLES.
             'users',
+            'write_offs',
         }
         assert expected == _tenant_scoped_tables
 

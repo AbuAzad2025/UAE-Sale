@@ -295,5 +295,6 @@ class TestTenantScopedRegistered:
             # every tenant. It is registered through
             # _BUILTIN_SCOPED_TABLES now.
             'users',
+            'write_offs',
         }
         assert expected == _tenant_scoped_tables

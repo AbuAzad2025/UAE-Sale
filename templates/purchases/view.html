@@ -36,6 +36,14 @@
           
           <dt class="col-sm-4">التاريخ:</dt>
           <dd class="col-sm-8">{{ purchase.purchase_date.strftime('%Y-%m-%d') }}</dd>
+          
+          <dt class="col-sm-4">تاريخ الاستحقاق:</dt>
+          <dd class="col-sm-8">
+            {{ purchase.effective_due_date.strftime('%Y-%m-%d') if purchase.effective_due_date else '-' }}
+            {% if purchase.get_paid_amount() < purchase.total_amount and purchase.days_overdue > 0 %}
+            <span class="badge badge-danger">متأخر {{ purchase.days_overdue }} يوم</span>
+            {% endif %}
+          </dd>
         </dl>
 
         <h5 class="mt-4">{{ t('Products') }}</h5>

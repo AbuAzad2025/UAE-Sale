@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block title %}شركة أزاد للأنظمة الذكية - تفاصيل المشطوبة{% endblock %}
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+  <div>
+    <h1 class="mb-0"><i class="fas fa-file-circle-xmark mr-2"></i>مشطوبة ديون #{{ write_off.id }}</h1>
+    <p class="text-muted">{{ write_off.customer.name if write_off.customer else '-' }} — {{ write_off.reason }}</p>
+  </div>
+  <div>
+    <a href="{{ url_for('writeoffs.index') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-right mr-2"></i>العودة لقائمة المشطوبات
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title mb-0"><i class="fas fa-info-circle mr-2"></i>بيانات المشطوبة</h3>
+      </div>
+      <div class="card-body">
+        <table class="table table-bordered table-striped mb-0">
+          <tbody>
+            <tr>
+              <th style="width: 30%;">العميل</th>
+              <td>{{ write_off.customer.name if write_off.customer else '-' }}</td>
+            </tr>
+            <tr>
+              <th>المبلغ المشطوب</th>
+              <td>
+                <strong style="color: #007A3D;">{{ "{:,.3f}".format(write_off.amount) }}</strong>
+                <span class="text-muted">{{ write_off.currency }}</span>
+              </td>
+            </tr>
+            <tr>
+              <th>القيمة بالعملة الأساسية</th>
+              <td>
+                <strong class="text-success">{{ "{:,.3f}".format(write_off.amount_base) }}</strong>
+                <span class="text-muted">{{ base_currency }}</span>
+              </td>
+            </tr>
+            <tr>
+              <th>الفاتورة</th>
+              <td>
+                {% if write_off.sale %}
+                  {{ write_off.sale.sale_number }}
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <th>السبب</th>
+              <td>{{ write_off.reason }}</td>
+            </tr>
+            <tr>
+              <th>الحالة</th>
+              <td>
+                {% if write_off.status == 'posted' %}
+                  <span class="badge badge-success px-3"><i class="fas fa-check mr-1"></i>مُرحَّلة</span>
+                {% elif write_off.status == 'void' %}
+                  <span class="badge badge-secondary px-3"><i class="fas fa-ban mr-1"></i>ملغاة</span>
+                {% else %}
+                  <span class="badge badge-warning px-3"><i class="fas fa-clock mr-1"></i>مسودة</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <th>تاريخ الإنشاء</th>
+              <td>{{ write_off.created_at.strftime('%Y-%m-%d %H:%M') if write_off.created_at else '-' }}</td>
+            </tr>
+            <tr>
+              <th>تاريخ الترحيل</th>
+              <td>{{ write_off.posted_at.strftime('%Y-%m-%d %H:%M') if write_off.posted_at else '-' }}</td>
+            </tr>
+            <tr>
+              <th>تاريخ الإلغاء</th>
+              <td>{{ write_off.voided_at.strftime('%Y-%m-%d %H:%M') if write_off.voided_at else '-' }}</td>
+            </tr>
+            <tr>
+              <th>القيد المحاسبي</th>
+              <td>
+                {% if write_off.gl_entry_id %}
+                  <span class="badge badge-info">#{{ write_off.gl_entry_id }}</span>
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <th>ملاحظات</th>
+              <td>{{ write_off.notes or '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    {% if write_off.status == 'posted' %}
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title mb-0"><i class="fas fa-ban mr-2"></i>إلغاء المشطوبة</h3>
+      </div>
+      <div class="card-body">
+        <p class="text-muted">
+          يُعكس القيد المحاسبي المرتبط وتعود قيمة المبلغ إلى رصيد العميل.
+        </p>
+        <form method="POST" action="{{ url_for('writeoffs.void', write_off_id=write_off.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="form-group">
+            <label for="void_reason"><i class="fas fa-comment mr-2"></i> سبب الإلغاء</label>
+            <textarea name="reason" id="void_reason" class="form-control" rows="3" placeholder="سبب إلغاء المشطوبة..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-danger btn-block">
+            <i class="fas fa-ban mr-2"></i>إلغاء المشطوبة
+          </button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-secondary">
+      <i class="fas fa-info-circle mr-2"></i>
+      هذه المشطوبة ملغاة — لا يمكن إلغاؤها مرة أخرى.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

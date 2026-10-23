@@ -72,6 +72,7 @@ class AccountRole(str, Enum):
     FX_LOSS = 'FX_LOSS'
     BANK_CHARGES = 'BANK_CHARGES'
     MISC_EXPENSE = 'MISC_EXPENSE'
+    BAD_DEBT_EXPENSE = 'BAD_DEBT_EXPENSE'
 
 
 # Fallback defaults == today's literal codes (zero behavior change).
@@ -120,6 +121,7 @@ DEFAULT_ROLE_MAP = {
     AccountRole.FX_LOSS.value: '6900',
     AccountRole.BANK_CHARGES.value: '6950',
     AccountRole.MISC_EXPENSE.value: '6990',
+    AccountRole.BAD_DEBT_EXPENSE.value: '6960',
 }
 
 GLOBAL_MAP_KEY = 'gl_role_map'

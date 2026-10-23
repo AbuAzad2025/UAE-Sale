@@ -313,6 +313,8 @@ class TestFinancialReports:
         assert 'P-RPT-B' in html and 'P-RPT-A' not in html
 
     def test_cash_flow_gl_math(self, client, login_owner, db, owner_user):
+        from services.cash_flow_service import CashFlowService
+
         rev = GLAccount(code='4000-R', name='Sales Revenue', type='revenue')
         exp = GLAccount(code='5000-R', name='Rent Expense', type='expense')
         ast = GLAccount(code='1100-R', name='Equipment', type='asset')
@@ -346,8 +348,22 @@ class TestFinancialReports:
         assert '700.00' in html
         assert '500.00' in html
         assert '200.00' in html
-        assert '1,400.00' in html
+        # انعكست قاعدة الرصيد المحسوب: الرصيد المحسوب لم يعد 1400.
+        # الأقسام تُفسّر حركة النقدية، فزيادة الأصل (مدين 500) خروج نقدي
+        # سالب — لا دخل موجب — وإلا احتُسبت حركة النقدية مرتين ولتغيّر
+        # معناها. فالأقسام: 700 (تشغيلي) − 500 (استثماري) + 200 (تمويلي).
+        assert '-500.00' in html
+        assert '400.00' in html
+        assert '1,400.00' not in html
         assert '999' not in html
+
+        # القيد في هذا الاختبار غير متوازن (مدين 800 / دائن 1200) ولا
+        # يمس حساب النقدية: رصيد الدفتر لا يطابق ما تفسّره الأقسام، والفرق
+        # يُعلن بدل ابتلاعه.
+        report = CashFlowService.generate_gl_cash_flow(None, None)
+        assert report['cash_ending'] == Decimal('0')
+        assert report['tie_out']['balanced'] is False
+        assert report['tie_out']['difference'] != Decimal('0')
 
     def test_vat_report_math(self, client, login_owner, db, owner_user):
         sup = Supplier(name='Vat Sup', is_active=True)

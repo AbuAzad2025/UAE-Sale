@@ -27,6 +27,11 @@
                 <h5>معلومات الفاتورة</h5>
                 <p><strong>رقم الفاتورة:</strong> {{ sale.sale_number }}</p>
                 <p><strong>التاريخ:</strong> {{ sale.sale_date.strftime('%Y-%m-%d') }}</p>
+                <p><strong>تاريخ الاستحقاق:</strong> {{ sale.effective_due_date.strftime('%Y-%m-%d') if sale.effective_due_date else '-' }}
+                  {% if sale.days_overdue > 0 %}
+                  <span class="badge badge-danger">متأخر {{ sale.days_overdue }} يوم</span>
+                  {% endif %}
+                </p>
                 <p><strong>العميل:</strong> {{ sale.customer.name }}</p>
                 <p><strong>البائع:</strong> {{ sale.seller.full_name }}</p>
                 {% if sale.warehouse %}
@@ -80,6 +85,15 @@
               </div>
               
               <div class="col-md-6">
+                <div class="form-group">
+                  <label>تاريخ الاستحقاق</label>
+                  <input type="date" name="due_date" class="form-control"
+                         value="{{ sale.effective_due_date.strftime('%Y-%m-%d') if sale.effective_due_date else '' }}">
+                  <small class="text-muted">اتركه فارغاً ليُحسب من شروط دفع العميل</small>
+                </div>
+              </div>
+
+              <div class="col-md-12">
                 <div class="form-group">
                   <label>الملاحظات</label>
                   <textarea name="notes" class="form-control" rows="3">{{ sale.notes or '' }}</textarea>

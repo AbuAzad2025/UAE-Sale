@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}شركة أزاد للأنظمة الذكية - المديونيات المشطوبة{% endblock %}
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+  <div>
+    <h1 class="text-gradient mb-0"><i class="fas fa-file-circle-xmark mr-3"></i>المديونيات المشطوبة</h1>
+    <p class="text-muted">المبالغ التي لا يمكن تحصيلها ومُرحَّلة كمصروف ديون مشطوبة</p>
+  </div>
+  <div>
+    <a href="{{ url_for('writeoffs.new') }}" class="btn btn-primary btn-lg text-white" style="color:#ffffff !important;">
+      <i class="fas fa-plus-circle mr-2" style="color:#ffffff !important"></i>مشطوبة جديدة
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div class="d-flex justify-content-between align-items-center">
+      <h3 class="card-title mb-0">
+        <i class="fas fa-list mr-2"></i>سجل المديونيات المشطوبة
+      </h3>
+      <form method="GET" action="{{ url_for('writeoffs.index') }}" class="form-inline">
+        <select name="status" class="form-control form-control-sm mr-2" onchange="this.form.submit()">
+          <option value="">كل الحالات</option>
+          <option value="posted" {% if selected_status == 'posted' %}selected{% endif %}>مُرحَّلة</option>
+          <option value="void" {% if selected_status == 'void' %}selected{% endif %}>ملغاة</option>
+          <option value="draft" {% if selected_status == 'draft' %}selected{% endif %}>مسودة</option>
+        </select>
+        <button type="submit" class="btn btn-sm btn-outline-primary">
+          <i class="fas fa-filter mr-1"></i>تصفية
+        </button>
+      </form>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table id="writeOffsTable" class="table table-hover">
+        <thead style="background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%); color: white;">
+          <tr>
+            <th><i class="fas fa-hashtag mr-2"></i>الرقم</th>
+            <th><i class="fas fa-user mr-2"></i>العميل</th>
+            <th><i class="fas fa-money-bill-wave mr-2"></i>المبلغ</th>
+            <th><i class="fas fa-coins mr-2"></i>بالعملة الأساسية</th>
+            <th><i class="fas fa-comment mr-2"></i>السبب</th>
+            <th><i class="fas fa-file-invoice mr-2"></i>الفاتورة</th>
+            <th><i class="fas fa-calendar mr-2"></i>التاريخ</th>
+            <th><i class="fas fa-check-circle mr-2"></i>الحالة</th>
+            <th class="text-center"><i class="fas fa-cog mr-2"></i>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for wo in write_offs %}
+          <tr>
+            <td>
+              <a href="{{ url_for('writeoffs.detail', write_off_id=wo.id) }}" class="font-weight-bold text-primary">
+                #{{ wo.id }}
+              </a>
+            </td>
+            <td>
+              <strong>{{ wo.customer.name if wo.customer else '-' }}</strong>
+              {% if wo.customer and wo.customer.name_ar %}
+              <br><small class="text-muted">{{ wo.customer.name_ar }}</small>
+              {% endif %}
+            </td>
+            <td>
+              <strong style="color: #007A3D;">{{ "{:,.2f}".format(wo.amount) }}</strong>
+              <small class="text-muted">{{ wo.currency }}</small>
+            </td>
+            <td>
+              <strong class="text-success">{{ "{:,.2f}".format(wo.amount_base) }}</strong>
+              <small class="text-muted">{{ base_currency }}</small>
+            </td>
+            <td>{{ wo.reason }}</td>
+            <td>
+              {% if wo.sale %}
+                {{ wo.sale.sale_number }}
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="text-muted">{{ wo.created_at.strftime('%Y-%m-%d') if wo.created_at else '-' }}</span>
+            </td>
+            <td>
+              {% if wo.status == 'posted' %}
+                <span class="badge badge-success px-3">
+                  <i class="fas fa-check mr-1"></i>مُرحَّلة
+                </span>
+              {% elif wo.status == 'void' %}
+                <span class="badge badge-secondary px-3">
+                  <i class="fas fa-ban mr-1"></i>ملغاة
+                </span>
+              {% else %}
+                <span class="badge badge-warning px-3">
+                  <i class="fas fa-clock mr-1"></i>مسودة
+                </span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <div class="btn-group btn-group-sm">
+                <a href="{{ url_for('writeoffs.detail', write_off_id=wo.id) }}"
+                   class="btn btn-info" title="عرض">
+                  <i class="fas fa-eye"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">
+              <i class="fas fa-inbox fa-2x d-block mb-2"></i>
+              لا توجد مديونيات مشطوبة مسجّلة
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

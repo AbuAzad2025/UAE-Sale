@@ -231,6 +231,7 @@ def create_app(config_class=Config):  # noqa: C901
     from routes.api_analytics import api_analytics_bp
     from routes.api_docs import api_docs_bp
     from routes.graphql import graphql_bp
+    from routes.writeoffs import writeoffs_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -269,6 +270,7 @@ def create_app(config_class=Config):  # noqa: C901
     app.register_blueprint(erp_bp)
     app.register_blueprint(shipment_bp)
     app.register_blueprint(inbound_bp)
+    app.register_blueprint(writeoffs_bp)
 
     # Error Handlers
     from utils.error_handlers import register_error_handlers

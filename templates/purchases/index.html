@@ -97,6 +97,7 @@
           <th>المدفوع</th>
           <th>المتبقي</th>
           <th>الحالة</th>
+          <th>تاريخ الاستحقاق</th>
           <th>العملة</th>
           <th>الإجراءات</th>
         </tr>
@@ -129,6 +130,12 @@
               <span class="badge badge-danger px-3">
                 <i class="fas fa-hourglass-half mr-1"></i>آجل
               </span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="text-muted">{{ purchase.effective_due_date.strftime('%Y-%m-%d') if purchase.effective_due_date else '-' }}</span>
+            {% if purchase.get_paid_amount() < purchase.total_amount and purchase.days_overdue > 0 %}
+              <br><span class="badge badge-danger px-2">متأخر {{ purchase.days_overdue }} يوم</span>
             {% endif %}
           </td>
           <td>{{ purchase.currency }}</td>

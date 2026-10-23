@@ -8,8 +8,40 @@ from utils.decorators import permission_required, get_owned_or_404
 
 from utils.helpers import create_audit_log, generate_sku, generate_barcode, save_uploaded_file
 from services.stock_service import StockService
+from services.costing_service import CostingService
 
 products_bp = Blueprint('products', __name__, url_prefix='/products')
+
+#: أساس تقييم المخزون المعروض — متوسط التكلفة المتحرك لا سعر آخر شراء.
+VALUATION_BASIS = 'المتوسط المتحرك لتكلفة الوحدة (average_cost)'
+
+
+def _average_may_follow_manual_cost(product, stock):
+    """هل يتبع المتوسط المتحرك تعديلاً يدوياً لسعر التكلفة؟
+
+    التعديل اليدوي يغيّر **سعر التكلفة المرجعي** (آخر شراء). أما المتوسط
+    المتحرك فيُشتق من الحركات، فلا يجوز أن يكتبه حقل يُحرَّر يدوياً —
+    وإلا انفصل تقييم المخزون عن دفتر الأستاذ من جديد.
+
+    الاستثناء الوحيد: منتج **بلا مخزون وبلا تاريخ مشتريات** — لا يوجد
+    بعد ما يُتوسَّط، فمتوسطه الأولي هو التكلفة المُدخلة (وهذا ما يفعله
+    بذر الإدراج أيضاً).
+
+    Args:
+        product: كائن ``Product``.
+        stock: رصيد المخزون **قبل** التعديل (فالرصيد الجديد قد يدخل
+            مع التعديل نفسه).
+
+    Returns:
+        bool: True إذا جاز للتعديل اليدوي أن يحدّث المتوسط.
+    """
+    if Decimal(str(stock or 0)) > 0:
+        return False
+    from models import PurchaseLine
+    has_purchases = PurchaseLine.query.filter_by(
+        product_id=product.id).count() > 0
+    return not has_purchases
+
 
 
 def _parse_product_partners(form):  # noqa: C901
@@ -111,7 +143,8 @@ def index():
     return render_template('products/index.html',
                            products=pagination.items,
                            pagination=pagination,
-                           categories=categories)
+                           categories=categories,
+                           valuation_basis=VALUATION_BASIS)
 
 
 @products_bp.route('/create', methods=['GET', 'POST'])
@@ -319,9 +352,13 @@ def view(id):
         db.desc('created_at')
     ).limit(20).all()
 
+    # القيمة الدفترية = الكمية × المتوسط المتحرك (لا سعر آخر شراء).
     return render_template('products/view.html',
                            product=product,
-                           movements=movements)
+                           movements=movements,
+                           average_cost=Decimal(str(product.average_cost or 0)),
+                           stock_value=CostingService.stock_value(product),
+                           valuation_basis=VALUATION_BASIS)
 
 
 @products_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
@@ -365,6 +402,9 @@ def edit(id):  # noqa: C901
             old_stock = float(product.current_stock or 0)
             new_stock = safe_float(request.form.get('current_stock'), default=old_stock)
             old_cost_price = product.cost_price
+            old_average_cost = Decimal(str(product.average_cost or 0))
+            cost_edited = False
+            average_followed_cost = False
 
             if new_stock is not None and new_stock < 0:
                 flash('⚠️ لا يمكن أن تكون الكمية أقل من صفر.', 'warning')
@@ -405,7 +445,18 @@ def edit(id):  # noqa: C901
             product.merchant_customer_id = merchant_customer_id or None
 
             if current_user.can_see_costs():
-                product.cost_price = safe_float(request.form.get('cost_price'))
+                submitted_cost = safe_float(request.form.get('cost_price'))
+                product.cost_price = submitted_cost
+                cost_edited = True
+                # المتوسط المتحرك لا يتبع الحقل المكتوب يدوياً إلا لمنتج
+                # بلا مخزون وبلا تاريخ مشتريات (انظر
+                # _average_may_follow_manual_cost) — فالتقييم يبقى
+                # مشتقاً من الحركات، وهذا ما يجعله يلتقي بالأستاذ.
+                if (submitted_cost is not None
+                        and _average_may_follow_manual_cost(product, old_stock)):
+                    product.average_cost = Decimal(str(submitted_cost)).quantize(
+                        Decimal('0.001'))
+                    average_followed_cost = True
             elif request.form.get('cost_price'):
                 # SECURITY: دور بلا صلاحية عرض التكاليف لا يحدد التكلفة —
                 # والتكلفة هي محرّك قيد تكلفة البضاعة وتسوية المخزون.
@@ -458,12 +509,24 @@ def edit(id):  # noqa: C901
                 'new_stock': str(new_stock),
                 'old_cost_price': str(old_cost_price),
                 'new_cost_price': str(product.cost_price),
+                'old_average_cost': str(old_average_cost),
+                'new_average_cost': str(product.average_cost),
+                'average_cost_followed_manual_edit': average_followed_cost,
                 'cost_price_visible': bool(current_user.can_see_costs()),
             }, commit=False)
 
             db.session.commit()
 
             flash('✅ تم تحديث بيانات المنتج بنجاح!', 'success')
+            if cost_edited and not average_followed_cost:
+                # ملاحظة صريحة: التعديل اليدوي لم يحرّك المتوسط — لأن
+                # المتوسط يُشتق من الحركات (مخزون قائم أو تاريخ مشتريات).
+                flash('⚠️ تم تحديث سعر التكلفة المرجعي فقط — متوسط التكلفة '
+                      'المتحرك لم يتغيّر، لأنه يُشتق من حركات المخزون '
+                      '(المتوسط الحالي: '
+                      f'{Decimal(str(product.average_cost or 0))}).\n'
+                      '💡 متوسط التكلفة يتحرك مع كل شراء/إدخال جديد، وهو '
+                      'أساس تقييم المخزون.', 'warning')
             return redirect(url_for('products.view', id=product.id))
 
         except Exception as e:
@@ -563,6 +626,11 @@ def api_search():
         'stock': float(p.current_stock),
         'unit': p.unit,
         'is_low_stock': p.is_low_stock(),
+        # SECURITY: بيانات التكلفة لمن يملك صلاحية عرض التكاليف فقط.
+        'average_cost': (float(p.average_cost)
+                         if current_user.can_see_costs() else None),
+        'stock_value': (float(CostingService.stock_value(p))
+                        if current_user.can_see_costs() else None),
     } for p in products]
 
     return jsonify(results)
@@ -713,7 +781,9 @@ def adjust_stock(id):
         return jsonify({
             'success': True,
             'message': f'تم تعديل المخزون من {old_stock} إلى {new_stock}',
-            'new_stock': float(new_stock)
+            'new_stock': float(new_stock),
+            'average_cost': float(Decimal(str(product.average_cost or 0))),
+            'stock_value': float(CostingService.stock_value(product)),
         })
 
     except ValueError as e:

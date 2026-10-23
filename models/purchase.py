@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, date, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
@@ -24,6 +24,11 @@ class Purchase(TenantScopedMixin, db.Model):
     supplier_email = db.Column(db.String(120))
 
     purchase_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+
+    # تاريخ استحقاق الذمم الدائنة — يُشتق من شروط دفع المورد أو يُحدَّد
+    # صراحةً (services/due_date_service.py). بلا تاريخ استحقاق تُعامل
+    # الفاتورة كأنها مستحقّة في تاريخها.
+    due_date = db.Column(db.Date, nullable=True, index=True)
 
     subtotal = db.Column(db.Numeric(15, 3), default=0)
     discount_amount = db.Column(db.Numeric(15, 3), default=0)
@@ -62,6 +67,29 @@ class Purchase(TenantScopedMixin, db.Model):
 
     def __repr__(self):
         return f'<Purchase {self.purchase_number}>'
+
+    @property
+    def effective_due_date(self):
+        """تاريخ الاستحقاق المعتمد — تاريخ الفاتورة إن لم يُحدَّد استحقاق."""
+        from services.due_date_service import effective_due_date
+        return effective_due_date(self.due_date, self.purchase_date)
+
+    @property
+    def days_overdue(self):
+        """أيام التأخير عن تاريخ الاستحقاق (0 = لم يتأخر بعد).
+
+        المرجع هو تاريخ اليوم المحلي — نفس مرجع تحليل الأعمار
+        (services/aging_analysis_service.py) ونفس مرجع دفتر الأستاذ،
+        فتبقى الشرائح متطابقة في الشاشة وفي التقرير.
+        """
+        from services.due_date_service import overdue_days
+        return overdue_days(self.effective_due_date, as_of=date.today())
+
+    @property
+    def overdue_bucket(self):
+        """شريحة التأخير التي تقع فيها الفاتورة."""
+        from services.due_date_service import bucket_for_overdue
+        return bucket_for_overdue(self.days_overdue)
 
     def get_paid_amount(self):
         """Return the tracked paid amount for this purchase (base currency).
@@ -159,6 +187,7 @@ class Purchase(TenantScopedMixin, db.Model):
             'supplier_name': self.supplier_name,
             'supplier_phone': self.supplier_phone,
             'purchase_date': self.purchase_date.isoformat(),
+            'due_date': self.due_date.isoformat() if self.due_date else None,
             'total_amount': float(self.total_amount),
             'currency': self.currency,
             'status': self.status,

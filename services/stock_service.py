@@ -3,6 +3,7 @@ from flask import current_app
 from flask_login import current_user
 from extensions import db
 from models import Product, StockMovement, Warehouse
+from services.costing_service import CostingService
 from utils.decorators import get_owned_or_raise
 from utils.errors import ValidationError
 
@@ -10,7 +11,14 @@ from utils.errors import ValidationError
 class StockService:
 
     @staticmethod
-    def add_stock(product_id, quantity, reference_type=None, reference_id=None, notes=None, warehouse_id=None):
+    def add_stock(product_id, quantity, reference_type=None, reference_id=None, notes=None, warehouse_id=None, unit_cost_base=None):
+        """حركة داخلية (وارد).
+
+        Args:
+            unit_cost_base: تكلفة الوحدة الواردة صافي خصم المستند
+                وبالعملة الأساسية (``.None`` ⇒ تُستعمل تكلفة الوحدة
+                المعروفة حالياً، فلا يتغيّر المتوسط).
+        """
         return StockService.create_movement(
             product_id=product_id,
             quantity=abs(Decimal(str(quantity))),
@@ -18,7 +26,8 @@ class StockService:
             reference_type=reference_type,
             reference_id=reference_id,
             notes=notes,
-            warehouse_id=warehouse_id
+            warehouse_id=warehouse_id,
+            unit_cost_base=unit_cost_base,
         )
 
     @staticmethod
@@ -50,7 +59,10 @@ class StockService:
         from services.gl_service import GLService
 
         delta = Decimal(str(delta))
-        cost = Decimal(str(product.cost_price or 0))
+        # التقييم على أساس المتوسط المتحرك — لا سعر آخر شراء: فالقيمة
+        # الدفترية للمخزون هي quantity × average_cost، وقيد التسوية
+        # يجب أن يحمل القيمة نفسها وإلا ظهر الفرق في التقرير.
+        cost = CostingService.current_unit_cost(product)
         value = abs(delta) * cost
         if value <= 0:
             return None
@@ -135,7 +147,24 @@ class StockService:
         return movement
 
     @staticmethod
-    def create_movement(product_id, quantity, movement_type, reference_type=None, reference_id=None, notes=None, warehouse_id=None):  # noqa: C901
+    def create_movement(product_id, quantity, movement_type, reference_type=None, reference_id=None, notes=None, warehouse_id=None, unit_cost_base=None):  # noqa: C901
+        """حركة مخزون واحدة — الحركة هي نقطة الالتقاء الوحيدة للكلفة.
+
+        كل حركة داخلية (شراء، تسوية يدوية، مرتجع) تُحدِّث **متوسط
+        التكلفة المتحرك**، وكل حركة خارجة (بيع) لا تُحرّكه — لأن متوسط
+        الوحدة الباقية يبقى كما هو بعد البيع (الكمية والقيمة تنزلان
+        بنفس النسبة).
+
+        Args:
+            unit_cost_base: تكلفة الوحدة الواردة صافي خصم المستند
+                وبالعملة الأساسية. ``None`` ⇒ تُستعمل تكلفة الوحدة
+                المعروفة حالياً (المتوسط المتحرك، وإلا آخر سعر شراء)،
+                فلا يتغيّر المتوسط.
+
+        **عقد التكلفة:** ``CostingService.apply_inbound`` يقرأ الرصيد
+        **قبل** الحركة، فتُستدعى هنا **قبل** تعديل ``current_stock``
+        بالضبط — عقد واحد مضمون في موضع واحد.
+        """
         product = get_owned_or_raise(Product, product_id,
                                      missing_message=f'⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.')
 
@@ -190,13 +219,23 @@ class StockService:
         # Savepoint: a failed flush here must NOT poison the caller's outer
         # transaction — only our own work is rolled back.
         nested = db.session.begin_nested()
+        old_average = Decimal(str(product.average_cost or 0))
         try:
+            if quantity_decimal > 0:
+                # الوارد: متوسط التكلفة المتحرك يُحدَّث قبل تغيّر الرصيد
+                # (عقد apply_inbound: الكمية المقروءة هي ما قبل الحركة).
+                in_cost = unit_cost_base
+                if in_cost is None:
+                    in_cost = CostingService.current_unit_cost(product)
+                CostingService.apply_inbound(
+                    product, quantity_decimal, in_cost)
             product.current_stock = resulting_stock
             db.session.flush()
             nested.commit()
         except Exception as flush_error:
             nested.rollback()
             product.current_stock = available_stock
+            product.average_cost = old_average
             try:
                 db.session.expunge(movement)
             except Exception:
@@ -229,22 +268,37 @@ class StockService:
 
     @staticmethod
     def process_purchase_lines(purchase, warehouse_id=None):
+        """استلام فاتورة الشراء — حركة داخلية + تحديث متوسط التكلفة.
+
+        التكلفة المستعملة في المتوسط هي **تكلفة الوحدة الصافية**: صافي
+        خصم المستند (موزّعاً على الأسطر بالتناسب مع قيمتها) محوَّلاً إلى
+        العملة الأساسية — أي **المبلغ المدفوع فعلياً**، وهو نفس المبلغ
+        الذي يُرحَّل مديناً على حساب المخزون (1140). لذلك يلتقي تقييم
+        المخزون مع دفتر الأستاذ.
+
+        ``cost_price`` يبقى **سعر آخر شراء** (مرجع، لا أساس تقييم).
+        """
         if not warehouse_id and hasattr(purchase, 'warehouse_id'):
             warehouse_id = purchase.warehouse_id
 
         for line in purchase.lines:
+            # تكلفة الوحدة الصافية (خصم المستند موزّعاً + سعر الصرف)
+            net_unit_cost = CostingService.net_unit_cost(line, purchase)
+
             StockService.add_stock(
                 product_id=line.product_id,
                 quantity=line.quantity,
                 reference_type='Purchase',
                 reference_id=purchase.id,
                 notes=f'شراء: {purchase.purchase_number}',
-                warehouse_id=warehouse_id
+                warehouse_id=warehouse_id,
+                unit_cost_base=net_unit_cost,
             )
 
             product = get_owned_or_raise(Product, line.product_id, missing_message='المنتج غير موجود')
             if product:
-                # Update cost price in base currency (AED)
+                # Update cost price in base currency (AED) — مرجع آخر
+                # شراء، لا أساس التقييم (الأساس = average_cost).
                 # Ensure we use Decimal for precision
                 unit_cost_decimal = Decimal(str(line.unit_cost))
                 exchange_rate_decimal = Decimal(str(purchase.exchange_rate))
@@ -253,7 +307,13 @@ class StockService:
 
     @staticmethod
     def reverse_sale(sale):
-        """إلغاء بيع - إرجاع للمستودع الأصلي"""
+        """إلغاء بيع - إرجاع للمستودع الأصلي.
+
+        البضاعة ترجع إلى المخزون **بتكلفتها التي بيعت بها** (لقطة سطر
+        البيع) — لا بسعر اليوم ولا بمتوسط تغيّر: قيمة المخزون التي
+        خرجت يجب أن تعود كما هي، فيعود متوسط التكلفة المتحرك إلى
+        حالته قبل البيع.
+        """
         # استخدام نفس المستودع الذي تم البيع منه
         warehouse_id = getattr(sale, 'warehouse_id', None)
 
@@ -264,7 +324,8 @@ class StockService:
                 reference_type='Sale-Reversed',
                 reference_id=sale.id,
                 notes=f'إلغاء بيع: {sale.sale_number}',
-                warehouse_id=warehouse_id  # ← نفس المستودع
+                warehouse_id=warehouse_id,  # ← نفس المستودع
+                unit_cost_base=line.cost_price,
             )
 
     @staticmethod
@@ -375,22 +436,26 @@ class StockService:
     def get_cost_basis(product):
         """أساس تكلفة المنتج (.Decimal) أو None إن لم تكن هناك تكلفة موثوقة.
 
-        A product whose ``cost_price`` is 0 (or NULL) has NO reliable cost
-        basis: it cannot produce a COGS entry nor a valuation, so it must
-        never be sold silently as a revenue-only document.
+        الأساس هو **المتوسط المتحرك** (``products.average_cost``) — وهو
+        مصدر الحقيقة للتقييم ولقطة تكلفة البضاعة المباعة. يعود إلى
+        ``cost_price`` (آخر سعر شراء) كمرجع أخير لمنتج لم يُثبَّت له
+        متوسط بعد (لا حركات داخلية ولا بذر أولي) — أما منتج بتكلفة
+        صفرية فلا أساس له إطلاقاً: لا COGS ولا تقييم ولا تسوية
+        للمخزون، فلا يجوز بيعه بصمت كفاتورة إيراد فقط.
         """
         if product is None:
             return None
-        raw = getattr(product, 'cost_price', None)
-        if raw is None:
-            return None
-        try:
-            cost = Decimal(str(raw))
-        except Exception:
-            return None
-        if cost <= 0:
-            return None
-        return cost
+        for attribute in ('average_cost', 'cost_price'):
+            raw = getattr(product, attribute, None)
+            if raw is None:
+                continue
+            try:
+                cost = Decimal(str(raw))
+            except Exception:
+                continue
+            if cost > 0:
+                return cost
+        return None
 
     @staticmethod
     def require_cost_basis(product, quantity=None):
@@ -405,7 +470,8 @@ class StockService:
             sku = getattr(product, 'sku', None)
             suffix = f' (SKU: {sku})' if sku else ''
             raise ValidationError(
-                f'⚠️ المنتج "{name}"{suffix} بلا تكلفة مسجّلة (cost_price = 0). '
+                f'⚠️ المنتج "{name}"{suffix} بلا تكلفة مسجّلة '
+                f'(average_cost = 0 ولا cost_price). '
                 f'لا يمكن بيعه لأن قيد الإيراد لن يقابله قيد تكلفة البضاعة '
                 f'ولا تسوية للمخزون.\n'
                 f'💡 اضبط تكلفة المنتج في بطاقة المنتج ثم أعد المحاولة.')

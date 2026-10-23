@@ -21,8 +21,23 @@ F2 — سياسة واحدة مع صفحة دفتر الأستاذ (routes/ledge
   • النطاق: مستندات مؤكدة ونشطة وغير مؤرشفة، تاريخها ≤ تاريخ التقرير،
     والطرف المقابل (عميل/مورد) نشط.
   • الرصيد: الفرق بين الإجمالي والمستحق، ويشمل فقط ما هو أكبر من صفر.
-  • الشرائح وحدودها: 0-30 / 31-60 / 61-90 / 91-120 / over_120 يوم
-    (AGING_BUCKETS في routes/ledger.py، والدالة _aging_bucket هناك).
+
+الأعمار (b1) — من **مستحق** لا من **عمر**
+------------------------------------------
+كان المقياس هو عمر الفاتورة (الفرق بين تاريخها وتاريخ التقرير) وهو ليس
+مقياس التأخير: فاتورة عمرها 30 يوماً لم تستحق بعد وفاتورة عمرها 30 يوماً
+متأخرة 30 يوماً كانتا في الشريحة نفسها. الآن تُحسب الشرائح من **تاريخ
+الاستحقاق** (`sales.due_date` / `purchases.due_date`):
+
+    not_due | 1-30 | 31-60 | 61-90 | 90+   (أيام التأخير)
+
+وفاتورة بلا تاريخ استحقاق تُعامل كأنها مستحقّة في تاريخها — وهو ما
+ترجّبه ترحيل البيانات `b1_due_dates`.
+
+الشرائح القديمة (عمر الفاتورة: 0-30 … over_120) بقيت في المخرجات لأنها
+مرجع صفحة دفتر الأستاذ (``routes/ledger.py::AGING_BUCKETS``) وتُقارَن
+معها في ``tests/unit/test_reconciliation_p0.py``؛ والشرائح الجديدة
+(التأخير) في ``overdue_buckets``، ومجموعها = الإجمالي المستحق.
 
 الأرشفة: الأرشفة تكتب صفاً في ``archived_records`` ولا تقلب
 ``is_active`` ولا ``status`` — لذلك يجب استبعاد المعرّفات المؤرشفة
@@ -34,10 +49,25 @@ from decimal import Decimal
 from datetime import datetime, date, time
 
 from models import Customer, Supplier, Sale, Purchase
+from services.due_date_service import (
+    OVERDUE_BUCKETS,
+    bucket_for_overdue,
+    effective_due_date,
+    overdue_days,
+)
 
 
-# حدود الشرائح — مطابقة لـ routes/ledger.py::AGING_BUCKETS
+# حدود شرائح **العمر** — مطابقة لـ routes/ledger.py::AGING_BUCKETS
 AGING_BUCKETS = ('0-30', '31-60', '61-90', '91-120', 'over_120')
+
+# حدود شرائح **التأخير** — المصدر الوحيد في services/due_date_service.py
+__all__ = [
+    'AGING_BUCKETS',
+    'OVERDUE_BUCKETS',
+    'AgingAnalysisService',
+    'bucket_for_overdue',
+    'overdue_days',
+]
 
 
 def _day_end(d):
@@ -61,6 +91,18 @@ def _aging_bucket(days_old):
     return 'over_120'
 
 
+def _resolve_as_of(as_of_date=None, as_of=None):
+    """تاريخ المرجع — `as_of` الاسم الجديد و`as_of_date` الاسم القديم."""
+    reference = as_of if as_of is not None else as_of_date
+    if reference is None:
+        return date.today()
+    if isinstance(reference, datetime):
+        return reference.date()
+    if isinstance(reference, str):
+        return datetime.strptime(reference.strip()[:10], '%Y-%m-%d').date()
+    return reference
+
+
 def _archived_record_ids(table_name):
     """معرّفات السجلات المؤرشفة — نفس الفلتر في routes/ledger.py.
 
@@ -76,31 +118,34 @@ def _archived_record_ids(table_name):
 class AgingAnalysisService:
 
     @staticmethod
-    def get_receivables_aging(as_of_date=None):  # noqa: C901
+    def get_receivables_aging(as_of_date=None, as_of=None):  # noqa: C901
         """
-        تحليل عمر الذمم المدينة (Accounts Receivable)
+        تحليل الذمم المدينة (Accounts Receivable) — بالاستحقاق لا بالعمر
 
         Args:
             as_of_date: التاريخ المرجعي (default: اليوم)
+            as_of: الاسم البديل للتاريخ المرجعي (يُقدَّم على as_of_date)
 
         Returns:
             {
                 'customers': [...],
-                'totals': {...},
-                'buckets': {...},   # Decimal (مطابقة routes/ledger.py)
-                'as_of_date': date
+                'totals': {...},          # شرائح العمر (مرجع دفتر الأستاذ) + total
+                'buckets': {...},         # شرائح العمر (Decimal)
+                'overdue_buckets': {...}, # شرائح التأخير (Decimal)
+                'total_outstanding': float,
+                'overdue_total': float,
+                'as_of_date': date,
+                'as_of': date,
+                'customer_count': int
             }
         """
-        if not as_of_date:
-            as_of_date = date.today()
-        elif isinstance(as_of_date, str):
-            as_of_date = datetime.strptime(as_of_date, '%Y-%m-%d').date()
-
+        as_of_date = _resolve_as_of(as_of_date, as_of)
         cutoff = _day_end(as_of_date)
 
         results = []
         totals = {bucket: Decimal('0') for bucket in AGING_BUCKETS}
         totals['total'] = Decimal('0')
+        overdue_totals = {bucket: Decimal('0') for bucket in OVERDUE_BUCKETS}
 
         # جميع العملاء النشطين
         customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
@@ -114,6 +159,7 @@ class AgingAnalysisService:
                 '91-120': Decimal('0'),
                 'over_120': Decimal('0'),
                 'total': Decimal('0'),
+                'overdue': {bucket: Decimal('0') for bucket in OVERDUE_BUCKETS},
                 'invoices': []
             }
 
@@ -137,17 +183,24 @@ class AgingAnalysisService:
                 balance = (sale.amount_base or Decimal('0')) - (sale.paid_amount_base or Decimal('0'))
 
                 if balance > 0:
-                    # حساب عمر الفاتورة
+                    # حساب عمر الفاتورة (شرائح العمر — مرجع دفتر الأستاذ)
                     days_old = (as_of_date - sale.sale_date.date()).days
                     age_category = _aging_bucket(days_old)
 
+                    # حساب التأخير عن تاريخ الاستحقاق (الشرائح الحقيقية)
+                    due = effective_due_date(sale.due_date, sale.sale_date)
+                    days_late = overdue_days(due, as_of=as_of_date)
+                    overdue_category = bucket_for_overdue(days_late)
+
                     aging[age_category] += balance
                     aging['total'] += balance
+                    aging['overdue'][overdue_category] += balance
 
                     # إضافة تفاصيل الفاتورة
                     aging['invoices'].append({
                         'sale_number': sale.sale_number,
                         'sale_date': sale.sale_date.date(),
+                        'due_date': due,
                         'total': float(sale.total_amount),
                         'total_base': float(sale.amount_base or 0),
                         'paid': float(sale.paid_amount or 0),
@@ -155,7 +208,9 @@ class AgingAnalysisService:
                         'balance': float(balance),
                         'currency': sale.currency,
                         'days_old': days_old,
-                        'age_category': age_category
+                        'age_category': age_category,
+                        'days_overdue': days_late,
+                        'overdue_bucket': overdue_category
                     })
 
             # إضافة العميل إذا كان لديه رصيد
@@ -169,6 +224,13 @@ class AgingAnalysisService:
                     '91-120': float(aging['91-120']),
                     'over_120': float(aging['over_120']),
                     'total': float(aging['total']),
+                    'overdue_buckets': {
+                        bucket: float(aging['overdue'][bucket])
+                        for bucket in OVERDUE_BUCKETS
+                    },
+                    'total_outstanding': float(aging['total']),
+                    'overdue_total': float(
+                        aging['total'] - aging['overdue']['not_due']),
                     'invoices': aging['invoices']
                 }
                 results.append(aging_float)
@@ -177,37 +239,46 @@ class AgingAnalysisService:
                 for bucket in AGING_BUCKETS:
                     totals[bucket] += aging[bucket]
                 totals['total'] += aging['total']
+                for bucket in OVERDUE_BUCKETS:
+                    overdue_totals[bucket] += aging['overdue'][bucket]
 
         # تحويل الإجماليات لـ floats
         totals_float = {k: float(v) for k, v in totals.items()}
+
+        total_outstanding = sum(
+            (overdue_totals[bucket] for bucket in OVERDUE_BUCKETS), Decimal('0'))
+        overdue_total = total_outstanding - overdue_totals['not_due']
 
         return {
             'customers': results,
             'totals': totals_float,
             'buckets': {bucket: totals[bucket] for bucket in AGING_BUCKETS},
+            'overdue_buckets': {
+                bucket: overdue_totals[bucket] for bucket in OVERDUE_BUCKETS
+            },
+            'total_outstanding': float(total_outstanding),
+            'overdue_total': float(overdue_total),
             'as_of_date': as_of_date,
+            'as_of': as_of_date,
             'customer_count': len(results)
         }
 
     @staticmethod
-    def get_payables_aging(as_of_date=None):  # noqa: C901
+    def get_payables_aging(as_of_date=None, as_of=None):  # noqa: C901
         """
-        تحليل عمر الذمم الدائنة (Accounts Payable)
+        تحليل الذمم الدائنة (Accounts Payable) — بالاستحقاق لا بالعمر
 
         نفس سياسة الذمم المدينة (routes/ledger.py::_payables_aging):
         مستندات مؤكدة وغير مؤرشفة، مورد نشط، رصيد موجب فقط، وحدود الشرائح
         نفسها.
         """
-        if not as_of_date:
-            as_of_date = date.today()
-        elif isinstance(as_of_date, str):
-            as_of_date = datetime.strptime(as_of_date, '%Y-%m-%d').date()
-
+        as_of_date = _resolve_as_of(as_of_date, as_of)
         cutoff = _day_end(as_of_date)
 
         results = []
         totals = {bucket: Decimal('0') for bucket in AGING_BUCKETS}
         totals['total'] = Decimal('0')
+        overdue_totals = {bucket: Decimal('0') for bucket in OVERDUE_BUCKETS}
 
         # جميع الموردين النشطين
         suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
@@ -221,6 +292,7 @@ class AgingAnalysisService:
                 '91-120': Decimal('0'),
                 'over_120': Decimal('0'),
                 'total': Decimal('0'),
+                'overdue': {bucket: Decimal('0') for bucket in OVERDUE_BUCKETS},
                 'invoices': []
             }
 
@@ -243,24 +315,33 @@ class AgingAnalysisService:
                 balance = (purchase.amount_base or Decimal('0')) - (purchase.paid_amount or Decimal('0'))
 
                 if balance > 0:
-                    # حساب عمر الفاتورة
+                    # حساب عمر الفاتورة (شرائح العمر — مرجع دفتر الأستاذ)
                     days_old = (as_of_date - purchase.purchase_date.date()).days
                     age_category = _aging_bucket(days_old)
 
+                    # حساب التأخير عن تاريخ الاستحقاق (الشرائح الحقيقية)
+                    due = effective_due_date(purchase.due_date, purchase.purchase_date)
+                    days_late = overdue_days(due, as_of=as_of_date)
+                    overdue_category = bucket_for_overdue(days_late)
+
                     aging[age_category] += balance
                     aging['total'] += balance
+                    aging['overdue'][overdue_category] += balance
 
                     # إضافة تفاصيل الفاتورة
                     aging['invoices'].append({
                         'purchase_number': purchase.purchase_number,
                         'purchase_date': purchase.purchase_date.date(),
+                        'due_date': due,
                         'total': float(purchase.total_amount),
                         'total_base': float(purchase.amount_base or 0),
                         'paid': float(purchase.paid_amount or 0),
                         'balance': float(balance),
                         'currency': purchase.currency,
                         'days_old': days_old,
-                        'age_category': age_category
+                        'age_category': age_category,
+                        'days_overdue': days_late,
+                        'overdue_bucket': overdue_category
                     })
 
             # إضافة المورد إذا كان لديه رصيد
@@ -273,6 +354,13 @@ class AgingAnalysisService:
                     '91-120': float(aging['91-120']),
                     'over_120': float(aging['over_120']),
                     'total': float(aging['total']),
+                    'overdue_buckets': {
+                        bucket: float(aging['overdue'][bucket])
+                        for bucket in OVERDUE_BUCKETS
+                    },
+                    'total_outstanding': float(aging['total']),
+                    'overdue_total': float(
+                        aging['total'] - aging['overdue']['not_due']),
                     'invoices': aging['invoices']
                 }
                 results.append(aging_float)
@@ -281,13 +369,25 @@ class AgingAnalysisService:
                 for bucket in AGING_BUCKETS:
                     totals[bucket] += aging[bucket]
                 totals['total'] += aging['total']
+                for bucket in OVERDUE_BUCKETS:
+                    overdue_totals[bucket] += aging['overdue'][bucket]
 
         totals_float = {k: float(v) for k, v in totals.items()}
+
+        total_outstanding = sum(
+            (overdue_totals[bucket] for bucket in OVERDUE_BUCKETS), Decimal('0'))
+        overdue_total = total_outstanding - overdue_totals['not_due']
 
         return {
             'suppliers': results,
             'totals': totals_float,
             'buckets': {bucket: totals[bucket] for bucket in AGING_BUCKETS},
+            'overdue_buckets': {
+                bucket: overdue_totals[bucket] for bucket in OVERDUE_BUCKETS
+            },
+            'total_outstanding': float(total_outstanding),
+            'overdue_total': float(overdue_total),
             'as_of_date': as_of_date,
+            'as_of': as_of_date,
             'supplier_count': len(results)
         }

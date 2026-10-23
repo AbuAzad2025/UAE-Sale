@@ -6,6 +6,7 @@ from models import InvoiceSettings
 from services.stock_service import StockService
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
+from services import due_date_service
 from utils.decorators import permission_required, get_owned_or_404
 from routes.ledger import reverse_or_purge_gl_entries
 
@@ -121,6 +122,14 @@ def create():  # noqa: C901
 
             db.session.add(purchase)
             db.session.flush()
+
+            # تاريخ الاستحقاق: تاريخ صريح من النموذج، وإلا يُشتق من تاريخ
+            # الفاتورة + شروط دفع المورد (services/due_date_service.py).
+            purchase.due_date = due_date_service.due_date_for_purchase(
+                purchase.purchase_date,
+                supplier=supplier,
+                explicit=request.form.get('due_date'),
+            )
 
             line_count = int(request.form.get('line_count', 0))
             current_app.logger.info(f"Processing {line_count} lines")
@@ -317,6 +326,15 @@ def edit(id):
         try:
             # تعديل الملاحظات فقط
             purchase.notes = request.form.get('notes', '')
+
+            # تاريخ الاستحقاق: تاريخ صريح من النموذج، وإلا يُشتق من تاريخ
+            # الفاتورة + شروط دفع المورد (services/due_date_service.py).
+            if 'due_date' in request.form:
+                purchase.due_date = due_date_service.due_date_for_purchase(
+                    purchase.purchase_date,
+                    supplier=purchase.supplier,
+                    explicit=request.form.get('due_date'),
+                )
 
             db.session.commit()
             create_audit_log('update', 'purchases', id)

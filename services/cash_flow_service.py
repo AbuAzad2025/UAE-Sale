@@ -13,10 +13,15 @@
 F4: لا أكواد حسابات ثابتة في هذه الخدمة. كل حساب يُطلب بدوره
 (AccountRole) من services/account_resolution.py فيُرَجَع الكود الذي
 يستخدمه دليل الحسابات فعلاً في هذه المنشأة/المستأجر.
+
+رصيد النقدية في نهاية الفترة حقيقة تُقرأ من دفتر الأستاذ، لا رقم يُستنتج
+من جمع الأقسام: ``cash_ending`` يقرأ من الدفتر، و``cash_ending_computed``
+هو الناتج الحسابي (البداية + صافي التغير)، و``tie_out`` يفصل بينهما ويعلن
+الفرق. القائمة لا تستطيع أن تخفي اختلافاً بين الدفتر وحسابها.
 """
 
-from decimal import Decimal
-from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
+from datetime import date, datetime
 from types import SimpleNamespace
 from sqlalchemy import func, and_
 from extensions import db
@@ -52,6 +57,27 @@ CASH_FLOW_ROLE_MAP = {
 
 # الأدوار التي تمثّل الأصول الثابتة (كانت تُلتقط بالبادئة '12%').
 FIXED_ASSET_ROLES = ('LAND', 'BUILDINGS', 'VEHICLES', 'EQUIPMENT', 'FURNITURE')
+
+# دقّة النقود المعروضة في القائمة: الموازنة بين رصيد الدفتر والرصيد
+# المحسوب تُحكم على الفرق بعد تقريبه إلى منزلتين — فارق أصغر من نصف
+# قرش فرق عرضٍ لا فرق حقيقي.
+MONEY_PRECISION = Decimal('0.01')
+
+
+def _parse_date(value):
+    """تحويل تاريخ (نص/date/datetime) إلى date، أو None لبلا حدّ."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        return datetime.strptime(text, '%Y-%m-%d').date()
+    raise ValueError(f'Unsupported date value for the cash flow statement: {value!r}')
 
 
 def _current_tenant_id():
@@ -154,36 +180,109 @@ class CashFlowService:
 
     @staticmethod
     def _section_amount(account_type, net_base):
-        """مبلغ الحساب في قسمه (بالإشارة المتوافقة مع القسم).
+        """أثر حركة الحساب على النقدية (بالإشارة المتوافقة مع القسم).
 
-        الإيرادات والمصروفات: الدائن inflow موجب والمدين outflow سالب.
-        الأصول: الزيادة (مدين) موجبة.
-        الخصوم وحقوق الملكية: الزيادة (دائن) موجبة.
+        حركة أي حساب تقابل حركة نقدية معاكسة، فهذا هو التوقيع الصحيح
+        لقائمة التدفقات النقدية:
+          • أصل (أصول ثابتة/مخزون): زيادته (مدين) خروج نقدي ⇒ سالب،
+            ونقصانه (دائن) دخول نقدي ⇒ موجب.
+          • إيراد: دائن = بيع = دخول نقدي ⇒ موجب؛ مدين (مرتجع) ⇒ سالب.
+          • مصروف: مدين = صرف = خروج نقدي ⇒ سالب؛ دائن ⇒ موجب.
+          • خصم/حقوق ملكية: زيادتها (دائن) دخول نقدي ⇒ موجب.
+
+        (``account_type`` يحدّد القسم لا الإشارة — انظر classify_account.)
         """
-        if account_type == 'asset':
-            return net_base
         return -net_base
+
+    @staticmethod
+    def _cash_account_ids():
+        """معرّفات حسابات النقدية الحيّة (الصندوق + البنك) بعد حلّ الأدوار."""
+        codes = list(CashFlowService.cash_account_codes())
+        if not codes:
+            return []
+        return [
+            acc.id for acc in GLAccount.query.filter(
+                GLAccount.code.in_(codes)
+            ).all()
+        ]
+
+    @staticmethod
+    def _tie_out(gl_cash_ending, computed_ending):
+        """مطابقة رصيد النقدية في نهاية الفترة: الحقيقة من الدفتر مقابل المحسوب.
+
+        ``difference`` = رصيد الدفتر − الرصيد المحسوب، و``balanced`` تُعلن
+        هل الفرق صفر (بعد تقريبه إلى دقّة النقود المعروضة) أم لا. الفرق
+        لا يُخفى ولا يُسوّى — يُعرض.
+        """
+        gl_balance = CashFlowService._dec(gl_cash_ending)
+        computed = CashFlowService._dec(computed_ending)
+        difference = gl_balance - computed
+        return {
+            'gl_cash_ending': gl_balance,
+            'computed_ending': computed,
+            'difference': difference,
+            'balanced': difference.quantize(
+                MONEY_PRECISION, rounding=ROUND_HALF_UP) == Decimal('0'),
+        }
+
+    @staticmethod
+    def _fiscal_period_facts(period_start, period_end):
+        """حالة الفترة المالية للفترة المطلوبة + صحة المدى الزمني.
+
+        القائمة تُقرأ عن فترات مغلقة أيضاً (تقرير تاريخي)، فليس رفضُ
+        الفترة المغلقة هو السلوك الصحيح هنا — لكن يجب أن تُعرف حالتها
+        وأن يُعلَن المدى غير الصالح بدل ابتلاعه.
+
+        Uses services/fiscal_period_guard.py (the single period contract).
+        """
+        from services.fiscal_period_guard import period_for_date
+
+        range_valid = True
+        if period_start is not None and period_end is not None:
+            range_valid = period_start <= period_end
+
+        period = period_for_date(period_end or period_start)
+        is_closed = bool(getattr(period, 'is_closed', False)) if period else False
+        return {
+            'defined': period is not None,
+            'is_open': period is not None and not is_closed,
+            'is_closed': is_closed,
+            'range_valid': range_valid,
+        }
 
     @staticmethod
     def generate_gl_cash_flow(period_start, period_end):
         """قائمة التدفقات النقدية من دفتر الأستاذ — المصدر الوحيد.
 
         Args:
-            period_start: تاريخ البداية (date أو string)
-            period_end: تاريخ النهاية (date أو string)
+            period_start: تاريخ البداية (date أو string) — None = بلا حدّ
+            period_end: تاريخ النهاية (date أو string) — None = بلا حدّ
 
         Returns:
-            dict: قائمة التدفقات النقدية الكاملة (بنود الأقسام + الإجماليات +
-            رصيد النقدية في بداية ونهاية الفترة + صفوف التصدير)
+            dict: قائمة التدفقات النقدية الكاملة:
+                • operating_items/investing_items/financing_items: بنود
+                  الأقسام الثلاثة، وoperating_total/investing_total/
+                  financing_total: إجمالياتها.
+                • net_change: صافي التغير في النقدية (مجموع الأقسام).
+                • cash_beginning: رصيد النقدية في بداية الفترة (من الدفتر).
+                • cash_ending: رصيد النقدية في نهاية الفترة — حقيقة من
+                  دفتر الأستاذ (لا رقم مستنتج).
+                • cash_ending_computed: الرصيد نفسه محسوباً
+                  (cash_beginning + net_change) — للمطابقة فقط.
+                • tie_out: {'gl_cash_ending', 'computed_ending',
+                  'difference', 'balanced'} — الفرق يُعلن ولا يُخفى.
+                • fiscal_period: حالة الفترة المالية وصحة المدى الزمني.
+                • rows: صفوف التصدير.
+
+        ملاحظة المحاسبة: الأقسام تُبنى من الحسابات المقابلة للنقدية
+        (طريقة غير مباشرة) — حسابات النقدية نفسها (الصندوق/البنك) هي
+        موضوع القائمة فلا تُحتسب بنداً فيها، وإلا احتُسبت حركة النقدية
+        مرتين. وإشارات الأقسام تُشتق من أثر الحركة على النقدية (انظر
+        ``_section_amount``).
         """
 
-        # تحويل التواريخ (نص فارغ = بلا حدّ)
-        if isinstance(period_start, str):
-            period_start = (datetime.strptime(period_start, '%Y-%m-%d').date()
-                            if period_start.strip() else None)
-        if isinstance(period_end, str):
-            period_end = (datetime.strptime(period_end, '%Y-%m-%d').date()
-                          if period_end.strip() else None)
+        period_start = _parse_date(period_start)
+        period_end = _parse_date(period_end)
 
         from datetime import time as _time
         period_end_dt = (datetime.combine(period_end, _time.max)
@@ -228,7 +327,15 @@ class CashFlowService:
         sections = {'operating': {}, 'investing': {}, 'financing': {}}
         export_rows = []
 
+        cash_account_ids = CashFlowService._cash_account_ids()
+        cash_account_id_set = set(cash_account_ids)
+
         for row in rows:
+            # حسابات النقدية هي موضوع القائمة لا بنود فيها: حركة النقدية
+            # هي "صافي التغير" نفسه، فلا تُحتسب مرتين.
+            if row.account_id in cash_account_id_set:
+                continue
+
             account_type = row.account_type
             section = CashFlowService.classify_account(account_type)
             net_base = CashFlowService._dec(row.net_base)
@@ -255,16 +362,17 @@ class CashFlowService:
         financing_total = sum(sections['financing'].values(), Decimal('0'))
         net_change = operating_total + investing_total + financing_total
 
-        cash_account_ids = [
-            acc.id for acc in GLAccount.query.filter(
-                GLAccount.code.in_(CashFlowService.cash_account_codes())
-            ).all()
-        ]
+        cash_account_ids = list(cash_account_ids)
         # رصيد النقدية قبل بداية الفترة (أو قبل أول حركة إن لم تُحدَّد فترة)
         opening_cutoff = period_start_dt or datetime(1900, 1, 1)
         cash_beginning = CashFlowService._gl_cash_balance(
             cash_account_ids, opening_cutoff, is_beginning=True)
-        cash_ending = cash_beginning + net_change
+        # رصيد النقدية في نهاية الفترة — حقيقة من دفتر الأستاذ.
+        cash_ending = CashFlowService._gl_cash_balance(
+            cash_account_ids, period_end_dt, is_beginning=False)
+        # الرقم المحسوب (البداية + صافي التغير) — للمطابقة فقط.
+        cash_ending_computed = cash_beginning + net_change
+        tie_out = CashFlowService._tie_out(cash_ending, cash_ending_computed)
 
         return {
             'period_start': period_start,
@@ -278,12 +386,19 @@ class CashFlowService:
             'net_change': net_change,
             'cash_beginning': cash_beginning,
             'cash_ending': cash_ending,
+            'cash_ending_computed': cash_ending_computed,
+            'tie_out': tie_out,
+            'fiscal_period': CashFlowService._fiscal_period_facts(
+                period_start, period_end),
             'rows': export_rows,
         }
 
     @staticmethod
     def _gl_cash_balance(account_ids, target_date, is_beginning=False):
-        """رصيد حسابات النقدية بعملة الأساس حتى تاريخ محدد."""
+        """رصيد حسابات النقدية بعملة الأساس حتى تاريخ محدد.
+
+        ``target_date`` = None يعني بلا حدّ (كل القيود المرحّلة).
+        """
         if not account_ids:
             return Decimal('0')
 
@@ -300,8 +415,9 @@ class CashFlowService:
             .filter(GLJournalEntry.is_posted.is_(True))
         )
         if is_beginning:
-            query = query.filter(GLJournalEntry.entry_date < target_date)
-        else:
+            if target_date is not None:
+                query = query.filter(GLJournalEntry.entry_date < target_date)
+        elif target_date is not None:
             query = query.filter(GLJournalEntry.entry_date <= target_date)
 
         debit_sum, credit_sum = query.first() or (None, None)
@@ -327,6 +443,9 @@ class CashFlowService:
         ملاحظة: الأقسام كائنات (namespace) وليس قواميس — لأن القالب يقرأ
         ``report.operating_activities.items``، وفي القاموس تكون ``items`` هي
         دالة بايثون المدمجة لا مفتاح البيانات.
+
+        المطابقة (``tie_out``) تُنقل كما هي إلى صفحة دفتر الأستاذ حتى
+        تُعرض الحقيقة والمحسوب والفرق بينهما.
         """
         today = datetime.now().date()
 
@@ -336,6 +455,7 @@ class CashFlowService:
                 **{net_key: net_value},
             )
 
+        tie_out = gl_report.get('tie_out') or {}
         return SimpleNamespace(
             period_start=gl_report['period_start'] or today,
             period_end=gl_report['period_end'] or today,
@@ -351,6 +471,14 @@ class CashFlowService:
             net_change_in_cash=float(gl_report['net_change']),
             cash_beginning=float(gl_report['cash_beginning']),
             cash_ending=float(gl_report['cash_ending']),
+            cash_ending_computed=float(
+                gl_report.get('cash_ending_computed', gl_report['cash_ending'])),
+            tie_out=SimpleNamespace(
+                gl_cash_ending=float(tie_out.get('gl_cash_ending', 0)),
+                computed_ending=float(tie_out.get('computed_ending', 0)),
+                difference=float(tie_out.get('difference', 0)),
+                balanced=bool(tie_out.get('balanced', False)),
+            ),
         )
 
     @staticmethod
@@ -362,20 +490,22 @@ class CashFlowService:
         المعروض في الصفحات والتصدير. أُبقيت هذه الدالة للتوافق مع
         المستهلكين الخارجيين فقط.
 
+        بنود هذه النسخة تبقى مبنية على جداول التشغيل (للتوافق مع
+        المستهلكين)، لكن رصيد النقدية في نهاية الفترة يُقرأ من دفتر
+        الأستاذ كما في ``generate_gl_cash_flow`` — فلا تتناقض النسختان —
+        والفرق بين المحسوب والمقروء يُعلَن في ``tie_out``.
+
         Args:
             period_start: تاريخ البداية (date أو string)
             period_end: تاريخ النهاية (date أو string)
 
         Returns:
-            dict: قائمة التدفقات النقدية الكاملة
+            dict: قائمة التدفقات النقدية الكاملة + cash_ending_computed +
+            tie_out (نفس مفاتيح المطابقة في generate_gl_cash_flow)
         """
         # تحويل التواريخ (نص فارغ = بلا حدّ)
-        if isinstance(period_start, str):
-            period_start = (datetime.strptime(period_start, '%Y-%m-%d').date()
-                            if period_start.strip() else None)
-        if isinstance(period_end, str):
-            period_end = (datetime.strptime(period_end, '%Y-%m-%d').date()
-                          if period_end.strip() else None)
+        period_start = _parse_date(period_start)
+        period_end = _parse_date(period_end)
         if period_start is None:
             period_start = datetime.now().date()
         if period_end is None:
@@ -398,12 +528,10 @@ class CashFlowService:
         # 3. الأنشطة التمويلية (Financing Activities)
         financing = CashFlowService._get_financing_activities(period_start_dt, period_end_dt)
 
-        # 4. حساب النقدية
-        cash_accounts = GLAccount.query.filter(
-            GLAccount.code.in_(CashFlowService.cash_account_codes())
-        ).all()
+        # 4. حساب النقدية — رصيد الدفتر هو الحقيقة (نفس مصدر النسخة الجديدة)
+        gl_report = CashFlowService.generate_gl_cash_flow(period_start, period_end)
 
-        cash_beginning = CashFlowService._get_cash_balance(cash_accounts, period_start, is_beginning=True)
+        cash_beginning = gl_report['cash_beginning']
 
         net_cash_flow = (
             CashFlowService._dec(operating['net_cash_from_operating']) +
@@ -411,7 +539,9 @@ class CashFlowService:
             CashFlowService._dec(financing['net_cash_from_financing'])
         )
 
-        cash_ending = cash_beginning + net_cash_flow
+        cash_ending = gl_report['cash_ending']
+        cash_ending_computed = cash_beginning + net_cash_flow
+        tie_out = CashFlowService._tie_out(cash_ending, cash_ending_computed)
 
         return {
             'period_start': period_start,
@@ -421,7 +551,9 @@ class CashFlowService:
             'financing_activities': financing,
             'net_change_in_cash': float(net_cash_flow),
             'cash_beginning': float(cash_beginning),
-            'cash_ending': float(cash_ending)
+            'cash_ending': float(cash_ending),
+            'cash_ending_computed': float(cash_ending_computed),
+            'tie_out': tie_out,
         }
 
     @staticmethod
@@ -476,8 +608,8 @@ class CashFlowService:
                 and_(
                     GLJournalLine.account_id == salary_account.id,
                     GLJournalEntry.is_posted.is_(True),
-                    func.date(GLJournalEntry.entry_date) >= period_start,
-                    func.date(GLJournalEntry.entry_date) <= period_end
+                    GLJournalEntry.entry_date >= period_start,
+                    GLJournalEntry.entry_date <= period_end
                 )
             ).scalar()
             salaries = CashFlowService._dec(salaries)
@@ -544,8 +676,8 @@ class CashFlowService:
                 and_(
                     GLJournalLine.account_id == account.id,
                     GLJournalEntry.is_posted.is_(True),
-                    func.date(GLJournalEntry.entry_date) >= period_start,
-                    func.date(GLJournalEntry.entry_date) <= period_end
+                    GLJournalEntry.entry_date >= period_start,
+                    GLJournalEntry.entry_date <= period_end
                 )
             ).scalar() or Decimal('0')
             purchase_of_assets += CashFlowService._dec(purchases)
@@ -559,8 +691,8 @@ class CashFlowService:
                 and_(
                     GLJournalLine.account_id == account.id,
                     GLJournalEntry.is_posted.is_(True),
-                    func.date(GLJournalEntry.entry_date) >= period_start,
-                    func.date(GLJournalEntry.entry_date) <= period_end
+                    GLJournalEntry.entry_date >= period_start,
+                    GLJournalEntry.entry_date <= period_end
                 )
             ).scalar() or Decimal('0')
             sale_of_assets += CashFlowService._dec(sales)
@@ -600,8 +732,8 @@ class CashFlowService:
                 and_(
                     GLJournalLine.account_id == capital_account.id,
                     GLJournalEntry.is_posted.is_(True),
-                    func.date(GLJournalEntry.entry_date) >= period_start,
-                    func.date(GLJournalEntry.entry_date) <= period_end
+                    GLJournalEntry.entry_date >= period_start,
+                    GLJournalEntry.entry_date <= period_end
                 )
             ).scalar()
             capital_contributions = CashFlowService._dec(capital_contributions)
@@ -617,8 +749,8 @@ class CashFlowService:
                 and_(
                     GLJournalLine.account_id == owner_draw_account.id,
                     GLJournalEntry.is_posted.is_(True),
-                    func.date(GLJournalEntry.entry_date) >= period_start,
-                    func.date(GLJournalEntry.entry_date) <= period_end
+                    GLJournalEntry.entry_date >= period_start,
+                    GLJournalEntry.entry_date <= period_end
                 )
             ).scalar()
             owner_withdrawals = CashFlowService._dec(owner_withdrawals)
@@ -635,8 +767,8 @@ class CashFlowService:
                 and_(
                     GLJournalLine.account_id == loans_account.id,
                     GLJournalEntry.is_posted.is_(True),
-                    func.date(GLJournalEntry.entry_date) >= period_start,
-                    func.date(GLJournalEntry.entry_date) <= period_end
+                    GLJournalEntry.entry_date >= period_start,
+                    GLJournalEntry.entry_date <= period_end
                 )
             ).scalar()
             loans_received = CashFlowService._dec(loans_received)
@@ -647,8 +779,8 @@ class CashFlowService:
                 and_(
                     GLJournalLine.account_id == loans_account.id,
                     GLJournalEntry.is_posted.is_(True),
-                    func.date(GLJournalEntry.entry_date) >= period_start,
-                    func.date(GLJournalEntry.entry_date) <= period_end
+                    GLJournalEntry.entry_date >= period_start,
+                    GLJournalEntry.entry_date <= period_end
                 )
             ).scalar()
             loan_repayments = CashFlowService._dec(loan_repayments)
@@ -686,39 +818,3 @@ class CashFlowService:
                 }
             ]
         }
-
-    @staticmethod
-    def _get_cash_balance(cash_accounts, target_date, is_beginning=False):
-        """حساب رصيد النقدية في تاريخ محدد (بعملة الأساس)"""
-        total_balance = Decimal('0')
-        account_ids = [account.id for account in cash_accounts]
-        if not account_ids:
-            return total_balance
-
-        for account in cash_accounts:
-            # حساب الرصيد حتى التاريخ المحدد
-            debit_sum = db.session.query(
-                func.sum(CashFlowService._base_debit())
-            ).select_from(GLJournalLine).join(GLJournalEntry).filter(
-                and_(
-                    GLJournalLine.account_id == account.id,
-                    GLJournalEntry.is_posted.is_(True),
-                    func.date(GLJournalEntry.entry_date) < target_date if is_beginning
-                    else func.date(GLJournalEntry.entry_date) <= target_date
-                )
-            ).scalar()
-
-            credit_sum = db.session.query(
-                func.sum(CashFlowService._base_credit())
-            ).select_from(GLJournalLine).join(GLJournalEntry).filter(
-                and_(
-                    GLJournalLine.account_id == account.id,
-                    GLJournalEntry.is_posted.is_(True),
-                    func.date(GLJournalEntry.entry_date) < target_date if is_beginning
-                    else func.date(GLJournalEntry.entry_date) <= target_date
-                )
-            ).scalar()
-
-            total_balance += (CashFlowService._dec(debit_sum) - CashFlowService._dec(credit_sum))
-
-        return total_balance

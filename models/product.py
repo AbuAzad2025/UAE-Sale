@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+from decimal import Decimal
+from sqlalchemy import event
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
 
@@ -62,6 +64,7 @@ class Product(TenantScopedMixin, db.Model):
         db.CheckConstraint('current_stock >= 0', name='ck_product_stock_non_negative'),
         db.CheckConstraint('regular_price >= 0', name='ck_product_price_non_negative'),
         db.CheckConstraint('cost_price >= 0', name='ck_product_cost_non_negative'),
+        db.CheckConstraint('average_cost >= 0', name='ck_product_average_cost_non_negative'),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -88,6 +91,13 @@ class Product(TenantScopedMixin, db.Model):
     merchant_share = db.Column(db.Numeric(5, 2), default=100.0)  # Percentage share for merchant owner
     partner_price = db.Column(db.Numeric(15, 3))
 
+    # SCHEMA NOTE (b2_inventory_costing): the running moving weighted average
+    # cost per unit, in base currency.  The stock is valued at
+    # ``current_stock * average_cost`` and the cost of goods sold is
+    # snapshotted at the moment of the sale.  ``cost_price`` stays the
+    # reference (last purchase) cost — it is NOT the valuation basis.
+    average_cost = db.Column(db.Numeric(15, 3), default=0, nullable=False)
+
     current_stock = db.Column(db.Numeric(15, 3), default=0, nullable=False)
     min_stock_alert = db.Column(db.Numeric(15, 3), default=0)
 
@@ -112,6 +122,18 @@ class Product(TenantScopedMixin, db.Model):
     def quantity_in_stock(self, value):
         """Setter for quantity_in_stock"""
         self.current_stock = value
+
+    @property
+    def stock_value(self):
+        """قيمة المخزون الدفترية = الكمية × متوسط التكلفة المتحرك.
+
+        أساس التقييم الوحيد للمخزون (services/costing_service.py): الكمية
+        الحالية مضروبة في متوسط التكلفة المتحرك بالعملة الأساسية — لا في
+        سعر آخر شراء.
+        """
+        quantity = Decimal(str(self.current_stock or 0))
+        average = Decimal(str(self.average_cost or 0))
+        return (quantity * average).quantize(Decimal('0.001'))
 
     unit = db.Column(db.String(20), default='piece')
     location = db.Column(db.String(50))
@@ -179,5 +201,33 @@ class Product(TenantScopedMixin, db.Model):
 
         if include_cost:
             data['cost_price'] = float(self.cost_price)
+            data['average_cost'] = float(self.average_cost or 0)
+            data['stock_value'] = float(self.stock_value)
 
         return data
+
+
+@event.listens_for(Product, 'before_insert')
+def _seed_average_cost_from_reference_cost(mapper, connection, target):
+    """يبذر متوسط التكلفة المتحرك من سعر التكلفة المرجعي عند الإنشاء.
+
+    ``average_cost`` عمود ``NOT NULL`` بقيمته الابتدائية صفر (الترحيل
+    b2_inventory_costing)، والصفوف القائمة بُذِرت منه في نفس الترحيل.
+    المنتج الجديد بلا تاريخ مشتريات لا متوسط له بعد، فمتوسطه الأولي هو
+    سعر التكلفة المرجعي — بنفس منطق الترحيل. وكل حركة داخلية thereafter
+    تعيد حساب المتوسط (services/costing_service.py::apply_inbound).
+
+    ما عدا ذلك: متوسط التكلفة لا يُحرَّك هنا إطلاقاً — تعديل التكلفة
+    يدوياً على منتج له مخزون أو تاريخ مشتريات لا يغيّر المتوسط (انظر
+    routes/products.py::edit).
+    """
+    if target.average_cost is not None and Decimal(str(target.average_cost)) > 0:
+        return
+    reference = target.cost_price
+    if reference is None:
+        return
+    reference = Decimal(str(reference))
+    if reference <= 0:
+        return
+    target.average_cost = reference
+

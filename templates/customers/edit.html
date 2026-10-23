@@ -99,6 +99,23 @@
         </div>
       </div>
 
+      <div class="row">
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-calendar-check text-info"></i> شروط الدفع (أيام)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عدد الأيام قبل استحقاق الفاتورة (0 = عند الاستحقاق فوراً)"></i>
+            </label>
+            <input type="number" name="payment_terms_days" class="form-control"
+                   min="0" max="365" step="1"
+                   value="{{ customer.payment_terms_days or 0 }}">
+            <small class="form-text text-muted">
+              <i class="fas fa-info-circle"></i> يستخدم لحساب تاريخ الاستحقاق تلقائياً من تاريخ الفاتورة
+            </small>
+          </div>
+        </div>
+      </div>
+
       <div class="form-group">
         <label>
           <i class="fas fa-map-marker-alt text-warning"></i> {{ t('Address') }}

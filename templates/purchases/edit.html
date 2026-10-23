@@ -27,6 +27,11 @@
                 <h5>معلومات الفاتورة</h5>
                 <p><strong>رقم الفاتورة:</strong> {{ purchase.purchase_number }}</p>
                 <p><strong>التاريخ:</strong> {{ purchase.purchase_date.strftime('%Y-%m-%d') }}</p>
+                <p><strong>تاريخ الاستحقاق:</strong> {{ purchase.effective_due_date.strftime('%Y-%m-%d') if purchase.effective_due_date else '-' }}
+                  {% if purchase.days_overdue > 0 %}
+                  <span class="badge badge-danger">متأخر {{ purchase.days_overdue }} يوم</span>
+                  {% endif %}
+                </p>
                 <p><strong>المورد:</strong> {{ purchase.supplier_name }}</p>
                 {% if purchase.warehouse %}
                 <p><strong><i class="fas fa-warehouse text-info"></i> المستودع:</strong> {{ purchase.warehouse.name_ar or purchase.warehouse.name }}</p>
@@ -68,6 +73,13 @@
             </table>
 
             <!-- الملاحظات (قابلة للتعديل) -->
+            <div class="form-group">
+              <label>تاريخ الاستحقاق</label>
+              <input type="date" name="due_date" class="form-control"
+                     value="{{ purchase.effective_due_date.strftime('%Y-%m-%d') if purchase.effective_due_date else '' }}">
+              <small class="text-muted">اتركه فارغاً ليُحسب من شروط دفع المورد</small>
+            </div>
+
             <div class="form-group">
               <label>الملاحظات</label>
               <textarea name="notes" class="form-control" rows="4">{{ purchase.notes or '' }}</textarea>

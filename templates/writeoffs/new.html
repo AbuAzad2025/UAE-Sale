@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}شركة أزاد للأنظمة الذكية - مشطوبة ديون جديدة{% endblock %}
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+  <div>
+    <h1 class="mb-0"><i class="fas fa-file-circle-xmark mr-2"></i>مشطوبة ديون جديدة</h1>
+    <p class="text-muted">ترحيل قيد: مدين مديونية مشطوبة / دائن ذمم مدينة</p>
+  </div>
+  <div>
+    <a href="{{ url_for('writeoffs.index') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-right mr-2"></i>العودة لقائمة المشطوبات
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <form method="POST" action="{{ url_for('writeoffs.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-user text-primary"></i> العميل
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="صاحب الديون المشطوبة (إجباري)"></i>
+            </label>
+            <select name="customer_id" id="customer_id" class="form-control" required>
+              <option value="">— اختر العميل —</option>
+              {% for customer in customers %}
+              <option value="{{ customer.id }}" {% if selected_customer and selected_customer.id == customer.id %}selected{% endif %}>
+                {{ customer.name_ar or customer.name }} - {{ customer.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-file-invoice text-info"></i> الفاتورة
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الفاتورة المرتبطة بالمشتربة (اختياري)"></i>
+            </label>
+            <select name="sale_id" id="sale_id" class="form-control">
+              <option value="">— بدون فاتورة —</option>
+              {% for sale in sales %}
+              <option value="{{ sale.id }}">
+                {{ sale.sale_number }} - {{ sale.customer.name if sale.customer else '' }} - {{ "{:,.2f}".format(sale.balance_due) }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-money-bill-wave text-success"></i> المبلغ
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المبلغ المشطوب (إجباري)"></i>
+            </label>
+            <input type="number" name="amount" class="form-control" step="0.001" min="0.001" placeholder="0.00" required>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-dollar-sign text-warning"></i> العملة
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عملة المبلغ (افتراضي: {{ base_currency }})"></i>
+            </label>
+            <select name="currency" id="currency" class="form-control">
+              {% for code, meta in lookups.get('currencies', []) %}
+              <option value="{{ code }}" {% if code == base_currency %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>
+              <i class="fas fa-align-left text-secondary"></i> السبب
+              <span class="text-danger">*</span>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سبب المشطوبة (إجباري)"></i>
+            </label>
+            <input type="text" name="reason" class="form-control" maxlength="500"
+                   placeholder="مثال: العميل هاجر ولا يمكن الوصول إليه" required>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>
+          <i class="fas fa-sticky-note text-secondary"></i> ملاحظات
+          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="ملاحظات إضافية (اختياري)"></i>
+        </label>
+        <textarea name="notes" class="form-control" rows="3" placeholder="أي ملاحظات إضافية عن المشطوبة..."></textarea>
+      </div>
+
+      <div class="alert alert-info">
+        <i class="fas fa-circle-info mr-2"></i>
+        سيُرحَّل قيد متوازن: <strong>مدين</strong> مديونية مشطوبة (6960) و<strong>دائن</strong> ذمم مدينة (1130)،
+        وينقص رصيد العميل بمقدار المبلغ المشطوب.
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <button type="submit" class="btn btn-danger btn-lg">
+        <i class="fas fa-save mr-2"></i>تنفيذ المشطوبة
+      </button>
+      <a href="{{ url_for('writeoffs.index') }}" class="btn btn-secondary btn-lg">
+        <i class="fas fa-times mr-2"></i>إلغاء
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

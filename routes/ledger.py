@@ -9,6 +9,7 @@ from utils.decorators import admin_required, permission_required, get_owned_or_4
 from utils.helpers import create_audit_log
 from decimal import Decimal
 from datetime import datetime, date, timedelta
+from services.aging_analysis_service import AGING_BUCKETS, OVERDUE_BUCKETS
 
 ledger_bp = Blueprint('ledger', __name__, url_prefix='/ledger')
 
@@ -268,146 +269,140 @@ def _archived_record_ids(table_name):
 def _receivables_aging(as_of_date=None):
     """تحليل عمر الذمم المدينة — مصدر واحد لصفحتي دفتر الأستاذ والتقارير.
 
+    الآن يستند إلى تاريخ الاستحقاق (due_date) لا تاريخ الفاتورة،
+    بحيث تُقسَم الأرصدة حسب المتأخرات الحقيقية (overdue) لا العمر.
+
+    Returns:
+        dict: {
+            'as_of_date': date,
+            'buckets': {bucket: Decimal},      # الشرائح القديمة (للتوافق)
+            'total': Decimal,
+            'overdue_buckets': {bucket: Decimal},  # الشرائح الجديدة (الحقيقية)
+            'overdue_total': Decimal,
+            'invoices': [Sale, ...],
+            'customers': [{'customer': Customer, '0-30': float, ...,
+                           'total': float, 'invoices': [...],
+                           'overdue_buckets': {...}, 'overdue_total': float}],
+            'customer_count': int,
+        }
+    """
+    from services.aging_analysis_service import AgingAnalysisService
+
+    as_of = _as_date(as_of_date) or date.today()
+    service_report = AgingAnalysisService.get_receivables_aging(as_of_date=as_of)
+
+    # تحويل إجماليات الخدمة (floats) إلى Decimal للحسابات الداخلية
+    buckets = {bucket: Decimal(str(service_report['buckets'].get(bucket, 0)))
+               for bucket in AGING_BUCKETS}
+    total = Decimal(str(service_report['totals'].get('total', 0)))
+    overdue_buckets = {bucket: Decimal(str(service_report['overdue_buckets'].get(bucket, 0)))
+                       for bucket in OVERDUE_BUCKETS}
+    overdue_total = Decimal(str(service_report.get('overdue_total', 0)))
+
+    # بناء قائمة الفواتير بالشكل المتوقع من الكود القديم
+    invoices = []
+    for customer_data in service_report['customers']:
+        for inv in customer_data.get('invoices', []):
+            # إضافة الحقول المتوقعة للكود القديم
+            inv_obj = type('InvoiceProxy', (), {
+                'sale_number': inv.get('sale_number'),
+                'sale_date': inv.get('sale_date'),
+                'due_date': inv.get('due_date'),
+                'total': Decimal(str(inv.get('total_base', 0))),
+                'paid_amount_base': Decimal(str(inv.get('paid_base', 0))),
+                'balance': Decimal(str(inv.get('balance', 0))),
+                'currency': inv.get('currency'),
+                'days_old': inv.get('days_old'),
+                'aging_bucket': inv.get('age_category'),
+                'days_overdue': inv.get('days_overdue'),
+                'overdue_bucket': inv.get('overdue_bucket'),
+            })()
+            invoices.append(inv_obj)
+
+    # بناء بيانات العملاء بالتنسيق المتوقع
+    customers_list = []
+    for customer_data in service_report['customers']:
+        cust = customer_data['customer']
+        customer_entry = {
+            'customer': cust,
+            '0-30': customer_data.get('0-30', 0),
+            '31-60': customer_data.get('31-60', 0),
+            '61-90': customer_data.get('61-90', 0),
+            '91-120': customer_data.get('91-120', 0),
+            'over_120': customer_data.get('over_120', 0),
+            'total': customer_data.get('total', 0),
+            'overdue_buckets': customer_data.get('overdue_buckets', {}),
+            'overdue_total': customer_data.get('overdue_total', 0),
+            'invoices': [
+                type('InvoiceProxy', (), inv)()
+                for inv in customer_data.get('invoices', [])
+            ],
+        }
+        customers_list.append(customer_entry)
+
+    return {
+        'as_of_date': as_of,
+        'buckets': buckets,
+        'total': total,
+        'overdue_buckets': overdue_buckets,
+        'overdue_total': overdue_total,
+        'invoices': invoices,
+        'customers': customers_list,
+        'customer_count': len(customers_list),
+    }
+
+
+def _payables_aging(as_of_date=None):
+    """تحليل عمر الذمم الدائنة — الآن بالاستحقاق (due_date) لا بتاريخ الشراء.
+
     Returns:
         dict: {
             'as_of_date': date,
             'buckets': {bucket: Decimal},
             'total': Decimal,
-            'invoices': [Sale, ...]   # مع days_old و calculated_balance
-            'customers': [{'customer': Customer, '0-30': float, ...,
-                           'total': float, 'invoices': [...]}],
-            'customer_count': int,
+            'overdue_buckets': {bucket: Decimal},
+            'overdue_total': Decimal,
+            'suppliers': [{'supplier': Supplier, '0-30': float, ...,
+                           'total': float, 'overdue_buckets': {...}, 'overdue_total': float}],
+            'supplier_count': int,
         }
     """
-    from models import Sale, Customer
+    from services.aging_analysis_service import AgingAnalysisService
 
     as_of = _as_date(as_of_date) or date.today()
-    cutoff = datetime.combine(as_of, datetime.max.time())
+    service_report = AgingAnalysisService.get_payables_aging(as_of_date=as_of)
 
-    query = (
-        Sale.query
-        .filter(
-            Sale.status == 'confirmed',
-            Sale.is_active.is_(True),
-            Sale.sale_date <= cutoff,
-        )
-        .filter(~Sale.id.in_(_archived_record_ids('sales')))
-        .join(Customer, Sale.customer_id == Customer.id)
-        .filter(Customer.is_active.is_(True))
-        .order_by(Sale.sale_date)
-    )
+    buckets = {bucket: Decimal(str(service_report['buckets'].get(bucket, 0)))
+               for bucket in AGING_BUCKETS}
+    total = Decimal(str(service_report['totals'].get('total', 0)))
+    overdue_buckets = {bucket: Decimal(str(service_report['overdue_buckets'].get(bucket, 0)))
+                       for bucket in OVERDUE_BUCKETS}
+    overdue_total = Decimal(str(service_report.get('overdue_total', 0)))
 
-    buckets = {bucket: Decimal('0') for bucket in AGING_BUCKETS}
-    total = Decimal('0')
-    invoices = []
-    customers = {}
-
-    for sale in query.all():
-        balance = ((sale.amount_base or Decimal('0'))
-                   - (sale.paid_amount_base or Decimal('0')))
-        if balance <= 0:
-            continue
-
-        days_old = (as_of - sale.sale_date.date()).days
-        bucket = _aging_bucket(days_old)
-
-        sale.days_old = days_old
-        sale.calculated_balance = balance
-        sale.aging_bucket = bucket
-
-        buckets[bucket] += balance
-        total += balance
-        invoices.append(sale)
-
-        entry = customers.setdefault(sale.customer_id, {
-            'customer': sale.customer,
-            'buckets': {b: Decimal('0') for b in AGING_BUCKETS},
-            'total': Decimal('0'),
-            'invoices': [],
-        })
-        entry['buckets'][bucket] += balance
-        entry['total'] += balance
-        entry['invoices'].append(sale)
-
-    customer_rows = []
-    for entry in customers.values():
-        row = {'customer': entry['customer'], 'invoices': entry['invoices']}
-        for bucket in AGING_BUCKETS:
-            row[bucket] = float(entry['buckets'][bucket])
-        row['total'] = float(entry['total'])
-        customer_rows.append(row)
-    customer_rows.sort(key=lambda r: r['total'], reverse=True)
+    suppliers_list = []
+    for supplier_data in service_report.get('suppliers', []):
+        sup = supplier_data['supplier']
+        supplier_entry = {
+            'supplier': sup,
+            '0-30': supplier_data.get('0-30', 0),
+            '31-60': supplier_data.get('31-60', 0),
+            '61-90': supplier_data.get('61-90', 0),
+            '91-120': supplier_data.get('91-120', 0),
+            'over_120': supplier_data.get('over_120', 0),
+            'total': supplier_data.get('total', 0),
+            'overdue_buckets': supplier_data.get('overdue_buckets', {}),
+            'overdue_total': supplier_data.get('overdue_total', 0),
+        }
+        suppliers_list.append(supplier_entry)
 
     return {
         'as_of_date': as_of,
         'buckets': buckets,
         'total': total,
-        'invoices': invoices,
-        'customers': customer_rows,
-        'customer_count': len(customer_rows),
-    }
-
-
-def _payables_aging(as_of_date=None):
-    """تحليل عمر الذمم الدائنة — نفس سياسة الذمم المدينة."""
-    from models import Purchase, Supplier
-
-    as_of = _as_date(as_of_date) or date.today()
-    cutoff = datetime.combine(as_of, datetime.max.time())
-
-    query = (
-        Purchase.query
-        .filter(
-            Purchase.status == 'confirmed',
-            Purchase.purchase_date <= cutoff,
-        )
-        .filter(~Purchase.id.in_(_archived_record_ids('purchases')))
-        .join(Supplier, Purchase.supplier_id == Supplier.id)
-        .filter(Supplier.is_active.is_(True))
-        .order_by(Purchase.purchase_date)
-    )
-
-    buckets = {bucket: Decimal('0') for bucket in AGING_BUCKETS}
-    total = Decimal('0')
-    supplier_rows = {}
-
-    for purchase in query.all():
-        balance = ((purchase.amount_base or Decimal('0'))
-                   - (purchase.paid_amount or Decimal('0')))
-        if balance <= 0:
-            continue
-
-        days_old = (as_of - purchase.purchase_date.date()).days
-        bucket = _aging_bucket(days_old)
-        purchase.days_old = days_old
-        purchase.calculated_balance = balance
-
-        buckets[bucket] += balance
-        total += balance
-
-        entry = supplier_rows.setdefault(purchase.supplier_id, {
-            'supplier': purchase.supplier,
-            'buckets': {b: Decimal('0') for b in AGING_BUCKETS},
-            'total': Decimal('0'),
-        })
-        entry['buckets'][bucket] += balance
-        entry['total'] += balance
-
-    rows = []
-    for entry in supplier_rows.values():
-        row = {'supplier': entry['supplier']}
-        for bucket in AGING_BUCKETS:
-            row[bucket] = float(entry['buckets'][bucket])
-        row['total'] = float(entry['total'])
-        rows.append(row)
-    rows.sort(key=lambda r: r['total'], reverse=True)
-
-    return {
-        'as_of_date': as_of,
-        'buckets': buckets,
-        'total': total,
-        'suppliers': rows,
-        'supplier_count': len(rows),
+        'overdue_buckets': overdue_buckets,
+        'overdue_total': overdue_total,
+        'suppliers': suppliers_list,
+        'supplier_count': len(suppliers_list),
     }
 
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, date, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
@@ -206,6 +206,11 @@ class Sale(TenantScopedMixin, db.Model):
 
     sale_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
 
+    # تاريخ استحقاق الذمم المدينة — يُشتق من شروط دفع العميل أو يُحدَّد
+    # صراحةً (services/due_date_service.py). بلا تاريخ استحقاق تُعامل
+    # الفاتورة كأنها مستحقّة في تاريخها.
+    due_date = db.Column(db.Date, nullable=True, index=True)
+
     subtotal = db.Column(db.Numeric(15, 3), default=0)
     discount_amount = db.Column(db.Numeric(15, 3), default=0)
     shipping_cost = db.Column(db.Numeric(15, 3), default=0)
@@ -242,6 +247,29 @@ class Sale(TenantScopedMixin, db.Model):
 
     def __repr__(self):
         return f'<Sale {self.sale_number}>'
+
+    @property
+    def effective_due_date(self):
+        """تاريخ الاستحقاق المعتمد — تاريخ الفاتورة إن لم يُحدَّد استحقاق."""
+        from services.due_date_service import effective_due_date
+        return effective_due_date(self.due_date, self.sale_date)
+
+    @property
+    def days_overdue(self):
+        """أيام التأخير عن تاريخ الاستحقاق (0 = لم يتأخر بعد).
+
+        المرجع هو تاريخ اليوم المحلي — نفس مرجع تحليل الأعمار
+        (services/aging_analysis_service.py) ونفس مرجع دفتر الأستاذ،
+        فتبقى الشرائح متطابقة في الشاشة وفي التقرير.
+        """
+        from services.due_date_service import overdue_days
+        return overdue_days(self.effective_due_date, as_of=date.today())
+
+    @property
+    def overdue_bucket(self):
+        """شريحة التأخير التي تقع فيها الفاتورة."""
+        from services.due_date_service import bucket_for_overdue
+        return bucket_for_overdue(self.days_overdue)
 
     def calculate_totals(self):
         """
@@ -406,6 +434,7 @@ class Sale(TenantScopedMixin, db.Model):
             'customer': self.customer.name if self.customer else None,
             'seller': self.seller.username if self.seller else None,
             'sale_date': self.sale_date.isoformat(),
+            'due_date': self.due_date.isoformat() if self.due_date else None,
             'total_amount': float(self.total_amount),
             'paid_amount': float(self.paid_amount),
             'balance_due': float(self.balance_due),

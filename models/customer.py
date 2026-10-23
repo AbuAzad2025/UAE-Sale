@@ -15,6 +15,8 @@ F1: كان رصيد العميل يُكتب من 13 كاتباً بصيغتين 
             − Σ (refund_amount × exchange_rate) لمرتجع معتمد (approved)
             − Σ amount_base لسند صرف/استرداد عميل غير مرتبط بفاتورة
             + Σ تعديلات الشيكات Legacy (شيكات وارد غير مرتبطة بسند/فاتورة)
+            − Σ سندات قبض غير مرتبطة بفاتورة (مؤكّدة = دفع مقدّم)
+            − Σ المشاطرات المنفذة (posted write-offs, amount_base)
 
 كل المبالغ Decimal مع تقريب ROUND_HALF_UP.
 """
@@ -168,6 +170,20 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
             # مؤكد بلا فاتورة: دفع مقدماً.
             total -= amount
 
+    # ---- 7) المشاطرات المنفذة (Bad Debt Write-Offs) -------------------------
+    # قيد المشاطرة (Dr Bad Debt / Cr AR Control) ينقص رصيد العميل في العملة
+    # الأساسية — يساوي المبلغ المنفّذ (posted) فقط، لا المسودات.
+    from models.write_off import WriteOff
+
+    woff_rows = connection.execute(
+        select(WriteOff.__table__.c.amount_base).where(
+            WriteOff.__table__.c.customer_id == customer_id,
+            WriteOff.__table__.c.status == 'posted',
+        )
+    ).fetchall()
+    for row in woff_rows:
+        total -= _dec(row.amount_base)
+
     return total.quantize(MONEY_Q, rounding=ROUND_HALF_UP)
 
 
@@ -224,6 +240,8 @@ class Customer(TenantScopedMixin, db.Model):
     __table_args__ = (
         db.Index('idx_customer_active_type', 'is_active', 'customer_type'),
         db.Index('idx_customer_balance', 'balance'),
+        db.CheckConstraint('payment_terms_days >= 0',
+                           name='ck_customer_payment_terms_non_negative'),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -241,6 +259,10 @@ class Customer(TenantScopedMixin, db.Model):
     tax_number = db.Column(db.String(50))
 
     preferred_currency = db.Column(db.String(3), default='ILS')
+
+    # شروط الدفع المتفق عليها (بالأيام) — تُستخدم لاشتقاق تاريخ استحقاق
+    # الفاتورة (services/due_date_service.py). 0 = استحقاق فوري.
+    payment_terms_days = db.Column(db.Integer, default=0, nullable=False)
 
     credit_limit = db.Column(db.Numeric(15, 3), default=0)
     total_purchases = db.Column(db.Numeric(15, 3), default=0)

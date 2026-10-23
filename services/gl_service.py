@@ -330,6 +330,7 @@ class GLService:
             ("6800", "قرطاسية", "Stationery", "expense", "6000", False, 1),
             ("6900", "خسائر فرق العملة", "Foreign Exchange Loss", "expense", "6000", False, 1),
             ("6950", "مصروفات بنكية", "Bank Charges", "expense", "6000", False, 1),
+            ("6960", "مديونية مشطوبة", "Bad debt expense", "expense", "6000", False, 1),
             ("6990", "مصروفات متنوعة", "Miscellaneous Expenses", "expense", "6000", False, 1),
         ]
         created_any = False

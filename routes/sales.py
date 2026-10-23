@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Sale, SaleLine, Customer, Product, InvoiceSettings
 from services.sale_service import SaleService
+from services import due_date_service
 from utils.decorators import permission_required, get_owned_or_404
 from routes.ledger import reverse_or_purge_gl_entries
 
@@ -187,6 +188,15 @@ def create():  # noqa: C901
                 payment_data=payment_data
             )
 
+            # تاريخ الاستحقاق: تاريخ صريح من النموذج، وإلا يُشتق من تاريخ
+            # الفاتورة + شروط دفع العميل (services/due_date_service.py).
+            sale.due_date = due_date_service.due_date_for_sale(
+                sale.sale_date,
+                customer=customer,
+                explicit=request.form.get('due_date'),
+            )
+            db.session.commit()
+
             create_audit_log('create', 'sales', sale.id)
 
             flash('✅ تم إنشاء الفاتورة بنجاح!', 'success')
@@ -316,6 +326,15 @@ def edit(id):
             sale.notes = request.form.get('notes', '')
             discount_amount = request.form.get('discount_amount', type=float, default=0)
             sale.discount_amount = discount_amount
+
+            # تاريخ الاستحقاق: تاريخ صريح من النموذج، وإلا يُشتق من تاريخ
+            # الفاتورة + شروط دفع العميل (services/due_date_service.py).
+            if 'due_date' in request.form:
+                sale.due_date = due_date_service.due_date_for_sale(
+                    sale.sale_date,
+                    customer=sale.customer,
+                    explicit=request.form.get('due_date'),
+                )
 
             # إعادة حساب الإجماليات
             sale.calculate_totals()

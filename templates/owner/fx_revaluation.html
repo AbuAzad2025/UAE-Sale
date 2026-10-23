@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+
+{% block title %}تسوية فرق العملات الأجنبية{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0"><i class="fas fa-exchange-alt mr-2"></i>تسوية فرق العملات الأجنبية</h1>
+                </div>
+                <div class="col-sm-6">
+                    <div class="float-left">
+                        <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-right mr-2"></i>العودة للوحة التحكم
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        هذه الصفحة تُعيد تقييم أرصدة الذمم المدينة والدائنة المفتوحة
+                        بالعملات الأجنبية (معيار IAS 21). الترحيل يُنشئ قيداً محاسبياً
+                        حقيقياً في دفتر الأستاذ العام ولا يُكرَّر في نفس الفترة.
+                    </div>
+
+                    <div class="card shadow-sm mb-3">
+                        <div class="card-header bg-gradient-info text-white">
+                            <h5 class="mb-0">الفترة وسعر الصرف</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="GET" action="{{ url_for('owner.fx_revaluation') }}" class="form-row align-items-end">
+                                <div class="form-group col-md-4 mb-2">
+                                    <label for="as_of">تاريخ التسوية (اختياري — الافتراضي اليوم)</label>
+                                    <input type="date" name="as_of" id="as_of" class="form-control"
+                                           value="{{ as_of or '' }}">
+                                </div>
+                                <div class="form-group col-md-3 mb-2">
+                                    <label>عملة الأساس</label>
+                                    <input type="text" class="form-control" value="{{ base_currency }}" readonly dir="ltr">
+                                </div>
+                                <div class="form-group col-md-3 mb-2">
+                                    <label>فترة التسوية</label>
+                                    <input type="text" class="form-control" readonly dir="ltr"
+                                           value="{{ preview.period_key if preview else '' }}">
+                                </div>
+                                <div class="form-group col-md-2 mb-2">
+                                    <button type="submit" class="btn btn-info btn-block">
+                                        <i class="fas fa-calculator mr-1"></i>معاينة (بدون ترحيل)
+                                    </button>
+                                </div>
+                            </form>
+                            {% if preview and preview.fiscal_period_name %}
+                            <p class="mb-0 text-muted">
+                                الفترة المالية: <strong>{{ preview.fiscal_period_name }}</strong>
+                                {% if preview.fiscal_period_closed %}
+                                <span class="badge badge-danger">مغلقة — لا يمكن الترحيل فيها</span>
+                                {% else %}
+                                <span class="badge badge-success">مفتوحة</span>
+                                {% endif %}
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if not preview %}
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center text-muted">
+                            لا توجد معاينة متاحة حالياً.
+                        </div>
+                    </div>
+                    {% else %}
+
+                    {% if preview.already_posted %}
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        تسوية الفترة {{ preview.period_key }} مرحَّلة مسبقاً
+                        {% if preview.existing_entry_id %}(قيد رقم {{ preview.existing_entry_id }}){% endif %}
+                        — لن يُرحَّل قيد ثانٍ لنفس الفترة.
+                    </div>
+                    {% endif %}
+
+                    {% if preview.skipped_currencies %}
+                    <div class="alert alert-secondary" role="alert">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        عملات لم تُقيَّم لغياب سعر صرف صالح:
+                        {% for item in preview.skipped_currencies %}
+                            <span class="badge badge-secondary" dir="ltr">{{ item.currency }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-warning"><i class="fas fa-chart-line"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">صافي فرق العملة غير المحقق</span>
+                                    <span class="info-box-number">{{ "%.2f"|format(preview.total_unrealized_gain_loss) }} {{ preview.base_currency }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-primary"><i class="fas fa-coins"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">إجمالي المدين</span>
+                                    <span class="info-box-number">{{ "%.2f"|format(preview.total_debit) }} {{ preview.base_currency }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-success"><i class="fas fa-coins"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">إجمالي الدائن</span>
+                                    <span class="info-box-number">{{ "%.2f"|format(preview.total_credit) }} {{ preview.base_currency }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm mb-3">
+                        <div class="card-header bg-gradient-primary text-white">
+                            <h5 class="mb-0">المعاينة الجافة — الفروق حسب العملة</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if preview.per_currency %}
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>العملة</th>
+                                            <th>ذمم مدينة مفتوحة</th>
+                                            <th>ذمم دائنة مفتوحة</th>
+                                            <th>الرصيد التاريخي</th>
+                                            <th>سعر الصرف الحالي</th>
+                                            <th>الرصيد بالقيمة الحالية</th>
+                                            <th>الفرق غير المحقق</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in preview.per_currency %}
+                                        <tr>
+                                            <td dir="ltr"><strong>{{ row.currency }}</strong></td>
+                                            <td dir="ltr">{{ "%.2f"|format(row.open_foreign_ar) }}</td>
+                                            <td dir="ltr">{{ "%.2f"|format(row.open_foreign_ap) }}</td>
+                                            <td dir="ltr">{{ "%.2f"|format(row.historical_base) }}</td>
+                                            <td dir="ltr">{{ "%.6f"|format(row.current_rate) }}</td>
+                                            <td dir="ltr">{{ "%.2f"|format(row.current_base) }}</td>
+                                            <td dir="ltr" class="{{ 'text-success' if row.unrealized_gain_loss > 0 else ('text-danger' if row.unrealized_gain_loss < 0 else '') }}">
+                                                {{ "%.2f"|format(row.unrealized_gain_loss) }}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="card-body text-center text-muted">
+                                لا توجد أرصدة مفتوحة بالعملات الأجنبية في هذه الفترة.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm mb-3">
+                        <div class="card-header bg-gradient-dark text-white">
+                            <h5 class="mb-0">القيد المقترح (لم يُرحَّل بعد)</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if preview.lines %}
+                            <div class="table-responsive">
+                                <table class="table table-bordered mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>الحساب</th>
+                                            <th>الدور</th>
+                                            <th>مدين</th>
+                                            <th>دائن</th>
+                                            <th>البيان</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for line in preview.lines %}
+                                        <tr>
+                                            <td dir="ltr"><code>{{ line.account_code }}</code></td>
+                                            <td dir="ltr">{{ line.account_role }}</td>
+                                            <td dir="ltr">{{ "%.2f"|format(line.debit) }}</td>
+                                            <td dir="ltr">{{ "%.2f"|format(line.credit) }}</td>
+                                            <td>{{ line.description }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="bg-light">
+                                            <th colspan="2">الإجمالي</th>
+                                            <th dir="ltr">{{ "%.2f"|format(preview.total_debit) }}</th>
+                                            <th dir="ltr">{{ "%.2f"|format(preview.total_credit) }}</th>
+                                            <th>
+                                                {% if preview.balanced %}
+                                                <span class="badge badge-success">القيد متوازن</span>
+                                                {% else %}
+                                                <span class="badge badge-danger">القيد غير متوازن</span>
+                                                {% endif %}
+                                            </th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="card-body text-center text-muted">
+                                لا توجد سطور — لا فرق يستدعي قيداً في هذه الفترة.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-gradient-danger text-white">
+                            <h5 class="mb-0">ترحيل القيد</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if preview.lines and not preview.already_posted and not preview.fiscal_period_closed %}
+                            <p class="text-danger">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                الترحيل ينشئ قيداً محاسبياً في دفتر الأستاذ العام بمبلغ
+                                {{ "%.2f"|format(preview.total_debit) }} {{ preview.base_currency }}
+                                ولا يمكن تنفيذه مرتين في نفس الفترة.
+                            </p>
+                            <form method="POST" action="{{ url_for('owner.fx_revaluation') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="confirm" value="{{ confirm_token }}">
+                                <input type="hidden" name="as_of" value="{{ as_of or '' }}">
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="fas fa-file-signature mr-1"></i>
+                                    ترحيل قيد تسوية {{ preview.period_key }}
+                                </button>
+                            </form>
+                            {% elif preview.already_posted %}
+                            <p class="text-info mb-0">
+                                تسوية الفترة {{ preview.period_key }} مرحَّلة مسبقاً — الترحيل غير متاح.
+                            </p>
+                            {% elif preview.fiscal_period_closed %}
+                            <p class="text-danger mb-0">
+                                الفترة المالية مغلقة — لا يمكن الترحيل فيها.
+                            </p>
+                            {% else %}
+                            <p class="text-muted mb-0">
+                                لا يوجد ما يُرحَّل في هذه الفترة.
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

@@ -163,6 +163,9 @@ def create():
             # F4: الرصيد الافتتاحي — عميل مُرحَّل عليه رصيد سابق.
             opening = _parse_opening_balance(request.form)
 
+            # شروط الدفع (أيام)
+            payment_terms_days = int(request.form.get('payment_terms_days', 0) or 0)
+
             customer = Customer(
                 name=form.name.data,
                 name_ar=form.name_ar.data,
@@ -172,6 +175,7 @@ def create():
                 address=form.address.data,
                 tax_number=form.tax_number.data,
                 preferred_currency=form.preferred_currency.data,
+                payment_terms_days=payment_terms_days,
                 notes=form.notes.data
             )
 
@@ -238,6 +242,7 @@ def edit(id):
             name = (request.form.get('name') or '').strip()
             customer_type = (request.form.get('customer_type') or '').strip()
             preferred_currency = (request.form.get('preferred_currency') or '').strip()
+            payment_terms_days = int(request.form.get('payment_terms_days', 0) or 0)
 
             try:
                 from services.lookup_service import get_lookup
@@ -266,6 +271,7 @@ def edit(id):
             customer.address = request.form.get('address')
             customer.tax_number = request.form.get('tax_number')
             customer.preferred_currency = preferred_currency or None
+            customer.payment_terms_days = payment_terms_days
             customer.notes = request.form.get('notes')
 
             # F4: تعديل الرصيد الافتتاحي (مبلغ + عملة + سعر صرف + تاريخ)

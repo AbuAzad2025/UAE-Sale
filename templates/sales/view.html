@@ -89,6 +89,13 @@
             <h2 class="mb-3"><i class="fas fa-file-invoice mr-2"></i>فاتورة بيع</h2>
             <p class="mb-1"><strong>رقم الفاتورة:</strong> {{ sale.sale_number }}</p>
             <p class="mb-0"><strong>التاريخ:</strong> {{ sale.sale_date.strftime('%Y-%m-%d %H:%M') }}</p>
+            <p class="mb-0">
+              <strong>تاريخ الاستحقاق:</strong>
+              {{ sale.effective_due_date.strftime('%Y-%m-%d') if sale.effective_due_date else '-' }}
+              {% if sale.balance_due > 0 and sale.days_overdue > 0 %}
+              <span class="badge badge-danger">متأخر {{ sale.days_overdue }} يوم</span>
+              {% endif %}
+            </p>
           </div>
           <div class="col-6 text-left">
             <h4>{{ config.COMPANY_NAME_AR }}</h4>

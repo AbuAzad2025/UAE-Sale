@@ -3,6 +3,25 @@
 {% block page_title %}قائمة التدفقات النقدية{% endblock %}
 
 {% block content %}
+{#- مطابقة رصيد النقدية: يُقرأ من دفتر الأستاذ، والرقم المحسوب للمقارنة.
+    المفاتيح قد لا تصل بعد (المسار يمرّرها)، فكل قراءة محمية. -#}
+{% set _report = report if (report is defined and report is not none) else none %}
+{% set _tie = tie_out if (tie_out is defined and tie_out is not none) else none %}
+{% if _tie is none and _report is not none %}
+  {% set _tie = _report.get('tie_out') %}
+{% endif %}
+{% set _cash_beginning = cash_beginning if (cash_beginning is defined and cash_beginning is not none) else none %}
+{% if _cash_beginning is none and _report is not none %}
+  {% set _cash_beginning = _report.get('cash_beginning') %}
+{% endif %}
+{% set _cash_ending = cash_ending if (cash_ending is defined and cash_ending is not none) else none %}
+{% if _cash_ending is none and _report is not none %}
+  {% set _cash_ending = _report.get('cash_ending') %}
+{% endif %}
+{% set _cash_ending_computed = cash_ending_computed if (cash_ending_computed is defined and cash_ending_computed is not none) else none %}
+{% if _cash_ending_computed is none and _report is not none %}
+  {% set _cash_ending_computed = _report.get('cash_ending_computed') %}
+{% endif %}
 <!-- Date filter -->
 <div class="row mb-3">
   <div class="col-12">
@@ -197,8 +216,72 @@
             {{ net_change|money(base_currency) }}
           </span>
         </h4>
+        {% if _cash_beginning is not none or _cash_ending is not none %}
+        <hr>
+        <table class="table table-sm table-borderless mb-0">
+          {% if _cash_beginning is not none %}
+          <tr>
+            <td>النقدية في بداية الفترة (دفتر الأستاذ)</td>
+            <td class="num-cell text-left">{{ _cash_beginning|money(base_currency) }}</td>
+          </tr>
+          {% endif %}
+          {% if _cash_ending is not none %}
+          <tr>
+            <td>النقدية في نهاية الفترة (دفتر الأستاذ)</td>
+            <td class="num-cell text-left font-weight-bold">{{ _cash_ending|money(base_currency) }}</td>
+          </tr>
+          {% endif %}
+        </table>
+        {% endif %}
       </div>
     </div>
+
+    <!-- Tie-out: رصيد دفتر الأستاذ مقابل الرصيد المحسوب -->
+    {% if _tie is not none and _tie.balanced is defined %}
+    <div class="card mt-4">
+      <div class="card-header">
+        <h4 class="mb-0">
+          <i class="fas fa-scale-balanced mr-2"></i>
+          مطابقة رصيد النقدية مع دفتر الأستاذ
+        </h4>
+      </div>
+      <div class="card-body">
+        <table class="table table-sm table-bordered mb-0">
+          <tbody>
+            <tr>
+              <td>رصيد النقدية في نهاية الفترة — دفتر الأستاذ</td>
+              <td class="num-cell text-left font-weight-bold">{{ _tie.gl_cash_ending|money(base_currency) }}</td>
+            </tr>
+            <tr>
+              <td>الرصيد المحسوب — الرصيد الافتتاحي + صافي التدفق النقدي</td>
+              <td class="num-cell text-left">{{ _tie.computed_ending|money(base_currency) }}</td>
+            </tr>
+            <tr class="{{ 'table-danger' if not _tie.balanced else '' }}">
+              <td>الفرق</td>
+              <td class="num-cell text-left font-weight-bold {{ 'text-danger' if not _tie.balanced else 'text-success' }}">
+                {{ _tie.difference|money(base_currency) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        {% if _tie.balanced %}
+        <div class="alert alert-success mt-3 mb-0" role="status">
+          <i class="fas fa-check-circle"></i>
+          رصيد النقدية في نهاية الفترة مطابق لدفتر الأستاذ — لا فرق.
+        </div>
+        {% else %}
+        <div class="alert alert-danger mt-3 mb-0" role="alert" id="cash-flow-tie-out-break">
+          <h5 class="mb-1"><i class="fas fa-exclamation-triangle"></i> فرق في مطابقة النقدية مع دفتر الأستاذ</h5>
+          <p class="mb-0">
+            رصيد النقدية في دفتر الأستاذ ({{ _tie.gl_cash_ending|money(base_currency) }})
+            لا يطابق ما تفسّره أقسام القائمة ({{ _tie.computed_ending|money(base_currency) }}).
+            الفرق {{ _tie.difference|money(base_currency) }} — راجع القيود التي لا تقابلها قيود أخرى.
+          </p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

@@ -5,18 +5,21 @@ Inventory Reconciliation — قياس فرق المخزون بين الحركا�
 لماذا هذا الملف موجود
 ----------------------
 تقرير المخزون (``routes/reports.py::inventory``) يُقيّم المخزون المتبقي
-بـ ``qty × product.cost_price``، و ``services/stock_service.py`` يُحدّث
-``cost_price`` بآخر سعر شراء. النتيجة: مخزون اشتُري بسعر 10 ثم اشتُري
-مرة أخرى بسعر 12 يُقيَّم بالكامل بسعر 12، بينما الأستاذ العام يحمل 10
-للوحدات الأصلية — فلا يلتقي تقرير الإدارة مع الميزانية أبداً.
+بـ ``qty × average_cost`` — **متوسط التكلفة المتحرك** — وهو نفس الأساس
+الذي يحمله حساب المخزون في الأستاذ العام (المبالغ المدفوعة فعلياً، صافي
+خصم المستند). قبل الترحيل إلى المتوسط المتحرك كان التقييم على
+``qty × product.cost_price`` (سعر آخر شراء) بينما الأستاذ يحمل 10
+للوحدات الأصلية في منتج اشتُري مرتين (10 ثم 12) — فلا يلتقي تقرير
+الإدارة مع الميزانية أبداً.
 
-تكلفة متوسط متحرك قرار تجاري وخارج نطاق هذا الملف. ما هو داخل نطاقه هو
-**قياس** الفرق وإظهاره بدل إخفائه: لكل منتج نُقارن
+ما هو داخل نطاق هذا الملف هو **قياس** الفرق وإظهاره بدل إخفائه: لكل
+منتج نُقارن
 
   1. الكمية الفعلية من حركات المخزون (المصدر الحقيقي للحركة),
   2. ``product.current_stock`` (العمود denormalized),
   3. القيمة الدفترية التي يحملها حساب المخزون في الأستاذ العام،
-  4. القيمة التقديرية ``qty × cost_price`` التي تستخدمها التقارير.
+  4. القيمة الدفترية ``qty × average_cost`` (المتوسط المتحرك) التي
+     تستخدمها التقارير.
 
 الفرق بين (3) و (4) هو بالضبط الفجوة التي كان التقرير يخفيها.
 
@@ -41,6 +44,7 @@ import logging
 from decimal import Decimal
 
 from extensions import db
+from services.costing_service import CostingService
 from utils.balance_checker import TOLERANCE, get_control_account_balance, to_decimal
 
 logger = logging.getLogger(__name__)
@@ -137,11 +141,11 @@ def _document_weights():
             (product_id, to_decimal(weight)))
 
     # ---- المرتجعات: قيد إعادة المخزون (مدين 1140) ----
-    # أساس التكلفة: تكلفة سطر البيع (أساس تاريخي) وإلا تكلفة المنتج.
+    # أساس التكلفة: تكلفة سطر البيع (أساس تاريخي) وإلا متوسط التكلفة
+    # المتحرك للمنتج.
     product_costs = {
-        pid: to_decimal(cost)
-        for pid, cost in db.session.query(
-            Product.id, Product.cost_price).all()
+        pid: CostingService.current_unit_cost(product)
+        for pid, product in db.session.query(Product.id, Product).all()
     }
     returns = db.session.query(
         ProductReturnLine.return_id,
@@ -235,7 +239,8 @@ def reconcile_inventory(tenant_id=None, product_ids=None, as_of=None,
           'control_balance': Decimal,        # رصيد المخزون في الأستاذ (أساسي)
           'total_quantity_from_movements': Decimal,
           'total_current_stock': Decimal,
-          'total_valuation_at_cost_price': Decimal,
+          'total_valuation_at_cost_price': Decimal,   # = مجموع التقييم
+          'total_valuation_at_average_cost': Decimal, # على المتوسط المتحرك
           'difference': Decimal,             # current_stock − movements
           'gl_difference': Decimal,          # control_balance − valuation
           'unattributed_gl_balance': Decimal,
@@ -243,7 +248,8 @@ def reconcile_inventory(tenant_id=None, product_ids=None, as_of=None,
           'products': [
               {'product_id', 'sku', 'name',
                'quantity_from_movements', 'current_stock', 'difference',
-               'cost_price', 'valuation_at_cost_price',
+               'average_cost', 'cost_price',
+               'valuation_at_average_cost', 'valuation_at_cost_price',
                'gl_control_balance', 'gl_difference'},
               ...
           ],
@@ -252,6 +258,9 @@ def reconcile_inventory(tenant_id=None, product_ids=None, as_of=None,
 
     ``products`` carries one row per product; ``breaks`` lists the rows
     whose difference exceeds the tolerance (|delta| > 0.01).
+
+    أساس التقييم هو **المتوسط المتحرك** (``average_cost``) — فالمقارنة
+    مع حساب المخزون في الأستاذ تصبح مقارنة بين amounts بنفس الأساس.
     """
     from models import Product
 
@@ -298,7 +307,10 @@ def reconcile_inventory(tenant_id=None, product_ids=None, as_of=None,
         qty = movement_totals.get(product.id, Decimal('0'))
         stock = to_decimal(product.current_stock)
         difference = stock - qty
-        cost = to_decimal(product.cost_price)
+        # أساس التقييم = المتوسط المتحرك (average_cost) — نفس أساس
+        # حساب المخزون في الأستاذ (المدفوع فعلياً). يبقى cost_price
+        # مرجعاً يُعرض للمقارنة فقط.
+        cost = CostingService.current_unit_cost(product)
         valuation = _q3(qty * cost)
         gl_amount = _q3(gl_by_product.get(product.id, Decimal('0')))
         gl_difference = _q3(gl_amount - valuation)
@@ -314,7 +326,10 @@ def reconcile_inventory(tenant_id=None, product_ids=None, as_of=None,
             'quantity_from_movements': _q3(qty),
             'current_stock': _q3(stock),
             'difference': _q3(difference),
-            'cost_price': _q2(cost),
+            'average_cost': _q2(cost),
+            'cost_price': _q2(to_decimal(product.cost_price)),
+            'valuation_at_average_cost': _q2(valuation),
+            # اسم قديم محفوظ للتوافق (القيمة نفسها الآن: qty × المتوسط)
             'valuation_at_cost_price': _q2(valuation),
             'gl_control_balance': _q2(gl_amount),
             'gl_difference': _q2(gl_difference),
@@ -343,6 +358,8 @@ def reconcile_inventory(tenant_id=None, product_ids=None, as_of=None,
         'control_balance': _q2(control_balance),
         'total_quantity_from_movements': _q3(total_qty),
         'total_current_stock': _q3(total_stock),
+        'total_valuation_at_average_cost': _q2(total_valuation),
+        # اسم قديم محفوظ للتوافق (القيمة نفسها الآن: qty × المتوسط)
         'total_valuation_at_cost_price': _q2(total_valuation),
         'difference': _q3(total_difference),
         'gl_difference': _q2(gl_difference),

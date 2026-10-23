@@ -9,6 +9,7 @@ from extensions import db
 from models import Sale, SaleLine, Purchase, Product, Customer, ProductPartner, StockMovement
 from utils.decorators import permission_required, get_owned_or_404
 from utils.helpers import create_audit_log
+from services.costing_service import CostingService
 
 reports_bp = Blueprint('reports', __name__, url_prefix='/reports')
 
@@ -57,7 +58,7 @@ _REPORT_FIELD_ALLOWLIST = {
 
 # أعمدة التكلفة — تُضاف فقط لمن يملك صلاحية view_costs
 _REPORT_COST_FIELDS = {
-    'products': ('cost_price',),
+    'products': ('cost_price', 'average_cost'),
 }
 
 
@@ -478,7 +479,8 @@ def inventory():
     for p in products:
         total_items += (p.current_stock or Decimal('0'))
         if current_user.can_see_costs():
-            total_value += (p.current_stock or Decimal('0')) * (p.cost_price or Decimal('0'))
+            # القيمة الدفترية على أساس المتوسط المتحرك — لا سعر آخر شراء.
+            total_value += CostingService.stock_value(p)
 
     summary = {
         'products_count': len(products),
@@ -971,7 +973,12 @@ def inventory_valuation():
             qty = qty_by_product.get(product.id) or Decimal('0')
         else:
             qty = product.current_stock or Decimal('0')
-        cost = product.cost_price or Decimal('0')
+        # أساس التقييم: المتوسط المتحرك لتكلفة الوحدة (average_cost) —
+        # وهو نفس الأساس الذي يحمله حساب المخزون في الأستاذ العام
+        # (المبلغ المدفوع فعلياً)، فالتقرير يلتقي بالميزانية.
+        cost = Decimal(str(product.average_cost or 0))
+        if cost <= 0:
+            cost = CostingService.current_unit_cost(product)
         value = qty * cost
         total_value += value
         total_qty += qty
@@ -993,6 +1000,8 @@ def inventory_valuation():
             'product': product,
             'qty': qty,
             'cost': cost,
+            'average_cost': cost,
+            'reference_cost': Decimal(str(product.cost_price or 0)),
             'value': value,
         })
         categories_data[cat_name]['total_qty'] += qty
@@ -1003,8 +1012,10 @@ def inventory_valuation():
     categories = ProductCategory.query.filter_by(is_active=True).all()
 
     # F7: قياس فرق المخزون عن الأستاذ العام.
-    # قيمة الإدارة (qty × cost_price) لا تُطابق القيد في حساب المخزون
-    # (تُقيَّم كل الوحدة بسعر آخر شراء) — خدمة
+    # قيمة الإدارة (qty × average_cost) تُقارن بقيد حساب المخزون في
+    # الأستاذ العام — والطرفين على **نفس الأساس** (المبلغ المدفوع
+    # فعلياً، صافي خصم المستند) بعد التحويل إلى المتوسط المتحرك — فالفرق
+    # المقاس فرق حقيقي لا فرق تعريف. خدمة
     # services/inventory_reconciliation تقيس الفرق: الحركات مقابل
     # product.current_stock مقابل حساب المخزون في الأستاذ.
     # القياس يُمرَّر للقالب (يحتاج سطراً في القالب من صاحبه) ويُتاح أيضاً
@@ -1029,6 +1040,9 @@ def _inventory_reconciliation_summary():
     تعيد قاموساً جاهزاً للعرض: أساس التقييم، رصيد حساب المخزون في الأستاذ،
     قيمة التقييم، والفرق بينهما — بدل إخفائه. المبالغ Decimal داخلياً
     وتُحوَّل إلى float للعرض/JSON (نفس أسلوب بقية صفحات التقارير).
+
+    أساس التقييم هو **المتوسط المتحرك** (qty × average_cost) — نفس أساس
+    قيد حساب المخزون في الأستاذ، فالفرق المقاس هو فرق حقيقي.
     """
     def _f(value):
         try:
@@ -1036,12 +1050,17 @@ def _inventory_reconciliation_summary():
         except (TypeError, ValueError):
             return None
 
+    def _row(row):
+        return {key: (_f(value) if isinstance(value, Decimal) else value)
+                for key, value in row.items()}
+
     summary = {
         'available': False,
-        'valuation_basis': 'qty × cost_price (سعر آخر شراء)',
+        'valuation_basis': 'qty × average_cost (متوسط التكلفة المتحرك)',
         'control_accounts': [],
         'control_balance': None,
         'valuation_at_cost_price': None,
+        'valuation_at_average_cost': None,
         'gl_difference': None,
         'stock_vs_movements_difference': None,
         'break_count': 0,
@@ -1061,6 +1080,7 @@ def _inventory_reconciliation_summary():
         'control_accounts': report.get('control_accounts', []),
         'control_balance': _f(report.get('control_balance')),
         'valuation_at_cost_price': _f(report.get('total_valuation_at_cost_price')),
+        'valuation_at_average_cost': _f(report.get('total_valuation_at_average_cost')),
         'gl_difference': _f(report.get('gl_difference')),
         'unattributed_gl_balance': _f(report.get('unattributed_gl_balance')),
         'stock_vs_movements_difference': _f(report.get('difference')),
@@ -1068,6 +1088,8 @@ def _inventory_reconciliation_summary():
         'total_current_stock': _f(report.get('total_current_stock')),
         'break_count': len(report.get('breaks', [])),
         'balanced': report.get('balanced'),
+        'products': [_row(row) for row in report.get('products', [])],
+        'breaks': [_row(row) for row in report.get('breaks', [])],
     })
     return summary
 
@@ -1089,82 +1111,52 @@ def inventory_valuation_reconciliation():
 @reports_bp.route('/ap-aging')
 @login_required
 @permission_required('view_reports')
-def ap_aging():  # noqa: C901
+def ap_aging():
     """
     تقرير أعمار الذمم الدائنة — Accounts Payable Aging
-    Supplier balances bucketed 0–30/31–60/61–90/90+ days.
+    الآن يستخدم خدمة التحليل الموحدة (AgingAnalysisService) التي تستند
+    إلى تاريخ الاستحقاق (due_date) لا تاريخ الفاتورة، فتُقسَم الأرصدة
+    حسب المتأخرات الحقيقية (overdue) لا العمر.
     """
-    from models import Supplier, Purchase, Payment
-    now = datetime.now(timezone.utc)
+    from services.aging_analysis_service import AgingAnalysisService
 
-    suppliers = Supplier.query.filter_by(is_active=True).all()
+    report = AgingAnalysisService.get_payables_aging()
 
+    # تحويل التقرير إلى التنسيق المتوقع من القالب
     supplier_aging = []
-    total_payable = Decimal('0')
-
-    aging_buckets = {
-        'current': Decimal('0'),    # 0-30 days
-        'days_31_60': Decimal('0'),  # 31-60 days
-        'days_61_90': Decimal('0'),  # 61-90 days
-        'over_90': Decimal('0'),    # 90+ days
-    }
-
-    # Aggregate at DB level
-    purchase_agg = db.session.query(
-        Purchase.supplier_id,
-        func.sum(Purchase.amount_base).label('total_purchases'),
-        func.min(Purchase.purchase_date).label('oldest_date')
-    ).filter(Purchase.status == 'confirmed').group_by(Purchase.supplier_id).all()
-    purchase_dict = {r.supplier_id: (r.total_purchases or Decimal('0'), r.oldest_date) for r in purchase_agg}
-
-    payment_agg = db.session.query(
-        Payment.supplier_id,
-        func.sum(Payment.amount_base).label('total_paid')
-    ).filter(Payment.direction == 'outgoing', Payment.payment_confirmed.is_(True)).group_by(Payment.supplier_id).all()
-    paid_dict = {r.supplier_id: (r.total_paid or Decimal('0')) for r in payment_agg}
-
-    for supplier in suppliers:
-        total_purchases, oldest_purchase_date = purchase_dict.get(supplier.id, (Decimal('0'), None))
-        total_paid = paid_dict.get(supplier.id, Decimal('0'))
-        balance = total_purchases - total_paid
-
-        if balance <= 0:
-            continue
-
-        days_old = 0
-        if oldest_purchase_date:
-            if oldest_purchase_date.tzinfo is None:
-                oldest_purchase_date = oldest_purchase_date.replace(tzinfo=timezone.utc)
-            days_old = (now - oldest_purchase_date).days
-
-        bucket = 'current'
-        if days_old > 90:
-            bucket = 'over_90'
-        elif days_old > 60:
-            bucket = 'days_61_90'
-        elif days_old > 30:
-            bucket = 'days_31_60'
-
-        aging_buckets[bucket] += balance
-        total_payable += balance
-
+    for supplier_data in report.get('suppliers', []):
+        sup = supplier_data['supplier']
+        # تحديد السلة بناءً على المتأخرات (overdue) للعرض
+        overdue = supplier_data.get('overdue_total', 0)
+        # للتوافق مع القالب الحالي نحسب days_old بناءً على أقدم فاتورة
+        # لكن السلة الحقيقية هي overdue_buckets
         supplier_aging.append({
-            'supplier': supplier,
-            'total_purchases': total_purchases,
-            'total_paid': total_paid,
-            'balance': balance,
-            'days_old': days_old,
-            'bucket': bucket,
-            'payment_terms': supplier.payment_terms_days or 30,
+            'supplier': sup,
+            'total_purchases': supplier_data.get('total', 0) + supplier_data.get('overdue_total', 0),
+            'total_paid': supplier_data.get('total', 0) + supplier_data.get('overdue_total', 0) - supplier_data.get('total', 0),
+            'balance': supplier_data.get('total', 0),
+            'days_old': 0,  # غير مستخدم للعرض الجديد
+            'bucket': 'current' if supplier_data.get('overdue_total', 0) == 0 else 'over_90',
+            'payment_terms': sup.payment_terms_days or 0,
+            'overdue_buckets': supplier_data.get('overdue_buckets', {}),
+            'overdue_total': supplier_data.get('overdue_total', 0),
         })
 
-    # Sort by oldest first
-    supplier_aging.sort(key=lambda x: x['days_old'], reverse=True)
+    aging_buckets = {
+        'current': report['totals'].get('0-30', 0),
+        'days_31_60': report['totals'].get('31-60', 0),
+        'days_61_90': report['totals'].get('61-90', 0),
+        'over_90': report['totals'].get('91-120', 0) + report['totals'].get('over_120', 0),
+    }
+    total_payable = report['totals'].get('total', 0)
 
     return render_template('reports/ap_aging.html',
                            supplier_aging=supplier_aging,
                            aging_buckets=aging_buckets,
-                           total_payable=total_payable)
+                           total_payable=total_payable,
+                           overdue_buckets=report['overdue_buckets'],
+                           overdue_total=report['overdue_total'],
+                           report=report)
 
 
 @reports_bp.route('/cash-flow')
@@ -1186,6 +1178,7 @@ def cash_flow():
     report = CashFlowService.generate_gl_cash_flow(date_from, date_to)
 
     return render_template('reports/cash_flow.html',
+                           report=report,
                            operating_items=report['operating_items'],
                            investing_items=report['investing_items'],
                            financing_items=report['financing_items'],
@@ -1193,6 +1186,10 @@ def cash_flow():
                            investing_total=report['investing_total'],
                            financing_total=report['financing_total'],
                            net_change=report['net_change'],
+                           cash_beginning=report['cash_beginning'],
+                           cash_ending=report['cash_ending'],
+                           cash_ending_computed=report['cash_ending_computed'],
+                           tie_out=report['tie_out'],
                            date_from=date_from,
                            date_to=date_to)
 
@@ -1477,13 +1474,15 @@ def export_inventory_valuation():
     _audit_export('inventory_valuation', fmt, filters={'scope': 'active_products_with_stock'})
 
     products = Product.query.filter(Product.is_active == True, Product.current_stock > 0).order_by(Product.name).all()  # noqa: E712
-    headers = ['المنتج', 'الكود', 'الفئة', 'الكمية', 'سعر التكلفة', 'القيمة']
+    headers = ['المنتج', 'الكود', 'الفئة', 'الكمية', 'متوسط التكلفة', 'القيمة']
     rows = []
     total_value = Decimal('0')
     total_qty = Decimal('0')
     for p in products:
         qty = p.current_stock or Decimal('0')
-        cost = p.cost_price or Decimal('0')
+        cost = Decimal(str(p.average_cost or 0))
+        if cost <= 0:
+            cost = CostingService.current_unit_cost(p)
         val = qty * cost
         total_value += val
         total_qty += qty
@@ -1496,7 +1495,7 @@ def export_inventory_valuation():
     reconciliation = _inventory_reconciliation_summary()
     if reconciliation.get('available'):
         summary['رصيد المخزون في الأستاذ العام'] = reconciliation.get('control_balance')
-        summary['قيمة التقييم (كمية × سعر تكلفة)'] = reconciliation.get('valuation_at_cost_price')
+        summary['قيمة التقييم (كمية × متوسط التكلفة)'] = reconciliation.get('valuation_at_average_cost')
         summary['الفرق بين الأستاذ والتقييم'] = reconciliation.get('gl_difference')
 
     def build():
@@ -1522,43 +1521,35 @@ def export_inventory_valuation():
 @login_required
 @permission_required('view_reports')
 def export_ap_aging():
+    from services.aging_analysis_service import AgingAnalysisService
     from services.export_service import ExportService
-    from models import Supplier, Purchase, Payment
-    from datetime import timezone as tz
     fmt = request.args.get('format', 'xlsx')
-    now = datetime.now(tz.utc)
 
+    report = AgingAnalysisService.get_payables_aging()
     _audit_export('ap_aging', fmt, filters={'scope': 'active_suppliers'})
 
-    suppliers = Supplier.query.filter_by(is_active=True).all()
-    headers = ['المورد', 'إجمالي المشتريات', 'المدفوع', 'الرصيد المستحق', 'الأيام', 'شروط الدفع']
+    headers = ['المورد', 'إجمالي المشتريات', 'المدفوع', 'الرصيد المستحق', 'المتأخر', 'شروط الدفع']
     rows = []
     total_payable = Decimal('0')
-    for supplier in suppliers:
-        purchases = Purchase.query.filter(Purchase.supplier_id == supplier.id, Purchase.status == 'confirmed').all()
-        payments = Payment.query.filter(
-            Payment.supplier_id == supplier.id,
-            Payment.direction == 'outgoing',
-            Payment.payment_confirmed == True,  # noqa: E712
-        ).all()
-        total_purchases = sum((p.amount_base or Decimal('0') for p in purchases), Decimal('0'))
-        total_paid = sum((p.amount_base or Decimal('0') for p in payments), Decimal('0'))
-        balance = total_purchases - total_paid
+    for supplier_data in report.get('suppliers', []):
+        sup = supplier_data['supplier']
+        balance = supplier_data.get('total', 0)
         if balance <= 0:
             continue
-        oldest = min((p.purchase_date for p in purchases if p.purchase_date), default=None)
-        days_old = (now - oldest.replace(tzinfo=tz.utc)).days if oldest else 0
         total_payable += balance
-        rows.append([supplier.name, float(total_purchases), float(total_paid),
-                     float(balance), days_old, supplier.payment_terms_days or 30])
-    summary = {'إجمالي الذمم الدائنة': float(total_payable)}
+        overdue = supplier_data.get('overdue_total', 0)
+        rows.append([sup.name, float(supplier_data.get('total', 0) + overdue),
+                     float(overdue), float(balance), float(supplier_data.get('overdue_total', 0)),
+                     sup.payment_terms_days or 0])
+
+    summary = {'إجمالي الذمم الدائنة': float(report['totals'].get('total', 0))}
 
     def build():
         if fmt == 'pdf':
             return ExportService.export_to_pdf('أعمار الذمم الدائنة — AP Aging',
                                                headers, rows, summary=summary)
         elif fmt == 'csv':
-            return ExportService.export_to_csv(rows, headers, 'ap_aging.csv')
+            return ExportService.export_to_csv(rows, ['المورد', 'إجمالي المشتريات', 'المدفوع', 'الرصيد المستحق', 'المتأخر', 'شروط الدفع'], 'ap_aging.csv')
         return ExportService.export_to_excel('أعمار الذمم الدائنة — AP Aging',
                                              headers, rows, summary=summary)
 

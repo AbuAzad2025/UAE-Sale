@@ -36,6 +36,7 @@ from .api_key import APIKey
 from .approval_workflow import ApprovalWorkflow, ApprovalRequest, ApprovalLevel
 from .journal_entry_audit import JournalEntryAudit
 from .error_log import ErrorLog
+from .write_off import WriteOff
 from .shipment import Shipment, ShipmentLine
 from .inbound_shipment import InboundShipment, InboundShipmentLine
 from .tenant_scope import (  # noqa: F401
@@ -66,7 +67,8 @@ from .validators import (
 # Register all tenant-scoped models for automatic filtering
 for _model_cls in [Sale, SaleLine, Purchase, PurchaseLine, Payment, Receipt,
                    Customer, Supplier, Product, StockMovement, Cheque,
-                   GLJournalEntry, GLJournalLine, Warehouse, Shipment, InboundShipment]:
+                   GLJournalEntry, GLJournalLine, Warehouse, Shipment, InboundShipment,
+                   WriteOff]:
     register_tenant_scoped(_model_cls)
 
 __all__ = [
@@ -103,6 +105,7 @@ __all__ = [
     'ApprovalWorkflow', 'ApprovalRequest', 'ApprovalLevel',
     'JournalEntryAudit',
     'ErrorLog',
+    'WriteOff',
     'Shipment', 'ShipmentLine',
     'InboundShipment', 'InboundShipmentLine',
     'Department', 'Employee', 'LeaveType', 'LeaveRequest', 'Payslip', 'PayslipLine',

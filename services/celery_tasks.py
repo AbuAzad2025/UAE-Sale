@@ -66,6 +66,18 @@ celery.conf.beat_schedule = {
         'schedule': crontab(minute=30, hour=3),
         'options': {'queue': 'default'},
     },
+    # FX revaluation (IAS 21): daily at 04:30 — بعد النسخة الاحتياطية
+    'fx-revaluation-daily': {
+        'task': 'celery_tasks.run_fx_revaluation',
+        'schedule': crontab(minute=30, hour=4),  # 04:30
+        'options': {'queue': 'default'},
+    },
+    # Sub-ledger reconciliation: weekly on Sunday at 04:00
+    'subledger-reconciliation-weekly': {
+        'task': 'celery_tasks.run_subledger_reconciliation',
+        'schedule': crontab(minute=0, hour=4, day_of_week='sun'),  # Sunday 04:00
+        'options': {'queue': 'default'},
+    },
 }
 
 
@@ -249,3 +261,164 @@ def run_security_scan(self):
             }
     except Exception as exc:
         return {'error': str(exc)}
+
+
+# ── Scheduled controls: revaluation + sub-ledger reconciliation ──────────
+#
+# The two controls below share one rule: they NEVER raise into the
+# scheduler. A failed control must be reported (and logged), not retried
+# forever by beat, so every exception is caught and turned into a payload.
+
+
+def _log_task_failure(task_name, exc):
+    """تسجيل فشل المهمة في سجل التطبيق (لا يرفع الاستثناء)."""
+    try:
+        from flask import current_app
+
+        current_app.logger.error('Celery task %s failed: %s', task_name, exc)
+    except Exception:
+        pass
+
+
+def _tenant_scopes():
+    """معرّفات المستأجرين التي يجب أن تعمل عليها مهمة مجدولة.
+
+    العامل المجدول ينفّذ خارج سياق الطلب، فسياق المستأجر (thread-local)
+    غير مضبوط: بدون ضبط صريح كانت الاستعلامات بلا تصفية فتعبر حدود
+    المستأجرين. لكل مستأجر سياق مستقل، ورقمُ المستأجر هو نفسه. إن لم
+    يوجد أي مستأجر نشط تُعالَج السجلات بلا مستأجر (تثبيت أحادي).
+    """
+    from models import Tenant
+    from models.tenant_scope import get_current_tenant_id
+
+    current = get_current_tenant_id()
+    if current is not None and current > 0:
+        return [current]
+
+    tenants = Tenant.query.filter_by(is_active=True).order_by(Tenant.id).all()
+    if tenants:
+        return [tenant.id for tenant in tenants]
+    return [None]
+
+
+def _run_per_tenant(func):
+    """ينفّذ *func* في سياق مستأجر مستقل لكل مستأجر.
+
+    ``run_in_tenant_context`` يرفض العمل بلا مستأجر، لذلك القيمة None
+    (السجلات التي لا مستأجر لها) تُنفَّذ في سياق منصة صريح.
+    """
+    from models.tenant_scope import run_in_tenant_context, run_in_platform_context
+
+    results = []
+    for tenant_id in _tenant_scopes():
+        if tenant_id is None:
+            results.append(run_in_platform_context(func))
+        else:
+            results.append(run_in_tenant_context(tenant_id, func))
+    return results
+
+
+def _revalue_fx_for_current_period():
+    """تسوية أرصدة العملات الأجنبية للفترة المالية المفتوحة.
+
+    تتخطّى بهدوء إذا كانت الفترة مغلقة أو لا يوجد ما يُقيَّم، وترفض
+    التكرار في نفس الفترة (القيد السابق موجود فلا قيد ثانٍ).
+    """
+    from extensions import db
+    from services.fx_revaluation import FXRevaluationService
+
+    period = FXRevaluationService.current_open_period()
+    if period is None:
+        return {'skipped': True, 'reason': 'period_closed_or_missing'}
+
+    result = FXRevaluationService.run_revaluation(dry_run=False)
+    if result.get('already_posted'):
+        return {
+            'skipped': True,
+            'reason': 'already_posted',
+            'period_key': result.get('period_key'),
+            'journal_entry_id': result.get('journal_entry_id'),
+        }
+    if not result.get('posted'):
+        db.session.rollback()
+        return {
+            'skipped': True,
+            'reason': 'nothing_to_revalue',
+            'period_key': result.get('period_key'),
+        }
+
+    db.session.commit()
+    return {
+        'posted': True,
+        'period_key': result.get('period_key'),
+        'base_currency': result.get('base_currency'),
+        'journal_entry_id': result.get('journal_entry_id'),
+        'total_debit': str(result.get('total_debit')),
+        'total_credit': str(result.get('total_credit')),
+        'currencies': [row.get('currency') for row in result.get('per_currency') or []],
+    }
+
+
+@celery.task(name='celery_tasks.run_fx_revaluation')
+def run_fx_revaluation():
+    """مهمة مجدولة: تسوية أرصدة العملات الأجنبية (IAS 21) للفترة المفتوحة.
+
+    المعاينة الجافة (dry run) هي الافتراضي داخل الخدمة، والترحيل هنا فقط.
+    المهمة لا ترفع أي استثناء إلى المجدول: كل خطأ يُسجَّل ويُعاد في نتيجة
+    المهمة.
+    """
+    try:
+        from app import create_app
+
+        app = create_app()
+        with app.app_context():
+            reports = _run_per_tenant(_revalue_fx_for_current_period)
+            posted = [r for r in reports if r.get('posted')]
+            return {
+                'success': True,
+                'posted': len(posted),
+                'skipped': len(reports) - len(posted),
+                'reports': reports,
+            }
+    except Exception as exc:
+        _log_task_failure('run_fx_revaluation', exc)
+        return {'success': False, 'error': str(exc)}
+
+
+@celery.task(name='celery_tasks.run_subledger_reconciliation')
+def run_subledger_reconciliation():
+    """مهمة مجدولة: مطابقة الذمم الفرعية مع الأستاذ العام.
+
+    نقطة الدخول العامة في services/subledger_reconciliation.py هي
+    ``SubLedgerReconciliation.reconcile_all()`` — تقرير للقراءة فقط لا
+    يمسّ الدفاتر.
+    """
+    try:
+        from app import create_app
+
+        app = create_app()
+        with app.app_context():
+            def _reconcile():
+                from services.subledger_reconciliation import SubLedgerReconciliation
+
+                reports = SubLedgerReconciliation.reconcile_all()
+                return [
+                    {
+                        'section': report.get('section'),
+                        'balanced': report.get('balanced'),
+                        'control_difference': str(report.get('control_difference')),
+                        'breaks': len(report.get('breaks') or []),
+                    }
+                    for report in reports
+                ]
+
+            sections = _run_per_tenant(_reconcile)
+            flat = [section for report in sections for section in report]
+            return {
+                'success': True,
+                'balanced': all(section.get('balanced') for section in flat),
+                'sections': flat,
+            }
+    except Exception as exc:
+        _log_task_failure('run_subledger_reconciliation', exc)
+        return {'success': False, 'error': str(exc)}

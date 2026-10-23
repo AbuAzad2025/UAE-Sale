@@ -4,6 +4,7 @@ from flask import current_app
 from extensions import db
 from models import Sale, SaleLine, Payment
 from services.stock_service import StockService
+from services.costing_service import CostingService
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
 from utils.decorators import get_owned_or_raise
@@ -226,7 +227,12 @@ class SaleService:
                 # قيد تكلفة (COGS) ولا تسوية للمخزون، فرحّل فاتورة إيراد
                 # بلا مقابل كان يجعل المخزون بلا قيمة والربح وهمياً.
                 # يُرفض البيع برسالة تسمّي المنتج (ValidationError).
-                cost_basis = StockService.require_cost_basis(product, quantity)
+                #
+                # تكلفة البيع = **المتوسط المتحرك** (CostingService):
+                # الكلفة وقت البيع لا سعر آخر شراء. والبيع بلا أساس
+                # تكلفة يُرفض مغلقاً (fail-closed) من داخل
+                # CostingService.cost_for_sale عبر حارس التكلفة الموروث.
+                cost_basis = CostingService.cost_for_sale(product, quantity)
 
                 # Check stock availability — must be WAREHOUSE-AWARE: the
                 # seller may not ship stock that physically sits in another
@@ -266,7 +272,8 @@ class SaleService:
                     unit_price=unit_price,
                     discount_percent=discount_percent,
                     # F1: لقطة التكلفة (cost basis) — التكلفة تُثبَّت على
-                    # سطر البيع وقت البيع، وتُشتق منها قيد COGS.
+                    # سطر البيع وقت البيع (المتوسط المتحرك آنذاك)،
+                    # وتُشتق منها قيد COGS.
                     cost_price=cost_basis
                 )
 
@@ -361,10 +368,10 @@ class SaleService:
             GLService.ensure_core_accounts()
 
             # Calculate COGS with proper decimal precision
-            # FIX(base-currency mixing): cost_price is stored in base currency
-            # (see StockService.process_purchase_lines), so it must NOT be
-            # multiplied by the sale's exchange rate again.
-            # F1: كل سطر يحمل الآن تكلفة موثّقة > 0 (require_cost_basis)،
+            # FIX(base-currency mixing): the cost snapshot is stored in base
+            # currency (the moving average — see CostingService), so it must
+            # NOT be multiplied by the sale's exchange rate again.
+            # F1: كل سطر يحمل الآن تكلفة موثّقة > 0 (cost_for_sale)،
             # فمجموع التكلفة على أي فاتورة ذات أسطر أكبر من صفر.
             cogs_total_base = sum(
                 (Decimal(str(line.cost_price)) * Decimal(str(line.quantity))

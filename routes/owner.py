@@ -3160,3 +3160,82 @@ def forecasting():
     return render_template('owner/forecasting.html',
                            historical=historical_data,
                            forecast=forecast)
+
+
+# ── FX revaluation (IAS 21) ─────────────────────────────────────────────
+# Monthly unrealized revaluation of the open foreign-currency balances.
+# The page is a DRY RUN first: it previews the per-currency adjustments and
+# the journal entry that WOULD be posted. Posting is a separate POST with an
+# explicit confirmation token, refuses a closed fiscal period and refuses to
+# post twice in the same period (the period lives on the entry reference).
+#
+# The gate is ``manage_ledger`` — the real permission code the ledger
+# surface already uses (utils/system_init.py: manage_ledger / view_ledger).
+# The platform owner bypasses it (models.user.has_permission).
+
+_FX_REVALUATION_CONFIRM_TOKEN = 'YES_POST_FX_REVALUATION'
+
+
+@owner_bp.route('/fx-revaluation/', methods=['GET', 'POST'])
+@login_required
+@permission_required('manage_ledger')
+def fx_revaluation():
+    """معاينة وترحيل تسوية فرق العملات الأجنبية (أرباح/خسائر غير محققة)."""
+    from models.gl import GLJournalEntry
+    from services.currency_service import CurrencyService
+    from services.fx_revaluation import FXRevaluationService
+    from utils.errors import ValidationError
+
+    as_of_raw = (request.form.get('as_of') or request.args.get('as_of') or '').strip()
+
+    if request.method == 'POST':
+        if (request.form.get('confirm') or '').strip() != _FX_REVALUATION_CONFIRM_TOKEN:
+            flash('لم يتم تأكيد الترحيل — لم يُرحَّل أي قيد.', 'danger')
+            return redirect(url_for('owner.fx_revaluation', as_of=as_of_raw or None))
+
+        try:
+            result = FXRevaluationService.run_revaluation(
+                as_of=as_of_raw or None,
+                dry_run=False,
+                created_by=current_user.id,
+            )
+        except ValidationError as exc:
+            db.session.rollback()
+            flash(f'{exc}', 'danger')
+            return redirect(url_for('owner.fx_revaluation', as_of=as_of_raw or None))
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('FX revaluation posting failed')
+            flash('حدث خطأ أثناء ترحيل تسوية فرق العملة.', 'danger')
+            return redirect(url_for('owner.fx_revaluation', as_of=as_of_raw or None))
+
+        db.session.commit()
+
+        if result.get('already_posted'):
+            flash('تسوية هذه الفترة مرحَّلة مسبقاً — لم يُرحَّل قيد ثانٍ.', 'info')
+        elif result.get('posted'):
+            entry_number = ''
+            try:
+                entry = db.session.get(GLJournalEntry, result.get('journal_entry_id'))
+                entry_number = f' — رقم القيد {entry.entry_number}' if entry else ''
+            except Exception:
+                entry_number = ''
+            flash(f'تم ترحيل قيد تسوية فرق العملة{entry_number}.', 'success')
+        else:
+            flash('لا توجد أرصدة أجنبية مفتوحة تحتاج تسوية في هذه الفترة.', 'info')
+        return redirect(url_for('owner.fx_revaluation', as_of=as_of_raw or None))
+
+    try:
+        preview = FXRevaluationService.build_revaluation(as_of=as_of_raw or None)
+    except Exception:
+        current_app.logger.exception('FX revaluation preview failed')
+        preview = None
+        flash('تعذّر بناء معاينة التسوية.', 'danger')
+
+    return render_template(
+        'owner/fx_revaluation.html',
+        preview=preview,
+        base_currency=CurrencyService.get_base_currency(),
+        as_of=as_of_raw,
+        confirm_token=_FX_REVALUATION_CONFIRM_TOKEN,
+    )

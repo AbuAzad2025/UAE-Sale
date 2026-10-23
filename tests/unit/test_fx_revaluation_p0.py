@@ -108,15 +108,20 @@ def _usd_sale(db, customer, seller_id, total=Decimal('1000'), rate=HIST_RATE,
 
 def _usd_purchase(db, owner_user, total=Decimal('1000'), rate=Decimal('3.5'),
                   paid_base=Decimal('0'), status='confirmed'):
-    """شراء foreign currency — paid_amount is in base currency (models/purchase.py)."""
+    """Create a USD purchase.
+
+    paid_base is the amount already paid in BASE currency.
+    The model's paid_amount field stores the amount in the transaction currency (foreign currency),
+    so we convert paid_base / rate.
+    """
     from models import Purchase
 
     purchase = Purchase(
         purchase_number=f'P-FXP0-{total}-{rate}-{paid_base}',
-        supplier_name='مورد أجنبي',
+        supplier_name='Test Supplier',
         total_amount=total,
         amount_base=(total * rate).quantize(Decimal('0.001')),
-        paid_amount=paid_base,
+        paid_amount=(paid_base / rate).quantize(Decimal('0.001')) if paid_base and rate else Decimal('0'),
         currency='USD',
         exchange_rate=rate,
         payment_status='partial' if paid_base else 'unpaid',

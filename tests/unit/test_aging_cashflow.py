@@ -91,7 +91,7 @@ class TestReceivablesAging:
 
 
 class TestPayablesAging:
-def test_supplier_buckets(self, db, owner_user):
+    def test_supplier_buckets(self, db, owner_user):
         supplier = Supplier(name='U.U^O�O_ A', is_active=True)
         db.session.add(supplier)
         db.session.flush()

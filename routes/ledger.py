@@ -311,6 +311,8 @@ def _receivables_aging(as_of_date=None):
                 'total': Decimal(str(inv.get('total_base', 0))),
                 'paid_amount_base': Decimal(str(inv.get('paid_base', 0))),
                 'balance': Decimal(str(inv.get('balance', 0))),
+                'calculated_balance': Decimal(str(inv.get('balance', 0))),
+                'id': inv.get('id'),  # Database ID for URL generation
                 'currency': inv.get('currency'),
                 'days_old': inv.get('days_old'),
                 'aging_bucket': inv.get('age_category'),

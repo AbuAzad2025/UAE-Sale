@@ -1120,43 +1120,50 @@ def ap_aging():
     """
     from services.aging_analysis_service import AgingAnalysisService
 
-    report = AgingAnalysisService.get_payables_aging()
+    try:
+        report = AgingAnalysisService.get_payables_aging()
+        current_app.logger.info(f"DEBUG AP Aging: {len(report.get('suppliers', []))} suppliers")
+        for s in report.get('suppliers', []):
+            current_app.logger.info(f"  {s['supplier'].name}: total={s.get('total')}, overdue={s.get('overdue_total')}")
 
-    # تحويل التقرير إلى التنسيق المتوقع من القالب
-    supplier_aging = []
-    for supplier_data in report.get('suppliers', []):
-        sup = supplier_data['supplier']
-        # تحديد السلة بناءً على المتأخرات (overdue) للعرض
-        overdue = supplier_data.get('overdue_total', 0)
-        # للتوافق مع القالب الحالي نحسب days_old بناءً على أقدم فاتورة
-        # لكن السلة الحقيقية هي overdue_buckets
-        supplier_aging.append({
-            'supplier': sup,
-            'total_purchases': supplier_data.get('total', 0) + supplier_data.get('overdue_total', 0),
-            'total_paid': supplier_data.get('total', 0) + supplier_data.get('overdue_total', 0) - supplier_data.get('total', 0),
-            'balance': supplier_data.get('total', 0),
-            'days_old': 0,  # غير مستخدم للعرض الجديد
-            'bucket': 'current' if supplier_data.get('overdue_total', 0) == 0 else 'over_90',
-            'payment_terms': sup.payment_terms_days or 0,
-            'overdue_buckets': supplier_data.get('overdue_buckets', {}),
-            'overdue_total': supplier_data.get('overdue_total', 0),
-        })
+        # تحويل التقرير إلى التنسيق المتوقع من القالب
+        supplier_aging = []
+        for supplier_data in report.get('suppliers', []):
+            sup = supplier_data['supplier']
+            # تحديد السلة بناءً على المتأخرات (overdue) للعرض
+            overdue = supplier_data.get('overdue_total', 0)
+            # للتوافق مع القالب الحالي نحسب days_old بناءً على أقدم فاتورة
+            # لكن السلة الحقيقية هي overdue_buckets
+            supplier_aging.append({
+                'supplier': sup,
+                'total_purchases': supplier_data.get('total', 0) + supplier_data.get('overdue_total', 0),
+                'total_paid': supplier_data.get('total', 0) + supplier_data.get('overdue_total', 0) - supplier_data.get('total', 0),
+                'balance': supplier_data.get('total', 0),
+                'days_old': 0,  # غير مستخدم للعرض الجديد
+                'bucket': 'current' if supplier_data.get('overdue_total', 0) == 0 else 'over_90',
+                'payment_terms': sup.payment_terms_days or 0,
+                'overdue_buckets': supplier_data.get('overdue_buckets', {}),
+                'overdue_total': supplier_data.get('overdue_total', 0),
+            })
 
-    aging_buckets = {
-        'current': report['totals'].get('0-30', 0),
-        'days_31_60': report['totals'].get('31-60', 0),
-        'days_61_90': report['totals'].get('61-90', 0),
-        'over_90': report['totals'].get('91-120', 0) + report['totals'].get('over_120', 0),
-    }
-    total_payable = report['totals'].get('total', 0)
+        aging_buckets = {
+            'current': report['totals'].get('0-30', 0),
+            'days_31_60': report['totals'].get('31-60', 0),
+            'days_61_90': report['totals'].get('61-90', 0),
+            'over_90': report['totals'].get('91-120', 0) + report['totals'].get('over_120', 0),
+        }
+        total_payable = report['totals'].get('total', 0)
 
-    return render_template('reports/ap_aging.html',
-                           supplier_aging=supplier_aging,
-                           aging_buckets=aging_buckets,
-                           total_payable=total_payable,
-                           overdue_buckets=report['overdue_buckets'],
-                           overdue_total=report['overdue_total'],
-                           report=report)
+        return render_template('reports/ap_aging.html',
+                               supplier_aging=supplier_aging,
+                               aging_buckets=aging_buckets,
+                               total_payable=total_payable,
+                               overdue_buckets=report['overdue_buckets'],
+                               overdue_total=report['overdue_total'],
+                               report=report)
+    except Exception as e:
+        current_app.logger.exception(f"Error in ap_aging route: {e}")
+        raise
 
 
 @reports_bp.route('/cash-flow')
@@ -1533,16 +1540,16 @@ def export_ap_aging():
     total_payable = Decimal('0')
     for supplier_data in report.get('suppliers', []):
         sup = supplier_data['supplier']
-        balance = supplier_data.get('total', 0)
+        balance = Decimal(str(supplier_data.get('total', 0)))
         if balance <= 0:
             continue
         total_payable += balance
-        overdue = supplier_data.get('overdue_total', 0)
-        rows.append([sup.name, float(supplier_data.get('total', 0) + overdue),
+        overdue = Decimal(str(supplier_data.get('overdue_total', 0)))
+        rows.append([sup.name, float(Decimal(str(supplier_data.get('total', 0))) + overdue),
                      float(overdue), float(balance), float(supplier_data.get('overdue_total', 0)),
                      sup.payment_terms_days or 0])
 
-    summary = {'إجمالي الذمم الدائنة': float(report['totals'].get('total', 0))}
+    summary = {'إجمالي الذمم الدائنة': float(total_payable)}
 
     def build():
         if fmt == 'pdf':

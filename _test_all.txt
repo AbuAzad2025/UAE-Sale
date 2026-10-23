@@ -1,0 +1,33 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\python.exe
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: D:\recovers\data\UAE-Sale
+plugins: anyio-4.14.2, Faker-40.37.0, hypothesis-6.165.10, cov-7.1.0, flask-1.3.0, github-actions-annotate-failures-0.4.2, mock-3.15.1, shard-0.1.2, split-0.11.0, timeout-2.4.0, xdist-3.8.0
+python : ERROR: not found: 
+D:\recovers\data\UAE-Sale\tests\integration\test_routes_reports.py::TestFinancialReports::test_export_ap_aging
+At line:1 char:137
++ ... \UAE-Sale'; python -m pytest tests/integration/test_routes_reports.py ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ERROR: not foun...export_ap_aging:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(no match in any of [<Class TestFinancialReports>])
+
+collecting ... collected 1 item
+Running 0 items in this shard: 
+
+============================== warnings summary ===============================
+C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sentry_sdk\utils.py:1286
+  C:\Users\azad1\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sentry_sdk\utils.py:1286: EventletDeprecationWarning: 
+  Eventlet is deprecated. It is currently being maintained in bugfix mode, and
+  we strongly recommend against using it for new projects.
+  
+  If you are already using Eventlet, we recommend migrating to a different
+  framework.  For more detail see
+  https://eventlet.readthedocs.io/en/latest/asyncio/migration.html
+  
+    from eventlet.patcher import is_monkey_patched  # type: ignore
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= 1 warning in 1.03s ==============================

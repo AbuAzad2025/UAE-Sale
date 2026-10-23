@@ -91,21 +91,36 @@ class TestReceivablesAging:
 
 
 class TestPayablesAging:
-    def test_supplier_buckets(self, db, owner_user):
-        supplier = Supplier(name='مورد A', is_active=True)
+def test_supplier_buckets(self, db, owner_user):
+        supplier = Supplier(name='U.U^O�O_ A', is_active=True)
         db.session.add(supplier)
         db.session.flush()
         p = Purchase(
-            purchase_number='P-TEST-001', supplier_name='مورد A',
+            purchase_number='P-TEST-001', supplier_name='U.U^O�O_ A',
             supplier_id=supplier.id,
             total_amount=Decimal('500'), amount_base=Decimal('500'),
-            paid_amount=Decimal('200'), payment_status='partial',
+            paid_amount=Decimal('0'), payment_status='pending',
             purchase_date=datetime.now() - timedelta(days=50),
             currency='ILS', user_id=owner_user.id,
         )
         db.session.add(p)
+        db.session.flush()
+        
+        # Create a payment of 200 to leave a balance of 300
+        pay = Payment(
+            payment_number='PAY-TEST-001',
+            supplier_id=supplier.id,
+            direction='outgoing',
+            amount=Decimal('200'),
+            amount_base=Decimal('200'),
+            currency='ILS',
+            exchange_rate=Decimal('1'),
+            payment_confirmed=True,
+            created_by=owner_user.id,
+        )
+        db.session.add(pay)
         db.session.commit()
-
+  
         result = AgingAnalysisService.get_payables_aging()
         assert result['supplier_count'] == 1
         assert result['totals']['31-60'] == 300.0

@@ -373,7 +373,7 @@ class FXRevaluationService:
             query = query.filter(Purchase.purchase_date <= cutoff)
 
         balances = {}
-for purchase in query.all():
+        for purchase in query.all():
             currency = (purchase.currency or base).upper()
             rate = _dec(purchase.exchange_rate)
             if rate <= 0:

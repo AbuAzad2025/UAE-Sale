@@ -373,12 +373,14 @@ class FXRevaluationService:
             query = query.filter(Purchase.purchase_date <= cutoff)
 
         balances = {}
-        for purchase in query.all():
+for purchase in query.all():
             currency = (purchase.currency or base).upper()
             rate = _dec(purchase.exchange_rate)
             if rate <= 0:
                 continue
-            carrying = _dec(purchase.amount_base) - _dec(purchase.paid_amount)
+            # Correct: convert paid_amount to base currency before subtracting
+            paid_base = _dec(purchase.paid_amount or 0) * rate
+            carrying = _dec(purchase.amount_base or 0) - paid_base
             carrying = _clamp_non_negative(carrying)
             if carrying <= 0:
                 continue

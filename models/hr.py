@@ -109,7 +109,7 @@ class Employee(db.Model):
     nationality = db.Column(db.String(50))
     marital_status = db.Column(db.String(20))  # single, married, divorced, widowed
     emergency_contact_name = db.Column(db.String(100))
-    emergency_contact_phone = db.Column(db.String(20))
+    emergency_contact_phone = db.Column(db.String(30))
 
     # Leave Balance (annual)
     annual_leave_days = db.Column(db.Integer, default=30)

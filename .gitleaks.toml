@@ -38,6 +38,9 @@ paths = [
   '''(?i)(^|/)static/.*\.(js|js\.map|min\.js)$''',
   # Temporary log files.
   '''(?i)(^|/)_.*\.log$''',
+  # Temporary verification/debug scripts.
+  '''(?i)(^|/)_verify_idx\.py$''',
+  '''(?i)(^|/)_review_models\.py$''',
   '''(?i)(^|/)_.*\.txt$''',
   # Coverage reports and other generated files.
   '''(?i)(^|/)\.coverage$''',

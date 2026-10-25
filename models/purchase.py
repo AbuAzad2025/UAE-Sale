@@ -206,6 +206,7 @@ class PurchaseLine(TenantScopedMixin, db.Model):
         db.CheckConstraint('quantity > 0', name='ck_purchaseline_qty_positive'),
         db.CheckConstraint('unit_cost >= 0', name='ck_purchaseline_cost_non_negative'),
         db.CheckConstraint('line_total >= 0', name='ck_purchaseline_total_non_negative'),
+        db.Index('idx_purchaseline_purchase_product', 'purchase_id', 'product_id'),
     )
 
     id = db.Column(db.Integer, primary_key=True)

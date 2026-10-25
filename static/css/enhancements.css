@@ -176,14 +176,170 @@
     transform: scale(1.1);
 }
 
-/* Footer Azad - extracted */
+/* Footer Azad - Professional Redesign */
 .main-footer-azad {
-  padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center;
+  background: linear-gradient(135deg, #1a237e 0%, #311b92 100%);
+  color: white;
+  padding: 30px 20px;
+  text-align: center;
+  border-top: 4px solid #667eea;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
 }
-.main-footer-azad .footer-logo {
-  height: 70px; background: white; padding: 10px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
 }
-.main-footer-azad .footer-title { font-size: 1.1em; font-weight: 700; }
+
+/* Brand Section */
+.footer-brand-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.footer-logo {
+  height: 60px;
+  background: white;
+  padding: 8px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  transition: transform 0.3s ease;
+}
+
+.footer-logo:hover {
+  transform: scale(1.05);
+}
+
+.footer-company-name {
+  font-size: 1.3em;
+  font-weight: 700;
+  margin: 0;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.footer-company-tagline {
+  font-size: 0.95em;
+  color: rgba(255,255,255,0.8);
+  margin: 0;
+}
+
+/* Contact Section */
+.footer-contact-section {
+  margin-bottom: 20px;
+}
+
+.footer-contact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.footer-contact-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
+  transition: background 0.3s ease;
+}
+
+.footer-contact-item:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.footer-contact-item i {
+  font-size: 1.1em;
+  color: #90caf9;
+}
+
+.footer-contact-item span {
+  font-size: 0.9em;
+  color: white;
+}
+
+/* Divider */
+.footer-divider {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  margin: 20px 0;
+}
+
+/* Meta Section */
+.footer-meta-section {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  font-size: 0.85em;
+  color: rgba(255,255,255,0.7);
+}
+
+.footer-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 6px;
+}
+
+.footer-meta-item i {
+  color: #90caf9;
+  font-size: 0.9em;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .footer-contact-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .footer-meta-section {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .footer-brand-section {
+    margin-bottom: 15px;
+  }
+  
+  .footer-logo {
+    height: 50px;
+  }
+  
+  .footer-company-name {
+    font-size: 1.1em;
+  }
+}
+
+/* Print styles */
+@media print {
+  .main-footer-azad {
+    background: white !important;
+    color: black !important;
+    border-top: 1px solid #ccc;
+  }
+  
+  .footer-logo {
+    background: none !important;
+    box-shadow: none !important;
+  }
+  
+  .footer-contact-item, .footer-meta-item {
+    background: none !important;
+  }
+}
 
 /* Navbar widgets - extracted from inline styles (base.html) */
 .navbar-datetime-widget {

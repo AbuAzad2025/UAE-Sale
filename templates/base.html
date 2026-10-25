@@ -928,27 +928,56 @@
   </div>
 
   <footer class="main-footer main-footer-azad">
-    <div class="mb-3">
-      <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="شركة أزاد" class="footer-logo">
-    </div>
-    <div>
-      <p class="mb-2"><strong class="footer-title">🚀 شركة أزاد للأنظمة الذكية - Azad Smart Systems</strong></p>
-      <p class="mb-2">
-        <i class="fab fa-whatsapp"></i> {{ config.COMPANY_PHONE }} | 
-        <i class="fas fa-envelope"></i> {{ config.COMPANY_EMAIL }} |
-        <i class="fas fa-globe"></i> azadsystems.com
-      </p>
-      <p class="mb-2 text-white-50">
-        <i class="fas fa-map-marker-alt"></i> {{ config.COMPANY_ADDRESS }}
-      </p>
-      <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
-      <p class="mb-0" style="opacity: 0.9;">
-        <small>
-          <i class="fas fa-code"></i> {{ config.DEVELOPER_CREDIT }} | 
-          <i class="fas fa-robot"></i> مدعوم بالذكاء الاصطناعي | 
-          v{{ config.APP_VERSION }}
-        </small>
-      </p>
+    <div class="footer-container">
+      <!-- Company Branding -->
+      <div class="footer-brand-section">
+        <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad Smart Systems" class="footer-logo">
+        <div class="footer-company-info">
+          <h3 class="footer-company-name">Azad Smart Systems</h3>
+          <p class="footer-company-tagline">نظام إدارة المبيعات والمستودعات والمحاسبة — ERP Enterprise</p>
+        </div>
+      </div>
+
+      <!-- Contact Details -->
+      <div class="footer-contact-section">
+        <div class="footer-contact-grid">
+          <div class="footer-contact-item">
+            <i class="fab fa-whatsapp"></i>
+            <span>{{ config.COMPANY_PHONE }}</span>
+          </div>
+          <div class="footer-contact-item">
+            <i class="fas fa-envelope"></i>
+            <span>{{ config.COMPANY_EMAIL }}</span>
+          </div>
+          <div class="footer-contact-item">
+            <i class="fas fa-globe"></i>
+            <span>azadsystems.com</span>
+          </div>
+          <div class="footer-contact-item">
+            <i class="fas fa-map-marker-alt"></i>
+            <span>{{ config.COMPANY_ADDRESS }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <hr class="footer-divider">
+
+      <!-- Developer & Version Info -->
+      <div class="footer-meta-section">
+        <div class="footer-meta-item">
+          <i class="fas fa-code"></i>
+          <span>{{ config.DEVELOPER_CREDIT }}</span>
+        </div>
+        <div class="footer-meta-item">
+          <i class="fas fa-robot"></i>
+          <span>ميزات الذكاء الاصطناعي متقدمة</span>
+        </div>
+        <div class="footer-meta-item">
+          <i class="fas fa-tag"></i>
+          <span>v{{ config.APP_VERSION }}</span>
+        </div>
+      </div>
     </div>
   </footer>
 </div>

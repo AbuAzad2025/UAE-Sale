@@ -253,8 +253,8 @@ class Customer(TenantScopedMixin, db.Model):
 
     customer_classification = db.Column(db.String(20), default='regular', index=True)
 
-    phone = db.Column(db.String(20))
-    email = db.Column(db.String(120))
+    phone = db.Column(db.String(30))
+    email = db.Column(db.String(255))
     address = db.Column(db.Text)
     tax_number = db.Column(db.String(50))
 

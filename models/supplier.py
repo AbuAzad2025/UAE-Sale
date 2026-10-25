@@ -146,9 +146,9 @@ class Supplier(TenantScopedMixin, db.Model):
     company_name = db.Column(db.String(200))
 
     # معلومات الاتصال
-    phone = db.Column(db.String(20))
-    phone2 = db.Column(db.String(20))
-    email = db.Column(db.String(120))
+    phone = db.Column(db.String(30))
+    phone2 = db.Column(db.String(30))
+    email = db.Column(db.String(255))
     website = db.Column(db.String(200))
 
     # العنوان

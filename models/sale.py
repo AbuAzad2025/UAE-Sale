@@ -460,6 +460,7 @@ class SaleLine(TenantScopedMixin, db.Model):
         db.CheckConstraint('unit_price >= 0', name='ck_saleline_price_non_negative'),
         db.CheckConstraint('line_total >= 0', name='ck_saleline_total_non_negative'),
         db.CheckConstraint('discount_percent >= 0 AND discount_percent <= 100', name='ck_saleline_discount_range'),
+        db.Index('idx_saleline_sale_product', 'sale_id', 'product_id'),
     )
 
     id = db.Column(db.Integer, primary_key=True)

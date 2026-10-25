@@ -1,504 +1,300 @@
-# Gitleaks
+# Azad ERP — UAE-Sale System
 
-```
-┌─○───┐
-│ │╲  │
-│ │ ○ │
-│ ○ ░ │
-└─░───┘
-```
+**Azad ERP** is a multi-tenant, enterprise-grade ERP system built with Flask/Python for business management, covering sales, purchases, inventory, accounting, HR, and advanced analytics.
 
-[license]: ./LICENSE
-[badge-license]: https://img.shields.io/github/license/gitleaks/gitleaks.svg
-[go-docs-badge]: https://pkg.go.dev/badge/github.com/gitleaks/gitleaks/v8?status
-[go-docs]: https://pkg.go.dev/github.com/zricethezav/gitleaks/v8
-[badge-build]: https://github.com/gitleaks/gitleaks/actions/workflows/test.yml/badge.svg
-[build]: https://github.com/gitleaks/gitleaks/actions/workflows/test.yml
-[go-report-card-badge]: https://goreportcard.com/badge/github.com/gitleaks/gitleaks/v8
-[go-report-card]: https://goreportcard.com/report/github.com/gitleaks/gitleaks/v8
-[dockerhub]: https://hub.docker.com/r/zricethezav/gitleaks
-[dockerhub-badge]: https://img.shields.io/docker/pulls/zricethezav/gitleaks.svg
-[gitleaks-action]: https://github.com/gitleaks/gitleaks-action
-[gitleaks-badge]: https://img.shields.io/badge/protected%20by-gitleaks-blue
-[gitleaks-playground-badge]: https://img.shields.io/badge/gitleaks%20-playground-blue
-[gitleaks-playground]: https://gitleaks.io/playground
+---
 
+## 📋 Table of Contents
 
-[![Github Action Test][badge-build]][build]
-[![Docker Hub][dockerhub-badge]][dockerhub]
-[![Gitleaks Playground][gitleaks-playground-badge]][gitleaks-playground]
-[![Gitleaks Action][gitleaks-badge]][gitleaks-action]
-[![GoDoc][go-docs-badge]][go-docs]
-[![GoReportCard][go-report-card-badge]][go-report-card]
-[![License][badge-license]][license]
+1. [Overview](#overview)
+2. [Features](#features)
+3. [Technology Stack](#technology-stack)
+4. [Quick Start](#quick-start)
+5. [Deployment](#deployment)
+6. [Documentation](#documentation)
+7. [Testing](#testing)
+8. [Security](#security)
+9. [Contributing](#contributing)
+10. [License](#license)
 
+---
 
-### Join our Discord! [![Discord](https://img.shields.io/discord/1102689410522284044.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/8Hzbrnkr7E)
+## 🎯 Overview
 
-Gitleaks is a tool for **detecting** secrets like passwords, API keys, and tokens in git repos, files, and whatever else you wanna throw at it via `stdin`.
+Azad ERP is a comprehensive business management system designed for small to medium enterprises (SMEs) operating in the UAE and Middle East. It provides:
 
-```
-➜  ~/code(master) gitleaks git -v
+- **Multi-tenant architecture** with row-level data isolation
+- **Double-entry accounting** with full GL, AR, AP sub-ledgers
+- **Inventory management** with moving weighted average costing
+- **Multi-currency support** with FX revaluation
+- **Role-based access control** with granular permissions
+- **Audit trail** for all financial transactions
+- **AI-powered insights** for business analytics
 
-    ○
-    │╲
-    │ ○
-    ○ ░
-    ░    gitleaks
+---
 
+## ✨ Features
 
-Finding:     "export BUNDLE_ENTERPRISE__CONTRIBSYS__COM=cafebabe:deadbeef",
-Secret:      cafebabe:deadbeef
-RuleID:      sidekiq-secret
-Entropy:     2.609850
-File:        cmd/generate/config/rules/sidekiq.go
-Line:        23
-Commit:      cd5226711335c68be1e720b318b7bc3135a30eb2
-Author:      John
-Email:       john@users.noreply.github.com
-Date:        2022-08-03T12:31:40Z
-Fingerprint: cd5226711335c68be1e720b318b7bc3135a30eb2:cmd/generate/config/rules/sidekiq.go:sidekiq-secret:23
-```
+### Core Modules
 
-## Getting Started
+| Module | Description |
+|--------|-------------|
+| **Sales & Invoicing** | Create sales invoices, manage customer accounts, track payments, handle returns |
+| **Purchases** | Purchase orders, supplier management, accounts payable |
+| **Inventory** | Stock management with moving average cost, warehouse transfers, stock takes |
+| **Accounting** | Double-entry GL, journal entries, trial balance, balance sheet, income statement |
+| **Payments** | Cash receipts, payments, cheques, bank reconciliation |
+| **Customers** | Customer management, credit limits, payment terms, AR aging |
+| **Suppliers** | Supplier management, payment terms, AP aging |
+| **Products** | Product catalog, categories, pricing, cost tracking |
 
-Gitleaks can be installed using Homebrew, Docker, or Go. Gitleaks is also available in binary form for many popular platforms and OS types on the [releases page](https://github.com/gitleaks/gitleaks/releases). In addition, Gitleaks can be implemented as a pre-commit hook directly in your repo or as a GitHub action using [Gitleaks-Action](https://github.com/gitleaks/gitleaks-action).
+### Advanced Features
 
-### Installing
+| Feature | Description |
+|---------|-------------|
+| **Multi-Currency** | Support for multiple currencies with exchange rate tracking and FX revaluation |
+| **Moving Average Costing** | Inventory valuation using moving weighted average cost |
+| **Bad Debt Write-offs** | Write-off uncollectible receivables with GL posting and audit trail |
+| **Fiscal Periods** | Period-based accounting with closed period enforcement |
+| **Multi-Tenant** | Row-level tenant isolation with platform-level admin |
+| **Role-Based Access** | Granular permissions (owner, admin, manager, seller, accountant, cashier, etc.) |
+| **Audit Trail** | Full audit log of all financial transactions |
+| **Sub-Ledger Reconciliation** | AR/AP reconciliation against GL control accounts |
+| **Inventory Reconciliation** | Stock valuation vs GL inventory control account |
+| **Cash Flow Statement** | GL-based cash flow with tie-out verification |
+| **AI Analytics** | Business insights, cash flow prediction, pricing engine |
+| **HR Module** | Employees, departments, leave, payroll |
+| **E-Invoicing** | UAE FATOORA XML support |
+| **WhatsApp Integration** | Customer communication via WhatsApp |
+| **Backup & Restore** | Automated daily backups with restore capability |
+
+### Financial Integrity Guarantees
+
+- ✅ **Double-entry accounting**: Every transaction posts balanced entries
+- ✅ **Pre-write guards**: COGS required, stock availability checked
+- ✅ **Fiscal period enforcement**: No posting to closed periods
+- ✅ **Tenant isolation**: Row-level filtering on all tenant-scoped tables
+- ✅ **Audit trail**: All financial changes logged and tamper-protected
+- ✅ **Reconciliation**: AR/AP sub-ledgers reconcile to GL control accounts
+
+---
+
+## 🛠 Technology Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Python 3.11+, Flask 2.x |
+| **Database** | PostgreSQL 15+ (production), SQLite (development) |
+| **ORM** | SQLAlchemy 2.0 |
+| **Migrations** | Alembic (Flask-Migrate) |
+| **Authentication** | Flask-Login, bcrypt |
+| **Task Queue** | Celery (optional, requires Redis) |
+| **Cache** | Redis (optional) / SimpleCache (default) |
+| **Frontend** | Bootstrap 5, AdminLTE, jQuery |
+| **PDF/Export** | WeasyPrint, XlsxWriter |
+| **Testing** | pytest, 3300+ tests |
+| **CI/CD** | GitHub Actions |
+| **Deployment** | PythonAnywhere (recommended) |
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- PostgreSQL 15+ (production) or SQLite (development)
+- Node.js 18+ (frontend assets)
+
+### Development Setup
 
 ```bash
-# MacOS
-brew install gitleaks
+# 1. Clone repository
+git clone https://github.com/AbuAzad2025/UAE-Sale.git
+cd UAE-Sale
 
-# Docker (DockerHub)
-docker pull zricethezav/gitleaks:latest
-docker run -v ${path_to_host_folder_to_scan}:/path zricethezav/gitleaks:latest [COMMAND] [OPTIONS] [SOURCE_PATH]
+# 2. Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
 
-# Docker (ghcr.io)
-docker pull ghcr.io/gitleaks/gitleaks:latest
-docker run -v ${path_to_host_folder_to_scan}:/path ghcr.io/gitleaks/gitleaks:latest [COMMAND] [OPTIONS] [SOURCE_PATH]
+# 3. Install dependencies
+pip install -r requirements.txt
 
-# From Source (make sure `go` is installed)
-git clone https://github.com/gitleaks/gitleaks.git
-cd gitleaks
-make build
+# 4. Set environment variables
+cp .env.example .env
+# Edit .env with your settings
+
+# 5. Run migrations (SQLite for dev)
+python -m flask --app wsgi:app db upgrade
+
+# 6. Run the application
+python wsgi.py
+# Or: flask run --host=0.0.0.0 --port=5000
 ```
 
-### GitHub Action
+### Environment Variables
 
-Check out the official [Gitleaks GitHub Action](https://github.com/gitleaks/gitleaks-action)
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Production | PostgreSQL connection string |
+| `SECRET_KEY` | Production | Flask secret key (generate with `secrets.token_hex(32)`) |
+| `OWNER_PASSWORD` | Yes | Master owner password |
+| `CARD_ENCRYPTION_KEY` | Yes | Card vault encryption key |
+| `OWNER_USERNAME` | No | Owner username (default: `owner`) |
+| `OWNER_EMAIL` | No | Owner email (default: `owner@system.local`) |
+| `MASTER_KEY_SEED` | No | Daily master key seed (default: `Azad@1983`) |
+| `CACHE_TYPE` | No | `SimpleCache` (default) or `RedisCache` |
+| `APP_ENV` | No | `production` (default) or `development` |
+| `DEBUG` | No | `false` (default) or `true` |
 
-```
-name: gitleaks
-on: [pull_request, push, workflow_dispatch]
-jobs:
-  scan:
-    name: gitleaks
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE}} # Only required for Organizations, not personal accounts.
-```
+### Default Credentials
 
-### Pre-Commit
+| Username | Password | Role |
+|----------|----------|------|
+| `owner` | `OWNER_PASSWORD` env var | Owner (Master Key) |
+| Daily Master Key | `Azad@1983@YYYY@MM@DD` | Owner (daily rotating) |
 
-1. Install pre-commit from https://pre-commit.com/#install
-2. Create a `.pre-commit-config.yaml` file at the root of your repository with the following content:
+---
 
-   ```
-   repos:
-     - repo: https://github.com/gitleaks/gitleaks
-       rev: v8.24.2
-       hooks:
-         - id: gitleaks
-   ```
+## 📦 Deployment
 
-   for a [native execution of GitLeaks](https://github.com/gitleaks/gitleaks/releases) or use the [`gitleaks-docker` pre-commit ID](https://github.com/gitleaks/gitleaks/blob/master/.pre-commit-hooks.yaml) for executing GitLeaks using the [official Docker images](#docker)
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
 
-3. Auto-update the config to the latest repos' versions by executing `pre-commit autoupdate`
-4. Install with `pre-commit install`
-5. Now you're all set!
+### PythonAnywhere (Recommended)
 
-```
-➜ git commit -m "this commit contains a secret"
-Detect hardcoded secrets.................................................Failed
-```
+1. Create a PythonAnywhere account (Web + PostgreSQL plan)
+2. Clone the repository
+3. Set up virtualenv and install dependencies
+4. Configure Web tab with WSGI file
+5. Set environment variables in Web tab
+6. Run `flask db upgrade`
+7. Reload the web app
 
-Note: to disable the gitleaks pre-commit hook you can prepend `SKIP=gitleaks` to the commit command
-and it will skip running gitleaks
+### Health Check
 
-```
-➜ SKIP=gitleaks git commit -m "skip gitleaks check"
-Detect hardcoded secrets................................................Skipped
+```bash
+curl -s https://your-domain.com/api/healthz | python -m json.tool
 ```
 
-## Usage
-
-```
-Usage:
-  gitleaks [command]
-
-Available Commands:
-  completion  generate the autocompletion script for the specified shell
-  dir         scan directories or files for secrets
-  git         scan git repositories for secrets
-  help        Help about any command
-  stdin       detect secrets from stdin
-  version     display gitleaks version
-
-Flags:
-  -b, --baseline-path string          path to baseline with issues that can be ignored
-  -c, --config string                 config file path
-                                      order of precedence:
-                                      1. --config/-c
-                                      2. env var GITLEAKS_CONFIG
-                                      3. env var GITLEAKS_CONFIG_TOML with the file content
-                                      4. (target path)/.gitleaks.toml
-                                      If none of the four options are used, then gitleaks will use the default config
-      --enable-rule strings           only enable specific rules by id
-      --exit-code int                 exit code when leaks have been encountered (default 1)
-  -i, --gitleaks-ignore-path string   path to .gitleaksignore file or folder containing one (default ".")
-  -h, --help                          help for gitleaks
-      --ignore-gitleaks-allow         ignore gitleaks:allow comments
-  -l, --log-level string              log level (trace, debug, info, warn, error, fatal) (default "info")
-      --max-decode-depth int          allow recursive decoding up to this depth (default "0", no decoding is done)
-      --max-target-megabytes int      files larger than this will be skipped
-      --no-banner                     suppress banner
-      --no-color                      turn off color for verbose output
-      --redact uint[=100]             redact secrets from logs and stdout. To redact only parts of the secret just apply a percent value from 0..100. For example --redact=20 (default 100%)
-  -f, --report-format string          output format (json, csv, junit, sarif) (default "json")
-  -r, --report-path string            report file
-      --report-template string        template file used to generate the report (implies --report-format=template)
-  -v, --verbose                       show verbose output from scan
-      --version                       version for gitleaks
-
-Use "gitleaks [command] --help" for more information about a command.
+Expected response:
+```json
+{
+  "checks": {
+    "database": {"status": "healthy"},
+    "encryption": {"status": "healthy"},
+    "ai_engine": {"status": "healthy"}
+  },
+  "overall_status": "healthy"
+}
 ```
 
-### Commands
+---
 
-⚠️ v8.19.0 introduced a change that deprecated `detect` and `protect`. Those commands are still available but
-are hidden in the `--help` menu. Take a look at this [gist](https://gist.github.com/zricethezav/b325bb93ebf41b9c0b0507acf12810d2) for easy command translations.
-If you find v8.19.0 broke an existing command (`detect`/`protect`), please open an issue.
+## 📚 Documentation
 
-There are three scanning modes: `git`, `dir`, and `stdin`.
+| Document | Description |
+|----------|-------------|
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Detailed deployment guide for PythonAnywhere |
+| [QA_REPORT_TEMPLATE.md](QA_REPORT_TEMPLATE.md) | QA reporting template |
+| [.env.example](.env.example) | Environment variables reference |
 
-#### Git
-The `git` command lets you scan local git repos. Under the hood, gitleaks uses the `git log -p` command to scan patches.
-You can configure the behavior of `git log -p` with the `log-opts` option.
-For example, if you wanted to run gitleaks on a range of commits you could use the following
-command: `gitleaks git -v --log-opts="--all commitA..commitB" path_to_repo`. See the [git log](https://git-scm.com/docs/git-log) documentation for more information.
-If there is no target specified as a positional argument, then gitleaks will attempt to scan the current working directory as a git repo.
+### Key Directories
 
-#### Dir
-The `dir` (aliases include `files`, `directory`) command lets you scan directories and files. Example: `gitleaks dir -v path_to_directory_or_file`.
-If there is no target specified as a positional argument, then gitleaks will scan the current working directory.
+| Directory | Description |
+|-----------|-------------|
+| `routes/` | Flask route handlers (35 blueprints) |
+| `models/` | SQLAlchemy ORM models |
+| `services/` | Business logic services |
+| `templates/` | Jinja2 HTML templates |
+| `static/` | CSS, JS, images |
+| `tests/` | 3300+ pytest tests |
+| `migrations/` | Alembic database migrations |
+| `.github/workflows/` | CI/CD pipelines |
 
-#### Stdin
-You can also stream data to gitleaks with the `stdin` command. Example: `cat some_file | gitleaks -v stdin`
+---
 
-### Creating a baseline
+## 🧪 Testing
 
-When scanning large repositories or repositories with a long history, it can be convenient to use a baseline. When using a baseline,
-gitleaks will ignore any old findings that are present in the baseline. A baseline can be any gitleaks report. To create a gitleaks report, run gitleaks with the `--report-path` parameter.
+### Run Tests Locally
 
-```
-gitleaks git --report-path gitleaks-report.json # This will save the report in a file called gitleaks-report.json
-```
+```bash
+# Remove DATABASE_URL to use SQLite
+Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
 
-Once as baseline is created it can be applied when running the detect command again:
+# Run unit tests
+python -m pytest tests/unit/ -q -p no:randomly
 
-```
-gitleaks git --baseline-path gitleaks-report.json --report-path findings.json
-```
+# Run integration tests
+python -m pytest tests/integration/ -q -p no:randomly
 
-After running the detect command with the --baseline-path parameter, report output (findings.json) will only contain new issues.
+# Run E2E tests
+python -m pytest tests/e2e/ -q -p no:randomly
 
-## Pre-Commit hook
-
-You can run Gitleaks as a pre-commit hook by copying the example `pre-commit.py` script into
-your `.git/hooks/` directory.
-
-## Load Configuration
-
-The order of precedence is:
-
-1. `--config/-c` option:
-      ```bash
-      gitleaks git --config /home/dev/customgitleaks.toml .
-      ```
-2. Environment variable `GITLEAKS_CONFIG` with the file path:
-      ```bash
-      export GITLEAKS_CONFIG="/home/dev/customgitleaks.toml"
-      gitleaks git .
-      ```
-3. Environment variable `GITLEAKS_CONFIG_TOML` with the file content:
-      ```bash
-      export GITLEAKS_CONFIG_TOML=`cat customgitleaks.toml`
-      gitleaks git .
-      ```
-4. A `.gitleaks.toml` file within the target path:
-      ```bash
-      gitleaks git .
-      ```
-
-If none of the four options are used, then gitleaks will use the default config.
-
-## Configuration
-
-Gitleaks offers a configuration format you can follow to write your own secret detection rules:
-
-```toml
-# Title for the gitleaks configuration file.
-title = "Custom Gitleaks configuration"
-
-# You have basically two options for your custom configuration:
-#
-# 1. define your own configuration, default rules do not apply
-#
-#    use e.g., the default configuration as starting point:
-#    https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
-#
-# 2. extend a configuration, the rules are overwritten or extended
-#
-#    When you extend a configuration the extended rules take precedence over the
-#    default rules. I.e., if there are duplicate rules in both the extended
-#    configuration and the default configuration the extended rules or
-#    attributes of them will override the default rules.
-#    Another thing to know with extending configurations is you can chain
-#    together multiple configuration files to a depth of 2. Allowlist arrays are
-#    appended and can contain duplicates.
-
-# useDefault and path can NOT be used at the same time. Choose one.
-[extend]
-# useDefault will extend the default gitleaks config built in to the binary
-# the latest version is located at:
-# https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
-useDefault = true
-# or you can provide a path to a configuration to extend from.
-# The path is relative to where gitleaks was invoked,
-# not the location of the base config.
-# path = "common_config.toml"
-# If there are any rules you don't want to inherit, they can be specified here.
-disabledRules = [ "generic-api-key"]
-
-# An array of tables that contain information that define instructions
-# on how to detect secrets
-[[rules]]
-
-# Unique identifier for this rule
-id = "awesome-rule-1"
-
-# Short human readable description of the rule.
-description = "awesome rule 1"
-
-# Golang regular expression used to detect secrets. Note Golang's regex engine
-# does not support lookaheads.
-regex = '''one-go-style-regex-for-this-rule'''
-
-# Int used to extract secret from regex match and used as the group that will have
-# its entropy checked if `entropy` is set.
-secretGroup = 3
-
-# Float representing the minimum shannon entropy a regex group must have to be considered a secret.
-entropy = 3.5
-
-# Golang regular expression used to match paths. This can be used as a standalone rule or it can be used
-# in conjunction with a valid `regex` entry.
-path = '''a-file-path-regex'''
-
-# Keywords are used for pre-regex check filtering. Rules that contain
-# keywords will perform a quick string compare check to make sure the
-# keyword(s) are in the content being scanned. Ideally these values should
-# either be part of the identiifer or unique strings specific to the rule's regex
-# (introduced in v8.6.0)
-keywords = [
-  "auth",
-  "password",
-  "token",
-]
-
-# Array of strings used for metadata and reporting purposes.
-tags = ["tag","another tag"]
-
-    # ⚠️ In v8.21.0 `[rules.allowlist]` was replaced with `[[rules.allowlists]]`.
-    # This change was backwards-compatible: instances of `[rules.allowlist]` still  work.
-    #
-    # You can define multiple allowlists for a rule to reduce false positives.
-    # A finding will be ignored if _ANY_ `[[rules.allowlists]]` matches.
-    [[rules.allowlists]]
-    description = "ignore commit A"
-    # When multiple criteria are defined the default condition is "OR".
-    # e.g., this can match on |commits| OR |paths| OR |stopwords|.
-    condition = "OR"
-    commits = [ "commit-A", "commit-B"]
-    paths = [
-      '''go\.mod''',
-      '''go\.sum'''
-    ]
-    # note: stopwords targets the extracted secret, not the entire regex match
-    # like 'regexes' does. (stopwords introduced in 8.8.0)
-    stopwords = [
-      '''client''',
-      '''endpoint''',
-    ]
-
-    [[rules.allowlists]]
-    # The "AND" condition can be used to make sure all criteria match.
-    # e.g., this matches if |regexes| AND |paths| are satisfied.
-    condition = "AND"
-    # note: |regexes| defaults to check the _Secret_ in the finding.
-    # Acceptable values for |regexTarget| are "secret" (default), "match", and "line".
-    regexTarget = "match"
-    regexes = [ '''(?i)parseur[il]''' ]
-    paths = [ '''package-lock\.json''' ]
-
-# You can extend a particular rule from the default config. e.g., gitlab-pat
-# if you have defined a custom token prefix on your GitLab instance
-[[rules]]
-id = "gitlab-pat"
-# all the other attributes from the default rule are inherited
-
-    [[rules.allowlists]]
-    regexTarget = "line"
-    regexes = [ '''MY-glpat-''' ]
-
-# This is a global allowlist which has a higher order of precedence than rule-specific allowlists.
-# If a commit listed in the `commits` field below is encountered then that commit will be skipped and no
-# secrets will be detected for said commit. The same logic applies for regexes and paths.
-[allowlist]
-description = "global allow list"
-commits = [ "commit-A", "commit-B", "commit-C"]
-paths = [
-  '''gitleaks\.toml''',
-  '''(.*?)(jpg|gif|doc)'''
-]
-
-# note: (global) regexTarget defaults to check the _Secret_ in the finding.
-# if regexTarget is not specified then _Secret_ will be used.
-# Acceptable values for regexTarget are "match" and "line"
-regexTarget = "match"
-regexes = [
-  '''219-09-9999''',
-  '''078-05-1120''',
-  '''(9[0-9]{2}|666)-\d{2}-\d{4}''',
-]
-# note: stopwords targets the extracted secret, not the entire regex match
-# like 'regexes' does. (stopwords introduced in 8.8.0)
-stopwords = [
-  '''client''',
-  '''endpoint''',
-]
+# Run specific test
+python -m pytest tests/unit/test_writeoffs_p0.py -v -p no:randomly
 ```
 
-Refer to the default [gitleaks config](https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml) for examples or follow the [contributing guidelines](https://github.com/gitleaks/gitleaks/blob/master/CONTRIBUTING.md) if you would like to contribute to the default configuration. Additionally, you can check out [this gitleaks blog post](https://blog.gitleaks.io/stop-leaking-secrets-configuration-2-3-aeed293b1fbf) which covers advanced configuration setups.
+### Test Coverage
 
-### Additional Configuration
+- **Unit Tests**: 2000+ tests
+- **Integration Tests**: 500+ tests
+- **E2E Tests**: 300+ tests
+- **Route Coverage**: 486/486 (100%)
 
-#### gitleaks:allow
+---
 
-If you are knowingly committing a test secret that gitleaks will catch you can add a `gitleaks:allow` comment to that line which will instruct gitleaks
-to ignore that secret. Ex:
+## 🔒 Security
 
-```
-class CustomClass:
-    discord_client_secret = '8dyfuiRyq=vVc3RRr_edRk-fK__JItpZ'  #gitleaks:allow
+### Security Features
 
-```
+- **Multi-tenant isolation**: Row-level tenant filtering on all data
+- **Role-based access control**: Granular permissions per role
+- **Audit trail**: All financial transactions logged
+- **CSRF protection**: Flask-WTF CSRF tokens
+- **Password hashing**: bcrypt with salt
+- **Session security**: Secure session cookies
+- **Input validation**: Server-side validation on all forms
+- **SQL injection prevention**: SQLAlchemy ORM (parameterized queries)
 
-#### .gitleaksignore
+### Security Scans
 
-You can ignore specific findings by creating a `.gitleaksignore` file at the root of your repo. In release v8.10.0 Gitleaks added a `Fingerprint` value to the Gitleaks report. Each leak, or finding, has a Fingerprint that uniquely identifies a secret. Add this fingerprint to the `.gitleaksignore` file to ignore that specific secret. See Gitleaks' [.gitleaksignore](https://github.com/gitleaks/gitleaks/blob/master/.gitleaksignore) for an example. Note: this feature is experimental and is subject to change in the future.
+- **Gitleaks**: Secret scanning (CI/CD integrated)
+- **Bandit**: Python security analysis (CI/CD integrated)
+- **pip-audit**: Dependency vulnerability scanning (CI/CD integrated)
+- **Trivy**: Filesystem vulnerability scanning (CI/CD integrated)
 
-#### Decoding
+---
 
-Sometimes secrets are encoded in a way that can make them difficult to find
-with just regex. Now you can tell gitleaks to automatically find and decode
-encoded text. The flag `--max-decode-depth` enables this feature (the default
-value "0" means the feature is disabled by default).
+## 🤝 Contributing
 
-Recursive decoding is supported since decoded text can also contain encoded
-text.  The flag `--max-decode-depth` sets the recursion limit. Recursion stops
-when there are no new segments of encoded text to decode, so setting a really
-high max depth doesn't mean it will make that many passes. It will only make as
-many as it needs to decode the text. Overall, decoding only minimally increases
-scan times.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-The findings for encoded text differ from normal findings in the following
-ways:
+### Code Style
 
-- The location points the bounds of the encoded text
-  - If the rule matches outside the encoded text, the bounds are adjusted to
-    include that as well
-- The match and secret contain the decoded value
-- Two tags are added `decoded:<encoding>` and `decode-depth:<depth>`
+- Follow PEP 8 for Python
+- Use Arabic comments for business logic (RTL)
+- Add tests for new features
+- Update documentation
 
-Currently supported encodings:
+---
 
-- `base64` (both standard and base64url)
+## 📄 License
 
-#### Reporting
+This project is proprietary software. Contact Azad Smart Systems for licensing.
 
-Gitleaks has built-in support for several report formats: [`json`](https://github.com/gitleaks/gitleaks/blob/master/testdata/expected/report/json_simple.json), [`csv`](https://github.com/gitleaks/gitleaks/blob/master/testdata/expected/report/csv_simple.csv?plain=1), [`junit`](https://github.com/gitleaks/gitleaks/blob/master/testdata/expected/report/junit_simple.xml), and [`sarif`](https://github.com/gitleaks/gitleaks/blob/master/testdata/expected/report/sarif_simple.sarif).
+---
 
-If none of these formats fit your need, you can create your own report format with a [Go `text/template` .tmpl file](https://www.digitalocean.com/community/tutorials/how-to-use-templates-in-go#step-4-writing-a-template) and the `--report-template` flag. The template can use [extended functionality from the `Masterminds/sprig` template library](https://masterminds.github.io/sprig/).
+## 📞 Support
 
-For example, the following template provides a custom JSON output:
-```gotemplate
-# jsonextra.tmpl
-[{{ $lastFinding := (sub (len . ) 1) }}
-{{- range $i, $finding := . }}{{with $finding}}
-    {
-        "Description": {{ quote .Description }},
-        "StartLine": {{ .StartLine }},
-        "EndLine": {{ .EndLine }},
-        "StartColumn": {{ .StartColumn }},
-        "EndColumn": {{ .EndColumn }},
-        "Line": {{ quote .Line }},
-        "Match": {{ quote .Match }},
-        "Secret": {{ quote .Secret }},
-        "File": "{{ .File }}",
-        "SymlinkFile": {{ quote .SymlinkFile }},
-        "Commit": {{ quote .Commit }},
-        "Entropy": {{ .Entropy }},
-        "Author": {{ quote .Author }},
-        "Email": {{ quote .Email }},
-        "Date": {{ quote .Date }},
-        "Message": {{ quote .Message }},
-        "Tags": [{{ $lastTag := (sub (len .Tags ) 1) }}{{ range $j, $tag := .Tags }}{{ quote . }}{{ if ne $j $lastTag }},{{ end }}{{ end }}],
-        "RuleID": {{ quote .RuleID }},
-        "Fingerprint": {{ quote .Fingerprint }}
-    }{{ if ne $i $lastFinding }},{{ end }}
-{{- end}}{{ end }}
-]
-```
+- **Website**: https://azadsystems.com
+- **Email**: owner@system.local
+- **Phone**: +971-5x-xxx-xxxx
 
-Usage:
-```sh
-$ gitleaks dir ~/leaky-repo/ --report-path "report.json" --report-format template --report-template testdata/report/jsonextra.tmpl
-```
+---
 
-## Sponsorships
-
-<p align="left">
-	<h3><a href="https://coderabbit.ai/?utm_source=oss&utm_medium=sponsorship&utm_campaign=gitleaks">coderabbit.ai</h3>
-	  <a href="https://coderabbit.ai/?utm_source=oss&utm_medium=sponsorship&utm_campaign=gitleaks">
-		  <img alt="CodeRabbit.ai Sponsorship" src="https://github.com/gitleaks/gitleaks/assets/15034943/76c30a85-887b-47ca-9956-17a8e55c6c41" width=200>
-	  </a>
-</p>
-
-
-## Exit Codes
-
-You can always set the exit code when leaks are encountered with the --exit-code flag. Default exit codes below:
-
-```
-0 - no leaks present
-1 - leaks or error encountered
-126 - unknown flag
-```
+*Built with ❤️ by Azad Smart Systems — Eng. Ahmad Ghannam*

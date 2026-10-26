@@ -302,6 +302,7 @@ def _receivables_aging(as_of_date=None):
     # بناء قائمة الفواتير بالشكل المتوقع من الكود القديم
     invoices = []
     for customer_data in service_report['customers']:
+        cust = customer_data['customer']
         for inv in customer_data.get('invoices', []):
             # إضافة الحقول المتوقعة للكود القديم
             inv_obj = type('InvoiceProxy', (), {
@@ -318,6 +319,7 @@ def _receivables_aging(as_of_date=None):
                 'aging_bucket': inv.get('age_category'),
                 'days_overdue': inv.get('days_overdue'),
                 'overdue_bucket': inv.get('overdue_bucket'),
+                'customer': cust,
             })()
             invoices.append(inv_obj)
 

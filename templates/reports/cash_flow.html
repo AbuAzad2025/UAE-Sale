@@ -66,7 +66,7 @@
       <span class="info-box-icon"><i class="fas fa-store"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">الأنشطة التشغيلية</span>
-        <span class="info-box-number">{{ ("(" + "{:,.2f}".format(operating_total|abs) + ")") if operating_total < 0 else "{:,.2f}".format(operating_total) }}</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(operating_total) }}</span>
       </div>
     </div>
   </div>
@@ -75,7 +75,7 @@
       <span class="info-box-icon"><i class="fas fa-industry"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">الأنشطة الاستثمارية</span>
-        <span class="info-box-number">{{ ("(" + "{:,.2f}".format(investing_total|abs) + ")") if investing_total < 0 else "{:,.2f}".format(investing_total) }}</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(investing_total) }}</span>
       </div>
     </div>
   </div>
@@ -84,7 +84,7 @@
       <span class="info-box-icon"><i class="fas fa-university"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">الأنشطة التمويلية</span>
-        <span class="info-box-number">{{ ("(" + "{:,.2f}".format(financing_total|abs) + ")") if financing_total < 0 else "{:,.2f}".format(financing_total) }}</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(financing_total) }}</span>
       </div>
     </div>
   </div>
@@ -93,7 +93,7 @@
       <span class="info-box-icon"><i class="fas fa-chart-line"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">صافي التدفق النقدي</span>
-        <span class="info-box-number">{{ ("(" + "{:,.2f}".format(net_change|abs) + ")") if net_change < 0 else "{:,.2f}".format(net_change) }}</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(net_change) }}</span>
       </div>
     </div>
   </div>
@@ -118,7 +118,7 @@
         <tr>
           <td>{{ name }}</td>
           <td class="num-cell {{ 'money-neg' if amount < 0 else ('money-pos' if amount > 0 else '') }}">
-            {{ ("(" + amount|abs|money + ")") if amount < 0 else (amount|money) }}
+            {{ amount|money }}
           </td>
         </tr>
         {% endfor %}
@@ -127,7 +127,7 @@
         <tr class="font-weight-bold">
           <td>صافي الأنشطة التشغيلية</td>
           <td class="num-cell {{ 'money-neg' if operating_total < 0 else ('money-pos' if operating_total > 0 else '') }}">
-            {{ ("(" + operating_total|abs|money + ")") if operating_total < 0 else (operating_total|money) }}
+            {{ operating_total|money }}
           </td>
         </tr>
       </tfoot>
@@ -153,7 +153,7 @@
         <tr>
           <td>{{ name }}</td>
           <td class="num-cell {{ 'money-neg' if amount < 0 else ('money-pos' if amount > 0 else '') }}">
-            {{ ("(" + amount|abs|money + ")") if amount < 0 else (amount|money) }}
+            {{ amount|money }}
           </td>
         </tr>
         {% endfor %}
@@ -162,7 +162,7 @@
         <tr class="font-weight-bold">
           <td>صافي الأنشطة الاستثمارية</td>
           <td class="num-cell {{ 'money-neg' if investing_total < 0 else ('money-pos' if investing_total > 0 else '') }}">
-            {{ ("(" + investing_total|abs|money + ")") if investing_total < 0 else (investing_total|money) }}
+            {{ investing_total|money }}
           </td>
         </tr>
       </tfoot>
@@ -188,7 +188,7 @@
         <tr>
           <td>{{ name }}</td>
           <td class="num-cell {{ 'money-neg' if amount < 0 else ('money-pos' if amount > 0 else '') }}">
-            {{ ("(" + amount|abs|money + ")") if amount < 0 else (amount|money) }}
+            {{ amount|money }}
           </td>
         </tr>
         {% endfor %}
@@ -197,7 +197,7 @@
         <tr class="font-weight-bold">
           <td>صافي الأنشطة التمويلية</td>
           <td class="num-cell {{ 'money-neg' if financing_total < 0 else ('money-pos' if financing_total > 0 else '') }}">
-            {{ ("(" + financing_total|abs|money + ")") if financing_total < 0 else (financing_total|money) }}
+            {{ financing_total|money }}
           </td>
         </tr>
       </tfoot>
@@ -213,7 +213,7 @@
           <i class="fas fa-calculator mr-2"></i>
           صافي التدفق النقدي:
           <span class="num-cell {{ 'money-neg' if net_change < 0 else ('money-pos' if net_change > 0 else '') }} font-weight-bold">
-            {{ ("(" + net_change|abs|money(base_currency) + ")") if net_change < 0 else (net_change|money(base_currency)) }}
+            {{ net_change|money(base_currency) }}
           </span>
         </h4>
         {% if _cash_beginning is not none or _cash_ending is not none %}
@@ -222,13 +222,13 @@
           {% if _cash_beginning is not none %}
           <tr>
             <td>النقدية في بداية الفترة (دفتر الأستاذ)</td>
-            <td class="num-cell text-left">{{ ("(" + _cash_beginning|abs|money(base_currency) + ")") if _cash_beginning is not none and _cash_beginning < 0 else (_cash_beginning|money(base_currency)) }}</td>
+            <td class="num-cell text-left">{{ _cash_beginning|money(base_currency) }}</td>
           </tr>
           {% endif %}
           {% if _cash_ending is not none %}
           <tr>
             <td>النقدية في نهاية الفترة (دفتر الأستاذ)</td>
-            <td class="num-cell text-left font-weight-bold">{{ ("(" + _cash_ending|abs|money(base_currency) + ")") if _cash_ending is not none and _cash_ending < 0 else (_cash_ending|money(base_currency)) }}</td>
+            <td class="num-cell text-left font-weight-bold">{{ _cash_ending|money(base_currency) }}</td>
           </tr>
           {% endif %}
         </table>
@@ -250,16 +250,16 @@
           <tbody>
             <tr>
               <td>رصيد النقدية في نهاية الفترة — دفتر الأستاذ</td>
-              <td class="num-cell text-left font-weight-bold">{{ ("(" + _tie.gl_cash_ending|abs|money(base_currency) + ")") if _tie.gl_cash_ending < 0 else (_tie.gl_cash_ending|money(base_currency)) }}</td>
+              <td class="num-cell text-left font-weight-bold">{{ _tie.gl_cash_ending|money(base_currency) }}</td>
             </tr>
             <tr>
               <td>الرصيد المحسوب — الرصيد الافتتاحي + صافي التدفق النقدي</td>
-              <td class="num-cell text-left">{{ ("(" + _tie.computed_ending|abs|money(base_currency) + ")") if _tie.computed_ending < 0 else (_tie.computed_ending|money(base_currency)) }}</td>
+              <td class="num-cell text-left">{{ _tie.computed_ending|money(base_currency) }}</td>
             </tr>
             <tr class="{{ 'table-danger' if not _tie.balanced else '' }}">
               <td>الفرق</td>
               <td class="num-cell text-left font-weight-bold {{ 'text-danger' if not _tie.balanced else 'text-success' }}">
-                {{ ("(" + _tie.difference|abs|money(base_currency) + ")") if _tie.difference < 0 else (_tie.difference|money(base_currency)) }}
+                {{ _tie.difference|money(base_currency) }}
               </td>
             </tr>
           </tbody>
@@ -273,9 +273,9 @@
         <div class="alert alert-danger mt-3 mb-0" role="alert" id="cash-flow-tie-out-break">
           <h5 class="mb-1"><i class="fas fa-exclamation-triangle"></i> فرق في مطابقة النقدية مع دفتر الأستاذ</h5>
           <p class="mb-0">
-            رصيد النقدية في دفتر الأستاذ ({{ ("(" + _tie.gl_cash_ending|abs|money(base_currency) + ")") if _tie.gl_cash_ending < 0 else (_tie.gl_cash_ending|money(base_currency)) }})
-            لا يطابق ما تفسّره أقسام القائمة ({{ ("(" + _tie.computed_ending|abs|money(base_currency) + ")") if _tie.computed_ending < 0 else (_tie.computed_ending|money(base_currency)) }}).
-            الفرق {{ ("(" + _tie.difference|abs|money(base_currency) + ")") if _tie.difference < 0 else (_tie.difference|money(base_currency)) }} — راجع القيود التي لا تقابلها قيود أخرى.
+            رصيد النقدية في دفتر الأستاذ ({{ _tie.gl_cash_ending|money(base_currency) }})
+            لا يطابق ما تفسّره أقسام القائمة ({{ _tie.computed_ending|money(base_currency) }}).
+            الفرق {{ _tie.difference|money(base_currency) }} — راجع القيود التي لا تقابلها قيود أخرى.
           </p>
         </div>
         {% endif %}

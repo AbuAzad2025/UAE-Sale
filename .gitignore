@@ -132,3 +132,6 @@ ai_knowledge/models/*.joblib
 # keeps a .gitkeep precisely because its real contents are generated.
 ai_knowledge/expanded_knowledge/*.json
 
+
+# Credentials file (do not commit)
+credentials.txt

@@ -941,54 +941,40 @@
 
   <footer class="main-footer main-footer-azad">
     <div class="footer-container">
-      <!-- Company Branding -->
-      <div class="footer-brand-section">
+      <!-- Brand: centered logo + title + subtitle -->
+      <div class="footer-brand">
         <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad Smart Systems" class="footer-logo">
-        <div class="footer-company-info">
-          <h3 class="footer-company-name">Azad Smart Systems</h3>
-          <p class="footer-company-tagline">نظام إدارة المبيعات والمستودعات والمحاسبة — ERP Enterprise</p>
-        </div>
+        <h3 class="footer-title">Azad Smart Systems</h3>
+        <p class="footer-subtitle">ERP Enterprise — نظام إدارة المبيعات والمستودعات والمحاسبة</p>
       </div>
 
-      <!-- Contact Details -->
-      <div class="footer-contact-section">
-        <div class="footer-contact-grid">
-          <div class="footer-contact-item">
-            <i class="fab fa-whatsapp"></i>
-            <span>{{ config.COMPANY_PHONE }}</span>
-          </div>
-          <div class="footer-contact-item">
-            <i class="fas fa-envelope"></i>
-            <span>{{ config.COMPANY_EMAIL }}</span>
-          </div>
-          <div class="footer-contact-item">
-            <i class="fas fa-globe"></i>
-            <span>{{ config.COMPANY_WEBSITE if config and config.COMPANY_WEBSITE else "azadsystems.com" }}</span>
-          </div>
-          <div class="footer-contact-item">
-            <i class="fas fa-map-marker-alt"></i>
-            <span>{{ config.COMPANY_ADDRESS }}</span>
-          </div>
-        </div>
+      <!-- Contact: single horizontal row -->
+      <div class="footer-contact-row">
+        <span class="footer-contact-item">
+          <i class="fas fa-map-marker-alt"></i>
+          <span>{{ config.COMPANY_ADDRESS }}</span>
+        </span>
+        <span class="footer-contact-item">
+          <i class="fas fa-globe"></i>
+          <span>{{ config.COMPANY_WEBSITE if config and config.COMPANY_WEBSITE else "azadsystems.com" }}</span>
+        </span>
+        <span class="footer-contact-item">
+          <i class="fas fa-envelope"></i>
+          <span>{{ config.COMPANY_EMAIL }}</span>
+        </span>
+        <span class="footer-contact-item">
+          <i class="fab fa-whatsapp"></i>
+          <span>{{ config.COMPANY_PHONE }}</span>
+        </span>
       </div>
 
-      <!-- Divider -->
-      <hr class="footer-divider">
-
-      <!-- Developer & Version Info -->
-      <div class="footer-meta-section">
-        <div class="footer-meta-item">
-          <i class="fas fa-code"></i>
-          <span>{{ config.DEVELOPER_CREDIT }}</span>
-        </div>
-        <div class="footer-meta-item">
-          <i class="fas fa-robot"></i>
-          <span>ميزات الذكاء الاصطناعي متقدمة</span>
-        </div>
-        <div class="footer-meta-item">
-          <i class="fas fa-tag"></i>
-          <span>v{{ config.APP_VERSION }}</span>
-        </div>
+      <!-- Metadata bar -->
+      <div class="footer-meta-bar">
+        <span class="footer-meta-text">{{ config.DEVELOPER_CREDIT }}</span>
+        <span class="footer-meta-separator">|</span>
+        <span class="footer-meta-text"><i class="fas fa-robot"></i> ميزات ذكاء اصطناعي</span>
+        <span class="footer-meta-separator">|</span>
+        <span class="footer-meta-text">v{{ config.APP_VERSION }}</span>
       </div>
     </div>
   </footer>

@@ -3287,6 +3287,37 @@ http://localhost:5000/ai/assistant
         return f"❌ خطأ في التنفيذ: حدث خطأ غير متوقع"
 
 
+@ai_bp.route('/guide', methods=['GET'])
+@login_required
+def guide_api():
+    """Guide API — نطاق آمن: العام للجميع، دليل المالك للمالك فقط.
+
+    Query: ?q=search & ?scope=public|owner
+    لا يسرب بيانات حساسة ولا معلومات تينانت أخرى.
+    """
+    from ai_knowledge.guide_loader import get_guide_loader
+    is_owner = bool(getattr(current_user, 'is_owner', False))
+    q = (request.args.get('q') or '').strip()
+    scope = (request.args.get('scope') or '').strip().lower()
+    loader = get_guide_loader()
+    if scope == 'owner' and not is_owner:
+        return jsonify({'error': '🔒 دليل المالك متاح للمالك فقط', 'code': 403}), 403
+    if scope == 'owner':
+        sections = loader.owner_sections()
+    elif scope == 'public':
+        sections = loader.public_sections()
+    else:
+        sections = loader.visible_sections(is_owner)
+    if q:
+        hits = loader.search(q, is_owner, top_k=5)
+        return jsonify({'success': True, 'query': q, 'is_owner': is_owner, 'hits': hits})
+    # list titles only (no full owner content if not owner)
+    return jsonify({
+        'success': True, 'is_owner': is_owner,
+        'sections': [{'title': s.title, 'level': s.level} for s in sections]
+    })
+
+
 @ai_bp.route('/assistant', methods=['GET'])
 @login_required
 @owner_required

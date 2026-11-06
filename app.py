@@ -90,6 +90,23 @@ def _status_badge(status):
         escape(cls), escape(label)))
 
 
+def _get_current_tenant():
+    """Return the current tenant for branding (logo, colors) in templates."""
+    try:
+        from models.tenant_scope import get_current_tenant_id
+        from models import Tenant
+        tid = get_current_tenant_id()
+        if tid:
+            return Tenant.query.get(tid)
+    except Exception:
+        pass
+    try:
+        from models import Tenant
+        return Tenant.query.filter_by(is_active=True).first()
+    except Exception:
+        return None
+
+
 def create_app(config_class=Config):  # noqa: C901
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -312,7 +329,8 @@ def create_app(config_class=Config):  # noqa: C901
             'company_name': app.config.get('COMPANY_NAME', 'Garage Manager'),
             'current_year': datetime.now().year,
             'now': datetime.now(),
-            'ai_enabled': 'ai' in app.blueprints
+            'ai_enabled': 'ai' in app.blueprints,
+            'current_tenant': _get_current_tenant(),
         }
 
     def _log_tenant_context_violation(user):

@@ -190,7 +190,9 @@
       
       <li class="nav-item d-none d-md-inline-block">
         <span class="nav-link">
-          {% if current_tenant and current_tenant.logo_url %}
+          {% if current_user.is_owner %}
+          <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad" style="height: 32px; vertical-align: middle;">
+          {% elif current_tenant and current_tenant.logo_url %}
           <img src="{{ current_tenant.logo_url }}" alt="{{ current_tenant.name_ar or 'Company' }}" style="height: 32px; vertical-align: middle;">
           {% else %}
           <img src="{{ url_for('static', filename='img/garage_logo.png') }}" alt="Garage" style="height: 32px; vertical-align: middle;">
@@ -255,7 +257,9 @@
 
   <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <a href="{{ url_for('main.dashboard') }}" class="brand-link text-center" style="padding: 15px;">
-      {% if current_tenant and current_tenant.logo_url %}
+      {% if current_user.is_owner %}
+      <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad" style="height: 60px;">
+      {% elif current_tenant and current_tenant.logo_url %}
       <img src="{{ current_tenant.logo_url }}" alt="{{ current_tenant.name_ar or 'Company' }}" style="height: 60px;">
       {% else %}
       <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad" style="height: 60px;">

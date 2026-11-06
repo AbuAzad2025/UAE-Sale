@@ -1,0 +1,173 @@
+# 📋 دليل مستخدم لوحة مالك المنصة (Owner Dashboard)
+
+## نظرة عامة
+
+لوحة مالك المنصة (Owner Dashboard) هي مركز التحكم (God Mode) للنظام. توفر تحكمًا كاملاً في:
+- المستخدمين والأدوار والصلاحيات
+- التينانتات (Multi-tenant management)
+- إعدادات النظام (Config, Branding, Integrations)
+- التدقيق (Audit, Logs, Security)
+- النسخ الاحتياطي (Backups)
+- التحليلات (Analytics, Forecasting)
+- صحة النظام (Health, Performance)
+
+**الوصول:** `/owner/dashboard` (للمالك فقط)
+
+---
+
+## 1. لوحة التحكم (Dashboard)
+
+### `/owner/dashboard`
+إحصائيات النظام: إجمالي المستخدمين، العملاء، المبيعات، الإيرادات.
+
+---
+
+## 2. إدارة المستخدمين (Users & Roles)
+
+### `/owner/roles-permissions`
+إدارة الأدوار والصلاحيات (RBAC).
+
+---
+
+## 3. إدارة التينانتات (Tenants)
+
+### `/owner/tenants` — قائمة التينانتات
+### `/owner/tenants/new` — إنشاء تينانت
+### `/owner/tenants/<id>` — تفاصيل تينانت
+### `/owner/tenants/<id>/edit` — تعديل تينانت
+### `/owner/tenants/<id>/suspend` — تعليق تينانت
+### `/owner/tenants/<id>/activate` — تفعيل تينانت
+
+---
+
+## 4. إعدادات الشركة (Company Info)
+
+### `/owner/company-info`
+تعديل معلومات الشركة (اسم، عنوان، هاتف، شعار، ألوان).
+
+---
+
+## 5. إعدادات النظام (System Config)
+
+### `/owner/system-config`
+### `/owner/config`
+### `/owner/tax-settings`
+### `/owner/currency-settings`
+### `/owner/payment-gateways`
+### `/owner/email-settings`
+### `/owner/sms-settings`
+### `/owner/whatsapp-settings`
+### `/owner/notification-templates`
+
+---
+
+## 6. ثوابت النظام (Constants)
+
+### `/owner/constants`
+### `/owner/constants/<group>`
+### `/owner/constants/<group>/add`
+### `/owner/constants/<group>/label`
+### `/owner/constants/<group>/visibility`
+
+---
+
+## 7. إعدادات الفواتير (Invoice Settings)
+
+### `/owner/invoice-settings`
+### `/owner/preview-invoice/<template>`
+### `/owner/preview-receipt/<template>`
+
+---
+
+## 8. التدقيق (Audit & Logs)
+
+### `/owner/audit-logs`
+### `/owner/error-logs`
+### `/owner/error-logs/<id>/resolve`
+### `/owner/login-history`
+### `/owner/activity-monitor`
+### `/owner/security-alerts`
+### `/owner/security-alerts/<id>/resolve`
+### `/owner/ip-whitelist`
+### `/owner/ip-whitelist/<index>/delete`
+### `/owner/api-keys`
+### `/owner/api-keys/<id>/toggle`
+
+---
+
+## 9. النسخ الاحتياطي (Backups)
+
+### `/owner/database-tools`
+### `/owner/backup-now`
+### `/owner/backups/list`
+### `/owner/backups/verify/<filename>`
+### `/owner/backups/restore/<filename>`
+### `/owner/backups/custom-restore/<filename>`
+### `/owner/backups/delete`
+### `/owner/backups/download/<filename>`
+### `/owner/scheduled-backups`
+### `/owner/verify-backups`
+### `/owner/database-optimize`
+
+---
+
+## 10. تقارير (Reports)
+
+### `/owner/reports`
+### `/owner/financial-overview`
+### `/owner/financial-dashboard-advanced`
+
+---
+
+## 11. تحليلات (Analytics)
+
+### `/owner/sales-insights`
+### `/owner/customer-insights`
+### `/owner/product-performance`
+### `/owner/forecasting`
+
+---
+
+## 12. صحة النظام (System Health)
+
+### `/owner/system-health`
+### `/owner/performance-metrics`
+
+---
+
+## 13. إدارة البيانات (Data Management)
+
+### `/owner/data-cleanup`
+### `/owner/import-export-tools`
+### `/owner/export-excel/<table_name>`
+### `/owner/archived`
+### `/owner/clear-cache`
+### `/owner/truncate-table`
+### `/owner/browse-table/<table_name>`
+### `/owner/edit-table-data/<table_name>`
+### `/owner/export-database`
+### `/owner/convert-database`
+
+---
+
+## 14. التكامل (Integrations)
+
+### `/owner/integrations`
+### `/owner/integrations/update/<service>`
+
+---
+
+## 15. بطاقات (Cards Vault)
+
+### `/owner/cards-vault`
+### `/owner/cards-vault/<id>/view`
+
+---
+
+## 16. تقييم FX (FX Revaluation)
+
+### `/owner/fx-revaluation/`
+
+---
+
+**هل تريد أن أساعدك في أي فئة بالتفصيل؟**

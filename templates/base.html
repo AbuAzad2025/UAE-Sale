@@ -193,7 +193,7 @@
           {% if current_tenant and current_tenant.logo_url %}
           <img src="{{ current_tenant.logo_url }}" alt="{{ current_tenant.name_ar or 'Company' }}" style="height: 32px; vertical-align: middle;">
           {% else %}
-          <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Garage" style="height: 32px; vertical-align: middle;">
+          <img src="{{ url_for('static', filename='img/garage_logo.png') }}" alt="Garage" style="height: 32px; vertical-align: middle;">
           {% endif %}
         </span>
       </li>

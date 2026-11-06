@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دليل المالك — {{ config.COMPANY_NAME_AR }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Tajawal', sans-serif; background: #f8f9fa; color: #2d3748; line-height: 1.7; }
+
+        .navbar { background: #0f172a; color: #f1f5f9; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar a { color: #94a3b8; text-decoration: none; margin: 0 12px; font-size: 0.95rem; }
+        .navbar a:hover { color: #60a5fa; }
+        .navbar .logo { font-size: 1.3rem; font-weight: 800; color: #f1f5f9; }
+
+        .header { background: #0f172a; color: #f1f5f9; padding: 40px 24px; text-align: center; border-bottom: 3px solid #667eea; }
+        .header h1 { font-size: 2rem; margin-bottom: 12px; font-weight: 800; }
+        .header p { font-size: 1rem; color: #94a3b8; max-width: 700px; margin: 0 auto; }
+
+        .warning { background: #fef3c7; border: 2px solid #f59e0b; padding: 16px; border-radius: 12px; margin: 16px 24px; text-align: center; font-weight: 700; color: #92400e; }
+
+        .container { max-width: 1100px; margin: 32px auto; padding: 0 24px; }
+
+        .section { background: #fff; padding: 28px; border-radius: 16px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+        .section h2 { color: #0f172a; margin-bottom: 14px; font-size: 1.4rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        .section h3 { color: #1e293b; margin: 16px 0 8px; font-size: 1.1rem; }
+        .section p { color: #475569; margin-bottom: 10px; }
+        .section ul { margin: 10px 0 10px 24px; }
+        .section li { margin: 6px 0; color: #475569; }
+
+        .step-box { background: #f8fafc; padding: 16px; border-radius: 12px; border-right: 4px solid #0f172a; margin: 10px 0; }
+        .step-box h4 { color: #0f172a; margin-bottom: 6px; }
+
+        .note { background: #fefce8; border-right: 4px solid #eab308; padding: 12px; border-radius: 10px; margin: 12px 0; color: #854d0e; }
+        .danger { background: #fef2f2; border-right: 4px solid #ef4444; padding: 12px; border-radius: 10px; margin: 12px 0; color: #991b1b; }
+
+        table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+        th, td { border: 1px solid #e2e8f0; padding: 10px 12px; text-align: right; font-size: 0.9rem; }
+        th { background: #f8fafc; font-weight: 700; color: #0f172a; }
+
+        footer { background: #0f172a; color: #94a3b8; padding: 28px 24px; text-align: center; margin-top: 40px; }
+        footer a { color: #60a5fa; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="logo">{{ config.COMPANY_NAME_AR }} — Owner Guide</div>
+    <div>
+        <a href="{{ url_for('owner.dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt"></i> خروج</a>
+    </div>
+</nav>
+
+<header class="header">
+    <h1>👑 دليل المالك (Owner Guide)</h1>
+    <p>دليل شامل لجميع ميزات لوحة المالك — للتحكم الكامل في النظام</p>
+</header>
+
+<div class="warning">
+    ⚠️ هذا الدليل للمالك فقط — يحتوي على معلومات تقنية حساسة
+</div>
+
+<div class="container">
+
+    <div class="section">
+        <h2>1. لوحة تحكم المالك (Owner Dashboard)</h2>
+        <p><code>/owner/dashboard</code></p>
+        <p>لوحة التحكم الرئيسية تعرض:</p>
+        <ul>
+            <li>إجمالي المستخدمين</li>
+            <li>إجمالي العملاء</li>
+            <li>إجمالي المبيعات</li>
+            <li>إجمالي الإيرادات</li>
+        </ul>
+        <p>يمكنك النقر على أي بطاقة للانتقال إلى التفاصيل.</p>
+    </div>
+
+    <div class="section">
+        <h2>2. إدارة المستخدمين والأدوار (Users & Roles)</h2>
+        <p><code>/owner/roles-permissions</code></p>
+        <p>إدارة الأدوار والصلاحيات (RBAC):</p>
+        <ul>
+            <li>عرض جميع الأدوار (owner, super_admin, admin, accountant, sales, warehouse)</li>
+            <li>تعديل صلاحيات كل دور</li>
+            <li>إضافة أدوار جديدة</li>
+        </ul>
+        <div class="step-box">
+            <h4>كيفية تعديل دور:</h4>
+            <ol>
+                <li>انتقل إلى <code>/owner/roles-permissions</code></li>
+                <li>اختر الدور</li>
+                <li>فعّل/عطّل الصلاحيات</li>
+                <li>احفظ</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>3. إدارة التينانتات (Tenants — Multi-Tenant)</h2>
+        <p><code>/owner/tenants</code></p>
+        <p>إدارة جميع التينانتات (المستأجرين) في النظام:</p>
+        <ul>
+            <li><strong>القائمة:</strong> /owner/tenants</li>
+            <li><strong>إنشاء:</strong> /owner/tenants/new</li>
+            <li><strong>تفاصيل:</strong> /owner/tenants/&lt;id&gt;</li>
+            <li><strong>تعديل:</strong> /owner/tenants/&lt;id&gt;/edit</li>
+            <li><strong>تعليق:</strong> /owner/tenants/&lt;id&gt;/suspend</li>
+            <li><strong>تفعيل:</strong> /owner/tenants/&lt;id&gt;/activate</li>
+        </ul>
+        <div class="step-box">
+            <h4>كيفية إنشاء تينانت:</h4>
+            <ol>
+                <li>انتقل إلى <code>/owner/tenants/new</code></li>
+                <li>املأ المعلومات (الاسم، الشعار، الألوان، بيانات الاتصال)</li>
+                <li>حدد خطة الاشتراك (basic/pro/enterprise)</li>
+                <li>احفظ</li>
+            </ol>
+        </div>
+        <div class="note"><strong>💡 تخصيص التينانت:</strong> يمكنك تعيين شعار ولون مخصص لكل تينانت.</div>
+    </div>
+
+    <div class="section">
+        <h2>4. إعدادات الشركة (Company Info)</h2>
+        <p><code>/owner/company-info</code></p>
+        <p>تعديل معلومات الشركة:</p>
+        <ul>
+            <li>الاسم (عربي/إنجليزي)</li>
+            <li>العنوان، الهاتف، البريد، الموقع</li>
+            <li>الشعار + الألوان</li>
+            <li>معلومات قانونية (ضريبة، سجل تجاري)</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>5. إعدادات النظام (System Config)</h2>
+        <p><code>/owner/system-config</code></p>
+        <p>إعدادات النظام العامة:</p>
+        <ul>
+            <li><code>/owner/tax-settings</code> — الضرائب</li>
+            <li><code>/owner/currency-settings</code> — العملات</li>
+            <li><code>/owner/payment-gateways</code> — بوابات الدفع</li>
+            <li><code>/owner/email-settings</code> — البريد الإلكتروني</li>
+            <li><code>/owner/sms-settings</code> — الرسائل القصيرة</li>
+            <li><code>/owner/whatsapp-settings</code> — WhatsApp</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>6. ثوابت النظام (Constants / Lookups)</h2>
+        <p><code>/owner/constants</code></p>
+        <p>إدارة القيم (lookups) المستخدمة في قوائم الاختيار:</p>
+        <ul>
+            <li>أصناف المنتجات، وحدات القياس</li>
+            <li>أنواع العملاء والموردين</li>
+            <li>طرق الدفع</li>
+            <li>العملات، المناطق الزمنية، اللغات</li>
+            <li>أنواع الشيكات، حالات الشيكات</li>
+        </ul>
+        <div class="note"><strong>💡 Locked Groups:</strong> بعض المجموعات مقفلة (لا يمكن إضافة/تعطيل قيم، فقط تعديل الاسم).</div>
+    </div>
+
+    <div class="section">
+        <h2>7. إعدادات الفواتير (Invoice Settings)</h2>
+        <p><code>/owner/invoice-settings</code></p>
+        <p>تخصيص الفواتير:</p>
+        <ul>
+            <li>القالب (default, modern, classic)</li>
+            <li>حجم الورق (A4, Letter, Legal)</li>
+            <li>الاتجاه (Portrait, Landscape)</li>
+            <li>اللغة (عربية، إنجليزية)</li>
+        </ul>
+        <p>معاينة: <code>/owner/preview-invoice/&lt;template&gt;</code></p>
+    </div>
+
+    <div class="section">
+        <h2>8. التدقيق (Audit & Logs)</h2>
+        <p>مراقبة نشاط النظام:</p>
+        <ul>
+            <li><code>/owner/audit-logs</code> — سجلات التدقيق (كل الإجراءات)</li>
+            <li><code>/owner/error-logs</code> — سجلات الأخطاء</li>
+            <li><code>/owner/login-history</code> — سجل تسجيل الدخول</li>
+            <li><code>/owner/security-alerts</code> — تنبيهات أمنية</li>
+            <li><code>/owner/ip-whitelist</code> — قائمة IP المسموحة</li>
+            <li><code>/owner/api-keys</code> — مفاتيح API</li>
+        </ul>
+        <div class="danger"><strong>⚠️ تنبيه:</strong> أي تغيير في صلاحيات/أدوار يُسجل في Audit Log.</div>
+    </div>
+
+    <div class="section">
+        <h2>9. النسخ الاحتياطي (Backups)</h2>
+        <p>إدارة النسخ الاحتياطية:</p>
+        <ul>
+            <li><code>/owner/database-tools</code> — أدوات قاعدة البيانات</li>
+            <li><code>/owner/backup-now</code> — نسخ احتياطي فوري</li>
+            <li><code>/owner/backups/list</code> — قائمة النسخ</li>
+            <li><code>/owner/backups/restore/&lt;filename&gt;</code> — استعادة نسخة</li>
+            <li><code>/owner/scheduled-backups</code> — النسخ المجدولة</li>
+            <li><code>/owner/database-optimize</code> — تحسين قاعدة البيانات</li>
+        </ul>
+        <div class="note"><strong>💡 نصيحة:</strong> قم بعمل نسخ احتياطية مجدولة يومياً.</div>
+    </div>
+
+    <div class="section">
+        <h2>10. التقارير (Reports)</h2>
+        <p>تقارير المالك:</p>
+        <ul>
+            <li><code>/owner/reports</code> — تقارير عامة</li>
+            <li><code>/owner/financial-overview</code> — نظرة مالية</li>
+            <li><code>/owner/financial-dashboard-advanced</code> — لوحة مالية متقدمة</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>11. التحليلات (Analytics)</h2>
+        <p>تحليلات متقدمة:</p>
+        <ul>
+            <li><code>/owner/sales-insights</code> — رؤى المبيعات</li>
+            <li><code>/owner/customer-insights</code> — رؤى العملاء</li>
+            <li><code>/owner/product-performance</code> — أداء المنتجات</li>
+            <li><code>/owner/forecasting</code> — التنبؤ</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>12. صحة النظام (System Health)</h2>
+        <p>مراقبة صحة النظام:</p>
+        <ul>
+            <li><code>/owner/system-health</code> — صحة النظام</li>
+            <li><code>/owner/performance-metrics</code> — مقاييس الأداء</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>13. إدارة البيانات (Data Management)</h2>
+        <p>أدوات متقدمة للبيانات:</p>
+        <ul>
+            <li><code>/owner/data-cleanup</code> — تنظيف البيانات</li>
+            <li><code>/owner/import-export-tools</code> — استيراد/تصدير</li>
+            <li><code>/owner/export-excel/&lt;table&gt;</code> — تصدير جدول</li>
+            <li><code>/owner/archived</code> — السجلات المؤرشفة</li>
+            <li><code>/owner/clear-cache</code> — مسح Cache</li>
+            <li><code>/owner/browse-table/&lt;table&gt;</code> — تصفح جدول</li>
+            <li><code>/owner/export-database</code> — تصدير قاعدة البيانات</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>14. التكامل (Integrations)</h2>
+        <p><code>/owner/integrations</code></p>
+        <p>قائمة التكاملات وبوابات الدفع والخدمات.</p>
+    </div>
+
+    <div class="section">
+        <h2>15. خزنة البطاقات (Cards Vault)</h2>
+        <p><code>/owner/cards-vault</code></p>
+        <p>خزنة مشفرة للبطاقات (AES-256):</p>
+        <ul>
+            <li>إضافة/عرض/حذف بطاقات</li>
+            <li>جميع البيانات مشفرة</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>16. إعادة تقييم العملات (FX Revaluation)</h2>
+        <p><code>/owner/fx-revaluation/</code></p>
+        <p>إعادة تقييم الذمم المدينة والدائنة حسب سعر الصرف.</p>
+        <ul>
+            <li>Dry run (معاينة)</li>
+            <li>Execute (تطبيق)</li>
+        </ul>
+    </div>
+
+</div>
+
+<footer>
+    <p>&copy; {{ current_year }} {{ config.COMPANY_NAME_AR }} — Owner Guide</p>
+    <p><a href="{{ url_for('owner.dashboard') }}">لوحة المالك</a> | <a href="{{ url_for('auth.logout') }}">خروج</a></p>
+</footer>
+
+</body>
+</html>

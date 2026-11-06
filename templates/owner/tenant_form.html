@@ -257,6 +257,49 @@
   </div>
   {% endif %}
 
+  <div class="card shadow-sm mb-3">
+    <div class="card-header bg-gradient-info text-white"><h5 class="mb-0">الهوية والشعار (Branding)</h5></div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>رابط الشعار (Logo URL)</label>
+            <input type="url" name="logo_url" value="{{ form.logo_url }}" class="form-control" dir="ltr" placeholder="https://example.com/logo.png">
+            <small class="form-text text-muted">رابط صورة الشعار (PNG/JPG/SVG). سيظهر في الشريط العلوي والقائمة الجانبية.</small>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>رابط الشعار (وضع داكن - Dark Mode)</label>
+            <input type="url" name="logo_dark_url" value="{{ form.logo_dark_url }}" class="form-control" dir="ltr" placeholder="https://example.com/logo-dark.png">
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>اللون الأساسي</label>
+            <input type="color" name="brand_color_primary" class="form-control" value="{{ form.brand_color_primary or '#007A3D' }}">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>اللون الثانوي</label>
+            <input type="color" name="brand_color_secondary" class="form-control" value="{{ form.brand_color_secondary or '#D4AF37' }}">
+          </div>
+        </div>
+        {% if tenant and tenant.logo_url %}
+        <div class="col-md-6">
+          <div class="form-group">
+            <label>معاينة الشعار</label>
+            <div><img src="{{ tenant.logo_url }}" alt="Logo" style="max-height: 60px;"></div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
   <div class="mb-4">
     <button type="submit" class="btn btn-success"><i class="fas fa-save mr-1"></i>حفظ</button>
     {% if is_new %}

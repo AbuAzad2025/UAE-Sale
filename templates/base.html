@@ -190,7 +190,11 @@
       
       <li class="nav-item d-none d-md-inline-block">
         <span class="nav-link">
+          {% if current_tenant and current_tenant.logo_url %}
+          <img src="{{ current_tenant.logo_url }}" alt="{{ current_tenant.name_ar or 'Company' }}" style="height: 32px; vertical-align: middle;">
+          {% else %}
           <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Garage" style="height: 32px; vertical-align: middle;">
+          {% endif %}
         </span>
       </li>
       
@@ -251,7 +255,11 @@
 
   <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <a href="{{ url_for('main.dashboard') }}" class="brand-link text-center" style="padding: 15px;">
+      {% if current_tenant and current_tenant.logo_url %}
+      <img src="{{ current_tenant.logo_url }}" alt="{{ current_tenant.name_ar or 'Company' }}" style="height: 60px;">
+      {% else %}
       <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad" style="height: 60px;">
+      {% endif %}
     </a>
 
     <div class="sidebar" style="overflow-y: auto; max-height: calc(100vh - 100px); scrollbar-width: thin; scrollbar-color: #667eea #1a1a2e;">

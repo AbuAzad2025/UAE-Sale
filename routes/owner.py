@@ -1503,6 +1503,8 @@ def _tenant_form_values(tenant=None):
             'default_currency': 'ILS', 'default_language': 'ar',
             'timezone': 'Asia/Dubai',
             'subscription_plan': 'basic', 'is_trial': False,
+            'logo_url': '', 'logo_dark_url': '',
+            'brand_color_primary': '#007A3D', 'brand_color_secondary': '#D4AF37',
             'max_users': 5, 'max_products': 1000, 'max_customers': 500,
             'is_active': True, 'is_suspended': False, 'suspension_reason': '',
         }
@@ -1523,6 +1525,10 @@ def _tenant_form_values(tenant=None):
             'default_language': tenant.default_language or 'ar',
             'timezone': tenant.timezone or 'Asia/Dubai',
             'subscription_plan': tenant.subscription_plan or 'basic',
+            'logo_url': tenant.logo_url or '',
+            'logo_dark_url': tenant.logo_dark_url or '',
+            'brand_color_primary': tenant.brand_color_primary or '#007A3D',
+            'brand_color_secondary': tenant.brand_color_secondary or '#D4AF37',
             'is_trial': bool(tenant.is_trial),
             'max_users': tenant.max_users if tenant.max_users is not None else 5,
             'max_products': tenant.max_products if tenant.max_products is not None else 1000,
@@ -1649,6 +1655,10 @@ def tenant_new():
                                    currencies=currencies, tenant=None, is_new=True)
         try:
             tenant = Tenant(**cleaned, is_active=True, is_suspended=False)
+            tenant.logo_url = request.form.get('logo_url', '').strip() or None
+            tenant.logo_dark_url = request.form.get('logo_dark_url', '').strip() or None
+            tenant.brand_color_primary = request.form.get('brand_color_primary', '#007A3D')
+            tenant.brand_color_secondary = request.form.get('brand_color_secondary', '#D4AF37')
             db.session.add(tenant)
             create_audit_log('create', 'tenants', tenant.id, changes={
                 'action': 'create_tenant',
@@ -1705,6 +1715,10 @@ def tenant_edit(id):
         try:
             for key, value in cleaned.items():
                 setattr(tenant, key, value)
+            tenant.logo_url = request.form.get('logo_url', '').strip() or None
+            tenant.logo_dark_url = request.form.get('logo_dark_url', '').strip() or None
+            tenant.brand_color_primary = request.form.get('brand_color_primary', '#007A3D')
+            tenant.brand_color_secondary = request.form.get('brand_color_secondary', '#D4AF37')
             tenant.is_active = wants_active
             tenant.is_suspended = request.form.get('is_suspended') == 'on'
             tenant.suspension_reason = (

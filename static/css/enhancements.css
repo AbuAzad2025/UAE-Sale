@@ -184,18 +184,11 @@
   text-align: right;
   border-top: 3px solid #667eea;
   position: relative;
-  /* Account for fixed sidebar in RTL layout */
   margin-right: 250px;
   transition: margin-right 0.3s ease;
 }
 
-/* When sidebar is collapsed */
 body.sidebar-collapse .main-footer-azad {
-  margin-right: 0;
-}
-
-/* When sidebar is in push mode (mini) */
-body.sidebar-mini.sidebar-collapse .main-footer-azad {
   margin-right: 0;
 }
 
@@ -204,12 +197,13 @@ body.sidebar-mini.sidebar-collapse .main-footer-azad {
   margin: 0 auto;
 }
 
-/* 3-Column Grid */
+/* 3-Column Grid — RTL: flows right to left */
 .footer-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 40px;
   padding-bottom: 32px;
+  direction: rtl;
 }
 
 /* Column base */
@@ -217,6 +211,7 @@ body.sidebar-mini.sidebar-collapse .main-footer-azad {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  text-align: right;
 }
 
 .footer-col-heading {
@@ -229,7 +224,7 @@ body.sidebar-mini.sidebar-collapse .main-footer-azad {
   letter-spacing: 0.3px;
 }
 
-/* Column 1: Brand */
+/* Column 1: Brand — vertical stack: logo, title, subtitle */
 .footer-col-brand {
   align-items: flex-start;
 }
@@ -237,31 +232,36 @@ body.sidebar-mini.sidebar-collapse .main-footer-azad {
 .footer-brand-block {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
 }
 
 .footer-logo {
-  height: 56px;
+  height: auto;
+  max-height: 64px;
   width: auto;
+  max-width: 180px;
   background: rgba(255, 255, 255, 0.95);
-  padding: 8px 12px;
-  border-radius: 14px;
+  padding: 8px 10px;
+  border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
+  object-fit: contain;
 }
 
 .footer-logo:hover {
-  transform: scale(1.04);
+  transform: scale(1.03);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
 .footer-title {
   font-size: 1.35rem;
   font-weight: 700;
-  margin: 0;
+  margin: 4px 0 0;
   color: #ffffff;
   letter-spacing: 0.5px;
+  line-height: 1.2;
 }
 
 .footer-subtitle {
@@ -341,6 +341,10 @@ body.sidebar-mini.sidebar-collapse .main-footer-azad {
     text-align: center;
     align-items: center;
   }
+
+  .footer-brand-block {
+    align-items: center;
+  }
 }
 
 @media (max-width: 576px) {
@@ -356,6 +360,10 @@ body.sidebar-mini.sidebar-collapse .main-footer-azad {
   .footer-col-brand {
     grid-column: auto;
     text-align: center;
+    align-items: center;
+  }
+
+  .footer-brand-block {
     align-items: center;
   }
 

@@ -941,40 +941,63 @@
 
   <footer class="main-footer main-footer-azad">
     <div class="footer-container">
-      <!-- Brand: centered logo + title + subtitle -->
-      <div class="footer-brand">
-        <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad Smart Systems" class="footer-logo">
-        <h3 class="footer-title">Azad Smart Systems</h3>
-        <p class="footer-subtitle">ERP Enterprise — نظام إدارة المبيعات والمستودعات والمحاسبة</p>
+      <!-- 3-Column Grid -->
+      <div class="footer-grid">
+        <!-- Column 1: Brand / About -->
+        <div class="footer-col footer-col-brand">
+          <div class="footer-brand-block">
+            <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad Smart Systems" class="footer-logo">
+            <h3 class="footer-title">Azad Smart Systems</h3>
+            <p class="footer-subtitle">ERP Enterprise — نظام إدارة المبيعات والمستودعات والمحاسبة</p>
+          </div>
+        </div>
+
+        <!-- Column 2: Contact Info -->
+        <div class="footer-col footer-col-contact">
+          <h4 class="footer-col-heading">معلومات التواصل</h4>
+          <ul class="footer-contact-list">
+            <li class="footer-contact-item">
+              <i class="fas fa-map-marker-alt"></i>
+              <span>{{ config.COMPANY_ADDRESS }}</span>
+            </li>
+            <li class="footer-contact-item">
+              <i class="fas fa-globe"></i>
+              <span>{{ config.COMPANY_WEBSITE if config and config.COMPANY_WEBSITE else "azadsystems.com" }}</span>
+            </li>
+            <li class="footer-contact-item">
+              <i class="fas fa-envelope"></i>
+              <span>{{ config.COMPANY_EMAIL }}</span>
+            </li>
+            <li class="footer-contact-item">
+              <i class="fab fa-whatsapp"></i>
+              <span>{{ config.COMPANY_PHONE }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Column 3: Metadata / Features -->
+        <div class="footer-col footer-col-meta">
+          <h4 class="footer-col-heading">معلومات النظام</h4>
+          <ul class="footer-meta-list">
+            <li class="footer-meta-item">
+              <i class="fas fa-code"></i>
+              <span>{{ config.DEVELOPER_CREDIT }}</span>
+            </li>
+            <li class="footer-meta-item">
+              <i class="fas fa-robot"></i>
+              <span>ميزات ذكاء اصطناعي</span>
+            </li>
+            <li class="footer-meta-item">
+              <i class="fas fa-tag"></i>
+              <span>v{{ config.APP_VERSION }}</span>
+            </li>
+          </ul>
+        </div>
       </div>
 
-      <!-- Contact: single horizontal row -->
-      <div class="footer-contact-row">
-        <span class="footer-contact-item">
-          <i class="fas fa-map-marker-alt"></i>
-          <span>{{ config.COMPANY_ADDRESS }}</span>
-        </span>
-        <span class="footer-contact-item">
-          <i class="fas fa-globe"></i>
-          <span>{{ config.COMPANY_WEBSITE if config and config.COMPANY_WEBSITE else "azadsystems.com" }}</span>
-        </span>
-        <span class="footer-contact-item">
-          <i class="fas fa-envelope"></i>
-          <span>{{ config.COMPANY_EMAIL }}</span>
-        </span>
-        <span class="footer-contact-item">
-          <i class="fab fa-whatsapp"></i>
-          <span>{{ config.COMPANY_PHONE }}</span>
-        </span>
-      </div>
-
-      <!-- Metadata bar -->
-      <div class="footer-meta-bar">
-        <span class="footer-meta-text">{{ config.DEVELOPER_CREDIT }}</span>
-        <span class="footer-meta-separator">|</span>
-        <span class="footer-meta-text"><i class="fas fa-robot"></i> ميزات ذكاء اصطناعي</span>
-        <span class="footer-meta-separator">|</span>
-        <span class="footer-meta-text">v{{ config.APP_VERSION }}</span>
+      <!-- Bottom copyright bar -->
+      <div class="footer-bottom-bar">
+        <span class="footer-copyright">&copy; {{ current_year }} Azad Smart Systems. جميع الحقوق محفوظة.</span>
       </div>
     </div>
   </footer>

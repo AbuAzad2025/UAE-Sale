@@ -184,6 +184,19 @@
   text-align: right;
   border-top: 3px solid #667eea;
   position: relative;
+  /* Account for fixed sidebar in RTL layout */
+  margin-right: 250px;
+  transition: margin-right 0.3s ease;
+}
+
+/* When sidebar is collapsed */
+body.sidebar-collapse .main-footer-azad {
+  margin-right: 0;
+}
+
+/* When sidebar is in push mode (mini) */
+body.sidebar-mini.sidebar-collapse .main-footer-azad {
+  margin-right: 0;
 }
 
 .footer-container {

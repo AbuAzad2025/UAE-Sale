@@ -941,85 +941,34 @@
 
   <footer class="main-footer main-footer-azad">
     <div class="footer-container">
-      <!-- Top Brand Header -->
-      <div class="footer-brand-header">
-        <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad Smart Systems" class="footer-logo">
-        <div class="footer-brand-text">
-          <h3 class="footer-title">Azad Smart Systems</h3>
-          <p class="footer-subtitle">ERP Enterprise — نظام إدارة المبيعات والمستودعات والمحاسبة</p>
-        </div>
-      </div>
-
-      <!-- 4-Column Grid -->
-      <div class="footer-grid">
-        <!-- Column 1: Quick Links (Right) -->
-        <div class="footer-col">
-          <h4 class="footer-col-heading">روابط سريعة</h4>
-          <ul class="footer-link-list">
-            <li><a href="{{ url_for('main.dashboard') }}">لوحة التحكم</a></li>
-            <li><a href="{{ url_for('sales.index') }}">المبيعات</a></li>
-            <li><a href="{{ url_for('reports.index') }}">التقارير</a></li>
-            <li><a href="{{ url_for('ledger.index') }}">دفتر الأستاذ</a></li>
-          </ul>
+      <div class="footer-inline">
+        <!-- Brand -->
+        <div class="footer-inline-brand">
+          <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad" class="footer-logo">
+          <span class="footer-brand-name">Azad Smart Systems</span>
         </div>
 
-        <!-- Column 2: Contact Info (Middle-Right) -->
-        <div class="footer-col">
-          <h4 class="footer-col-heading">معلومات التواصل</h4>
-          <ul class="footer-contact-list">
-            <li class="footer-contact-item">
-              <i class="fas fa-map-marker-alt"></i>
-              <span>{{ config.COMPANY_ADDRESS }}</span>
-            </li>
-            <li class="footer-contact-item">
-              <i class="fas fa-globe"></i>
-              <span>{{ config.COMPANY_WEBSITE if config and config.COMPANY_WEBSITE else "azadsystems.com" }}</span>
-            </li>
-            <li class="footer-contact-item">
-              <i class="fas fa-envelope"></i>
-              <span>{{ config.COMPANY_EMAIL }}</span>
-            </li>
-            <li class="footer-contact-item">
-              <i class="fab fa-whatsapp"></i>
-              <span>{{ config.COMPANY_PHONE }}</span>
-            </li>
-          </ul>
+        <!-- Contact links -->
+        <div class="footer-inline-contact">
+          <a href="tel:{{ config.COMPANY_PHONE }}" class="footer-inline-link" title="Phone">
+            <i class="fas fa-phone"></i>
+          </a>
+          <a href="mailto:{{ config.COMPANY_EMAIL }}" class="footer-inline-link" title="Email">
+            <i class="fas fa-envelope"></i>
+          </a>
+          <a href="{{ config.COMPANY_WEBSITE if config and config.COMPANY_WEBSITE else '#' }}" class="footer-inline-link" title="Website" target="_blank">
+            <i class="fas fa-globe"></i>
+          </a>
+          <a href="#" class="footer-inline-link" title="Address">
+            <i class="fas fa-map-marker-alt"></i>
+          </a>
         </div>
 
-        <!-- Column 3: System Info (Middle-Left) -->
-        <div class="footer-col">
-          <h4 class="footer-col-heading">معلومات النظام</h4>
-          <ul class="footer-meta-list">
-            <li class="footer-meta-item">
-              <i class="fas fa-code"></i>
-              <span>{{ config.DEVELOPER_CREDIT }}</span>
-            </li>
-            <li class="footer-meta-item">
-              <i class="fas fa-robot"></i>
-              <span>ميزات ذكاء اصطناعي</span>
-            </li>
-            <li class="footer-meta-item">
-              <i class="fas fa-tag"></i>
-              <span>v{{ config.APP_VERSION }}</span>
-            </li>
-          </ul>
+        <!-- Copyright & Version -->
+        <div class="footer-inline-meta">
+          <span class="footer-copyright">&copy; {{ current_year }} Azad Smart Systems</span>
+          <span class="footer-version">v{{ config.APP_VERSION }}</span>
         </div>
-
-        <!-- Column 4: Technical Support (Left) -->
-        <div class="footer-col">
-          <h4 class="footer-col-heading">الدعم الفني</h4>
-          <ul class="footer-link-list">
-            <li><a href="#">مركز المساعدة</a></li>
-            <li><a href="#">الأسئلة الشائعة</a></li>
-            <li><a href="#">التوثيق</a></li>
-            <li><a href="#">اتصل بنا</a></li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- Bottom copyright bar -->
-      <div class="footer-bottom-bar">
-        <span class="footer-copyright">Azad Smart Systems 2026. جميع الحقوق محفوظة.</span>
       </div>
     </div>
   </footer>

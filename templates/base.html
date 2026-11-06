@@ -950,16 +950,16 @@
 
         <!-- Contact links -->
         <div class="footer-inline-contact">
-          <a href="tel:{{ config.COMPANY_PHONE }}" class="footer-inline-link" title="Phone">
+          <a href="tel:{{ config.COMPANY_PHONE }}" class="footer-inline-link" title="{{ config.COMPANY_PHONE }}">
             <i class="fas fa-phone"></i>
           </a>
-          <a href="mailto:{{ config.COMPANY_EMAIL }}" class="footer-inline-link" title="Email">
+          <a href="mailto:{{ config.COMPANY_EMAIL }}" class="footer-inline-link" title="{{ config.COMPANY_EMAIL }}">
             <i class="fas fa-envelope"></i>
           </a>
-          <a href="{{ config.COMPANY_WEBSITE if config and config.COMPANY_WEBSITE else '#' }}" class="footer-inline-link" title="Website" target="_blank">
+          <a href="{{ config.COMPANY_WEBSITE if config and config.COMPANY_WEBSITE else '#' }}" class="footer-inline-link" title="{{ config.COMPANY_WEBSITE if config and config.COMPANY_WEBSITE else 'azadsystems.com' }}" target="_blank">
             <i class="fas fa-globe"></i>
           </a>
-          <a href="#" class="footer-inline-link" title="Address">
+          <a href="#" class="footer-inline-link" title="{{ config.COMPANY_ADDRESS }}">
             <i class="fas fa-map-marker-alt"></i>
           </a>
         </div>

@@ -3253,3 +3253,11 @@ def fx_revaluation():
         as_of=as_of_raw,
         confirm_token=_FX_REVALUATION_CONFIRM_TOKEN,
     )
+
+
+@owner_bp.route('/guide')
+@login_required
+@owner_required
+def owner_guide():
+    """دليل المالك — يحتوي على معلومات تقنية حساسة."""
+    return render_template('owner/guide.html')

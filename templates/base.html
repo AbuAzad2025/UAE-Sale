@@ -959,6 +959,9 @@
           <a href="{{ config.COMPANY_WEBSITE if config and config.COMPANY_WEBSITE else '#' }}" class="footer-inline-link" title="{{ config.COMPANY_WEBSITE if config and config.COMPANY_WEBSITE else 'azadsystems.com' }}" target="_blank">
             <i class="fas fa-globe"></i>
           </a>
+          <a href="{{ url_for('public.user_guide') }}" class="footer-inline-link" title="دليل المستخدم">
+            <i class="fas fa-book"></i>
+          </a>
           <a href="#" class="footer-inline-link" title="{{ config.COMPANY_ADDRESS }}">
             <i class="fas fa-map-marker-alt"></i>
           </a>

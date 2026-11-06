@@ -108,6 +108,7 @@ class AIService:
     المساعد الذكي الخبير الشامل - متكامل مع جميع وحدات AI
 
     الوحدات المتكاملة:
+    - guide_loader: دليل الاستخدام (مصدر واحد للحقيقة — public/owner scoped)
     - learning_system: نظام التعلم الذاتي
     - context_engine: محرك فهم السياق
     - analytics_predictions: التحليلات والتوقعات
@@ -888,8 +889,26 @@ class AIService:
         local_result = intelligent_assistant.process(message, user_id, context)
         local_response = local_result.get('response', '')
 
+        # Phase 1: GuideLoader — شرح دقيق من الدليل (بدون تسريب)
+        # إذا كان السؤال يطلب شرحاً ولم يعطِ المحلي رداً مفيداً، ارجع للـ Guide
+        _guide_fallback = ''
+        try:
+            from ai_knowledge.guide_loader import get_guide_loader
+            _cu = context.get('current_user') if context else None
+            _is_owner = bool(getattr(_cu, 'is_owner', False) or (context or {}).get('is_owner', False))
+            _guide_ctx = get_guide_loader().get_context(message or '', _is_owner, max_chars=6000)
+            if _guide_ctx:
+                _guide_fallback = _guide_ctx
+                # إذا لم يكن هناك رد محلي، استخدم الدليل كسياق للـ LLM وللملخص المحلي
+                if not local_response or len(local_response.strip()) < 40:
+                    local_response = _guide_ctx[:1200] + "\n\n📖 المزيد من التفاصيل في: /user-guide" + (
+                        "\n👑 تفاصيل المالك في: /owner/guide" if _is_owner else ""
+                    )
+        except Exception:
+            pass
         force_local = context.get('force_local', False) if context else False
-        knowledge_context = '' if force_local else AIService._gather_relevant_knowledge(message, local_result)
+        _db_context = '' if force_local else AIService._gather_relevant_knowledge(message, local_result)
+        knowledge_context = (_guide_fallback + "\n\n---\n\n" + _db_context).strip() if (_guide_fallback or _db_context) else ''
 
         # ========== المرحلة 2: التعاون مع Groq ==========
         api_key = AIService.get_api_key()

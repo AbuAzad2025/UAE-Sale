@@ -137,6 +137,22 @@ def login():
             flash('⚠️ حسابك غير نشط!\n💡 اتصل بمدير النظام لإعادة تفعيل حسابك.', 'danger')
             return render_template('auth/login.html')
 
+        # الإيقاف على مستوى الشركة: دخول بزنس شركة موقوفة/منتهية ممنوع
+        # (المالك/سوبر/المطور مشغّلو المنصة — لا شركة لهم)
+        try:
+            _role_slug = getattr(getattr(user, 'role', None), 'slug', None)
+            if not (getattr(user, 'is_owner', False) or _role_slug in ('super_admin', 'developer')):
+                _tenant = getattr(user, 'tenant', None)
+                if _tenant is not None:
+                    if getattr(_tenant, 'is_active', True) is False or getattr(_tenant, 'is_suspended', False):
+                        flash('⚠️ شركتك موقوفة مؤقتاً. تواصل مع مالك المنصة لبحث الحالة.', 'danger')
+                        return render_template('auth/login.html')
+                    if hasattr(_tenant, 'is_subscription_active') and not _tenant.is_subscription_active():
+                        flash('⚠️ انتهى اشتراك شركتك. تواصل مع مالك المنصة للتجديد.', 'danger')
+                        return render_template('auth/login.html')
+        except Exception:
+            pass
+
         # Regenerate session to prevent session fixation
         session.clear()
         login_user(user, remember=remember)

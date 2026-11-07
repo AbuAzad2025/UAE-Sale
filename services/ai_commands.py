@@ -53,6 +53,15 @@ def _require_tenant_id():
             return None
         return ctx
     if getattr(current_user, 'is_owner', False):
+        # سياق دعم: يختم على الشركة المُخترَقة (session) حتى تكون الكتابات
+        # في صفوف تلك الشركة (مع بقاء التدقيق باسم المالك).
+        try:
+            from flask import session as _s
+            _imp = _s.get('impersonate_tenant_id')
+            if _imp is not None:
+                return int(_imp)
+        except Exception:
+            pass
         return None
     is_super = getattr(current_user, 'is_super_admin', None)
     if callable(is_super) and is_super():

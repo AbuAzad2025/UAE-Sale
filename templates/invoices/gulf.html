@@ -241,6 +241,7 @@
 
   <div class="footer">
     <div style="font-size: 9px; margin-bottom: 5px;">{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else 'نرجو الالتزام بمواعيد الدفع المحددة' }}</div>
+    <p class="azad_invoice_footer" style="font-size:7px;opacity:.7;margin-top:4px;">صُدر بواسطة {{ config.COMPANY_NAME_AR if config and config.COMPANY_NAME_AR else 'AzadERP' }} © {{ current_year if current_year is defined else 2026 }}</p>
     
     {% if settings and ((settings.bank_name and settings.bank_name != 'None') or (settings.iban and settings.iban != 'None') or (settings.swift_code and settings.swift_code != 'None')) %}
     <div style="margin: 12px 0; padding: 6px; background: rgba(255,255,255,0.15); border-radius: 8px; border: 1px solid rgba(255,255,255,0.3);">

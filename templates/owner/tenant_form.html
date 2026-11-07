@@ -188,6 +188,48 @@
               </div>
             </div>
             <div class="col-md-4">
+              <div class="form-group">
+                <label>قالب الفاتورة</label>
+                <select name="active_template" class="form-control">
+                  <option value="modern" {{ 'selected' if form.active_template == 'modern' }}>مودرن</option>
+                  <option value="classic" {{ 'selected' if form.active_template == 'classic' }}>كلاسيك</option>
+                  <option value="gulf" {{ 'selected' if form.active_template == 'gulf' }}>خليجي</option>
+                  <option value="minimal" {{ 'selected' if form.active_template == 'minimal' }}>بسيط</option>
+                  <option value="simple" {{ 'selected' if form.active_template == 'simple' }}>مبسط</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>البنك</label>
+                <input type="text" name="bank_name" value="{{ form.bank_name }}" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>IBAN</label>
+                <input type="text" name="iban" value="{{ form.iban }}" class="form-control" dir="ltr">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>SWIFT</label>
+                <input type="text" name="swift_code" value="{{ form.swift_code }}" class="form-control" dir="ltr">
+              </div>
+            </div>
+            <div class="col-md-12">
+              <div class="form-group">
+                <label>شروط الدفع (تظهر في الفاتورة)</label>
+                <textarea name="payment_terms_ar" rows="2" class="form-control">{{ form.payment_terms_ar }}</textarea>
+              </div>
+            </div>
+            <div class="col-md-12">
+              <div class="form-group">
+                <label>نص فوتر الفاتورة</label>
+                <textarea name="footer_text_ar" rows="2" class="form-control">{{ form.footer_text_ar }}</textarea>
+              </div>
+            </div>
+            <div class="col-md-4">
               <div class="form-check mt-4">
                 <input type="checkbox" name="corp_tax_enabled" class="form-check-input" id="t_corp_enabled" {{ 'checked' if form.corp_tax_enabled }}>
                 <label class="form-check-label" for="t_corp_enabled">ضريبة الشركات (الدخل) مفعّلة</label>

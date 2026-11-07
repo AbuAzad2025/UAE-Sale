@@ -122,7 +122,7 @@
       {{ settings.default_invoice_note_ar }}
     </div>
     {% endif %}
-    
+    <p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:8px;">صُدر بواسطة {{ config.COMPANY_NAME_AR if config and config.COMPANY_NAME_AR else 'AzadERP' }} © {{ current_year if current_year is defined else 2026 }}</p>
     <div style="margin-top: 10px;">شكراً لتعاملكم معنا</div>
   </div>
 

@@ -256,6 +256,7 @@ def create():  # noqa: C901
                     current_stock=0,
                     min_stock_alert=safe_float(request.form.get('min_stock_alert')),
                     unit=unit_value,
+                    tax_treatment=(request.form.get('tax_treatment') or 'standard').strip().lower() or 'standard',
                     location=request.form.get('location'),
                     description=request.form.get('description'),
                     notes=request.form.get('notes'),
@@ -442,6 +443,8 @@ def edit(id):  # noqa: C901
             product.location = request.form.get('location')
             product.description = request.form.get('description')
             product.notes = request.form.get('notes')
+            if 'tax_treatment' in request.form:
+                product.tax_treatment = (request.form.get('tax_treatment') or 'standard').strip().lower() or 'standard'
             product.merchant_customer_id = merchant_customer_id or None
 
             if current_user.can_see_costs():

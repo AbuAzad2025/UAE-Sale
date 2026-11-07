@@ -103,6 +103,10 @@
           <strong>{{ "{:,.2f}".format(summary.total_taxable_sales) }} {{ base_currency }}</strong>
         </div>
         <div class="d-flex justify-content-between mb-2">
+          <span>صفرية 0% (خاضعة بصفر):</span>
+          <strong>{{ "{:,.2f}".format(summary.total_zero_rated_sales if summary.total_zero_rated_sales is not none else 0) }} {{ base_currency }}</strong>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
           <span>إجمالي المبيعات المعفاة:</span>
           <strong>{{ "{:,.2f}".format(summary.total_exempt_sales) }} {{ base_currency }}</strong>
         </div>

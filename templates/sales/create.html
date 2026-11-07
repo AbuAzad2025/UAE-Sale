@@ -299,6 +299,11 @@ a.btn.btn-outline-secondary span {
               <input type="checkbox" name="tax_inclusive" class="form-check-input" id="tax_inclusive" value="on" {{ 'checked' if current_tenant and current_tenant.tax_inclusive }}>
               <label class="form-check-label" for="tax_inclusive">الأسعار شاملة الضريبة (شامل — الضريبة تُستخرج من الإجمالي)</label>
             </div>
+            <select name="tax_treatment" class="form-control mt-2" title="معاملة ضريبية الفاتورة">
+              <option value="standard">معاملـة قياسية (نسبة الشركة)</option>
+              <option value="zero">صفرية 0% (تصدير/خاضعة بصفر)</option>
+              <option value="exempt">مستثناة (خارج النطاق)</option>
+            </select>
             <small class="form-text text-muted">فاتورة على حساب غير شامل: الضريبة تضاف على الصافي. الشامل: الضريبة مستخرجة من الإجمالي.</small>
           </div>
           

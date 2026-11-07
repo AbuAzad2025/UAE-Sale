@@ -217,6 +217,7 @@ class Sale(TenantScopedMixin, db.Model):
     tax_rate = db.Column(db.Numeric(5, 2), default=0)
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     tax_inclusive = db.Column(db.Boolean, default=False)
+    tax_treatment = db.Column(db.String(10), default='standard')
     total_amount = db.Column(db.Numeric(15, 3), nullable=False)
 
     paid_amount = db.Column(db.Numeric(15, 3), default=0)

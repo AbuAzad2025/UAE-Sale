@@ -136,7 +136,7 @@ class SaleService:
 
     @staticmethod
     def create_sale(customer, seller, lines_data, warehouse_id=None, currency=None, user_exchange_rate=None,
-                    discount_amount=0, shipping_cost=0, tax_rate=None, tax_inclusive=None, notes=None, payment_data=None):
+                    discount_amount=0, shipping_cost=0, tax_rate=None, tax_inclusive=None, tax_treatment=None, notes=None, payment_data=None):
         """
         Create a new sale with proper validations and decimal precision
         All financial calculations use Decimal for accuracy
@@ -172,6 +172,9 @@ class SaleService:
         shipping_decimal = Decimal(str(shipping_cost)) if shipping_cost else Decimal('0')
         _resolved_rate, _resolved_inclusive = SaleService._resolve_tax(tax_rate, customer=customer, tax_inclusive=tax_inclusive)
         tax_rate_decimal = _resolved_rate
+        _treatment = (tax_treatment or 'standard').strip().lower()
+        if _treatment in ('zero', 'exempt'):
+            tax_rate_decimal = Decimal('0')
 
         if discount_decimal < Decimal('0'):
             raise ValidationError('قيمة الخصم لا يمكن أن تكون سالبة')
@@ -242,6 +245,7 @@ class SaleService:
                 shipping_cost=shipping_decimal,
                 tax_rate=tax_rate_decimal,
                 tax_inclusive=_resolved_inclusive,
+                tax_treatment=_treatment,
                 total_amount=Decimal('0'),  # Temporary - will be calculated
                 amount_base=Decimal('0'),    # Temporary - will be calculated
                 notes=notes

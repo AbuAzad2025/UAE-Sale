@@ -1279,13 +1279,31 @@ def _vat_report_data(date_from=None, date_to=None):
     sales_query = sales_query.filter(~Sale.id.in_(_archived_record_ids('sales')))
 
     taxable_sales = []
+    zero_rated_sales = []
     exempt_sales = []
     total_taxable_sales = Decimal('0')
+    total_zero_rated_sales = Decimal('0')
     total_output_vat = Decimal('0')
     total_exempt_sales = Decimal('0')
 
+    def _sale_tax_buckets(sale):
+        """(standard, zero, exempt) base nets من البند — خطأ → كامل standard."""
+        buckets = {'standard': Decimal('0'), 'zero': Decimal('0'), 'exempt': Decimal('0')}
+        try:
+            fx = Decimal(str(sale.exchange_rate or 1))
+            for line in sale.lines:
+                prod = getattr(line, 'product', None)
+                treatment = (getattr(prod, 'tax_treatment', None) or 'standard')
+                net = Decimal(str(line.line_total or 0)) * fx
+                buckets['zero' if treatment == 'zero' else 'exempt' if treatment == 'exempt' else 'standard'] += net
+        except Exception:
+            pass
+        return buckets
+
     for sale in sales_query.order_by(Sale.sale_date).all():
         net_base, tax_base, tax_rate = _vat_base_amounts(sale)
+        _buckets = _sale_tax_buckets(sale)
+        _inv_treatment = getattr(sale, 'tax_treatment', None) or 'standard'
         row = {
             'number': sale.sale_number,
             'date': sale.sale_date,
@@ -1294,11 +1312,18 @@ def _vat_report_data(date_from=None, date_to=None):
             'gross_amount': sale.amount_base or Decimal('0'),
             'tax_rate': tax_rate,
             'tax_amount': tax_base,
+            'zero_amount': _buckets['zero'],
+            'exempt_amount': _buckets['exempt'],
         }
         if tax_rate > 0:
             taxable_sales.append(row)
             total_taxable_sales += net_base
             total_output_vat += tax_base
+            total_zero_rated_sales += _buckets['zero']
+            total_exempt_sales += _buckets['exempt']
+        elif _inv_treatment == 'zero' or row['zero_amount'] > 0:
+            zero_rated_sales.append(row)
+            total_zero_rated_sales += _buckets['zero'] or net_base
         else:
             exempt_sales.append(row)
             total_exempt_sales += row['gross_amount']
@@ -1381,6 +1406,7 @@ def _vat_report_data(date_from=None, date_to=None):
     summary = {
         'total_taxable_sales': total_taxable_sales,
         'total_output_vat': total_output_vat,
+        'total_zero_rated_sales': total_zero_rated_sales,
         'total_exempt_sales': total_exempt_sales,
         'total_credit_notes_net': total_credit_notes_net,
         'total_credit_notes_vat': total_credit_notes_vat,
@@ -1394,6 +1420,7 @@ def _vat_report_data(date_from=None, date_to=None):
 
     return {
         'taxable_sales': taxable_sales,
+        'zero_rated_sales': zero_rated_sales,
         'exempt_sales': exempt_sales,
         'credit_notes': credit_notes,
         'taxable_purchases': taxable_purchases,

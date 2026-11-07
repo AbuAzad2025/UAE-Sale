@@ -149,6 +149,7 @@ def create():  # noqa: C901
             _raw_tax = request.form.get('tax_rate')
             tax_rate = float(_raw_tax) if _raw_tax not in (None, '') else None
             tax_inclusive = request.form.get('tax_inclusive') in ('on', '1', 'true')
+            tax_treatment = (request.form.get('tax_treatment') or 'standard').strip().lower()
             notes = request.form.get('notes')
 
             # Add exchange rate audit to notes if manually changed
@@ -187,6 +188,7 @@ def create():  # noqa: C901
                 shipping_cost=shipping_cost,
                 tax_rate=tax_rate,
                 tax_inclusive=tax_inclusive,
+                tax_treatment=tax_treatment,
                 notes=notes,
                 payment_data=payment_data
             )

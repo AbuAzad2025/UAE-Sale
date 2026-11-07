@@ -44,6 +44,16 @@ class Tenant(db.Model):
     license_number = db.Column(db.String(100))
     license_expiry = db.Column(db.Date)
 
+    # Bank info for invoices (per tenant — not Azad)
+    bank_name = db.Column(db.String(200))
+    bank_account_number = db.Column(db.String(100))
+    iban = db.Column(db.String(100))
+    swift_code = db.Column(db.String(50))
+    payment_terms_ar = db.Column(db.Text)
+    footer_text_ar = db.Column(db.Text)
+    default_invoice_note_ar = db.Column(db.Text)
+    active_template = db.Column(db.String(50), default='modern')
+
     # Branding - العلامة التجارية
     logo_url = db.Column(db.String(500))
     logo_dark_url = db.Column(db.String(500))

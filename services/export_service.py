@@ -35,7 +35,7 @@ class ExportService:
 
     @staticmethod
     def export_to_excel(title, headers, rows, filename='report.xlsx',  # noqa: C901
-                        summary=None, right_to_left=True):
+                        summary=None, right_to_left=True, subtitle=None):
         """
         Export data to a styled .xlsx workbook.
 
@@ -85,7 +85,8 @@ class ExportService:
         ws.merge_cells(start_row=ts_row, start_column=1, end_row=ts_row,
                        end_column=len(headers))
         ts_cell = ws.cell(row=ts_row, column=1,
-                          value=f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}")
+                          value=(f"{subtitle} | " if subtitle else '') +
+                                f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}")
         ts_cell.alignment = Alignment(horizontal='center')
         ts_cell.font = Font(italic=True, color='888888')
 
@@ -147,7 +148,7 @@ class ExportService:
 
     @staticmethod
     def export_to_pdf(title, headers, rows, filename='report.pdf',
-                      summary=None, right_to_left=True):
+                      summary=None, right_to_left=True, subtitle=None):
         """
         Render data as a styled PDF via weasyprint.
 
@@ -169,6 +170,7 @@ class ExportService:
         direction_css = 'direction:rtl;' if right_to_left else ''
         header_cells = ''.join(f'<th>{h}</th>' for h in headers)
         generated_ts = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
+        meta_line = f'{subtitle} | ' if subtitle else ''
 
         rows_html = ''
         for row in rows:
@@ -207,7 +209,7 @@ class ExportService:
 </head>
 <body>
   <h1>{title}</h1>
-  <div class="meta">Generated: {generated_ts} UTC</div>
+  <div class="meta">{meta_line}تم التوليد: {generated_ts}</div>
   <table>
     <thead><tr>{header_cells}</tr></thead>
     <tbody>{rows_html}</tbody>
@@ -218,6 +220,7 @@ class ExportService:
 </html>""".format(
             dir_attr=dir_attr, direction_css=direction_css,
             title=title, generated_ts=generated_ts,
+            meta_line=meta_line,
             header_cells=header_cells, rows_html=rows_html,
             summary_html=summary_html)
 

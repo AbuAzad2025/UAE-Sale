@@ -1201,6 +1201,19 @@ def cash_flow():
                            date_to=date_to)
 
 
+def _current_tenant_display_name():
+    """اسم الشركة المصدّرة للتقرير — للترويسة لا رأس المال (كل المستندات)."""
+    try:
+        from models.tenant_scope import get_current_tenant_id
+        from models.tenant import Tenant
+        from extensions import db
+        tid = get_current_tenant_id()
+        tenant = db.session.get(Tenant, tid) if tid else None
+        return (tenant.name_ar or tenant.name) if tenant else None
+    except Exception:
+        return None
+
+
 def _vat_base_amounts(document):
     """(الأساس الخاضع للضريبة، الضريبة) بعملة الأساس لمستند واحد.
 
@@ -1644,7 +1657,8 @@ def export_inventory_valuation():
                                  '', reconciliation.get('gl_difference')])
             return ExportService.export_to_csv(all_rows, headers, 'inventory_valuation.csv')
         return ExportService.export_to_excel('تقييم المخزون — Inventory Valuation',
-                                             headers, rows, summary=summary)
+                                             headers, rows, summary=summary,
+                                             subtitle=_current_tenant_display_name())
 
     ext = {'xlsx': 'xlsx', 'pdf': 'pdf', 'csv': 'csv'}.get(fmt, 'xlsx')
     return _send_export(build, f'inventory_valuation.{ext}', ext)
@@ -1684,7 +1698,8 @@ def export_ap_aging():
         elif fmt == 'csv':
             return ExportService.export_to_csv(rows, ['المورد', 'إجمالي المشتريات', 'المدفوع', 'الرصيد المستحق', 'المتأخر', 'شروط الدفع'], 'ap_aging.csv')
         return ExportService.export_to_excel('أعمار الذمم الدائنة — AP Aging',
-                                             headers, rows, summary=summary)
+                                             headers, rows, summary=summary,
+                                             subtitle=_current_tenant_display_name())
 
     ext = {'xlsx': 'xlsx', 'pdf': 'pdf', 'csv': 'csv'}.get(fmt, 'xlsx')
     return _send_export(build, f'ap_aging.{ext}', ext)
@@ -1727,11 +1742,13 @@ def export_cash_flow():
     def build():
         if fmt == 'pdf':
             return ExportService.export_to_pdf('قائمة التدفقات النقدية — Cash Flow',
-                                               headers, rows, summary=summary)
+                                               headers, rows, summary=summary,
+                                               subtitle=_current_tenant_display_name())
         elif fmt == 'csv':
             return ExportService.export_to_csv(rows, headers, 'cash_flow.csv')
         return ExportService.export_to_excel('قائمة التدفقات النقدية — Cash Flow',
-                                             headers, rows, summary=summary)
+                                              headers, rows, summary=summary,
+                                              subtitle=_current_tenant_display_name())
 
     ext = {'xlsx': 'xlsx', 'pdf': 'pdf', 'csv': 'csv'}.get(fmt, 'xlsx')
     return _send_export(build, f'cash_flow.{ext}', ext)
@@ -1759,6 +1776,8 @@ def export_vat_report():  # noqa: C901
                         'نسبة الضريبة', 'الضريبة']
     credit_note_headers = ['رقم الإشعار', 'التاريخ', 'العميل', 'الأساس الخاضع',
                            'نسبة الضريبة', 'الضريبة']
+
+    _report_subtitle = _current_tenant_display_name()
 
     def _sale_row(row):
         return [row['number'],
@@ -1855,6 +1874,11 @@ def export_vat_report():  # noqa: C901
             ws3.cell(row=ri, column=2, value=value).font = Font(
                 bold=True, size=12 if label == 'الرصيد النهائي' else 11)
 
+        if _report_subtitle:
+            last_row = len(summary_rows) + 1
+            ws3.cell(row=last_row, column=1, value='الشركة').font = Font(italic=True)
+            ws3.cell(row=last_row, column=2, value=_report_subtitle)
+
         # الورقة الأولى يجب أن تكون قابلة للعرض (Excel لا يقبل ورقة بلا عنوان)
         default_sheet = wb['Sheet']
         wb.remove(default_sheet)
@@ -1891,9 +1915,10 @@ def export_vat_report():  # noqa: C901
                 'Exempt Purchases': float(summary['total_exempt_purchases']),
                 'Net VAT': float(net_vat),
             }
-            return ExportService.export_to_pdf('تقرير VAT — UAE 5%',
+            return ExportService.export_to_pdf('تقرير الضريبة المضافة (VAT) — UAE 5%',
                                                sales_headers, all_rows,
-                                               summary=summary_pdf)
+                                               summary=summary_pdf,
+                                               subtitle=_report_subtitle)
         elif fmt == 'csv':
             # كل قسم بعناوينه الخاصة — لا تُدمج المشتريات تحت عناوين المبيعات
             combined = (

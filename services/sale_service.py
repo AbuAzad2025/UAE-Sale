@@ -100,8 +100,32 @@ def merchant_receivable_codes():
 class SaleService:
 
     @staticmethod
+    def _resolve_tax_rate(tax_rate, customer=None):
+        """نسبة الضريبة: الممرَرة أولاً، وإلا الافتراضية للشركة الحالية."""
+        if tax_rate is None:
+            # من سياق الطلب (أدق) ثم من عميل الفاتورة
+            tid = None
+            try:
+                from models.tenant_scope import get_current_tenant_id
+                tid = get_current_tenant_id()
+            except Exception:
+                tid = None
+            if tid is None and customer is not None:
+                tid = getattr(customer, 'tenant_id', None)
+            if tid is not None:
+                try:
+                    from models import Tenant
+                    _t = Tenant.query.get(tid)
+                    if _t is not None and getattr(_t, 'enable_tax', True):
+                        return Decimal(str(_t.default_tax_rate or Decimal('0')))
+                except Exception:
+                    pass
+            return Decimal('0')
+        return Decimal(str(tax_rate))
+
+    @staticmethod
     def create_sale(customer, seller, lines_data, warehouse_id=None, currency=None, user_exchange_rate=None,
-                    discount_amount=0, shipping_cost=0, tax_rate=0, notes=None, payment_data=None):
+                    discount_amount=0, shipping_cost=0, tax_rate=None, notes=None, payment_data=None):
         """
         Create a new sale with proper validations and decimal precision
         All financial calculations use Decimal for accuracy
@@ -135,7 +159,7 @@ class SaleService:
         # Validate discount and tax
         discount_decimal = Decimal(str(discount_amount)) if discount_amount else Decimal('0')
         shipping_decimal = Decimal(str(shipping_cost)) if shipping_cost else Decimal('0')
-        tax_rate_decimal = Decimal(str(tax_rate)) if tax_rate else Decimal('0')
+        tax_rate_decimal = SaleService._resolve_tax_rate(tax_rate, customer=customer)
 
         if discount_decimal < Decimal('0'):
             raise ValidationError('قيمة الخصم لا يمكن أن تكون سالبة')

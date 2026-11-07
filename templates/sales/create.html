@@ -288,7 +288,7 @@ a.btn.btn-outline-secondary span {
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="نسبة VAT (الإمارات 5% — افتراضي الشركة)"></i>
             </label>
             <div class="input-group">
-              <input type="number" name="tax_rate" class="form-control" value="{{ current_tenant.default_tax_rate if current_tenant and current_tenant.default_tax_rate is not none else 5 }}" step="0.01" min="0" max="100"
+              <input type="number" name="tax_rate" class="form-control" data-tax-enabled="{{ 'false' if current_tenant and not current_tenant.enable_tax else 'true' }}" value="{{ current_tenant.default_tax_rate if current_tenant and current_tenant.default_tax_rate is not none else 5 }}" step="0.01" min="0" max="100"
                      onchange="calculateTotals()" onkeyup="calculateTotals()"
                      placeholder="5.00">
               <div class="input-group-append">
@@ -296,13 +296,13 @@ a.btn.btn-outline-secondary span {
               </div>
             </div>
             <div class="form-check mt-2">
-              <input type="checkbox" name="tax_inclusive" class="form-check-input" id="tax_inclusive" value="on" {{ 'checked' if current_tenant and current_tenant.tax_inclusive }}>
+              <input type="checkbox" name="tax_inclusive" class="form-check-input" id="tax_inclusive" value="on" onchange="calculateTotals()" {{ 'checked' if current_tenant and current_tenant.tax_inclusive }}>
               <label class="form-check-label" for="tax_inclusive">الأسعار شاملة الضريبة (شامل — الضريبة تُستخرج من الإجمالي)</label>
             </div>
-            <select name="tax_treatment" class="form-control mt-2" title="معاملة ضريبية الفاتورة">
+            <select name="tax_treatment" class="form-control mt-2" title="معاملة ضريبية الفاتورة" onchange="calculateTotals()">
               <option value="standard">معاملـة قياسية (نسبة الشركة)</option>
-              <option value="zero">صفرية 0% (تصدير/خاضعة بصفر)</option>
-              <option value="exempt">مستثناة (خارج النطاق)</option>
+              <option value="zero">خاضعة بنسبة صفرية 0% (حسب الحالة النظامية)</option>
+              <option value="exempt">معفاة من الضريبة</option>
             </select>
             <small class="form-text text-muted">فاتورة على حساب غير شامل: الضريبة تضاف على الصافي. الشامل: الضريبة مستخرجة من الإجمالي.</small>
           </div>
@@ -317,6 +317,7 @@ a.btn.btn-outline-secondary span {
             <hr style="border-color: rgba(255,255,255,0.3); margin: 15px 0;">
             <h5 class="mb-2">{{ t('Final Total') }}</h5>
             <h2 id="total" class="mb-0" style="font-size: 36px; font-weight: 700;">0.00</h2>
+            <small id="totals_calculation_status" class="d-block" role="status"></small>
             <small style="opacity: 0.9; font-size: 1.1rem;">
               <i class="fas fa-coins"></i> <span id="total_currency_label">{{ base_currency_name }} ({{ base_currency }})</span>
             </small>

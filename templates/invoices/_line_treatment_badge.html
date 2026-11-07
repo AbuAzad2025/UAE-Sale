@@ -1,0 +1,6 @@
+{%- set _t = line.tax_treatment or 'standard' -%}
+{% if _t == 'zero' -%}
+  <span style="display:inline-block;margin-inline-start:4px;font-size:7px;padding:1px 5px;border:1px solid #2980b9;color:#2980b9;border-radius:3px;vertical-align:middle;">صفري 0%</span>
+{% elif _t == 'exempt' -%}
+  <span style="display:inline-block;margin-inline-start:4px;font-size:7px;padding:1px 5px;border:1px solid #7f8c8d;color:#7f8c8d;border-radius:3px;vertical-align:middle;">معفى</span>
+{%- endif -%}

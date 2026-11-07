@@ -98,10 +98,11 @@
             </p>
           </div>
           <div class="col-6 text-left">
-            <h4>{{ config.COMPANY_NAME_AR }}</h4>
-            <p class="mb-0">{{ config.COMPANY_ADDRESS }}</p>
+            {% set _t = sale.tenant %}
+            <h4>{{ _t.name_ar if _t else '' }}</h4>
+            <p class="mb-0">{{ [_t.address_ar, _t.city, _t.country] | select | join('، ') if _t else '' }}</p>
             <p class="mb-0">
-              <i class="fas fa-phone mr-1"></i> {{ config.COMPANY_PHONE }}
+              <i class="fas fa-phone mr-1"></i> {{ (_t.phone_1 or _t.mobile) if _t else '' }}
             </p>
           </div>
         </div>
@@ -303,9 +304,8 @@
           
           {% if sale.tax_amount > 0 or (sale.tax_treatment and sale.tax_treatment != 'standard') %}
           <div class="d-flex justify-content-between mb-2">
-            <span><i class="fas fa-percent text-warning mr-1"></i>الضريبة ({{ sale.tax_rate }}% — {{ sale.tax_treatment or 'standard' }}):
-              {% if sale.tax_inclusive %}شاملة{% else %}إضافية{% endif %}</span>
-            <strong class="text-warning">+{{ "{:,.2f}".format(sale.tax_amount) }}</strong>
+            <span><i class="fas fa-percent text-warning mr-1"></i>{% include 'invoices/_tax_label.html' %}:</span>
+            <strong class="text-warning">{{ "{:,.2f}".format(sale.tax_amount) }}</strong>
           </div>
           {% endif %}
         </div>

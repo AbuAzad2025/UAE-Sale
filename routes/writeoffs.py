@@ -92,6 +92,7 @@ def create():
     sale_id = request.form.get('sale_id', type=int)
     amount = request.form.get('amount')
     currency = request.form.get('currency')
+    exchange_rate = request.form.get('exchange_rate')
     reason = request.form.get('reason')
     notes = request.form.get('notes')
 
@@ -103,6 +104,7 @@ def create():
             customer=customer,
             amount=amount,
             currency=currency,
+            exchange_rate=exchange_rate,
             reason=reason,
             sale=sale,
             notes=notes,

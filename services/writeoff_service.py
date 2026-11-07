@@ -104,6 +104,7 @@ class WriteOffService:
 
     @staticmethod
     def create_writeoff(customer, amount, currency=None, reason=None, sale=None,
+                        exchange_rate=None,
                         notes=None, user=None) -> WriteOff:
         """يشطب ديوناً لا يمكن تحصيلها ويرحّل القيد المحاسبي المرافق.
 
@@ -111,6 +112,8 @@ class WriteOffService:
             customer: العميل صاحب الديون.
             amount: المبلغ المطبوع (Decimal) — يجب أن يكون أكبر من صفر.
             currency: عملة المبلغ (الافتراضي: عملة الأساس).
+            exchange_rate: سعر الصرف الصريح إلى عملة الأساس — مطلوب إلزاماً
+                إذا اختلفت العملة عن عملة الأساس (لا يُجلب سعر حي أثناء الترحيل).
             reason: سبب المشطوبة (مطلوب في الواجهة، وله قيمة افتراضية هنا).
             sale: فاتورة مرتبطة (اختياري) — لأغراض التتبع فقط.
             notes: ملاحظات إضافية.
@@ -132,9 +135,21 @@ class WriteOffService:
 
         base_currency = CurrencyService.get_base_currency()
         currency = (currency or base_currency or 'ILS').upper()
-        rate = _dec(
-            CurrencyService.get_exchange_rate(currency, base_currency), '1'
-        ) or Decimal('1')
+        # Never fetch a live rate implicitly in a posting path: the books
+        # must be reproducible. Foreign write-offs require an explicit rate;
+        # base-currency write-offs always use rate 1.
+        if currency != base_currency:
+            if exchange_rate in (None, ''):
+                raise ValidationError(
+                    'العملة مختلفة عن عملة الأساس؛ أدخل سعر الصرف الصريح للمشطوبة')
+            try:
+                rate = _dec(exchange_rate)
+            except Exception:
+                raise ValidationError('سعر الصرف غير صالح')
+            if rate <= Decimal('0'):
+                raise ValidationError('سعر الصرف يجب أن يكون أكبر من صفر')
+        else:
+            rate = Decimal('1')
         amount_base = (amount_dec * rate).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
         if amount_base <= Decimal('0'):
             raise ValidationError('قيمة المشطوبة بالعملة الأساسية يجب أن تكون أكبر من صفر')

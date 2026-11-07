@@ -35,6 +35,7 @@ class Purchase(TenantScopedMixin, db.Model):
     tax_rate = db.Column(db.Numeric(5, 2), default=0)
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     tax_inclusive = db.Column(db.Boolean, default=False)
+    tax_treatment = db.Column(db.String(10), default='standard')
     total_amount = db.Column(db.Numeric(15, 3), nullable=False)
 
     currency = db.Column(db.String(3), default='ILS', nullable=False)
@@ -155,6 +156,9 @@ class Purchase(TenantScopedMixin, db.Model):
         tax_rate_decimal = Decimal(str(self.tax_rate)) if self.tax_rate else Decimal('0')
         exchange_rate_decimal = Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal('1')
 
+        # Zero-rated and exempt purchases must never carry VAT.
+        if (getattr(self, 'tax_treatment', None) or 'standard') in ('zero', 'exempt'):
+            tax_rate_decimal = Decimal('0')
         # Tax (accounting for inclusion)
         taxable_amount = self.subtotal - discount
         if getattr(self, 'tax_inclusive', False):

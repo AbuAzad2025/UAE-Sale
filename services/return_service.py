@@ -60,7 +60,7 @@ class ReturnService:
             db.session.flush()  # Get ID
 
             total_return_amount = Decimal('0')
-            return_line_totals = []
+            return_line_specs = []
             gl_lines = []
             # cost_basis_fallback lines that need a human review.
             review_flags = []
@@ -116,7 +116,10 @@ class ReturnService:
                     Decimal('0.001'), rounding=ROUND_HALF_UP)
 
                 total_return_amount += line_total
-                return_line_totals.append(line_total)
+                return_line_specs.append({
+                    'line_total': line_total,
+                    'tax_treatment': getattr(sale_line, 'tax_treatment', None) or 'standard',
+                })
 
                 # Create Return Line
                 return_line = ProductReturnLine(
@@ -212,18 +215,25 @@ class ReturnService:
                 product_return.notes = (product_return.notes or '') + marker
 
             # 4. Financial GL Entries (Revenue Reversal)
-            # TaxEngine policy: tax is computed PER RETURN LINE then summed,
-            # so the reversal mirrors how each line's VAT was accrued.
-            # For single-line returns this is numerically identical to the
-            # legacy aggregate formula ((net * rate/100).quantize(0.001, HALF_UP)).
-            tax_rate = sale.tax_rate or Decimal('0')
-            breakdown = TaxEngine.compute_invoice(
-                [{'amount': t, 'rate': tax_rate} for t in return_line_totals]
-            )
+            # Per-line snapshot split of the returned portion; a whole-invoice
+            # treatment (zero/exempt) overrides line treatments. The revenue
+            # reversal covers net of ALL buckets (zero/exempt returns are
+            # still sales revenue being reversed); VAT applies only to the
+            # standard bucket.
+            tax_rate = Decimal(str(sale.tax_rate or 0))
+            invoice_treatment = getattr(sale, 'tax_treatment', 'standard') or 'standard'
+            shipping = Decimal(str(sale.shipping_cost or 0))
+            discount = Decimal(str(sale.discount_amount or 0))
+            from services.sale_tax_calculation import return_tax_parts
+            tax_amount, net_std, net_zero, net_exempt = return_tax_parts(
+                return_line_specs, sale.lines, sale.subtotal,
+                discount, shipping, tax_rate, bool(sale.tax_inclusive),
+                invoice_treatment=invoice_treatment)
 
-            net_return_amount = breakdown['total_net']  # Excluding tax
-            tax_amount = breakdown['total_tax']
-            gross_return_amount = breakdown['total_gross']
+            net_return_amount = (net_std + net_zero + net_exempt).quantize(
+                Decimal('0.001'), rounding=ROUND_HALF_UP)
+            gross_return_amount = (net_return_amount + tax_amount).quantize(
+                Decimal('0.001'), rounding=ROUND_HALF_UP)
 
             product_return.refund_amount = gross_return_amount  # Default to full refund of value
 

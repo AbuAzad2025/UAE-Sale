@@ -83,13 +83,13 @@
 
   <div class="expense">
     <div class="expense-header">
-      {% if settings and settings.show_logo %}
-      <img src="{{ url_for('static', filename=settings.logo_path if settings.logo_path else 'img/garage_logo.png') }}" alt="Logo" class="logo">
+      {% if settings and settings.show_logo and settings.logo_url %}
+      <img src="{{ settings.logo_url if settings.logo_url.startswith(('https://', 'http://', '/')) else url_for('static', filename=settings.logo_url) }}" alt="Logo" class="logo">
       {% endif %}
-      <div class="company-name">{{ settings.company_name_ar if settings and settings.company_name_ar else (config.COMPANY_NAME_AR if config else 'شركة أزاد') }}</div>
+      <div class="company-name">{{ settings.company_name_ar or '' }}</div>
       <div class="company-info">
-        <div>{{ settings.address_ar if settings and settings.address_ar else (config.COMPANY_ADDRESS if config else 'أبو ظبي - الإمارات العربية المتحدة') }}</div>
-        <div>📞 {{ settings.phone_1 if settings and settings.phone_1 else (config.COMPANY_PHONE if config else '+970592800646') }} | 📧 {{ settings.email if settings and settings.email else config.COMPANY_EMAIL }}</div>
+        <div>{{ settings.address_ar or '' }}</div>
+        <div>📞 {{ settings.phone_1 or '' }}{% if settings.email %} | 📧 {{ settings.email }}{% endif %}{% if settings.website %} | 🌐 {{ settings.website }}{% endif %}</div>
         {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div style="margin-top: 3px;">الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
       </div>
     </div>

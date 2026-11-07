@@ -1,9 +1,9 @@
 from flask import Blueprint, request, jsonify, render_template, current_app
 from flask_login import login_required, current_user
 from services.return_service import ReturnService
-from models import ProductReturn
+from models import ProductReturn, Sale
 from extensions import db
-from utils.decorators import permission_required
+from utils.decorators import permission_required, get_owned_or_404
 
 
 returns_bp = Blueprint('returns', __name__, url_prefix='/returns')
@@ -67,4 +67,6 @@ def api_create_return():
 @permission_required('manage_sales')
 def view(id):
     product_return = db.get_or_404(ProductReturn, id)
+    # ProductReturn has no tenant_id: enforce ownership through its sale.
+    get_owned_or_404(Sale, product_return.sale_id)
     return render_template('returns/view.html', product_return=product_return)

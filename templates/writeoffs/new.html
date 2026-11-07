@@ -86,6 +86,16 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
+              <i class="fas fa-exchange-alt text-info"></i> سعر الصرف
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="مطلوب فقط إذا اختلفت العملة عن {{ base_currency }}. 1 وحدة من العملة المختارة = كم من {{ base_currency }}"></i>
+            </label>
+            <input type="number" name="exchange_rate" id="exchange_rate" class="form-control" step="0.000001" min="0.000001" value="1.000000" dir="ltr">
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>
               <i class="fas fa-align-left text-secondary"></i> السبب
               <span class="text-danger">*</span>
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سبب المشطوبة (إجباري)"></i>

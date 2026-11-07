@@ -12,6 +12,32 @@ def _get_sale_line(sale):
 
 
 class TestCreateReturn:
+    @pytest.mark.parametrize('inclusive,rate,discount,expected_refund', [
+        (True, Decimal('5'), Decimal('0'), Decimal('50.000')),
+        (False, Decimal('5'), Decimal('10'), Decimal('47.250')),
+    ])
+    def test_inclusive_and_discounted_invoices_can_be_returned(
+            self, db, owner_user, test_customer, test_sale, inclusive,
+            rate, discount, expected_refund):
+        """مرتجعات الفواتير الشاملة وذات الخصم تُرحيل بصورة محاسبية منطقية."""
+        test_sale.tax_inclusive = inclusive
+        test_sale.tax_rate = rate
+        test_sale.discount_amount = discount
+        db.session.commit()
+        line = _get_sale_line(test_sale)
+        ret = ReturnService.create_return(
+            test_sale.id,
+            [{'sale_line_id': line.id, 'quantity': Decimal('1')}],
+            user_id=owner_user.id,
+        )
+        assert ret.refund_amount == expected_refund
+        assert ret.status == 'approved'
+        from models.gl import GLJournalEntry
+        entries = GLJournalEntry.query.filter_by(
+            reference_type='ProductReturn', reference_id=ret.id).all()
+        assert entries
+        assert all(e.is_posted and e.total_debit == e.total_credit for e in entries)
+
     def test_successful_partial_return(self, db, owner_user, test_customer, test_product, test_sale):
         line = _get_sale_line(test_sale)
         stock_before = test_product.current_stock

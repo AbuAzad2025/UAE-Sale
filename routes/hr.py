@@ -569,6 +569,27 @@ def mark_payslip_paid(id):
         payslip.mark_paid()
         db.session.commit()
         create_audit_log('pay', 'payslips', payslip.id)
+        # قيد ميزاني بعد الدفع: مدين رواتب / دائن صندوق (صافي) +
+        # دائن مستحق إن وُجدت استقطاعات — بلا كسر الدفع عند فشل الترحيل
+        try:
+            from services.gl_service import GLService
+            from decimal import Decimal
+            total_earnings = Decimal(str(payslip.total_earnings or 0))
+            total_deductions = Decimal(str(payslip.total_deductions or 0))
+            net = Decimal(str(payslip.net_salary or 0))
+            currency = getattr(payslip.employee, 'salary_currency', None) or 'AED'
+            lines = [{'account': '6100', 'debit': total_earnings, 'description': 'رواتب وأجور'}]
+            if total_deductions > 0:
+                lines.append({'account': '2140', 'credit': total_deductions, 'description': 'استقطاعات رواتب'})
+            lines.append({'account': '1110', 'credit': net, 'description': 'صرف رواتب (كاش)'})
+            GLService.ensure_core_accounts()
+            GLService.post_entry(lines, description=f'Payroll {payslip.payslip_number}',
+                                 reference_type='Payslip', reference_id=payslip.id,
+                                 currency=currency, exchange_rate=Decimal('1'),
+                                 created_by=current_user.id)
+        except Exception as e:
+            current_app.logger.warning(f'Payroll GL post failed (payslip {payslip.id}): {e}')
+            flash('⚠️ تم تسجيل الدفع لكن فشل ترحيل القيد — راجع دفتر الأستاذ.', 'warning')
         flash('✅ تم تسجيل الدفع بنجاح', 'success')
     except ValueError as e:
         current_app.logger.exception('handler failed')

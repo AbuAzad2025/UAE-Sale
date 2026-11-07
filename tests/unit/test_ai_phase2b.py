@@ -40,3 +40,19 @@ def test_guide_routes_exist():
     assert "public.user_guide" in base
     dash = pathlib.Path('templates/owner/dashboard.html').read_text(encoding='utf-8')
     assert 'owner_guide' in dash or 'دليل المالك' in dash
+
+
+def test_sidebar_separates_owner_console_from_tenant_business():
+    import pathlib
+    base = pathlib.Path('templates/base.html').read_text(encoding='utf-8')
+    # البزنس للمستأجر فقط
+    assert 'if not current_user.is_owner' in base
+    # كونسول المنصة للمالك
+    assert "url_for('owner.dashboard')" in base
+    assert "url_for('owner.tenants_list')" in base
+    # مبدّل الشركة
+    assert 'owner_tenants' in base
+    # اللسان العامة مسرودة (المساعد لكل مسجل)
+    assert "ai.assistant_page" in base
+    tb_apps = pathlib.Path('templates/base.html').read_text(encoding='utf-8')
+    assert tb_apps.count('ai.config') >= 1

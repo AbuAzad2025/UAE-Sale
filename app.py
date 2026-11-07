@@ -312,6 +312,15 @@ def create_app(config_class=Config):  # noqa: C901
                     return data.get('symbol', code)
             return code
 
+        # Owner console — مبدّل الشركة (المالك فقط، قراءة السياق)
+        owner_tenants: list = []
+        try:
+            from flask_login import current_user as _cu
+            if _cu is not None and _cu.is_authenticated and getattr(_cu, 'is_owner', False):
+                from models import Tenant as _Tenant
+                owner_tenants = _Tenant.query.filter_by(is_active=True).order_by(_Tenant.id.asc()).all()
+        except Exception:
+            owner_tenants = []
         return {
             'format_currency': format_currency,
             'timeago': timeago,
@@ -331,6 +340,7 @@ def create_app(config_class=Config):  # noqa: C901
             'now': datetime.now(),
             'ai_enabled': 'ai' in app.blueprints,
             'current_tenant': _get_current_tenant(),
+            'owner_tenants': owner_tenants,
         }
 
     def _log_tenant_context_violation(user):

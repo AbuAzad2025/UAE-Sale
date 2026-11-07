@@ -284,13 +284,25 @@
 
       <nav class="mt-2">
         <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+          {# المالك → كونسول المنصة، المستأجر → لوحة البزنس #}
+          {% if current_user.is_owner %}
+          <li class="nav-item">
+            <a href="{{ url_for('owner.dashboard') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.') %}active{% endif %}">
+              <i class="nav-icon fas fa-crown"></i>
+              <p>كونسول المنصة</p>
+            </a>
+          </li>
+          {% else %}
           <li class="nav-item">
             <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
               <i class="nav-icon fas fa-tachometer-alt"></i>
               <p>{{ t('Dashboard') }}</p>
             </a>
           </li>
-          
+          {% endif %}
+
+          {# البزنس للمستأجر فقط — المالك لا يُدار كتاجر #}
+          {% if not current_user.is_owner %}
           {% if current_user.has_permission('manage_sales') %}
           <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('sales.') %}menu-open{% endif %}">
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('sales.') %}active{% endif %}">
@@ -856,7 +868,8 @@
             </ul>
           </li>
           {% endif %}
-          
+          {% endif %}
+
           <!-- المساعد الذكي والأدلة (Phase 4/5: لكل مستخدم مسجل) -->
           <li class="nav-header">مساعد ودليل</li>
           <li class="nav-item">
@@ -912,6 +925,42 @@
               <p>مفاتيح AI (Groq)</p>
             </a>
           </li>
+          <li class="nav-item">
+            <a href="{{ url_for('owner.list_backups') }}" class="nav-link">
+              <i class="nav-icon fas fa-database text-info"></i>
+              <p>النسخ الاحتياطية</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('owner.reports') }}" class="nav-link">
+              <i class="nav-icon fas fa-chart-line text-info"></i>
+              <p>تقارير المنصة</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('owner.invoice_settings') }}" class="nav-link">
+              <i class="nav-icon fas fa-file-invoice text-warning"></i>
+              <p>إعدادات الفواتير</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('owner.integrations') }}" class="nav-link">
+              <i class="nav-icon fas fa-plug text-secondary"></i>
+              <p>التكاملات</p>
+            </a>
+          </li>
+          {# مبدّل الشركة — عرض سياق دعم حسب الشركة (مالك فقط) #}
+          <li class="nav-header">الشركات (دعم)</li>
+          {% for _t in (owner_tenants or []) %}
+          <li class="nav-item">
+            <a href="{{ url_for('owner.tenant_detail', id=_t.id) }}" class="nav-link">
+              <i class="nav-icon fas fa-building text-success"></i>
+              <p>{{ _t.name_ar or _t.name }}</p>
+            </a>
+          </li>
+          {% else %}
+          <li class="nav-item nav-link text-muted"><i class="nav-icon fas fa-info-circle"></i><p>لا شركات نشطة</p></li>
+          {% endfor %}
           {% endif %}
         </ul>
       </nav>

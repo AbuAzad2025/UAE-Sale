@@ -83,6 +83,10 @@ class Tenant(db.Model):
     fiscal_year_start = db.Column(db.Integer, default=1)  # Month: 1-12
     enable_tax = db.Column(db.Boolean, default=True)
     default_tax_rate = db.Column(db.Numeric(5, 2), default=Decimal('5.00'))
+    # الدولة الضريبية (ISO-2) + نسبة الضريبة (UAE 5%، SA 15%...) — المحرك يلتقط الفرع
+    tax_country = db.Column(db.String(2), default='AE')
+    # شامل الضريبة (True) أم إضافي (False)
+    tax_inclusive = db.Column(db.Boolean, default=False)
 
     # Status - الحالة
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)

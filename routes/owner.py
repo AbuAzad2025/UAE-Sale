@@ -1477,6 +1477,22 @@ def _tenant_to_int(value, default):
     return v if v >= 0 else default
 
 
+def _tenant_to_tax_rate(value, country_code=None):
+    """نسبة الضريبة: المُدخلة أولاً، ثم نسبة الدولة."""
+    if value not in (None, ''):
+        try:
+            rate = float(value)
+            return rate if 0 <= rate <= 100 else 0.0
+        except (TypeError, ValueError):
+            pass
+    try:
+        from services.tax_engine import country_rate
+        r = country_rate(country_code)
+        return float(r) if r is not None else 0.0
+    except Exception:
+        return 0.0
+
+
 def _tenant_stats(tenant_id):
     """Explicit per-tenant aggregates (never relies on ambient filtering)."""
     return {
@@ -1500,6 +1516,7 @@ def _tenant_form_values(tenant=None):
             'phone_1': '', 'phone_2': '', 'mobile': '',
             'email': '', 'website': '',
             'tax_number': '', 'commercial_register': '', 'license_number': '',
+            'tax_country': 'AE', 'tax_inclusive': False, 'enable_tax': True, 'default_tax_rate': 5.0,
             'default_currency': 'ILS', 'default_language': 'ar',
             'timezone': 'Asia/Dubai',
             'subscription_plan': 'basic', 'is_trial': False,
@@ -1521,6 +1538,10 @@ def _tenant_form_values(tenant=None):
             'tax_number': tenant.tax_number or '',
             'commercial_register': tenant.commercial_register or '',
             'license_number': tenant.license_number or '',
+            'tax_country': getattr(tenant, 'tax_country', None) or 'AE',
+            'tax_inclusive': bool(getattr(tenant, 'tax_inclusive', False)),
+            'enable_tax': bool(getattr(tenant, 'enable_tax', True)),
+            'default_tax_rate': float(getattr(tenant, 'default_tax_rate', 5) or 0),
             'default_currency': tenant.default_currency or 'ILS',
             'default_language': tenant.default_language or 'ar',
             'timezone': tenant.timezone or 'Asia/Dubai',
@@ -1604,6 +1625,10 @@ def _validate_tenant_form(form, currencies, exclude_id=None):
         'timezone': (form.get('timezone') or 'Asia/Dubai').strip() or 'Asia/Dubai',
         'subscription_plan': plan,
         'is_trial': form.get('is_trial') == 'on',
+        'tax_country': (form.get('tax_country') or 'AE').strip().upper()[:2] or 'AE',
+        'tax_inclusive': form.get('tax_inclusive') == 'on',
+        'enable_tax': form.get('enable_tax') == 'on',
+        'default_tax_rate': _tenant_to_tax_rate(form.get('default_tax_rate'), form.get('tax_country') or 'AE'),
         'max_users': _tenant_to_int(form.get('max_users'), 5),
         'max_products': _tenant_to_int(form.get('max_products'), 1000),
         'max_customers': _tenant_to_int(form.get('max_customers'), 500),

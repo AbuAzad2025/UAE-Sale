@@ -147,6 +147,42 @@
           </div>
         </div>
       </div>
+      <div class="card">
+        <div class="card-header"><h5>الضريبة (VAT)</h5></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>دولة الضريبة (النسبة الافتراضية)</label>
+                <select name="tax_country" class="form-control">
+                  {% for code, label in [('AE','الإمارات — 5%'),('SA','السعودية — 15%'),('BH','البحرين — 10%'),('OM','عمان — 5%'),('KW','الكويت — 5%'),('EG','مصر — 14%'),('JO','الأردن — 16%')] %}
+                  <option value="{{ code }}" {{ 'selected' if form.tax_country == code }}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>النسبة %</label>
+                <input type="number" name="default_tax_rate" value="{{ form.default_tax_rate }}" class="form-control" step="0.01" min="0" max="100">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-check mt-4">
+                <input type="checkbox" name="enable_tax" class="form-check-input" id="t_enable_tax" {{ 'checked' if form.enable_tax }}>
+                <label class="form-check-label" for="t_enable_tax">إدراج الضريبة في الفواتير</label>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-check mt-4">
+                <input type="checkbox" name="tax_inclusive" class="form-check-input" id="t_tax_inclusive" {{ 'checked' if form.tax_inclusive }}>
+                <label class="form-check-label" for="t_tax_inclusive">الأسعار شاملة الضريبة (شامل) — بدلاً من إضافي (exclusive)</label>
+              </div>
+            </div>
+          </div>
+          <small class="form-text text-muted">الفاتورة تلتقط لقطة النسبة + الشاملية وقت إصدارها — تغيير الإعدادات لاحقاً لا يعيد حساب الفواتير القديمة.</small>
+        </div>
+      </div>
     </div>
   </div>
 

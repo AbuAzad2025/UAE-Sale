@@ -146,7 +146,9 @@ def create():  # noqa: C901
 
             discount_amount = request.form.get('discount_amount', type=float, default=0)
             shipping_cost = request.form.get('shipping_cost', type=float, default=0)
-            tax_rate = request.form.get('tax_rate', type=float, default=0)
+            _raw_tax = request.form.get('tax_rate')
+            tax_rate = float(_raw_tax) if _raw_tax not in (None, '') else None
+            tax_inclusive = request.form.get('tax_inclusive') in ('on', '1', 'true')
             notes = request.form.get('notes')
 
             # Add exchange rate audit to notes if manually changed
@@ -184,6 +186,7 @@ def create():  # noqa: C901
                 discount_amount=discount_amount,
                 shipping_cost=shipping_cost,
                 tax_rate=tax_rate,
+                tax_inclusive=tax_inclusive,
                 notes=notes,
                 payment_data=payment_data
             )

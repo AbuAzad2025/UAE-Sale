@@ -101,31 +101,42 @@ class SaleService:
 
     @staticmethod
     def _resolve_tax_rate(tax_rate, customer=None):
-        """نسبة الضريبة: الممرَرة أولاً، وإلا الافتراضية للشركة الحالية."""
-        if tax_rate is None:
-            # من سياق الطلب (أدق) ثم من عميل الفاتورة
+        """حفظ التوافق: يعيد (rate, inclusive) عبر TaxEngine."""
+        # الرابط السابق يبقي tax_rate Decimal فقط؛ الجديد _resolve_tax(...)
+        _rate, _incl = SaleService._resolve_tax(tax_rate, customer=customer)
+        return _rate
+
+    @staticmethod
+    def _resolve_tax(tax_rate, customer=None, tax_inclusive=None):
+        """(rate, inclusive) من التينانت عبر TaxEngine."""
+        tid = None
+        try:
+            from models.tenant_scope import get_current_tenant_id
+            tid = get_current_tenant_id()
+        except Exception:
             tid = None
+        if tid is None and customer is not None:
+            tid = getattr(customer, 'tenant_id', None)
+        tenant = None
+        if tid is not None:
             try:
-                from models.tenant_scope import get_current_tenant_id
-                tid = get_current_tenant_id()
+                from models import Tenant
+                tenant = Tenant.query.get(tid)
             except Exception:
-                tid = None
-            if tid is None and customer is not None:
-                tid = getattr(customer, 'tenant_id', None)
-            if tid is not None:
-                try:
-                    from models import Tenant
-                    _t = Tenant.query.get(tid)
-                    if _t is not None and getattr(_t, 'enable_tax', True):
-                        return Decimal(str(_t.default_tax_rate or Decimal('0')))
-                except Exception:
-                    pass
-            return Decimal('0')
-        return Decimal(str(tax_rate))
+                tenant = None
+        from services.tax_engine import resolve as _resolve
+        exp_rate = None
+        if tax_rate is not None:
+            exp_rate = __import__('decimal').Decimal(str(tax_rate))
+        try:
+            return _resolve(tenant, explicit_rate=exp_rate,
+                            explicit_inclusive=tax_inclusive)
+        except Exception:
+            return (exp_rate or __import__('decimal').Decimal('0'), bool(tax_inclusive or False))
 
     @staticmethod
     def create_sale(customer, seller, lines_data, warehouse_id=None, currency=None, user_exchange_rate=None,
-                    discount_amount=0, shipping_cost=0, tax_rate=None, notes=None, payment_data=None):
+                    discount_amount=0, shipping_cost=0, tax_rate=None, tax_inclusive=None, notes=None, payment_data=None):
         """
         Create a new sale with proper validations and decimal precision
         All financial calculations use Decimal for accuracy
@@ -159,7 +170,8 @@ class SaleService:
         # Validate discount and tax
         discount_decimal = Decimal(str(discount_amount)) if discount_amount else Decimal('0')
         shipping_decimal = Decimal(str(shipping_cost)) if shipping_cost else Decimal('0')
-        tax_rate_decimal = SaleService._resolve_tax_rate(tax_rate, customer=customer)
+        _resolved_rate, _resolved_inclusive = SaleService._resolve_tax(tax_rate, customer=customer, tax_inclusive=tax_inclusive)
+        tax_rate_decimal = _resolved_rate
 
         if discount_decimal < Decimal('0'):
             raise ValidationError('قيمة الخصم لا يمكن أن تكون سالبة')
@@ -229,6 +241,7 @@ class SaleService:
                 discount_amount=discount_decimal,
                 shipping_cost=shipping_decimal,
                 tax_rate=tax_rate_decimal,
+                tax_inclusive=_resolved_inclusive,
                 total_amount=Decimal('0'),  # Temporary - will be calculated
                 amount_base=Decimal('0'),    # Temporary - will be calculated
                 notes=notes

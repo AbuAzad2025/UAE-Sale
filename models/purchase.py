@@ -34,6 +34,7 @@ class Purchase(TenantScopedMixin, db.Model):
     discount_amount = db.Column(db.Numeric(15, 3), default=0)
     tax_rate = db.Column(db.Numeric(5, 2), default=0)
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
+    tax_inclusive = db.Column(db.Boolean, default=False)
     total_amount = db.Column(db.Numeric(15, 3), nullable=False)
 
     currency = db.Column(db.String(3), default='ILS', nullable=False)
@@ -154,16 +155,23 @@ class Purchase(TenantScopedMixin, db.Model):
         tax_rate_decimal = Decimal(str(self.tax_rate)) if self.tax_rate else Decimal('0')
         exchange_rate_decimal = Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal('1')
 
-        # Calculate tax amount with proper rounding
+        # Tax (accounting for inclusion)
         taxable_amount = self.subtotal - discount
-        self.tax_amount = (taxable_amount * (tax_rate_decimal / Decimal('100'))).quantize(
-            Decimal('0.01'), rounding=ROUND_HALF_UP
-        )
-
-        # Calculate total amount with proper rounding
-        self.total_amount = (taxable_amount + self.tax_amount).quantize(
-            Decimal('0.001'), rounding=ROUND_HALF_UP
-        )
+        if getattr(self, 'tax_inclusive', False):
+            _d = (Decimal('1') + tax_rate_decimal / Decimal('100'))
+            self.tax_amount = (taxable_amount - (taxable_amount / _d)).quantize(
+                Decimal('0.01'), rounding=ROUND_HALF_UP
+            ) if _d != 0 else Decimal('0')
+            self.total_amount = taxable_amount.quantize(
+                Decimal('0.001'), rounding=ROUND_HALF_UP
+            )
+        else:
+            self.tax_amount = (taxable_amount * (tax_rate_decimal / Decimal('100'))).quantize(
+                Decimal('0.01'), rounding=ROUND_HALF_UP
+            )
+            self.total_amount = (taxable_amount + self.tax_amount).quantize(
+                Decimal('0.001'), rounding=ROUND_HALF_UP
+            )
 
         # Calculate base amount with proper rounding.
         # F13: نفس فرع عملة الأساس في Sale.calculate_totals — الفاتورة بعملة

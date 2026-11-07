@@ -461,7 +461,15 @@ def print_payment(id):
     }
     
     settings = InvoiceSettings.get_active()
-    
+    try:
+        from utils.invoice_header import with_tenant_header
+        _ptenant = getattr(payment, 'tenant', None)
+        if _ptenant is None and getattr(payment, 'customer', None) is not None:
+            _ptenant = getattr(payment.customer, 'tenant', None)
+        settings = with_tenant_header(settings, _ptenant)
+    except Exception:
+        pass
+
     # Template selection (payments use receipt templates)
     template = request.args.get('template', 'modern')
     _ALLOWED_TEMPLATES = ('modern', 'classic', 'gulf', 'minimal', 'simple')
@@ -1012,6 +1020,14 @@ def print_receipt(id):
 
     # Get invoice settings
     settings = InvoiceSettings.get_active()
+    try:
+        from utils.invoice_header import with_tenant_header
+        _rtenant = getattr(receipt, 'tenant', None)
+        if _rtenant is None and getattr(receipt, 'customer', None) is not None:
+            _rtenant = getattr(receipt.customer, 'tenant', None)
+        settings = with_tenant_header(settings, _rtenant)
+    except Exception:
+        pass
 
     # Template selection via URL param (?template=modern) or settings
     import re

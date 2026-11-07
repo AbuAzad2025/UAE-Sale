@@ -253,6 +253,13 @@ def print_invoice(id):
     # Get invoice settings
     from config import Config
     settings = InvoiceSettings.get_active()
+    # قالب واحد — بيانات كل تينانت: الهوية (اسم/رقم ضريبي/عنوان/شعار/ألوان)
+    # تُسقط فوق القالب العام من الشركة المالكة للفاتورة، لا من قيمة أزاد.
+    try:
+        from utils.invoice_header import with_tenant_header
+        settings = with_tenant_header(settings, getattr(sale, 'tenant', None))
+    except Exception:
+        pass
 
     # Template selection via URL param (?template=modern) or settings
     import re

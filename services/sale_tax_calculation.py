@@ -25,25 +25,6 @@ def _treatment(value):
     return value
 
 
-def sale_tax_totals(subtotal, discount, shipping, rate, inclusive):
-    """Single-bucket (legacy) invoice-level calculation."""
-    subtotal, discount, shipping, rate = (
-        (_num(v) for v in (subtotal, discount, shipping, rate)))
-    allocable = subtotal - discount + shipping
-    if inclusive:
-        divisor = Decimal('1') + rate / Decimal('100')
-        if divisor <= 0:
-            raise ValueError('Invalid tax rate')
-        tax = (allocable - allocable / divisor).quantize(
-            TAX_Q, rounding=ROUND_HALF_UP)
-        total = allocable.quantize(MONEY_Q, rounding=ROUND_HALF_UP)
-    else:
-        tax = (allocable * rate / Decimal('100')).quantize(
-            TAX_Q, rounding=ROUND_HALF_UP)
-        total = (allocable + tax).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
-    return tax, total
-
-
 def split_lines(lines):
     """Sum line totals by treatment bucket.
 

@@ -164,18 +164,20 @@ class ExportService:
             BytesIO containing the PDF file.
         """
         from weasyprint import HTML
+        from html import escape
 
         dir_attr = 'dir="rtl"' if right_to_left else ''
         align = 'right' if right_to_left else 'left'
         direction_css = 'direction:rtl;' if right_to_left else ''
-        header_cells = ''.join(f'<th>{h}</th>' for h in headers)
+        esc = escape
+        header_cells = ''.join(f'<th>{esc(str(h))}</th>' for h in headers)
         generated_ts = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
         meta_line = f'{subtitle} | ' if subtitle else ''
 
         rows_html = ''
         for row in rows:
             cells = ''.join(
-                f'<td style="text-align:{align};padding:6px 8px;border:1px solid #ddd">{cell}</td>'
+                f'<td style="text-align:{align};padding:6px 8px;border:1px solid #ddd">{esc(str(cell))}</td>'
                 for cell in row
             )
             rows_html += f'<tr>{cells}</tr>'
@@ -183,8 +185,8 @@ class ExportService:
         summary_html = ''
         if summary:
             rows_s = ''.join(
-                f'<tr><td style="font-weight:bold;padding:4px 8px">{k}</td>'
-                f'<td style="text-align:right;padding:4px 8px">{v}</td></tr>'
+                f'<tr><td style="font-weight:bold;padding:4px 8px">{esc(str(k))}</td>'
+                f'<td style="text-align:right;padding:4px 8px">{esc(str(v))}</td></tr>'
                 for k, v in summary.items()
             )
             summary_html = f'''
@@ -209,8 +211,7 @@ class ExportService:
 </head>
 <body>
   <h1>{title}</h1>
-  <div class="meta">{meta_line}تم التوليد: {generated_ts}</div>
-  <table>
+  <div class="meta">{meta_line}تم التوليد: {generated_ts}</div>  <table>
     <thead><tr>{header_cells}</tr></thead>
     <tbody>{rows_html}</tbody>
   </table>
@@ -219,8 +220,8 @@ class ExportService:
 </body>
 </html>""".format(
             dir_attr=dir_attr, direction_css=direction_css,
-            title=title, generated_ts=generated_ts,
-            meta_line=meta_line,
+            title=esc(str(title)), generated_ts=generated_ts,
+            meta_line=esc(str(meta_line)) if meta_line else '',
             header_cells=header_cells, rows_html=rows_html,
             summary_html=summary_html)
 

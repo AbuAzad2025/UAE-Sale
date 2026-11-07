@@ -1225,32 +1225,44 @@ def _vat_base_amounts(document):
 def _return_vat_amounts(product_return):
     """(الأساس، الضريبة) بإشعار دائن (مرتجع) بعملة الأساس.
 
-    المرتجع لا يحمل عمود ضريبة؛ الضريبة تُحسب بنفس سياسة
-    services/return_service.py (لكل سطر على حدة ثم الجمع) من فاتورة
-    البيع الأصلية، لأن دفتر الأستاذينكز الضريبة على نفس المبلغ.
+    نفس محرك الحساب المستخدم عند تسجيل المرتجع: لقطات معاملة البند،
+    توزيع الخصم الإجمالي والشحن على البنود بالتناسب، والشامل يُستخرج.
     """
     from models import ProductReturnLine
-    from services.tax_engine import TaxEngine
+    from services.sale_tax_calculation import return_tax_parts
 
     sale = product_return.sale
-    tax_rate = (sale.tax_rate if sale else Decimal('0')) or Decimal('0')
+    tax_rate = Decimal(str(sale.tax_rate or 0)) if sale else Decimal('0')
+    invoice_treatment = getattr(sale, 'tax_treatment', None) or 'standard'
     exchange_rate = product_return.exchange_rate or Decimal('1')
     if exchange_rate <= 0:
         exchange_rate = Decimal('1')
 
-    line_totals = [
-        Decimal(str(line.line_total))
-        for line in ProductReturnLine.query.filter_by(
-            return_id=product_return.id).all()
-    ]
-    breakdown = TaxEngine.compute_invoice(
-        [{'amount': total, 'rate': tax_rate} for total in line_totals])
+    returned = []
+    for line in ProductReturnLine.query.filter_by(
+            return_id=product_return.id).all():
+        sale_line = getattr(line, 'sale_line', None)
+        returned.append({
+            'line_total': Decimal(str(line.line_total)),
+            'tax_treatment': getattr(sale_line, 'tax_treatment', None) or 'standard',
+        })
 
-    tax_base = (breakdown['total_tax'] * Decimal(str(exchange_rate))).quantize(
+    tax_amount, net_std, net_zero, net_exempt = return_tax_parts(
+        returned, sale.lines if sale else [], sale.subtotal if sale else Decimal('0'),
+        Decimal(str(getattr(sale, 'discount_amount', 0) or 0)),
+        Decimal(str(getattr(sale, 'shipping_cost', 0) or 0)),
+        tax_rate, bool(getattr(sale, 'tax_inclusive', False)),
+        invoice_treatment=invoice_treatment)
+
+    fx = Decimal(str(exchange_rate))
+    net_base = (net_std + net_zero + net_exempt).quantize(
         Decimal('0.001'), rounding=ROUND_HALF_UP)
-    net_base = (product_return.amount_base or Decimal('0')).quantize(
-        Decimal('0.001'), rounding=ROUND_HALF_UP)
-    return net_base, tax_base, tax_rate
+    return (
+        (net_base * fx).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP),
+        (tax_amount * fx).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP),
+        tax_rate,
+        net_std * fx, net_zero * fx, net_exempt * fx,
+    )
 
 
 def _vat_report_data(date_from=None, date_to=None):
@@ -1281,59 +1293,110 @@ def _vat_report_data(date_from=None, date_to=None):
     taxable_sales = []
     zero_rated_sales = []
     exempt_sales = []
+    unclassified_sales = []
     total_taxable_sales = Decimal('0')
     total_zero_rated_sales = Decimal('0')
     total_output_vat = Decimal('0')
     total_exempt_sales = Decimal('0')
+    total_unclassified_sales = Decimal('0')
 
-    def _sale_tax_buckets(sale):
-        """(standard, zero, exempt) base nets من البند — خطأ → كامل standard."""
-        buckets = {'standard': Decimal('0'), 'zero': Decimal('0'), 'exempt': Decimal('0')}
-        try:
-            fx = Decimal(str(sale.exchange_rate or 1))
-            for line in sale.lines:
-                prod = getattr(line, 'product', None)
-                treatment = (getattr(prod, 'tax_treatment', None) or 'standard')
-                net = Decimal(str(line.line_total or 0)) * fx
-                buckets['zero' if treatment == 'zero' else 'exempt' if treatment == 'exempt' else 'standard'] += net
-        except Exception:
-            pass
-        return buckets
+    def _sale_tax_rows(sale):
+        """صفوف الفاتورة موزعة على المعاملات الضريبية للأسطر.
+
+        ffنفس محرك الخدمة: توزيع الخصم الإجمالي والشحن بالتناسب، واستخراج
+        الضريبة من السعر الشامل عند الحاجة. كل معفرة تُنتج صفّاً خاصاً.
+        """
+        from services.sale_tax_calculation import sale_tax_totals_mixed
+
+        fx = Decimal(str(sale.exchange_rate or 1))
+        if fx <= 0:
+            fx = Decimal('1')
+        rate = Decimal(str(sale.tax_rate or 0))
+        invoice_treatment = getattr(sale, 'tax_treatment', None) or 'standard'
+        lines = list(sale.lines or [])
+        if not lines:
+            # فاتورة بلا سطور — ائتلاف كامل على أساس الفاتورة نفسها.
+            gross_base = sale.amount_base or Decimal('0')
+            tax_base = Decimal(str(sale.tax_amount or 0)) * fx
+            net_all = gross_base - tax_base
+            if invoice_treatment == 'zero':
+                return [('zero', net_all, Decimal('0'))]
+            if invoice_treatment == 'exempt':
+                return [('exempt', net_all, Decimal('0'))]
+            if rate > 0:
+                return [('standard', net_all, tax_base.quantize(
+                    Decimal('0.001'), rounding=ROUND_HALF_UP))]
+            return []
+        specs = [{'line_total': line.line_total,
+                  'tax_treatment': getattr(line, 'tax_treatment', None) or 'standard'}
+                 for line in lines]
+        tax, total, net_std, net_zero, net_exempt = sale_tax_totals_mixed(
+            specs, sale.discount_amount, sale.shipping_cost, rate,
+            bool(sale.tax_inclusive), invoice_treatment=invoice_treatment)
+        q = lambda v: (Decimal(str(v)) * fx).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
+        return [(bucket, q(net), q(tax) if bucket == 'standard' else Decimal('0'))
+                for bucket, net in (('standard', net_std),
+                                    ('zero', net_zero),
+                                    ('exempt', net_exempt)) if net > 0]
 
     for sale in sales_query.order_by(Sale.sale_date).all():
         net_base, tax_base, tax_rate = _vat_base_amounts(sale)
-        _buckets = _sale_tax_buckets(sale)
-        _inv_treatment = getattr(sale, 'tax_treatment', None) or 'standard'
-        row = {
+        row_buckets = _sale_tax_rows(sale)
+        invoice_treatment = getattr(sale, 'tax_treatment', None) or 'standard'
+        base_row = {
             'number': sale.sale_number,
             'date': sale.sale_date,
             'party': sale.customer.name if sale.customer else 'عميل نقدي',
-            'net_amount': net_base,
             'gross_amount': sale.amount_base or Decimal('0'),
-            'tax_rate': tax_rate,
-            'tax_amount': tax_base,
-            'zero_amount': _buckets['zero'],
-            'exempt_amount': _buckets['exempt'],
         }
-        if tax_rate > 0:
-            taxable_sales.append(row)
-            total_taxable_sales += net_base
-            total_output_vat += tax_base
-            total_zero_rated_sales += _buckets['zero']
-            total_exempt_sales += _buckets['exempt']
-        elif _inv_treatment == 'zero' or row['zero_amount'] > 0:
-            zero_rated_sales.append(row)
-            total_zero_rated_sales += _buckets['zero'] or net_base
-        else:
-            exempt_sales.append(row)
-            total_exempt_sales += row['gross_amount']
+        if tax_rate == 0 and invoice_treatment == 'standard':
+            # فواتير بنسبة صفر بلا تصنيف — لا تُصنّف آلياً.
+            unclassified_sales.append({
+                **base_row,
+                'net_amount': net_base,
+                'tax_rate': tax_rate,
+                'tax_amount': tax_base,
+                'treatment': 'standard',
+                'zero_amount': Decimal('0'),
+                'exempt_amount': Decimal('0'),
+            })
+            total_unclassified_sales += net_base
+            continue
+        for bucket, net, _tax in row_buckets:
+            row = {
+                **base_row,
+                'net_amount': net,
+                'tax_rate': tax_rate if bucket == 'standard' else Decimal('0'),
+                'tax_amount': _tax,
+                'treatment': bucket,
+                'zero_amount': net if bucket == 'zero' else Decimal('0'),
+                'exempt_amount': net if bucket == 'exempt' else Decimal('0'),
+            }
+            if bucket == 'standard':
+                taxable_sales.append(row)
+                total_taxable_sales += net
+                total_output_vat += _tax
+            elif bucket == 'zero':
+                zero_rated_sales.append(row)
+                total_zero_rated_sales += net
+            else:
+                exempt_sales.append(row)
+                total_exempt_sales += net
 
     # --- إشعارات الدائنة (المرتجعات) ---
     from models import ProductReturn
 
-    returns_query = ProductReturn.query.filter(
-        ProductReturn.status.notin_(['pending', 'cancelled'])
+    # ProductReturn is not tenant-scoped itself. Join the owning sale and
+    # apply the active scope explicitly, including tenant-less accounts.
+    from models.tenant_scope import get_current_tenant_id, TENANT_LESS_SCOPE
+    returns_query = ProductReturn.query.join(Sale, ProductReturn.sale_id == Sale.id).filter(
+        ProductReturn.status == 'approved'
     )
+    _tenant_id = get_current_tenant_id()
+    if _tenant_id == TENANT_LESS_SCOPE:
+        returns_query = returns_query.filter(Sale.tenant_id.is_(None))
+    elif _tenant_id is not None:
+        returns_query = returns_query.filter(Sale.tenant_id == _tenant_id)
     if date_from:
         returns_query = returns_query.filter(
             func.date(ProductReturn.return_date) >= date_from)
@@ -1344,9 +1407,11 @@ def _vat_report_data(date_from=None, date_to=None):
     credit_notes = []
     total_credit_notes_net = Decimal('0')
     total_credit_notes_vat = Decimal('0')
+    credit_net_by_treatment = {'standard': Decimal('0'), 'zero': Decimal('0'),
+                               'exempt': Decimal('0'), 'unclassified': Decimal('0')}
 
     for product_return in returns_query.order_by(ProductReturn.return_date).all():
-        net_base, tax_base, tax_rate = _return_vat_amounts(product_return)
+        net_base, tax_base, tax_rate, r_std, r_zero, r_exempt = _return_vat_amounts(product_return)
         customer = product_return.customer
         credit_notes.append({
             'number': product_return.return_number,
@@ -1359,6 +1424,15 @@ def _vat_report_data(date_from=None, date_to=None):
         })
         total_credit_notes_net += net_base
         total_credit_notes_vat += tax_base
+        sale = product_return.sale
+        invoice_treatment = getattr(sale, 'tax_treatment', None) or 'standard'
+        if tax_rate == 0 and invoice_treatment == 'standard':
+            # المستند كله غامض — تُخصم كامل قيمة المرتجع من سلة غير المصنّف.
+            credit_net_by_treatment['unclassified'] += net_base
+        else:
+            credit_net_by_treatment['standard'] += r_std
+            credit_net_by_treatment['zero'] += r_zero
+            credit_net_by_treatment['exempt'] += r_exempt
 
     # --- المشتريات الخاضعة للضريبة (ضريبة مدخلات) ---
     purchases_query = Purchase.query.filter(Purchase.status == 'confirmed')
@@ -1372,13 +1446,18 @@ def _vat_report_data(date_from=None, date_to=None):
         ~Purchase.id.in_(_archived_record_ids('purchases')))
 
     taxable_purchases = []
+    zero_rated_purchases = []
     exempt_purchases = []
+    unclassified_purchases = []
     total_taxable_purchases = Decimal('0')
+    total_zero_rated_purchases = Decimal('0')
     total_input_vat = Decimal('0')
     total_exempt_purchases = Decimal('0')
+    total_unclassified_purchases = Decimal('0')
 
     for purchase in purchases_query.order_by(Purchase.purchase_date).all():
         net_base, tax_base, tax_rate = _vat_base_amounts(purchase)
+        _purchase_treatment = getattr(purchase, 'tax_treatment', None) or 'standard'
         row = {
             'number': purchase.purchase_number,
             'date': purchase.purchase_date,
@@ -1393,12 +1472,22 @@ def _vat_report_data(date_from=None, date_to=None):
             taxable_purchases.append(row)
             total_taxable_purchases += net_base
             total_input_vat += tax_base
-        else:
+        elif _purchase_treatment == 'zero':
+            zero_rated_purchases.append(row)
+            total_zero_rated_purchases += net_base
+        elif _purchase_treatment == 'exempt':
             exempt_purchases.append(row)
-            total_exempt_purchases += row['gross_amount']
+            total_exempt_purchases += net_base
+        else:
+            # نسبة صفر بلا تصنيف — لا تُصنّف آلياً.
+            unclassified_purchases.append(row)
+            total_unclassified_purchases += net_base
 
     # المرتجعات تخصم من المبيعات الخاضعة ومن ضريبة المخرجات
-    total_taxable_sales -= total_credit_notes_net
+    total_taxable_sales -= credit_net_by_treatment['standard']
+    total_zero_rated_sales -= credit_net_by_treatment['zero']
+    total_exempt_sales -= credit_net_by_treatment['exempt']
+    total_unclassified_sales -= credit_net_by_treatment['unclassified']
     total_output_vat -= total_credit_notes_vat
 
     net_vat = total_output_vat - total_input_vat
@@ -1407,11 +1496,14 @@ def _vat_report_data(date_from=None, date_to=None):
         'total_taxable_sales': total_taxable_sales,
         'total_output_vat': total_output_vat,
         'total_zero_rated_sales': total_zero_rated_sales,
+        'total_unclassified_sales': total_unclassified_sales,
         'total_exempt_sales': total_exempt_sales,
         'total_credit_notes_net': total_credit_notes_net,
         'total_credit_notes_vat': total_credit_notes_vat,
         'total_taxable_purchases': total_taxable_purchases,
         'total_input_vat': total_input_vat,
+        'total_zero_rated_purchases': total_zero_rated_purchases,
+        'total_unclassified_purchases': total_unclassified_purchases,
         'total_exempt_purchases': total_exempt_purchases,
         'net_vat': net_vat,
         'vat_payable': net_vat if net_vat > 0 else Decimal('0'),
@@ -1422,8 +1514,11 @@ def _vat_report_data(date_from=None, date_to=None):
         'taxable_sales': taxable_sales,
         'zero_rated_sales': zero_rated_sales,
         'exempt_sales': exempt_sales,
+        'unclassified_sales': unclassified_sales,
         'credit_notes': credit_notes,
         'taxable_purchases': taxable_purchases,
+        'zero_rated_purchases': zero_rated_purchases,
+        'unclassified_purchases': unclassified_purchases,
         'exempt_purchases': exempt_purchases,
         'summary': summary,
         'date_from': date_from or '',
@@ -1446,9 +1541,13 @@ def vat_report():
 
     return render_template('reports/vat_report.html',
                            taxable_sales=data['taxable_sales'],
+                           zero_rated_sales=data['zero_rated_sales'],
                            exempt_sales=data['exempt_sales'],
+                           unclassified_sales=data['unclassified_sales'],
                            credit_notes=data['credit_notes'],
                            taxable_purchases=data['taxable_purchases'],
+                           zero_rated_purchases=data['zero_rated_purchases'],
+                           unclassified_purchases=data['unclassified_purchases'],
                            exempt_purchases=data['exempt_purchases'],
                            summary=data['summary'],
                            date_from=data['date_from'],
@@ -1674,9 +1773,13 @@ def export_vat_report():  # noqa: C901
                 float(row['tax_amount'])]
 
     sales_rows = [_sale_row(r) for r in data['taxable_sales']]
+    zero_rated_rows = [_sale_row(r) for r in data['zero_rated_sales']]
     exempt_sales_rows = [_sale_row(r) for r in data['exempt_sales']]
+    unclassified_sales_rows = [_sale_row(r) for r in data['unclassified_sales']]
     credit_note_rows = [_sale_row(r) for r in data['credit_notes']]
     purchase_rows = [_purchase_row(r) for r in data['taxable_purchases']]
+    zero_rated_purchase_rows = [_purchase_row(r) for r in data['zero_rated_purchases']]
+    unclassified_purchase_rows = [_purchase_row(r) for r in data['unclassified_purchases']]
     exempt_purchase_rows = [_purchase_row(r) for r in data['exempt_purchases']]
 
     total_output = summary['total_output_vat']
@@ -1711,11 +1814,19 @@ def export_vat_report():  # noqa: C901
 
         _sheet('المبيعات الخاضعة', sales_headers, sales_rows, 'C0392B',
                ('المجموع', summary['total_taxable_sales'], total_output))
+        _sheet('المبيعات الصفرية', sales_headers, zero_rated_rows, '2980B9',
+               ('المجموع', summary['total_zero_rated_sales'], 0))
         _sheet('المبيعات المعفاة', sales_headers, exempt_sales_rows, '7F8C8D',
                ('المجموع', summary['total_exempt_sales'], 0))
+        _sheet('فواتير صفر بلا تصنيف', sales_headers, unclassified_sales_rows, 'D35400',
+               ('المجموع', summary['total_unclassified_sales'], 0))
         _sheet('إشعارات الدائنة', credit_note_headers, credit_note_rows, '8E44AD',
                ('المجموع', -summary['total_credit_notes_net'],
                 -summary['total_credit_notes_vat']))
+        _sheet('المشتريات الصفرية', purchase_headers, zero_rated_purchase_rows, '2980B9',
+               ('المجموع', summary['total_zero_rated_purchases'], 0))
+        _sheet('مشتريات صفر بلا تصنيف', purchase_headers, unclassified_purchase_rows, 'D35400',
+               ('المجموع', summary['total_unclassified_purchases'], 0))
         _sheet('المشتريات الخاضعة', purchase_headers, purchase_rows, '27AE60',
                ('المجموع', summary['total_taxable_purchases'], total_input))
         _sheet('المشتريات المعفاة', purchase_headers, exempt_purchase_rows,
@@ -1726,12 +1837,16 @@ def export_vat_report():  # noqa: C901
         summary_rows = [
             ('الأساس الخاضع للمبيعات', float(summary['total_taxable_sales'])),
             ('ضريبة المبيعات (Output VAT)', float(total_output)),
+            ('إجمالي المبيعات الصفرية', float(summary['total_zero_rated_sales'])),
+            ('فواتير صفر بلا تصنيف', float(summary['total_unclassified_sales'])),
             ('إجمالي المبيعات المعفاة', float(summary['total_exempt_sales'])),
             ('إشعارات الدائنة (أساس)', float(-summary['total_credit_notes_net'])),
             ('ضريبة إشعارات الدائنة', float(-summary['total_credit_notes_vat'])),
             ('الأساس الخاضع للمشتريات', float(summary['total_taxable_purchases'])),
             ('ضريبة المشتريات (Input VAT)', float(total_input)),
             ('إجمالي المشتريات المعفاة', float(summary['total_exempt_purchases'])),
+            ('إجمالي المشتريات الصفرية', float(summary['total_zero_rated_purchases'])),
+            ('مشتريات صفر بلا تصنيف', float(summary['total_unclassified_purchases'])),
             ('الرصيد النهائي', float(net_vat)),
         ]
         for ri, (label, value) in enumerate(summary_rows, 1):
@@ -1755,15 +1870,23 @@ def export_vat_report():  # noqa: C901
             # كل قسم بعناوينه الخاصة — لا تختلط صفوف المبيعات والمشتريات
             all_rows = (
                 [['── المبيعات الخاضعة للضريبة ──'] + [''] * 5] + [sales_headers] + sales_rows +
+                [['── المبيعات الصفرية (0%) ──'] + [''] * 5] + [sales_headers] + zero_rated_rows +
                 [['── المبيعات المعفاة ──'] + [''] * 5] + [sales_headers] + exempt_sales_rows +
+                [['── فواتير صفر بلا تصنيف (تحتاج مراجعة) ──'] + [''] * 5] + [sales_headers] + unclassified_sales_rows +
                 [['── إشعارات الدائنة (المرتجعات) ──'] + [''] * 5] + [credit_note_headers] + credit_note_rows +
                 [['── المشتريات الخاضعة للضريبة ──'] + [''] * 5] + [purchase_headers] + purchase_rows +
+                [['── المشتريات الصفرية (0%) ──'] + [''] * 5] + [purchase_headers] + zero_rated_purchase_rows +
+                [['── مشتريات صفر بلا تصنيف (تحتاج مراجعة) ──'] + [''] * 5] + [purchase_headers] + unclassified_purchase_rows +
                 [['── المشتريات المعفاة ──'] + [''] * 5] + [purchase_headers] + exempt_purchase_rows
             )
             summary_pdf = {
                 'Output VAT': float(total_output),
                 'Input VAT': float(total_input),
                 'Credit Notes VAT': float(-summary['total_credit_notes_vat']),
+                'Zero Rated Sales': float(summary['total_zero_rated_sales']),
+                'Unclassified 0% Sales': float(summary['total_unclassified_sales']),
+                'Zero Rated Purchases': float(summary['total_zero_rated_purchases']),
+                'Unclassified 0% Purchases': float(summary['total_unclassified_purchases']),
                 'Exempt Sales': float(summary['total_exempt_sales']),
                 'Exempt Purchases': float(summary['total_exempt_purchases']),
                 'Net VAT': float(net_vat),
@@ -1775,19 +1898,27 @@ def export_vat_report():  # noqa: C901
             # كل قسم بعناوينه الخاصة — لا تُدمج المشتريات تحت عناوين المبيعات
             combined = (
                 [['── المبيعات الخاضعة للضريبة ──'] + [''] * 5] + [sales_headers] + sales_rows +
+                [['── المبيعات الصفرية (0%) ──'] + [''] * 5] + [sales_headers] + zero_rated_rows +
                 [['── المبيعات المعفاة ──'] + [''] * 5] + [sales_headers] + exempt_sales_rows +
+                [['── فواتير صفر بلا تصنيف (تحتاج مراجعة) ──'] + [''] * 5] + [sales_headers] + unclassified_sales_rows +
                 [['── إشعارات الدائنة (المرتجعات) ──'] + [''] * 5] + [credit_note_headers] + credit_note_rows +
                 [['── المشتريات الخاضعة للضريبة ──'] + [''] * 5] + [purchase_headers] + purchase_rows +
+                [['── المشتريات الصفرية (0%) ──'] + [''] * 5] + [purchase_headers] + zero_rated_purchase_rows +
+                [['── مشتريات صفر بلا تصنيف (تحتاج مراجعة) ──'] + [''] * 5] + [purchase_headers] + unclassified_purchase_rows +
                 [['── المشتريات المعفاة ──'] + [''] * 5] + [purchase_headers] + exempt_purchase_rows +
                 [['── الملخص ──'] + [''] * 5,
                  ['الأساس الخاضع للمبيعات', float(summary['total_taxable_sales'])],
                  ['ضريبة المبيعات (Output VAT)', float(total_output)],
+                 ['إجمالي المبيعات الصفرية', float(summary['total_zero_rated_sales'])],
+                 ['فواتير صفر بلا تصنيف', float(summary['total_unclassified_sales'])],
                  ['إجمالي المبيعات المعفاة', float(summary['total_exempt_sales'])],
                  ['إشعارات الدائنة (أساس)', float(-summary['total_credit_notes_net'])],
                  ['ضريبة إشعارات الدائنة', float(-summary['total_credit_notes_vat'])],
                  ['الأساس الخاضع للمشتريات', float(summary['total_taxable_purchases'])],
                  ['ضريبة المشتريات (Input VAT)', float(total_input)],
                  ['إجمالي المشتريات المعفاة', float(summary['total_exempt_purchases'])],
+                 ['إجمالي المشتريات الصفرية', float(summary['total_zero_rated_purchases'])],
+                 ['مشتريات صفر بلا تصنيف', float(summary['total_unclassified_purchases'])],
                  ['الرصيد النهائي', float(net_vat)]]
             )
             return ExportService.export_to_csv(combined, sales_headers, 'vat_report.csv')

@@ -297,6 +297,19 @@
             <input type="number" name="tax_rate" id="tax_rate" 
                    class="form-control" value="0" step="0.01" min="0" max="100">
             <small class="form-text text-muted">مثال: 5 للضريبة 5%</small>
+            </div>
+            <div class="form-group">
+              <label for="tax_treatment">المعاملة الضريبية</label>
+              <select name="tax_treatment" id="tax_treatment" class="form-control">
+                <option value="standard">قياسية (نسبة الشركة)</option>
+                <option value="zero">خاضعة بصفر 0%</option>
+                <option value="exempt">معفاة من الضريبة</option>
+              </select>
+            </div>
+            <div class="form-check mt-2">
+              <input type="checkbox" name="tax_inclusive" class="form-check-input" id="tax_inclusive" value="on">
+              <label class="form-check-label" for="tax_inclusive">الأسعار شاملة الضريبة</label>
+            </div>
           </div>
         </div>
       </div>
@@ -596,6 +609,8 @@ async function calculateTotals() {
     });
     
     const tax_rate = parseFloat($('#tax_rate').val()) || 0;
+    const tax_treatment = $('#tax_treatment').val() || 'standard';
+    const tax_inclusive = $('#tax_inclusive').is(':checked');
     
     // إرسال للـ backend
     const response = await fetch('{{ url_for("purchases.api_calculate_purchase_totals") }}', {
@@ -605,7 +620,9 @@ async function calculateTotals() {
       },
       body: JSON.stringify({
         lines: lines,
-        tax_rate: tax_rate
+        tax_rate: tax_rate,
+        tax_treatment: tax_treatment,
+        tax_inclusive: tax_inclusive
       })
     });
     
@@ -621,6 +638,18 @@ async function calculateTotals() {
   } catch (error) {    // Fallback to client-side
     calculateTotalsClientSide();
   }
+}
+
+function _purchaseTaxParts(subtotal) {
+  const treatment = $('#tax_treatment').val() || 'standard';
+  const inclusive = $('#tax_inclusive').is(':checked');
+  const rate = treatment === 'standard' ? (parseFloat($('#tax_rate').val()) || 0) : 0;
+  if (inclusive) {
+    const tax = subtotal - subtotal / (1 + rate / 100);
+    return { tax, total: subtotal };
+  }
+  const tax = subtotal * rate / 100;
+  return { tax, total: subtotal + tax };
 }
 
 // Fallback: حساب محلي
@@ -643,9 +672,9 @@ function calculateTotalsClientSide() {
     subtotal += lineTotal;
   });
   
-  const taxRate = parseFloat($('#tax_rate').val()) || 0;
-  const taxAmount = subtotal * (taxRate / 100);
-  const total = subtotal + taxAmount;
+  const parts = _purchaseTaxParts(subtotal);
+  const taxAmount = parts.tax;
+  const total = parts.total;
   
   $('#summary_subtotal').text(subtotal.toFixed(2) + ' ' + base_currency);
   $('#summary_tax').text(taxAmount.toFixed(2) + ' ' + base_currency);
@@ -690,9 +719,9 @@ function forceCalculate() {
     lineCount++;
   });
   
-  const taxRate = parseFloat($('#tax_rate').val()) || 0;
-  const taxAmount = subtotal * (taxRate / 100);
-  const total = subtotal + taxAmount;
+  const parts = _purchaseTaxParts(subtotal);
+  const taxAmount = parts.tax;
+  const total = parts.total;
   
   const currency = $('#currency').val();
   $('#summary_subtotal').text(subtotal.toFixed(2) + ' ' + currency);
@@ -797,6 +826,8 @@ $(document).ready(function() {
   
   // حساب عند تغيير الضريبة
   $('#tax_rate').on('input change', function() {    calculateTotals();
+  });
+  $('#tax_treatment, #tax_inclusive').on('change', function() {    calculateTotals();
   });
   
   // التحقق قبل الإرسال

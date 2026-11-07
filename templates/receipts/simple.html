@@ -30,11 +30,11 @@
   </div>
 
   <div class="receipt-header">
-    {% if settings and settings.show_logo %}
-    <img src="{{ url_for('static', filename=settings.logo_path if settings and settings.logo_path else 'img/garage_logo.png') }}" alt="Logo" class="logo">
+    {% if settings and settings.show_logo and settings.logo_url %}
+    <img src="{{ settings.logo_url if settings.logo_url.startswith(('https://', 'http://', '/')) else url_for('static', filename=settings.logo_url) }}" alt="Logo" class="logo">
     {% endif %}
-    <div class="company-name">{{ settings.company_name_ar if settings and settings.company_name_ar else 'الكراج' }}</div>
-    <div class="company-info">{{ settings.address_ar if settings and settings.address_ar else 'العنوان' }}<br>📞 {{ settings.phone_1 if settings and settings.phone_1 else '---' }}{% if settings and settings.email %} • 📧 {{ settings.email }}{% endif %}</div>
+    <div class="company-name">{{ settings.company_name_ar or '' }}</div>
+    <div class="company-info">{{ settings.address_ar or '' }}<br>📞 {{ settings.phone_1 or '' }}{% if settings.email %} • 📧 {{ settings.email }}{% endif %}</div>
   </div>
 
   <div class="title">سند قبض</div>

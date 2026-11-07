@@ -125,6 +125,18 @@
         {% endif %}
         <div class="col-md-3">
           <div class="form-group">
+            <label for="tax_treatment">
+              <i class="fas fa-percentage text-primary"></i> المعاملة الضريبية
+            </label>
+            <select name="tax_treatment" class="form-control">
+              <option value="standard" {{ 'selected' if (product.tax_treatment or 'standard') == 'standard' }}>قياسية (نسبة الشركة)</option>
+              <option value="zero" {{ 'selected' if product.tax_treatment == 'zero' }}>صفرية 0% (خاضعة)</option>
+              <option value="exempt" {{ 'selected' if product.tax_treatment == 'exempt' }}>معفاة من الضريبة</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-group">
             <label>
               <i class="fas fa-tag text-success"></i> سعر عادي
               <span class="text-danger">*</span>

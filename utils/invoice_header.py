@@ -1,40 +1,40 @@
-"""قالب فاتورة واحد — بيانات التينانت (اسم/رقم ضريبي/عنوان/شعار/ألوان).
-
-يجعل قوالب `templates/invoices|receipts/*.html` تقرأ من الشركة المالكة
-للمستند وليس من أزاد، مع بقاء التصميم العام.
-"""
-import types
+"""Document branding from the document's owning tenant only."""
+from types import SimpleNamespace
 
 
 def with_tenant_header(settings, tenant):
-    """دمج `tenant` فوق `settings` (نسخة جديدة، الفواصل تبقى للتصميم)."""
-    if settings is None or tenant is None:
-        return settings
-    ns = dict(getattr(settings, '__dict__', {}) or {})
-    ns.pop('_sa_instance_state', None)
-    _display_name = (getattr(tenant, 'name_ar', None) or getattr(tenant, 'name', None))
-    _ns['company_name_ar'] = _display_name or _ns.get('company_name_ar')
-    _ns['company_name_en'] = getattr(tenant, 'name_en', None) or getattr(tenant, 'name', None) or _ns.get('company_name_en')
-    _ns['address_ar'] = getattr(tenant, 'address_ar', None) or _ns.get('address_ar')
-    _city_country = f"{getattr(tenant, 'city', None) or ''}، {getattr(tenant, 'country', None) or ''}".strip('، ')
-    if _city_country:
-        _ns['address_ar'] = (_ns.get('address_ar') or '') + (f" — {_city_country}" if _city_country else '')
-    _ns['phone_1'] = getattr(tenant, 'phone_1', None) or getattr(tenant, 'mobile', None) or _ns.get('phone_1')
-    _ns['phone_2'] = getattr(tenant, 'phone_2', None) or _ns.get('phone_2')
-    _ns['email'] = getattr(tenant, 'email', None) or _ns.get('email')
-    _ns['website'] = getattr(tenant, 'website', None) or _ns.get('website')
-    _ns['tax_number'] = getattr(tenant, 'tax_number', None) or _ns.get('tax_number')
-    _ns['commercial_register'] = getattr(tenant, 'commercial_register', None) or _ns.get('commercial_register')
-    _ns['logo_url'] = getattr(tenant, 'logo_url', None) or _ns.get('logo_url')
-    _ns['logo_dark_url'] = getattr(tenant, 'logo_dark_url', None) or _ns.get('logo_dark_url')
-    _ns['logo_path'] = getattr(tenant, 'logo_url', None) or _ns.get('logo_path')
-    _ns['bank_name'] = getattr(tenant, 'bank_name', None) or _ns.get('bank_name')
-    _ns['bank_account_number'] = getattr(tenant, 'bank_account_number', None) or _ns.get('bank_account_number')
-    _ns['iban'] = getattr(tenant, 'iban', None) or _ns.get('iban')
-    _ns['swift_code'] = getattr(tenant, 'swift_code', None) or _ns.get('swift_code')
-    _ns['payment_terms_ar'] = getattr(tenant, 'payment_terms_ar', None) or _ns.get('payment_terms_ar')
-    _ns['footer_text_ar'] = getattr(tenant, 'footer_text_ar', None) or _ns.get('footer_text_ar')
-    _ns['default_invoice_note_ar'] = getattr(tenant, 'default_invoice_note_ar', None) or _ns.get('default_invoice_note_ar')
-    _ns['active_template'] = getattr(tenant, 'active_template', None) or _ns.get('active_template')
-    _ns['tenant_id'] = getattr(tenant, 'id', None)
-    return types.SimpleNamespace(**_ns)
+    """Use only neutral presentation settings; never inherit business identity."""
+    if tenant is None:
+        raise ValueError('Document has no owning tenant')
+    design_fields = ('text_color', 'logo_position', 'logo_size', 'paper_size',
+                     'orientation', 'default_language', 'show_barcode',
+                     'show_page_numbers', 'show_due_date', 'qr_position')
+    data = {field: getattr(settings, field, None) for field in design_fields}
+    fields = ('name_en', 'address_en', 'phone_1', 'phone_2', 'email', 'website',
+              'tax_number', 'commercial_register', 'license_number', 'bank_name',
+              'bank_account_number', 'iban', 'swift_code', 'payment_terms_ar',
+              'footer_text_ar', 'default_invoice_note_ar', 'active_template')
+    data.update({field: getattr(tenant, field, None) for field in fields})
+    data['company_name_ar'] = tenant.name_ar or tenant.name
+    data['company_name_en'] = tenant.name_en or tenant.name
+    data['address_ar'] = '، '.join(filter(None, (tenant.address_ar, tenant.city, tenant.country)))
+    data['phone_1'] = tenant.phone_1 or tenant.mobile
+    data['logo_url'] = tenant.logo_url
+    data['logo_path'] = tenant.logo_url
+    data['show_logo'] = bool(tenant.logo_url)
+    data['header_color'] = tenant.brand_color_primary or '#667eea'
+    data['accent_color'] = tenant.brand_color_secondary or '#764ba2'
+    data['tenant_id'] = tenant.id
+    return SimpleNamespace(**data)
+
+
+def document_tenant(document):
+    """Resolve strictly from the document, never from a related party or actor."""
+    from models.tenant import Tenant
+    tenant_id = getattr(document, 'tenant_id', None)
+    if tenant_id is None:
+        raise ValueError('Document has no owning tenant')
+    tenant = Tenant.query.get(tenant_id)
+    if tenant is None:
+        raise ValueError('Document owning tenant does not exist')
+    return tenant

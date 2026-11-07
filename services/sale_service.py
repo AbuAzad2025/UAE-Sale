@@ -109,30 +109,24 @@ class SaleService:
     @staticmethod
     def _resolve_tax(tax_rate, customer=None, tax_inclusive=None):
         """(rate, inclusive) من التينانت عبر TaxEngine."""
-        tid = None
-        try:
-            from models.tenant_scope import get_current_tenant_id
-            tid = get_current_tenant_id()
-        except Exception:
+        from models.tenant_scope import get_current_tenant_id, TENANT_LESS_SCOPE
+        tid = get_current_tenant_id()
+        if tid == TENANT_LESS_SCOPE:
             tid = None
         if tid is None and customer is not None:
             tid = getattr(customer, 'tenant_id', None)
         tenant = None
         if tid is not None:
-            try:
-                from models import Tenant
-                tenant = Tenant.query.get(tid)
-            except Exception:
-                tenant = None
+            from models import Tenant
+            tenant = db.session.get(Tenant, tid)
+            if tenant is None:
+                raise ValidationError('تعذر العثور على إعدادات الشركة الضريبية')
         from services.tax_engine import resolve as _resolve
         exp_rate = None
         if tax_rate is not None:
             exp_rate = __import__('decimal').Decimal(str(tax_rate))
-        try:
-            return _resolve(tenant, explicit_rate=exp_rate,
-                            explicit_inclusive=tax_inclusive)
-        except Exception:
-            return (exp_rate or __import__('decimal').Decimal('0'), bool(tax_inclusive or False))
+        return _resolve(tenant, explicit_rate=exp_rate,
+                        explicit_inclusive=tax_inclusive)
 
     @staticmethod
     def create_sale(customer, seller, lines_data, warehouse_id=None, currency=None, user_exchange_rate=None,
@@ -173,6 +167,8 @@ class SaleService:
         _resolved_rate, _resolved_inclusive = SaleService._resolve_tax(tax_rate, customer=customer, tax_inclusive=tax_inclusive)
         tax_rate_decimal = _resolved_rate
         _treatment = (tax_treatment or 'standard').strip().lower()
+        if _treatment not in ('standard', 'zero', 'exempt'):
+            raise ValidationError('المعاملة الضريبية غير صالحة')
         if _treatment in ('zero', 'exempt'):
             tax_rate_decimal = Decimal('0')
 
@@ -306,6 +302,14 @@ class SaleService:
                 if discount_percent < Decimal('0') or discount_percent > Decimal('100'):
                     raise ValidationError(f'{product.name}: نسبة الخصم يجب أن تكون بين 0 و 100')
 
+                # Snapshot the line tax treatment: explicit per-line value,
+                # otherwise the product's saved default.
+                _line_treatment = (line_data.get('tax_treatment')
+                                   or getattr(product, 'tax_treatment', None)
+                                   or 'standard').strip().lower()
+                if _line_treatment not in ('standard', 'zero', 'exempt'):
+                    raise ValidationError(f'{product.name}: معاملة ضريبية للسطر غير صالحة')
+
                 line = SaleLine(
                     sale_id=sale.id,
                     product_id=product.id,
@@ -315,7 +319,8 @@ class SaleService:
                     # F1: لقطة التكلفة (cost basis) — التكلفة تُثبَّت على
                     # سطر البيع وقت البيع (المتوسط المتحرك آنذاك)،
                     # وتُشتق منها قيد COGS.
-                    cost_price=cost_basis
+                    cost_price=cost_basis,
+                    tax_treatment=_line_treatment,
                 )
 
                 line.calculate_line_total()

@@ -348,6 +348,88 @@ def _make_credit_note(db, sale, customer, product, number, net,
 
 class TestVatReport:
 
+    def test_credit_notes_are_limited_to_owning_sale_tenant(
+            self, client, db, owner_user, login_owner, test_customer, test_product):
+        from models.tenant import Tenant
+        from models.tenant_scope import (get_current_tenant_id,
+                                         set_current_tenant_id)
+        from routes.reports import _vat_report_data
+
+        a = Tenant(name='VAT scope A', name_ar='شركة أ', slug='vat-scope-a')
+        b = Tenant(name='VAT scope B', name_ar='شركة ب', slug='vat-scope-b')
+        db.session.add_all([a, b])
+        db.session.commit()
+        sale_a = _make_sale(db, test_customer, owner_user.id, 'S-SCOPE-A',
+                            Decimal('100'), Decimal('5'), Decimal('5'))
+        sale_b = _make_sale(db, test_customer, owner_user.id, 'S-SCOPE-B',
+                            Decimal('100'), Decimal('5'), Decimal('5'))
+        sale_a.tenant_id, sale_b.tenant_id = a.id, b.id
+        db.session.commit()
+        _make_credit_note(db, sale_a, test_customer, test_product, 'R-SCOPE-A', Decimal('10'))
+        _make_credit_note(db, sale_b, test_customer, test_product, 'R-SCOPE-B', Decimal('20'))
+        previous = get_current_tenant_id()
+        try:
+            set_current_tenant_id(a.id)
+            rows = _vat_report_data()['credit_notes']
+            assert [row['number'] for row in rows] == ['R-SCOPE-A']
+        finally:
+            set_current_tenant_id(previous)
+
+    def test_zero_and_exempt_returns_reduce_their_own_buckets(
+            self, client, db, owner_user, login_owner, test_customer, test_product):
+        from routes.reports import _vat_report_data
+
+        zero = _make_sale(db, test_customer, owner_user.id, 'S-ZERO-BUCKET',
+                          Decimal('100'), Decimal('0'), Decimal('0'))
+        exempt = _make_sale(db, test_customer, owner_user.id, 'S-EXEMPT-BUCKET',
+                            Decimal('80'), Decimal('0'), Decimal('0'))
+        zero.tax_treatment = 'zero'
+        exempt.tax_treatment = 'exempt'
+        db.session.commit()
+        _make_credit_note(db, zero, test_customer, test_product, 'R-ZERO-BUCKET',
+                          Decimal('20'), Decimal('0'))
+        _make_credit_note(db, exempt, test_customer, test_product, 'R-EXEMPT-BUCKET',
+                          Decimal('30'), Decimal('0'))
+        summary = _vat_report_data()['summary']
+        assert summary['total_zero_rated_sales'] == Decimal('80')
+        assert summary['total_exempt_sales'] == Decimal('50')
+        assert summary['total_taxable_sales'] == Decimal('0')
+
+    def test_zero_and_exempt_purchases_reduce_into_own_buckets(
+            self, client, db, owner_user, login_owner, test_customer):
+        from routes.reports import _vat_report_data
+
+        supplier = Supplier(name='VAT Supplier 2', is_active=True)
+        db.session.add(supplier)
+        db.session.commit()
+
+        def _purchase(number, net, rate, treatment):
+            tax = (net * rate / Decimal('100')).quantize(Decimal('0.001'))
+            purchase = Purchase(
+                purchase_number=number, supplier_id=supplier.id,
+                supplier_name=supplier.name, subtotal=net,
+                tax_rate=rate, tax_amount=tax,
+                total_amount=net + tax, currency=BASE_CURRENCY,
+                exchange_rate=Decimal('1'), amount_base=net + tax,
+                status='confirmed', user_id=owner_user.id,
+                purchase_date=datetime.now(), tax_treatment=treatment,
+            )
+            db.session.add(purchase)
+            db.session.commit()
+            return purchase
+
+        _purchase('P-ZERO-BUCKET', Decimal('120'), Decimal('0'), 'zero')
+        _purchase('P-EXEMPT-BUCKET', Decimal('80'), Decimal('0'), 'exempt')
+        _purchase('P-AMBIG-BUCKET', Decimal('30'), Decimal('0'), 'standard')
+        _purchase('P-TAX-BUCKET', Decimal('200'), Decimal('5'), 'standard')
+
+        summary = _vat_report_data()['summary']
+        assert summary['total_zero_rated_purchases'] == Decimal('120')
+        assert summary['total_exempt_purchases'] == Decimal('80')
+        assert summary['total_unclassified_purchases'] == Decimal('30')
+        assert summary['total_taxable_purchases'] == Decimal('200')
+        assert summary['total_input_vat'] == Decimal('10.000')
+
     def test_vat_report_uses_net_taxable_base_and_credit_note_reversal(
             self, client, db, owner_user, login_owner, test_customer,
             test_product):

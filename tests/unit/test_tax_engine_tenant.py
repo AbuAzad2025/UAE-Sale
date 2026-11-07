@@ -54,3 +54,18 @@ def test_sale_calculate_totals_inclusive():
     s.calculate_totals()
     assert s.tax_amount == decimal.Decimal('5.00')
     assert s.total_amount == decimal.Decimal('105.000')
+
+
+def test_missing_tenant_does_not_silently_use_explicit_tax_rate(db):
+    import pytest
+    from models.tenant_scope import get_current_tenant_id, set_current_tenant_id
+    from services.sale_service import SaleService
+    from utils.errors import ValidationError
+
+    previous = get_current_tenant_id()
+    try:
+        set_current_tenant_id(9999999)
+        with pytest.raises(ValidationError):
+            SaleService._resolve_tax(Decimal('5'))
+    finally:
+        set_current_tenant_id(previous)

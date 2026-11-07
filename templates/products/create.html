@@ -127,18 +127,6 @@
       <hr>
       <h5 class="text-success"><i class="fas fa-money-bill-wave"></i> الأسعار</h5>
       <div class="row">
-        <div class="col-md-3">
-          <div class="form-group">
-            <label for="tax_treatment">
-              <i class="fas fa-percentage text-primary"></i> المعاملة الضريبية
-            </label>
-            <select name="tax_treatment" class="form-control">
-              <option value="standard">قياسية (نسبة الشركة)</option>
-              <option value="zero">صفرية 0% (خاضعة)</option>
-              <option value="exempt">مستثناة (خارج النطاق)</option>
-            </select>
-          </div>
-        </div>
         {% if current_user.can_see_costs() %}
         <div class="col-md-3">
           <div class="form-group">

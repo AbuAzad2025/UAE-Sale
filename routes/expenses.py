@@ -1,11 +1,11 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify, abort
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Expense, ExpenseCategory, Cheque
 from models import InvoiceSettings
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
-from utils.decorators import permission_required
+from utils.decorators import permission_required, get_owned_or_404
 from routes.ledger import reverse_or_purge_gl_entries
 
 from utils.helpers import create_audit_log, generate_number
@@ -202,7 +202,7 @@ def create():  # noqa: C901
 @login_required
 @permission_required('manage_expenses')
 def view(id):
-    expense = db.get_or_404(Expense, id)
+    expense = get_owned_or_404(Expense, id)
     return render_template('expenses/view.html', expense=expense)
 
 
@@ -210,15 +210,13 @@ def view(id):
 @login_required
 @permission_required('manage_expenses')
 def print_expense(id):
-    expense = db.get_or_404(Expense, id)
-    from flask import current_app
-    company = {
-        'name_ar': current_app.config.get('COMPANY_NAME_AR'),
-        'address': current_app.config.get('COMPANY_ADDRESS'),
-        'phone': current_app.config.get('COMPANY_PHONE'),
-    }
-    
-    settings = InvoiceSettings.get_active()
+    expense = get_owned_or_404(Expense, id)
+    from utils.invoice_header import document_tenant, with_tenant_header
+    from extensions import db as _db
+    try:
+        settings = with_tenant_header(InvoiceSettings.get_active(), document_tenant(expense))
+    except ValueError:
+        abort(409, description='لا يمكن الطباعة: الشركة المالكة للمستند غير محددة')
     
     # Template selection (expenses use simple template for now, can add more later)
     template = request.args.get('template', 'simple')
@@ -233,7 +231,6 @@ def print_expense(id):
         'expenses/print.html',
         expense=expense,
         settings=settings,
-        company=company,
         available_templates=available_templates,
         current_template=template,
         document_type='expense',

@@ -284,29 +284,20 @@ class Sale(TenantScopedMixin, db.Model):
         # Ensure all amounts are Decimal
         discount = Decimal(str(self.discount_amount)) if self.discount_amount else Decimal('0')
         shipping = Decimal(str(self.shipping_cost)) if self.shipping_cost else Decimal('0')
-        tax_rate_decimal = Decimal(str(self.tax_rate)) if self.tax_rate else Decimal('0')
+        rate = Decimal(str(self.tax_rate)) if self.tax_rate else Decimal('0')
+
+        from services.sale_tax_calculation import sale_tax_totals_mixed
+        line_specs = [
+            {'line_total': line.line_total,
+             'tax_treatment': getattr(line, 'tax_treatment', None) or 'standard'}
+            for line in self.lines
+        ]
+        inclusive = bool(getattr(self, 'tax_inclusive', False))
+        invoice_treatment = getattr(self, 'tax_treatment', None) or 'standard'
+        self.tax_amount, self.total_amount, _ns, _nz, _ne = sale_tax_totals_mixed(
+            line_specs, discount, shipping, rate, inclusive,
+            invoice_treatment=invoice_treatment)
         exchange_rate_decimal = Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal('1')
-
-        # Calculate taxable amount
-        taxable_amount = self.subtotal - discount + shipping
-
-        # Tax — inclusion handled by TaxEngine (inclusive = السعر شامل الضريبة)
-        taxable_amount = self.subtotal - discount + shipping
-        if getattr(self, 'tax_inclusive', False):
-            _divisor = (Decimal('1') + tax_rate_decimal / Decimal('100'))
-            self.tax_amount = (taxable_amount - (taxable_amount / _divisor)).quantize(
-                Decimal('0.01'), rounding=ROUND_HALF_UP
-            ) if _divisor != 0 else Decimal('0')
-            self.total_amount = taxable_amount.quantize(
-                Decimal('0.001'), rounding=ROUND_HALF_UP
-            )
-        else:
-            self.tax_amount = (taxable_amount * (tax_rate_decimal / Decimal('100'))).quantize(
-                Decimal('0.01'), rounding=ROUND_HALF_UP
-            )
-            self.total_amount = (taxable_amount + self.tax_amount).quantize(
-                Decimal('0.001'), rounding=ROUND_HALF_UP
-            )
 
         # Calculate amount in base currency (dynamic per tenant)
         try:
@@ -482,6 +473,8 @@ class SaleLine(TenantScopedMixin, db.Model):
     unit_price = db.Column(db.Numeric(15, 3), nullable=False)
     discount_percent = db.Column(db.Numeric(5, 2), default=0)
     line_total = db.Column(db.Numeric(15, 3), nullable=False)
+    # لقطة ضريبية للسطر — standard (VAT بالنسبة) أو zero (0%) أو exempt (معفى)
+    tax_treatment = db.Column(db.String(10), default='standard', nullable=False)
 
     cost_price = db.Column(db.Numeric(15, 3), default=0)
 

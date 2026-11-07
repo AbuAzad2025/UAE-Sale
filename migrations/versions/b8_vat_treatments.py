@@ -2,8 +2,8 @@
 
 Revision ID: b8_vat_treatments
 Revises: b7_tenant_invoice_profile
-standard = tenant default rate, zero = taxable at 0% (exports),
-exempt = outside VAT scope.
+standard = tenant default rate, zero = taxable at 0%, exempt = exempt.
+Exempt is not synonymous with outside scope.
 """
 from alembic import op
 import sqlalchemy as sa

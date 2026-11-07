@@ -48,6 +48,7 @@ def test_writeoff_surface_exercises_every_route(client, db, login_as, sale, cust
         'customer_id': str(customer.id),
         'amount': '50.000',
         'currency': 'ILS',
+        'exchange_rate': '1',
         'reason': 'العميل لم يعد قابلاً للوصول',
         'notes': 'مسطوبة اختبار',
     })

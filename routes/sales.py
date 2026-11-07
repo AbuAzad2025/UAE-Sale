@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, abort
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Sale, SaleLine, Customer, Product, InvoiceSettings
@@ -112,6 +112,8 @@ def create():  # noqa: C901
                     price_str = request.form.get(f'lines[{i}][unit_price]')
                     override_price = float(price_str) if price_str else None
 
+                    line_treatment = (request.form.get(f'lines[{i}][tax_treatment]') or '').strip().lower() or None
+
                     if product_id and quantity and quantity > 0:
                         product = get_owned_or_404(Product, product_id)
                         if product:
@@ -119,7 +121,8 @@ def create():  # noqa: C901
                                 'product': product,
                                 'quantity': quantity,
                                 'discount_percent': discount_percent,
-                                'unit_price': override_price
+                                'unit_price': override_price,
+                                'tax_treatment': line_treatment,
                             })
                 except (ValueError, TypeError):
                     # Skip invalid lines
@@ -257,11 +260,11 @@ def print_invoice(id):
     settings = InvoiceSettings.get_active()
     # قالب واحد — بيانات كل تينانت: الهوية (اسم/رقم ضريبي/عنوان/شعار/ألوان)
     # تُسقط فوق القالب العام من الشركة المالكة للفاتورة، لا من قيمة أزاد.
+    from utils.invoice_header import document_tenant, with_tenant_header
     try:
-        from utils.invoice_header import with_tenant_header
-        settings = with_tenant_header(settings, getattr(sale, 'tenant', None))
-    except Exception:
-        pass
+        settings = with_tenant_header(settings, document_tenant(sale))
+    except ValueError:
+        abort(409, description='لا يمكن الطباعة: الشركة المالكة للمستند غير محددة')
 
     # Template selection via URL param (?template=modern) or settings
     import re
@@ -376,6 +379,18 @@ def edit(id):
                     _adj.append({'account': _resolve_account('TAX_PAYABLE'),
                                  'debit': -d_tax,
                                  'description': f'تسوية ضريبة {sale.sale_number}'})
+                # Inclusive prices already include VAT in the original
+                # revenue. A tax change therefore changes revenue by the
+                # opposite amount as well; otherwise the adjustment does
+                # not match the change in the customer's gross balance.
+                if sale.tax_inclusive and d_tax > 0:
+                    _adj.append({'account': _resolve_account('SALES_REVENUE'),
+                                 'debit': d_tax,
+                                 'description': f'تسوية إيراد شامل الضريبة {sale.sale_number}'})
+                elif sale.tax_inclusive and d_tax < 0:
+                    _adj.append({'account': _resolve_account('SALES_REVENUE'),
+                                 'credit': -d_tax,
+                                 'description': f'تسوية إيراد شامل الضريبة {sale.sale_number}'})
                 # AR side plugs the entry so it balances EXACTLY by
                 # construction (absorbs ≤0.005 rounding dust); sanity-bound
                 # against the invoice delta.
@@ -390,7 +405,7 @@ def edit(id):
                     if sale.customer.customer_type == 'partner':
                         _ar = _resolve_account('PARTNER_CURRENT')
                     elif sale.customer.customer_type == 'merchant':
-                        _ar = _resolve_account('MERCHANTS_PAYABLE')
+                        _ar = _GLService.get_customer_credit_account(sale.customer)
                 if _plug >= 0:
                     _adj.append({'account': _ar, 'debit': _plug,
                                  'description': f'تسوية ذمم {sale.sale_number}'})
@@ -467,7 +482,8 @@ def api_get_price():
         'price': float(price),
         'cost_price': float(product.cost_price) if current_user.can_see_costs() else None,
         'current_stock': float(product.current_stock),
-        'unit': product.unit or 'بلا'
+        'unit': product.unit or 'بلا',
+        'tax_treatment': getattr(product, 'tax_treatment', None) or 'standard',
     })
 
 
@@ -740,7 +756,7 @@ def restore(id):
 def api_calculate_sale_totals():
     """API لحساب إجماليات فاتورة المبيعات - Backend Calculation"""
     try:
-        from decimal import Decimal
+        from decimal import Decimal, ROUND_HALF_UP
 
         data = request.get_json(force=True)
         if not data:
@@ -750,27 +766,41 @@ def api_calculate_sale_totals():
         discount_amount = Decimal(str(data.get('discount_amount', 0)))
         shipping_cost = Decimal(str(data.get('shipping_cost', 0)))
         tax_rate = Decimal(str(data.get('tax_rate', 0)))
+        treatment = data.get('tax_treatment', 'standard')
+        inclusive = data.get('tax_inclusive', False)
+        if treatment not in ('standard', 'zero', 'exempt') or not isinstance(inclusive, bool):
+            return jsonify({'success': False, 'error': 'معاملة ضريبية غير صالحة'}), 400
+        tax_rate, inclusive = SaleService._resolve_tax(tax_rate, tax_inclusive=inclusive)
+        if treatment != 'standard':
+            tax_rate = Decimal('0')
 
         # حساب المجموع الفرعي
         subtotal = Decimal('0')
+        line_specs = []
         for line in lines:
             try:
                 qty = Decimal(str(line.get('quantity', 0)))
                 price = Decimal(str(line.get('unit_price', 0)))
                 discount_percent = Decimal(str(line.get('discount_percent', 0)))
+                line_treatment = (line.get('tax_treatment') or 'standard').strip().lower()
+                if line_treatment not in ('standard', 'zero', 'exempt'):
+                    line_treatment = 'standard'
 
                 if qty > 0 and price > 0:
                     line_subtotal = qty * price
                     line_discount = line_subtotal * (discount_percent / Decimal('100'))
-                    line_total = line_subtotal - line_discount
+                    line_total = (line_subtotal - line_discount).quantize(
+                        Decimal('0.001'), rounding=ROUND_HALF_UP)
                     subtotal += line_total
+                    line_specs.append({'line_total': line_total,
+                                       'tax_treatment': line_treatment})
             except Exception:
                 continue
 
-        # حساب الإجماليات
-        after_discount = subtotal - discount_amount + shipping_cost
-        tax_amount = after_discount * (tax_rate / Decimal('100'))
-        total = after_discount + tax_amount
+        from services.sale_tax_calculation import sale_tax_totals_mixed
+        tax_amount, total, _ns, _nz, _ne = sale_tax_totals_mixed(
+            line_specs, discount_amount, shipping_cost, tax_rate, inclusive,
+            invoice_treatment=treatment)
 
         # Count only lines with valid quantity > 0; skip lines where qty parsing fails
         line_count = 0

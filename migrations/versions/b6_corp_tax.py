@@ -17,7 +17,9 @@ def upgrade() -> None:
     op.add_column('tenants', sa.Column('corp_tax_rate', sa.Numeric(5, 2), server_default='9.00', nullable=True))
     op.add_column('tenants', sa.Column('corp_tax_threshold', sa.Numeric(15, 2), server_default='375000.00', nullable=True))
     op.add_column('tenants', sa.Column('allowed_currencies', sa.Text(), nullable=True))
-    op.execute("UPDATE tenants SET default_currency='AED' WHERE default_currency='ILS' AND country IN ('UAE','AE')")
+    # A schema migration must not change an established accounting base
+    # currency. Existing deployments that already ran the old migration need
+    # a separate, reviewed investigation; do not silently reverse it here.
 
 
 def downgrade() -> None:

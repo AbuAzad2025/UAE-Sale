@@ -69,12 +69,12 @@
 <div class="invoice">
   <div class="invoice-header">
     {% if settings and settings.show_logo %}
-    <img src="{{ url_for('static', filename=settings.logo_path if settings.logo_path else 'img/garage_logo.png') }}" alt="Logo" class="logo">
+    <img src="{{ settings.logo_url if settings.logo_url.startswith(('https://', 'http://', '/')) else url_for('static', filename=settings.logo_url) }}" alt="Logo" class="logo">
     {% endif %}
-    <div class="company-name">{{ settings.company_name_ar if settings and settings.company_name_ar else (config.COMPANY_NAME_AR if config else 'شركة أزاد') }}</div>
+    <div class="company-name">{{ settings.company_name_ar or '' }}</div>
     <div class="company-info">
-      <div>{{ settings.address_ar if settings and settings.address_ar else (config.COMPANY_ADDRESS if config else 'أبو ظبي - الإمارات العربية المتحدة') }}</div>
-      <div>📞 {{ settings.phone_1 if settings and settings.phone_1 else (config.COMPANY_PHONE if config else '+970592800646') }} | 📧 {{ settings.email if settings and settings.email else config.COMPANY_EMAIL }}</div>
+      <div>{{ settings.address_ar or '' }}</div>
+      <div>📞 {{ settings.phone_1 or '' }} | 📧 {{ settings.email or '' }}</div>
       {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div>الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
     </div>
   </div>
@@ -113,7 +113,7 @@
         {% for line in sale.lines %}
         <tr>
           <td>{{ loop.index }}</td>
-          <td>{{ line.product.name if line.product else '-' }}</td>
+          <td>{{ line.product.name if line.product else '-' }}{% include 'invoices/_line_treatment_badge.html' %}</td>
           <td>{{ "{:,.3f}".format(line.quantity) }}</td>
           <td>{{ "{:,.2f}".format(line.unit_price) }} {{ sale.currency or base_currency }}</td>
           <td>{{ "{:,.2f}".format(line.line_total) }} {{ sale.currency or base_currency }}</td>
@@ -127,9 +127,9 @@
         <span>الإجمالي الفرعي:</span>
         <strong>{{ "{:,.2f}".format(sale.subtotal) }} {{ sale.currency or base_currency }}</strong>
       </div>
-      {% if sale.tax_amount > 0 %}
+      {% if sale.tax_amount > 0 or sale.tax_treatment in ('zero', 'exempt') %}
       <div class="total-row">
-        <span>الضريبة ({{ sale.tax_rate }}%):</span>
+        <span>{% include 'invoices/_tax_label.html' %}:</span>
         <strong>{{ "{:,.2f}".format(sale.tax_amount) }} {{ sale.currency or base_currency }}</strong>
       </div>
       {% endif %}
@@ -193,7 +193,7 @@
 
   <div class="footer">
     <p>{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else 'الدفع نقداً أو بالتحويل البنكي' }}</p>
-    <p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:4px;">صُدر بواسطة {{ config.COMPANY_NAME_AR if config and config.COMPANY_NAME_AR else 'AzadERP' }} © {{ current_year if current_year is defined else 2026 }}</p>
+    <p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:4px;">صُدر بواسطة AzadERP © {{ current_year if current_year is defined else 2026 }}</p>
     
     {% if settings and ((settings.bank_name and settings.bank_name != 'None') or (settings.iban and settings.iban != 'None') or (settings.swift_code and settings.swift_code != 'None')) %}
     <div style="margin-top: 8px; padding: 10px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 5px; border-right: 3px solid #6c757d;">

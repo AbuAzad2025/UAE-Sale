@@ -1,0 +1,9 @@
+{%- if sale.tax_treatment == 'zero' -%}
+خاضعة بنسبة صفرية (0%)
+{%- elif sale.tax_treatment == 'exempt' -%}
+معفاة من الضريبة
+{%- elif sale.tax_inclusive -%}
+الضريبة المشمولة في الإجمالي ({{ sale.tax_rate }}%)
+{%- else -%}
+الضريبة الإضافية ({{ sale.tax_rate }}%)
+{%- endif -%}

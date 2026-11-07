@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, abort
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Purchase, PurchaseLine, Product, Supplier, Warehouse
@@ -86,6 +86,11 @@ def create():  # noqa: C901
                 flash('⚠️ يجب إدخال اسم المورد.\n💡 اكتب اسم المورد أو اختر من القائمة.', 'danger')
                 return redirect(url_for('purchases.create'))
 
+            _purchase_treatment = (request.form.get('tax_treatment') or 'standard').strip().lower()
+            if _purchase_treatment not in ('standard', 'zero', 'exempt'):
+                flash('المعاملة الضريبية غير صالحة — اختر قياسية أو صفرية أو معفاة.', 'danger')
+                return redirect(url_for('purchases.create'))
+
             currency_value = request.form.get('currency')
             try:
                 from services.currency_service import CurrencyService
@@ -112,6 +117,8 @@ def create():  # noqa: C901
                 exchange_rate=exchange_rate,
                 discount_amount=request.form.get('discount_amount', type=float, default=0),
                 tax_rate=request.form.get('tax_rate', type=float, default=0),
+                tax_inclusive=request.form.get('tax_inclusive') in ('on', '1', 'true'),
+                tax_treatment=_purchase_treatment,
                 notes=request.form.get('notes'),
                 user_id=current_user.id,
                 subtotal=0,
@@ -280,14 +287,11 @@ def view(id):
 @permission_required('manage_purchases')
 def print_purchase(id):
     purchase = get_owned_or_404(Purchase, id)
-    from flask import current_app
-    company = {
-        'name_ar': current_app.config.get('COMPANY_NAME_AR'),
-        'address': current_app.config.get('COMPANY_ADDRESS'),
-        'phone': current_app.config.get('COMPANY_PHONE'),
-    }
-    
-    settings = InvoiceSettings.get_active()
+    from utils.invoice_header import document_tenant, with_tenant_header
+    try:
+        settings = with_tenant_header(InvoiceSettings.get_active(), document_tenant(purchase))
+    except ValueError:
+        abort(409, description='لا يمكن الطباعة: الشركة المالكة للمستند غير محددة')
     
     # Template selection (purchases use simple template for now, can add more later)
     template = request.args.get('template', 'simple')
@@ -302,11 +306,10 @@ def print_purchase(id):
         'purchases/print.html',
         purchase=purchase,
         settings=settings,
-        company=company,
+        document_type='purchase',
+        document_id=purchase.id,
         available_templates=available_templates,
         current_template=template,
-        document_type='purchase',
-        document_id=purchase.id
     )
 
 
@@ -466,6 +469,13 @@ def api_calculate_purchase_totals():
 
         lines = data.get('lines', [])
         tax_rate = Decimal(str(data.get('tax_rate', 0)))
+        treatment = (data.get('tax_treatment') or 'standard').strip().lower()
+        if treatment not in ('standard', 'zero', 'exempt'):
+            return jsonify({'success': False, 'error': 'معاملة ضريبية غير صالحة'}), 400
+        inclusive = bool(data.get('tax_inclusive', False))
+        discount_amount = Decimal(str(data.get('discount_amount', 0)))
+        if treatment != 'standard':
+            tax_rate = Decimal('0')
 
         # حساب المجموع الفرعي
         subtotal = Decimal('0')
@@ -478,14 +488,16 @@ def api_calculate_purchase_totals():
                 if qty > 0 and cost > 0:
                     line_subtotal = qty * cost
                     line_discount = line_subtotal * (discount_percent / Decimal('100'))
-                    line_total = line_subtotal - line_discount
+                    line_total = (line_subtotal - line_discount).quantize(
+                        Decimal('0.001'), rounding=ROUND_HALF_UP)
                     subtotal += line_total
             except (ValueError, TypeError, KeyError):
                 continue
 
-        # حساب الضريبة والإجمالي
-        tax_amount = subtotal * (tax_rate / Decimal('100'))
-        total = subtotal + tax_amount
+        # حساب الضريبة والإجمالي — نفس معادلة الحفظ والطباعة
+        from services.sale_tax_calculation import sale_tax_totals
+        tax_amount, total = sale_tax_totals(
+            subtotal, discount_amount, Decimal('0'), tax_rate, inclusive)
 
         return jsonify({
             'success': True,

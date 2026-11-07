@@ -219,12 +219,12 @@
       <div class="header-content">
         <div class="company-info-left">
           {% if settings and settings.show_logo %}
-          <img src="{{ url_for('static', filename=settings.logo_path if settings and settings.logo_path else 'img/garage_logo.png') }}" alt="Logo" style="height: 40px; background: white; padding: 5px; border-radius: 5px; margin-bottom: 8px;">
+          <img src="{{ settings.logo_url if settings.logo_url.startswith(('https://', 'http://', '/')) else url_for('static', filename=settings.logo_url) }}" alt="Logo" style="height: 40px; background: white; padding: 5px; border-radius: 5px; margin-bottom: 8px;">
           {% endif %}
-          <div class="company-name">{{ settings.company_name_ar if settings and settings.company_name_ar else (config.COMPANY_NAME_AR if config else 'شركة أزاد') }}</div>
+          <div class="company-name">{{ settings.company_name_ar or '' }}</div>
           <div class="company-details">
-            {{ settings.address_ar if settings and settings.address_ar else (config.COMPANY_ADDRESS if config else 'أبو ظبي - الإمارات العربية المتحدة') }}<br>
-            📞 {{ settings.phone_1 if settings and settings.phone_1 else (config.COMPANY_PHONE if config else '+970592800646') }} | 📧 {{ settings.email if settings and settings.email else config.COMPANY_EMAIL }}<br>
+            {{ settings.address_ar or '' }}<br>
+            📞 {{ settings.phone_1 or '' }} | 📧 {{ settings.email or '' }}<br>
             {% if settings and settings.website and settings.website != 'None' %}🌐 {{ settings.website }}{% endif %}
           </div>
         </div>

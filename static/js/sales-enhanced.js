@@ -54,10 +54,21 @@ function addLine() {
                     <label class="font-weight-bold mb-1">
                         <i class="fas fa-percent text-warning"></i> خصم
                     </label>
-                    <input type="number" name="lines[${lineIndex}][discount_percent]" class="form-control discount-input" 
-                           placeholder="خصم%" value="0" step="0.01" min="0" max="100" 
+                    <input type="number" name="lines[${lineIndex}][discount_percent]" class="form-control discount-input"
+                           placeholder="خصم%" value="0" step="0.01" min="0" max="100"
                            onchange="calculateTotals()" onkeyup="calculateTotals()">
                     <small class="text-muted">نسبة الخصم %</small>
+                </div>
+                <div class="col-md-2">
+                    <label class="font-weight-bold mb-1">
+                        <i class="fas fa-balance-scale text-info"></i> المعاملة الضريبية
+                    </label>
+                    <select name="lines[${lineIndex}][tax_treatment]" class="form-control tax-treatment-input" onchange="calculateTotals()">
+                        <option value="standard">قياسية (نسبة الشركة)</option>
+                        <option value="zero">صفرية 0%</option>
+                        <option value="exempt">معفاة</option>
+                    </select>
+                    <small class="text-muted">تُلقط مع السطر</small>
                 </div>
                 <div class="col-md-1">
                     <label class="font-weight-bold mb-1">&nbsp;</label>
@@ -229,6 +240,10 @@ function loadProductPrice(index) {
             
             $(`#price_${index}`).val(finalPrice.toFixed(2));
             
+            if (data.tax_treatment) {
+                $(`select[name="lines[${index}][tax_treatment]"]`).val(data.tax_treatment);
+            }
+
             if (data.current_stock !== undefined) {
                 $(`#stock_${index}`).text(data.current_stock + ' ' + (data.unit || ''));
                 
@@ -290,7 +305,9 @@ function updateCurrencyLabels() {
  * Calculate All Totals
  */
 // حساب الإجماليات - Backend Calculation
+let calculationSequence = 0;
 async function calculateTotals() {
+    const sequence = ++calculationSequence;
     try {
         // جمع البيانات من الفورم
         const lines = [];
@@ -304,7 +321,8 @@ async function calculateTotals() {
                 lines.push({
                     quantity: qty,
                     unit_price: price,
-                    discount_percent: discount
+                    discount_percent: discount,
+                    tax_treatment: $line.find('[name$="[tax_treatment]"]').val() || 'standard'
                 });
             }
         });
@@ -325,13 +343,17 @@ async function calculateTotals() {
                 lines: lines,
                 discount_amount: discount_amount,
                 shipping_cost: shipping_cost,
-                tax_rate: tax_rate
+                tax_rate: tax_rate,
+                tax_treatment: $('[name="tax_treatment"]').val(),
+                tax_inclusive: $('[name="tax_inclusive"]').is(':checked')
             })
         });
         
         const result = await response.json();
         
+        if (sequence !== calculationSequence) return;
         if (result.success) {
+            $('#totals_calculation_status').text('الإجمالي محسوب بواسطة الخادم.');
             // تحديث الواجهة
             $('#subtotal').text(azad.formatNumber(result.subtotal));
             $('#total').text(azad.formatNumber(result.total));
@@ -351,35 +373,50 @@ async function calculateTotals() {
         } else {            // Fallback to client-side calculation
             return calculateTotalsClientSide();
         }
-    } catch (error) {        // Fallback to client-side calculation
+    } catch (error) {
+        if (sequence !== calculationSequence) return;
         return calculateTotalsClientSide();
     }
 }
 
 // Fallback: حساب محلي في حالة فشل الـ backend
 function calculateTotalsClientSide() {
+    $('#totals_calculation_status').text('معاينة تقريبية: تعذر الوصول إلى الخادم. القيمة النهائية يحددها الخادم عند الحفظ.');
     let subtotal = 0;
     let lineCount = 0;
+    const buckets = {standard: 0, zero: 0, exempt: 0};
     
     $('[name^="lines"][name$="[quantity]"]').each(function() {
         const qty = parseFloat($(this).val()) || 0;
-        const price = parseFloat($(this).closest('.product-line').find('[name$="[unit_price]"]').val()) || 0;
-        const discount = parseFloat($(this).closest('.product-line').find('[name$="[discount_percent]"]').val()) || 0;
+        const $line = $(this).closest('.product-line');
+        const price = parseFloat($line.find('[name$="[unit_price]"]').val()) || 0;
+        const discount = parseFloat($line.find('[name$="[discount_percent]"]').val()) || 0;
+        const treatment = $line.find('[name$="[tax_treatment]"]').val() || 'standard';
         
         if (qty > 0 && price > 0) {
             const lineTotal = qty * price * (1 - discount/100);
             subtotal += lineTotal;
+            buckets[treatment] = (buckets[treatment] || 0) + lineTotal;
             lineCount++;
         }
     });
     
     const discount = parseFloat($('[name="discount_amount"]').val()) || 0;
     const shipping = parseFloat($('[name="shipping_cost"]').val()) || 0;
-    const taxRate = parseFloat($('[name="tax_rate"]').val()) || 0;
+    const invoiceTreatment = $('[name="tax_treatment"]').val() || 'standard';
+    const taxRate = invoiceTreatment === 'standard' &&
+                    $('[name="tax_rate"]').attr('data-tax-enabled') !== 'false'
+        ? (parseFloat($('[name="tax_rate"]').val()) || 0) : 0;
     
     const afterDiscount = subtotal - discount + shipping;
-    const tax = afterDiscount * (taxRate / 100);
-    const total = afterDiscount + tax;
+    const inclusive = $('[name="tax_inclusive"]').is(':checked');
+    let tax = 0;
+    if (taxRate > 0 && buckets.standard > 0 && subtotal > 0) {
+        const stdAlloc = afterDiscount * (buckets.standard / subtotal);
+        tax = inclusive ? stdAlloc - stdAlloc / (1 + taxRate / 100)
+                        : stdAlloc * taxRate / 100;
+    }
+    const total = inclusive ? afterDiscount : afterDiscount + Math.round(tax * 100) / 100;
     
     $('#subtotal').text(azad.formatNumber(subtotal));
     $('#total').text(azad.formatNumber(total));
@@ -653,4 +690,3 @@ $(document).ready(function() {
         return true;
     });
 });
-

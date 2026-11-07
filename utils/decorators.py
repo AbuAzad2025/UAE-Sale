@@ -249,8 +249,6 @@ def _enforce_same_tenant(obj):
         return
     if getattr(current_user, 'is_owner', False):
         return
-    if getattr(getattr(current_user, 'role', None), 'slug', None) in ('super_admin', 'developer'):
-        return
     # Authentication is the route's job (login_required).  In service
     # unit-test contexts current_user is anonymous; we skip tenant
     # enforcement rather than abort so tests can exercise the logic.

@@ -212,7 +212,6 @@ def view(id):
 def print_expense(id):
     expense = get_owned_or_404(Expense, id)
     from utils.invoice_header import document_tenant, with_tenant_header
-    from extensions import db as _db
     try:
         settings = with_tenant_header(InvoiceSettings.get_active(), document_tenant(expense))
     except ValueError:

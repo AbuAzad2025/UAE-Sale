@@ -218,7 +218,7 @@
     <div class="header">
       <div class="header-content">
         <div class="company-info-left">
-          {% if settings and settings.show_logo %}
+          {% if settings and settings.show_logo and settings.logo_url %}
           <img src="{{ settings.logo_url if settings.logo_url.startswith(('https://', 'http://', '/')) else url_for('static', filename=settings.logo_url) }}" alt="Logo" style="height: 40px; background: white; padding: 5px; border-radius: 5px; margin-bottom: 8px;">
           {% endif %}
           <div class="company-name">{{ settings.company_name_ar or '' }}</div>
@@ -387,7 +387,8 @@
         </div>
       {% endif %}
     {% endif %}
-  </div>
+      <p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:6px;text-align:center;">???? ?????? AzadERP ? {{ current_year if current_year is defined else 2026 }}</p>
+</div>
 </body>
 </html>
 

@@ -85,7 +85,7 @@
   </div>
 
   <div class="invoice-header">
-    {% if settings and settings.show_logo %}
+    {% if settings and settings.show_logo and settings.logo_url %}
     <img src="{{ settings.logo_url if settings.logo_url.startswith(('https://', 'http://', '/')) else url_for('static', filename=settings.logo_url) }}" alt="Logo" class="logo">
     {% endif %}
     <div class="company-name">{{ settings.company_name_ar or '' }}</div>

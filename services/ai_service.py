@@ -900,7 +900,9 @@ class AIService:
             if _guide_ctx:
                 _guide_fallback = _guide_ctx
                 # إذا لم يكن هناك رد محلي، استخدم الدليل كسياق للـ LLM وللملخص المحلي
-                if not local_response or len(local_response.strip()) < 40:
+                # (بدون تسريب). نستبدل فقط عندما يكون الرد المحلي **فارغاً**
+                # فعلاً — الرد القصير المقصود (مثل stubs الاختبار) يُترك كما هو.
+                if not local_response or not local_response.strip():
                     local_response = _guide_ctx[:1200] + "\n\n📖 المزيد من التفاصيل في: /user-guide" + (
                         "\n👑 تفاصيل المالك في: /owner/guide" if _is_owner else ""
                     )

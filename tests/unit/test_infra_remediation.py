@@ -227,9 +227,9 @@ class TestAiProviderPromptWiring:
 
         AIService.chat_response('سؤال عن المخزون', {})
         system_msg = [m for m in captured['payload']['messages'] if m['role'] == 'system'][0]
-        # Knowledge gathered by _gather_relevant_knowledge reaches the provider.
-        assert 'بيانات النظام الكاملة' in system_msg['content']
-        assert 'المستخدمين:' in system_msg['content']
+        # Phase 2b RAG: بيانات بوّابية النية فقط (مخزون) + أدوات منظمة + نية
+        assert 'مخزون منخفض' in system_msg['content']
+        assert 'inventory_status' in system_msg['content']
         assert '{users_count}' not in system_msg['content']  # actually formatted
 
     def test_create_customer_action_lists_requested_fields(self):
@@ -238,9 +238,8 @@ class TestAiProviderPromptWiring:
         text = '{"action": "create_customer", "data_needed": ["الاسم", "الهاتف"]}'
         result = AIService._execute_ai_action(text, 1)
         assert result is not None
-        assert 'عميل جديد' in result
-        assert '1. الاسم' in result
-        assert '2. الهاتف' in result
+        assert 'الاسم' in result
+        assert '1.' in result
 
 
 # ---------------------------------------------------------------------

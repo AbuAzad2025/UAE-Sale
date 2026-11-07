@@ -209,7 +209,10 @@ class TestOwnerAiPages:
         assert client.get(url).status_code == 200
         client.get('/auth/logout', follow_redirects=True)
         _login(client, ai_analyst)
-        # owner-guarded pages redirect non-owners to the main dashboard.
         resp = client.get(url, follow_redirects=False)
-        assert resp.status_code == 302
-        assert resp.headers['Location'].endswith('/dashboard')
+        # Phase 4: /ai/assistant مفتوح لكل مسجل؛ /ai/config تبقى owner-only.
+        if url == '/ai/assistant':
+            assert resp.status_code == 200
+        else:
+            assert resp.status_code == 302
+            assert resp.headers['Location'].endswith('/dashboard')

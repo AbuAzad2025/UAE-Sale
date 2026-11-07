@@ -823,5 +823,5 @@ def api_calculate_sale_totals():
             'line_count': line_count
         }), 200
 
-    except Exception as e:
+    except Exception:
         return jsonify({'success': False, 'error': 'حدث خطأ غير متوقع'}), 500

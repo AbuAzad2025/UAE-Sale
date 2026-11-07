@@ -93,7 +93,6 @@ def create():  # noqa: C901
 
             currency_value = request.form.get('currency')
             try:
-                from services.currency_service import CurrencyService
                 _base_purch = CurrencyService.get_base_currency()
             except Exception:
                 _base_purch = 'ILS'

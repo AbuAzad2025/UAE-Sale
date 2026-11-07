@@ -258,7 +258,7 @@ function addLine() {
     </td>
     <td>
       <input type="number" name="line_${lineCounter}_credit" class="form-control text-center credit-input" 
-             step="0.01" min="0" value="0" oninput="handleCreditChange(this)" onchange="handleCreditChange(this)" onkeyup="calculateTotals()">
+             step="0.01" min="0" value="0" oninput="handleCreditChange(this)" onchange="handleCreditChange(this)" onkeyup="calculateJournalTotals()">
     </td>
   `;
   tbody.appendChild(row);

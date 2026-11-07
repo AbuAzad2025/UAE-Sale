@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="card-header"><h3>ضريبة الشركات (CT) — {{ tenant.name_ar or tenant.name if tenant else 'الشركة الحالية' }}</h3></div>
+  <div class="card-body">
+    <p>الإيرادات (دفتر الأستاذ): <strong>{{ "{:,.2f}".format(total_revenue) }}</strong></p>
+    <p>المصروفات: <strong>{{ "{:,.2f}".format(total_expense) }}</strong></p>
+    <p>صافي الربح: <strong>{{ "{:,.2f}".format(net_profit) }}</strong></p>
+    {% if tenant and tenant.corp_tax_enabled %}
+      <p>النسبة: {{ tenant.corp_tax_rate }}% — الحد المعفى: {{ "{:,.0f}".format(tenant.corp_tax_threshold or 0) }}</p>
+      <p>الضريبة المستحقة: <strong class="text-danger">{{ "{:,.2f}".format(ct_due) }}</strong></p>
+    {% else %}
+      <p class="text-muted">ضريبة الشركات غير مفعّلة لهذه الشركة (من إعدادات المالك).</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

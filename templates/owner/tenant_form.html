@@ -180,6 +180,32 @@
               </div>
             </div>
           </div>
+          <div class="form-row mt-2">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>عملات مسموحة (AED,USD) — فارغ = كل العملات</label>
+                <input type="text" name="allowed_currencies" value="{{ form.allowed_currencies }}" class="form-control" placeholder="AED, USD, SAR">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-check mt-4">
+                <input type="checkbox" name="corp_tax_enabled" class="form-check-input" id="t_corp_enabled" {{ 'checked' if form.corp_tax_enabled }}>
+                <label class="form-check-label" for="t_corp_enabled">ضريبة الشركات (الدخل) مفعّلة</label>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>نسبة الدخل %</label>
+                <input type="number" name="corp_tax_rate" value="{{ form.corp_tax_rate }}" class="form-control" step="0.01" min="0" max="100">
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>حد الربح (الإعفاء)</label>
+                <input type="number" name="corp_tax_threshold" value="{{ form.corp_tax_threshold }}" class="form-control" step="1" min="0">
+              </div>
+            </div>
+          </div>
           <small class="form-text text-muted">الفاتورة تلتقط لقطة النسبة + الشاملية وقت إصدارها — تغيير الإعدادات لاحقاً لا يعيد حساب الفواتير القديمة.</small>
         </div>
       </div>

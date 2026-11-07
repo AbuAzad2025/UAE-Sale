@@ -1493,6 +1493,14 @@ def _tenant_to_tax_rate(value, country_code=None):
         return 0.0
 
 
+def _tenant_to_amount(value, default):
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return default
+    return v if v >= 0 else default
+
+
 def _tenant_stats(tenant_id):
     """Explicit per-tenant aggregates (never relies on ambient filtering)."""
     return {
@@ -1517,6 +1525,7 @@ def _tenant_form_values(tenant=None):
             'email': '', 'website': '',
             'tax_number': '', 'commercial_register': '', 'license_number': '',
             'tax_country': 'AE', 'tax_inclusive': False, 'enable_tax': True, 'default_tax_rate': 5.0,
+            'corp_tax_enabled': False, 'corp_tax_rate': 9.0, 'corp_tax_threshold': 375000.0, 'allowed_currencies': '',
             'default_currency': 'ILS', 'default_language': 'ar',
             'timezone': 'Asia/Dubai',
             'subscription_plan': 'basic', 'is_trial': False,
@@ -1542,6 +1551,10 @@ def _tenant_form_values(tenant=None):
             'tax_inclusive': bool(getattr(tenant, 'tax_inclusive', False)),
             'enable_tax': bool(getattr(tenant, 'enable_tax', True)),
             'default_tax_rate': float(getattr(tenant, 'default_tax_rate', 5) or 0),
+            'corp_tax_enabled': bool(getattr(tenant, 'corp_tax_enabled', False)),
+            'corp_tax_rate': float(getattr(tenant, 'corp_tax_rate', 9) or 0),
+            'corp_tax_threshold': float(getattr(tenant, 'corp_tax_threshold', 375000) or 0),
+            'allowed_currencies': getattr(tenant, 'allowed_currencies', None) or '',
             'default_currency': tenant.default_currency or 'ILS',
             'default_language': tenant.default_language or 'ar',
             'timezone': tenant.timezone or 'Asia/Dubai',
@@ -1629,6 +1642,10 @@ def _validate_tenant_form(form, currencies, exclude_id=None):
         'tax_inclusive': form.get('tax_inclusive') == 'on',
         'enable_tax': form.get('enable_tax') == 'on',
         'default_tax_rate': _tenant_to_tax_rate(form.get('default_tax_rate'), form.get('tax_country') or 'AE'),
+        'corp_tax_enabled': form.get('corp_tax_enabled') == 'on',
+        'corp_tax_rate': _tenant_to_tax_rate(form.get('corp_tax_rate'), 'UAE') or 9.0,
+        'corp_tax_threshold': _tenant_to_amount(form.get('corp_tax_threshold'), 375000.0),
+        'allowed_currencies': (form.get('allowed_currencies') or '').strip() or None,
         'max_users': _tenant_to_int(form.get('max_users'), 5),
         'max_products': _tenant_to_int(form.get('max_products'), 1000),
         'max_customers': _tenant_to_int(form.get('max_customers'), 500),

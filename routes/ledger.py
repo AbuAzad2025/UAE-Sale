@@ -638,6 +638,43 @@ def income_statement():
                            net_profit=float(net_profit))
 
 
+@ledger_bp.route('/corporate-tax')
+@login_required
+@permission_required('view_ledger')
+def corporate_tax():
+    """ضريبة الشركات (CT) — ربح دفتر اليوم مقابل عتبة الإعفاء (UAE 9% > 375k)."""
+    from flask import current_app
+    date_from = request.args.get('date_from', type=str)
+    date_to = request.args.get('date_to', type=str)
+    balances = _statement_balances(date_from=date_from, date_to=date_to)
+    total_revenue = Decimal('0')
+    total_expense = Decimal('0')
+    for acc in _statement_accounts(account_type='revenue'):
+        bal = balances.get(acc.id)
+        total_revenue += bal['balance'] if bal else Decimal('0')
+    for acc in _statement_accounts(account_type='expense'):
+        bal = balances.get(acc.id)
+        total_expense += bal['balance'] if bal else Decimal('0')
+    net_profit = total_revenue - total_expense
+    tenant = getattr(current_app.config.get('TENANT'), 'TENANT', None)
+    try:
+        from models import Tenant
+        from models.tenant_scope import get_current_tenant_id
+        tid = get_current_tenant_id()
+        tenant = Tenant.query.get(tid) if tid else None
+    except Exception:
+        tenant = None
+    from services.corporate_tax import compute_ct
+    ct_due = compute_ct(net_profit, tenant) if tenant is not None else Decimal('0')
+    return render_template('ledger/corporate_tax.html',
+                           total_revenue=float(total_revenue),
+                           total_expense=float(total_expense),
+                           net_profit=float(net_profit),
+                           ct_due=float(ct_due),
+                           tenant=tenant,
+                           date_from=date_from, date_to=date_to)
+
+
 @ledger_bp.route('/balance-sheet')
 @login_required
 @permission_required('view_ledger')

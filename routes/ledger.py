@@ -638,14 +638,18 @@ def income_statement():
                            net_profit=float(net_profit))
 
 
-@ledger_bp.route('/corporate-tax')
-@login_required
-@permission_required('view_ledger')
-def corporate_tax():
-    """ضريبة الشركات (CT) — ربح دفتر اليوم مقابل عتبة الإعفاء (UAE 9% > 375k)."""
-    from flask import current_app
-    date_from = request.args.get('date_from', type=str)
-    date_to = request.args.get('date_to', type=str)
+def _ct_profit_parts(date_from=None, date_to=None, tenant_id=None):
+    """(الإيرادات، المصاريف، الربح الخاضع) — مع استبعاد مصروف ضريبة الدخل."""
+    from services.account_resolution import AccountRole, AccountResolver
+    from models import GLAccount
+    try:
+        ct_code = AccountResolver.resolve(AccountRole.INCOME_TAX_EXPENSE,
+                                          tenant_id=tenant_id)
+        ct_acc = GLAccount.query.filter_by(code=str(ct_code)).first()
+        ct_id = ct_acc.id if ct_acc else None
+    except Exception:
+        ct_id = None
+
     balances = _statement_balances(date_from=date_from, date_to=date_to)
     total_revenue = Decimal('0')
     total_expense = Decimal('0')
@@ -653,10 +657,21 @@ def corporate_tax():
         bal = balances.get(acc.id)
         total_revenue += bal['balance'] if bal else Decimal('0')
     for acc in _statement_accounts(account_type='expense'):
+        if ct_id is not None and acc.id == ct_id:
+            continue  # مصروف ضريبة الدخل لا يُخصم من أساس الربح
         bal = balances.get(acc.id)
         total_expense += bal['balance'] if bal else Decimal('0')
-    net_profit = total_revenue - total_expense
-    tenant = getattr(current_app.config.get('TENANT'), 'TENANT', None)
+    return total_revenue, total_expense, total_revenue - total_expense
+
+
+@ledger_bp.route('/corporate-tax')
+@login_required
+@permission_required('view_ledger')
+def corporate_tax():
+    """ضريبة الشركات (CT) — ربح دفتر اليوم مقابل عتبة الإعفاء (UAE 9% > 375k)."""
+    date_from = request.args.get('date_from', type=str)
+    date_to = request.args.get('date_to', type=str)
+    tenant = None
     try:
         from models import Tenant
         from models.tenant_scope import get_current_tenant_id
@@ -664,6 +679,8 @@ def corporate_tax():
         tenant = Tenant.query.get(tid) if tid else None
     except Exception:
         tenant = None
+    total_revenue, total_expense, net_profit = _ct_profit_parts(
+        date_from, date_to, getattr(tenant, 'id', None))
     from services.corporate_tax import compute_ct
     ct_due = compute_ct(net_profit, tenant) if tenant is not None else Decimal('0')
     return render_template('ledger/corporate_tax.html',
@@ -681,17 +698,8 @@ def corporate_tax():
 def corporate_tax_post():
     """ترحيل استحقاق ضريبة الدخل (قيد متوازن) — يمنع ازدواج عبر حالة غير محفوظة."""
     from flask import current_app, flash, redirect, url_for
-    from routes.ledger import _statement_balances, _statement_accounts
     date_from = request.form.get('date_from') or request.args.get('date_from', type=str)
     date_to = request.form.get('date_to') or request.args.get('date_to', type=str)
-    balances = _statement_balances(date_from=date_from, date_to=date_to)
-    total_revenue = total_expense = Decimal('0')
-    for acc in _statement_accounts(account_type='revenue'):
-        bal = balances.get(acc.id)
-        total_revenue += bal['balance'] if bal else Decimal('0')
-    for acc in _statement_accounts(account_type='expense'):
-        bal = balances.get(acc.id)
-        total_expense += bal['balance'] if bal else Decimal('0')
     tenant = None
     try:
         from models import Tenant
@@ -700,12 +708,29 @@ def corporate_tax_post():
         tenant = Tenant.query.get(tid) if tid else None
     except Exception:
         tenant = None
+    _revenue, _expense, net_profit = _ct_profit_parts(
+        date_from, date_to, getattr(tenant, 'id', None))
     try:
         from services.corporate_tax import post_corporate_tax
-        res = post_corporate_tax(tenant, total_revenue - total_expense)
-        flash('✅ رحّل قيد الاستحقاق' if res.get('posted') else 'ℹ️ بلا ضريبة مستحقة.', 'success')
-    except Exception as e:
-        flash(f'⛔ {e}', 'danger')
+        tid = getattr(tenant, 'id', None)
+        from datetime import datetime
+        as_of_date = None
+        if date_to:
+            try:
+                as_of_date = datetime.strptime(date_to, '%Y-%m-%d').date()
+            except ValueError:
+                as_of_date = None
+        res = post_corporate_tax(tenant, net_profit, as_of_date=as_of_date,
+                                 created_by=getattr(current_user, 'id', None))
+        if res.get('posted'):
+            flash('✅ رحّل قيد الاستحقاق', 'success')
+        else:
+            flash('ℹ️ بلا ضريبة مستحقة.', 'info')
+    except ValueError as e:
+        flash(f'⛔ {e}', 'warning')
+    except Exception:
+        current_app.logger.exception('Corporate tax posting failed')
+        flash('⛔ فشل ترحيل الاستحقاق — لم يُكتب أي قيد.', 'danger')
     return redirect(url_for('ledger.corporate_tax', date_from=date_from, date_to=date_to))
 
 

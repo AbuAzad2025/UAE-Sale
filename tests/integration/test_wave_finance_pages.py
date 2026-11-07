@@ -602,6 +602,13 @@ class TestHR:
         client.post(f'/hr/payroll/{ps.id}/pay', data={}, follow_redirects=True)
         db.session.refresh(ps)
         assert ps.status == 'paid'
+        # الذرّية الجديدة: الدفع لا يكتمل بلا قيد ميزاني متوازن في نفس المعاملة
+        from models.gl import GLJournalEntry
+        je = GLJournalEntry.query.filter_by(
+            reference_type='Payslip', reference_id=ps.id).one()
+        assert je.is_posted and je.total_debit == je.total_credit == Decimal('3600')
+        codes = {line.account.code for line in je.lines}
+        assert '6100' in codes and '1110' in codes
         assert client.get(f'/hr/payroll/{ps.id}').status_code == 200
 
     def test_hr_pages_dashboard_visa_stat_and_apis(self, client, login_owner, employee, department):

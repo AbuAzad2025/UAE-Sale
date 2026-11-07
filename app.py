@@ -410,7 +410,11 @@ def create_app(config_class=Config):  # noqa: C901
             # tenant (their own account's data), not to all tenants. They
             # still cannot see another tenant's data, and an owner can still
             # see everything.
-            if getattr(current_user, 'is_owner', False):
+            # Owner + Super Admin يريان كل المنصة (نفس نطاق المشغّل).
+            # Super Admin موصوف بأنه "Full system access (except Owner Panel)"
+            # لذا يُعامل مثل المالك في تعيين النطاق ولو خلا من pane.
+            _role_slug = getattr(getattr(current_user, 'role', None), 'slug', None)
+            if getattr(current_user, 'is_owner', False) or _role_slug == 'super_admin':
                 set_current_tenant_id(None)  # Owner bypasses tenant filtering
             elif getattr(current_user, 'tenant_id', None):
                 set_current_tenant_id(current_user.tenant_id)

@@ -46,7 +46,7 @@ def test_sidebar_separates_owner_console_from_tenant_business():
     import pathlib
     base = pathlib.Path('templates/base.html').read_text(encoding='utf-8')
     # البزنس للمستأجر فقط
-    assert 'if not current_user.is_owner' in base
+    assert 'if not (current_user.is_owner' in base
     # كونسول المنصة للمالك
     assert "url_for('owner.dashboard')" in base
     assert "url_for('owner.tenants_list')" in base

@@ -38,6 +38,7 @@ class AccountRole(str, Enum):
     MERCHANTS_PAYABLE = 'MERCHANTS_PAYABLE'
     DEFERRED_CHEQUES_PAYABLE = 'DEFERRED_CHEQUES_PAYABLE'
     TAX_PAYABLE = 'TAX_PAYABLE'
+    CORP_TAX_PAYABLE = 'CORP_TAX_PAYABLE'
     SALARIES_PAYABLE = 'SALARIES_PAYABLE'
     LOANS = 'LOANS'
 
@@ -70,6 +71,7 @@ class AccountRole(str, Enum):
     COMMUNICATIONS_EXPENSE = 'COMMUNICATIONS_EXPENSE'
     STATIONERY_EXPENSE = 'STATIONERY_EXPENSE'
     FX_LOSS = 'FX_LOSS'
+    INCOME_TAX_EXPENSE = 'INCOME_TAX_EXPENSE'
     BANK_CHARGES = 'BANK_CHARGES'
     MISC_EXPENSE = 'MISC_EXPENSE'
     BAD_DEBT_EXPENSE = 'BAD_DEBT_EXPENSE'
@@ -93,6 +95,7 @@ DEFAULT_ROLE_MAP = {
     AccountRole.MERCHANTS_PAYABLE.value: '2115',
     AccountRole.DEFERRED_CHEQUES_PAYABLE.value: '2120',
     AccountRole.TAX_PAYABLE.value: '2130',
+    AccountRole.CORP_TAX_PAYABLE.value: '2145',
     AccountRole.SALARIES_PAYABLE.value: '2140',
     AccountRole.LOANS.value: '2210',
     AccountRole.CAPITAL.value: '3100',
@@ -119,6 +122,7 @@ DEFAULT_ROLE_MAP = {
     AccountRole.COMMUNICATIONS_EXPENSE.value: '6700',
     AccountRole.STATIONERY_EXPENSE.value: '6800',
     AccountRole.FX_LOSS.value: '6900',
+    AccountRole.INCOME_TAX_EXPENSE.value: '6920',
     AccountRole.BANK_CHARGES.value: '6950',
     AccountRole.MISC_EXPENSE.value: '6990',
     AccountRole.BAD_DEBT_EXPENSE.value: '6960',

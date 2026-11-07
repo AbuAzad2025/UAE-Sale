@@ -418,10 +418,16 @@ class TestUsersRoutes:
         assert str(tier_role.id) in _html(resp)
 
     def test_create_valid_user_side_effects(self, client, owner_user, seller_user):
+        from models import Tenant
         target_role = _mk_role(db, 'cashier')
+        _tenant = Tenant(name='WaveCo', name_ar='شركة', slug='waveco-1',
+                         business_type='garage', is_active=True, max_users=10)
+        db.session.add(_tenant)
+        db.session.commit()
         _login(client)
         form = {'username': 'newbie1', 'email': 'newbie1@example.com', 'full_name': 'New Bie',
                 'full_name_ar': 'نيو بي', 'phone': '+971501112233', 'role_id': target_role.id,
+                'tenant_id': str(_tenant.id),
                 'is_active': '1', 'password': STRONG_PW}
         resp = client.post('/users/create', data=form, follow_redirects=False)
         assert resp.status_code == 302

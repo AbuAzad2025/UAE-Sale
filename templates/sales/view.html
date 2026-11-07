@@ -301,9 +301,10 @@
           </div>
           {% endif %}
           
-          {% if sale.tax_amount > 0 %}
+          {% if sale.tax_amount > 0 or (sale.tax_treatment and sale.tax_treatment != 'standard') %}
           <div class="d-flex justify-content-between mb-2">
-            <span><i class="fas fa-percent text-warning mr-1"></i>الضريبة:</span>
+            <span><i class="fas fa-percent text-warning mr-1"></i>الضريبة ({{ sale.tax_rate }}% — {{ sale.tax_treatment or 'standard' }}):
+              {% if sale.tax_inclusive %}شاملة{% else %}إضافية{% endif %}</span>
             <strong class="text-warning">+{{ "{:,.2f}".format(sale.tax_amount) }}</strong>
           </div>
           {% endif %}

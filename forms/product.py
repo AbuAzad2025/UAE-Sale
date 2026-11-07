@@ -11,6 +11,11 @@ class ProductForm(FlaskForm):
     barcode = StringField('الباركود', validators=[Optional()])
     category_id = SelectField('التصنيف', coerce=int, validators=[Optional()])
     country_of_origin = StringField('بلد المنشأ', validators=[Optional()])
+    tax_treatment = SelectField('الضريبة', choices=[
+        ('standard', 'قياسية (نسبة الشركة)'),
+        ('zero', 'صفرية 0% (خاضعة)'),
+        ('exempt', 'مستثناة (خارج النطاق)'),
+    ], default='standard', validators=[Optional()])
     regular_price = DecimalField('السعر العادي', validators=[DataRequired(), NumberRange(min=0)])
     merchant_price = DecimalField('سعر التاجر', validators=[Optional(), NumberRange(min=0)])
     partner_price = DecimalField('سعر الشريك', validators=[Optional(), NumberRange(min=0)])

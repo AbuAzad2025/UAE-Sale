@@ -91,6 +91,9 @@ class Product(TenantScopedMixin, db.Model):
     merchant_share = db.Column(db.Numeric(5, 2), default=100.0)  # Percentage share for merchant owner
     partner_price = db.Column(db.Numeric(15, 3))
 
+    # VAT treatment: standard = نسبة التينانت، zero = خاضعة 0% (تصدير)، exempt = خارج النطاق
+    tax_treatment = db.Column(db.String(10), default='standard')
+
     # SCHEMA NOTE (b2_inventory_costing): the running moving weighted average
     # cost per unit, in base currency.  The stock is valued at
     # ``current_stock * average_cost`` and the cost of goods sold is

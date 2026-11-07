@@ -444,7 +444,7 @@ class SaleService:
                 },
                 {
                     'account': resolve_account('SALES_REVENUE'),
-                    'credit': sale.subtotal,  # Use Foreign Amount (Gross Revenue)
+                    'credit': sale.subtotal - sale.tax_amount if getattr(sale, 'tax_inclusive', False) else sale.subtotal,
                     'description': 'إيرادات المبيعات'
                 },
             ]

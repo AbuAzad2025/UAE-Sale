@@ -9,6 +9,9 @@
     {% if tenant and tenant.corp_tax_enabled %}
       <p>النسبة: {{ tenant.corp_tax_rate }}% — الحد المعفى: {{ "{:,.0f}".format(tenant.corp_tax_threshold or 0) }}</p>
       <p>الضريبة المستحقة: <strong class="text-danger">{{ "{:,.2f}".format(ct_due) }}</strong></p>
+      <form method="POST" action="{{ url_for('ledger.corporate_tax_post') }}" class="mt-2">
+        <button type="submit" class="btn btn-primary btn-sm">ترحيل قيد الاستحقاق (مدين مصروف/دائن مستحق)</button>
+      </form>
     {% else %}
       <p class="text-muted">ضريبة الشركات غير مفعّلة لهذه الشركة (من إعدادات المالك).</p>
     {% endif %}

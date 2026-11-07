@@ -675,6 +675,40 @@ def corporate_tax():
                            date_from=date_from, date_to=date_to)
 
 
+@ledger_bp.route('/corporate-tax/post', methods=['POST'])
+@login_required
+@permission_required('manage_ledger')
+def corporate_tax_post():
+    """ترحيل استحقاق ضريبة الدخل (قيد متوازن) — يمنع ازدواج عبر حالة غير محفوظة."""
+    from flask import current_app, flash, redirect, url_for
+    from routes.ledger import _statement_balances, _statement_accounts
+    date_from = request.form.get('date_from') or request.args.get('date_from', type=str)
+    date_to = request.form.get('date_to') or request.args.get('date_to', type=str)
+    balances = _statement_balances(date_from=date_from, date_to=date_to)
+    total_revenue = total_expense = Decimal('0')
+    for acc in _statement_accounts(account_type='revenue'):
+        bal = balances.get(acc.id)
+        total_revenue += bal['balance'] if bal else Decimal('0')
+    for acc in _statement_accounts(account_type='expense'):
+        bal = balances.get(acc.id)
+        total_expense += bal['balance'] if bal else Decimal('0')
+    tenant = None
+    try:
+        from models import Tenant
+        from models.tenant_scope import get_current_tenant_id
+        tid = get_current_tenant_id()
+        tenant = Tenant.query.get(tid) if tid else None
+    except Exception:
+        tenant = None
+    try:
+        from services.corporate_tax import post_corporate_tax
+        res = post_corporate_tax(tenant, total_revenue - total_expense)
+        flash('✅ رحّل قيد الاستحقاق' if res.get('posted') else 'ℹ️ بلا ضريبة مستحقة.', 'success')
+    except Exception as e:
+        flash(f'⛔ {e}', 'danger')
+    return redirect(url_for('ledger.corporate_tax', date_from=date_from, date_to=date_to))
+
+
 @ledger_bp.route('/balance-sheet')
 @login_required
 @permission_required('view_ledger')

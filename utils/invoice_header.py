@@ -31,10 +31,11 @@ def with_tenant_header(settings, tenant):
 def document_tenant(document):
     """Resolve strictly from the document, never from a related party or actor."""
     from models.tenant import Tenant
+    from extensions import db
     tenant_id = getattr(document, 'tenant_id', None)
     if tenant_id is None:
         raise ValueError('Document has no owning tenant')
-    tenant = Tenant.query.get(tenant_id)
+    tenant = db.session.get(Tenant, tenant_id)
     if tenant is None:
         raise ValueError('Document owning tenant does not exist')
     return tenant

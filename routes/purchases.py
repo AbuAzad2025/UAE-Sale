@@ -479,6 +479,7 @@ def api_calculate_purchase_totals():
 
         # حساب المجموع الفرعي
         subtotal = Decimal('0')
+        line_specs = []
         for line in lines:
             try:
                 qty = Decimal(str(line.get('quantity', 0)))
@@ -491,13 +492,16 @@ def api_calculate_purchase_totals():
                     line_total = (line_subtotal - line_discount).quantize(
                         Decimal('0.001'), rounding=ROUND_HALF_UP)
                     subtotal += line_total
+                    line_specs.append({'line_total': line_total,
+                                       'tax_treatment': 'standard'})
             except (ValueError, TypeError, KeyError):
                 continue
 
-        # حساب الضريبة والإجمالي — نفس معادلة الحفظ والطباعة
-        from services.sale_tax_calculation import sale_tax_totals
-        tax_amount, total = sale_tax_totals(
-            subtotal, discount_amount, Decimal('0'), tax_rate, inclusive)
+        # حساب الضريبة والإجمالي — نفس محرك الفاتورة تماماً
+        from services.sale_tax_calculation import sale_tax_totals_mixed
+        tax_amount, total, _ns, _nz, _ne = sale_tax_totals_mixed(
+            line_specs, discount_amount, Decimal('0'), tax_rate, inclusive,
+            invoice_treatment=treatment)
 
         return jsonify({
             'success': True,

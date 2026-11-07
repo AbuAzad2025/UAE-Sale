@@ -107,7 +107,8 @@ def manual_entry_form(description, lines, entry_date=None, notes=None):
 
 def sale_form(customer, lines, warehouse=None, currency=None,
               exchange_rate=None, discount_amount=0, shipping_cost=0,
-              tax_rate=0, payment_amount=0, payment_method='cash', notes=None):
+              tax_rate=0, payment_amount=0, payment_method='cash', notes=None,
+              tax_inclusive=None, tax_treatment=None):
     """POST body for POST /sales/create (routes/sales.py:64)."""
     data = {
         'customer_id': str(customer.id),
@@ -118,6 +119,8 @@ def sale_form(customer, lines, warehouse=None, currency=None,
         data[f'lines[{i}][quantity]'] = str(ln['quantity'])
         data[f'lines[{i}][unit_price]'] = str(ln.get('unit_price', 0))
         data[f'lines[{i}][discount_percent]'] = str(ln.get('discount_percent', 0))
+        if ln.get('tax_treatment'):
+            data[f'lines[{i}][tax_treatment]'] = ln['tax_treatment']
     if warehouse is not None:
         data['warehouse_id'] = str(warehouse.id)
     if currency:
@@ -127,6 +130,10 @@ def sale_form(customer, lines, warehouse=None, currency=None,
     data['discount_amount'] = str(discount_amount)
     data['shipping_cost'] = str(shipping_cost)
     data['tax_rate'] = str(tax_rate)
+    if tax_inclusive:
+        data['tax_inclusive'] = 'on'
+    if tax_treatment:
+        data['tax_treatment'] = tax_treatment
     data['payment_amount'] = str(payment_amount)
     data['payment_method'] = payment_method
     if notes:

@@ -71,6 +71,37 @@ def test_exempt_purchase_posts_no_tax_lines(
     assert '2130' not in codes
 
 
+def test_purchase_print_uses_owning_tenant_not_platform(
+        client, db, login_as, supplier, product, warehouse):
+    from models.tenant import Tenant
+
+    login_as('owner')
+    from tests.e2e.harness import purchase_form, purchase_id_from_redirect
+
+    tenant = Tenant(name='Print Supplier Co', name_ar='شركة الطباعة المتحدة',
+                    slug='print-test-tenant', tax_number='PRN-TRN-777',
+                    country='UAE', city='Dubai')
+    db.session.add(tenant)
+    db.session.commit()
+
+    data = purchase_form(
+        supplier,
+        [{'product_id': product.id, 'quantity': 1, 'unit_cost': 90}],
+        warehouse=warehouse, tax_rate=5,
+    )
+    r = client.post('/purchases/create', data=data)
+    pid = purchase_id_from_redirect(r)
+
+    from models import Purchase
+    purchase = Purchase.query.get(pid)
+    purchase.tenant_id = tenant.id
+    db.session.commit()
+
+    html = client.get(f'/purchases/{pid}/print').get_data(as_text=True)
+    assert 'شركة الطباعة المتحدة' in html
+    assert 'PRN-TRN-777' in html
+
+
 def test_zero_rated_purchase_posts_no_tax_lines(
         client, db, login_as, supplier, product, warehouse):
     login_as('owner')

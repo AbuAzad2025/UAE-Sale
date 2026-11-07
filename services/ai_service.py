@@ -1031,13 +1031,13 @@ class AIService:
 5. استشارات تقنية (معدات ثقيلة)
 
 📝 إذا طلب إنشاء/تعديل:
-- اطلب المعلومات المطلوبة بوضوح
-- ردّ بصيغة JSON واضحة:
+- لا تنفذ الكتابة بنفسك أبداً — فقط اطلب الحقول الناقصة.
+- ردّ بصيغة JSON واضحة باسم أداة من السجل المنظم أعلاه:
   {{
-    "action": "create_customer/create_product/etc",
-    "data_needed": ["الاسم", "الهاتف", "..."],
-    "message": "رسالة للمستخدم"
+    "action": "اسم-أداة-من-السجل (مثال: create_customer)",
+    "data_needed": ["الاسم", "الهاتف", "..."]
   }}
+- التنفيذ يكون حصراً عبر executor (صلاحية + tenant + تأكيد للمدمّر + تدقيق).
 
 ⚠️ مهم: إذا سأل عن بيانات - استخدم الأرقام الموجودة.""".format(
                     message=message,
@@ -1095,55 +1095,44 @@ class AIService:
 
     @staticmethod
     def _execute_ai_action(groq_response, user_id):
-        """تنفيذ الأوامر التي يطلبها Groq (إنشاء/تعديل/حذف)"""
-        try:
-            import json  # noqa: F811  (local import intentional)
-            import re  # noqa: F811  (local import intentional)
+        """تنفيذ منظم: Groq لا يكتب مباشرة أبداً.
 
-            # البحث عن JSON في الرد
-            json_match = re.search(r'\{[\s\S]*"action"[\s\S]*\}', groq_response)
+        Phase 2b: بدل regex-JSON القديم الذي كان يولّد رسائل ثابتة،
+        نترجم `action` إلى أوواتية `ai_tools` + حقول ناقصة من `planner`،
+        ونعيد صياغة توجيه حتمي. التنفيذ الفعلي حصراً عبر:
+          routes/ai._process_user_action (flows) + services.ai_executor
+        """
+        try:
+            import json  # noqa: F811
+            import re  # noqa: F811
+            from services.ai_tools import TOOLS_BY_NAME
+            from services.ai_planner import _REQUIRED as _PLANNER_REQUIRED
+
+            json_match = re.search(r'\{[\s\S]*"action"[\s\S]*\}', groq_response or '')
             if not json_match:
                 return None
-
             action_data = json.loads(json_match.group(0))
-            action_type = action_data.get('action', '')
-
-            # إنشاء عميل
-            if action_type == 'create_customer':
-                data_needed = action_data.get('data_needed', []) or []
-                numbered_fields = '\n'.join(
-                    f'{i + 1}. {field}' for i, field in enumerate(data_needed)
-                )
-                return f"""✅ تمام! لإنشاء عميل جديد، أعطني المعلومات التالية:
-
-{numbered_fields}
-
-أدخل البيانات بهذا الشكل:
-عميل جديد: الاسم، الهاتف، العنوان، ..."""
-
-            # إنشاء منتج
-            elif action_type == 'create_product':
-                return """✅ لإنشاء منتج جديد، أعطني:
-1. اسم المنتج
-2. رقم القطعة
-3. السعر
-4. الكمية
-
-مثال: منتج: فلتر زيت كاتربلر، 1R0716، 50 درهم، 100 قطعة"""
-
-            # إنشاء فاتورة
-            elif action_type == 'create_sale':
-                return """✅ لإنشاء فاتورة، أعطني:
-1. اسم العميل
-2. المنتجات والكميات
-3. طريقة الدفع
-
-مثال: فاتورة لعميل أحمد: فلتر زيت x2، كاش"""
-
-            return None
-
-        except Exception as e:
-            print(f"Action execution error: {e}")
+            action_type = (action_data.get('action') or '').strip()
+            if not action_type:
+                return None
+            tool = TOOLS_BY_NAME.get(action_type)
+            if tool is None:
+                return None
+            data_needed = action_data.get('data_needed') or list(tool.required_params)
+            required = list(_PLANNER_REQUIRED.get(action_type) or tool.required_params)
+            missing = [f for f in required if f not in (action_data.get('data') or {})]
+            labels_ar = {
+                'name': 'الاسم', 'customer_name': 'اسم العميل', 'product_name': 'اسم المنتج',
+                'supplier_name': 'اسم المورد', 'amount': 'المبلغ', 'new_balance': 'الرصيد الجديد',
+                'description': 'الوصف', 'cheque_number': 'رقم الشيك', 'query': 'كلمة البحث',
+            }
+            if missing:
+                lines = '\n'.join(f'{i+1}. {labels_ar.get(f, f)}' for i, f in enumerate(missing))
+                return (f'✅ تمام! لإتمام **{tool.description}** نحتاج:\n\n{lines}\n\n'
+                        f'أدخلها بصيغة: «{action_type}: ...». لا تنفيذ حتى تكتمل الحقول.')
+            return (f'✅ جاهز! اطلب الآن **{tool.description}** وسيُنفّذ عبر المساعد '
+                    f'(tenant + صلاحية {tool.permission} + تدقيق).')
+        except Exception:
             return None
 
     @staticmethod

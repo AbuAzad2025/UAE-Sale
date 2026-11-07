@@ -2,6 +2,24 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from extensions import db
 
+# Phase 2b: permission_code لكل إجراء — نفس رموز ai_tools و _ai_action_denied
+PERMISSION_MAP = {
+    'create_customer': 'manage_customers',
+    'create_product': 'manage_products',
+    'create_sale': 'manage_sales',
+    'record_payment': 'manage_payments',
+    'create_expense': 'manage_expenses',
+    'create_supplier': 'manage_suppliers',
+    'create_purchase': 'manage_purchases',
+    'create_cheque': 'manage_payments',
+    'create_user': 'manage_users',
+}
+
+
+def permission_for_tool(tool: str) -> str | None:
+    """permission_code لأداة (للهدف من routes/ai._ai_action_denied)."""
+    return PERMISSION_MAP.get(tool)
+
 
 def _number(model, attr, prefix):
     from utils.helpers import generate_number

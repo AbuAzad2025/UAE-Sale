@@ -73,7 +73,7 @@ class Tenant(db.Model):
     enable_api = db.Column(db.Boolean, default=False)
 
     # Preferences - التفضيلات
-    default_currency = db.Column(db.String(3), default='ILS')
+    default_currency = db.Column(db.String(3), default='AED')
     default_language = db.Column(db.String(10), default='ar')
     timezone = db.Column(db.String(50), default='Asia/Dubai')
     date_format = db.Column(db.String(20), default='%Y-%m-%d')
@@ -87,6 +87,12 @@ class Tenant(db.Model):
     tax_country = db.Column(db.String(2), default='AE')
     # شامل الضريبة (True) أم إضافي (False)
     tax_inclusive = db.Column(db.Boolean, default=False)
+    # ضريبة الشركات (الدخل) — لكل تينانت حسب القانون المحلي
+    corp_tax_enabled = db.Column(db.Boolean, default=False)
+    corp_tax_rate = db.Column(db.Numeric(5, 2), default=Decimal('9.00'))
+    corp_tax_threshold = db.Column(db.Numeric(15, 2), default=Decimal('375000.00'))
+    # عملات مسموحة للشركة (مفصولة بفاصلة، فارغ = كل عملات Lookup)
+    allowed_currencies = db.Column(db.Text)
 
     # Status - الحالة
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)

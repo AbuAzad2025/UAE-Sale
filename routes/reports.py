@@ -1647,7 +1647,8 @@ def export_inventory_valuation():
     def build():
         if fmt == 'pdf':
             return ExportService.export_to_pdf('تقييم المخزون — Inventory Valuation',
-                                               headers, rows, summary=summary)
+                                               headers, rows, summary=summary,
+                                               subtitle=_current_tenant_display_name())
         elif fmt == 'csv':
             all_rows = rows + [['', '', 'المجموع', float(total_qty), '', float(total_value)]]
             if reconciliation.get('available'):
@@ -1694,7 +1695,8 @@ def export_ap_aging():
     def build():
         if fmt == 'pdf':
             return ExportService.export_to_pdf('أعمار الذمم الدائنة — AP Aging',
-                                               headers, rows, summary=summary)
+                                               headers, rows, summary=summary,
+                                               subtitle=_current_tenant_display_name())
         elif fmt == 'csv':
             return ExportService.export_to_csv(rows, ['المورد', 'إجمالي المشتريات', 'المدفوع', 'الرصيد المستحق', 'المتأخر', 'شروط الدفع'], 'ap_aging.csv')
         return ExportService.export_to_excel('أعمار الذمم الدائنة — AP Aging',

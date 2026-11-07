@@ -534,6 +534,10 @@ class TestVatReport:
         assert export.status_code == 200
         body = export.get_data(as_text=False).decode('utf-8-sig')
         rows = list(csv.reader(io.StringIO(body)))
+        # Optional extra lines: zero-rated and unclassified must export too
+        assert 'إجمالي المبيعات الصفرية' in body
+        assert 'مشتريات صفر بلا تصنيف' in body
+
         exported = {row[0]: row[1] for row in rows if len(row) >= 2 and row[0]}
 
         assert float(exported['ضريبة المبيعات (Output VAT)']) == float(

@@ -214,3 +214,49 @@ class TaxEngine:
         if isinstance(spec, (tuple, list)) and len(spec) == 2:
             return spec[0], spec[1], False
         raise ValueError(f'Invoice line {index}: unsupported specification {spec!r}')
+
+
+# ---------------------------------------------------------------------------
+# Tenant/country layer (UAE-VAT tenant system).
+# Core arithmetic above is the single source of truth; these helpers add
+# country presets + inclusive flag + tenant resolution on top only.
+# ---------------------------------------------------------------------------
+COUNTRY_VAT = {
+    'AE': Decimal('5.00'), 'SA': Decimal('15.00'), 'BH': Decimal('10.00'),
+    'OM': Decimal('5.00'), 'KW': Decimal('5.00'), 'EG': Decimal('14.00'),
+    'JO': Decimal('16.00'), 'TR': Decimal('20.00'), 'GB': Decimal('20.00'),
+    'DE': Decimal('19.00'),
+}
+COUNTRY_LABEL_AR = {
+    'AE': 'الإمارات', 'SA': 'السعودية', 'BH': 'البحرين', 'OM': 'عمان',
+    'KW': 'الكويت', 'EG': 'مصر', 'JO': 'الأردن', 'TR': 'تركيا', 'GB': 'بريطانيا', 'DE': 'ألمانيا',
+}
+
+
+def country_rate(country_code):
+    if not country_code:
+        return None
+    return COUNTRY_VAT.get(country_code.upper())
+
+
+def resolve(tenant, explicit_rate=None, explicit_inclusive=None):
+    """(rate, inclusive) for tenant - explicit wins per-invoice."""
+    if tenant is None:
+        return (explicit_rate if explicit_rate is not None else Decimal('0'),
+                bool(explicit_inclusive) if explicit_inclusive is not None else False)
+    if not getattr(tenant, 'enable_tax', True):
+        return Decimal('0'), bool(explicit_inclusive) if explicit_inclusive is not None else False
+    rate = explicit_rate if explicit_rate is not None else getattr(tenant, 'default_tax_rate', None)
+    if rate is None:
+        rate = getattr(tenant, 'tax_country_rate', None)
+    if rate is None:
+        rate = country_rate(getattr(tenant, 'tax_country', None) or getattr(tenant, 'country', None)) or Decimal('0')
+    inclusive = explicit_inclusive if explicit_inclusive is not None else bool(getattr(tenant, 'tax_inclusive', False))
+    return Decimal(str(rate)), bool(inclusive)
+
+
+def calc(net_subtotal, discount, shipping, rate, inclusive):
+    """(tax, total) via TaxEngine arithmetic (authority stays there)."""
+    net = to_decimal(net_subtotal) - to_decimal(discount) + to_decimal(shipping)
+    result = TaxEngine.compute_line_tax(net, rate, price_includes_tax=bool(inclusive))
+    return result['tax'], result['gross']

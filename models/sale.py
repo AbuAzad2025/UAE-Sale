@@ -216,6 +216,7 @@ class Sale(TenantScopedMixin, db.Model):
     shipping_cost = db.Column(db.Numeric(15, 3), default=0)
     tax_rate = db.Column(db.Numeric(5, 2), default=0)
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
+    tax_inclusive = db.Column(db.Boolean, default=False)
     total_amount = db.Column(db.Numeric(15, 3), nullable=False)
 
     paid_amount = db.Column(db.Numeric(15, 3), default=0)
@@ -288,15 +289,23 @@ class Sale(TenantScopedMixin, db.Model):
         # Calculate taxable amount
         taxable_amount = self.subtotal - discount + shipping
 
-        # Calculate tax with proper rounding (2 decimal places)
-        self.tax_amount = (taxable_amount * (tax_rate_decimal / Decimal('100'))).quantize(
-            Decimal('0.01'), rounding=ROUND_HALF_UP
-        )
-
-        # Calculate total amount with proper rounding
-        self.total_amount = (taxable_amount + self.tax_amount).quantize(
-            Decimal('0.001'), rounding=ROUND_HALF_UP
-        )
+        # Tax — inclusion handled by TaxEngine (inclusive = السعر شامل الضريبة)
+        taxable_amount = self.subtotal - discount + shipping
+        if getattr(self, 'tax_inclusive', False):
+            _divisor = (Decimal('1') + tax_rate_decimal / Decimal('100'))
+            self.tax_amount = (taxable_amount - (taxable_amount / _divisor)).quantize(
+                Decimal('0.01'), rounding=ROUND_HALF_UP
+            ) if _divisor != 0 else Decimal('0')
+            self.total_amount = taxable_amount.quantize(
+                Decimal('0.001'), rounding=ROUND_HALF_UP
+            )
+        else:
+            self.tax_amount = (taxable_amount * (tax_rate_decimal / Decimal('100'))).quantize(
+                Decimal('0.01'), rounding=ROUND_HALF_UP
+            )
+            self.total_amount = (taxable_amount + self.tax_amount).quantize(
+                Decimal('0.001'), rounding=ROUND_HALF_UP
+            )
 
         # Calculate amount in base currency (dynamic per tenant)
         try:

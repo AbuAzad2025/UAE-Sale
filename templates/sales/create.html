@@ -285,17 +285,21 @@ a.btn.btn-outline-secondary span {
           <div class="form-group">
             <label class="font-weight-bold">
               <i class="fas fa-receipt text-warning mr-1"></i>نسبة الضريبة
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="نسبة ضريبة القيمة المضافة VAT% (اختياري - افتراضي: 5%)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="نسبة VAT (الإمارات 5% — افتراضي الشركة)"></i>
             </label>
             <div class="input-group">
-              <input type="number" name="tax_rate" class="form-control" value="5" step="0.01" min="0" max="100" 
+              <input type="number" name="tax_rate" class="form-control" value="{{ current_tenant.default_tax_rate if current_tenant and current_tenant.default_tax_rate is not none else 5 }}" step="0.01" min="0" max="100"
                      onchange="calculateTotals()" onkeyup="calculateTotals()"
                      placeholder="5.00">
               <div class="input-group-append">
                 <span class="input-group-text">%</span>
               </div>
             </div>
-            <small class="form-text text-muted">ضريبة القيمة المضافة (VAT) - عادة 5% أو 16%</small>
+            <div class="form-check mt-2">
+              <input type="checkbox" name="tax_inclusive" class="form-check-input" id="tax_inclusive" value="on" {{ 'checked' if current_tenant and current_tenant.tax_inclusive }}>
+              <label class="form-check-label" for="tax_inclusive">الأسعار شاملة الضريبة (شامل — الضريبة تُستخرج من الإجمالي)</label>
+            </div>
+            <small class="form-text text-muted">فاتورة على حساب غير شامل: الضريبة تضاف على الصافي. الشامل: الضريبة مستخرجة من الإجمالي.</small>
           </div>
           
           <div class="total-box text-center">

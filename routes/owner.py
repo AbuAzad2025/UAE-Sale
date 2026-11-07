@@ -1691,6 +1691,40 @@ def tenant_detail(id):
                            stats=stats, users=users)
 
 
+@owner_bp.route('/tenants/<int:id>/impersonate')
+@login_required
+@owner_required
+def tenant_impersonate(id):
+    """دخول دعم بسياق شركة: المالك يعمل داخل بيانات شركة واحدة مؤقتاً.
+
+    كل إجراء يُسجَّل تدقيقاً، واللافتة الواضحة تبقى حتى الإيقاف.
+    """
+    from flask import session
+    tenant = Tenant.query.get_or_404(id)
+    if not tenant.is_active:
+        flash('لا يمكن الدخول لشركة غير نشطة.', 'danger')
+        return redirect(url_for('owner.tenants_list'))
+    session['impersonate_tenant_id'] = tenant.id
+    create_audit_log('impersonate_tenant', 'tenants', tenant.id,
+                     changes={'action': 'impersonate_tenant', 'tenant': tenant.name}, commit=True)
+    flash(f'🔍 أنت الآن في سياق دعم: {tenant.name_ar or tenant.name} (كل إجراء مشمول بالتدقيق).', 'info')
+    return redirect(url_for('main.dashboard'))
+
+
+@owner_bp.route('/tenants/impersonate/exit')
+@login_required
+@owner_required
+def tenant_impersonate_exit():
+    """خروج من سياق الدعم والعودة لعرض المنصة الكامل."""
+    from flask import session
+    prev = session.pop('impersonate_tenant_id', None)
+    if prev is not None:
+        create_audit_log('impersonate_exit', 'tenants', prev,
+                         changes={'action': 'impersonate_exit'}, commit=True)
+        flash('↩️ خرجت من سياق الدعم. عدت لعرض المنصة الكامل.', 'info')
+    return redirect(url_for('owner.dashboard'))
+
+
 @owner_bp.route('/tenants/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
 @owner_required

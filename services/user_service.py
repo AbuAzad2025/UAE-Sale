@@ -140,6 +140,15 @@ class UserService:
                 tenant_id = int(tenant_id)
             except (TypeError, ValueError):
                 raise ValidationError('المستأجر المحدد غير صالح.')
+        # platform roles بلا تينانت؛ بقيتهم يحتاجون شركة نشطة (يمنع حيازة الهياكل)
+        if not is_owner and getattr(role, 'slug', None) not in ('super_admin', 'developer'):
+            if tenant_id is None:
+                raise ValidationError('لا يمكن إنشاء مستخدم بلا شركة. اختر الشركة أولاً.')
+            tenant_obj = Tenant.query.get(tenant_id)
+            if tenant_obj is None:
+                raise ValidationError('الشركة المحددة غير موجودة.')
+            if not tenant_obj.is_active or tenant_obj.is_suspended:
+                raise ValidationError('لا يمكن إضافة مستخدمين لشركة موقوفة أو موقوفة مؤقتاً.')
         _check_tenant_quota(tenant_id)
         _check_password(password)
 

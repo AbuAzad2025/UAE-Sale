@@ -272,6 +272,13 @@
     </a>
 
     <div class="sidebar" style="overflow-y: auto; max-height: calc(100vh - 100px); scrollbar-width: thin; scrollbar-color: #667eea #1a1a2e;">
+      {% if is_impersonating and impersonate_tenant %}
+      <div class="alert alert-warning alert-dismissible fade show mx-2 mt-2" role="alert">
+        <small><strong>🔍 سياق دعم:</strong> {{ impersonate_tenant.name_ar or impersonate_tenant.name }}<br>
+        كل إجراء تدقيق.</small>
+        <a href="{{ url_for('owner.tenant_impersonate_exit') }}" class="btn btn-sm btn-outline-danger mt-1 w-100">↩ خروج من السياق</a>
+      </div>
+      {% endif %}
       <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
           <i class="fas fa-user-circle fa-2x text-white"></i>
@@ -284,8 +291,8 @@
 
       <nav class="mt-2">
         <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
-          {# المالك والمطوّر → كونسول المنصة، المستأجر → لوحة البزنس #}
-          {% if current_user.is_owner or (current_user.role and current_user.role.slug == 'developer') %}
+          {# المالك والمطوّر → كونسول المنصة، المستأجر → لوحة البزنس؛ الاستثناء: سياق دعم #}
+          {% if (current_user.is_owner or (current_user.role and current_user.role.slug == 'developer')) and not is_impersonating %}
           <li class="nav-item">
             <a href="{{ url_for('owner.dashboard') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.') %}active{% endif %}">
               <i class="nav-icon fas fa-crown"></i>
@@ -301,8 +308,8 @@
           </li>
           {% endif %}
 
-          {# البزنس للمستأجر فقط — المالك والمطوّر لا يُدار كتاجر #}
-          {% if not (current_user.is_owner or (current_user.role and current_user.role.slug == 'developer')) %}
+          {# البزنس للمستأجر فقط — المالك والمطوّر لا يُدار كتاجر (ما لم يدخلا سياق دعم) #}
+          {% if not (current_user.is_owner or (current_user.role and current_user.role.slug == 'developer')) or is_impersonating %}
           {% if current_user.has_permission('manage_sales') %}
           <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('sales.') %}menu-open{% endif %}">
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('sales.') %}active{% endif %}">
@@ -953,14 +960,20 @@
           <li class="nav-header">الشركات (دعم)</li>
           {% for _t in (owner_tenants or []) %}
           <li class="nav-item">
-            <a href="{{ url_for('owner.tenant_detail', id=_t.id) }}" class="nav-link">
-              <i class="nav-icon fas fa-building text-success"></i>
+            <a href="{{ url_for('owner.tenant_impersonate', id=_t.id) }}" class="nav-link" title="دخول سياق دعم — كل الإجراءات مدققة">
+              <i class="nav-icon fas fa-door-open text-success"></i>
               <p>{{ _t.name_ar or _t.name }}</p>
             </a>
           </li>
           {% else %}
           <li class="nav-item nav-link text-muted"><i class="nav-icon fas fa-info-circle"></i><p>لا شركات نشطة</p></li>
           {% endfor %}
+          <li class="nav-item">
+            <a href="{{ url_for('owner.tenants_list') }}" class="nav-link">
+              <i class="nav-icon fas fa-cog text-muted"></i>
+              <p>إدارة الشركات</p>
+            </a>
+          </li>
           {% endif %}
         </ul>
       </nav>

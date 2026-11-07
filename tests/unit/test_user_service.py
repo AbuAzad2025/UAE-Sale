@@ -48,31 +48,31 @@ class TestProvision:
         assert u.is_owner is False
         assert u.check_password('Str0ng!Pass#9z')
 
-    def test_duplicate_username(self, db, owner_user, mgr_role):
+    def test_duplicate_username(self, db, owner_user, mgr_role, tenant_a):
         UserService.provision_user(
             username='uni_dup', email='a@u.co', password='Str0ng!Pass#9z',
-            role_id=mgr_role.id, actor=owner_user)
+            role_id=mgr_role.id, tenant_id=tenant_a.id, actor=owner_user)
         with pytest.raises(ValueError, match='مستخدم بالفعل'):
             UserService.provision_user(
                 username='uni_dup', email='b@u.co',
                 password='Str0ng!Pass#9z', role_id=mgr_role.id,
-                actor=owner_user)
+                tenant_id=tenant_a.id, actor=owner_user)
 
-    def test_duplicate_email(self, db, owner_user, mgr_role):
+    def test_duplicate_email(self, db, owner_user, mgr_role, tenant_a):
         UserService.provision_user(
             username='uni_e1', email='same@u.co', password='Str0ng!Pass#9z',
-            role_id=mgr_role.id, actor=owner_user)
+            role_id=mgr_role.id, tenant_id=tenant_a.id, actor=owner_user)
         with pytest.raises(ValueError, match='مستخدم بالفعل'):
             UserService.provision_user(
                 username='uni_e2', email='same@u.co',
                 password='Str0ng!Pass#9z', role_id=mgr_role.id,
-                actor=owner_user)
+                tenant_id=tenant_a.id, actor=owner_user)
 
-    def test_weak_password(self, db, owner_user, mgr_role):
+    def test_weak_password(self, db, owner_user, mgr_role, tenant_a):
         with pytest.raises(ValueError, match='ضعيفة'):
             UserService.provision_user(
                 username='uni_weak', email='w@u.co', password='short',
-                role_id=mgr_role.id, actor=owner_user)
+                role_id=mgr_role.id, tenant_id=tenant_a.id, actor=owner_user)
 
     def test_owner_mint_guard(self, db, seller_user, mgr_role):
         with pytest.raises(ValueError, match='المالك الحالي'):

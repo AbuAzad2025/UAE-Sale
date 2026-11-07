@@ -314,13 +314,19 @@ def create_app(config_class=Config):  # noqa: C901
 
         # Owner console — مبدّل الشركة (المالك فقط، قراءة السياق)
         owner_tenants: list = []
+        impersonate_tenant = None
         try:
             from flask_login import current_user as _cu
+            from flask import session as _sess
             if _cu is not None and _cu.is_authenticated and getattr(_cu, 'is_owner', False):
                 from models import Tenant as _Tenant
                 owner_tenants = _Tenant.query.filter_by(is_active=True).order_by(_Tenant.id.asc()).all()
+                _imp_id = _sess.get('impersonate_tenant_id')
+                if _imp_id is not None:
+                    impersonate_tenant = _Tenant.query.get(int(_imp_id))
         except Exception:
             owner_tenants = []
+            impersonate_tenant = None
         return {
             'format_currency': format_currency,
             'timeago': timeago,
@@ -341,6 +347,8 @@ def create_app(config_class=Config):  # noqa: C901
             'ai_enabled': 'ai' in app.blueprints,
             'current_tenant': _get_current_tenant(),
             'owner_tenants': owner_tenants,
+            'impersonate_tenant': impersonate_tenant,
+            'is_impersonating': impersonate_tenant is not None,
         }
 
     def _log_tenant_context_violation(user):
@@ -415,7 +423,16 @@ def create_app(config_class=Config):  # noqa: C901
             # لذا يُعامل مثل المالك في تعيين النطاق ولو خلا من pane.
             _role_slug = getattr(getattr(current_user, 'role', None), 'slug', None)
             if getattr(current_user, 'is_owner', False) or _role_slug == 'super_admin':
-                set_current_tenant_id(None)  # Owner bypasses tenant filtering
+                # Support impersonation: owner who entered a tenant context
+                # operates inside that tenant's rows (writes stamp correctly).
+                _imp_tid = None
+                try:
+                    _imp_val = session.get('impersonate_tenant_id')
+                    if _imp_val is not None:
+                        _imp_tid = int(_imp_val)
+                except Exception:
+                    _imp_tid = None
+                set_current_tenant_id(_imp_tid)  # None = platform view
             elif getattr(current_user, 'tenant_id', None):
                 set_current_tenant_id(current_user.tenant_id)
             else:

@@ -564,40 +564,57 @@ def approve_payslip(id):
 @login_required
 @permission_required('manage_hr')
 def mark_payslip_paid(id):
+    from decimal import Decimal
+    # الذرّية الكاملة: تسجيل الدفع + قيد الأستاذ في معاملة واحدة.
+    # أي فشل — لا يُسجَّل الدفع "مكتملاً" بلا قيد (التسجيل الحرج).
     try:
         payslip = get_owned_or_404(Payslip, id)
         payslip.mark_paid()
+
+        total_earnings = Decimal(str(payslip.total_earnings or 0))
+        total_deductions = Decimal(str(payslip.total_deductions or 0))
+        net = Decimal(str(payslip.net_salary or 0))
+
+        if total_earnings <= 0 and total_deductions <= 0 and net <= 0:
+            db.session.commit()
+            create_audit_log('pay', 'payslips', payslip.id)
+            flash('✅ تم تسجيل الدفع (لا توجد مبالغ للترحيل)', 'success')
+            return redirect(url_for('hr.view_payslip', id=id))
+
+        from services.gl_service import GLService
+        from services.account_resolution import AccountResolver, AccountRole
+        from services.currency_service import CurrencyService
+
+        codes = AccountResolver.resolve_codes(
+            AccountRole.SALARY_EXPENSE, AccountRole.SALARIES_PAYABLE,
+            AccountRole.CASH,
+        )
+        lines = [{'account': codes['SALARY_EXPENSE'], 'debit': total_earnings,
+                  'description': 'رواتب وأجور'}]
+        if total_deductions > 0:
+            lines.append({'account': codes['SALARIES_PAYABLE'],
+                          'credit': total_deductions,
+                          'description': 'استقطاعات رواتب'})
+        lines.append({'account': codes['CASH'], 'credit': net,
+                      'description': 'صرف رواتب'})
+        GLService.ensure_core_accounts()
+        GLService.post_entry(lines,
+                             description=f'Payroll {payslip.payslip_number}',
+                             reference_type='Payslip', reference_id=payslip.id,
+                             currency=CurrencyService.get_base_currency(),
+                             exchange_rate=Decimal('1'),
+                             created_by=current_user.id)
         db.session.commit()
         create_audit_log('pay', 'payslips', payslip.id)
-        # قيد ميزاني بعد الدفع: مدين رواتب / دائن صندوق (صافي) +
-        # دائن مستحق إن وُجدت استقطاعات — بلا كسر الدفع عند فشل الترحيل
-        try:
-            from services.gl_service import GLService
-            from decimal import Decimal
-            total_earnings = Decimal(str(payslip.total_earnings or 0))
-            total_deductions = Decimal(str(payslip.total_deductions or 0))
-            net = Decimal(str(payslip.net_salary or 0))
-            currency = getattr(payslip.employee, 'salary_currency', None) or 'AED'
-            lines = [{'account': '6100', 'debit': total_earnings, 'description': 'رواتب وأجور'}]
-            if total_deductions > 0:
-                lines.append({'account': '2140', 'credit': total_deductions, 'description': 'استقطاعات رواتب'})
-            lines.append({'account': '1110', 'credit': net, 'description': 'صرف رواتب (كاش)'})
-            GLService.ensure_core_accounts()
-            GLService.post_entry(lines, description=f'Payroll {payslip.payslip_number}',
-                                 reference_type='Payslip', reference_id=payslip.id,
-                                 currency=currency, exchange_rate=Decimal('1'),
-                                 created_by=current_user.id)
-        except Exception as e:
-            current_app.logger.warning(f'Payroll GL post failed (payslip {payslip.id}): {e}')
-            flash('⚠️ تم تسجيل الدفع لكن فشل ترحيل القيد — راجع دفتر الأستاذ.', 'warning')
-        flash('✅ تم تسجيل الدفع بنجاح', 'success')
+        flash('✅ تم تسجيل الدفع وترحيل القيد إلى دفتر الأستاذ', 'success')
     except ValueError as e:
-        current_app.logger.exception('handler failed')
-        flash(f'⚠️: حدث خطأ غير متوقع', 'danger')
+        db.session.rollback()
+        current_app.logger.warning(f'Payslip paid rejected: {e}')
+        flash(f'⚠️ تعذر تسجيل الدفع: {e}', 'danger')
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
-        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
+        current_app.logger.error(f'Payroll pay failed: {e}', exc_info=True)
+        flash('❌ فشل تسجيل الدفع أو ترحيل القيد — لم يُسجل أي تغيير. راجع دفتر الأستاذ واطرد العملية.', 'danger')
     return redirect(url_for('hr.view_payslip', id=id))
 
 # ==================== API ====================

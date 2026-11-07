@@ -109,6 +109,14 @@
         </tbody>
       </table>
 
+      {% if purchase.tax_amount > 0 or purchase.tax_treatment in ('zero', 'exempt') %}
+      <div class="total-section">
+        <div class="total-row"><span>الإجمالي الفرعي:</span><strong>{{ "{:,.2f}".format(purchase.subtotal) }} {{ base_currency }}</strong></div>
+        <div class="total-row"><span>الضريبة ({{ purchase.tax_rate or 0 }}% — {{ purchase.tax_treatment or 'standard' }}{% if purchase.tax_inclusive %} — شاملة{% else %} — إضافية{% endif %}):</span><strong>{{ "{:,.2f}".format(purchase.tax_amount) }} {{ base_currency }}</strong></div>
+        <div class="total-row final"><span>الإجمالي النهائي:</span><strong>{{ "{:,.2f}".format(purchase.total_amount) }} {{ base_currency }}</strong></div>
+      </div>
+      {% endif %}
+
       {% if purchase.notes %}
       <div style="margin-top: 8px; padding-top: 10px; border-top: 1px dashed #ccc;">
         <strong>ملاحظات:</strong>

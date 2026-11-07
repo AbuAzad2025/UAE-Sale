@@ -92,7 +92,7 @@
           <dd class="col-6 text-left">{{ "{:,.2f}".format(purchase.subtotal) }}</dd>
           
           <dt class="col-6">الضريبة:</dt>
-          <dd class="col-6 text-left">{{ "{:,.2f}".format(purchase.tax_amount) }}</dd>
+          <dd class="col-6 text-left">{{ "{:,.2f}".format(purchase.tax_amount) }} ({{ purchase.tax_treatment or 'standard' }} — {% if purchase.tax_inclusive %}شاملة{% else %}إضافية{% endif %})</dd>
         </dl>
         <hr>
         <dl class="row">

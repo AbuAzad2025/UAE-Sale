@@ -136,7 +136,8 @@ def sale_form(customer, lines, warehouse=None, currency=None,
 
 def purchase_form(supplier, lines, warehouse=None, currency=None,
                   exchange_rate=None, discount_amount=0, tax_rate=0,
-                  payment_amount=0, payment_method='cash', notes=None):
+                  payment_amount=0, payment_method='cash', notes=None,
+                  tax_inclusive=None, tax_treatment=None):
     """POST body for POST /purchases/create (routes/purchases.py:129-175).
 
     NOTE the cost field is `unit_cost`, NOT `unit_price` as on /sales/create.
@@ -147,6 +148,10 @@ def purchase_form(supplier, lines, warehouse=None, currency=None,
         'supplier_id': str(supplier.id),
         'line_count': str(len(lines)),
     }
+    if tax_inclusive:
+        data['tax_inclusive'] = 'on'
+    if tax_treatment:
+        data['tax_treatment'] = tax_treatment
     if supplier.name:
         data['supplier_name'] = supplier.name
     if warehouse is not None:

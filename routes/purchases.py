@@ -203,9 +203,9 @@ def create():  # noqa: C901
             # exactly the discount and the entry was refused as unbalanced.
             # A purchase discount reduces the cost of the goods, so the
             # inventory is debited with the amount actually paid for them.
-            discount_amount = Decimal(str(purchase.discount_amount or 0))
-            inventory_cost = (Decimal(str(purchase.subtotal or 0))
-                              - discount_amount).quantize(
+            # الضريبة لا تدخل في تكلفة المخزون سواء كانت إضافية أو داخلة بالسعر.
+            inventory_cost = (Decimal(str(purchase.total_amount or 0))
+                              - Decimal(str(purchase.tax_amount or 0))).quantize(
                                   Decimal('0.001'), rounding=ROUND_HALF_UP)
             if inventory_cost < 0:
                 inventory_cost = Decimal('0.000')

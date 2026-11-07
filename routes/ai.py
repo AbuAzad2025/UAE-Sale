@@ -830,6 +830,17 @@ def _process_user_action(message, user):  # noqa: C901
         if _tenant_denial:
             return _tenant_denial
 
+        # Phase 2b: معالجات مقسمة لكل كيان — المسار الجديد أولاً للرسائل
+        # الحاملة بيانات (':' أو أرقام). القوائم الرقمية المجردة تُترك للقديم
+        # لأنه يحمل حالة الحوار (last_action/step). أي خطأ → fallback للقديم.
+        try:
+            from services.ai_handlers import dispatch_for_action as _dispatch_for_action
+            _new_res = _dispatch_for_action(message, user)
+            if _new_res is not None:
+                return _new_res
+        except Exception:
+            pass
+
         # إذا كان المستخدم يطلب مساعدة أو خيارات
         # ===== Phase 2: Unified Flow Registry (table-driven menu dispatch) =====
         # 13 قائمة كانت نسخ-لصق — الآن مرجع واحد (خدمة ai_flows) بنفس النصوص والحالة

@@ -1,82 +1,79 @@
-"""معالجات المساعد مقسمة لكل كيان (Phase 2b).
+"""معالجات المساعد مقسمة لكل كيان (Phase 2b — مكتمل).
 
-بدل حشو `routes/ai.py` (4,333 سطراً) الذي كان يعالج كل كيان dpi-
-ختلف في فروع `if/elif` عملاقة، كل كيان له معالج مستقل يُستدعى
-عبر الموزّع من `services.ai_executor`.
-
-المعالجات هنا رفيعة (تحقق + توجيه عبر executor) ولا تكتب مباشرة.
+كل كيان له ملف مستقل (balance/customer/product/sale/payment/expense/
+supplier/purchase/cheque/inventory/ledger/user). الموزّع هنا يختار
+المعالج حسب `intent` ثم يفوّض إلى `services.ai_executor`.
 """
+from services.ai_handlers import (
+    balance,
+    cheque,
+    customer,
+    expense,
+    inventory,
+    ledger,
+    payment,
+    product,
+    purchase,
+    sale,
+    supplier,
+    user,
+)
 from services.ai_executor import execute_plan
 
-
-def _run(plan, user, confirmed=False):
-    plan.confirmed_note = confirmed  # توسيع Clamped دون كسر dataclass
-    return execute_plan(plan, user, confirmed=confirmed)
-
-
-def customer(plan, user, confirmed=False):
-    return _run(plan, user, confirmed)
-
-
-def product(plan, user, confirmed=False):
-    return _run(plan, user, confirmed)
-
-
-def sale(plan, user, confirmed=False):
-    return _run(plan, user, confirmed)
-
-
-def payment(plan, user, confirmed=False):
-    return _run(plan, user, confirmed)
-
-
-def expense(plan, user, confirmed=False):
-    return _run(plan, user, confirmed)
-
-
-def supplier(plan, user, confirmed=False):
-    return _run(plan, user, confirmed)
-
-
-def purchase(plan, user, confirmed=False):
-    return _run(plan, user, confirmed)
-
-
-def cheque(plan, user, confirmed=False):
-    return _run(plan, user, confirmed)
-
-
-def balance(plan, user, confirmed=False):
-    return _run(plan, user, confirmed)
-
-
-def inventory(plan, user, confirmed=False):
-    return _run(plan, user, confirmed)
-
-
-def ledger(plan, user, confirmed=False):
-    return _run(plan, user, confirmed)
-
-
-_TOOL_TO_HANDLER = {
-    'customer': customer,
-    'product': product,
-    'sale': sale,
-    'payment': payment,
-    'expense': expense,
-    'supplier': supplier,
-    'purchase': purchase,
-    'cheque': cheque,
-    'balance': balance,
-    'inventory': inventory,
-    'ledger': ledger,
+_HANDLERS = {
+    'balance': balance.try_handle,
+    'customer': customer.try_handle,
+    'product': product.try_handle,
+    'sale': sale.try_handle,
+    'receive': payment.try_handle,
+    'give': payment.try_handle,
+    'expense': expense.try_handle,
+    'supplier': supplier.try_handle,
+    'purchase': purchase.try_handle,
+    'cheque': cheque.try_handle,
+    'warehouse': inventory.try_handle,
+    'ledger': ledger.try_handle,
+    'user': user.try_handle,
 }
 
 
 def dispatch(plan, user, confirmed=False) -> dict:
-    """الموزّع — يختار معالج الكيان من intent."""
-    handler = _TOOL_TO_HANDLER.get((plan.intent or '').strip())
+    """الموزّع حسب intent — يختار معالج الكيان المناسب."""
+    handler = _HANDLERS.get((plan.intent or '').strip())
     if handler is None:
-        # fallback مباشر إلى executor (invalidate للقراءات)
         return execute_plan(plan, user, confirmed=confirmed)
-    return handler(plan, user, confirmed=confirmed)
+    result = handler(plan, user, confirmed=confirmed)
+    if result is None:
+        return execute_plan(plan, user, confirmed=confirmed)
+    return result
+
+
+def dispatch_for_action(message: str, user, confirmed=False):
+    """نقطة دخول لـ routes/ai._process_user_action.
+
+    تُصفّي «نفعل هنا أم نمضي للقديم؟»:
+    - فقط الرسائل التي تحمل بيانات (':' أو مبلغ/اسم) تُحاول هنا.
+    - القائمة الرقمية المجردة ('1'/'2'/'عودة') تُترك للقديم (يحمل الحالة).
+    تُرجع str عندما حُسم الرد، و None ليفول إلى القديم.
+    """
+    if not message or not str(message).strip():
+        return None
+    text = str(message).strip()
+    if text in ('1', '2', '3', '4', 'عودة', 'رجوع', 'إلغاء', 'نعم', 'لا', 'yes', 'no', 'ok'):
+        return None
+    # رفض سريع: «بدون بيانات» (قائمة) تُترك للمستوى القديم
+    if ':' not in text and not any(ch.isdigit() for ch in text):
+        return None
+    try:
+        from services.ai_planner import plan as _plan
+        _p = _plan(text, user)
+        if _p is None or not getattr(_p, 'tool', None):
+            return None
+        # confirmed للتأكيد عبر رسالة «نعم» الصريحة فقط
+        _conf = bool(confirmed) or ('نعم' in text and (_p.needs_confirm or False))
+        _res = dispatch(_p, user, confirmed=_conf)
+        if _res and (_res.get('executed') or _res.get('needs_clarification')):
+            return str(_res.get('response', ''))
+    except Exception:
+        return None
+    return None

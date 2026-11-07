@@ -27,7 +27,7 @@ _MISSING_AR = {
 def _permission_denied(user, permission_code: str) -> str | None:
     if user is None or not getattr(user, 'is_authenticated', False):
         return '⛔ يجب تسجيل الدخول أولاً لتنفيذ هذا الإجراء عبر المساعد الذكي.'
-    if getattr(user, 'is_owner', False):
+    if getattr(user, 'is_owner', False) or getattr(getattr(user, 'role', None), 'slug', None) == 'developer':
         return None
     is_super = getattr(user, 'is_super_admin', None)
     if callable(is_super):
@@ -47,7 +47,7 @@ def _tenant_denied(user, is_write: bool) -> str | None:
         return None
     if user is None:
         return '⛔ يجب تسجيل الدخول أولاً.'
-    if getattr(user, 'is_owner', False):
+    if getattr(user, 'is_owner', False) or getattr(getattr(user, 'role', None), 'slug', None) == 'developer':
         return None
     is_super = getattr(user, 'is_super_admin', None)
     if callable(is_super):

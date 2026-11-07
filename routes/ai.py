@@ -302,7 +302,7 @@ def _ai_tenant_denied(user, is_write_operation):
     actor = user
     if not is_write_operation:
         return None
-    if getattr(actor, 'is_owner', False):
+    if getattr(actor, 'is_owner', False) or getattr(getattr(actor, 'role', None), 'slug', None) == 'developer':
         return None
     is_super = getattr(actor, 'is_super_admin', None)
     if callable(is_super):

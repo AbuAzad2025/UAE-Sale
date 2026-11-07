@@ -13,8 +13,9 @@ def landing():
     authenticated users it redirects to the role-appropriate dashboard
     (owner/super_admin -> /owner/dashboard, others -> /dashboard)."""
     if current_user.is_authenticated:
-        # Owner / super_admin get the platform owner console
-        if getattr(current_user, 'is_owner', False) or current_user.is_super_admin():
+        # Owner / super_admin / developer get the platform owner console
+        _slug = getattr(getattr(current_user, 'role', None), 'slug', None)
+        if getattr(current_user, 'is_owner', False) or current_user.is_super_admin() or _slug == 'developer':
             return redirect(url_for('owner.dashboard'))
         return redirect(url_for('main.dashboard'))
     if session.get('language') == 'en':

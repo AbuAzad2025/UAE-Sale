@@ -135,6 +135,8 @@ def _is_actor_owner():
             return True
         if getattr(current_user, 'is_super_admin', None) and current_user.is_super_admin():
             return True
+        if getattr(getattr(current_user, 'role', None), 'slug', None) == 'developer':
+            return True
     except Exception:
         return False
     return False

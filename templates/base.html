@@ -284,8 +284,8 @@
 
       <nav class="mt-2">
         <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
-          {# المالك → كونسول المنصة، المستأجر → لوحة البزنس #}
-          {% if current_user.is_owner %}
+          {# المالك والمطوّر → كونسول المنصة، المستأجر → لوحة البزنس #}
+          {% if current_user.is_owner or (current_user.role and current_user.role.slug == 'developer') %}
           <li class="nav-item">
             <a href="{{ url_for('owner.dashboard') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.') %}active{% endif %}">
               <i class="nav-icon fas fa-crown"></i>
@@ -301,8 +301,8 @@
           </li>
           {% endif %}
 
-          {# البزنس للمستأجر فقط — المالك لا يُدار كتاجر #}
-          {% if not current_user.is_owner %}
+          {# البزنس للمستأجر فقط — المالك والمطوّر لا يُدار كتاجر #}
+          {% if not (current_user.is_owner or (current_user.role and current_user.role.slug == 'developer')) %}
           {% if current_user.has_permission('manage_sales') %}
           <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('sales.') %}menu-open{% endif %}">
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('sales.') %}active{% endif %}">

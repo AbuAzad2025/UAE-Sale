@@ -178,10 +178,11 @@ def owner_required(f):
 # own level.  Owner sits at the top (level 100) by definition.
 _ROLE_LEVELS = {
     'super_admin': 90,
+    'developer': 95,  # موثوق — فوق سوبر أدمن، دون المالك (100)
     'manager': 70,
+    'accountant': 50,
     'seller': 40,
     'cashier': 40,
-    'accountant': 50,
     'hr': 60,
     'inventory': 30,
     'viewer': 10,

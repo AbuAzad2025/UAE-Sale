@@ -240,16 +240,17 @@ class SemanticMatcher:
         return vocab
 
     def _tokenize(self, text: str) -> List[str]:
-        """تقسيم النص لكلمات"""
-        # إزالة علامات الترقيم والتشكيل
-        text = re.sub(r'[^\w\s]', ' ', text)
-        # تحويل لأحرف صغيرة
-        text = text.lower()
-        # تقسيم
-        words = text.split()
-        # إزالة الكلمات القصيرة جداً
-        words = [w for w in words if len(w) > 1]
-        return words
+        """تقسيم النص لكلمات — عبر التطبيع العربي المشترك (v2).
+
+        قبل v2: إزالة ترقيم + lowercase فقط، فكان "فاتورة" ≠ "فاتوره".
+        الآن: normalize + tokenize (smarter synonyms expansion).
+        """
+        try:
+            from services.ai_normalize import tokenize as _tok
+            return _tok(text or '')
+        except Exception:
+            words = re.sub(r'[^\w\s]', ' ', text or '').lower().split()
+            return [w for w in words if len(w) > 1]
 
     def _calculate_tf(self, words: List[str]) -> Dict[str, float]:
         """حساب Term Frequency"""

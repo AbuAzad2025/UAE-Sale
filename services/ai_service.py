@@ -907,8 +907,31 @@ class AIService:
         except Exception:
             pass
         force_local = context.get('force_local', False) if context else False
-        _db_context = '' if force_local else AIService._gather_relevant_knowledge(message, local_result)
-        knowledge_context = (_guide_fallback + "\n\n---\n\n" + _db_context).strip() if (_guide_fallback or _db_context) else ''
+        # v2: RAG هجين ببوّابة النية بدل _gather الشامل دائماً
+        if force_local:
+            _db_context = ''
+        else:
+            try:
+                from services.ai_rag import retrieve as _rag_retrieve
+                _rag_ctx = _rag_retrieve(message or '', (context or {}).get('current_user') if context else None)
+                # إبقاء الجاري القديم كاحتياط فقط إذا فشل RAG الجديد (قراءات المبيعات/المخزون)
+                _db_context = _rag_ctx or AIService._gather_relevant_knowledge(message, local_result)
+            except Exception:
+                _db_context = AIService._gather_relevant_knowledge(message, local_result)
+        # v2.1: حقن خطة منظمة (نية + أداة + حقول ناقصة) حتى يرى Groq النية الدقيقة
+        _plan_hint = ''
+        try:
+            from services.ai_planner import plan as _plan_fn
+            _p = _plan_fn(message or '', (context or {}).get('current_user') if context else None)
+            if _p and _p.tool:
+                _plan_hint = (
+                    f"🎯 **نية منظمة:** {_p.intent} | أداة: {_p.tool} | ثقة: {_p.confidence:.2f} "
+                    f"| ناقص: {', '.join(_p.missing_fields) if _p.missing_fields else 'لا شيء'} "
+                    f"| تأكيد مطلوب: {'نعم' if _p.needs_confirm else 'لا'}"
+                )
+        except Exception:
+            pass
+        knowledge_context = (_guide_fallback + "\n\n---\n\n" + _db_context + ("\n\n" + _plan_hint if _plan_hint else "")).strip() if (_guide_fallback or _db_context or _plan_hint) else ''
 
         # ========== المرحلة 2: التعاون مع Groq ==========
         api_key = AIService.get_api_key()
@@ -945,13 +968,36 @@ class AIService:
                         return _cached
 
                 # Groq مع صلاحيات كاملة
+                try:
+                    from services.ai_tools import describe_tools as _describe_tools
+                    _tools_desc = _describe_tools()
+                except Exception:
+                    _tools_desc = '(أدوات غير متاحة مؤقتاً)'
+                _hist_ctx = ''
+                try:
+                    _hist = (context or {}).get('history') or (context or {}).get('conversation_history') or []
+                    if isinstance(_hist, list) and _hist:
+                        _last = _hist[-3:]
+                        _lines = []
+                        for _t in _last:
+                            if isinstance(_t, dict):
+                                _lines.append(f"- {str(_t.get('role', 'user'))}: {str(_t.get('content', ''))[:120]}")
+                            else:
+                                _lines.append(f"- {str(_t)[:120]}")
+                        if _lines:
+                            _hist_ctx = "\n🕘 **سجل المحادثة (أخير 3):**\n" + "\n".join(_lines)
+                except Exception:
+                    pass
                 expert_prompt = """أنت أزاد - مساعد ذكي تفاعلي لنظام إدارة كراجات.
 
 السؤال:
 {message}
-
+{history_block}
 📊 بيانات النظام الحالية:
 {knowledge_context}
+
+🛠️ أدواتك المنظمة (استخدم الحقول المطلوبة فقط، ولا تخترع أرقاماً):
+{tools}
 
 🎯 قدراتك:
 1. قراءة البيانات (Users, Customers, Products, Sales, etc)
@@ -971,7 +1017,9 @@ class AIService:
 
 ⚠️ مهم: إذا سأل عن بيانات - استخدم الأرقام الموجودة.""".format(
                     message=message,
+                    history_block=_hist_ctx,
                     knowledge_context=knowledge_context or 'لا توجد بيانات إضافية',
+                    tools=_tools_desc,
                 )
 
                 response = requests.post(

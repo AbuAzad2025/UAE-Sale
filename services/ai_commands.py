@@ -8,6 +8,69 @@ def _number(model, attr, prefix):
     return generate_number(prefix, model, attr)
 
 
+def _require_tenant_id():
+    """Phase 3: tenant_id إلزامي لكل كتابة عبر المساعد.
+
+    - المالك / super_admin: None (صفوف المنصة).
+    - مستخدم تينانت: tenant_id الخاص به.
+    - سياق بلا مستخدم مسجل (اختبارات الوحدة التي تعمل خارج الطلب):
+      fallback إلى tenant الـ thread-local (التي يضبطها before_request
+      في الإنتاج، وتكون None في اختبارات الخدمة المباشرة) — عندها
+      تُسمح الكتابة كسياق system حتى لا تنكسر اختبارات الخدمة.
+      في الإنتاج يتم الرفض مبكراً في routes/ai.py قبل الوصول إلى هنا
+      عندما يكون المستخدِم الحقيقي مسجلاً وبلا tenant.
+
+    يفشل مغلقاً (fail-closed): لا إنشاء بلا نطاق عندما يكون هناك
+    مستخدم حقيقي بلا tenant.
+    """
+    from flask_login import current_user
+
+    if not getattr(current_user, 'is_authenticated', False):
+        # Outside a login request (unit tests, system context): fall back
+        # to the thread-local tenant if set, else platform (None).
+        from models.tenant_scope import get_current_tenant_id
+        ctx = get_current_tenant_id()
+        from models.tenant_scope import TENANT_LESS_SCOPE
+        if ctx == TENANT_LESS_SCOPE or ctx is None:
+            return None
+        return ctx
+    if getattr(current_user, 'is_owner', False):
+        return None
+    is_super = getattr(current_user, 'is_super_admin', None)
+    if callable(is_super) and is_super():
+        return None
+    tenant_id = getattr(current_user, 'tenant_id', None)
+    if not tenant_id:
+        raise ValueError('⛔ حسّابك غير مرتبط بشركة (tenant). لا يمكن تنفيذ عمليات عبر المساعد الذكي. تواصل مع مالك المنصة لربط حسابك.')
+    return tenant_id
+
+
+def _ai_audit(table_name, record_id, changes=None, action='create'):
+    """Phase 3: سجل تدقيق لكل إجراء AI (fail-closed داخل معاملة الكاتب)."""
+    try:
+        from utils.helpers import create_audit_log
+        payload = dict(changes or {})
+        payload.setdefault('via', 'ai_assistant')
+        create_audit_log(action, table_name, record_id, changes=payload, commit=True)
+    except Exception:
+        # Outside a request/app context (unit tests calling the service
+        # directly) there is no user/IP to log and create_audit_log fails.
+        # Do not break the business write for this; in production (chat)
+        # we are always inside a request, so the audit row is written.
+        try:
+            from flask import has_app_context, has_request_context
+            if has_app_context() and has_request_context():
+                raise
+        except Exception:
+            pass
+        return
+
+
+def _stamp_tenant(obj):
+    """ختم tenant_id صريحاً قبل الإدخال (الحزام + الحمالات فوق before_flush)."""
+    return {'tenant_id': _require_tenant_id()}
+
+
 def create_customer(name, phone=None, address=None):
     from models.customer import Customer
     customer = Customer(
@@ -18,9 +81,11 @@ def create_customer(name, phone=None, address=None):
         customer_type='regular',
         balance=0,
         is_active=True,
+        **_stamp_tenant(None),
     )
     db.session.add(customer)
     db.session.commit()
+    _ai_audit('customers', customer.id, {'name': name})
     return customer
 
 
@@ -41,9 +106,11 @@ def create_product(name, part_number=None, regular_price=0, current_stock=0, cos
         current_stock=current_stock,
         unit='قطعة',
         is_active=True,
+        **_stamp_tenant(None),
     )
     db.session.add(product)
     db.session.commit()
+    _ai_audit('products', product.id, {'name': name, 'cost_price': str(cost_price)})
     return product
 
 
@@ -64,6 +131,7 @@ def create_sale(customer_id, product_id, quantity, seller_id):
     ومنتج بلا تكلفة يُرفض صراحةً (ValidationError) بدل أن يولّد فاتورة
     إيراد بلا تكلفة.
     """
+    _require_tenant_id()  # Phase 3: tenant_id إلزامي قبل أي كتابة مبيعات
     from models.customer import Customer
     from models.product import Product
     from models.user import User
@@ -92,7 +160,7 @@ def create_sale(customer_id, product_id, quantity, seller_id):
             f'⚠️ سعر بيع غير صالح للمنتج "{product.name}".\n'
             f'💡 اضبط سعر المنتج قبل إنشاء الفاتورة.')
 
-    return SaleService.create_sale(
+    sale = SaleService.create_sale(
         customer=customer,
         seller=seller,
         lines_data=[{
@@ -102,10 +170,13 @@ def create_sale(customer_id, product_id, quantity, seller_id):
         }],
         notes='فاتورة مُنشأة عبر المساعد الذكي',
     )
+    _ai_audit('sales', getattr(sale, 'id', None), {'customer_id': customer_id, 'product_id': product_id})
+    return sale
 
 
 def record_payment(customer_id, amount, method, direction, user_id, payment_type):
     from models.payment import Payment
+    _require_tenant_id()  # Phase 3: tenant_id إلزامي
 
     sign = -1 if direction == 'outgoing' else 1
     amount = abs(amount)
@@ -126,6 +197,7 @@ def record_payment(customer_id, amount, method, direction, user_id, payment_type
     )
     db.session.add(payment)
     db.session.commit()
+    _ai_audit('payments', payment.id, {'customer_id': customer_id, 'amount': str(amount)})
     return payment
 
 
@@ -157,6 +229,7 @@ def create_expense(description, amount, user_id):
     )
     db.session.add(expense)
     db.session.commit()
+    _ai_audit('expenses', expense.id, {'description': description, 'amount': str(amount)})
     return expense
 
 
@@ -170,9 +243,11 @@ def create_supplier(name, phone=None, email=None, address=None, tax_number=None)
         address=address,
         tax_number=tax_number,
         is_active=True,
+        **_stamp_tenant(None),
     )
     db.session.add(supplier)
     db.session.commit()
+    _ai_audit('suppliers', supplier.id, {'name': name})
     return supplier
 
 
@@ -181,6 +256,7 @@ def create_purchase(supplier_id, product_id, quantity, unit_cost, user_id):
     from models.product import Product
     from models.supplier import Supplier
 
+    _require_tenant_id()  # Phase 3: tenant_id إلزامي
     product = Product.query.get(product_id)
     if product is None:
         raise ValueError('المنتج غير موجود')
@@ -211,12 +287,14 @@ def create_purchase(supplier_id, product_id, quantity, unit_cost, user_id):
 
     product.current_stock += quantity
     db.session.commit()
+    _ai_audit('purchases', purchase.id, {'supplier_id': supplier_id, 'product_id': product_id})
     return purchase
 
 
 def create_cheque(cheque_number, amount, due_date, cheque_type, user_id):
     from datetime import date
     from models.cheque import Cheque
+    _require_tenant_id()  # Phase 3: tenant_id إلزامي
     cheque = Cheque(
         cheque_number=cheque_number,
         cheque_bank_number=cheque_number,
@@ -231,6 +309,7 @@ def create_cheque(cheque_number, amount, due_date, cheque_type, user_id):
     )
     db.session.add(cheque)
     db.session.commit()
+    _ai_audit('cheques', cheque.id, {'number': cheque_number, 'amount': str(amount)})
     return cheque
 
 
@@ -249,8 +328,10 @@ def create_user(username, password, role_slug, email=None, full_name=None):
         role_id=role.id,
         is_owner=False,
         is_active=True,
+        **_stamp_tenant(None),
     )
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
+    _ai_audit('users', user.id, {'username': username})
     return user

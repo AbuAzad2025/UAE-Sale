@@ -200,15 +200,20 @@
         </span>
       </li>
       
-      <!-- AI Assistant -->
-      {% if current_user.is_owner or (current_user.role and current_user.role.slug == 'developer') %}
+      <!-- AI Assistant (Phase 4: لكل مستخدم مسجل — محكوم بالصلاحيات داخل المحادثة) -->
       <li class="nav-item">
         <a href="{{ url_for('ai.assistant_page') }}" class="nav-link" title="المساعد الذكي">
           <i class="fas fa-robot mr-1" style="color: #667eea; font-size: 1.1em;"></i>
           <span class="d-none d-md-inline">المساعد</span>
         </a>
       </li>
-      {% endif %}
+      <!-- دليل المستخدم العام (Phase 5) -->
+      <li class="nav-item">
+        <a href="{{ url_for('public.user_guide') }}" class="nav-link" title="دليل المستخدم">
+          <i class="fas fa-book mr-1" style="color: #28a745;"></i>
+          <span class="d-none d-md-inline">الدليل</span>
+        </a>
+      </li>
       
       <!-- Sidebar Direction Toggle -->
       <li class="nav-item">
@@ -852,6 +857,29 @@
           </li>
           {% endif %}
           
+          <!-- المساعد الذكي والأدلة (Phase 4/5: لكل مستخدم مسجل) -->
+          <li class="nav-header">مساعد ودليل</li>
+          <li class="nav-item">
+            <a href="{{ url_for('ai.assistant_page') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('ai.') %}active{% endif %}">
+              <i class="nav-icon fas fa-robot text-primary"></i>
+              <p>المساعد الذكي</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('public.user_guide') }}" class="nav-link {% if request.endpoint == 'public.user_guide' %}active{% endif %}">
+              <i class="nav-icon fas fa-book-open text-success"></i>
+              <p>دليل المستخدم</p>
+            </a>
+          </li>
+          {% if current_user.is_owner %}
+          <li class="nav-item">
+            <a href="{{ url_for('owner.owner_guide') }}" class="nav-link {% if request.endpoint == 'owner.owner_guide' %}active{% endif %}">
+              <i class="nav-icon fas fa-crown text-warning"></i>
+              <p>دليل المالك (خاص)</p>
+            </a>
+          </li>
+          {% endif %}
+
           {% if current_user.is_owner or (current_user.role and current_user.role.slug == 'developer') %}
           <li class="nav-header">OWNER MODE</li>
           <li class="nav-item">

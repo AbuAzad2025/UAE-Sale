@@ -408,10 +408,9 @@ class TestAiPages:
     def test_assistant_owner_200(self, client, login_owner):
         assert client.get('/ai/assistant').status_code == 200
 
-    def test_assistant_seller_302(self, client, login_seller):
-        resp = client.get('/ai/assistant', follow_redirects=False)
-        assert resp.status_code == 302
-        assert resp.headers['Location'].endswith('/dashboard')
+    def test_assistant_seller_200(self, client, login_seller):
+        # Phase 4: /ai/assistant لكل مستخدم مسجل (لا owner-only بعد اليوم)
+        assert client.get('/ai/assistant').status_code == 200
 
     def test_assistant_anonymous_302(self, client):
         assert client.get('/ai/assistant',

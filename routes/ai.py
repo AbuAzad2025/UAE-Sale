@@ -292,6 +292,50 @@ def _ai_action_denied(user, permission_code):
     )
 
 
+def _ai_tenant_denied(user, is_write_operation):
+    """Phase 3: tenant_id إلزامي — يرفض أي كتابة لمستخدم بلا tenant.
+
+    المالك / super_admin مسموح لهما (صفوف المنصة). القراءة غير محجوبة:
+    المستخدم بلا tenant يرى فقط صفوف بلا tenant (TENANT_LESS_SCOPE) بدل
+    أن يرى الكل — هذا مفروض أصلاً في before_request.
+    """
+    actor = user
+    if not is_write_operation:
+        return None
+    if getattr(actor, 'is_owner', False):
+        return None
+    is_super = getattr(actor, 'is_super_admin', None)
+    if callable(is_super):
+        try:
+            if is_super():
+                return None
+        except Exception:
+            pass
+    if not getattr(actor, 'tenant_id', None):
+        return (
+            '⛔ حسّابك غير مرتبط بشركة (tenant). لا يمكن تنفيذ عمليات عبر المساعد الذكي. '
+            'تواصل مع مالك المنصة لربط حسابك بشركة أولاً.'
+        )
+    return None
+
+
+def _ai_audit(table_name, record_id, changes=None, action='create'):
+    """Phase 3: سجل تدقيق لكل إجراء AI يتجاوز ai_commands (fail-closed في الطلب)."""
+    try:
+        from utils.helpers import create_audit_log
+        payload = dict(changes or {})
+        payload.setdefault('via', 'ai_assistant')
+        create_audit_log(action, table_name, record_id, changes=payload, commit=True)
+    except Exception:
+        try:
+            from flask import has_app_context, has_request_context
+            if has_app_context() and has_request_context():
+                raise
+        except Exception:
+            pass
+        return
+
+
 # =====================================================================
 # AI → النظام المالي: كل تعديل مالي من المساعد الذكي يمرّ عبر الخدمات
 # الرسمية (StockService / SaleService / PaymentService) حتى يُسجَّل له
@@ -767,21 +811,38 @@ def _process_user_action(message, user):  # noqa: C901
         # ========== نظام الحوار الذكي التفاعلي ==========
         user_id = user.id
 
+        # Phase 3: tenant_id إلزامي — يرفض أي كتابة لمستخدم بلا tenant
+        # (القراءة تبقى مسموحة ومحصورة في صفوف بلا tenant).
+        _is_write_intent = False
+        try:
+            from services.ai_flows import find_flow as _find_flow_for_guard
+            if _find_flow_for_guard(msg_lower) is not None:
+                _is_write_intent = True
+            elif ':' in message and _detect_ai_operation(message) != 'chat_ai':
+                _is_write_intent = True
+            elif user_id in conversation_context:
+                _ctx = conversation_context[user_id] or {}
+                if _ctx.get('step', 0) >= 1:
+                    _is_write_intent = True
+        except Exception:
+            pass
+        _tenant_denial = _ai_tenant_denied(user, _is_write_intent)
+        if _tenant_denial:
+            return _tenant_denial
+
         # إذا كان المستخدم يطلب مساعدة أو خيارات
-        if any(word in msg_lower for word in ['رصيد', 'رصيد العميل', 'رصيد عميل', 'تعديل رصيد']):
-            if ':' not in message:
-                conversation_context[user_id] = {'last_action': 'رصيد', 'step': 0}
-                return """🤖 فهمت! تريد التعامل مع رصيد العميل. إليك الخيارات:
+        # ===== Phase 2: Unified Flow Registry (table-driven menu dispatch) =====
+        # 13 قائمة كانت نسخ-لصق — الآن مرجع واحد (خدمة ai_flows) بنفس النصوص والحالة
+        try:
+            from services.ai_flows import find_flow, render_menu, start_context as _flow_ctx
+            _flow = find_flow(msg_lower)
+            if _flow and ':' not in message:
+                conversation_context[user_id] = dict(_flow_ctx(_flow))
+                return render_menu(_flow)
+        except Exception:
+            pass  # fallback: تابع لتدفقات ':' المباشرة بالأسفل
 
-📋 **ما الذي تريد فعله؟**
-1️⃣ **تعديل رصيد العميل**
-2️⃣ **استلام دفعة من العميل**
-3️⃣ **إعطاء دفعة للعميل**
-4️⃣ **عرض رصيد العميل**
 
-💡 **اكتب رقم الخيار (1، 2، 3، أو 4) وسأرشدك خطوة بخطوة!**
-
-🤖 مثال: اكتب "1" لتعديل رصيد العميل"""
 
         # ========== معالجة خيارات "رصيد" ==========
         if msg_lower.strip() == '2' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'رصيد':
@@ -872,14 +933,58 @@ def _process_user_action(message, user):  # noqa: C901
                     del conversation_context[user_id]
                     return _denial
                 try:
-                    new_balance = float(message.strip().replace('درهم', '').strip())
+                    new_balance = _ai_decimal(message.strip().replace('درهم', '').strip())
+                    if new_balance is None:
+                        raise ValueError('الرصيد غير صالح')
 
+                    # Phase 3: confirm_required قبل التعديل المدمّر — لا نطبّق مباشرة
+                    data['pending_balance'] = new_balance
+                    conversation_context[user_id]['data'] = data
+                    conversation_context[user_id]['step'] = 3
+                    return f"""⚠️ **تأكيد مطلوب:**
+- العميل: {data['customer_name']}
+- الرصيد الحالي: {data['current_balance']} درهم
+- الرصيد الجديد: {new_balance} درهم
+
+💡 اكتب "نعم" للتأكيد أو "لا" للإلغاء
+🤖 المصدر: GROQ API + التحليل المحلي"""
+
+                except Exception:
+                    return """❌ **خطأ في إدخال الرصيد!**
+
+💡 **يرجى إدخال رقم صحيح**
+
+🤖 أعد إدخال الرصيد..."""
+
+            elif step == 3:
+                _denial = _ai_action_denied(user, 'manage_customers')
+                if _denial:
+                    del conversation_context[user_id]
+                    return _denial
+                listener = smart_listener(message, conversation_context[user_id])
+                if listener == 'cancel':
+                    del conversation_context[user_id]
+                    return """❌ **تم الإلغاء — لم يتغيّر الرصيد**
+
+🤖 المصدر: GROQ API + التحليل المحلي"""
+                if listener != 'confirm':
+                    return """⚠️ **يرجى التأكيد صراحة:**
+اكتب "نعم" للتأكيد أو "لا" للإلغاء
+
+🤖 المصدر: GROQ API + التحليل المحلي"""
+                try:
+                    pending = data.get('pending_balance')
                     from models.customer import Customer
                     customer = get_owned_or_404(Customer, data['customer_id'], code=404)
-                    customer.balance = new_balance
-                    db.session.commit()
+                    # Phase 3: لا كتابة مباشرة customer.balance= — عبر خدمة مدقَّقة
+                    _ai_set_customer_balance(
+                        user=user,
+                        customer=customer,
+                        new_balance=pending,
+                        reason='تعديل رصيد عبر المساعد الذكي (بعد تأكيد)',
+                    )
 
-                    train_local_ai('update_balance', data, {'success': True, 'new_balance': new_balance})
+                    train_local_ai('update_balance', data, {'success': True, 'new_balance': pending})
 
                     del conversation_context[user_id]
 
@@ -888,7 +993,9 @@ def _process_user_action(message, user):  # noqa: C901
 📋 **التفاصيل:**
 - العميل: {data['customer_name']}
 - الرصيد السابق: {data['current_balance']} درهم
-- الرصيد الجديد: {new_balance} درهم
+- الرصيد الجديد: {pending} درهم
+
+⚠️ **مسجَّل في سجل التدقيق (AuditLog)**
 
 💡 **ماذا تريد أن تفعل الآن؟**
 1️⃣ تعديل رصيد عميل آخر
@@ -899,185 +1006,29 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
                 except Exception:
-                    return """❌ **خطأ في إدخال الرصيد!**
+                    return """❌ **لا يمكن تعديل الرصيد!**
 
-💡 **يرجى إدخال رقم صحيح**
+💡 **جرّب مرة أخرى أو اكتب "عودة"**
 
-🤖 أعد إدخال الرصيد..."""
+🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if any(word in msg_lower for word in ['عميل', 'عميل جديد', 'إضافة عميل', 'إنشاء عميل']):
-            if ':' not in message:
-                conversation_context[user_id] = {'last_action': 'عميل', 'step': 0}
-                return """🤖 فهمت! تريد إضافة عميل جديد. إليك الخيارات:
 
-📋 **ما الذي تريد فعله؟**
-1️⃣ **إضافة عميل جديد**
-2️⃣ **عرض جميع العملاء**
-3️⃣ **البحث عن عميل**
 
-💡 **اكتب رقم الخيار (1، 2، أو 3) وسأرشدك خطوة بخطوة!**
 
-🤖 مثال: اكتب "1" لإضافة عميل جديد"""
 
-        if any(word in msg_lower for word in ['منتج', 'منتج جديد', 'إضافة منتج', 'إنشاء منتج']):
-            if ':' not in message:
-                conversation_context[user_id] = {'last_action': 'منتج', 'step': 0}
-                return """🤖 فهمت! تريد إضافة منتج جديد. إليك الخيارات:
 
-📋 **ما الذي تريد فعله؟**
-1️⃣ **إضافة منتج جديد**
-2️⃣ **عرض جميع المنتجات**
-3️⃣ **البحث عن منتج**
-4️⃣ **رفع منتجات من Excel**
-
-💡 **اكتب رقم الخيار (1، 2، 3، أو 4) وسأرشدك خطوة بخطوة!**
-
-🤖 مثال: اكتب "1" لإضافة منتج جديد"""
-
-        if any(word in msg_lower for word in ['فاتورة', 'بيع', 'مبيعات', 'إنشاء فاتورة']):
-            if ':' not in message:
-                conversation_context[user_id] = {'last_action': 'فاتورة', 'step': 0}
-                return """🤖 فهمت! تريد إنشاء فاتورة مبيعات. إليك الخيارات:
-
-📋 **ما الذي تريد فعله؟**
-1️⃣ **إنشاء فاتورة جديدة**
-2️⃣ **عرض جميع الفواتير**
-3️⃣ **البحث عن فاتورة**
-
-💡 **اكتب رقم الخيار (1، 2، أو 3) وسأرشدك خطوة بخطوة!**
-
-🤖 مثال: اكتب "1" لإنشاء فاتورة جديدة"""
-
-        if any(word in msg_lower for word in ['استلام', 'استلم', 'دفعة من']):
-            if ':' not in message:
-                conversation_context[user_id] = {'last_action': 'استلام', 'step': 0}
-                return """🤖 فهمت! تريد استلام دفعة من عميل. إليك الخيارات:
-
-📋 **ما الذي تريد فعله؟**
-1️⃣ **استلام دفعة من عميل**
-2️⃣ **عرض جميع الدفعات**
-3️⃣ **البحث عن دفعة**
-
-💡 **اكتب رقم الخيار (1، 2، أو 3) وسأرشدك خطوة بخطوة!**
-
-🤖 مثال: اكتب "1" لاستلام دفعة من عميل"""
-
-        if any(word in msg_lower for word in ['إعطاء', 'أعطى', 'دفعة لل', 'دفعة ل']):
-            if ':' not in message:
-                conversation_context[user_id] = {'last_action': 'إعطاء', 'step': 0}
-                return """🤖 فهمت! تريد إعطاء دفعة للعميل. إليك الخيارات:
-
-📋 **ما الذي تريد فعله؟**
-1️⃣ **إعطاء دفعة للعميل**
-2️⃣ **عرض جميع الدفعات المعطاة**
-3️⃣ **البحث عن دفعة معطاة**
-
-💡 **اكتب رقم الخيار (1، 2، أو 3) وسأرشدك خطوة بخطوة!**
-
-🤖 مثال: اكتب "1" لإعطاء دفعة للعميل"""
-
-        if any(word in msg_lower for word in ['مصروف', 'إضافة مصروف', 'إنشاء مصروف']):
-            if ':' not in message:
-                conversation_context[user_id] = {'last_action': 'مصروف', 'step': 0}
-                return """🤖 فهمت! تريد إضافة مصروف. إليك الخيارات:
-
-📋 **ما الذي تريد فعله؟**
-1️⃣ **إضافة مصروف جديد**
-2️⃣ **عرض جميع المصروفات**
-3️⃣ **البحث عن مصروف**
-
-💡 **اكتب رقم الخيار (1، 2، أو 3) وسأرشدك خطوة بخطوة!**
-
-🤖 مثال: اكتب "1" لإضافة مصروف جديد"""
 
         # ========== نظام الحوار للموردين ==========
-        if any(word in msg_lower for word in ['مورد', 'مورد جديد', 'إضافة مورد', 'إنشاء مورد']):
-            if ':' not in message:
-                conversation_context[user_id] = {'last_action': 'مورد', 'step': 0}
-                return """🤖 فهمت! تريد إضافة مورد جديد. إليك الخيارات:
-
-📋 **ما الذي تريد فعله؟**
-1️⃣ **إضافة مورد جديد**
-2️⃣ **عرض جميع الموردين**
-3️⃣ **البحث عن مورد**
-
-💡 **اكتب رقم الخيار (1، 2، أو 3) وسأرشدك خطوة بخطوة!**
-
-🤖 مثال: اكتب "1" لإضافة مورد جديد"""
 
         # ========== نظام الحوار للمشتريات ==========
-        if any(word in msg_lower for word in ['مشتريات', 'شراء', 'إضافة مشتريات', 'إنشاء مشتريات']):
-            if ':' not in message:
-                conversation_context[user_id] = {'last_action': 'مشتريات', 'step': 0}
-                return """🤖 فهمت! تريد إضافة مشتريات. إليك الخيارات:
-
-📋 **ما الذي تريد فعله؟**
-1️⃣ **إضافة مشتريات جديدة**
-2️⃣ **عرض جميع المشتريات**
-3️⃣ **البحث عن مشتريات**
-
-💡 **اكتب رقم الخيار (1، 2، أو 3) وسأرشدك خطوة بخطوة!**
-
-🤖 مثال: اكتب "1" لإضافة مشتريات جديدة"""
 
         # ========== نظام الحوار للشيكات ==========
-        if any(word in msg_lower for word in ['شيك', 'شيكات', 'إضافة شيك', 'إنشاء شيك']):
-            if ':' not in message:
-                conversation_context[user_id] = {'last_action': 'شيك', 'step': 0}
-                return """🤖 فهمت! تريد إضافة شيك. إليك الخيارات:
-
-📋 **ما الذي تريد فعله؟**
-1️⃣ **إضافة شيك جديد**
-2️⃣ **عرض جميع الشيكات**
-3️⃣ **البحث عن شيك**
-
-💡 **اكتب رقم الخيار (1، 2، أو 3) وسأرشدك خطوة بخطوة!**
-
-🤖 مثال: اكتب "1" لإضافة شيك جديد"""
 
         # ========== نظام الحوار لدفتر الأستاذ ==========
-        if any(word in msg_lower for word in ['دفتر', 'دفتر الأستاذ', 'دفتر استاذ', 'قيد']):
-            if ':' not in message:
-                conversation_context[user_id] = {'last_action': 'دفتر', 'step': 0}
-                return """🤖 فهمت! تريد التعامل مع دفتر الأستاذ. إليك الخيارات:
-
-📋 **ما الذي تريد فعله؟**
-1️⃣ **عرض دفتر الأستاذ**
-2️⃣ **البحث في القيود**
-
-💡 **اكتب رقم الخيار (1 أو 2) وسأرشدك خطوة بخطوة!**
-
-🤖 مثال: اكتب "1" لعرض دفتر الأستاذ"""
 
         # ========== نظام الحوار للمستودعات ==========
-        if any(word in msg_lower for word in ['مستودع', 'مستودعات', 'مخزون', 'إدارة مستودعات']):
-            if ':' not in message:
-                conversation_context[user_id] = {'last_action': 'مستودع', 'step': 0}
-                return """🤖 فهمت! تريد إدارة المستودعات. إليك الخيارات:
-
-📋 **ما الذي تريد فعله؟**
-1️⃣ **عرض جميع المستودعات**
-2️⃣ **عرض المخزون**
-3️⃣ **البحث عن مستودع**
-
-💡 **اكتب رقم الخيار (1، 2، أو 3) وسأرشدك خطوة بخطوة!**
-
-🤖 مثال: اكتب "1" لعرض جميع المستودعات"""
 
         # ========== نظام الحوار لإدارة المستخدمين ==========
-        if any(word in msg_lower for word in ['مستخدم', 'مستخدمين', 'إضافة مستخدم', 'إنشاء مستخدم']):
-            if ':' not in message:
-                conversation_context[user_id] = {'last_action': 'مستخدم', 'step': 0}
-                return """🤖 فهمت! تريد إدارة المستخدمين. إليك الخيارات:
-
-📋 **ما الذي تريد فعله؟**
-1️⃣ **إضافة مستخدم جديد**
-2️⃣ **عرض جميع المستخدمين**
-3️⃣ **البحث عن مستخدم**
-
-💡 **اكتب رقم الخيار (1، 2، أو 3) وسأرشدك خطوة بخطوة!**
-
-🤖 مثال: اكتب "1" لإضافة مستخدم جديد"""
 
         # ========== نظام الحوار التفاعلي للرقم 1 (إضافة عميل جديد) ==========
         if msg_lower.strip() == '1' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'عميل':
@@ -1156,20 +1107,6 @@ def _process_user_action(message, user):  # noqa: C901
                 data['phone'] = message.strip()
                 conversation_context[user_id]['data'] = data
                 conversation_context[user_id]['step'] = 3
-                return """✅ **تم حفظ رقم الهاتف:** {phone}
-
-📝 **الخطوة 3: العنوان**
-اكتب عنوان العميل
-
-💡 **مثال:** دبي - الخليج التجاري
-
-🤖 اكتب العنوان الآن...""".format(phone=data['phone'])
-
-            elif step == 2:
-                # حفظ الهاتف والانتقال للخطوة التالية
-                data['phone'] = message.strip()
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 3
                 conversation_context[user_id]['history'] = conversation_context[user_id].get('history', []) + [{'step': 2, 'data': message.strip()}]
                 return """✅ **تم حفظ رقم الهاتف:** {phone}
 
@@ -1198,7 +1135,6 @@ def _process_user_action(message, user):  # noqa: C901
 
                     train_local_ai('create_customer', data, {'success': True, 'customer_id': customer.id})
 
-                    del conversation_context[user_id]
                     del conversation_context[user_id]
 
                     return f"""✅ **تم إنشاء العميل بنجاح!**
@@ -2908,14 +2844,8 @@ http://localhost:5000/ai/assistant
                     phone = parts[1]
                     address = parts[2] if len(parts) > 2 else ''
 
-                    customer = Customer(
-                        name=name,
-                        phone=phone,
-                        address=address,
-                        is_active=True
-                    )
-                    db.session.add(customer)
-                    db.session.commit()
+                    from services import ai_commands as _cmd_customer
+                    customer = _cmd_customer.create_customer(name, phone, address)
 
                     return f"""✅ تم إنشاء العميل بنجاح!
 
@@ -3145,6 +3075,27 @@ http://localhost:5000/ai/assistant
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
+                    # Phase 3: الاختصار السريع المدمّر يتطلب تأكيداً مثل التدفق متعدد الخطوات
+                    if not message.strip().endswith(('نعم', 'نعم تأكيد', 'تأكيد')) and not msg_lower.strip().endswith('نعم'):
+                        conversation_context[user_id] = {
+                            'last_action': 'رصيد',
+                            'step': 3,
+                            'option': '1',
+                            'data': {
+                                'customer_id': customer.id,
+                                'customer_name': customer.name,
+                                'current_balance': customer.balance,
+                                'pending_balance': new_balance,
+                            },
+                        }
+                        return f"""⚠️ **تأكيد مطلوب (اختصار سريع):**
+- العميل: {customer.name}
+- الرصيد الحالي: {customer.balance} درهم
+- الرصيد الجديد: {new_balance} درهم
+
+اكتب "نعم" للتأكيد أو "لا" للإلغاء
+🤖 المصدر: GROQ API + التحليل المحلي"""
+
                     old_balance = customer.balance
                     # F4/F14: the correction is audited with the old and the
                     # new figure — it used to overwrite the column silently.
@@ -3320,9 +3271,14 @@ def guide_api():
 
 @ai_bp.route('/assistant', methods=['GET'])
 @login_required
-@owner_required
 def assistant_page():
-    """صفحة المساعد الذكي"""
+    """صفحة المساعد الذكي — لكل مستخدم مسجل (Phase 4).
+
+    كانت @owner_required؛ أصبحت عامة للمستخدمين المسجلين لأن
+    المساعد محكوم بالصلاحيات داخل المحادثة (_ai_action_denied)
+    ويمنع الكتابة بلا tenant. /ai/config تبقى owner-only
+    لأن مفاتيح Groq/OpenAI سرّ المنصة.
+    """
     try:
         from models import Warehouse
         warehouses = Warehouse.query.all()
@@ -3509,6 +3465,7 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
 
         db.session.commit()
 
+        _ai_audit('products', None, {'method': 'excel_import', 'created': products_created, 'updated': products_updated})
         _train_ai_from_excel(df, products_created, products_updated, user.id)
 
         error_details = '\n'.join(errors) if errors else ''

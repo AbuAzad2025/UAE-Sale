@@ -933,6 +933,30 @@ class AIService:
             pass
         knowledge_context = (_guide_fallback + "\n\n---\n\n" + _db_context + ("\n\n" + _plan_hint if _plan_hint else "")).strip() if (_guide_fallback or _db_context or _plan_hint) else ''
 
+        # Phase 2b: مسار تنفيذ مباشر بدون Groq — الخطة الكاملة تُنفذ فوراً،
+        # المدمّرة تتطلب تأكيداً، الناقصة تطلب توضيحاً، والقراءة تُنفذ هنا.
+        # هذا لا أكسر المسار القديم لأنه احتياطي آمن عبر try/except.
+        try:
+            from services.ai_planner import plan as _plan_fn2
+            from services.ai_handlers import dispatch as _exec_plan
+            _current_user = (context or {}).get('current_user') if context else None
+            _confirmed = bool((context or {}).get('confirmed_action'))
+            _p2 = _plan_fn2(message or '', _current_user)
+            if _p2 and _p2.tool:
+                _read_tools = ('get_customer_balance', 'inventory_status', 'sales_summary', 'search_customers')
+                # الناقصة أو المدمّرة غير المؤكدة → جواب حتمي سريع (بلا LLM)
+                if _p2.missing_fields or (_p2.needs_confirm and not _confirmed):
+                    _res = _exec_plan(_p2, _current_user, confirmed=_confirmed)
+                    if _res and _res.get('needs_clarification'):
+                        return _res['response']
+                # الكاملة (قراءة أو كتابة غير مدمّرة) → تنفيذ مباشر
+                elif _p2.tool in _read_tools or (_p2.needs_confirm is False):
+                    _res = _exec_plan(_p2, _current_user, confirmed=_confirmed)
+                    if _res and _res.get('executed'):
+                        return _res['response']
+        except Exception:
+            pass
+
         # ========== المرحلة 2: التعاون مع Groq ==========
         api_key = AIService.get_api_key()
         # السماح بالرسائل للوصول لـ Groq إذا كان مفعلاً (الاعتماد على الزر فقط)

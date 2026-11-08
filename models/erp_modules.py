@@ -15,15 +15,17 @@ Extended ERP Module Models
 from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 # ==================== QUOTATIONS ====================
 
 
-class Quotation(db.Model):
+class Quotation(TenantScopedMixin, db.Model):
     """Sales quotation / proposal"""
     __tablename__ = 'quotations'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     quotation_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False, index=True)
     seller_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -101,9 +103,10 @@ class Quotation(db.Model):
         }
 
 
-class QuotationLine(db.Model):
+class QuotationLine(TenantScopedMixin, db.Model):
     __tablename__ = 'quotation_lines'
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     quotation_id = db.Column(db.Integer, db.ForeignKey('quotations.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Numeric(15, 3), nullable=False)
@@ -124,11 +127,12 @@ class QuotationLine(db.Model):
 # ==================== PURCHASE ORDERS ====================
 
 
-class PurchaseOrder(db.Model):
+class PurchaseOrder(TenantScopedMixin, db.Model):
     """Purchase Order - formal procurement document"""
     __tablename__ = 'purchase_orders'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     po_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=False, index=True)
     warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'))
@@ -185,9 +189,10 @@ class PurchaseOrder(db.Model):
                 'partially_received': 'استلام جزئي', 'received': 'مستلمة', 'cancelled': 'ملغاة'}.get(self.status, self.status)
 
 
-class PurchaseOrderLine(db.Model):
+class PurchaseOrderLine(TenantScopedMixin, db.Model):
     __tablename__ = 'purchase_order_lines'
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     order_id = db.Column(db.Integer, db.ForeignKey('purchase_orders.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Numeric(15, 3), nullable=False)
@@ -258,11 +263,12 @@ class FiscalPeriod(db.Model):
 # ==================== STOCK TRANSFERS ====================
 
 
-class StockTransfer(db.Model):
+class StockTransfer(TenantScopedMixin, db.Model):
     """Transfer stock between warehouses"""
     __tablename__ = 'stock_transfers'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     transfer_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     from_warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), nullable=False)
     to_warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), nullable=False)
@@ -286,9 +292,10 @@ class StockTransfer(db.Model):
                 'cancelled': 'ملغي'}.get(self.status, self.status)
 
 
-class StockTransferLine(db.Model):
+class StockTransferLine(TenantScopedMixin, db.Model):
     __tablename__ = 'stock_transfer_lines'
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     transfer_id = db.Column(db.Integer, db.ForeignKey('stock_transfers.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Numeric(15, 3), nullable=False)
@@ -300,11 +307,12 @@ class StockTransferLine(db.Model):
 # ==================== STOCK TAKE ====================
 
 
-class StockTake(db.Model):
+class StockTake(TenantScopedMixin, db.Model):
     """Physical inventory count"""
     __tablename__ = 'stock_takes'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     stocktake_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), nullable=False)
     stocktake_date = db.Column(db.Date, nullable=False, index=True)
@@ -329,9 +337,10 @@ class StockTake(db.Model):
         return sum((abs(i.variance or 0) for i in self.items), 0)
 
 
-class StockTakeItem(db.Model):
+class StockTakeItem(TenantScopedMixin, db.Model):
     __tablename__ = 'stock_take_items'
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     stocktake_id = db.Column(db.Integer, db.ForeignKey('stock_takes.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     system_quantity = db.Column(db.Numeric(15, 3), nullable=False)
@@ -349,11 +358,12 @@ class StockTakeItem(db.Model):
 # ==================== DUNNING LETTERS ====================
 
 
-class DunningLetter(db.Model):
+class DunningLetter(TenantScopedMixin, db.Model):
     """Automated collection reminder for overdue receivables"""
     __tablename__ = 'dunning_letters'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     letter_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False, index=True)
     sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'))
@@ -378,11 +388,12 @@ class DunningLetter(db.Model):
 # ==================== RECURRING EXPENSES ====================
 
 
-class RecurringExpense(db.Model):
+class RecurringExpense(TenantScopedMixin, db.Model):
     """Template for recurring expenses (rent, salaries, etc.)"""
     __tablename__ = 'recurring_expenses'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     name = db.Column(db.String(200), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'), nullable=False)
     amount = db.Column(db.Numeric(15, 3), nullable=False)
@@ -415,11 +426,12 @@ class RecurringExpense(db.Model):
 # ==================== LOT/SERIAL TRACKING ====================
 
 
-class ProductLot(db.Model):
+class ProductLot(TenantScopedMixin, db.Model):
     """Lot/batch tracking for products"""
     __tablename__ = 'product_lots'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False, index=True)
     lot_number = db.Column(db.String(50), nullable=False, index=True)
     warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), index=True)
@@ -454,11 +466,12 @@ class ProductLot(db.Model):
 # ==================== BIN/LOCATION TRACKING ====================
 
 
-class WarehouseBin(db.Model):
+class WarehouseBin(TenantScopedMixin, db.Model):
     """Physical bin/shelf location within a warehouse"""
     __tablename__ = 'warehouse_bins'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), nullable=False, index=True)
     code = db.Column(db.String(50), nullable=False)
     name = db.Column(db.String(100))
@@ -488,11 +501,12 @@ class WarehouseBin(db.Model):
         return result or 0
 
 
-class ProductBin(db.Model):
+class ProductBin(TenantScopedMixin, db.Model):
     """Product-to-bin assignment with stock quantities"""
     __tablename__ = 'product_bins'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     bin_id = db.Column(db.Integer, db.ForeignKey('warehouse_bins.id'), nullable=False, index=True)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False, index=True)
     stock_quantity = db.Column(db.Numeric(15, 3), default=0)
@@ -509,11 +523,12 @@ class ProductBin(db.Model):
 # ==================== E-INVOICING (FATOORA) ====================
 
 
-class EInvoice(db.Model):
+class EInvoice(TenantScopedMixin, db.Model):
     """UAE FATOORA e-invoice record"""
     __tablename__ = 'e_invoices'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     invoice_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'), nullable=False, index=True)
 

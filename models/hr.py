@@ -5,13 +5,15 @@ HR Module Models - Human Resources & Payroll Management
 from datetime import datetime, timezone, date
 from decimal import Decimal, ROUND_HALF_UP
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
-class Department(db.Model):
+class Department(TenantScopedMixin, db.Model):
     """Organizational department"""
     __tablename__ = 'departments'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
     name_ar = db.Column(db.String(100))
     code = db.Column(db.String(20), unique=True, nullable=False)
@@ -61,7 +63,7 @@ class Department(db.Model):
         }
 
 
-class Employee(db.Model):
+class Employee(TenantScopedMixin, db.Model):
     """
     Employee profile - linked 1:1 with User.
     Contains all HR-specific data not in the User model.
@@ -69,6 +71,7 @@ class Employee(db.Model):
     __tablename__ = 'employees'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique=True, nullable=False, index=True)
     employee_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
 
@@ -185,11 +188,12 @@ class Employee(db.Model):
         }
 
 
-class LeaveType(db.Model):
+class LeaveType(TenantScopedMixin, db.Model):
     """Leave type definition"""
     __tablename__ = 'leave_types'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     name = db.Column(db.String(50), nullable=False, unique=True)
     name_ar = db.Column(db.String(50))
     code = db.Column(db.String(20), unique=True, nullable=False)
@@ -215,11 +219,12 @@ class LeaveType(db.Model):
         }
 
 
-class LeaveRequest(db.Model):
+class LeaveRequest(TenantScopedMixin, db.Model):
     """Employee leave request"""
     __tablename__ = 'leave_requests'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=False, index=True)
     leave_type_id = db.Column(db.Integer, db.ForeignKey('leave_types.id'), nullable=False, index=True)
 
@@ -322,11 +327,12 @@ class LeaveRequest(db.Model):
         }
 
 
-class Payslip(db.Model):
+class Payslip(TenantScopedMixin, db.Model):
     """Monthly payslip for an employee"""
     __tablename__ = 'payslips'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     payslip_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=False, index=True)
 
@@ -450,11 +456,12 @@ class Payslip(db.Model):
         }
 
 
-class PayslipLine(db.Model):
+class PayslipLine(TenantScopedMixin, db.Model):
     """Additional payslip line items (bonuses, deductions, adjustments)"""
     __tablename__ = 'payslip_lines'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     payslip_id = db.Column(db.Integer, db.ForeignKey('payslips.id'), nullable=False, index=True)
 
     line_type = db.Column(db.String(20), nullable=False)  # earning, deduction

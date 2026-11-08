@@ -4,16 +4,18 @@
 
 from datetime import datetime, timezone
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 from decimal import Decimal
 
 
-class BankReconciliation(db.Model):
+class BankReconciliation(TenantScopedMixin, db.Model):
     """
     سجل مطابقة البنك الشهرية
     """
     __tablename__ = 'bank_reconciliations'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     reconciliation_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     bank_account_id = db.Column(db.Integer, db.ForeignKey('gl_accounts.id'), nullable=False)
 
@@ -109,13 +111,14 @@ class BankReconciliation(db.Model):
         self.approved_at = datetime.now(timezone.utc)
 
 
-class BankReconciliationItem(db.Model):
+class BankReconciliationItem(TenantScopedMixin, db.Model):
     """
     سطور مطابقة البنك - عمليات فردية
     """
     __tablename__ = 'bank_reconciliation_items'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     reconciliation_id = db.Column(db.Integer, db.ForeignKey('bank_reconciliations.id'), nullable=False)
 
     # نوع العنصر

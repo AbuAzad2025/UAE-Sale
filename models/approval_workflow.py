@@ -4,15 +4,17 @@ Configurable multi-level approval chains for sales/payments.
 """
 from datetime import datetime, timezone
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
-class ApprovalWorkflow(db.Model):
+class ApprovalWorkflow(TenantScopedMixin, db.Model):
     """
     Defines an approval chain: e.g., "Sales > 10,000 AED requires manager then owner."
     """
     __tablename__ = 'approval_workflows'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
     name_ar = db.Column(db.String(100))
     description = db.Column(db.Text)
@@ -63,7 +65,7 @@ class ApprovalWorkflow(db.Model):
         }
 
 
-class ApprovalRequest(db.Model):
+class ApprovalRequest(TenantScopedMixin, db.Model):
     """
     An individual approval request linked to a specific entity.
     Tracks multi-level approval progress.
@@ -76,6 +78,7 @@ class ApprovalRequest(db.Model):
     )
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     request_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
 
     workflow_id = db.Column(db.Integer, db.ForeignKey('approval_workflows.id'), nullable=False)
@@ -140,7 +143,7 @@ class ApprovalRequest(db.Model):
         }
 
 
-class ApprovalLevel(db.Model):
+class ApprovalLevel(TenantScopedMixin, db.Model):
     """
     A single approval step within a request.
     Tracks who approved/rejected at each level.
@@ -148,6 +151,7 @@ class ApprovalLevel(db.Model):
     __tablename__ = 'approval_levels'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
 
     request_id = db.Column(db.Integer, db.ForeignKey('approval_requests.id'), nullable=False, index=True)
     level = db.Column(db.Integer, nullable=False)  # 1, 2, 3, ...

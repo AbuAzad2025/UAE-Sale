@@ -4,15 +4,17 @@
 
 from datetime import datetime, timezone
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
-class CostCenter(db.Model):
+class CostCenter(TenantScopedMixin, db.Model):
     """
     مراكز التكلفة - لتتبع الأرباح والمصاريف حسب الفرع/القسم/المشروع
     """
     __tablename__ = 'cost_centers'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     code = db.Column(db.String(20), unique=True, nullable=False, index=True)
     name_ar = db.Column(db.String(200), nullable=False)
     name_en = db.Column(db.String(200))

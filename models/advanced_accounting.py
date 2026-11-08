@@ -1,12 +1,14 @@
 from datetime import datetime, timezone
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
-class CustomsTax(db.Model):
+class CustomsTax(TenantScopedMixin, db.Model):
     """نموذج الجمارك والضرائب"""
     __tablename__ = 'customs_taxes'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     name = db.Column(db.String(200), nullable=False)
     name_ar = db.Column(db.String(200), nullable=False)
     tax_type = db.Column(db.String(50), nullable=False)  # customs, vat, excise, income, corporate
@@ -38,11 +40,12 @@ class CustomsTax(db.Model):
         return types.get(self.tax_type, self.tax_type)
 
 
-class AdvancedExpense(db.Model):
+class AdvancedExpense(TenantScopedMixin, db.Model):
     """نموذج المصروفات المتقدمة"""
     __tablename__ = 'advanced_expenses'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     expense_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     expense_date = db.Column(db.Date, nullable=False, index=True)
     description = db.Column(db.String(255), nullable=False)
@@ -184,11 +187,12 @@ class AdvancedExpense(db.Model):
         )
 
 
-class TaxCalculationRule(db.Model):
+class TaxCalculationRule(TenantScopedMixin, db.Model):
     """قواعد حساب الضرائب"""
     __tablename__ = 'tax_calculation_rules'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     name = db.Column(db.String(200), nullable=False)
     name_ar = db.Column(db.String(200), nullable=False)
     rule_type = db.Column(db.String(50), nullable=False)  # expense, income, purchase, sale

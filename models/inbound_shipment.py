@@ -92,7 +92,7 @@ class InboundShipment(TenantScopedMixin, db.Model):
         return f'<InboundShipment {self.shipment_number} {self.status}>'
 
 
-class InboundShipmentLine(db.Model):
+class InboundShipmentLine(TenantScopedMixin, db.Model):
     __tablename__ = 'inbound_shipment_lines'
 
     __table_args__ = (
@@ -106,6 +106,7 @@ class InboundShipmentLine(db.Model):
     )
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id', ondelete='SET NULL'), nullable=True, index=True)
     inbound_shipment_id = db.Column(db.Integer, db.ForeignKey('inbound_shipments.id', ondelete='CASCADE'),
                                     nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id', ondelete='RESTRICT'), nullable=False)

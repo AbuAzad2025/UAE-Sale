@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
-class ArchivedRecord(db.Model):
+class ArchivedRecord(TenantScopedMixin, db.Model):
     __tablename__ = 'archived_records'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
 
     table_name = db.Column(db.String(50), nullable=False, index=True)
     record_id = db.Column(db.Integer, nullable=False)

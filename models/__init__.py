@@ -67,8 +67,20 @@ from .validators import (
 # Register all tenant-scoped models for automatic filtering
 for _model_cls in [Sale, SaleLine, Purchase, PurchaseLine, Payment, Receipt,
                    Customer, Supplier, Product, StockMovement, Cheque,
-                   GLJournalEntry, GLJournalLine, Warehouse, Shipment, InboundShipment,
-                   WriteOff, Expense]:
+                   GLJournalEntry, GLJournalLine, Warehouse, Shipment, ShipmentLine,
+                   InboundShipment, InboundShipmentLine,
+                   WriteOff, Expense,
+                   Department, Employee, LeaveType, LeaveRequest, Payslip, PayslipLine,
+                   Quotation, QuotationLine, PurchaseOrder, PurchaseOrderLine,
+                   StockTransfer, StockTransferLine, StockTake, StockTakeItem,
+                   DunningLetter, RecurringExpense, ProductLot,
+                   WarehouseBin, ProductBin, EInvoice,
+                   CustomsTax, AdvancedExpense, TaxCalculationRule,
+                   ApprovalWorkflow, ApprovalRequest, ApprovalLevel,
+                   BankReconciliation, BankReconciliationItem,
+                   Budget, BudgetLine, CostCenter,
+                   FixedAsset, DepreciationSchedule,
+                   ArchivedRecord, AuditLog, JournalEntryAudit]:
     register_tenant_scoped(_model_cls)
 
 __all__ = [

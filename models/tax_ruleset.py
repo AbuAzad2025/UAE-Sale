@@ -39,6 +39,12 @@ class TaxRuleset(db.Model):
     authority_notes = db.Column(db.Text)
     compliance_notes = db.Column(db.Text)
 
+    # سريان بتوقيت — مثلاً ضريبة السعودية 5% حتى 2020/2020-07-01 ثم 15% بعدها.
+    # NULL للبداية/النهاية = بلا حدود (القاعدة دائمة). عند وجود أكثر من صف مسنود،
+    # يُختار الأحدث effective_from ≤ تاريخ اليوم ثم الأكبر id.
+    effective_from = db.Column(db.Date, nullable=True)
+    effective_until = db.Column(db.Date, nullable=True)
+
     is_active = db.Column(db.Boolean, nullable=False, default=True)
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
@@ -92,14 +98,46 @@ def seed_default_rulesets():
     db.session.commit()
 
 
-def ruleset_for_tenant(tenant):
-    """Return the ruleset that applies to the tenant (tenant-scoped first, then platform default)."""
+def _windowed_pick(rows, on_date):
+    """من قائمة الصفوف — اختر الأحدث النافذ في التاريخ (إن وُجد)."""
+    rows = [r for r in rows if r is not None]
+    if not rows:
+        return None
+    from datetime import date as _date
+    scoped = sorted(rows, key=lambda r: (r.effective_from is not None,
+                                         r.effective_from or _date.min,
+                                         r.id), reverse=True)
+    for r in scoped:
+        if r.effective_until and r.effective_until < on_date:
+            continue
+        if r.effective_from and r.effective_from > on_date:
+            continue
+        return r
+    return None
+
+
+def ruleset_for_tenant(tenant, on_date=None):
+    """اختر القاعدة المطبقة على الشركة في تاريخ محدد (افتراضي اليوم).
+
+    الترتيب: صف خاص بالتينانت أولاً (إن وُجد مسنود نافذ) ← صف الدولة
+    الافتراضي (إن وُجد نافذ في ذلك التاريخ) ← None.
+    السريان: `effective_from IS NULL OR effective_from <= date` و
+    `effective_until IS NULL OR effective_until >= date`؛ يُرجح الأحدث.
+    """
+    from datetime import date as _date
     if tenant is None:
         return None
     code = (getattr(tenant, 'tax_country', None) or getattr(tenant, 'country', None) or '').strip().upper()
     if not code:
         return None
-    row = TaxRuleset.query.filter_by(country_code=code, tenant_id=getattr(tenant, 'id', None)).first()
+    on_date = on_date or _date.today()
+
+    tid = getattr(tenant, 'id', None)
+    tenant_rows = TaxRuleset.query.filter_by(
+        country_code=code, tenant_id=tid, is_active=True).all() if tid else []
+    row = _windowed_pick(tenant_rows, on_date)
     if row is not None:
         return row
-    return TaxRuleset.query.filter_by(country_code=code, tenant_id=None, is_active=True).first()
+    platform_rows = TaxRuleset.query.filter_by(
+        country_code=code, tenant_id=None, is_active=True).all()
+    return _windowed_pick(platform_rows, on_date)

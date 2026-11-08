@@ -1597,6 +1597,77 @@ def _vat_report_data(date_from=None, date_to=None):
             entry['reverse_charge_vat'] += r['tax_amount']
     by_rate = [rate_map[k] for k in sorted(rate_map, key=lambda k: Decimal(k))]
 
+    # --- المصروفات (سندات الصرف / مصروف) — نفس منطق المعالجة ---
+    from models import Expense
+    from services.expense_gl import compute_expense_tax
+
+    expense_taxable = []
+    expense_non_recoverable = []
+    expense_reverse_charge = []
+    total_expense_input_vat = Decimal('0')
+    total_expense_non_recoverable_vat = Decimal('0')
+    total_expense_reverse_charge_vat = Decimal('0')
+
+    expenses_query = Expense.query.filter(Expense.status == 'confirmed',
+                                          Expense.is_active.is_(True))
+    if date_from:
+        expenses_query = expenses_query.filter(
+            func.date(Expense.expense_date) >= date_from)
+    if date_to:
+        expenses_query = expenses_query.filter(
+            func.date(Expense.expense_date) <= date_to)
+    expenses_query = expenses_query.filter(
+        ~Expense.id.in_(_archived_record_ids('expenses')))
+
+    for e in expenses_query.order_by(Expense.expense_date).all():
+        recoverable = bool(getattr(e, 'vat_recoverable', True))
+        reverse_charge = bool(getattr(e, 'reverse_charge', False))
+        rate = Decimal(str(getattr(e, 'tax_rate', 0) or 0))
+        treatment = getattr(e, 'tax_treatment', 'standard') or 'standard'
+        fx = Decimal(str(e.exchange_rate or 1))
+        if fx <= 0:
+            fx = Decimal('1')
+        net, tax, total = compute_expense_tax(e.amount, rate,
+                                              bool(e.tax_inclusive), treatment)
+        net_l = (Decimal(str(net)) * fx).quantize(
+            Decimal('0.001'), rounding=ROUND_HALF_UP)
+        tax_l = (Decimal(str(tax)) * fx).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
+        row = {
+            'number': e.expense_number,
+            'date': e.expense_date,
+            'party': e.supplier_name or e.description,
+            'net_amount': net_l,
+            'gross_amount': (Decimal(str(total)) * fx).quantize(
+                Decimal('0.001'), rounding=ROUND_HALF_UP),
+            'tax_rate': rate,
+            'tax_amount': tax_l,
+            'treatment': treatment,
+            'recoverable': recoverable,
+            'reverse_charge': reverse_charge,
+        }
+        if treatment in ('zero', 'exempt') or tax == 0:
+            continue
+        if reverse_charge:
+            expense_reverse_charge.append(row)
+            total_expense_reverse_charge_vat += tax_l
+        if recoverable:
+            expense_taxable.append(row)
+            total_expense_input_vat += tax_l
+        else:
+            expense_non_recoverable.append(row)
+            total_expense_non_recoverable_vat += tax_l
+
+    total_input_vat += total_expense_input_vat
+    total_output_vat += total_expense_reverse_charge_vat
+    for r in expense_taxable:
+        _accrue(r['tax_rate'], 'purchases', r['net_amount'], r['tax_amount'])
+    for r in expense_reverse_charge:
+        key = str((Decimal(str(r['tax_rate'] or 0))).quantize(Decimal('0.01')))
+        entry = rate_map.get(key)
+        if entry:
+            entry['reverse_charge_vat'] += r['tax_amount']
+    by_rate = [rate_map[k] for k in sorted(rate_map, key=lambda k: Decimal(k))]
+
     # المرتجعات تخصم من المبيعات الخاضعة ومن ضريبة المخرجات
     total_taxable_sales -= credit_net_by_treatment['standard']
     total_zero_rated_sales -= credit_net_by_treatment['zero']
@@ -1623,6 +1694,9 @@ def _vat_report_data(date_from=None, date_to=None):
         'total_non_recoverable_base': total_non_recoverable_base,
         'total_reverse_charge_vat': total_reverse_charge_vat,
         'total_reverse_charge_base': total_reverse_charge_base,
+        'total_expense_input_vat': total_expense_input_vat,
+        'total_expense_non_recoverable_vat': total_expense_non_recoverable_vat,
+        'total_expense_reverse_charge_vat': total_expense_reverse_charge_vat,
         'net_vat': net_vat,
         'vat_payable': net_vat if net_vat > 0 else Decimal('0'),
         'vat_refund': abs(net_vat) if net_vat < 0 else Decimal('0'),
@@ -1640,6 +1714,9 @@ def _vat_report_data(date_from=None, date_to=None):
         'exempt_purchases': exempt_purchases,
         'non_recoverable_purchases': non_recoverable_purchases,
         'reverse_charge_purchases': reverse_charge_purchases,
+        'expense_taxable': expense_taxable,
+        'expense_non_recoverable': expense_non_recoverable,
+        'expense_reverse_charge': expense_reverse_charge,
         'by_rate': by_rate,
         'summary': summary,
         'date_from': date_from or '',
@@ -1647,12 +1724,30 @@ def _vat_report_data(date_from=None, date_to=None):
     }
 
 
+def _tenant_vat_label():
+    """تسمية الدولة + النسبة من قاعدة الضريبة المُطبقة على الشركة الحالية."""
+    try:
+        from models import Tenant
+        from models.tax_ruleset import ruleset_for_tenant
+        from models.tenant_scope import get_current_tenant_id
+        tid = get_current_tenant_id()
+        tenant = db.session.get(Tenant, tid) if tid else None
+        ruleset = ruleset_for_tenant(tenant)
+        if ruleset is not None:
+            country = (ruleset.country_code or 'XX').upper()
+            rate = format(ruleset.vat_rate, 'g') if ruleset.vat_rate is not None else '—'
+            return f'{country} {rate}%'
+    except Exception:
+        pass
+    return 'VAT'
+
+
 @reports_bp.route('/vat-report')
 @login_required
 @permission_required('view_reports')
 def vat_report():
     """
-    تقرير ضريبة القيمة المضافة — VAT Report (UAE 5%)
+    تقرير ضريبة القيمة المضافة — VAT Report
     Taxable sales/purchases, output/input VAT, net payable.
     """
     date_from = request.args.get('date_from', '', type=str)
@@ -1672,8 +1767,12 @@ def vat_report():
                            exempt_purchases=data['exempt_purchases'],
                            non_recoverable_purchases=data['non_recoverable_purchases'],
                            reverse_charge_purchases=data['reverse_charge_purchases'],
+                           expense_taxable=data['expense_taxable'],
+                           expense_non_recoverable=data['expense_non_recoverable'],
+                           expense_reverse_charge=data['expense_reverse_charge'],
                            by_rate=data['by_rate'],
                            summary=data['summary'],
+                           vat_label=_tenant_vat_label(),
                            date_from=data['date_from'],
                            date_to=data['date_to'])
 
@@ -1974,6 +2073,18 @@ def export_vat_report():  # noqa: C901
         _sheet('عكس الضريبة (RC)', purchase_headers, reverse_charge_rows,
                '16A085', ('المجموع', summary['total_reverse_charge_base'],
                            summary['total_reverse_charge_vat']))
+        expense_rows = [_purchase_row(r) for r in data['expense_taxable']]
+        _sheet('المصروفات الخاضعة', purchase_headers, expense_rows, '27AE60',
+               ('المجموع', sum(r['net_amount'] for r in data['expense_taxable']),
+                summary['total_expense_input_vat']))
+        expense_nr_rows = [_purchase_row(r) for r in data['expense_non_recoverable']]
+        _sheet('مصروفات غير قابلة للاسترداد', purchase_headers, expense_nr_rows,
+               '34495E', ('المجموع', sum(r['net_amount'] for r in data['expense_non_recoverable']),
+                           summary['total_expense_non_recoverable_vat']))
+        expense_rc_rows = [_purchase_row(r) for r in data['expense_reverse_charge']]
+        _sheet('مصروفات RC', purchase_headers, expense_rc_rows, '16A085',
+               ('المجموع', sum(r['net_amount'] for r in data['expense_reverse_charge']),
+                           summary['total_expense_reverse_charge_vat']))
         by_rate_headers = ['النسبة', 'مبيعات خاضعة (أساس)', 'ضريبة مبيعات',
                            'مشتريات خاضعة (أساس)', 'ضريبة مشتريات',
                            'Reverse Charge VAT']
@@ -2001,6 +2112,9 @@ def export_vat_report():  # noqa: C901
             ('ضريبة غير قابلة للاسترداد', float(summary['total_non_recoverable_vat'])),
             ('Reverse Charge — ضريبة ذاتية (أساس)', float(summary['total_reverse_charge_base'])),
             ('Reverse Charge — ضريبة ذاتية التقييم', float(summary['total_reverse_charge_vat'])),
+            ('مصروفات خاضعة للضريبة (مدخل)', float(summary['total_expense_input_vat'])),
+            ('مصروفات غير قابلة للاسترداد (ضريبة)', float(summary['total_expense_non_recoverable_vat'])),
+            ('مصروفات Reverse Charge — ضريبة ذاتية التقييم', float(summary['total_expense_reverse_charge_vat'])),
             ('الرصيد النهائي', float(net_vat)),
         ]
         for ri, (label, value) in enumerate(summary_rows, 1):
@@ -2039,6 +2153,9 @@ def export_vat_report():  # noqa: C901
                 [['── المشتريات المعفاة ──'] + [''] * 5] + [purchase_headers] + exempt_purchase_rows +
                 [['── مشتريات غير قابلة للاسترداد (تكلفة) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['non_recoverable_purchases']] +
                 [['── عكس الضريبة (Reverse Charge) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['reverse_charge_purchases']] +
+                [['── مصروفات خاضعة للضريبة ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['expense_taxable']] +
+                [['── مصروفات غير قابلة للاسترداد (تكلفة) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['expense_non_recoverable']] +
+                [['── مصروفات Reverse Charge ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['expense_reverse_charge']] +
                 [['── التجميع حسب النسبة ──'] + [''] * 5] + [['النسبة', 'مبيعات خاضعة', 'ضريبة مبيعات', 'مشتريات خاضعة', 'ضريبة مشتريات', 'Reverse Charge VAT']] + by_rate_rows
             )
             summary_pdf = {
@@ -2053,9 +2170,12 @@ def export_vat_report():  # noqa: C901
                 'Exempt Purchases': float(summary['total_exempt_purchases']),
                 'Non-recoverable VAT': float(summary['total_non_recoverable_vat']),
                 'Reverse Charge VAT': float(summary['total_reverse_charge_vat']),
+                'Expense Input VAT': float(summary['total_expense_input_vat']),
+                'Expense Non-recoverable VAT': float(summary['total_expense_non_recoverable_vat']),
+                'Expense Reverse Charge VAT': float(summary['total_expense_reverse_charge_vat']),
                 'Net VAT': float(net_vat),
             }
-            return ExportService.export_to_pdf('تقرير الضريبة المضافة (VAT) — UAE 5%',
+            return ExportService.export_to_pdf(f'تقرير الضريبة المضافة (VAT) — {_tenant_vat_label()}',
                                                sales_headers, all_rows,
                                                summary=summary_pdf,
                                                subtitle=_report_subtitle)
@@ -2073,6 +2193,9 @@ def export_vat_report():  # noqa: C901
                 [['── المشتريات المعفاة ──'] + [''] * 5] + [purchase_headers] + exempt_purchase_rows +
                 [['── مشتريات غير قابلة للاسترداد (تكلفة) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['non_recoverable_purchases']] +
                 [['── عكس الضريبة (Reverse Charge) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['reverse_charge_purchases']] +
+                [['── مصروفات خاضعة للضريبة ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['expense_taxable']] +
+                [['── مصروفات غير قابلة للاسترداد (تكلفة) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['expense_non_recoverable']] +
+                [['── مصروفات Reverse Charge ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['expense_reverse_charge']] +
                 [['── التجميع حسب النسبة ──'] + [''] * 5] + [['النسبة', 'مبيعات خاضعة', 'ضريبة مبيعات', 'مشتريات خاضعة', 'ضريبة مشتريات', 'Reverse Charge VAT']] + by_rate_rows +
                 [['── الملخص ──'] + [''] * 5,
                  ['الأساس الخاضع للمبيعات', float(summary['total_taxable_sales'])],
@@ -2091,6 +2214,9 @@ def export_vat_report():  # noqa: C901
                  ['ضريبة غير قابلة للاسترداد', float(summary['total_non_recoverable_vat'])],
                  ['Reverse Charge — ضريبة ذاتية (أساس)', float(summary['total_reverse_charge_base'])],
                  ['Reverse Charge — ضريبة ذاتية التقييم', float(summary['total_reverse_charge_vat'])],
+                 ['مصروفات خاضعة للضريبة (مدخل)', float(summary['total_expense_input_vat'])],
+                 ['مصروفات غير قابلة للاسترداد (ضريبة)', float(summary['total_expense_non_recoverable_vat'])],
+                 ['مصروفات Reverse Charge — ضريبة ذاتية التقييم', float(summary['total_expense_reverse_charge_vat'])],
                  ['الرصيد النهائي', float(net_vat)]]
             )
             return ExportService.export_to_csv(combined, sales_headers, 'vat_report.csv')

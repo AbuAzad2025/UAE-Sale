@@ -482,7 +482,16 @@ def print_payment(id):
         'simple': 'مبسط'
     }
     available_templates = [(k, v) for k, v in template_labels.items() if k in _ALLOWED_TEMPLATES]
-    
+
+    from utils.amount_in_words import amount_in_words
+    from services.currency_service import CurrencyService
+    try:
+        _base_curr_pay = CurrencyService.get_base_currency()
+    except Exception:
+        _base_curr_pay = 'ILS'
+    receipt_amount_words_ar = amount_in_words(getattr(payment, 'amount_base', 0), _base_curr_pay, 'ar')
+    receipt_amount_words_en = amount_in_words(getattr(payment, 'amount_base', 0), _base_curr_pay, 'en')
+
     return render_template(
         f'receipts/{template}.html',
         receipt=payment,
@@ -493,7 +502,9 @@ def print_payment(id):
         available_templates=available_templates,
         current_template=template,
         document_type='payment',
-        document_id=payment.id
+        document_id=payment.id,
+        amount_words_ar=receipt_amount_words_ar,
+        amount_words_en=receipt_amount_words_en,
     )
 
 
@@ -1042,6 +1053,15 @@ def print_receipt(id):
         'phone': current_app.config.get('COMPANY_PHONE'),
     }
 
+    from utils.amount_in_words import amount_in_words
+    from services.currency_service import CurrencyService
+    try:
+        _base_curr_rcp = CurrencyService.get_base_currency()
+    except Exception:
+        _base_curr_rcp = 'ILS'
+    receipt_amount_words_ar = amount_in_words(getattr(receipt, 'amount_base', 0), _base_curr_rcp, 'ar')
+    receipt_amount_words_en = amount_in_words(getattr(receipt, 'amount_base', 0), _base_curr_rcp, 'en')
+
     try:
         return render_template(
             f'receipts/{template}.html',
@@ -1052,7 +1072,9 @@ def print_receipt(id):
             available_templates=available_templates,
             current_template=template,
             document_type='receipt',
-            document_id=receipt.id
+            document_id=receipt.id,
+            amount_words_ar=receipt_amount_words_ar,
+            amount_words_en=receipt_amount_words_en,
         )
     except Exception:
         return render_template(
@@ -1064,7 +1086,9 @@ def print_receipt(id):
             available_templates=available_templates,
             current_template='modern',
             document_type='receipt',
-            document_id=receipt.id
+            document_id=receipt.id,
+            amount_words_ar=receipt_amount_words_ar,
+            amount_words_en=receipt_amount_words_en,
         )
 
 

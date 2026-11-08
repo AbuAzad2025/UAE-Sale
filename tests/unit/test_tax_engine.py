@@ -241,7 +241,7 @@ class TestLiabilityRouting:
             'ar_control', 'inventory', 'cogs'}
         assert all(isinstance(code, str) and code for code in routing.values())
         if not resolver_present:
-            assert routing['output_vat'] == '2130'
+            assert routing['output_vat'] == '2131'
 
     def test_consumes_account_resolver_when_available(self, monkeypatch):
         fake = types.ModuleType('services.account_resolution')

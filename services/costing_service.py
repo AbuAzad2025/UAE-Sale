@@ -223,6 +223,10 @@ class CostingService:
         العملة الأساسية بسعر صرف الفاتورة — وهو نفس المبلغ الذي يُرحَّل
         مديناً على حساب المخزون (1140).
 
+        إن كانت الضريبة غير قابلة للاسترداد (``vat_recoverable=False``)، تُضمَّن
+        حصة السطر من صافي الضريبة القياسية في التكلفة (كما يفعل حساب المخزون
+        في القيد المحاسبي) — فيبقى تقييم المخزون متفقاً مع الأستاذ العام.
+
         Args:
             line: سطر الشراء (``PurchaseLine``).
             purchase: فاتورة الشراء (``Purchase``).
@@ -250,6 +254,22 @@ class CostingService:
             allocated_discount = document_discount * line_total / subtotal
 
         net_line_amount = line_total - allocated_discount
+
+        # الضريبة غير القابلة للاسترداد تُحمَّل على تكلفة البضاعة:
+        # تُوزَّع بالتناسب مع صافي أسطر 'standard' (غير القياسي لا يحمل ضريبة أصلاً).
+        if not getattr(purchase, 'vat_recoverable', True):
+            tax_amount = _dec(getattr(purchase, 'tax_amount', 0))
+            invoice_treatment = getattr(purchase, 'tax_treatment', 'standard') or 'standard'
+            if tax_amount > 0 and invoice_treatment == 'standard':
+                standard_net = Decimal('0.000')
+                for l in getattr(purchase, 'lines', []):
+                    if (getattr(l, 'tax_treatment', 'standard') or 'standard') == 'standard':
+                        lt = _dec(getattr(l, 'line_total', 0))
+                        alloc = document_discount * lt / subtotal if subtotal > 0 else Decimal('0')
+                        standard_net += lt - alloc
+                if standard_net > 0 and (getattr(line, 'tax_treatment', 'standard') or 'standard') == 'standard':
+                    line_share = net_line_amount / standard_net
+                    net_line_amount += tax_amount * line_share
 
         exchange_rate = _dec(getattr(purchase, 'exchange_rate', 1) or 1)
         if exchange_rate <= 0:

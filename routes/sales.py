@@ -380,11 +380,11 @@ def edit(id):
                                  'credit': -d_disc,
                                  'description': f'تسوية خصم {sale.sale_number}'})
                 if d_tax > 0:
-                    _adj.append({'account': _resolve_account('TAX_PAYABLE'),
+                    _adj.append({'account': _resolve_account('VAT_OUTPUT'),
                                  'credit': d_tax,
                                  'description': f'تسوية ضريبة {sale.sale_number}'})
                 elif d_tax < 0:
-                    _adj.append({'account': _resolve_account('TAX_PAYABLE'),
+                    _adj.append({'account': _resolve_account('VAT_OUTPUT'),
                                  'debit': -d_tax,
                                  'description': f'تسوية ضريبة {sale.sale_number}'})
                 # Inclusive prices already include VAT in the original

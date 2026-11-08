@@ -21,6 +21,8 @@ FALLBACK_ACCOUNTS = {
     'SHIPPING_REVENUE': '4300',
     'DISCOUNTS_GIVEN': '5200',
     'TAX_PAYABLE': '2130',
+    'VAT_INPUT': '1141',
+    'VAT_OUTPUT': '2131',
     # 5000 is a HEADER in the canonical tree (gl_service.py:156, is_header,
     # depth 0); 5100 is the posting leaf under it. Booking cost of sales on
     # the header left every subtotal and every trial-balance roll-up reading
@@ -474,9 +476,9 @@ class SaleService:
 
             if sale.tax_amount > Decimal('0'):
                 lines.append({
-                    'account': resolve_account('TAX_PAYABLE'),
+                    'account': resolve_account('VAT_OUTPUT'),
                     'credit': sale.tax_amount,  # Use Foreign Amount
-                    'description': 'ضرائب مستحقة'
+                    'description': 'ضرائب مستحقة (مخرجات)'
                 })
 
             # Post Sales Revenue Entry (in Transaction Currency)

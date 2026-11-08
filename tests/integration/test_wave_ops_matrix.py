@@ -659,12 +659,12 @@ def test_purchases_create_full_flow_with_tax(client, login_owner, main_wh):
     assert mv.reference_id == pur.id and mv.reference_type == 'Purchase'
 
     codes = _gl_codes('Purchase', pur.id)
-    assert {'1140', '2110', '2130'} <= codes
+    assert {'1140', '2110', '1141'} <= codes
     entry = GLJournalEntry.query.filter_by(
         reference_type='Purchase', reference_id=pur.id).one()
     dr = {ln.account.code: ln.debit for ln in entry.lines}
     cr = {ln.account.code: ln.credit for ln in entry.lines}
-    assert dr['1140'] == Decimal('50') and dr['2130'] == Decimal('5')
+    assert dr['1140'] == Decimal('50') and dr['1141'] == Decimal('5')
     assert cr['2110'] == Decimal('55')
 
 

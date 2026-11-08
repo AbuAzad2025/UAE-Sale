@@ -1,4 +1,7 @@
 from datetime import datetime, timezone
+
+import sqlalchemy as sa
+
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
 
@@ -35,6 +38,18 @@ class Expense(TenantScopedMixin, db.Model):
     currency = db.Column(db.String(3), default='ILS', nullable=False)
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
     amount_base = db.Column(db.Numeric(15, 3), nullable=False)
+    tax_treatment = db.Column(db.String(10), nullable=False, default='standard',
+                              server_default='standard')
+    tax_rate = db.Column(db.Numeric(5, 2), nullable=False, default=0,
+                         server_default='0')
+    tax_inclusive = db.Column(db.Boolean, nullable=False, default=False,
+                              server_default=sa.false())
+    vat_recoverable = db.Column(db.Boolean, nullable=False, default=True,
+                                server_default=sa.true())
+    reverse_charge = db.Column(db.Boolean, nullable=False, default=False,
+                               server_default=sa.false())
+    tax_amount = db.Column(db.Numeric(15, 3), nullable=False, default=0,
+                           server_default='0')
 
     expense_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
 
@@ -70,6 +85,11 @@ class Expense(TenantScopedMixin, db.Model):
             'amount': float(self.amount),
             'currency': self.currency,
             'amount_base': float(self.amount_base),
+            'tax_rate': float(self.tax_rate or 0),
+            'tax_treatment': self.tax_treatment or 'standard',
+            'vat_recoverable': bool(self.vat_recoverable),
+            'reverse_charge': bool(self.reverse_charge),
+            'tax_amount': float(self.tax_amount or 0),
             'expense_date': self.expense_date.isoformat(),
             'payment_method': self.payment_method,
             'status': self.status,

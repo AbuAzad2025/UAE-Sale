@@ -169,19 +169,16 @@ class PaymentService:
                  'description': f'ربح صرف - سند {receipt.receipt_number}'},
             ]
 
-        try:
-            GLService.ensure_core_accounts()
-            return GLService.post_entry(
-                lines,
-                description=f'FX difference Receipt {receipt.receipt_number}',
-                reference_type='Receipt',
-                reference_id=receipt.id,
-                currency=CurrencyService.get_base_currency(),
-                exchange_rate=1,
-            )
-        except Exception as e:
-            current_app.logger.error(f'FX posting failed for receipt {receipt.receipt_number}: {e}')
-            return None
+        # ذرّي: فرق العملات يُسجَّل ضمن معاملة إنشاء السند — أي فشل يُرجع السند كله
+        GLService.ensure_core_accounts()
+        return GLService.post_entry(
+            lines,
+            description=f'FX difference Receipt {receipt.receipt_number}',
+            reference_type='Receipt',
+            reference_id=receipt.id,
+            currency=CurrencyService.get_base_currency(),
+            exchange_rate=1,
+        )
 
     @staticmethod
     def apply_allocation_to_sale(sale, receipt, allocated_amount, allocated_base=None,
@@ -447,29 +444,19 @@ class PaymentService:
                 cheque.receive_cheque()
 
             else:
-                # GL Entry for Standard Receipt (Cash/Bank)
-                try:
-                    GLService.ensure_core_accounts()
-                    payment_account = GLService.get_payment_debit_account(receipt.payment_method)
-                    credit_account = GLService.get_customer_credit_account(customer)
+                # GL Entry for Standard Receipt (Cash/Bank) — ذرّي مع السند
+                GLService.ensure_core_accounts()
+                payment_account = GLService.get_payment_debit_account(receipt.payment_method)
+                credit_account = GLService.get_customer_credit_account(customer)
 
-                    # Create GL entries
-                    lines = [
-                        {'account': payment_account, 'debit': receipt.amount, 'description': f'قبض من {customer.name}'},
-                        {'account': credit_account, 'credit': receipt.amount, 'description': f'سند قبض {receipt.receipt_number}'}
-                    ]
-                    entry = GLService.post_entry(lines, description=f'Receipt {receipt.receipt_number}', reference_type='Receipt', reference_id=receipt.id, currency=receipt.currency, exchange_rate=receipt.exchange_rate)  # noqa: E501
-                    gl_posted = True
-                    gl_entry_ref = entry.entry_number
-                except Exception as e:
-                    # Orphan-prevention contract: a saved receipt must always be
-                    # either linked to a GL entry or carry an explicit warning.
-                    gl_posted = False
-                    gl_warning = str(e)
-                    current_app.logger.warning(
-                        f'ORPHAN RECEIPT WARNING: receipt {receipt.receipt_number} '
-                        f'(id={receipt.id}) saved without GL entry: {e}'
-                    )
+                # Create GL entries
+                lines = [
+                    {'account': payment_account, 'debit': receipt.amount, 'description': f'قبض من {customer.name}'},
+                    {'account': credit_account, 'credit': receipt.amount, 'description': f'سند قبض {receipt.receipt_number}'}
+                ]
+                entry = GLService.post_entry(lines, description=f'Receipt {receipt.receipt_number}', reference_type='Receipt', reference_id=receipt.id, currency=receipt.currency, exchange_rate=receipt.exchange_rate)
+                gl_posted = True
+                gl_entry_ref = entry.entry_number
 
             # Allocation Logic (Restored) — F2/F8/F9
             remaining_base = _dec(receipt.amount_base)

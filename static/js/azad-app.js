@@ -423,7 +423,6 @@ window.azad = {
     confirmDelete: confirmDelete,
     printElement: printElement,
     copyToClipboard: copyToClipboard,
-    calculateTotals: calculateTotals,
     loadExchangeRate: loadExchangeRate,
     shareOnWhatsApp: shareOnWhatsApp,
     formatNumber: formatNumber

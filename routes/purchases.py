@@ -90,6 +90,17 @@ def create():  # noqa: C901
             if _purchase_treatment not in ('standard', 'zero', 'exempt'):
                 flash('المعاملة الضريبية غير صالحة — اختر قياسية أو صفرية أو معفاة.', 'danger')
                 return redirect(url_for('purchases.create'))
+            _purchase_tax_rate = request.form.get('tax_rate', type=float, default=0)
+            try:
+                from models.tenant_scope import get_current_tenant_id
+                from models import Tenant
+                from extensions import db as _db
+                _tid = get_current_tenant_id()
+                _tenant = _db.session.get(Tenant, _tid) if _tid else None
+                if _tenant is not None and not bool(getattr(_tenant, 'enable_tax', True)):
+                    _purchase_tax_rate = 0
+            except Exception:
+                pass
 
             currency_value = request.form.get('currency')
             try:
@@ -115,7 +126,7 @@ def create():  # noqa: C901
                 currency=currency,
                 exchange_rate=exchange_rate,
                 discount_amount=request.form.get('discount_amount', type=float, default=0),
-                tax_rate=request.form.get('tax_rate', type=float, default=0),
+                tax_rate=_purchase_tax_rate,
                 tax_inclusive=request.form.get('tax_inclusive') in ('on', '1', 'true'),
                 tax_treatment=_purchase_treatment,
                 notes=request.form.get('notes'),
@@ -474,6 +485,17 @@ def api_calculate_purchase_totals():
             return jsonify({'success': False, 'error': 'معاملة ضريبية غير صالحة'}), 400
         inclusive = bool(data.get('tax_inclusive', False))
         discount_amount = Decimal(str(data.get('discount_amount', 0)))
+        try:
+            from models.tenant_scope import get_current_tenant_id
+            from models import Tenant
+            from extensions import db as _db
+            _tid = get_current_tenant_id()
+            _tenant = _db.session.get(Tenant, _tid) if _tid else None
+            if _tenant is not None and not bool(getattr(_tenant, 'enable_tax', True)):
+                tax_rate = Decimal('0')
+                treatment = 'standard'
+        except Exception:
+            pass
         if treatment != 'standard':
             tax_rate = Decimal('0')
 

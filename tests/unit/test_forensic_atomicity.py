@@ -296,27 +296,22 @@ class TestOrphanPrevention:
         ).one()
         assert entry.total_debit == entry.total_credit == Decimal('150')
 
-    def test_gl_failure_keeps_receipt_with_explicit_warning(
+    def test_gl_failure_rolls_back_receipt_and_entry(
         self, app, db, owner_user, test_customer, monkeypatch, caplog,
     ):
+        """الترحيل ذرّي: فشل GL يُرجع السند والقيد معاً — لا سند يتيم."""
         def explode(*args, **kwargs):
             raise RuntimeError('gl engine down')
 
         monkeypatch.setattr(GLService, 'post_entry', staticmethod(explode))
-        previous = _attach_log_capture(app, caplog, level=logging.WARNING)
-        try:
-            receipt = PaymentService.create_receipt(_cash_payload(test_customer))
-        finally:
-            _detach_log_capture(app, caplog, previous)
+        receipts_before = db.session.query(Receipt).count() if hasattr(db.session, 'query') else 0
 
-        assert receipt.id is not None
-        warnings = [r for r in caplog.records
-                    if r.levelno == logging.WARNING and 'ORPHAN RECEIPT WARNING' in r.getMessage()]
-        assert warnings and f'id={receipt.id}' in warnings[0].getMessage()
+        with pytest.raises(RuntimeError, match='gl engine down'):
+            PaymentService.create_receipt(_cash_payload(test_customer))
 
-        row = AuditLog.query.filter_by(action='receipt_create').one()
-        assert row.changes['gl_posted'] is False
-        assert 'gl engine down' in row.changes['gl_warning']
+        assert db.session.query(Receipt).count() == receipts_before
+        assert db.session.query(GLJournalEntry).filter_by(
+            reference_type='Receipt').count() == 0
 
     def test_cheque_receipt_linked_via_receive_entry(self, db, owner_user, test_customer):
         receipt = PaymentService.create_receipt({

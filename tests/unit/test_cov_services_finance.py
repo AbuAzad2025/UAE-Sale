@@ -277,25 +277,24 @@ class TestStockAdjustGLFailure:
         assert Decimal(str(test_product.current_stock)) == before
 
 
-class TestReceiptOrphanContract:
-    def test_gl_failure_keeps_receipt_with_no_entry(self, db, test_customer, monkeypatch):
+class TestReceiptAtomicContract:
+    def test_gl_failure_rolls_back_receipt_and_entry(self, db, test_customer, monkeypatch):
+        """القيد والسند معاً أو لا شيء — لا سند يقف بلا أثر محاسبي."""
         before = GLJournalEntry.query.filter_by(reference_type="Receipt").count()
 
         def _boom(*a, **k):
             raise RuntimeError("GL down")
 
         monkeypatch.setattr(GLService, "post_entry", staticmethod(_boom))
-        receipt = PaymentService.create_receipt(
-            {
-                "customer_id": test_customer.id,
-                "amount": Decimal("50"),
-                "currency": "ILS",
-                "payment_method": "cash",
-            }
-        )
-        assert receipt is not None
-        assert receipt.id is not None
-        # orphan contract: saved without a GL entry, no crash
+        with pytest.raises(RuntimeError, match="GL down"):
+            PaymentService.create_receipt(
+                {
+                    "customer_id": test_customer.id,
+                    "amount": Decimal("50"),
+                    "currency": "ILS",
+                    "payment_method": "cash",
+                }
+            )
         after = GLJournalEntry.query.filter_by(reference_type="Receipt").count()
         assert after == before
 

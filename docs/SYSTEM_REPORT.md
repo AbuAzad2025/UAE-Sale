@@ -50,7 +50,7 @@ POST /sales/create → SaleService.create_sale:
 تحقق أطراف/بنود (sale_service.py:55-62) → **بوابة الفترة المالية** (تفتح إذا لا فترات موجودة!) (64-70, erp_modules_service.py:241-250) → generate_number بقفل موزع fail-open (helpers.py:17-98; distributed_lock.py:88) → سعر صرف → حد اائتمان تقديري → flush → بنود بمخزون وتسعير حسب نوع العميل (partner/merchant نسب خصم وليست أسعارًا! product.py:134-141) → calculate_totals (Decimal HALF_UP) → فرع الدفع: الزائد يذهب لرصيد العميل والدفع يُقصّ لسقف الفاتورة (225-249) → خصم مخزون StockService (257) → Payment+شيك (260) → تصنيف العميل vip/premium (273) → **قيدان GL**: إيراد بعملة الفاتورة + COGS بعملة الأساس (292-369) → commit ذري @tx.
 
 ## 6) المدفوعات والشيكات
-- Receipt (@tx) بثلاثة مصادر manual/sale/cheque؛ شيك ينشئ Cheque+receive_cheque؛ تخصيص FIFO للأقدم مع تسجيل غير الموزع؛ تدقيق شامل actor=user/system + عقد ORPHAN RECEIPT WARNING عند فشل GL (payment_service.py:49-247,177-185).
+- Receipt (@tx) بثلاثة مصادر manual/sale/cheque؛ شيك ينشئ Cheque+receive_cheque؛ تخصيص FIFO للأقدم مع تسجيل غير الموزع؛ تدقيق شامل actor=user/system + **ذرّية كاملة**: فشل GL يُرجع السند والقيد معاً — لا سند يتيم بلا أثر محاسبي (payment_service.py — داخل نفس معاملة إنشاء السند، بعد التحويل من ORPHAN WARNING).
 - Cheque آلة حالات: pending→deposited→cleared/bounced/cancelled مع قيود استلام/إصدار/مقاصة/ارتداد وفروق عملة بتوقيع صحيح (وارد: موجب=ربح؛ صادر: موجب=خسارة) (cheque.py:233-464) وأعمدة روابط GL الثلاثة (97-99).
 - ⚠️ سند الشيك يضع gl_posted=True دون ترحيل (payment_service.py:157)؛ حذف سند يخصم paid_amount بعملة السند لا الفاتورة (routes/payments.py:786-792).
 

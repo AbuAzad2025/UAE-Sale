@@ -267,21 +267,36 @@ class TestTenantScopeFailFastAndStrict:
 
         assert 'tenant_id' in vars(ProperlyScoped)
 
-    def test_core_scoped_registry_unchanged(self):
+    def test_core_scoped_registry_extended_not_weakened(self):
+        """كل الجداول الأصلية ما زالت مُسجَّلة + التوسيعات الأخيرة."""
         from models import Sale, Customer, Product  # noqa: F401 — import-time check
         from models.tenant_scope import _tenant_scoped_tables
 
-        expected = {
+        original_core = {
             'sales', 'sale_lines', 'purchases', 'purchase_lines',
             'payments', 'receipts', 'customers', 'suppliers',
             'products', 'stock_movements', 'cheques', 'gl_journal_entries',
-            'gl_journal_lines', 'warehouses', 'shipments', 'inbound_shipments',
-            # `users` has a tenant_id but no module-level registration, so it
-            # was never isolated. Now registered via _BUILTIN_SCOPED_TABLES.
+            'gl_journal_lines', 'warehouses', 'shipments', 'shipment_lines',
+            'inbound_shipments', 'inbound_shipment_lines',
             'users',
             'write_offs',
         }
-        assert expected == _tenant_scoped_tables
+        # التوسيعات التي طُبّقت لاحقاً (migration b11-b15+ولأساليب المختبرات):
+        additions = {
+            'expenses', 'departments', 'employees', 'leave_types', 'leave_requests',
+            'payslips', 'payslip_lines',
+            'quotations', 'quotation_lines', 'purchase_orders', 'purchase_order_lines',
+            'stock_transfers', 'stock_transfer_lines', 'stock_takes', 'stock_take_items',
+            'dunning_letters', 'recurring_expenses', 'product_lots',
+            'warehouse_bins', 'product_bins', 'e_invoices',
+            'customs_taxes', 'advanced_expenses', 'tax_calculation_rules',
+            'approval_workflows', 'approval_requests', 'approval_levels',
+            'bank_reconciliations', 'bank_reconciliation_items',
+            'budgets', 'budget_lines', 'cost_centers',
+            'fixed_assets', 'depreciation_schedules',
+            'archived_records', 'audit_logs', 'journal_entry_audits',
+        }
+        assert original_core | additions <= _tenant_scoped_tables
 
     @pytest.mark.usefixtures('db')
     def test_strict_mode_warns_on_unfiltered_registered_query(self, app, caplog):

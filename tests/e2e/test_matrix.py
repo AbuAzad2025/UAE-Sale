@@ -1071,7 +1071,7 @@ def _run_payments(client, db, sc, fixtures):
         assert_no_header_account_posted(entries[0].id)
 
 
-def _hr_employee(client, db, users, suffix):
+def _hr_employee(client, db, users, suffix, tenant=None):
     """Create an Employee bound to a real User, as /hr/employees/create requires.
 
     routes/hr.py flashes 'يجب اختيار مستخدم' when user_id is absent, so every
@@ -1103,12 +1103,14 @@ def _hr_employee(client, db, users, suffix):
         sick_leave_balance=15.0,
         personal_leave_balance=10.0,
     )
+    if tenant is not None:
+        emp.tenant_id = tenant.id
     db.session.add(emp)
     db.session.commit()
     return emp
 
 
-def _hr_leave_type(db, suffix):
+def _hr_leave_type(db, suffix, tenant=None):
     """Return one of the three leave types HRService actually recognises.
 
     HRService._get_leave_balance switches on leave_type.code and returns 0 for
@@ -1116,6 +1118,9 @@ def _hr_leave_type(db, suffix):
     code therefore yields a zero balance and every request_leave call dies with
     'رصيد الإجازة غير كافٍ'. The three codes below are taken verbatim from that
     switch, which makes these cells a genuine test of the balance arithmetic.
+
+    The row is stamped with the current tenant when one is supplied so it is
+    visible inside tenant-scoped runs.
     """
     from models.hr import LeaveType
     codes = ['annual', 'sick', 'personal']
@@ -1130,12 +1135,14 @@ def _hr_leave_type(db, suffix):
             default_days=21 if code == 'annual' else 10,
             is_active=True,
         )
+        if tenant is not None:
+            lt.tenant_id = tenant.id
         db.session.add(lt)
         db.session.commit()
     return lt
 
 
-def _hr_department(db, suffix):
+def _hr_department(db, suffix, tenant=None):
     from models.hr import Department
     dep = Department.query.filter_by(name=f'E2E-Dept-{suffix}').first()
     if dep is None:
@@ -1143,6 +1150,8 @@ def _hr_department(db, suffix):
         # employee branch dies on IntegrityError instead of testing HR.
         dep = Department(name=f'E2E-Dept-{suffix}', name_ar='قسم',
                          code=f'E2E{suffix}', is_active=True)
+        if tenant is not None:
+            dep.tenant_id = tenant.id
         db.session.add(dep)
         db.session.commit()
     return dep
@@ -1169,8 +1178,8 @@ def _run_hr(client, db, sc, fixtures):
 
     if sc.state == 'insufficient_boundary' or sc.edge == 'negative_boundary':
         # routes/hr.py rejects an end date that is not after the start date.
-        emp = _hr_employee(client, db, users, suffix)
-        lt = _hr_leave_type(db, suffix)
+        emp = _hr_employee(client, db, users, suffix, tenant=fixtures.get('tenant'))
+        lt = _hr_leave_type(db, suffix, tenant=fixtures.get('tenant'))
         before = LeaveRequest.query.count()
         r = client.post('/hr/leave/create', data={
             'employee_id': str(emp.id),
@@ -1253,7 +1262,7 @@ def _run_hr(client, db, sc, fixtures):
             'base_salary': str(sc.amount),
             'salary_currency': 'ILS',
             'payment_frequency': 'monthly',
-            'department_id': str(_hr_department(db, suffix).id),
+            'department_id': str(_hr_department(db, suffix, tenant=fixtures.get('tenant')).id),
             'annual_leave_days': '21',
         })
         assert r.status_code in (200, 302, 303), f'{sc.id}: {r.status_code}'
@@ -1267,8 +1276,8 @@ def _run_hr(client, db, sc, fixtures):
         return
 
     if branch == 2:
-        emp = _hr_employee(client, db, users, suffix)
-        lt = _hr_leave_type(db, suffix)
+        emp = _hr_employee(client, db, users, suffix, tenant=fixtures.get('tenant'))
+        lt = _hr_leave_type(db, suffix, tenant=fixtures.get('tenant'))
         before = LeaveRequest.query.count()
         r = client.post('/hr/leave/create', data={
             'employee_id': str(emp.id),
@@ -1308,7 +1317,7 @@ def _run_hr(client, db, sc, fixtures):
         return
 
     # branch 3: payroll
-    emp = _hr_employee(client, db, users, suffix)
+    emp = _hr_employee(client, db, users, suffix, tenant=fixtures.get('tenant'))
     before = Payslip.query.count()
     r = client.post('/hr/payroll/generate', data={
         'period_start': '2024-03-01',

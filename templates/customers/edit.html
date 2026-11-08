@@ -87,6 +87,15 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
+              <i class="fas fa-receipt text-warning"></i> الرقم الضريبي (TRN)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الرقم الضريبي للعميل — يُطبع على الفاتورة الضريبية إن وُجد (اختياري)"></i>
+            </label>
+            <input type="text" name="tax_number" class="form-control" value="{{ customer.tax_number or '' }}" placeholder="100000000000003">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>
               <i class="fas fa-dollar-sign text-success"></i> العملة الافتراضية
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="العملة المفضلة (افتراضي: ILS)"></i>
             </label>

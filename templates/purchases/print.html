@@ -77,6 +77,8 @@
         <div class="info-box">
           <h3>🏢 معلومات المورد</h3>
           <p><strong>المورد:</strong> {{ purchase.supplier_name }}</p>
+          {% if purchase.supplier and purchase.supplier.tax_number %}<p><strong>الرقم الضريبي للمورد:</strong> {{ purchase.supplier.tax_number }}</p>{% endif %}
+          {% if purchase.reverse_charge %}<p><strong>Reverse Charge:</strong> ضريبة ذاتية التقييم — المورد لا يضيف ضريبة</p>{% endif %}
           <p><strong>الهاتف:</strong> {{ purchase.supplier_phone }}</p>
         </div>
         <div class="info-box">
@@ -94,6 +96,7 @@
             <th>المنتج</th>
             <th>الكمية</th>
             <th>السعر</th>
+            <th>المعاملة</th>
             <th>الإجمالي</th>
           </tr>
         </thead>
@@ -103,19 +106,27 @@
             <td>{{ line.product.name }}</td>
             <td>{{ line.quantity }}</td>
             <td>{{ line.unit_cost }}</td>
+            <td>{{ line.tax_treatment or 'standard' }}</td>
             <td>{{ line.line_total }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
 
-      {% if purchase.tax_amount > 0 or purchase.tax_treatment in ('zero', 'exempt') %}
       <div class="total-section">
         <div class="total-row"><span>الإجمالي الفرعي:</span><strong>{{ "{:,.2f}".format(purchase.subtotal) }} {{ base_currency }}</strong></div>
+        {% if purchase.tax_amount > 0 or purchase.tax_treatment in ('zero', 'exempt') %}
         <div class="total-row"><span>الضريبة ({{ purchase.tax_rate or 0 }}% — {{ purchase.tax_treatment or 'standard' }}{% if purchase.tax_inclusive %} — شاملة{% else %} — إضافية{% endif %}):</span><strong>{{ "{:,.2f}".format(purchase.tax_amount) }} {{ base_currency }}</strong></div>
+        {% endif %}
+        {% if purchase.reverse_charge %}
+        <div class="total-row"><span>Reverse Charge — ضريبة ذاتية التقييم:</span><strong>{{ "{:,.2f}".format(purchase.tax_amount) }} {{ base_currency }}</strong></div>
+        {% endif %}
         <div class="total-row final"><span>الإجمالي النهائي:</span><strong>{{ "{:,.2f}".format(purchase.total_amount) }} {{ base_currency }}</strong></div>
       </div>
-      {% endif %}
+      <div class="amount-words" style="margin-top:6px; font-size:8.5px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
+        {% if amount_words_ar %}<div>{{ amount_words_ar }}</div>{% endif %}
+        {% if amount_words_en %}<div dir="ltr" style="text-align:right;">{{ amount_words_en }}</div>{% endif %}
+      </div>
 
       {% if purchase.notes %}
       <div style="margin-top: 8px; padding-top: 10px; border-top: 1px dashed #ccc;">

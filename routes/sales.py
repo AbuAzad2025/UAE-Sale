@@ -284,6 +284,10 @@ def print_invoice(id):
     }
     available_templates = [(k, v) for k, v in template_labels.items() if k in _ALLOWED_TEMPLATES]
 
+    from utils.amount_in_words import amount_in_words
+    amount_words_ar = amount_in_words(sale.total_amount, sale.currency, 'ar')
+    amount_words_en = amount_in_words(sale.total_amount, sale.currency, 'en')
+
     try:
         return render_template(
             f'invoices/{template}.html',
@@ -293,7 +297,9 @@ def print_invoice(id):
             available_templates=available_templates,
             current_template=template,
             document_type='invoice',
-            document_id=sale.id
+            document_id=sale.id,
+            amount_words_ar=amount_words_ar,
+            amount_words_en=amount_words_en,
         )
     except Exception:
         return render_template(
@@ -304,7 +310,9 @@ def print_invoice(id):
             available_templates=available_templates,
             current_template='modern',
             document_type='invoice',
-            document_id=sale.id
+            document_id=sale.id,
+            amount_words_ar=amount_words_ar,
+            amount_words_en=amount_words_en,
         )
 
 

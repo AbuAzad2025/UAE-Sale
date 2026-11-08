@@ -59,6 +59,9 @@
     <div><strong>العميل:</strong> {{ sale.customer.name if sale.customer else '-' }}</div>
     <div><strong>الهاتف:</strong> {{ sale.customer.phone if sale.customer and sale.customer.phone else '-' }}</div>
   </div>
+  <div class="info-row">
+    <div><strong>الرقم الضريبي للعميل:</strong> {{ sale.customer.tax_number if sale.customer and sale.customer.tax_number else '-' }}</div>
+  </div>
 
   <table>
     <thead>
@@ -97,6 +100,10 @@
     <div class="total-line total-final">
       <span>الإجمالي:</span>
       <strong>{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency }}</strong>
+    </div>
+    <div class="amount-words" style="margin-top:6px; font-size:8.5px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
+      {% if amount_words_ar %}<div>{{ amount_words_ar }}</div>{% endif %}
+      {% if amount_words_en %}<div dir="ltr" style="text-align:right;">{{ amount_words_en }}</div>{% endif %}
     </div>
   </div>
 

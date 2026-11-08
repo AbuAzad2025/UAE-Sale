@@ -1,5 +1,8 @@
 from datetime import datetime, date, timezone
 from decimal import Decimal, ROUND_HALF_UP
+
+import sqlalchemy as sa
+
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
 
@@ -36,6 +39,10 @@ class Purchase(TenantScopedMixin, db.Model):
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     tax_inclusive = db.Column(db.Boolean, default=False)
     tax_treatment = db.Column(db.String(10), default='standard')
+    # الضريبة غير قابلة للاسترداد (سيارات، ترفيه...) مسموح بتكليفها في المنتج/المصاريف
+    vat_recoverable = db.Column(db.Boolean, nullable=False, default=True, server_default=sa.true())
+    # مورد أجنبي لم تُحصَّل منه ضريبة — المشتري يقيّد ضريبة المدخلات والمخرجات
+    reverse_charge = db.Column(db.Boolean, nullable=False, default=False, server_default=sa.false())
     total_amount = db.Column(db.Numeric(15, 3), nullable=False)
 
     currency = db.Column(db.String(3), default='ILS', nullable=False)
@@ -156,26 +163,18 @@ class Purchase(TenantScopedMixin, db.Model):
         tax_rate_decimal = Decimal(str(self.tax_rate)) if self.tax_rate else Decimal('0')
         exchange_rate_decimal = Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal('1')
 
-        # Zero-rated and exempt purchases must never carry VAT.
-        if (getattr(self, 'tax_treatment', None) or 'standard') in ('zero', 'exempt'):
-            tax_rate_decimal = Decimal('0')
-        # Tax (accounting for inclusion)
-        taxable_amount = self.subtotal - discount
-        if getattr(self, 'tax_inclusive', False):
-            _d = (Decimal('1') + tax_rate_decimal / Decimal('100'))
-            self.tax_amount = (taxable_amount - (taxable_amount / _d)).quantize(
-                Decimal('0.01'), rounding=ROUND_HALF_UP
-            ) if _d != 0 else Decimal('0')
-            self.total_amount = taxable_amount.quantize(
-                Decimal('0.001'), rounding=ROUND_HALF_UP
-            )
-        else:
-            self.tax_amount = (taxable_amount * (tax_rate_decimal / Decimal('100'))).quantize(
-                Decimal('0.01'), rounding=ROUND_HALF_UP
-            )
-            self.total_amount = (taxable_amount + self.tax_amount).quantize(
-                Decimal('0.001'), rounding=ROUND_HALF_UP
-            )
+        # Mixed per-line treatments (standard/zero/exempt) — same engine as sales.
+        from services.sale_tax_calculation import sale_tax_totals_mixed
+        line_specs = [
+            {'line_total': line.line_total,
+             'tax_treatment': getattr(line, 'tax_treatment', None) or 'standard'}
+            for line in self.lines
+        ]
+        inclusive = bool(getattr(self, 'tax_inclusive', False))
+        invoice_treatment = getattr(self, 'tax_treatment', None) or 'standard'
+        self.tax_amount, self.total_amount, _ns, _nz, _ne = sale_tax_totals_mixed(
+            line_specs, discount, Decimal('0'), tax_rate_decimal, inclusive,
+            invoice_treatment=invoice_treatment)
 
         # Calculate base amount with proper rounding.
         # F13: نفس فرع عملة الأساس في Sale.calculate_totals — الفاتورة بعملة
@@ -230,6 +229,8 @@ class PurchaseLine(TenantScopedMixin, db.Model):
     unit_cost = db.Column(db.Numeric(15, 3), nullable=False)
     discount_percent = db.Column(db.Numeric(5, 2), default=0)
     line_total = db.Column(db.Numeric(15, 3), nullable=False)
+    tax_treatment = db.Column(db.String(10), nullable=False, default='standard',
+                              server_default='standard')
 
     notes = db.Column(db.String(255))
 

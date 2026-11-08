@@ -123,7 +123,7 @@ flask db current
 
 > **ترتيب الترحيلات الضريبية (مطلوب الالتزام):** `b5_tax_per_tenant` →
 > `b6_corp_tax` → `b7_tenant_invoice_profile` → `b8_vat_treatments` →
-> `b9_purchase_tax_treatment` → `b10_sale_line_tax_treatment` → `b11_expense_tenant` → `b12_purchase_list_tenant` → `b13_payroll_leave_type_tenant` → `b14_product_group_tenant` → `b15_shipment_lines_tenant` → `b16_tax_rulesets`.
+> `b9_purchase_tax_treatment` → `b10_sale_line_tax_treatment` → `b11_expense_tenant` → `b12_purchase_list_tenant` → `b13_payroll_leave_type_tenant` → `b14_product_group_tenant` → `b15_shipment_lines_tenant` → `b16_tax_rulesets` → `b17_purchase_vat_features`.
 > ملاحظة تشغيلية على `b6_corp_tax`: نسخته الحالية **لم تعد** تفرض تبديل عملة
 > أساس التينانتات تلقائياً. أي بيئة قديمة طُبّقت عليها النسخة القديمة وتغيّرت
 > عملات فيها تحتاج مراجعة يدوية — لا تُعالج بأي ترحيل آخر.
@@ -141,6 +141,14 @@ flask db current
 > FTA...) غير منفّذ ولا تُدَّعى فعاليته؛ كل دولة تتطلب عقدًا وشهادة من السلطة.
 > بعد الترقية: راجع `/owner/tax-rulesets` كمالك، عدّل أي نسبة من اللوحة — تُحفظ
 > في قاعدة البيانات دون أي تغيير للكود.
+
+> **`b17_purchase_vat_features` — ضريبة المشتريات على مستوى البند + عكس الضريبة:**
+> يضيف `purchase_lines.tax_treatment` (يُعبأ تلقائيًا من معاملة ترويسة الفاتورة
+> عند الترقية)، و`purchases.vat_recoverable` (افتراضي صح — أزله للمصاريف
+> غير القابلة للاسترداد كسيارة المدير) و`purchases.reverse_charge` (افتراضي
+> خطأ — مورّد أجنبي لا يُحصِّل ضريبة: المشتري يُقيّد ضريبة مدخلات ومخرجات
+> متوازنة). القيد المحاسبي يُبنى في `services/purchase_gl.py`. لا يُعدِّل أي
+> تاريخ قائم — الأسطر الموجودة ترث معاملة ترويستها.
 
 ---
 

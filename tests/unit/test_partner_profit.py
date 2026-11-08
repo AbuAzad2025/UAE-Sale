@@ -180,7 +180,8 @@ class TestProductPartnerShares:
 class TestCompanyPartnerDistribution:
     """شريك الشركة: صافي نتيجة الشركة تُحسب دوريًا وتُوزَّع بعد خصم المسحوبات والمبيعات."""
 
-    def _post_revenue(self, app, amount, db):
+    def _post_revenue(self, app, amount, db, entry_date=None):
+        from datetime import datetime
         from services.gl_service import GLService
         from services.account_resolution import AccountResolver, AccountRole
         GLService.post_entry(
@@ -191,10 +192,13 @@ class TestCompanyPartnerDistribution:
             description='إيراد اختباري لتوزيع الأرباح',
             reference_type='Test',
             exchange_rate=Decimal('1'),
+            entry_date=datetime(entry_date.year, entry_date.month, entry_date.day)
+            if entry_date else None,
         )
         db.session.commit()
 
-    def _post_expense(self, app, amount, db):
+    def _post_expense(self, app, amount, db, entry_date=None):
+        from datetime import datetime
         from services.gl_service import GLService
         from services.account_resolution import AccountResolver, AccountRole
         GLService.post_entry(
@@ -205,6 +209,8 @@ class TestCompanyPartnerDistribution:
             description='مصروف اختباري لتوزيع الأرباح',
             reference_type='Test',
             exchange_rate=Decimal('1'),
+            entry_date=datetime(entry_date.year, entry_date.month, entry_date.day)
+            if entry_date else None,
         )
         db.session.commit()
 
@@ -286,3 +292,236 @@ class TestCompanyPartnerDistribution:
         from services import partner_profit as pp
 
         assert pp.post_partner_distributions(None, None) is None
+
+
+class TestDualRoleAndBoundaries:
+    """شريك ذو دورين (منتج + شركة) وحالات الحدود."""
+
+    def _make_company_product_partner(self, db, partner):
+        partner.partner_scope = 'company'
+        partner.partner_share = Decimal('25.000')
+        partner.customer_type = 'partner'
+        db.session.commit()
+
+    def test_dual_role_gets_both_shares_without_double_counting(
+            self, db, owner_user, test_customer, test_product, partner_customer, gl_accounts):
+        from services import partner_profit as pp
+        from services.sale_service import SaleService
+
+        self._make_company_product_partner(db, partner_customer)
+        test_product.average_cost = Decimal('30')
+        test_product.cost_price = Decimal('30')
+        db.session.add(ProductPartner(
+            product_id=test_product.id,
+            partner_customer_id=partner_customer.id,
+            percentage=Decimal('25.00'),
+        ))
+        db.session.commit()
+
+        sale = SaleService.create_sale(
+            customer=test_customer,
+            seller=owner_user,
+            lines_data=[{
+                'product': test_product,
+                'quantity': Decimal('2'),
+                'unit_price': Decimal('100'),
+                'tax_treatment': 'exempt',
+            }],
+            currency='AED',
+            user_exchange_rate='1',
+        )
+
+        net = pp.compute_net_income(None, None)
+        # 200 إيراد - 60 تكلفة - 35 حصة المنتج (6910) = 105
+        assert net == Decimal('105.000')
+
+        row = next(r for r in pp.preview_partner_distributions(None, None)
+                   if r['partner_id'] == partner_customer.id)
+        assert row['share_amount'] == Decimal('26.250')
+        assert row['product_shares_in_period'] == Decimal('35.000')
+        assert row['total_entitlement'] == Decimal('61.250')
+
+        entry = pp.post_partner_distributions(None, None)
+        partner_lines = [l for l in entry.lines if l.party_id == partner_customer.id]
+        assert partner_lines and all(l.credit == Decimal('26.250') for l in partner_lines)
+
+        # إجمالي ما استحقه الشريك (قيد المنتج + قيد الشركة) — كل أساس مستقل
+        total_current = sum(l.credit - l.debit
+                            for l in _partner_lines(db, partner_customer.id).all())
+        assert total_current == Decimal('61.250')
+
+    def test_scope_none_partner_still_earns_product_shares(
+            self, db, owner_user, test_customer, test_product, partner_customer, gl_accounts):
+        """partner_scope='none' لا يمحو روابط المنتج — توزيع المنتج يعمل دائمًا."""
+        from services.sale_service import SaleService
+
+        partner_customer.partner_scope = 'none'
+        partner_customer.customer_type = 'partner'
+        test_product.average_cost = Decimal('30')
+        test_product.cost_price = Decimal('30')
+        db.session.add(ProductPartner(
+            product_id=test_product.id,
+            partner_customer_id=partner_customer.id,
+            percentage=Decimal('50.00'),
+        ))
+        db.session.commit()
+
+        SaleService.create_sale(
+            customer=test_customer,
+            seller=owner_user,
+            lines_data=[{
+                'product': test_product,
+                'quantity': Decimal('1'),
+                'unit_price': Decimal('100'),
+                'tax_treatment': 'exempt',
+            }],
+            currency='AED',
+            user_exchange_rate='1',
+        )
+        net_owed = sum(l.credit - l.debit for l in _partner_lines(db, partner_customer.id).all())
+        assert net_owed == Decimal('35.000')  # (100-30) * 50%
+
+    def test_full_paid_sale_not_deducted_and_unpaid_deducted(
+            self, db, owner_user, test_product, company_partner, gl_accounts):
+        """المبيعات للشريك: كاملة الدفع = لا خصم، غير مسددة = كل المبلغ، جزئية = الباقي."""
+        from services.sale_service import SaleService
+        from services import partner_profit as pp
+
+        test_product.average_cost = Decimal('30')
+        test_product.cost_price = Decimal('30')
+        db.session.commit()
+
+        # 1) غير مسددة
+        sale1 = SaleService.create_sale(
+            customer=company_partner,
+            seller=owner_user,
+            lines_data=[{
+                'product': test_product,
+                'quantity': Decimal('3'),
+                'unit_price': Decimal('50'),
+                'tax_treatment': 'exempt',
+            }],
+            currency='AED',
+            user_exchange_rate='1',
+        )
+        assert pp._sales_to_partner(company_partner.id) == Decimal('150.000')
+
+        # إلغاء الفاتورة الأولى لإخراجها من حساب المبيعات (الاستبعاد صحيح)
+        SaleService.cancel_sale(sale1)
+        assert pp._sales_to_partner(company_partner.id) == Decimal('0.000')
+
+        # 2) مسددة بالكامل
+        SaleService.create_sale(
+            customer=company_partner,
+            seller=owner_user,
+            lines_data=[{
+                'product': test_product,
+                'quantity': Decimal('3'),
+                'unit_price': Decimal('50'),
+                'tax_treatment': 'exempt',
+            }],
+            currency='AED',
+            user_exchange_rate='1',
+            payment_data={'amount': Decimal('150'), 'payment_method': 'cash'},
+        )
+        assert pp._sales_to_partner(company_partner.id) == Decimal('0.000')
+
+        # 3) جزئية الدفع
+        SaleService.create_sale(
+            customer=company_partner,
+            seller=owner_user,
+            lines_data=[{
+                'product': test_product,
+                'quantity': Decimal('3'),
+                'unit_price': Decimal('50'),
+                'tax_treatment': 'exempt',
+            }],
+            currency='AED',
+            user_exchange_rate='1',
+            payment_data={'amount': Decimal('50'), 'payment_method': 'cash'},
+        )
+        assert pp._sales_to_partner(company_partner.id) == Decimal('100.000')
+
+
+class TestOverlappingDistributionPeriods:
+    """حظر تداخل الفترات — الربح لا يُوزَّع مرتين."""
+
+    def _revenue(self, db, day, amount='800'):
+        from datetime import datetime
+        from services.gl_service import GLService
+        from services.account_resolution import AccountResolver, AccountRole
+        GLService.post_entry(
+            [{'account': AccountResolver.resolve(AccountRole.CASH),
+              'debit': Decimal(str(amount)), 'description': 'd'},
+             {'account': AccountResolver.resolve(AccountRole.SALES_REVENUE),
+              'credit': Decimal(str(amount)), 'description': 'd'}],
+            description='إيراد', reference_type='Test',
+            exchange_rate=Decimal('1'),
+            entry_date=datetime(day.year, day.month, day.day))
+        db.session.commit()
+
+    def test_overlapping_periods_rejected_idempotent_exact_repeat(
+            self, db, app, gl_accounts):
+        from datetime import date as _d
+
+        self._revenue(db, _d(2026, 3, 10))
+
+        p = Customer(
+            name='شريك مارس', name_ar='شريك مارس',
+            customer_type='partner', partner_scope='company',
+            partner_share=Decimal('50.000'), is_active=True,
+        )
+        db.session.add(p)
+        db.session.commit()
+
+        from services import partner_profit as pp
+        first = pp.post_partner_distributions(_d(2026, 3, 1), _d(2026, 3, 31))
+        assert first is not None
+        # Entry لا يُكرر نفس الفترة
+        assert pp.post_partner_distributions(_d(2026, 3, 1), _d(2026, 3, 31)) is None
+        # فترة متداخلة ترفع ValueError
+        with pytest.raises(ValueError, match='متداخل'):
+            pp.post_partner_distributions(_d(2026, 3, 15), _d(2026, 4, 30))
+
+        # فترة متجاورة غير متداخلة تمر
+        self._revenue(db, _d(2026, 4, 15))
+        third = pp.post_partner_distributions(_d(2026, 4, 1), _d(2026, 4, 30))
+        assert third is not None
+
+
+class TestPreviewShowsTotalEntitlement:
+    def test_preview_exposes_product_accrual_and_total(
+            self, db, app, company_partner, gl_accounts, test_customer, test_product, owner_user):
+        from services import partner_profit as pp
+        from services.sale_service import SaleService
+
+        company_partner.partner_scope = 'company'
+        company_partner.partner_share = Decimal('30.000')
+        test_product.average_cost = Decimal('20')
+        test_product.cost_price = Decimal('20')
+        db.session.commit()
+        db.session.add(ProductPartner(
+            product_id=test_product.id,
+            partner_customer_id=company_partner.id,
+            percentage=Decimal('20.00'),
+        ))
+        db.session.commit()
+
+        SaleService.create_sale(
+            customer=test_customer,
+            seller=owner_user,
+            lines_data=[{
+                'product': test_product,
+                'quantity': Decimal('1'),
+                'unit_price': Decimal('100'),
+                'tax_treatment': 'exempt',
+            }],
+            currency='AED',
+            user_exchange_rate='1',
+        )
+
+        row = next(r for r in pp.preview_partner_distributions(None, None)
+                   if r['partner_id'] == company_partner.id)
+        assert row['product_shares_in_period'] == Decimal('16.000')
+        assert row['net_payout'] >= Decimal('0')
+        assert row['total_entitlement'] == row['net_payout'] + row['product_shares_in_period']

@@ -17,13 +17,19 @@
   تُحسب النتيجة الصافية للفترة من الأستاذ (إيرادات − مصروفات، بما فيها ضريبة
   الدخل المُرحَّلة كمصروف — أي بعد الضريبة دون أي شهادات)، ثم تُوزَّع على
   الشركاء حسب ``partner_share``. يُخصم من حصة كل شريك في التوزيع:
-  * المسحوبات المرتبطة به (مدين على 3300/3350 بطرفه) في الفترة؛
-  * مبيعات تمت له (فواتير لم يُلغِها) في الفترة.
+  * المسحوبات المرتبطة به (قيود PartnerDraw بطرفه) في الفترة؛
+  * مبيعات تمت له وغير مُسددة (balance_due محوَّل لعملة الأساس) في الفترة.
   الخسارة أيضًا تُوزَّع: صافي السالب يُحمَّل على الشركاء بنسبة حصتهم.
+
+شريك ذو دورين (منتج + شركة): يحصل على الحصتين معًا — حصة المنتج تُرحَّل فورًا
+مع كل فاتورة (مصروف 6910 يُخفض ربح الشركة)، وحصة الشركة تُوزَّع دوريًا على
+صافي النتيجة بعد احتساب كل المصروفات بما فيها حصص المنتج المدفوعة. لا ازدواج
+— كل حساب له أساس مستقل.
 
 الذرّية: كل التوزيعات تُرحَّل داخل معاملة المستند (create_sale / create_return /
 post_partner_distributions) — لا يُترك قيد إلا ومطروح به رصيد كامل.
 """
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
 from extensions import db
@@ -314,11 +320,17 @@ def _draws_for_partner(partner_id, period_from=None, period_to=None):
 
 
 def _sales_to_partner(partner_id, period_from=None, period_to=None):
-    """مبيعات الشركة لهذا الشريك (فواتير غير ملغاة) في الفترة — بعملة الأساس."""
+    """مبيعات الشركة للشريك **غير المسددة** في الفترة — بعملة الأساس.
+
+    يُوزَّع دين العميل حتمًا من حصته (المبيعات لهتُخصم من استحقاقه) — لكن
+    الفاتورة المسددة لا تأثير لها إطلاقًا: دفع ثمنها بالكامل. لذلك يُؤخذ
+    ``balance_due × exchange_rate`` فقط.
+    """
     from sqlalchemy import func
     from models import Sale
 
-    q = (db.session.query(func.coalesce(func.sum(Sale.amount_base), 0))
+    q = (db.session.query(
+             func.coalesce(func.sum(Sale.balance_due * func.coalesce(Sale.exchange_rate, 1)), 0))
          .filter(Sale.customer_id == partner_id,
                  Sale.status != 'cancelled'))
     if period_from is not None:
@@ -328,10 +340,35 @@ def _sales_to_partner(partner_id, period_from=None, period_to=None):
     return _q3(q.scalar())
 
 
+def _product_shares_in_period(partner_id, period_from=None, period_to=None):
+    """حصص الشريك المتراكمة من المنتجات في الفترة (صافي Dr−Cr على 6910 بطرفه).
+
+    معلومة فقط — لا تُخصم من توزيع الشركة (كل أساس مستقل)؛ تُعرض لإظهار
+    إجمالي استحقاق الشريك صاحب الدورين في المعاينة.
+    """
+    from sqlalchemy import func
+    from models import GLAccount, GLJournalEntry as _Entry
+
+    q = (db.session.query(
+             func.coalesce(func.sum(GLJournalLine.debit - GLJournalLine.credit), 0))
+         .join(_Entry, _Entry.id == GLJournalLine.entry_id)
+         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
+         .filter(_Entry.is_posted.is_(True),
+                 GLAccount.code == '6910',
+                 GLJournalLine.party_id == partner_id))
+    if period_from is not None:
+        q = q.filter(_Entry.entry_date >= period_from)
+    if period_to is not None:
+        q = q.filter(_Entry.entry_date <= period_to)
+    return _q3(q.scalar())
+
+
 def preview_partner_distributions(period_from=None, period_to=None, tenant_id=None):
     """معاينة بدون ترحيل — للربح والخسارة معًا."""
     from models import Customer
 
+    period_from = _to_date(period_from)
+    period_to = _to_date(period_to)
     net = compute_net_income(period_from, period_to)
 
     query = (Customer.query
@@ -343,7 +380,6 @@ def preview_partner_distributions(period_from=None, period_to=None, tenant_id=No
 
     total_pct = sum(_num(p.partner_share) for p in partners)
     residual_pct = max(Decimal('100') - total_pct, ZERO)
-
     rows = []
     for partner in partners:
         pct = _num(partner.partner_share)
@@ -356,6 +392,7 @@ def preview_partner_distributions(period_from=None, period_to=None, tenant_id=No
         else:
             deductions = ZERO
             payout = share  # الخسارة تُحمَّل كاملة على الشريك
+        products = _product_shares_in_period(partner.id, period_from, period_to)
         rows.append({
             'partner_id': partner.id,
             'partner_name': partner.name,
@@ -364,6 +401,8 @@ def preview_partner_distributions(period_from=None, period_to=None, tenant_id=No
             'draws_deducted': draws,
             'sales_to_partner_deducted': sales_to_him,
             'net_payout': payout,
+            'product_shares_in_period': products,
+            'total_entitlement': _q3(payout + products),
         })
     rows.append({
         'partner_id': None,
@@ -373,24 +412,82 @@ def preview_partner_distributions(period_from=None, period_to=None, tenant_id=No
         'draws_deducted': ZERO,
         'sales_to_partner_deducted': ZERO,
         'net_payout': _q3(net * residual_pct / Decimal('100')),
+        'product_shares_in_period': ZERO.quantize(MONEY_Q),
+        'total_entitlement': _q3(net * residual_pct / Decimal('100')),
     })
     return rows
 
 
-def post_partner_distributions(period_from=None, period_to=None, tenant_id=None):
+def _to_date(v):
+    if v is None:
+        return None
+    if isinstance(v, date):
+        return v
+    try:
+        return date.fromisoformat(str(v))
+    except ValueError:
+        return None
+
+
+def _marker_window(marker):
+    """تحليل علامة التوزيع 'partner-distribution:FROM:TO:TID' إلى (from, to)."""
+    parts = (marker or '').split(':')
+    if len(parts) != 4:
+        return None
+    raw_from, raw_to = parts[1], parts[2]
+    d_from = date.fromisoformat(raw_from) if raw_from not in ('-', '') else date.min
+    d_to = date.fromisoformat(raw_to) if raw_to not in ('-', '') else date.max
+    return d_from, d_to
+
+
+def _guard_against_overlapping_periods(period_from, period_to, tid):
+    """يرفض توزيع أي فترة تتقاطع مع توزيع سابق مُرحَّل لنفس التينانت."""
+    from models import GLJournalEntry
+
+    req_from = period_from or date.min
+    req_to = period_to or date.max
+    rows = (GLJournalEntry.query
+            .filter_by(reference_type='PartnerDistribution',
+                       is_posted=True, is_reversed=False)
+            .filter(GLJournalEntry.notes.like('partner-distribution:%'))
+            .all())
+    for row in rows:
+        info = _marker_window(row.notes)
+        if info is None:
+            continue
+        w_from, w_to = info
+        # نطاق التينانت في العلامة — يستبعد توزعات تينانتات أخرى إن وُجدت
+        tid_part = (row.notes or '').split(':')[-1]
+        if (tid is not None or tid_part != 'platform') and tid_part != str(tid or 'platform'):
+            continue
+        if not (w_to < req_from or req_to < w_from):
+            raise ValueError(
+                f'يوجد توزيع سابق متداخل لنفس التينانت على الفترة '
+                f'{w_from} إلى {w_to} — لا يمكن توزيع {req_from}–{req_to} مرة أخرى '
+                f'لأن الربح سيُدفع مرتين. حدد فترة لا تتقاطع أو اعكس القيد أولًا.'
+            )
+
+
+def post_partner_distributions(period_from=None, period_to=None, tenant_id=None,
+                               force=False):
     """التوزيع الدوري النهائي على شركات الشركاء — ربحًا كان أم خسارة.
 
     الربح: Cr لكل شريك (3350) بعد خصم مسحوباته والمبيعات له؛ Dr 3400 للجزء الموزَّع.
     الخسارة: Dr لكل شريك (3350) بحصته من الخسارة؛ Cr 3400.
 
-    idempotent لنقس الفترة تمامًا: إعادة تنفيذ نفس الفترة تعيد ``None`` ولا
-    تُرحّل قيدًا مكررًا (المعلومة تتبع القيد عبر ``notes``).
+    idempotent لنفس الفترة تمامًا: إعادة تنفيذ نفس الفترة تعيد ``None`` ولا
+    تُرحّل قيدًا مكررًا (المعلومة تتبع القيد عبر ``notes``). أي فترة تتقاطع مع
+    توزيع سابق مُرحَّل ترفع ``ValueError`` — الربح لا يُوزَّع مرتين.
+    ``force=True`` يتخطى فحص التقاطع (للاستخدامات الإدارية المقصودة فقط).
     """
     from models import Customer, GLJournalEntry, GLJournalLine  # noqa: F401
     from services.currency_service import CurrencyService
     from services.gl_service import GLService
 
     tid = tenant_id
+    period_from = _to_date(period_from)
+    period_to = _to_date(period_to)
+
     marker = (f'partner-distribution:'
               f'{period_from.isoformat() if period_from else "-"}:'
               f'{period_to.isoformat() if period_to else "-"}:{tid or "platform"}')
@@ -401,6 +498,10 @@ def post_partner_distributions(period_from=None, period_to=None, tenant_id=None)
                 .first())
     if existing is not None:
         return None
+
+    # حظر تداخل أي توزيعين لنفس التينانت — الربح القديم لا يُوزَّع مرتين.
+    if not force:
+        _guard_against_overlapping_periods(period_from, period_to, tid)
 
     net = compute_net_income(period_from, period_to)
     if net == ZERO:
@@ -557,18 +658,22 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description='Partner profit-sharing tools')
     parser.add_argument('--from', dest='from_', default=None)
     parser.add_argument('--to', dest='to', default=None)
-    parser.add_argument('--distribute', action='store_true')
     parser.add_argument('--preview', action='store_true')
+    parser.add_argument('--distribute', action='store_true')
+    parser.add_argument('--force', action='store_true',
+                        help='يتخطى فحص تداخل الفترات (استخدام إداري مقصود فقط)')
     args = parser.parse_args(argv or sys.argv[1:])
 
     if args.preview:
         rows = preview_partner_distributions(args.from_, args.to)
         for r in rows:
             print(f"{r['partner_name']}: حصة {r['partner_share_pct']}% = {r['share_amount']}"
-                  f" — مسحوبات {r['draws_deducted']} — مبيعات {r['sales_to_partner_deducted']}"
-                  f" — الصافي {r['net_payout']}")
+                  f" — مسحوبات {r['draws_deducted']} — مبيعات له {r['sales_to_partner_deducted']}"
+                  f" — الصافي الشركة {r['net_payout']}"
+                  f" — حصص المنتج في الفترة {r.get('product_shares_in_period', 0)}"
+                  f" — الإجمالي {r.get('total_entitlement', r['net_payout'])}")
     elif args.distribute:
-        entry = post_partner_distributions(args.from_, args.to)
+        entry = post_partner_distributions(args.from_, args.to, force=args.force)
         print(f'Distributed: {entry.entry_number}' if entry else 'Nothing to distribute.')
 
 

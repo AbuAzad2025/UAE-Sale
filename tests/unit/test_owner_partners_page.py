@@ -1,4 +1,6 @@
 """Smoke اختبارات صفحة المالك /owner/partners — العرض + حدود الأمان."""
+from decimal import Decimal
+
 import pytest
 
 from extensions import db as _db
@@ -105,3 +107,83 @@ class TestOwnerPartnersPage:
         body = resp.get_data(as_text=True)
         assert 'توزيع أرباح الشركاء' in body
         assert 'Traceback' not in body
+
+
+class TestRecordDrawAndDistributeViaPage:
+    """مسار كامل: دخول سياق الشركة → تسجيل المسحوبات وتوزيع الأرباح من الصفحة."""
+
+    def test_record_draw_via_page_creates_partner_draw_entry(
+            self, client, owner, tenant, db):
+        partner = Customer(
+            name='شريك المسحوبات', name_ar='شريك المسحوبات',
+            customer_type='partner', partner_scope='company',
+            partner_share=Decimal('25.000'), is_active=True,
+        )
+        db.session.add(partner)
+        db.session.commit()
+
+        _login(client, owner)
+        _impersonate(client, tenant)
+        resp = client.post('/owner/partners', data={
+            'action': 'record_draw',
+            'partner_id': str(partner.id),
+            'amount': '120',
+            'source': 'cash',
+        }, follow_redirects=False)
+        assert resp.status_code == 302
+
+        from models import GLJournalEntry, GLJournalLine
+        entries = GLJournalEntry.query.filter_by(
+            reference_type='PartnerDraw', reference_id=partner.id).all()
+        assert entries, 'يجب أن تُسجَّل المسحوبات كقيد PartnerDraw'
+        lines = GLJournalLine.query.filter_by(party_id=partner.id).all()
+        assert any(l.debit == Decimal('120.000') for l in lines)
+
+    def test_distribute_via_page_posts_tenant_scoped_entry(
+            self, client, owner, tenant, db):
+        from models import Tenant
+        from models.tenant_scope import run_in_tenant_context
+        from services.account_resolution import AccountResolver, AccountRole
+        from services.gl_service import GLService
+
+        def _setup():
+            partner = Customer(
+                name='شريك التوزيع', name_ar='شريك التوزيع',
+                customer_type='partner', partner_scope='company',
+                partner_share=Decimal('50.000'), is_active=True,
+            )
+            db.session.add(partner)
+            db.session.flush()
+            GLService.post_entry(
+                [{'account': AccountResolver.resolve(AccountRole.CASH),
+                  'debit': Decimal('900'), 'description': 'd'},
+                 {'account': AccountResolver.resolve(AccountRole.SALES_REVENUE),
+                  'credit': Decimal('900'), 'description': 'd'}],
+                description='إيراد اختبار صفحة التوزيع',
+                reference_type='Test',
+                exchange_rate=Decimal('1'),
+            )
+            db.session.commit()
+            return partner
+
+        partner = run_in_tenant_context(tenant.id, _setup)
+
+        _login(client, owner)
+        _impersonate(client, tenant)
+        resp = client.post('/owner/partners', data={
+            'action': 'distribute',
+            'from': '2020-01-01',
+            'to': '2099-12-31',
+        }, follow_redirects=False)
+        assert resp.status_code == 302
+
+        from models import GLJournalEntry
+        entries = GLJournalEntry.query.filter_by(
+            reference_type='PartnerDistribution',
+            tenant_id=tenant.id,
+            is_reversed=False).all()
+        assert entries, 'يجب أن يُرحَّل توزيع الشركة تحت تينانت الشركة'
+        entry = entries[0]
+        assert entry.total_debit == entry.total_credit
+        partner_lines = [l for l in entry.lines if l.party_id == partner.id]
+        assert partner_lines, 'قيد التوزيع يجب أن يسجل party_id للشريك'

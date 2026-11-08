@@ -248,3 +248,84 @@ class TestOwnerTaxRulesets:
         assert row.vat_rate == Decimal('7.50')
         assert row.corp_tax_threshold in (Decimal('2000.00'), Decimal('2000'))
         assert row.is_active is False  # unchecked checkbox -> False after update
+
+
+class TestOwnerComplianceCredentials:
+    def _get_tenant(self, db, slug="test-tenant-cc"):
+        from models import Tenant
+        t = Tenant(name="CC Test Tenant", name_ar="?????? ??????", slug=slug,
+                   is_active=True)
+        db.session.add(t)
+        db.session.commit()
+        return t
+
+    def test_owner_can_view(self, client, owner_client_user, db):
+        _login(client, owner_client_user)
+        assert client.get("/owner/compliance-credentials").status_code == 200
+
+    def test_non_owner_redirected(self, client, plain_user):
+        _login(client, plain_user)
+        resp = client.get("/owner/compliance-credentials", follow_redirects=False)
+        assert resp.status_code == 302
+
+    def test_save_verify_clear_roundtrip(self, client, owner_client_user, db):
+        from models import ComplianceCredential
+        from services import compliance_credentials as cc
+
+        tenant = self._get_tenant(db)
+        _login(client, owner_client_user)
+
+        resp = client.post("/owner/compliance-credentials", data={
+            "tenant_id": str(tenant.id),
+            "authority_key": "zatca",
+            "action": "save",
+            "csid": "ZATCA-CSID-TESTVALUE-0001",
+            "private_key_pem": "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
+            "certificate_pem": "-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----",
+            "zatca_api_environment": "integration",
+            "request_id": "REQ-1",
+            "notes": "?????? ???",
+        }, follow_redirects=False)
+        assert resp.status_code == 302
+
+        row = ComplianceCredential.query.filter_by(
+            tenant_id=tenant.id, authority_key="zatca").first()
+        assert row is not None
+        assert row.status == "configured"
+        assert row.payload_encrypted
+
+        vals = cc.credential_values(tenant.id, "zatca")
+        assert vals["csid"] == "ZATCA-CSID-TESTVALUE-0001"
+        assert vals["request_id"] == "REQ-1"
+        assert vals["zatca_api_environment"] == "integration"
+
+        client.post("/owner/compliance-credentials", data={
+            "tenant_id": str(tenant.id),
+            "authority_key": "zatca",
+            "action": "verify",
+        }, follow_redirects=False)
+        db.session.expire_all()
+        assert row.status == "verified"
+
+        client.post("/owner/compliance-credentials", data={
+            "tenant_id": str(tenant.id),
+            "authority_key": "zatca",
+            "action": "clear",
+        }, follow_redirects=False)
+        db.session.expire_all()
+        assert row.status == "missing"
+        assert cc.credential_values(tenant.id, "zatca") == {}
+
+    def test_secret_fields_never_rendered_in_html(self, client, owner_client_user, db):
+        from services import compliance_credentials as cc
+
+        tenant = self._get_tenant(db, "test-tenant-secret")
+        cc.save_credential(tenant.id, "zatca", {
+            "csid": "SUPER-SECRET-CSID-DO-NOT-LEAK-9999",
+            "private_key_pem": "-----BEGIN SECRET-----\nsecret-material\n-----END SECRET-----",
+        })
+        _login(client, owner_client_user)
+        resp = client.get(f"/owner/compliance-credentials?tenant_id={tenant.id}")
+        html = resp.get_data(as_text=True)
+        assert "SUPER-SECRET-CSID-DO-NOT-LEAK-9999" not in html
+        assert "secret-material" not in html

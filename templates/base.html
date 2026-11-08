@@ -915,6 +915,12 @@
             </a>
           </li>
           <li class="nav-item">
+            <a href="{{ url_for('owner.compliance_credentials') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.compliance_credentials') %}active{% endif %}">
+              <i class="nav-icon fas fa-key text-warning"></i>
+              <p>اعتمادات الامتثال للشركات</p>
+            </a>
+          </li>
+          <li class="nav-item">
             <a href="{{ url_for('owner.tax_rulesets') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.tax_rulesets') %}active{% endif %}">
               <i class="nav-icon fas fa-globe text-success"></i>
               <p>قواعد الضريبة للدول</p>

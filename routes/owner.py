@@ -3456,6 +3456,118 @@ def tax_rulesets():
     )
 
 
+@owner_bp.route('/compliance-credentials', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def compliance_credentials():
+    """اعتمادات الامتثال لِكل شركة لكل سلطة (مشفّرة عند الراحة).
+
+    لا إرسال ولا توقيع ولا رفع — التخزين الآمن فقط + مؤشر حالة كل شهادة.
+    كل حفظ/تحقق/مسح يُسجَّل في audit_logs.
+    """
+    from services.compliance_credentials import (
+        AUTHORITY_REGISTRY, authorities_for_country,
+        save_credential, mark_verified, clear_credential,
+        credential_summary, credential_values,
+    )
+
+    def _redirect_tenant(tid):
+        return redirect(url_for('owner.compliance_credentials', tenant_id=tid))
+
+    tenant_id = (request.args.get('tenant_id', type=int)
+                 or request.form.get('tenant_id', type=int))
+    tenants = Tenant.query.filter_by(is_active=True).order_by(Tenant.name).all()
+    if tenant_id is None:
+        tenant_id = tenants[0].id if tenants else None
+    tenant = db.session.get(Tenant, tenant_id) if tenant_id else None
+    if tenant is None and tenants:
+        tenant = tenants[0]
+        tenant_id = tenant.id
+
+    if request.method == 'POST':
+        action = (request.form.get('action') or 'save').strip()
+        authority_key = (request.form.get('authority_key') or '').strip()
+        meta = AUTHORITY_REGISTRY.get(authority_key)
+        if meta is None:
+            flash('سلطة غير معروفة', 'danger')
+            return _redirect_tenant(tenant_id)
+
+        if action == 'clear':
+            clear_credential(tenant_id, authority_key)
+            create_audit_log('clear_compliance_credential', 'compliance_credentials', None,
+                             changes={'tenant_id': tenant_id, 'authority_key': authority_key})
+            flash('تم مسح الاعتماد المخزَّن — بقيت بقية الحقول كما هي.', 'warning')
+            return _redirect_tenant(tenant_id)
+        if action == 'verify':
+            row = mark_verified(tenant_id, authority_key)
+            create_audit_log('verify_compliance_credential', 'compliance_credentials',
+                             row.id if row else None,
+                             changes={'tenant_id': tenant_id, 'authority_key': authority_key})
+            flash('تم وضع علامة «موثوق» — تُستخدم إشارة جاهزة لمراجعة المختص.', 'success')
+            return _redirect_tenant(tenant_id)
+
+        # save / rotate — دمج مع ما هو مخزَّن (الحقول السرية الفارغة تبقى كما هي)
+        values = {}
+        for field in meta['fields']:
+            fname, is_secret = field[0], bool(field[2])
+            raw = (request.form.get(fname) or '').strip()
+            if raw:
+                values[fname] = raw
+        existing = credential_values(tenant_id, authority_key) or {}
+        if values or existing:
+            existing.update(values)
+            row = save_credential(tenant_id, authority_key, existing,
+                                  notes=request.form.get('notes'),
+                                  user_id=current_user.id)
+            create_audit_log('save_compliance_credential', 'compliance_credentials',
+                             row.id,
+                             changes={'tenant_id': tenant_id,
+                                      'authority_key': authority_key,
+                                      'fields': sorted(values)})
+            flash(f'✅ تم حفظ اعتماد «{meta["label"]}»', 'success')
+        else:
+            flash('لا شيء جديد للحفظ — املأ الحقول المطلوبة.', 'warning')
+        return _redirect_tenant(tenant_id)
+
+    country_code = (getattr(tenant, 'tax_country', None)
+                    or getattr(tenant, 'country', None) or '').strip().upper()[:2]
+
+    def _field_tuples(meta):
+        for field in meta['fields']:
+            fname, label, is_secret = field[0], field[1], bool(field[2])
+            enum = field[3] if len(field) > 3 else None
+            yield fname, label, is_secret, enum
+
+    rows = []
+    for key, meta in authorities_for_country(country_code):
+        summary = credential_summary(tenant_id, key)
+        values = credential_values(tenant_id, key) if summary['status'] != 'missing' else {}
+        fields = []
+        for fname, label, is_secret, enum in _field_tuples(meta):
+            fields.append({
+                'name': fname,
+                'label': label,
+                'secret': is_secret,
+                'enum': enum,
+                'value': '' if is_secret else (values.get(fname) or ''),
+            })
+        rows.append({
+            'key': key,
+            'label': meta['label'],
+            'authority_name': meta['authority_name'],
+            'country': meta['country'],
+            'fields': fields,
+            'summary': summary,
+        })
+
+    return render_template(
+        'owner/compliance_credentials.html',
+        tenants=tenants,
+        tenant=tenant,
+        authorities_rows=rows,
+    )
+
+
 @owner_bp.route('/guide')
 @login_required
 @owner_required

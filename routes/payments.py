@@ -660,7 +660,6 @@ def create_from_sale(sale_id):
 @permission_required('manage_payments')
 def create_voucher():
     """عرض صفحة إنشاء سند مالي موحد (قبض/صرف)"""
-    import json
     from models import Supplier
 
     # تحضير البيانات لـ JS
@@ -1421,7 +1420,6 @@ def create_payment(purchase_id):  # noqa: C901
     """إنشاء سند صرف لفاتورة مشتريات"""
     from models import Purchase, Payment, Supplier
     from utils.helpers import generate_number
-    from sqlalchemy import func
 
     purchase = get_owned_or_404(Purchase, purchase_id)
     supplier = get_owned_or_404(Supplier, purchase.supplier_id) if purchase.supplier_id else None

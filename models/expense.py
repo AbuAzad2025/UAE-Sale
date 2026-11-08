@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
 class ExpenseCategory(db.Model):
@@ -18,10 +19,11 @@ class ExpenseCategory(db.Model):
         return f'<ExpenseCategory {self.name}>'
 
 
-class Expense(db.Model):
+class Expense(TenantScopedMixin, db.Model):
     __tablename__ = 'expenses'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     expense_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
 
     category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'), nullable=False, index=True)

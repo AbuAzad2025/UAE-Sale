@@ -577,8 +577,8 @@ def supplier(db, e2e_tenant):
 
 
 @pytest.fixture(scope='function')
-def purchase(db, owner, supplier, product, warehouse):
-    """Seed a purchase directly."""
+def purchase(db, owner, supplier, product, warehouse, e2e_tenant):
+    """Seed a purchase directly (as the e2e tenant's own document)."""
     from models.purchase import Purchase, PurchaseLine
     pur = Purchase(
         purchase_number='P-CONF-001',
@@ -593,6 +593,7 @@ def purchase(db, owner, supplier, product, warehouse):
         amount_base=Decimal('500'),
         status='confirmed',
         user_id=owner.id,
+        tenant_id=e2e_tenant.id,
     )
     db.session.add(pur)
     db.session.flush()

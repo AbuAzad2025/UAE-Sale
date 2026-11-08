@@ -33,6 +33,7 @@ def test_header_uses_each_tenant_independently():
     assert (b.company_name_ar, b.tax_number) == ('شركة ب', 'B-TAX')
 
 
-def test_header_rejects_missing_tenant():
-    with pytest.raises(ValueError):
-        with_tenant_header(None, None)
+def test_header_platform_context_returns_platform_settings():
+    """tenant=None تعني سياق المنصة الكاملة: تُعاد إعدادات المنصة كما هي."""
+    platform = object()  # أي كائن إعدادات كان — يجب أن تُعاد كما هي
+    assert with_tenant_header(platform, None) is platform

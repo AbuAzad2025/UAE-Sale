@@ -68,7 +68,7 @@ from .validators import (
 for _model_cls in [Sale, SaleLine, Purchase, PurchaseLine, Payment, Receipt,
                    Customer, Supplier, Product, StockMovement, Cheque,
                    GLJournalEntry, GLJournalLine, Warehouse, Shipment, InboundShipment,
-                   WriteOff]:
+                   WriteOff, Expense]:
     register_tenant_scoped(_model_cls)
 
 __all__ = [

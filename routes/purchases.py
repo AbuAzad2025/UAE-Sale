@@ -210,21 +210,22 @@ def create():  # noqa: C901
                 inventory_cost = Decimal('0.000')
 
             # إعداد قيود اليومية مع فصل الضريبة
+            from services.account_resolution import AccountResolver, AccountRole
             lines = [
                 # مدين: المخزون (بالمبلغ المدفوع فعلياً، قبل الضريبة)
-                {'account': '1140', 'debit': inventory_cost,
+                {'account': AccountResolver.resolve(AccountRole.INVENTORY, tenant_id=purchase.tenant_id),
+                 'debit': inventory_cost,
                  'description': f'شراء بضاعة {purchase.purchase_number}'},
                 # دائن: المورد (بالمبلغ الإجمالي)
-                {'account': '2110', 'credit': purchase.total_amount,
+                {'account': AccountResolver.resolve(AccountRole.AP_CONTROL, tenant_id=purchase.tenant_id),
+                 'credit': purchase.total_amount,
                  'description': f'ذمم دائنة - مورد: {purchase.supplier_name}'}
             ]
 
             # إذا وجدت ضريبة، تضاف كمدين (ضريبة مدخلات / قابلة للاسترداد)
             if purchase.tax_amount > 0:
-                # نستخدم حساب الضرائب المستحقة (2130) كحساب وسيط (مدين = لنا، دائن = علينا)
-                # أو يمكن استخدام حساب أصول منفصل "ضريبة القيمة المضافة على المدخلات" إذا وجد
                 lines.append({
-                    'account': '2130',
+                    'account': AccountResolver.resolve(AccountRole.TAX_PAYABLE, tenant_id=purchase.tenant_id),
                     'debit': purchase.tax_amount,
                     'description': f'ضريبة القيمة المضافة (شراء) {purchase.purchase_number}'
                 })

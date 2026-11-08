@@ -38,6 +38,8 @@ class AccountRole(str, Enum):
     MERCHANTS_PAYABLE = 'MERCHANTS_PAYABLE'
     DEFERRED_CHEQUES_PAYABLE = 'DEFERRED_CHEQUES_PAYABLE'
     TAX_PAYABLE = 'TAX_PAYABLE'
+    VAT_INPUT = 'VAT_INPUT'
+    VAT_OUTPUT = 'VAT_OUTPUT'
     CORP_TAX_PAYABLE = 'CORP_TAX_PAYABLE'
     SALARIES_PAYABLE = 'SALARIES_PAYABLE'
     LOANS = 'LOANS'
@@ -95,6 +97,8 @@ DEFAULT_ROLE_MAP = {
     AccountRole.MERCHANTS_PAYABLE.value: '2115',
     AccountRole.DEFERRED_CHEQUES_PAYABLE.value: '2120',
     AccountRole.TAX_PAYABLE.value: '2130',
+    AccountRole.VAT_INPUT.value: '1141',
+    AccountRole.VAT_OUTPUT.value: '2131',
     AccountRole.CORP_TAX_PAYABLE.value: '2145',
     AccountRole.SALARIES_PAYABLE.value: '2140',
     AccountRole.LOANS.value: '2210',

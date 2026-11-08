@@ -1625,6 +1625,13 @@ def _validate_tenant_form(form, currencies, exclude_id=None):
     email = (form.get('email') or '').strip()
     if email and ('@' not in email or '.' not in email):
         errors.append('البريد الإلكتروني غير صالح.')
+    # تحذير إرشادي فقط — صيغة TRN للدولة المختارة (لا يمنع الحفظ)
+    from utils.trn import trn_verdict
+    _trn = (form.get('tax_number') or '').strip()
+    _cty = (form.get('tax_country') or 'AE').strip().upper()[:2] or 'AE'
+    _ok, _msg = trn_verdict(_trn, _cty)
+    if not _ok and _msg:
+        flash(f'⚠️ {_msg}', 'warning')
     cleaned = {
         'name': name, 'name_ar': name_ar, 'name_en': name_en or None,
         'slug': slug,
@@ -3355,14 +3362,22 @@ def tax_rulesets():
     دون الحاجة لتغيير الكود. التكامل الفعلي مع سلطة كل دولة (مثل ZATCA/ETA/FTA)
     غير مدعوم هنا ولا يُدَّعى — وهذه ملاحظة قانونية صريحة تُعرض على كل قاعدة.
     """
-    from models import TaxRuleset
+    from models import TaxRuleset, Tenant
     from services.compliance import country_compliance_snapshot
 
     EDITABLE_FIELDS = ('vat_rate', 'vat_label', 'corp_tax_rate', 'corp_tax_threshold',
                        'einvoice_required', 'einvoice_status', 'vat_enabled_default',
                        'corp_tax_enabled_default',
                        'authority_name', 'authority_portal_url',
-                       'authority_notes', 'compliance_notes')
+                       'authority_notes', 'compliance_notes',
+                       'effective_from', 'effective_until')
+
+    def _parse_date(value):
+        value = (value or '').strip()
+        if not value:
+            return None
+        from datetime import date
+        return date.fromisoformat(value)
 
     if request.method == 'POST':
         action = request.form.get('action')
@@ -3385,21 +3400,57 @@ def tax_rulesets():
                 row.authority_notes = (request.form.get('authority_notes') or '').strip() or None
                 row.compliance_notes = (request.form.get('compliance_notes') or '').strip() or None
                 row.is_active = request.form.get('is_active') == 'on'
+                row.effective_from = _parse_date(request.form.get('effective_from'))
+                row.effective_until = _parse_date(request.form.get('effective_until'))
+                # tenant_id مُثبت من قاعدة البيانات، لا من النموذج:
+                # تحديث سطر موجود يحتفظ بنطاقه الأصلي؛ إنشاء سطر جديد يأخذ النطاق من النموذج فقط.
+                if action == 'update' and row.id is not None:
+                    existing = TaxRuleset.query.filter_by(id=row.id).first()
+                    row.tenant_id = existing.tenant_id if existing else None
+                else:
+                    raw_tenant_id = (request.form.get('tenant_id') or '').strip()
+                    row.tenant_id = int(raw_tenant_id) if raw_tenant_id else None
                 if not row.country_code or not row.country_name:
                     raise ValueError('رمز الدولة واسمها مطلوبان')
+                if row.effective_until and row.effective_from and row.effective_until < row.effective_from:
+                    raise ValueError('تاريخ النهاية قبل تاريخ البداية')
                 db.session.add(row)
                 db.session.commit()
+                create_audit_log('update_tax_rulesets', 'tax_rulesets', row.id,
+                                 changes={'country_code': row.country_code,
+                                          'vat_rate': str(row.vat_rate)})
                 flash('✅ تم حفظ قاعدة الضريبة', 'success')
                 return redirect(url_for('owner.tax_rulesets'))
             except Exception as exc:
                 db.session.rollback()
                 flash(f'⛔ {exc}', 'danger')
+        elif action == 'deactivate_tenant_ruleset':
+            ruleset_id = int(request.form.get('id') or 0)
+            row = db.session.get(TaxRuleset, ruleset_id)
+            if row and row.tenant_id is not None:
+                row.is_active = False
+                db.session.commit()
+                create_audit_log('deactivate_tax_rulesets', 'tax_rulesets', row.id,
+                                 changes={'country_code': row.country_code,
+                                          'tenant_id': row.tenant_id})
+                flash('✅ أُزيلت النسخة الخاصة بالشركة (أُخفيت، ولم تُحذف)', 'success')
+            else:
+                flash('⛔ لا يمكن إزالتها (ليست نسخة شركة)', 'danger')
+            return redirect(url_for('owner.tax_rulesets'))
 
-    rulesets = TaxRuleset.query.filter_by(tenant_id=None).order_by(TaxRuleset.country_code).all()
+    # جميع القواعد مرتبة: الخاصة بالشركات أولاً ثم الأسطر العامة
+    rulesets = TaxRuleset.query.order_by(
+        TaxRuleset.tenant_id.is_not(None).desc(),
+        TaxRuleset.country_code,
+    ).all()
+    tenants = Tenant.query.filter_by(is_active=True).order_by(Tenant.name).all()
+    tenant_names = {t.id: t.name for t in tenants}
     compliance = country_compliance_snapshot()
     return render_template(
         'owner/tax_rulesets.html',
         rulesets=rulesets,
+        tenants=tenants,
+        tenant_names=tenant_names,
         compliance=compliance,
         editable_fields=EDITABLE_FIELDS,
     )

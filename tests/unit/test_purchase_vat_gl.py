@@ -84,7 +84,7 @@ class TestPurchaseGL:
         lines = build_purchase_gl_lines(p)
         inv = AccountResolver.resolve(AccountRole.INVENTORY)
         ap = AccountResolver.resolve(AccountRole.AP_CONTROL)
-        vat = AccountResolver.resolve(AccountRole.TAX_PAYABLE)
+        vat = AccountResolver.resolve(AccountRole.VAT_INPUT)
         debits = sum(l.get('debit', Decimal('0')) for l in lines)
         credits = sum(l.get('credit', Decimal('0')) for l in lines)
         assert debits == credits
@@ -102,7 +102,7 @@ class TestPurchaseGL:
         from services.account_resolution import AccountResolver, AccountRole
         inv = AccountResolver.resolve(AccountRole.INVENTORY)
         ap = AccountResolver.resolve(AccountRole.AP_CONTROL)
-        vat = AccountResolver.resolve(AccountRole.TAX_PAYABLE)
+        vat = AccountResolver.resolve(AccountRole.VAT_INPUT)
         accounts = [l['account'] for l in lines]
         assert vat not in accounts
         inv_line = next(l for l in lines if l['account'] == inv)
@@ -118,8 +118,11 @@ class TestPurchaseGL:
         ap_line = next(l for l in lines if l['account'] == ap)
         # المورد: بالمبلغ الصافي فقط — لا دائن بالضريبة
         assert ap_line['credit'] == Decimal('100')
-        vat_lines = [l for l in lines if l['account'] == AccountResolver.resolve(AccountRole.TAX_PAYABLE)]
-        assert len(vat_lines) == 2
+        # ضريبة المدخلات على 1141 (مدين) و ضريبة المخرجات على 2131 (دائن) — متساويتان بالعملة نفسها
+        vat_in = next(l for l in lines if l['account'] == AccountResolver.resolve(AccountRole.VAT_INPUT))
+        vat_out = next(l for l in lines if l['account'] == AccountResolver.resolve(AccountRole.VAT_OUTPUT))
+        assert vat_in['debit'] == Decimal('5')
+        assert vat_out['credit'] == Decimal('5')
         debits = sum(l.get('debit', Decimal('0')) for l in lines)
         credits = sum(l.get('credit', Decimal('0')) for l in lines)
         assert debits == credits == Decimal('105')
@@ -130,15 +133,15 @@ class TestPurchaseGL:
         from services.account_resolution import AccountResolver, AccountRole
         inv = AccountResolver.resolve(AccountRole.INVENTORY)
         ap = AccountResolver.resolve(AccountRole.AP_CONTROL)
-        vat = AccountResolver.resolve(AccountRole.TAX_PAYABLE)
         accounts = [l['account'] for l in lines]
-        # الضريبة تكاليف: تحمّل على المخزون (debit gross) + output vat دائن
+        # الضريبة تكاليف: تحمّل على المخزون (debit gross) + output vat دائن على 2131
         inv_line = next(l for l in lines if l['account'] == inv)
         assert inv_line['debit'] == Decimal('105')
         ap_line = next(l for l in lines if l['account'] == ap)
         assert ap_line['credit'] == Decimal('100')
-        vat_lines = [l for l in lines if l['account'] == vat]
+        vat_lines = [l for l in lines if l['account'] == AccountResolver.resolve(AccountRole.VAT_OUTPUT)]
         assert len(vat_lines) == 1 and vat_lines[0]['credit'] == Decimal('5')
+        assert AccountResolver.resolve(AccountRole.VAT_INPUT) not in accounts
         debits = sum(l.get('debit', Decimal('0')) for l in lines)
         credits = sum(l.get('credit', Decimal('0')) for l in lines)
         assert debits == credits

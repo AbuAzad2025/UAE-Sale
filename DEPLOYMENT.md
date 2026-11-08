@@ -123,7 +123,7 @@ flask db current
 
 > **ترتيب الترحيلات الضريبية (مطلوب الالتزام):** `b5_tax_per_tenant` →
 > `b6_corp_tax` → `b7_tenant_invoice_profile` → `b8_vat_treatments` →
-> `b9_purchase_tax_treatment` → `b10_sale_line_tax_treatment` → `b11_expense_tenant` → `b12_purchase_list_tenant` → `b13_payroll_leave_type_tenant` → `b14_product_group_tenant` → `b15_shipment_lines_tenant` → `b16_tax_rulesets` → `b17_purchase_vat_features`.
+> `b9_purchase_tax_treatment` → `b10_sale_line_tax_treatment` → `b11_expense_tenant` → `b12_purchase_list_tenant` → `b13_payroll_leave_type_tenant` → `b14_product_group_tenant` → `b15_shipment_lines_tenant` → `b16_tax_rulesets` → `b17_purchase_vat_features` → `b18_taxruleset_unique_defaults` → `b19_ruleset_effective_dates` → `b20_expense_tax` → `b21_vat_split_accounts`.
 > ملاحظة تشغيلية على `b6_corp_tax`: نسخته الحالية **لم تعد** تفرض تبديل عملة
 > أساس التينانتات تلقائياً. أي بيئة قديمة طُبّقت عليها النسخة القديمة وتغيّرت
 > عملات فيها تحتاج مراجعة يدوية — لا تُعالج بأي ترحيل آخر.
@@ -149,6 +149,15 @@ flask db current
 > خطأ — مورّد أجنبي لا يُحصِّل ضريبة: المشتري يُقيّد ضريبة مدخلات ومخرجات
 > متوازنة). القيد المحاسبي يُبنى في `services/purchase_gl.py`. لا يُعدِّل أي
 > تاريخ قائم — الأسطر الموجودة ترث معاملة ترويستها.
+
+> **`b18`–`b21`:** `b18` مؤشر unique جزئي يمنع تكرار قاعدة الدولة العامة الواحدة لكل دولة.
+> `b19` يضيف `effective_from/until` للقواعد — نسبة تسري من تاريخ وتنقضي في آخر مثلاً:
+> السعودية انتقلت 5%→15% في 2020-07-01؛ بعد `b19` تُضاف النسخة النافذة البديلة بالتواريخ.
+> `b20` يضيف ضريبة لكل مستند مصروفات/سندات الصرف (treatment/rate/inclusive/
+> vat_recoverable/reverse_charge/tax_amount) — القيد يُبنى في `services/expense_gl.py`.
+> `b21` يفصل طابَي الضريبة: `1141` (ضريبة المدخلات asset) و `2131` (ضريبة المخرجات liability) —
+> يحل `TAX_PAYABLE(2130)` للأدوار الجديدة؛ الحساب `2130` يبقى كما هو للبيانات التاريخية.
+> [لا] تُدّعى أي مطابقة إقرار ضريبي قانوني؛ الحزمة تضمن أن المختص يجد الأرقام سليمة.
 
 ---
 

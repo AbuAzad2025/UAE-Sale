@@ -88,7 +88,46 @@
             </select>
           </div>
         </div>
+      </div>
 
+      <div class="row">
+        <div class="col-md-3">
+          <div class="form-group">
+            <label>المعاملة الضريبية</label>
+            <select name="tax_treatment" class="form-control">
+              <option value="standard" {% if (expense.tax_treatment or 'standard') == 'standard' %}selected{% endif %}>خاضعة (عادية)</option>
+              <option value="zero" {% if expense.tax_treatment == 'zero' %}selected{% endif %}>صفرية 0%</option>
+              <option value="exempt" {% if expense.tax_treatment == 'exempt' %}selected{% endif %}>معفاة</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="form-group">
+            <label>نسبة %</label>
+            <input type="number" name="tax_rate" class="form-control" value="{{ expense.tax_rate or 0 }}" step="0.01" min="0" max="100">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-check mt-4">
+            <input type="checkbox" name="tax_inclusive" class="form-check-input" id="exp_inc_edit" value="on" {% if expense.tax_inclusive %}checked{% endif %}>
+            <label class="form-check-label" for="exp_inc_edit">الأسعار شاملة الضريبة</label>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-check mt-2">
+            <input type="hidden" name="vat_recoverable_submitted" value="1">
+            <input type="hidden" name="vat_recoverable" value="0">
+            <input type="checkbox" name="vat_recoverable" class="form-check-input" id="exp_vr_edit" value="on" {% if expense.vat_recoverable %}checked{% endif %}>
+            <label class="form-check-label" for="exp_vr_edit">ضريبة قابلة للاسترداد (أزل للتكلفة غير القابلة)</label>
+          </div>
+          <div class="form-check mt-1">
+            <input type="checkbox" name="reverse_charge" class="form-check-input" id="exp_rc_edit" value="on" {% if expense.reverse_charge %}checked{% endif %}>
+            <label class="form-check-label" for="exp_rc_edit">مورد أجنبي — Reverse Charge</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
         <div class="col-md-4">
           <div class="form-group">
             <label>

@@ -29,7 +29,7 @@ ONE = Decimal('1')
 # Fallback literal CoA codes (become obsolete once Agent 1's resolver ships;
 # they mirror today's gl_service.ensure_core_accounts() chart).
 _ROLE_FALLBACKS = {
-    'output_vat': 'TAX_PAYABLE',
+    'output_vat': 'VAT_OUTPUT',
     'sales_returns': 'SALES_RETURNS',
     'sales_revenue': 'SALES_REVENUE',
     'ar_control': 'AR_CONTROL',
@@ -37,7 +37,7 @@ _ROLE_FALLBACKS = {
     'cogs': 'COGS',
 }
 _CODE_FALLBACKS = {
-    'output_vat': '2130',
+    'output_vat': '2131',
     'sales_returns': '4100',
     'sales_revenue': '4100',
     'ar_control': '1130',
@@ -233,14 +233,18 @@ COUNTRY_LABEL_AR = {
 }
 
 
-def country_rate(country_code):
+def country_rate(country_code, on_date=None):
     if not country_code:
         return None
     # أولوية للقاعدة المخزَّنة في قاعدة البيانات (قابل للتعديل من المالك)
     # ثم الاحتياطي الثابت فقط إذا غاب الجدول — وهو دائمًا ممكن التزويد
     try:
-        from models.tax_ruleset import TaxRuleset
-        row = TaxRuleset.query.filter_by(country_code=country_code.upper(), tenant_id=None, is_active=True).first()
+        from datetime import date as _date
+        from models.tax_ruleset import TaxRuleset, _windowed_pick
+        on_date = on_date or _date.today()
+        rows = TaxRuleset.query.filter_by(
+            country_code=country_code.upper(), tenant_id=None, is_active=True).all()
+        row = _windowed_pick(rows, on_date)
         if row is not None and row.vat_rate is not None:
             return Decimal(str(row.vat_rate))
     except Exception:

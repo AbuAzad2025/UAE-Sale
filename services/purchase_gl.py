@@ -9,8 +9,8 @@
 
 2) ``reverse_charge=True`` (خدمات من مورد أجنبي لم يُحصِّل ضريبة):
    المورد يُسجَّل بالمبلغ الصافي فقط؛ المشتري يُسجِّل ضريبة ذاتية كمدين
-   (ضريبة مدخلات) ودائن (ضريبة مخرجات) في نفس الوقت — صافي الأثر صفر على
-   الحسابات، لكن الإقرار يُظهرها في كلا المدينين والمخرجات.
+   (ضريبة مدخلات في 1141) ودائن (ضريبة مخرجات في 2131) في نفس الوقت —
+   صافي الأثر صفر على الرصيد النقدي، لكن الإقرار يُظهرها في كلا الجانبين.
 
 3) كلا الخيارين معًا: الضريبة ذاتية كدائن "مخرجات" فقط، وتُضاف للتكلفة.
 
@@ -44,7 +44,8 @@ def build_purchase_gl_lines(purchase):
 
     inventory = AccountResolver.resolve(AccountRole.INVENTORY, tenant_id=tid)
     ap = AccountResolver.resolve(AccountRole.AP_CONTROL, tenant_id=tid)
-    vat = AccountResolver.resolve(AccountRole.TAX_PAYABLE, tenant_id=tid)
+    vat_input = AccountResolver.resolve(AccountRole.VAT_INPUT, tenant_id=tid)
+    vat_output = AccountResolver.resolve(AccountRole.VAT_OUTPUT, tenant_id=tid)
 
     supplier = getattr(purchase, 'supplier_name', '') or 'مورد'
 
@@ -52,9 +53,9 @@ def build_purchase_gl_lines(purchase):
         return [
             {'account': inventory, 'debit': net,
              'description': f'شراء بضاعة (RC) {num}'},
-            {'account': vat, 'debit': tax,
+            {'account': vat_input, 'debit': tax,
              'description': f'عكس ضريبة المدخلات (Reverse Charge) {num}'},
-            {'account': vat, 'credit': tax,
+            {'account': vat_output, 'credit': tax,
              'description': f'عكس ضريبة المخرجات (Reverse Charge) {num}'},
             {'account': ap, 'credit': net,
              'description': f'ذمم دائنة - مورد: {supplier}'},
@@ -69,7 +70,7 @@ def build_purchase_gl_lines(purchase):
         return [
             {'account': inventory, 'debit': gross,
              'description': f'شراء بضاعة (تكلفة شاملة للضريبة، RC) {num}'},
-            {'account': vat, 'credit': tax,
+            {'account': vat_output, 'credit': tax,
              'description': f'عكس ضريبة المخرجات (Reverse Charge) {num}'},
             {'account': ap, 'credit': net,
              'description': f'ذمم دائنة - مورد: {supplier}'},
@@ -96,6 +97,6 @@ def build_purchase_gl_lines(purchase):
          'description': f'ذمم دائنة - مورد: {supplier}'},
     ]
     if tax > 0:
-        lines.append({'account': vat, 'debit': tax,
+        lines.append({'account': vat_input, 'debit': tax,
                       'description': f'ضريبة القيمة المضافة (شراء) {num}'})
     return lines

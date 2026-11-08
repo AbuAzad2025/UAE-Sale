@@ -27,7 +27,7 @@ def test_sale_posting_balances_and_records_tax(db, owner_user, test_customer,
     assert entries
     assert all(e.is_posted and e.total_debit == e.total_credit for e in entries)
     vat_credits = sum((line.credit for e in entries for line in e.lines
-                       if line.account.code == '2130'), Decimal('0'))
+                       if line.account.code == '2131'), Decimal('0'))
     assert vat_credits == Decimal(tax)
 
 
@@ -50,7 +50,7 @@ def test_inclusive_discount_edit_adjusts_revenue_tax_and_receivable(
     adjustment = next(e for e in entries if e.description.startswith('Discount adjustment'))
     assert adjustment.total_debit == adjustment.total_credit
     amounts = {line.account.code: (line.debit, line.credit) for line in adjustment.lines}
-    assert amounts['2130'] == (Decimal('0.480'), Decimal('0'))
+    assert amounts['2131'] == (Decimal('0.480'), Decimal('0'))
     assert amounts['4100'] == (Decimal('0'), Decimal('0.480'))
     assert amounts['1130'] == (Decimal('0'), Decimal('10'))
 

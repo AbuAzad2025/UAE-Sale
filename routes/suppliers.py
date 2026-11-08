@@ -164,6 +164,12 @@ def create():
             # أعمدة opening_balance_* التي يقرأها اشتقاق الرصيد.
             opening = _parse_opening_balance(request.form)
 
+            # تحذير إرشادي فقط — لا يُمنع الحفظ (صيغة TRN لكل دولة)
+            from utils.trn import trn_verdict, current_tenant_country_code
+            _ok, _msg = trn_verdict(request.form.get('tax_number'), current_tenant_country_code())
+            if not _ok and _msg:
+                flash(f'⚠️ {_msg}', 'warning')
+
             supplier = Supplier(
                 name=request.form.get('name'),
                 name_en=request.form.get('name_en'),
@@ -254,6 +260,12 @@ def edit(id):
 
     if request.method == 'POST':
         try:
+            # تحذير إرشادي فقط — لا يُمنع الحفظ (صيغة TRN لكل دولة)
+            from utils.trn import trn_verdict, current_tenant_country_code
+            _ok, _msg = trn_verdict(request.form.get('tax_number'), current_tenant_country_code())
+            if not _ok and _msg:
+                flash(f'⚠️ {_msg}', 'warning')
+
             supplier.name = request.form.get('name')
             supplier.name_en = request.form.get('name_en')
             supplier.company_name = request.form.get('company_name')

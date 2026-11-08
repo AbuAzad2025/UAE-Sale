@@ -11,6 +11,11 @@
     </a>
   </div>
 
+  <div class="alert alert-info mb-3">
+    <p class="mb-1"><strong>النطاق مزدوج:</strong> الأسطر العامة (النطاق "دولة") تنطبق على كل الشركات في الدولة؛ «النسخة الخاصة بشركة» تُنشأ بنطاق الشركة وتتجاوز قاعدة الدولة لتلك الشركة فقط — مثلاً: تونس لها نسبة 17% لكن لشركة X تاريخها الخاص 19% بسريان من 2020-07-01.</p>
+    <p class="mb-0"><strong>سريان بتوقيت:</strong> حقول "يسري من/حتى" تسمح بجدولة تغيير النسبة تلقائيًا حسب تاريخ المستند — التصدير/التقرير يقرأ القاعدة النافذة بذلك التاريخ.</p>
+  </div>
+
   <div class="alert alert-warning border border-warning mb-3">
     <h5 class="mb-2"><i class="fas fa-exclamation-triangle"></i> حدود الامتثال القانوني — صراحة</h5>
     <p class="mb-1">هذا المسار يحرّر قواعد الضريبة للدول (نسب، عتبات ضريبة الشركات، تبعات إلكترونية). <strong>لا يُكتب ولا يُقرّ التطبيق أي إقرار ضريبي أمام أي سلطة دولة</strong> — كل دولة تتطلب:</p>
@@ -46,6 +51,11 @@
           <div class="col-md-3"><div class="form-group"><label>عتبة ضريبة الشركات</label><input type="number" step="1" min="0" class="form-control" name="corp_tax_threshold" value="0"></div></div>
         </div>
         <div class="row">
+          <div class="col-md-4"><div class="form-group"><label>النطاق — فارغ = قاعدة الدولة العامة</label><select class="form-control" name="tenant_id"><option value="">دولة عامة (تنطبق على الجميع)</option>{% for t in tenants %}<option value="{{ t.id }}">{{ t.name }}{% if t.slug %} ({{ t.slug }}){% endif %}</option>{% endfor %}</select></div></div>
+          <div class="col-md-4"><div class="form-group"><label>يسري من (اختياري)</label><input type="date" class="form-control" name="effective_from"></div></div>
+          <div class="col-md-4"><div class="form-group"><label>يسري حتى (اختياري)</label><input type="date" class="form-control" name="effective_until"></div></div>
+        </div>
+        <div class="row">
           <div class="col-md-3"><div class="form-group"><label><input type="checkbox" name="vat_enabled_default" checked> تفعيل VAT افتراضيًا</label></div></div>
           <div class="col-md-3"><div class="form-group"><label><input type="checkbox" name="corp_tax_enabled_default"> تفعيل ضريبة الشركات افتراضيًا</label></div></div>
           <div class="col-md-3"><div class="form-group"><label><input type="checkbox" name="einvoice_required"> فاتورة إلكترونية إلزامية</label></div></div>
@@ -68,26 +78,43 @@
       <table class="table table-striped mb-0">
         <thead class="thead-light">
           <tr>
-            <th>الدولة</th><th>VAT %</th><th>ضريبة الشركات %</th><th>عتبة CT</th><th>e-فاتورة</th><th>النظام</th><th></th>
+            <th>النطاق</th><th>الدولة</th><th>VAT %</th><th>ضريبة الشركات %</th><th>عتبة CT</th><th>e-فاتورة</th><th>النظام</th><th></th>
           </tr>
         </thead>
         <tbody>
           {% for r in rulesets %}
           <tr>
+            <td>
+              {% if r.tenant_id is none %}<span class="badge badge-success">دولة (عامة)</span>{% else %}<span class="badge badge-warning">{{ tenant_names.get(r.tenant_id, '#' ~ r.tenant_id) }}</span>{% endif %}
+              {% if r.effective_from %}<br><small class="text-muted">من {{ r.effective_from }}{% if r.effective_until %} حتى {{ r.effective_until }}{% endif %}</small>{% endif %}
+            </td>
             <td><strong>{{ r.country_code }}</strong> — {{ r.country_name }}</td>
             <td>{{ '%.2f'|format(r.vat_rate) }} %</td>
             <td>{{ '%.2f'|format(r.corp_tax_rate) }} %</td>
             <td>{{ '{:,.0f}'.format(r.corp_tax_threshold or 0) }}</td>
             <td>{% if r.einvoice_required %}<span class="badge badge-warning">{{ r.einvoice_status }}</span>{% else %}<span class="badge badge-secondary">غير مطلوب</span>{% endif %}</td>
             <td>{{ r.vat_label }}</td>
-            <td><button class="btn btn-sm btn-outline-primary" data-toggle="collapse" data-target="#edit_ruleset_{{ r.id }}"><i class="fas fa-edit"></i></button></td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary" data-toggle="collapse" data-target="#edit_ruleset_{{ r.id }}"><i class="fas fa-edit"></i></button>
+              {% if r.tenant_id is not none %}
+              <form method="post" action="{{ url_for('owner.tax_rulesets') }}" class="d-inline" onsubmit="return confirm('إلغاء النسخة الخاصة بشركة «{{ tenant_names.get(r.tenant_id, '') }}»؟ تُخفى عن هذه الشركة فقط وتظل قاعدة الدولة العامة سارية');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="deactivate_tenant_ruleset">
+                <input type="hidden" name="id" value="{{ r.id }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="إلغاء التفعيل لهذه الشركة فقط"><i class="fas fa-eye-slash"></i></button>
+              </form>
+              {% endif %}
+            </td>
           </tr>
           <tr class="collapse" id="edit_ruleset_{{ r.id }}">
-            <td colspan="7">
+            <td colspan="8">
               <form method="post" action="{{ url_for('owner.tax_rulesets') }}" class="p-3">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="id" value="{{ r.id }}">
+                <div class="row">
+                  <div class="col-md-3"><div class="form-group"><small class="text-muted">النطاق: {% if r.tenant_id is none %}دولة عامة{% else %}{{ tenant_names.get(r.tenant_id, '#' ~ r.tenant_id) }}{% endif %}</small></div></div>
+                </div>
                 <div class="row">
                   <div class="col-md-3"><div class="form-group"><label>رمز ISO-2</label><input class="form-control" name="country_code" maxlength="2" value="{{ r.country_code }}" required></div></div>
                   <div class="col-md-9"><div class="form-group"><label>اسم الدولة</label><input class="form-control" name="country_name" value="{{ r.country_name }}" required></div></div>
@@ -106,8 +133,12 @@
                   <div class="col-md-4"><div class="form-group"><label>بوابة السلطة</label><input class="form-control" name="authority_portal_url" value="{{ r.authority_portal_url or '' }}"></div></div>
                 </div>
                 <div class="row">
-                  <div class="col-md-4"><div class="form-group"><label><input type="checkbox" name="corp_tax_enabled_default" {% if r.corp_tax_enabled_default %}checked{% endif %}> CT افتراضيًا</label></div></div>
-                  <div class="col-md-4"><div class="form-group"><label><input type="checkbox" name="is_active" {% if r.is_active %}checked{% endif %}> نشط</label></div></div>
+                  <div class="col-md-6"><div class="form-group"><label><input type="checkbox" name="corp_tax_enabled_default" {% if r.corp_tax_enabled_default %}checked{% endif %}> CT افتراضيًا</label></div></div>
+                  <div class="col-md-6"><div class="form-group"><label><input type="checkbox" name="is_active" {% if r.is_active %}checked{% endif %}> نشط</label></div></div>
+                </div>
+                <div class="row">
+                  <div class="col-md-4"><div class="form-group"><label>يسري من</label><input type="date" class="form-control" name="effective_from" value="{{ r.effective_from or '' }}"></div></div>
+                  <div class="col-md-4"><div class="form-group"><label>يسري حتى</label><input type="date" class="form-control" name="effective_until" value="{{ r.effective_until or '' }}"></div></div>
                 </div>
                 <div class="row">
                   <div class="col-md-6"><div class="form-group"><label>ملاحظات الامتثال</label><textarea class="form-control" name="authority_notes" rows="2">{{ r.authority_notes or '' }}</textarea></div></div>

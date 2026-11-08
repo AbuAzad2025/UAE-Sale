@@ -160,6 +160,12 @@ def create():
 
     if form.validate_on_submit():
         try:
+            # تحذير إرشادي فقط — لا يُمنع الحفظ (صيغة TRN لكل دولة)
+            from utils.trn import trn_verdict, current_tenant_country_code
+            _ok, _msg = trn_verdict(form.tax_number.data, current_tenant_country_code())
+            if not _ok and _msg:
+                flash(f'⚠️ {_msg}', 'warning')
+
             # F4: الرصيد الافتتاحي — عميل مُرحَّل عليه رصيد سابق.
             opening = _parse_opening_balance(request.form)
 
@@ -262,6 +268,12 @@ def edit(id):
             if preferred_currency and preferred_currency not in _allowed_currencies:
                 flash('❌ العملة المفضلة غير صالحة.\n💡 اختر العملة من القائمة وحاول مرة أخرى.', 'danger')
                 return render_template('customers/edit.html', customer=customer)
+
+            # تحذير إرشادي فقط — لا يُمنع الحفظ (صيغة TRN لكل دولة)
+            from utils.trn import trn_verdict, current_tenant_country_code
+            _ok, _msg = trn_verdict(request.form.get('tax_number'), current_tenant_country_code())
+            if not _ok and _msg:
+                flash(f'⚠️ {_msg}', 'warning')
 
             customer.name = name
             customer.name_ar = request.form.get('name_ar')

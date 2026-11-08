@@ -9,7 +9,7 @@ from utils.decorators import permission_required, get_owned_or_404
 from routes.ledger import reverse_or_purge_gl_entries
 
 from utils.helpers import create_audit_log, generate_number
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from datetime import datetime
 
 expenses_bp = Blueprint('expenses', __name__, url_prefix='/expenses')
@@ -80,6 +80,19 @@ def create():  # noqa: C901
                 flash('❌ المبلغ يجب أن يكون أكبر من صفر.', 'danger')
                 return redirect(url_for('expenses.index'))
 
+            tax_treatment = (request.form.get('tax_treatment') or 'standard').strip().lower()
+            if tax_treatment not in ('standard', 'zero', 'exempt'):
+                tax_treatment = 'standard'
+            tax_rate = request.form.get('tax_rate', type=float, default=0) or 0
+            tax_inclusive = request.form.get('tax_inclusive') in ('on', '1', 'true')
+            _vals = request.form.getlist('vat_recoverable')
+            vat_recoverable = (('on' in _vals or '1' in _vals or 'true' in _vals)
+                               if _vals else True)
+            reverse_charge = request.form.get('reverse_charge') in ('on', '1', 'true')
+            from services.expense_gl import compute_expense_tax
+            _net, _tax, _total = compute_expense_tax(
+                amount, tax_rate, tax_inclusive, tax_treatment)
+
             cheque_date_str = request.form.get('cheque_date')
             cheque_date_obj = None
             if cheque_date_str:
@@ -87,6 +100,14 @@ def create():  # noqa: C901
                     cheque_date_obj = datetime.strptime(cheque_date_str, '%Y-%m-%d').date()
                 except ValueError:
                     pass
+
+            # المدفوع فعليًا: صافي للـ RC، إجمالي لغيره
+            _payment_amount = (_net if reverse_charge else _total)
+            # تقريب بعملة المعاملة ثم بسعر الصرف
+            _payment_amount = _payment_amount.quantize(
+                Decimal('0.01'), rounding=ROUND_HALF_UP)
+            _amount_base = (_payment_amount * Decimal(str(exchange_rate))).quantize(
+                Decimal('0.01'), rounding=ROUND_HALF_UP)
 
             expense = Expense(
                 expense_number=expense_number,
@@ -96,7 +117,13 @@ def create():  # noqa: C901
                 amount=amount,
                 currency=currency,
                 exchange_rate=exchange_rate,
-                amount_base=amount * exchange_rate,
+                amount_base=_amount_base,
+                tax_treatment=tax_treatment,
+                tax_rate=tax_rate,
+                tax_inclusive=tax_inclusive,
+                vat_recoverable=vat_recoverable,
+                reverse_charge=reverse_charge,
+                tax_amount=_tax,
                 payment_method=request.form.get('payment_method'),
                 reference_number=request.form.get('reference_number'),
                 cheque_number=request.form.get('cheque_number'),
@@ -121,10 +148,10 @@ def create():  # noqa: C901
                     cheque_bank_number=expense.cheque_number or f'CHQ-{expense.expense_number}',
                     cheque_type='outgoing',
                     bank_name=expense.bank_name or 'Unknown',
-                    amount=expense.amount,
+                    amount=_payment_amount,
                     currency=expense.currency,
                     exchange_rate=expense.exchange_rate,
-                    amount_base=expense.amount_base,
+                    amount_base=_amount_base,
                     issue_date=datetime.now().date(),
                     due_date=cheque_date_val,
                     status='pending',
@@ -138,24 +165,10 @@ def create():  # noqa: C901
 
             # معاملات كاملة مع مصروف + قيد + شيك: أي فشل يُرجع الكل
             GLService.ensure_core_accounts()
-            from services.account_resolution import AccountResolver, AccountRole
-            category = expense.category
-            # 1) حساب الفئة (إذنابة) أو حساب افتراضي عام (6990) لتكاليف تسييرية
-            expense_account = (category.gl_account_code if category and category.gl_account_code
-                               else '6990')
-
-            if expense.payment_method == 'cash':
-                payment_account = AccountResolver.resolve(AccountRole.CASH, tenant_id=expense.tenant_id)
-            elif expense.payment_method == 'cheque':
-                # ذمم دائنة إلى شيكات (تُسوّى عندما يُحَّصَل الشيك)
-                payment_account = AccountResolver.resolve(AccountRole.AP_CONTROL, tenant_id=expense.tenant_id)
-            else:
-                payment_account = AccountResolver.resolve(AccountRole.BANK, tenant_id=expense.tenant_id)
-
-            lines = [
-                {'account': expense_account, 'debit': expense.amount, 'description': expense.description},
-                {'account': payment_account, 'credit': expense.amount, 'description': f'دفع {expense.payment_method}'}
-            ]
+            # الضريبة: إضافية/شاملة، غير قابلة للاسترداد (تُحمّل التكلفة)،
+            # وعكس الضريبة (RC: الدافع يسجّل ضريبة ذاتية متوازنة، والمورد بالصافي)
+            from services.expense_gl import build_expense_gl_lines
+            lines = build_expense_gl_lines(expense)
 
             GLService.post_entry(
                 lines,
@@ -224,7 +237,13 @@ def print_expense(id):
     
     template_labels = {'simple': 'مبسط'}
     available_templates = [(k, v) for k, v in template_labels.items()]
-    
+
+    from utils.amount_in_words import amount_in_words
+    from services.expense_gl import expense_payment_amount
+    _payment = expense_payment_amount(expense)
+    amount_words_ar = amount_in_words(_payment, expense.currency, 'ar')
+    amount_words_en = amount_in_words(_payment, expense.currency, 'en')
+
     return render_template(
         'expenses/print.html',
         expense=expense,
@@ -232,23 +251,10 @@ def print_expense(id):
         available_templates=available_templates,
         current_template=template,
         document_type='expense',
-        document_id=expense.id
+        document_id=expense.id,
+        amount_words_ar=amount_words_ar,
+        amount_words_en=amount_words_en,
     )
-
-
-def _expense_gl_accounts(expense):
-    """Resolve (expense_account, payment_account) the same way create() does."""
-    category = expense.category
-    expense_account = category.gl_account_code if category and category.gl_account_code else '6990'
-
-    if expense.payment_method == 'cash':
-        payment_account = '1110'
-    elif expense.payment_method == 'cheque':
-        payment_account = '2110'  # Accounts Payable (cleared by Cheque Issue)
-    else:
-        payment_account = '1120'
-
-    return expense_account, payment_account
 
 
 def _repost_expense_gl(expense):
@@ -293,13 +299,11 @@ def _repost_expense_gl(expense):
 
     try:
         GLService.ensure_core_accounts()
-        expense_account, payment_account = _expense_gl_accounts(expense)
-        lines = [
-            {'account': expense_account, 'debit': expense.amount, 'description': expense.description},
-            {'account': payment_account, 'credit': expense.amount, 'description': f'دفع {expense.payment_method}'},
-        ]
+        # نفس منطق القيد في create — بما في ذلك الضريبة
+        from services.expense_gl import build_expense_gl_lines
+        line_set = build_expense_gl_lines(expense)
         GLService.post_entry(
-            lines,
+            line_set,
             description=f'Expense {expense.expense_number} (corrected)',
             reference_type='Expense',
             reference_id=expense.id,
@@ -330,6 +334,12 @@ def edit(id):  # noqa: C901
             old_amount = Decimal(str(expense.amount or 0))
             old_category_id = expense.category_id
             old_payment_method = expense.payment_method
+            old_tax = Decimal(str(getattr(expense, 'tax_amount', 0) or 0))
+            old_treatment = getattr(expense, 'tax_treatment', 'standard')
+            old_rate = Decimal(str(getattr(expense, 'tax_rate', 0) or 0))
+            old_recoverable = bool(getattr(expense, 'vat_recoverable', True))
+            old_rc = bool(getattr(expense, 'reverse_charge', False))
+            old_inclusive = bool(getattr(expense, 'tax_inclusive', False))
 
             # تحديث البيانات
             new_category_raw = request.form.get('category_id')
@@ -351,10 +361,39 @@ def edit(id):  # noqa: C901
             if new_payment_method:
                 expense.payment_method = new_payment_method
 
+            # الضريبة (إن وُجدت في النموذج)
+            new_treatment = (request.form.get('tax_treatment') or expense.tax_treatment or 'standard').strip().lower()
+            if new_treatment in ('standard', 'zero', 'exempt'):
+                expense.tax_treatment = new_treatment
+            new_rate_raw = request.form.get('tax_rate')
+            if new_rate_raw is not None:
+                try:
+                    expense.tax_rate = Decimal(str(new_rate_raw))
+                except Exception:
+                    pass
+            new_inclusive = request.form.get('tax_inclusive')
+            if new_inclusive is not None:
+                expense.tax_inclusive = new_inclusive in ('on', '1', 'true')
+            new_recoverable = request.form.getlist('vat_recoverable')
+            if request.form.get('vat_recoverable_submitted') is not None:
+                expense.vat_recoverable = ('on' in new_recoverable
+                                           or '1' in new_recoverable
+                                           or 'true' in new_recoverable)
+            new_rc = request.form.get('reverse_charge')
+            if new_rc is not None:
+                expense.reverse_charge = new_rc in ('on', '1', 'true')
+            from services.expense_gl import compute_expense_tax, expense_payment_amount
+            _n, _t, _tot = compute_expense_tax(
+                expense.amount, expense.tax_rate,
+                bool(expense.tax_inclusive), expense.tax_treatment)
+            expense.tax_amount = _t
+
             # حساب المبلغ بعملة الأساس
             exchange_rate = CurrencyService.get_exchange_rate(expense.currency, _base_curr_edit)
             expense.exchange_rate = exchange_rate
-            expense.amount_base = Decimal(str(expense.amount)) * exchange_rate
+            _payment = expense_payment_amount(expense)
+            expense.amount_base = (_payment * exchange_rate).quantize(
+                Decimal('0.01'), rounding=ROUND_HALF_UP)
 
             db.session.commit()
 
@@ -362,6 +401,12 @@ def edit(id):  # noqa: C901
                 Decimal(str(expense.amount or 0)) != old_amount
                 or expense.category_id != old_category_id
                 or expense.payment_method != old_payment_method
+                or Decimal(str(getattr(expense, 'tax_amount', 0) or 0)) != old_tax
+                or getattr(expense, 'tax_treatment', 'standard') != old_treatment
+                or Decimal(str(getattr(expense, 'tax_rate', 0) or 0)) != old_rate
+                or bool(getattr(expense, 'vat_recoverable', True)) != old_recoverable
+                or bool(getattr(expense, 'reverse_charge', False)) != old_rc
+                or bool(getattr(expense, 'tax_inclusive', False)) != old_inclusive
             )
 
             gl_reversed_entry_number = None

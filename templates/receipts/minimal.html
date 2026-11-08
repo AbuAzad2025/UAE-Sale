@@ -257,6 +257,10 @@
       <div class="amount-display">
         <div class="amount-text">المبلغ المستلم</div>
         <div class="amount-big">{{ "{:,.2f}".format(receipt.amount_base) }} {{ base_currency }}</div>
+      <div class="amount-words" style="margin-top:6px; font-size:9px; color:#555; border-top:1px dashed #ccc; padding-top:8px;">
+        {% if amount_words_ar %}<div>{{ amount_words_ar }}</div>{% endif %}
+        {% if amount_words_en %}<div dir="ltr" style="text-align:right;">{{ amount_words_en }}</div>{% endif %}
+      </div>
         <div class="amount-text">{{ base_currency_name }}</div>
       </div>
 

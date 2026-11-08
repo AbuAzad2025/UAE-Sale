@@ -99,6 +99,7 @@
           <th>الحالة</th>
           <th>تاريخ الاستحقاق</th>
           <th>العملة</th>
+          <th>الضريبة</th>
           <th>الإجراءات</th>
         </tr>
       </thead>
@@ -139,6 +140,21 @@
             {% endif %}
           </td>
           <td>{{ purchase.currency }}</td>
+          <td>
+            {% if purchase.reverse_charge %}
+              <span class="badge badge-warning px-2">RC</span>
+            {% elif purchase.tax_treatment == 'zero' %}
+              <span class="badge badge-info px-2">صفرية</span>
+            {% elif purchase.tax_treatment == 'exempt' %}
+              <span class="badge badge-secondary px-2">معفاة</span>
+            {% elif purchase.vat_recoverable == False %}
+              <span class="badge badge-dark px-2">NR</span>
+            {% elif purchase.tax_rate and purchase.tax_rate > 0 %}
+              <span class="badge badge-success px-2">{{ '%g'|format(purchase.tax_rate) }}%</span>
+            {% else %}
+              <span class="badge badge-light px-2">—</span>
+            {% endif %}
+          </td>
           <td>
             <div class="btn-group btn-group-sm">
               <a href="{{ url_for('purchases.view', id=purchase.id) }}" 

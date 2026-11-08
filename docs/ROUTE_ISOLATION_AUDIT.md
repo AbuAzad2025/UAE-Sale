@@ -1,4 +1,4 @@
-# Route Isolation Audit — 499 مسارًا
+# Route Isolation Audit — 514 مسارًا
 
 **توليد:** `scripts/gen_route_audit_doc.py` — لا يُعدَّل يدويًا؛ أي تغيير يُعاد توليد
 الفحص عبر التشغيل: `python -m scripts.gen_route_audit_doc` والالتزام بها في كل
@@ -374,7 +374,7 @@
 | `/monitoring/health` | `monitoring.health` | system | — |
 | `/monitoring/metrics` | `monitoring.metrics` | platform | login_required |
 
-## routes.owner (platform) — 85 مسار
+## routes.owner (platform) — 86 مسار
 
 | Path | Endpoint | Scope | Markers |
 |---|---|---|---|
@@ -430,6 +430,7 @@
 | `/owner/ip-whitelist/<int:index>/delete` | `owner.delete_ip_whitelist` | platform | owner_required, login_required |
 | `/owner/login-history` | `owner.login_history` | platform | owner_required, login_required |
 | `/owner/notification-templates` | `owner.notification_templates` | platform | owner_required, login_required |
+| `/owner/partners` | `owner.partners` | platform | tenant_id, scope, owner_required, login_required |
 | `/owner/payment-gateways` | `owner.payment_gateways` | platform | owner_required, login_required |
 | `/owner/performance-metrics` | `owner.performance_metrics` | platform | owner_required, login_required |
 | `/owner/plans` | `owner.plans` | platform | owner_required, login_required |
@@ -723,13 +724,13 @@
 * **tenant:** 352
 
 ### أكثر علامات العزل استخدامًا
-* `login_required`: 473
+* `login_required`: 474
 * `permission_required`: 260
 * `get_owned_or_404`: 90
-* `owner_required`: 78
-* `tenant_id`: 19
+* `owner_required`: 79
+* `tenant_id`: 20
 * `current_tenant`: 15
-* `scope`: 11
+* `scope`: 12
 * `get_current_tenant_id`: 7
 
 **ملاحظة قانونية:** هذه المسارد حصرًا على مستوى الكود. لا شرط فيها

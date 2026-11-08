@@ -371,7 +371,7 @@
 | Path | Endpoint | Scope | Markers |
 |---|---|---|---|
 | `/monitoring/dashboard` | `monitoring.dashboard` | platform | login_required |
-| `/monitoring/health` | `monitoring.health` | platform | — |
+| `/monitoring/health` | `monitoring.health` | system | — |
 | `/monitoring/metrics` | `monitoring.metrics` | platform | login_required |
 
 ## routes.owner (platform) — 85 مسار
@@ -717,9 +717,9 @@
 ## الملخص
 
 * **إجمالي المسارات:** 513
-* **platform:** 128
+* **platform:** 127
 * **public:** 27
-* **system:** 6
+* **system:** 7
 * **tenant:** 352
 
 ### أكثر علامات العزل استخدامًا

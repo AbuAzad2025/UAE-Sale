@@ -86,6 +86,6 @@ def test_full_inventory_count(app):
         scopes[entry['scope']] = scopes.get(entry['scope'], 0) + 1
     # نطاقات معروفة للتحقق من سلامة المسح — أي تغيير يزيح العدد وباهتز
     assert scopes.get('tenant', 0) == 352
-    assert scopes.get('platform', 0) == 128
+    assert scopes.get('platform', 0) == 127
     assert scopes.get('public', 0) == 27
-    assert scopes.get('system', 0) == 6
+    assert scopes.get('system', 0) == 7

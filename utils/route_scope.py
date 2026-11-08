@@ -59,6 +59,7 @@ SPECIAL_ROUTES = {
     ('/api/health', 'api.health'): 'system',
     ('/api/healthz', 'api.healthz'): 'system',
     ('/api/version', 'api.version'): 'system',
+    ('/monitoring/health', 'monitoring.health'): 'system',  # bare liveness probe
 }
 
 # علامات تمرير العزل في مصدر الدالة (واحدة كافية لكل `tenant`-class route)

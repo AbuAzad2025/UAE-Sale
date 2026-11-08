@@ -3912,8 +3912,14 @@ def partners():
                 else:
                     customer.partner_scope = 'none'
                     customer.partner_share = None
+                    # يبقى شريكًا إن كانت له روابط منتج نشطة (دور المنتج لا
+                    # يتأثر بحقل scope) — يُعاد إلى regular فقط بلا أي دور.
                     if customer.customer_type == 'partner':
-                        customer.customer_type = 'regular'
+                        has_links = (ProductPartner.query
+                                     .filter_by(partner_customer_id=customer.id)
+                                     .count() > 0)
+                        if not has_links:
+                            customer.customer_type = 'regular'
                     changes = {'partner_scope': 'none', 'partner_share': None}
                 db.session.commit()
                 create_audit_log('set_partner_scope', 'customers', customer.id,

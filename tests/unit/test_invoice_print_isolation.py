@@ -42,8 +42,22 @@ def test_print_shows_mixed_line_treatment_badges(client, db, owner_user,
     assert 'معفى' in response.get_data(as_text=True)
 
 
-def test_invoice_without_tenant_cannot_print(client, db, owner_user, login_owner, test_sale):
+def test_platform_context_document_prints_with_platform_settings(client, db, owner_user, login_owner, test_sale):
+    """مستند بلا شركة في سياق المنصة يطبع بهوية المنصة — بلا فبركة هوية شركة."""
     test_sale.tenant_id = None
+    db.session.commit()
+    response = client.get(f'/sales/{test_sale.id}/print')
+    assert response.status_code == 200
+
+
+def test_tenant_document_cannot_print_after_its_tenant_is_deleted(client, db, owner_user, login_owner, test_sale):
+    """شركة المستند حُذفت — الطباعة تُرفض بدل هوية وهمية."""
+    tenant = Tenant(name='Ghost tenant', name_ar='شركة طيّارة', slug='ghost-tenant')
+    db.session.add(tenant)
+    db.session.commit()
+    test_sale.tenant_id = tenant.id
+    db.session.commit()
+    db.session.delete(tenant)
     db.session.commit()
     response = client.get(f'/sales/{test_sale.id}/print')
     assert response.status_code == 409

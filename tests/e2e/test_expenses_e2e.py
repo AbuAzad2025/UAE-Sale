@@ -262,7 +262,7 @@ def expense_category(db, e2e_tenant):
 
 
 @pytest.fixture
-def expense(db, owner, expense_category):
+def expense(db, owner, expense_category, e2e_tenant):
     """Insert an expense row directly, without logging the shared client in.
 
     Using the HTTP create route here would leave the client authenticated as
@@ -271,6 +271,7 @@ def expense(db, owner, expense_category):
     """
     exp = Expense(
         expense_number='EXP-E2E-FIXTURE',
+        tenant_id=e2e_tenant.id,
         category_id=expense_category.id,
         description='Fixture expense',
         amount=Decimal('100'),

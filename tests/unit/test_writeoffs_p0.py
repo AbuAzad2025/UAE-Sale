@@ -163,17 +163,18 @@ class TestWriteOffPosting:
         assert account.is_header is False
         assert account.is_active is True
 
-    def test_amount_base_uses_the_exchange_rate(self, db, customer, monkeypatch):
-        """المبلغ يُخزَّن بعملة المعاملة وبعملة الأساس."""
-        from services import currency_service
+    def test_foreign_writeoff_requires_explicit_exchange_rate(self, db, customer):
+        """الفصل إلزامي للعملة الأجنبية: لا يُجلب سعر حي بصمت أثناء الترحيل."""
+        import pytest as _pytest
+        with _pytest.raises(Exception, match='سعر الصرف|العملة'):
+            WriteOffService.create_writeoff(
+                customer, Decimal('100'), currency='USD', reason='عميل خارجي')
 
-        monkeypatch.setattr(
-            currency_service.CurrencyService, 'get_exchange_rate',
-            staticmethod(lambda from_currency, to_currency=None, user_rate=None:
-                         Decimal('3.67') if from_currency == 'USD' else Decimal('1')))
-
+    def test_amount_base_uses_explicit_exchange_rate(self, db, customer):
+        """المبلغ يُخزَّن بعملة المعاملة وبعملة الأساس بسعر صريح."""
         write_off = WriteOffService.create_writeoff(
-            customer, Decimal('100'), currency='USD', reason='عميل خارجي')
+            customer, Decimal('100'), currency='USD', reason='عميل خارجي',
+            exchange_rate=Decimal('3.67'))
 
         assert write_off.currency == 'USD'
         assert write_off.amount == Decimal('100')

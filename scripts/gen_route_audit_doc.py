@@ -20,7 +20,7 @@ def main():
     audit.sort(key=lambda e: (e['module'], e['path']))
 
     lines = [
-        '# Route Isolation Audit — 499 مسارًا',
+        f'# Route Isolation Audit — {len(audit)} مسارًا',
         '',
         '**توليد:** `scripts/gen_route_audit_doc.py` — لا يُعدَّل يدويًا؛ أي تغيير يُعاد توليد',
         'الفحص عبر التشغيل: `python -m scripts.gen_route_audit_doc` والالتزام بها في كل',

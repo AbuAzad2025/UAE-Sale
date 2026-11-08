@@ -36,7 +36,7 @@ def test_inclusive_purchase_posts_inventory_net_of_tax(
     entry = _purchase_entry(db, pid)
     accounts = assert_entry_accounts(entry.id, {
         '1140': (Decimal('100'), Decimal('0')),
-        '2130': (Decimal('5'), Decimal('0')),
+        '1141': (Decimal('5'), Decimal('0')),
         '2110': (Decimal('0'), Decimal('105')),
     })
     assert accounts
@@ -68,7 +68,7 @@ def test_exempt_purchase_posts_no_tax_lines(
         '2110': (Decimal('0'), Decimal('80')),
     })
     codes = {line.account.code for line in entry.lines}
-    assert '2130' not in codes
+    assert '1141' not in codes
 
 
 def test_purchase_print_uses_owning_tenant_not_platform(

@@ -65,9 +65,9 @@ class TestPurchasePosting:
         assert pid is not None
         assert_product_stock(product.id, Decimal('110'))
 
-    def test_tax_on_purchase_is_debited_to_tax_payable(
+    def test_tax_on_purchase_is_debited_to_vat_input(
             self, client, db, users, login_as, supplier, product, warehouse):
-        """subtotal 500 stays on inventory; tax 25 debits 2130; AP carries 525."""
+        """subtotal 500 stays on inventory; tax 25 debits the input VAT asset 1141; AP carries 525."""
         login_as('owner')
         r = _create_purchase(client, supplier, product, warehouse, tax_rate=5)
         pid = purchase_id_from_redirect(r)
@@ -78,7 +78,7 @@ class TestPurchasePosting:
 
         merged = lines_for_entries(entries_for_reference('Purchase', pid))
         assert merged[ACC['inventory']] == (Decimal('500.000'), Decimal('0.000')), merged
-        assert merged[ACC['tax_payable']] == (Decimal('25.000'), Decimal('0.000')), merged
+        assert merged[ACC['vat_input']] == (Decimal('25.000'), Decimal('0.000')), merged
         assert merged[ACC['ap']] == (Decimal('0.000'), Decimal('525.000')), merged
 
     def test_zero_quantity_purchase_posts_nothing(

@@ -50,7 +50,7 @@ def test_mixed_invoice_posts_with_per_line_tax(
         reference_type='Sale', reference_id=sale.id).all()
     assert entries and all(e.total_debit == e.total_credit for e in entries)
     vat_credits = sum((l.credit for e in entries for l in e.lines
-                       if l.account.code == '2130'), Decimal('0'))
+                       if l.account.code == '2131'), Decimal('0'))
     assert vat_credits == Decimal('2.500')
 
 

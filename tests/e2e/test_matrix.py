@@ -1374,10 +1374,13 @@ def _approval_seed(db, users, suffix, levels, tenant=None):
     db.session.commit()
 
     for lvl in range(1, levels + 1):
-        db.session.add(ApprovalLevel(
+        approval_level = ApprovalLevel(
             request_id=req.id, level=lvl,
             required_role='owner' if lvl == 1 else 'manager',
-            status='pending'))
+            status='pending')
+        if tenant is not None:
+            approval_level.tenant_id = tenant.id
+        db.session.add(approval_level)
     db.session.commit()
     return wf, req
 

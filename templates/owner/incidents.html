@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}سجل الحوادث{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="mb-3 d-flex justify-content-between align-items-center">
+    <h2 class="mb-0"><i class="fas fa-bolt text-danger"></i> سجل الحوادث</h2>
+    <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> رجوع للوحة المالك</a>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header"><h4 class="mb-0"><i class="fas fa-heartbeat"></i> صحة النظام الآن</h4></div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4"><div class="text-center p-2 border rounded"><div class="display-4">{{ health.errors_24h }}</div><div class="text-muted">خطأ آخر 24 ساعة</div></div></div>
+        <div class="col-md-4"><div class="text-center p-2 border rounded"><div class="display-4">{{ health.open_tickets }}</div><div class="text-muted">تذكرة مفتوحة</div></div></div>
+        <div class="col-md-4"><div class="text-center p-2 border rounded"><div class="display-4">{{ health.open_incidents }}</div><div class="text-muted">حادث مفتوح</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">تسجيل حادث جديد</h4>
+      <button class="btn btn-danger" data-toggle="collapse" data-target="#newIncidentPanel"><i class="fas fa-plus"></i> حادث جديد</button>
+    </div>
+    <div id="newIncidentPanel" class="collapse card-body border-top">
+      <form method="POST" action="{{ url_for('owner.incidents') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="create">
+        <div class="form-group"><label>العنوان *</label><input class="form-control" name="title" required placeholder="مثال: بطء في توليد التقارير الضريبية"></div>
+        <div class="form-group"><label>الأثر</label><textarea class="form-control" name="impact" rows="2" placeholder="من تأثر وكيف: فرع/شركة/كل المنصة؟"></textarea></div>
+        <div class="row">
+          <div class="col-md-4"><div class="form-group"><label>الخطورة</label><select class="form-control" name="severity"><option value="sev3">sev3 — عطل جزئي</option><option value="sev2" selected>sev2 — فرع/شركة</option><option value="sev1">sev1 — توقف كامل</option></select></div></div>
+          <div class="col-md-4"><div class="form-group"><label>الحالة</label><select class="form-control" name="status"><option value="open">open</option><option value="monitoring">monitoring</option><option value="resolved">resolved</option></select></div></div>
+        </div>
+        <button class="btn btn-danger"><i class="fas fa-save"></i> تسجيل</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h4 class="mb-0">آخر 30 يومًا</h4></div>
+    <div class="card-body p-0">
+      <table class="table table-striped mb-0">
+        <thead class="thead-light">
+          <tr><th>الوقت</th><th>العنوان</th><th>SEV</th><th>الحالة</th><th>الأثر</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for inc in incidents %}
+          <tr class="{{ 'table-danger' if inc.status == 'open' and inc.severity == 'sev1' else '' }}">
+            <td><small>{{ inc.started_at.strftime('%Y-%m-%d %H:%M') }}</small></td>
+            <td><strong>{{ inc.title }}</strong></td>
+            <td><span class="badge badge-{{ 'danger' if inc.severity == 'sev1' else ('warning' if inc.severity == 'sev2' else 'secondary') }}">{{ inc.severity }}</span></td>
+            <td>{{ inc.status }}</td>
+            <td><small>{{ inc.impact or '—' }}</small></td>
+            <td>
+              {% if inc.status == 'open' or inc.status == 'monitoring' %}
+              <form method="POST" action="{{ url_for('owner.incidents') }}" class="form-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="resolve">
+                <input type="hidden" name="incident_id" value="{{ inc.id }}">
+                <input class="form-control form-control-sm mr-1" name="resolution_notes" placeholder="ملاحظة الإغلاق…" size="26">
+                <button class="btn btn-sm btn-success">إغلاق</button>
+              </form>
+              {% else %}
+              <span class="text-muted">مغلق {{ inc.resolved_at.strftime('%Y-%m-%d') if inc.resolved_at else '' }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center text-muted py-4">لا توجد حوادث مسجلة في آخر 30 يومًا</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

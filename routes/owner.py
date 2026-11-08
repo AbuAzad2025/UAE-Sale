@@ -720,6 +720,38 @@ def list_backups():
                            now=datetime.now())
 
 
+@owner_bp.route('/backups/verify-latest', methods=['GET', 'POST'])
+@login_required
+@permission_required('manage_backups')
+def verify_latest_backup():
+    """تحقق محتوى أعمق من أحدث نسخة — يُسجّل في backup_verifications."""
+    from models import BackupVerification
+    from services.backup_verify import verify_latest_backup as _verify_latest
+    import json
+
+    if request.method == 'POST':
+        row = _verify_latest(db)
+        if row.status == 'verified':
+            flash(f'✅ تم التحقق: {row.filename} — {row.table_count} جدولًا، {row.data_markers} سجلًا', 'success')
+        else:
+            flash(f'❌ التحقق فشل: {row.error}', 'danger')
+        return redirect(url_for('owner.verify_latest_backup'))
+
+    rows = BackupVerification.query.order_by(BackupVerification.verified_at.desc()).limit(20).all()
+    latest = rows[0] if rows else None
+    try:
+        latest_checks = json.loads(latest.checks_json) if latest and latest.checks_json else []
+    except Exception:
+        latest_checks = []
+
+    return render_template(
+        'owner/backups_verify_latest.html',
+        verifications=rows,
+        latest=latest,
+        latest_checks=latest_checks,
+    )
+
+
 @owner_bp.route('/backups/verify/<filename>', methods=['POST'])
 @login_required
 @permission_required('manage_backups')
@@ -1453,6 +1485,18 @@ def system_config():
 _VALID_TENANT_PLANS = ('basic', 'pro', 'enterprise')
 
 
+def _valid_tenant_plans():
+    """الاشتراكات الصحيحة من جدول الخطط؛ يرجع للثابتة في حال غياب الجدول."""
+    try:
+        from models import SubscriptionPlan
+        rows = SubscriptionPlan.query.filter_by(is_active=True).all()
+        if rows:
+            return tuple(sorted(p.slug for p in rows))
+    except Exception:
+        pass
+    return _VALID_TENANT_PLANS
+
+
 def _valid_tenant_slug(slug):
     """Normalize + validate a tenant slug.
 
@@ -1600,7 +1644,7 @@ def _validate_tenant_form(form, currencies, exclude_id=None):
     if slug is None:
         errors.append('المعرف (slug) غير صالح: أحرف لاتينية صغيرة/أرقام/شرطات فقط (2-100).')
     plan = (form.get('subscription_plan') or 'basic').strip()
-    if plan not in _VALID_TENANT_PLANS:
+    if plan not in _valid_tenant_plans():
         errors.append('الخطة غير صالحة.')
         plan = 'basic'
     currency = (form.get('default_currency') or 'ILS').strip().upper()
@@ -3566,6 +3610,221 @@ def compliance_credentials():
         tenant=tenant,
         authorities_rows=rows,
     )
+
+
+@owner_bp.route('/plans', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def plans():
+    """الخطط والاشتراكات — باقات المنتج (CRUD حقيقي، تظهر في /pricing تلقائيًا)."""
+    from models import SubscriptionPlan
+    from decimal import InvalidOperation
+
+    def _redirect_plans():
+        return redirect(url_for('owner.plans'))
+
+    if request.method == 'POST':
+        action = (request.form.get('action') or 'create').strip()
+        plan_id = request.form.get('id', type=int)
+        row = db.session.get(SubscriptionPlan, plan_id) if plan_id else SubscriptionPlan()
+        try:
+            row.slug = (request.form.get('slug') or '').strip().lower()
+            import re
+            if not row.slug or not re.fullmatch(r'[a-z0-9_-]{2,50}', row.slug):
+                raise ValueError('المعرف (slug) غير صالح: أحرف لاتينية/أرقام/شرطات/underscores فقط')
+            row.name_ar = (request.form.get('name_ar') or '').strip()
+            row.name_en = (request.form.get('name_en') or '').strip() or None
+            if not row.name_ar:
+                raise ValueError('اسم الباقة بالعربية مطلوب')
+            row.price_year = Decimal(str(request.form.get('price_year') or '0')).quantize(Decimal('0.01'))
+            row.price_month = Decimal(str(request.form.get('price_month') or '0')).quantize(Decimal('0.01'))
+            row.currency = (request.form.get('currency') or 'AED').strip().upper()[:3]
+            row.max_users = int(request.form.get('max_users') or 0)
+            row.max_products = int(request.form.get('max_products') or 0)
+            row.max_customers = int(request.form.get('max_customers') or 0)
+            row.is_public = request.form.get('is_public') == 'on'
+            row.is_active = request.form.get('is_active') == 'on'
+            row.sort_order = int(request.form.get('sort_order') or 100)
+            row.features_ar = (request.form.get('features_ar') or '').strip() or None
+            row.features_en = (request.form.get('features_en') or '').strip() or None
+            db.session.add(row)
+            db.session.commit()
+            create_audit_log('save_subscription_plan', 'subscription_plans', row.id,
+                             changes={'slug': row.slug, 'price_year': str(row.price_year)})
+            flash('✅ تم حفظ الباقة', 'success')
+        except Exception as exc:
+            db.session.rollback()
+            if isinstance(exc, InvalidOperation):
+                flash('⛔ قيمتان سعريتان غير صالحتين', 'danger')
+            else:
+                flash(f'⛔ {exc}', 'danger')
+        return _redirect_plans()
+
+    rows = SubscriptionPlan.query.order_by(
+        SubscriptionPlan.sort_order.asc(), SubscriptionPlan.id.asc()).all()
+    return render_template('owner/plans.html', plans=rows)
+
+
+@owner_bp.route('/plans/<int:plan_id>/toggle', methods=['POST'])
+@login_required
+@owner_required
+def toggle_plan(plan_id):
+    """تفعيل/إخفاء باقة — لا حذف نهائي أبدًا."""
+    from models import SubscriptionPlan
+
+    row = db.session.get(SubscriptionPlan, plan_id)
+    if row is None:
+        flash('الباقة غير موجودة', 'danger')
+        return redirect(url_for('owner.plans'))
+    row.is_active = not bool(row.is_active)
+    db.session.commit()
+    create_audit_log('toggle_subscription_plan', 'subscription_plans', row.id,
+                     changes={'slug': row.slug, 'is_active': bool(row.is_active)})
+    flash('✅ تم تبديل حالة الباقة', 'success')
+    return redirect(url_for('owner.plans'))
+
+
+SUPPORT_STATUSES = ('open', 'in_progress', 'resolved', 'closed')
+INCIDENT_SEVERITIES = ('sev1', 'sev2', 'sev3')
+
+
+@owner_bp.route('/support-tickets', methods=['GET'])
+@login_required
+@owner_required
+def support_inbox():
+    """صندوق وارد تذاكر الدعم — المالك يرى ويحل كل التذاكر."""
+    from models import SupportTicket
+    from datetime import datetime, timezone
+
+    status = (request.args.get('status') or '').strip()
+    category = (request.args.get('category') or '').strip()
+    priority = (request.args.get('priority') or '').strip()
+    query = SupportTicket.query
+    if status in SUPPORT_STATUSES:
+        query = query.filter(SupportTicket.status == status)
+    if category:
+        query = query.filter(SupportTicket.category == category)
+    if priority:
+        query = query.filter(SupportTicket.priority == priority)
+
+    tickets = query.order_by(SupportTicket.created_at.desc()).limit(300).all()
+    breached = 0
+    for t in tickets:
+        if t.sla_status() == 'breached':
+            breached += 1
+    stats = {
+        'open': SupportTicket.query.filter_by(status='open').count(),
+        'in_progress': SupportTicket.query.filter_by(status='in_progress').count(),
+        'overdue': breached,
+        'total': SupportTicket.query.count(),
+    }
+    return render_template('owner/support_inbox.html',
+                           tickets=tickets, stats=stats,
+                           status_filter=status, category_filter=category,
+                           priority_filter=priority,
+                           category_choices=('bug', 'billing', 'howto', 'feature_request', 'other'),
+                           priority_choices=('low', 'normal', 'high', 'urgent'))
+
+
+@owner_bp.route('/support-tickets/<int:ticket_id>/status', methods=['POST'])
+@login_required
+@owner_required
+def support_ticket_status(ticket_id):
+    """تحديث حالة التذكرة + الحل."""
+    from models import SupportTicket
+    from datetime import datetime, timezone
+
+    ticket = db.session.get(SupportTicket, ticket_id)
+    if ticket is None:
+        flash('التذكرة غير موجودة', 'danger')
+        return redirect(url_for('owner.support_inbox'))
+    status = (request.form.get('status') or '').strip()
+    if status not in SUPPORT_STATUSES:
+        flash('حالة غير صالحة', 'danger')
+        return redirect(url_for('owner.support_inbox'))
+    old_status = ticket.status
+    ticket.status = status
+    resolution = (request.form.get('resolution_notes') or '').strip()
+    if resolution:
+        ticket.resolution_notes = resolution
+    if status in ('resolved', 'closed'):
+        ticket.resolved_at = datetime.now(timezone.utc)
+    db.session.commit()
+    create_audit_log('update_support_ticket', 'support_tickets', ticket.id,
+                     changes={'from': old_status, 'to': status})
+    flash(f'✅ تم تحديث التذكرة #{ticket.id} → {status}', 'success')
+    return redirect(url_for('owner.support_inbox'))
+
+
+@owner_bp.route('/incidents', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def incidents():
+    """سجل الحوادث — يُسجّل أي حادث ≥ SEV-3. الرؤية الكلية على المنصة فقط."""
+    from models import Incident, SupportTicket, ErrorLog
+    from datetime import datetime, timedelta, timezone
+
+    if request.method == 'POST':
+        action = (request.form.get('action') or 'create').strip()
+        if action == 'create':
+            title = (request.form.get('title') or '').strip()
+            if not title:
+                flash('عنوان الحادث مطلوب', 'danger')
+                return redirect(url_for('owner.incidents'))
+            severity = (request.form.get('severity') or 'sev2').strip()
+            status = (request.form.get('status') or 'open').strip()
+            if severity not in INCIDENT_SEVERITIES:
+                severity = 'sev2'
+            row = Incident(
+                title=title,
+                severity=severity,
+                status=status if status in ('open', 'monitoring', 'resolved') else 'open',
+                impact=(request.form.get('impact') or '').strip() or None,
+                created_by_user_id=current_user.id,
+            )
+            db.session.add(row)
+            db.session.commit()
+            create_audit_log('create_incident', 'incidents', row.id,
+                             changes={'title': title, 'severity': severity})
+            flash(f'✅ سُجّل الحادث #{row.id}', 'success')
+        elif action == 'resolve':
+            incident_id = request.form.get('incident_id', type=int)
+            row = db.session.get(Incident, incident_id) if incident_id else None
+            if row is None:
+                flash('الحادث غير موجود', 'danger')
+            else:
+                row.status = 'resolved'
+                row.resolved_at = datetime.now(timezone.utc)
+                row.resolution_notes = (request.form.get('resolution_notes') or '').strip() or None
+                db.session.commit()
+                create_audit_log('resolve_incident', 'incidents', row.id,
+                                 changes={'title': row.title})
+                flash(f'✅ أُغلق الحادث #{row.id}', 'success')
+        return redirect(url_for('owner.incidents'))
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+    incidents_rows = Incident.query.filter(
+        Incident.started_at >= cutoff
+    ).order_by(Incident.started_at.desc()).limit(100).all()
+
+    # صحة اليوم — بطاقة سريعة
+    errors_24h = 0
+    try:
+        errors_24h = ErrorLog.query.filter(
+            ErrorLog.created_at >= datetime.now(timezone.utc) - timedelta(days=1)
+        ).count()
+    except Exception:
+        errors_24h = 0
+    open_tickets = SupportTicket.query.filter_by(status='open').count()
+    open_incidents = Incident.query.filter_by(status='open').count()
+
+    health = {
+        'errors_24h': errors_24h,
+        'open_tickets': open_tickets,
+        'open_incidents': open_incidents,
+    }
+    return render_template('owner/incidents.html',
+                           incidents=incidents_rows, health=health)
 
 
 @owner_bp.route('/guide')

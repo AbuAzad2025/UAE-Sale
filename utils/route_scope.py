@@ -46,6 +46,7 @@ MODULE_SCOPE = {
     'routes.sales': 'tenant',
     'routes.shipments': 'tenant',
     'routes.suppliers': 'tenant',
+    'routes.support': 'tenant',
     'routes.users': 'tenant',
     'routes.warehouse': 'tenant',
     'routes.whatsapp': 'tenant',

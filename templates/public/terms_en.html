@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service — {{ config.COMPANY_NAME_AR }}</title>
+    <meta name="description" content="Terms of service for AzadERP platform — a transparent, non-decorative sample contract.">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/public_simple.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/lang_pills.css') }}">
+    <style>
+      .doc { max-width: 880px; margin: 0 auto; background: #fff; border-radius: 14px; padding: 28px 32px; box-shadow: 0 8px 30px rgba(0,0,0,.06); }
+      .doc h1 { font-size: 1.8rem; margin-bottom: .5rem; color: #0b3d2e; }
+      .doc h2 { font-size: 1.15rem; margin-top: 1.6rem; color: #0b3d2e; border-bottom: 2px solid #e6e9e8; padding-bottom: .4rem; }
+      .doc p, .doc li { font-size: .95rem; line-height: 1.9; color: #1d2a26; }
+      .doc .muted { color: #6b7a74; font-size: .85rem; }
+      .doc .legal-note { background: #fff4d6; border: 1px solid #f0c24b; padding: 12px 14px; border-radius: 10px; font-size: .9rem; margin-bottom: 1.2rem; }
+    </style>
+</head>
+<body>
+    <div class="lang-switcher">
+        <a href="{{ url_for('language.set_language', lang='ar') }}" class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}">العربية</a>
+        <a href="{{ url_for('language.set_language', lang='en') }}" class="lang-pill {% if session.get('language') == 'en' %}active{% endif %}">English</a>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">{{ config.COMPANY_NAME_AR }}</div>
+        <div>
+            <a href="{{ url_for('public.landing') }}">Home</a>
+            <a href="{{ url_for('public.pricing') }}">Pricing</a>
+            <a href="{{ url_for('public.sla') }}">SLA</a>
+            <a href="{{ url_for('public.user_guide') }}">User guide</a>
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Sign in</a>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <div class="doc">
+            <h1>Terms of Service</h1>
+            <p class="muted">Last updated: 2026-11-08 — a sample; the executed contract governs the specific deal.</p>
+
+            <div class="legal-note">
+                <strong>Honest note:</strong> this page is not legal advice. Any binding relationship is governed by a signed contract executed by the parties. Full tax compliance in any country requires a contract and certificate from its authority — not from us.
+            </div>
+
+            <h2>1. Definitions</h2>
+            <ul>
+                <li><strong>"Platform"</strong>: AzadERP application and all its interfaces (web, printing, reports).</li>
+                <li><strong>"Customer"</strong>: the company or entity licensed to use the platform under an active subscription.</li>
+                <li><strong>"Data"</strong>: everything the customer enters into the platform, above all accounting entries.</li>
+            </ul>
+
+            <h2>2. License</h2>
+            <ol>
+                <li>License grants internal use only; no resale or rental of the platform as a unit.</li>
+                <li>Users/products/customers are governed by the agreed plan — not technically enforced, expected responsibility.</li>
+                <li>No use for unlawful purposes or tax fraud/money laundering.</li>
+            </ol>
+
+            <h2>3. Privacy</h2>
+            <p>Customer data belongs to the customer. Platform access is minimal and purpose-bound; no transfer to any third party without written approval, except where required by law.</p>
+
+            <h2>4. Subscription and payment</h2>
+            <ol>
+                <li>Renews annually unless the customer cancels before renewal after notice.</li>
+                <li>Prices published on the <a href="{{ url_for('public.pricing') }}">pricing page</a>; any increase subject to 30-day notice.</li>
+                <li>Late payment allows suspension; records are not deleted due to delay.</li>
+            </ol>
+
+            <h2>5. Tax and compliance</h2>
+            <p><strong>Important:</strong> the platform technically supports tax settings, but <strong>does not grant compliance certification</strong> before any authority. Statutory filings require the authority's own contract and credentials — direct or via a certified provider. The platform stores data in submission-ready form.</p>
+
+            <h2>6. SLA</h2>
+            <p>Availability goals are published on the <a href="{{ url_for('public.sla') }}">SLA page</a>. Scheduled maintenance is announced in advance.</p>
+
+            <h2>7. Liability</h2>
+            <ol>
+                <li>The platform is not responsible for operational decisions made on analytics/forecasts.</li>
+                <li>Maximum liability: the subscription fee paid for the current cycle.</li>
+                <li>Limit does not apply where the law does not permit: gross negligence or wilful misconduct.</li>
+            </ol>
+
+            <h2>8. Termination</h2>
+            <ol>
+                <li>Either party may terminate with 30 days' notice before period end.</li>
+                <li>Upon termination, the customer may export data (CSV/PDF/print) before deletion.</li>
+                <li>Account suspension for breach with notice is reserved to the platform.</li>
+            </ol>
+
+            <h2>9. Governing law</h2>
+            <p>Governed by UAE law or the customer's law (as stated in the executed contract). Disputes: negotiation first, then arbitration.</p>
+
+            <p class="muted">Questions: <a href="{{ url_for('public.contact') }}">contact us</a> or via <a href="{{ url_for('auth.support') }}">support</a>.</p>
+        </div>
+    </div>
+</body>
+</html>

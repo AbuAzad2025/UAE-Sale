@@ -25,11 +25,19 @@ def landing():
 
 @public_bp.route('/pricing')
 def pricing():
-    """صفحة الأسعار والعروض"""
+    """صفحة الأسعار والعروض — تُبنى ديناميكيًا من جدول الخطط."""
     from flask import session
+    try:
+        from models import SubscriptionPlan
+        plans = (SubscriptionPlan.query
+                 .filter_by(is_public=True, is_active=True)
+                 .order_by(SubscriptionPlan.sort_order, SubscriptionPlan.id)
+                 .all())
+    except Exception:
+        plans = []
     if session.get('language') == 'en':
-        return render_template('public/pricing_en.html')
-    return render_template('public/pricing.html')
+        return render_template('public/pricing_en.html', plans=plans)
+    return render_template('public/pricing.html', plans=plans)
 
 
 @public_bp.route('/features')
@@ -60,6 +68,46 @@ def contact():
     if session.get('language') == 'en':
         return render_template('public/contact_en.html')
     return render_template('public/contact.html')
+
+
+@public_bp.route('/terms')
+def terms():
+    """شروط الخدمة"""
+    if session.get('language') == 'en':
+        return render_template('public/terms_en.html')
+    return render_template('public/terms.html')
+
+
+@public_bp.route('/privacy')
+def privacy():
+    """سياسة الخصوصية"""
+    if session.get('language') == 'en':
+        return render_template('public/privacy_en.html')
+    return render_template('public/privacy.html')
+
+
+@public_bp.route('/sla')
+def sla():
+    """التزامات مستوى الخدمة (SLA)"""
+    if session.get('language') == 'en':
+        return render_template('public/sla_en.html')
+    return render_template('public/sla.html')
+
+
+@public_bp.route('/contract')
+def contract():
+    """عقد الاشتراك (نموذج يُرسَل للعميل ويُوقَّع من الطرفين)"""
+    try:
+        from models import SubscriptionPlan
+        plans = (SubscriptionPlan.query
+                 .filter_by(is_public=True, is_active=True)
+                 .order_by(SubscriptionPlan.sort_order, SubscriptionPlan.id)
+                 .all())
+    except Exception:
+        plans = []
+    if session.get('language') == 'en':
+        return render_template('public/contract_en.html', plans=plans)
+    return render_template('public/contract.html', plans=plans)
 
 
 @public_bp.route('/demo')
@@ -94,6 +142,14 @@ def sitemap():
          'keywords': 'مميزات نظام المستودعات، خصائص البرنامج'},
         {'loc': f'{base_url}/demo', 'priority': '0.90', 'changefreq': 'weekly',
          'keywords': 'تجربة مجانية، عرض توضيحي'},
+        {'loc': f'{base_url}/sla', 'priority': '0.85', 'changefreq': 'monthly',
+         'keywords': 'التزامات مستوى الخدمة، SLA'},
+        {'loc': f'{base_url}/contract', 'priority': '0.85', 'changefreq': 'monthly',
+         'keywords': 'عقد الاشتراك، نموذج'},
+        {'loc': f'{base_url}/terms', 'priority': '0.80', 'changefreq': 'monthly',
+         'keywords': 'شروط الخدمة'},
+        {'loc': f'{base_url}/privacy', 'priority': '0.80', 'changefreq': 'monthly',
+         'keywords': 'سياسة الخصوصية'},
         {'loc': f'{base_url}/contact', 'priority': '0.90', 'changefreq': 'monthly',
          'keywords': 'اتصل بنا، دبي، الإمارات'},
         {'loc': f'{base_url}/user-guide', 'priority': '0.85', 'changefreq': 'monthly',

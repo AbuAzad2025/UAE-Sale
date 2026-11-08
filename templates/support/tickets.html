@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}تذاكر الدعم{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="mb-3 d-flex justify-content-between align-items-center">
+    <h2 class="mb-0"><i class="fas fa-life-ring text-info"></i> تذاكر الدعم</h2>
+    <a href="{{ url_for('support.ticket_new') }}" class="btn btn-primary"><i class="fas fa-plus"></i> تذكرة جديدة</a>
+  </div>
+
+  <div class="row mb-3">
+    <div class="col-md-3"><div class="small-box bg-info"><div class="inner"><h4>{{ stats.open }}</h4><p>مفتوحة</p></div><div class="icon"><i class="fas fa-envelope-open"></i></div></div></div>
+    <div class="col-md-3"><div class="small-box bg-warning"><div class="inner"><h4>{{ stats.in_progress }}</h4><p>قيد المعالجة</p></div><div class="icon"><i class="fas fa-hourglass-half"></i></div></div></div>
+    <div class="col-md-3"><div class="small-box bg-success"><div class="inner"><h4>{{ stats.resolved }}</h4><p>محلولة</p></div><div class="icon"><i class="fas fa-check"></i></div></div></div>
+    <div class="col-md-3"><div class="small-box bg-secondary"><div class="inner"><h4>{{ stats.closed }}</h4><p>مغلقة</p></div><div class="icon"><i class="fas fa-archive"></i></div></div></div>
+  </div>
+
+  <form method="GET" class="form-inline mb-3">
+    <label class="mr-2">الحالة:</label>
+    <select class="form-control mr-3" name="status" onchange="this.form.submit()">
+      <option value="">الكل</option>
+      <option value="open" {% if status_filter == 'open' %}selected{% endif %}>مفتوحة</option>
+      <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>قيد المعالجة</option>
+      <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>محلولة</option>
+      <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>مغلقة</option>
+    </select>
+    <label class="mr-2">الفئة:</label>
+    <select class="form-control" name="category" onchange="this.form.submit()">
+      <option value="">الكل</option>
+      {% for code, label in category_label.items() %}
+      <option value="{{ code }}" {% if category_filter == code %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
+  <div class="card">
+    <div class="card-body p-0">
+      <table class="table table-striped mb-0">
+        <thead class="thead-light">
+          <tr><th>#</th><th>الموضوع</th><th>الفئة</th><th>الأولوية</th><th>الحالة</th><th>التاريخ</th></tr>
+        </thead>
+        <tbody>
+          {% for t in tickets %}
+          <tr>
+            <td><a href="{{ url_for('support.ticket_view', id=t.id) }}">#{{ t.id }}</a></td>
+            <td><a href="{{ url_for('support.ticket_view', id=t.id) }}">{{ t.subject }}</a></td>
+            <td>{{ category_label.get(t.category, t.category) }}</td>
+            <td><span class="badge badge-{{ 'danger' if t.priority == 'urgent' else ('warning' if t.priority == 'high' else 'secondary') }}">{{ priority_label.get(t.priority, t.priority) }}</span></td>
+            <td>{{ t.status }}</td>
+            <td>{{ t.created_at.strftime('%Y-%m-%d') }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center text-muted py-4">لا توجد تذاكر بعد — <a href="{{ url_for('support.ticket_new') }}">افتح تذكرة جديدة</a></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

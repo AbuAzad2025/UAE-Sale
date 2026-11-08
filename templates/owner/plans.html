@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}الخطط والاشتراكات{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="mb-3 d-flex justify-content-between align-items-center">
+    <h2 class="mb-0"><i class="fas fa-layer-group text-warning"></i> الخطط والأسعار</h2>
+    <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> رجوع للوحة المالك</a>
+  </div>
+
+  <div class="alert alert-info">
+    <p class="mb-1"><strong>هذه الخطط تظهر في <a href="{{ url_for('public.pricing') }}">صفحة الأسعار العامة</a> تلقائيًا</strong> — بسجل التغييرات موثق في <code>audit_logs</code>.</p>
+    <p class="mb-0">قواعد التحقق: لا يُفرض أي حد في الكود — الحدود للمراقبة، والمسؤولية بالكامل على المالك/الشركة.</p>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">الخطط الحالية ({{ plans | length }})</h4>
+      <button class="btn btn-success" data-toggle="collapse" data-target="#newPlanPanel"><i class="fas fa-plus"></i> إضافة خطة جديدة</button>
+    </div>
+
+    <div id="newPlanPanel" class="collapse card-body border-top">
+      <form method="POST" action="{{ url_for('owner.plans') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="create">
+        <div class="row">
+          <div class="col-md-3"><div class="form-group"><label>slug *</label><input class="form-control" name="slug" placeholder="basic" required pattern="[a-z0-9_-]{2,50}"></div></div>
+          <div class="col-md-4"><div class="form-group"><label>الاسم (عربي) *</label><input class="form-control" name="name_ar" required placeholder="الباقة الأساسية"></div></div>
+          <div class="col-md-5"><div class="form-group"><label>الاسم (إنجليزي)</label><input class="form-control" name="name_en" placeholder="Basic"></div></div>
+        </div>
+        <div class="row">
+          <div class="col-md-3"><div class="form-group"><label>السعر سنوي</label><input type="number" step="0.01" class="form-control" name="price_year" value="0.00"></div></div>
+          <div class="col-md-3"><div class="form-group"><label>السعر شهري</label><input type="number" step="0.01" class="form-control" name="price_month" value="0.00"></div></div>
+          <div class="col-md-3"><div class="form-group"><label>العملة</label><input class="form-control" name="currency" maxlength="3" value="AED"></div></div>
+          <div class="col-md-3"><div class="form-group"><label>الترتيب</label><input type="number" class="form-control" name="sort_order" value="100"></div></div>
+        </div>
+        <div class="row">
+          <div class="col-md-4"><div class="form-group"><label>الحد الأقصى للمستخدمين</label><input type="number" class="form-control" name="max_users" value="3"></div></div>
+          <div class="col-md-4"><div class="form-group"><label>الحد الأقصى للمنتجات</label><input type="number" class="form-control" name="max_products" value="500"></div></div>
+          <div class="col-md-4"><div class="form-group"><label>الحد الأقصى للعملاء</label><input type="number" class="form-control" name="max_customers" value="1000"></div></div>
+        </div>
+        <div class="row">
+          <div class="col-md-6"><div class="form-group"><label>الميزات (سطر لكل ميزة، عربي)</label><textarea class="form-control" name="features_ar" rows="4" placeholder="كل الميزات الحسبية&#10;فواتير وطباعة&#10;تقارير VAT"></textarea></div></div>
+          <div class="col-md-6"><div class="form-group"><label>الميزات (بالإنجليزية)</label><textarea class="form-control" name="features_en" rows="4" placeholder="Book-keeping&#10;Invoices &amp; printing&#10;VAT reports"></textarea></div></div>
+        </div>
+        <div class="form-group">
+          <label><input type="checkbox" name="is_public" checked> تظهر في صفحة الأسعار العامة</label> &nbsp;
+          <label><input type="checkbox" name="is_active" checked> مفعلة</label>
+        </div>
+        <button class="btn btn-primary"><i class="fas fa-save"></i> حفظ</button>
+      </form>
+    </div>
+
+    <div class="card-body p-0">
+      <table class="table table-striped mb-0">
+        <thead class="thead-light">
+          <tr><th>الترتيب</th><th>المعرف</th><th>الاسم</th><th>سنوية</th><th>شهرية</th><th>المستخدمين</th><th>المنتجات</th><th>العامة</th><th>مفعلة</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for p in plans %}
+          <tr>
+            <td>{{ p.sort_order }}</td>
+            <td><strong>{{ p.slug }}</strong></td>
+            <td>{{ p.name_ar }}{% if p.name_en %} <small class="text-muted">({{ p.name_en }})</small>{% endif %}</td>
+            <td>{{ "{:,.2f}".format(p.price_year) }}</td>
+            <td>{{ "{:,.2f}".format(p.price_month) }}</td>
+            <td>{{ p.max_users }}</td>
+            <td>{{ p.max_products }}</td>
+            <td>{% if p.is_public %}<span class="badge badge-success">عامة</span>{% else %}<span class="badge badge-secondary">خاصة</span>{% endif %}</td>
+            <td>{% if p.is_active %}<span class="badge badge-success">مفعلة</span>{% else %}<span class="badge badge-danger">معطلة</span>{% endif %}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary" data-toggle="collapse" data-target="#edit_plan_{{ p.id }}"><i class="fas fa-edit"></i></button>
+              <form method="POST" action="{{ url_for('owner.toggle_plan', plan_id=p.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm btn-outline-warning" title="تفعيل/تعطيل — لا حذف نهائي"><i class="fas fa-toggle-on"></i></button>
+              </form>
+            </td>
+          </tr>
+          <tr class="collapse" id="edit_plan_{{ p.id }}">
+            <td colspan="10">
+              <form method="POST" action="{{ url_for('owner.plans') }}" class="p-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="id" value="{{ p.id }}">
+                <div class="row">
+                  <div class="col-md-3"><div class="form-group"><label>slug</label><input class="form-control" name="slug" value="{{ p.slug }}" required pattern="[a-z0-9_-]{2,50}"></div></div>
+                  <div class="col-md-4"><div class="form-group"><label>الاسم (عربي) *</label><input class="form-control" name="name_ar" value="{{ p.name_ar }}" required></div></div>
+                  <div class="col-md-5"><div class="form-group"><label>الاسم (إنجليزي)</label><input class="form-control" name="name_en" value="{{ p.name_en or '' }}"></div></div>
+                </div>
+                <div class="row">
+                  <div class="col-md-3"><div class="form-group"><label>السعر سنوي</label><input type="number" step="0.01" class="form-control" name="price_year" value="{{ p.price_year }}"></div></div>
+                  <div class="col-md-3"><div class="form-group"><label>السعر شهري</label><input type="number" step="0.01" class="form-control" name="price_month" value="{{ p.price_month }}"></div></div>
+                  <div class="col-md-3"><div class="form-group"><label>العملة</label><input class="form-control" name="currency" maxlength="3" value="{{ p.currency }}"></div></div>
+                  <div class="col-md-3"><div class="form-group"><label>الترتيب</label><input type="number" class="form-control" name="sort_order" value="{{ p.sort_order }}"></div></div>
+                </div>
+                <div class="row">
+                  <div class="col-md-4"><div class="form-group"><label>أقصى مستخدمين</label><input type="number" class="form-control" name="max_users" value="{{ p.max_users }}"></div></div>
+                  <div class="col-md-4"><div class="form-group"><label>أقصى منتجات</label><input type="number" class="form-control" name="max_products" value="{{ p.max_products }}"></div></div>
+                  <div class="col-md-4"><div class="form-group"><label>أقصى عملاء</label><input type="number" class="form-control" name="max_customers" value="{{ p.max_customers }}"></div></div>
+                </div>
+                <div class="row">
+                  <div class="col-md-6"><div class="form-group"><label>الميزات (عربي)</label><textarea class="form-control" name="features_ar" rows="4">{{ p.features_ar or '' }}</textarea></div></div>
+                  <div class="col-md-6"><div class="form-group"><label>الميزات (إنجليزي)</label><textarea class="form-control" name="features_en" rows="4">{{ p.features_en or '' }}</textarea></div></div>
+                </div>
+                <div class="form-group">
+                  <label><input type="checkbox" name="is_public" {% if p.is_public %}checked{% endif %}> عامة</label> &nbsp;
+                  <label><input type="checkbox" name="is_active" {% if p.is_active %}checked{% endif %}> مفعلة</label>
+                </div>
+                <button class="btn btn-primary"><i class="fas fa-save"></i> حفظ</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="text-muted small">أي تغيير في هذه الصفحة ينعكس في صفحة الأسعار العامة فورًا. الحد من استخدام المستخدمين/المنتجات/العملاء غير مفروض افتراضيًا — المراقبة فقط.</p>
+</div>
+{% endblock %}

@@ -80,3 +80,30 @@ def register_cli_commands(app: Flask) -> None:
         ensure_system_integrity(app)
         click.echo('Done.  You can now log in with the OWNER_USERNAME / OWNER_PASSWORD '
                    'env vars (default: owner / <OWNER_PASSWORD>).')
+
+    @app.cli.command('verify-backup')
+    @with_appcontext
+    def verify_backup():
+        """Content-level sanity check of the latest backup under instance/backups/.
+
+        Not a restore — this inspects the backup file itself: size, checksum,
+        gzip-ness, table count, and presence of data markers (COPY blocks /
+        INSERT statements). Exits non-zero on any failure.
+        """
+        from services.backup_verify import verify_latest_backup
+
+        row = verify_latest_backup(db)
+        click.echo(f'File:    {row.filename}')
+        click.echo(f'Status:  {row.status}')
+        click.echo(f'Dialect: {row.dialect}')
+        click.echo(f'Size:    {row.size_bytes} bytes')
+        click.echo(f'Tables:  {row.table_count}')
+        click.echo(f'Data:    {row.data_markers} markers')
+        if row.checks_json:
+            import json as _json
+            for c in _json.loads(row.checks_json):
+                click.echo(f'  ✓ {c}')
+        if row.error:
+            click.echo(f'Error: {row.error}')
+        if row.status != 'verified':
+            raise SystemExit(1)

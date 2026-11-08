@@ -37,59 +37,30 @@
 
     <div class="pricing-container">
         <div class="pricing-grid">
-            
-            <!-- Basic Plan -->
+            {% for p in plans %}
+            <div class="price-card {% if loop.index == 2 %}featured{% endif %}">
+                {% if loop.index == 2 %}<div class="badge">Most Popular</div>{% endif %}
+                <div class="plan-name">{{ p.name_en or p.name_ar }}</div>
+                <div class="price">{{ "{:,.0f}".format(p.price_month) }} {{ p.currency }}<small>/month</small></div>
+                <div class="price-note">or {{ "{:,.0f}".format(p.price_year) }} {{ p.currency }}/year (per month {{ "{:,.0f}".format((p.price_year / 12) if p.price_year else p.price_month) }} {{ p.currency }})<br>
+                    For teams up to {{ p.max_users }} users and {{ "{:,.0f}".format(p.max_products) }} products</div>
+                <ul class="features-list">
+                    {% if p.features_en %}{% for line in p.features_en.splitlines() %}{% if line.strip() %}<li><i class="fas fa-check"></i> {{ line.strip() }}</li>{% endif %}{% endfor %}{% else %}
+                    <li><i class="fas fa-check"></i> {{ p.max_users }} users</li>
+                    <li><i class="fas fa-check"></i> Sales, purchases, inventory</li>
+                    <li><i class="fas fa-check"></i> Invoices &amp; printing</li>
+                    <li><i class="fas fa-check"></i> VAT reports</li>
+                    <li><i class="fas fa-check"></i> Support via tickets</li>
+                    {% endif %}
+                </ul>
+                <button class="btn-select" onclick="contact('{{ p.slug }}')">Choose this plan</button>
+            </div>
+            {% else %}
             <div class="price-card">
-                <div class="plan-name">Basic Plan</div>
-                <div class="price">$50<small>/month</small></div>
-                <div class="price-note">or $80/month with managed hosting<br>For small and medium businesses</div>
-                <ul class="features-list">
-                    <li><i class="fas fa-check"></i> 3 users</li>
-                    <li><i class="fas fa-check"></i> Sales & purchasing</li>
-                    <li><i class="fas fa-check"></i> Stock management</li>
-                    <li><i class="fas fa-check"></i> E-invoicing</li>
-                    <li><i class="fas fa-check"></i> Customers & suppliers</li>
-                    <li><i class="fas fa-check"></i> Basic reports</li>
-                    <li><i class="fas fa-check"></i> WhatsApp support</li>
-                </ul>
-                <button class="btn-select" onclick="contact('basic')">Choose Plan</button>
+                <div class="plan-name">No plans published yet</div>
+                <div class="price-note">Configure plans at /owner/plans first.</div>
             </div>
-
-            <!-- Professional Plan -->
-            <div class="price-card featured">
-                <div class="badge">Most Popular</div>
-                <div class="plan-name">Professional Plan</div>
-                <div class="price">$100<small>/month</small></div>
-                <div class="price-note">or $130/month with managed hosting<br>For growing businesses</div>
-                <ul class="features-list">
-                    <li><i class="fas fa-check"></i> 10 users</li>
-                    <li><i class="fas fa-check"></i> Everything in Basic</li>
-                    <li><i class="fas fa-check"></i> Artificial intelligence</li>
-                    <li><i class="fas fa-check"></i> GL general ledger</li>
-                    <li><i class="fas fa-check"></i> Advanced reports</li>
-                    <li><i class="fas fa-check"></i> Integration API</li>
-                    <li><i class="fas fa-check"></i> 24/7 technical support</li>
-                </ul>
-                <button class="btn-select" onclick="contact('professional')">Choose Plan</button>
-            </div>
-
-            <!-- Enterprise Plan -->
-            <div class="price-card">
-                <div class="plan-name">Business & Enterprise Plan</div>
-                <div class="price">$120<small>/month</small></div>
-                <div class="price-note">or $150/month with managed hosting<br>Tailored enterprise solutions</div>
-                <ul class="features-list">
-                    <li><i class="fas fa-check"></i> Unlimited users</li>
-                    <li><i class="fas fa-check"></i> All advanced features</li>
-                    <li><i class="fas fa-check"></i> Full system customization</li>
-                    <li><i class="fas fa-check"></i> Free staff training</li>
-                    <li><i class="fas fa-check"></i> Private hosting</li>
-                    <li><i class="fas fa-check"></i> Third-party integrations</li>
-                    <li><i class="fas fa-check"></i> Dedicated account manager</li>
-                    <li><i class="fas fa-check"></i> Guaranteed SLA</li>
-                </ul>
-                <button class="btn-select" onclick="contact('enterprise')">Contact Us</button>
-            </div>
+            {% endfor %}
         </div>
     </div>
 

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سياسة الخصوصية وحماية البيانات — {{ config.COMPANY_NAME_AR }}</title>
+    <meta name="description" content="كيف نجمع ونحد من الوصول ونحمي بياناتك ومكتسباتك على منصة AzadERP.">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/public_simple.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/lang_pills.css') }}">
+    <style>
+      .doc { max-width: 880px; margin: 0 auto; background: #fff; border-radius: 14px; padding: 28px 32px; box-shadow: 0 8px 30px rgba(0,0,0,.06); }
+      .doc h1 { font-size: 1.8rem; margin-bottom: .5rem; color: #0b3d2e; }
+      .doc h2 { font-size: 1.15rem; margin-top: 1.6rem; color: #0b3d2e; border-bottom: 2px solid #e6e9e8; padding-bottom: .4rem; }
+      .doc p, .doc li { font-size: .95rem; line-height: 1.9; color: #1d2a26; }
+      .doc .muted { color: #6b7a74; font-size: .85rem; }
+    </style>
+</head>
+<body>
+    <div class="lang-switcher">
+        <a href="{{ url_for('language.set_language', lang='ar') }}" class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}"><i class="fas fa-check"></i>العربية</a>
+        <a href="{{ url_for('language.set_language', lang='en') }}" class="lang-pill {% if session.get('language') == 'en' %}active{% endif %}"><i class="fas fa-check"></i>English</a>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">{{ config.COMPANY_NAME_AR }}</div>
+        <div>
+            <a href="{{ url_for('public.landing') }}">الرئيسية</a>
+            <a href="{{ url_for('public.pricing') }}">الأسعار</a>
+            <a href="{{ url_for('public.terms') }}">الشروط</a>
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> دخول</a>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <div class="doc">
+            <h1>سياسة الخصوصية وحماية البيانات</h1>
+            <p class="muted">آخر تحديث: 2026-11-08 — بوضوح ودون تزيين.</p>
+
+            <h2>1. ما نجمعه</h2>
+            <ul>
+                <li><strong>بيانات الاشتراك:</strong> الاسم والبريدة — فقط لإدارة الحساب والفواتير.</li>
+                <li><strong>بيانات الاستخدام:</strong> صفحات زياراتك، أخطائك التقنية — لتحسين النظام (anonymized حيث ممكن).</li>
+                <li><strong>البيانات التجارية:</strong> كل ما يُدخله العميل داخل حسابه — ملك العميل، لا تطلع عليه المنصة إلا عند إصلاح خطأ معروف.</li>
+            </ul>
+
+            <h2>2. لا نبيع ولا نؤجر</h2>
+            <p>لا نبيع بيانات المستخدم، لا نؤجر أي تارجت، ولا نشارك أي شيء مع شركاء تسويق/إعلان. أي جهة ثالثة تُدرج تلزم ببنود حماية مكافئة.</p>
+
+            <h2>3. أين نخزن وكيف نحميه</h2>
+            <ul>
+                <li>خادم مُدار بمفاتيح تشفير على الراحة وعلى النقل (TLS).</li>
+                <li>بيانات الدفع لا تُمرر بالكامل عبر النظام — توكن البطاقة فقط (والبطاقات اختيارية).</li>
+                <li>بيانات الاعتماد لكل سلطة ضريبية (CSID/API Keys) تُختم بختم Fernet داخل قاعدة البيانات، ولا تُعرض ولا تُرسَل.</li>
+                <li>كل وصول وفقًا للصلاحيات؛ كل وصول للمستخدم المالك يُسجل في <code>audit_logs</code>.</li>
+            </ul>
+
+            <h2>4. الوصول من المحسوب والمطورين</h2>
+            <p>لا يملك أي موظف حق الوصول إلى بياناتك دون سبب واضح — وأقصى ما يحدث هو تشفير مفاتيح الدخول (Fernet) بلا تشفير البيانات نفسها. أي خطأ تقني في هذه السياسة يشكل ثغرة يُبلغ بها فورًا وتخضع لمسؤولية المدير.</p>
+
+            <h2>5. حقوقك</h2>
+            <ol>
+                <li>الوصول: يمكنك طباعة/تصدير بياناتك في أي وقت (CSV/PDF).</li>
+                <li>التصحيح: عدل أو احذف أي سجل داخل حسابك ما لم يطلب قانون الاحتفاظ به (مثلاً القيود المحاسبية للضرائب).</li>
+                <li>الحذف: اطلب حذف الحساب بالكامل؛ يُحذف مع البيانات التشغيلية خلال 30 يومًا إلا ما يُحفظ قانونًا.</li>
+                <li>الاعتراض: وقف التحليلات/الإشعارات التسويقية من الحساب مباشرة.</li>
+            </ol>
+
+            <h2>6. الكوكيز</h2>
+            <p>جلسة واحدة ضرورية فقط (للدخول). لا توجد كوكيز تسويق/إعلان/تحليل سلوك. لا يُباع شيء هنا.</p>
+
+            <h2>7. التغييرات</h2>
+            <p>أي تغيير مادي في هذه السياسة يُؤتى به بإشعار لـ30 يومًا على الأقل عبر البريد واللوحة قبل تنفيذه.</p>
+
+            <p class="muted">للاستفسار: <a href="{{ url_for('public.contact') }}">اتصل بنا</a> — أو عبر <a href="{{ url_for('auth.support') }}">الدعم</a>. هذه الوثيقة عينة؛ الإصدار الموقّع يُملى في كل عقد.</p>
+        </div>
+    </div>
+</body>
+</html>

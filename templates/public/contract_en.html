@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Contract — {{ config.COMPANY_NAME_AR }}</title>
+    <meta name="description" content="AzadERP subscription contract template — filled per tenant and plan, then executed by both parties.">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/public_simple.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/lang_pills.css') }}">
+    <style>
+      .doc { max-width: 880px; margin: 0 auto; background: #fff; border-radius: 14px; padding: 28px 32px; box-shadow: 0 8px 30px rgba(0,0,0,.06); }
+      .doc h1 { font-size: 1.8rem; margin-bottom: .5rem; color: #0b3d2e; }
+      .doc h2 { font-size: 1.15rem; margin-top: 1.6rem; color: #0b3d2e; border-bottom: 2px solid #e6e9e8; padding-bottom: .4rem; }
+      .doc p, .doc li { font-size: .95rem; line-height: 1.9; color: #1d2a26; }
+      .doc .muted { color: #6b7a74; font-size: .85rem; }
+      .plan-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+      .plan-table th, .plan-table td { border: 1px solid #e3e8e6; padding: 10px 12px; font-size: .92rem; text-align: left; }
+      .plan-table thead th { background: #eef7f1; color: #0b3d2e; }
+      .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 1.4rem; }
+      .signature-box { border: 1px dashed #b8c4bd; padding: 14px; border-radius: 10px; min-height: 110px; }
+      @media print { nav, .lang-switcher, .no-print { display: none !important; } .doc { box-shadow: none; padding: 0; max-width: none; } }
+    </style>
+</head>
+<body>
+    <div class="lang-switcher no-print">
+        <a href="{{ url_for('language.set_language', lang='ar') }}" class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}">العربية</a>
+        <a href="{{ url_for('language.set_language', lang='en') }}" class="lang-pill {% if session.get('language') == 'en' %}active{% endif %}">English</a>
+    </div>
+
+    <nav class="navbar no-print">
+        <div class="logo">{{ config.COMPANY_NAME_AR }}</div>
+        <div>
+            <a href="{{ url_for('public.landing') }}">Home</a>
+            <a href="{{ url_for('public.pricing') }}">Pricing</a>
+            <a href="{{ url_for('public.terms') }}">Terms</a>
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Sign in</a>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <div class="doc">
+            <h1>AzadERP Subscription Contract</h1>
+            <p class="muted">A contract sample — to be filled per company and plan, then executed by both parties.</p>
+
+            <h2>1. Parties and start date</h2>
+            <p><strong>Company:</strong> _______________________________  &nbsp; <strong>Date:</strong> ____ / ____ / ______</p>
+            <p><strong>Authorised signatory:</strong> ______________________ &nbsp; <strong>Position:</strong> ________________</p>
+
+            <h2>2. Selected plan</h2>
+            <table class="plan-table">
+                <thead><tr><th>Plan</th><th>Yearly price</th><th>Max users</th><th>Max products</th></tr></thead>
+                <tbody>
+                    {% for p in plans %}
+                    <tr>
+                        <td><strong>{{ p.name_en or p.name_ar }}</strong> <small class="muted">({{ p.slug }})</small></td>
+                        <td>{{ "{:,.0f}".format(p.price_year) }} {{ p.currency }}</td>
+                        <td>{{ p.max_users }}</td>
+                        <td>{{ p.max_products }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-muted">No plans published yet — see the <a href="{{ url_for('public.pricing') }}">pricing page</a>.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <h2>3. Party obligations</h2>
+            <ol>
+                <li><strong>Platform:</strong> access to AzadERP, periodic updates, support per <a href="{{ url_for('public.sla') }}">SLA</a>, scheduled &amp; verified backups.</li>
+                <li><strong>Customer:</strong> subscription fees payment, responsible data entry, not using the platform for unlawful purposes.</li>
+                <li><strong>Compliance:</strong> no compliance certification is granted; statutory filings are the customer's (via its accredited adviser or directly).</li>
+            </ol>
+
+            <h2>4. Signature</h2>
+            <div class="signature-grid no-print">
+                <div class="signature-box"><strong>Party A (Platform):</strong><br><br><br>Name: ........<br>Date: ............</div>
+                <div class="signature-box"><strong>Party B (Customer):</strong><br><br><br>Name: ........<br>Date: ............</div>
+            </div>
+            <p class="muted mt-2">Sample. Any changes are captured before signature and form an integral part of the executed contract; they are recorded in <code>audit_logs</code>.</p>
+        </div>
+    </div>
+</body>
+</html>

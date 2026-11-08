@@ -81,7 +81,7 @@
         </div>
         <div class="info-box">
           <h3>📅 بيانات الفاتورة</h3>
-          <p><strong>التاريخ:</strong> {{ purchase.purchase_date.strftime('%Y-%m-%d') }}</p>
+          <p><strong>التاريخ:</strong> {{ purchase.purchase_date.strftime('%Y-%m-%d') if purchase.purchase_date else '' }}</p>
           <p><strong>المبلغ الإجمالي:</strong> {{ purchase.total_amount }} {{ base_currency }}</p>
           <p><strong>المدفوع:</strong> {{ purchase.get_paid_amount() }} {{ base_currency }}</p>
           <p><strong>المتبقي:</strong> {{ purchase.total_amount - purchase.get_paid_amount() }} {{ base_currency }}</p>

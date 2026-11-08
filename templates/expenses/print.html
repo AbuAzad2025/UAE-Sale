@@ -103,7 +103,7 @@
       <div class="info-grid">
         <div class="info-box">
           <h3>📋 تفاصيل المصروف</h3>
-          <p><strong>التاريخ:</strong> {{ expense.expense_date.strftime('%Y-%m-%d') }}</p>
+          <p><strong>التاريخ:</strong> {{ expense.expense_date.strftime('%Y-%m-%d') if expense.expense_date else '' }}</p>
           <p><strong>الفئة:</strong> {{ expense.category.name if expense.category else 'غير محدد' }}</p>
           <p><strong>الوصف:</strong> {{ expense.description }}</p>
           {% if expense.description_ar %}<p><strong>الوصف بالعربية:</strong> {{ expense.description_ar }}</p>{% endif %}

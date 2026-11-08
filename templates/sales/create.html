@@ -290,16 +290,16 @@ a.btn.btn-outline-secondary span {
             <div class="input-group">
               <input type="number" name="tax_rate" class="form-control" data-tax-enabled="{{ 'false' if current_tenant and not current_tenant.enable_tax else 'true' }}" value="{{ current_tenant.default_tax_rate if current_tenant and current_tenant.default_tax_rate is not none else 5 }}" step="0.01" min="0" max="100"
                      onchange="calculateTotals()" onkeyup="calculateTotals()"
-                     placeholder="5.00">
+                     placeholder="5.00" {{ 'disabled' if current_tenant and not current_tenant.enable_tax }}>
               <div class="input-group-append">
                 <span class="input-group-text">%</span>
               </div>
             </div>
             <div class="form-check mt-2">
-              <input type="checkbox" name="tax_inclusive" class="form-check-input" id="tax_inclusive" value="on" onchange="calculateTotals()" {{ 'checked' if current_tenant and current_tenant.tax_inclusive }}>
+              <input type="checkbox" name="tax_inclusive" class="form-check-input" id="tax_inclusive" value="on" onchange="calculateTotals()" {{ 'checked' if current_tenant and current_tenant.tax_inclusive }} {{ 'disabled' if current_tenant and not current_tenant.enable_tax }}>
               <label class="form-check-label" for="tax_inclusive">الأسعار شاملة الضريبة (شامل — الضريبة تُستخرج من الإجمالي)</label>
             </div>
-            <select name="tax_treatment" class="form-control mt-2" title="معاملة ضريبية الفاتورة" onchange="calculateTotals()">
+            <select name="tax_treatment" class="form-control mt-2" title="معاملة ضريبية الفاتورة" onchange="calculateTotals()" {{ 'disabled' if current_tenant and not current_tenant.enable_tax }}>
               <option value="standard">معاملـة قياسية (نسبة الشركة)</option>
               <option value="zero">خاضعة بنسبة صفرية 0% (حسب الحالة النظامية)</option>
               <option value="exempt">معفاة من الضريبة</option>

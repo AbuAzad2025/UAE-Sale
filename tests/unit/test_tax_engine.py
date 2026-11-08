@@ -247,13 +247,13 @@ class TestLiabilityRouting:
         fake = types.ModuleType('services.account_resolution')
 
         class AccountRole(str, Enum):
-            TAX_PAYABLE = 'TAX_PAYABLE'
+            VAT_OUTPUT = 'VAT_OUTPUT'
             SALES_RETURNS = 'SALES_RETURNS'
 
         class AccountResolver:
             @staticmethod
             def resolve(role, tenant_id=None):
-                mapping = {'TAX_PAYABLE': '9999'}
+                mapping = {'VAT_OUTPUT': '9999'}
                 return mapping.get(role.value, f'R{tenant_id}-{role.value}')
 
         fake.AccountRole = AccountRole

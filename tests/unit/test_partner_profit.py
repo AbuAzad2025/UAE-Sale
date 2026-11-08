@@ -596,3 +596,273 @@ class TestInclusiveVatProductShare:
                        for l in _partner_lines(db, partner_customer.id).all())
         # لا ضريبة على السطر الصفري: 100 - 10 = 90 → 100% = 90
         assert net_owed == Decimal('90.000')
+
+
+class TestPartnerProfitEdges:
+    """تغطية الفروع الحدية — أي مسار يصلح في CI."""
+
+    def test_to_date_accepts_iso_string_date_and_garbage(self):
+        from datetime import date
+        from services.partner_profit import _to_date
+
+        assert _to_date(date(2026, 3, 1)) == date(2026, 3, 1)
+        assert _to_date('2026-03-01') == date(2026, 3, 1)
+        assert _to_date('garbage') is None
+        assert _to_date(None) is None
+        # صيغة ISO الأساسية (YYYYMMDD) تُقبل في Python 3.11+
+        assert _to_date(20260301) == date(2026, 3, 1)
+        assert _to_date('2026-99-99') is None
+
+    def test_marker_window_parses_and_detects_malformed(self):
+        from datetime import date
+        from services.partner_profit import _marker_window
+
+        assert _marker_window('partner-distribution:2026-03-01:2026-03-31:platform') == (
+            date(2026, 3, 1), date(2026, 3, 31))
+        assert _marker_window('partner-distribution:-:-:5') == (date.min, date.max)
+        assert _marker_window('garbage') is None
+        assert _marker_window('') is None
+
+    def test_force_true_overrides_overlap_guard(self, db, app, gl_accounts):
+        from datetime import date as _d
+
+        def _revenue(day):
+            from datetime import datetime
+            from services.gl_service import GLService
+            from services.account_resolution import AccountResolver, AccountRole
+            GLService.post_entry(
+                [{'account': AccountResolver.resolve(AccountRole.CASH),
+                  'debit': Decimal('500'), 'description': 'd'},
+                 {'account': AccountResolver.resolve(AccountRole.SALES_REVENUE),
+                  'credit': Decimal('500'), 'description': 'd'}],
+                description='إيراد', reference_type='Test',
+                exchange_rate=Decimal('1'),
+                entry_date=datetime(day.year, day.month, day.day))
+            db.session.commit()
+
+        _revenue(_d(2026, 3, 10))
+        p = Customer(
+            name='شريك مارس', name_ar='شريك مارس',
+            customer_type='partner', partner_scope='company',
+            partner_share=Decimal('50.000'), is_active=True,
+        )
+        db.session.add(p)
+        db.session.commit()
+
+        from services import partner_profit as pp
+        first = pp.post_partner_distributions(_d(2026, 3, 1), _d(2026, 3, 31))
+        assert first is not None
+        # دخل أبريل لتغذية الربح في نافذة التداخل
+        _revenue(_d(2026, 4, 15))
+        # التكامل القسري يتجاوز حظر التقاطع
+        forced = pp.post_partner_distributions(_d(2026, 3, 15), _d(2026, 4, 30),
+                                               force=True)
+        assert forced is not None
+
+    def test_guard_ignores_foreign_tenant_markers(self, db, app, gl_accounts):
+        from models import GLJournalEntry
+        from services import partner_profit as pp
+        p = Customer(
+            name='شريك آخر', name_ar='شريك',
+            customer_type='partner', partner_scope='company',
+            partner_share=Decimal('25.000'), is_active=True,
+        )
+        db.session.add(p)
+        db.session.commit()
+        marker = 'partner-distribution:2026-03-01:2026-03-31:999'
+        entry = GLJournalEntry(
+            entry_number='JD-FOREIGN', entry_date=None, description='أجنبية',
+            reference_type='PartnerDistribution', reference_id=None,
+            entry_type='closing', currency='AED', exchange_rate=Decimal('1'),
+            total_debit=Decimal('0'), total_credit=Decimal('0'),
+            is_posted=True, is_reversed=False, notes=marker,
+        )
+        db.session.add(entry)
+        db.session.commit()
+        # طلب لجلسة تينانت مختلفة — مؤشر التينانت الأجنبي يُتجاهل
+        pp._guard_against_overlapping_periods(date(2026, 3, 1), date(2026, 3, 31), 12345)
+        # طلب على تينانت المنصة (None) — يتجاهل المؤشرات الرقمية
+        pp._guard_against_overlapping_periods(date(2026, 3, 1), date(2026, 3, 31), None)
+
+    def test_malformed_partner_distribution_marker_is_skipped(self, db, app, gl_accounts):
+        from models import GLJournalEntry
+        from services import partner_profit as pp
+        entry = GLJournalEntry(
+            entry_number='JD-BROKEN', entry_date=None, description='معطوبة',
+            reference_type='PartnerDistribution', reference_id=None,
+            entry_type='closing', currency='AED', exchange_rate=Decimal('1'),
+            total_debit=Decimal('0'), total_credit=Decimal('0'),
+            is_posted=True, is_reversed=False, notes='garbage-notes',
+        )
+        db.session.add(entry)
+        db.session.commit()
+        pp._guard_against_overlapping_periods(date(2026, 3, 1), date(2026, 3, 31), None)
+
+    def test_compute_line_profit_without_sale_context(self):
+        from services.partner_profit import compute_line_profit
+
+        class _Line:
+            quantity = Decimal('2')
+            line_total = Decimal('100')
+            cost_price = Decimal('30')
+            sale = None
+
+        assert compute_line_profit(_Line(), None) == Decimal('40.000')
+
+        class _Empty:
+            quantity = Decimal('0')
+            line_total = Decimal('100')
+            cost_price = Decimal('30')
+            sale = None
+
+        assert compute_line_profit(_Empty(), None) == Decimal('0.000')
+
+    def test_sale_with_zero_profit_posts_no_partner_entry(
+            self, db, owner_user, test_customer, test_product, partner_customer, gl_accounts):
+        from services.sale_service import SaleService
+
+        partner_customer.partner_scope = 'product'
+        db.session.add(ProductPartner(
+            product_id=test_product.id,
+            partner_customer_id=partner_customer.id,
+            percentage=Decimal('25.00'),
+        ))
+        # بيع بربح صفري — لا قيد شريك
+        test_product.average_cost = Decimal('100')
+        test_product.cost_price = Decimal('100')
+        db.session.commit()
+
+        SaleService.create_sale(
+            customer=test_customer,
+            seller=owner_user,
+            lines_data=[{
+                'product': test_product,
+                'quantity': Decimal('1'),
+                'unit_price': Decimal('100'),
+                'tax_treatment': 'exempt',
+            }],
+            currency='AED',
+            user_exchange_rate='1',
+        )
+        entries = [e for e in GLJournalEntry.query.all()
+                   if 'Partner profit shares' in (e.description or '')]
+        assert entries == []
+
+    def test_draws_and_sales_window_filters(self, db, app, company_partner, gl_accounts):
+        from datetime import date as _d
+        from services.partner_profit import _draws_for_partner, _sales_to_partner
+
+        draw = __import__('services.partner_profit', fromlist=['post_partner_draw']).post_partner_draw(
+            company_partner.id, Decimal('100'))
+        assert draw is not None
+        assert _draws_for_partner(company_partner.id, _d(2000, 1, 1), _d(2099, 12, 31)) == Decimal('100.000')
+        assert _draws_for_partner(company_partner.id, _d(2000, 1, 1), _d(2000, 12, 31)) == Decimal('0.000')
+        assert _sales_to_partner(company_partner.id, _d(2000, 1, 1), _d(2000, 12, 31)) == Decimal('0.000')
+
+    def test_post_partner_draw_validates_amount_and_partner(
+            self, db, company_partner, gl_accounts):
+        from services import partner_profit as pp
+
+        with pytest.raises(ValueError):
+            pp.post_partner_draw(company_partner.id, Decimal('0'))
+        with pytest.raises(ValueError):
+            pp.post_partner_draw(company_partner.id, Decimal('-5'))
+        with pytest.raises(ValueError):
+            pp.post_partner_draw(999999, Decimal('10'))
+
+    def test_post_partner_draw_bank_credit_route(self, db, company_partner, gl_accounts):
+        from services.account_resolution import AccountRole
+        from services import partner_profit as pp
+
+        entry = pp.post_partner_draw(company_partner.id, Decimal('77'),
+                                     credit_account_role=AccountRole.BANK)
+        assert entry is not None
+        draw_lines = [l for l in entry.lines if l.description and 'مسحوبات' in l.description]
+        assert draw_lines
+
+    def test_post_partner_shares_for_return_without_sale_loads_it(
+            self, db, owner_user, test_customer, test_product, partner_customer, gl_accounts):
+        from services.return_service import ReturnService
+        from services.sale_service import SaleService
+        from services import partner_profit as pp
+
+        partner_customer.partner_scope = 'product'
+        db.session.add(ProductPartner(
+            product_id=test_product.id,
+            partner_customer_id=partner_customer.id,
+            percentage=Decimal('25.00'),
+        ))
+        test_product.average_cost = Decimal('30')
+        test_product.cost_price = Decimal('30')
+        db.session.commit()
+
+        sale = SaleService.create_sale(
+            customer=test_customer,
+            seller=owner_user,
+            lines_data=[{
+                'product': test_product,
+                'quantity': Decimal('1'),
+                'unit_price': Decimal('100'),
+                'tax_treatment': 'exempt',
+            }],
+            currency='AED',
+            user_exchange_rate='1',
+        )
+        line = SaleLine.query.filter_by(sale_id=sale.id).first()
+        ret = ReturnService.create_return(
+            sale.id,
+            [{'sale_line_id': line.id, 'quantity': Decimal('1'), 'condition': 'good'}],
+            user_id=owner_user.id,
+        )
+        # نداء بلا sale — الدالة تتكفل بتحميله من المرتجع
+        result = pp.post_partner_shares_for_return(ret, None)
+        assert result is not None
+
+    def test_main_preview_and_distribute_cli(self, db, app, company_partner, gl_accounts, capsys):
+        from services import partner_profit as pp
+
+        def _revenue():
+            from services.gl_service import GLService
+            from services.account_resolution import AccountResolver, AccountRole
+            GLService.post_entry(
+                [{'account': AccountResolver.resolve(AccountRole.CASH),
+                  'debit': Decimal('600'), 'description': 'd'},
+                 {'account': AccountResolver.resolve(AccountRole.SALES_REVENUE),
+                  'credit': Decimal('600'), 'description': 'd'}],
+                description='إيراد', reference_type='Test', exchange_rate=Decimal('1'))
+            db.session.commit()
+
+        _revenue()
+        pp.main(['--preview'])
+        out = capsys.readouterr().out
+        assert 'شريك الشركة' in out
+        pp.main(['--distribute'])
+        out = capsys.readouterr().out
+        assert 'Distributed' in out
+
+    def test_post_partner_shares_for_return_missing_sale_lines(
+            self, db, test_customer, test_product, gl_accounts):
+        from services import partner_profit as pp
+        from models import ProductReturn
+
+        # مرتجع بلا أسطر — لا شيء للعكس
+        product_return = ProductReturn(
+            return_number='R-EDGE-1', sale_id=1, customer_id=test_customer.id,
+            exchange_rate=Decimal('1'), currency='AED',
+            total_amount=Decimal('0'), refund_amount=Decimal('0'),
+            amount_base=Decimal('0'), status='approved',
+        )
+        db.session.add(product_return)
+        db.session.flush()
+        assert pp.post_partner_shares_for_return(product_return, None) is None
+
+    def test_return_with_factor_for_unknown_sale_line_skipped(
+            self, db, owner_user, test_customer, test_product, gl_accounts):
+        from decimal import Decimal as D
+        from services.partner_profit import compute_partner_shares
+
+        sale_mock = type('S', (), {})()
+        sale_mock.lines = []
+        sale_mock.subtotal = D('0')
+
+        assert compute_partner_shares(sale_mock) == {}

@@ -148,14 +148,15 @@ def _assert_period_open(entry_date: datetime | None) -> None:
 class _NormalizedLine:
     """سطر مُطبَّع: حساب + مبالغ مُكمَّاة (Decimal)."""
 
-    __slots__ = ("account", "debit", "credit", "description", "amount_base")
+    __slots__ = ("account", "debit", "credit", "description", "amount_base", "party_id")
 
-    def __init__(self, account, debit, credit, description, amount_base):
+    def __init__(self, account, debit, credit, description, amount_base, party_id=None):
         self.account = account
         self.debit = debit
         self.credit = credit
         self.description = description
         self.amount_base = amount_base
+        self.party_id = party_id
 
 
 def _normalize_lines(
@@ -236,6 +237,7 @@ def _normalize_lines(
         amount_base = _quantize_3((debit - credit) * rate)
         total_debit += debit
         total_credit += credit
+        raw_party = ln.get("party_id")
         normalized.append(
             _NormalizedLine(
                 account=account,
@@ -243,6 +245,7 @@ def _normalize_lines(
                 credit=credit,
                 description=ln.get("description"),
                 amount_base=amount_base,
+                party_id=int(raw_party) if raw_party is not None else None,
             )
         )
 
@@ -332,6 +335,7 @@ class GLService:
             ("6700", "اتصالات", "Communications", "expense", "6000", False, 1),
             ("6800", "قرطاسية", "Stationery", "expense", "6000", False, 1),
             ("6900", "خسائر فرق العملة", "Foreign Exchange Loss", "expense", "6000", False, 1),
+            ("6910", "حصص الشركاء في الأرباح", "Partner Profit Share", "expense", "6000", False, 1),
             ("6920", "مصروف ضريبة الدخل", "Income Tax Expense", "expense", "6000", False, 1),
             ("6950", "مصروفات بنكية", "Bank Charges", "expense", "6000", False, 1),
             ("6960", "مديونية مشطوبة", "Bad debt expense", "expense", "6000", False, 1),
@@ -529,6 +533,7 @@ class GLService:
                         debit=item.debit,
                         credit=item.credit,
                         amount_base=item.amount_base,
+                        party_id=getattr(item, 'party_id', None),
                     )
                 )
             db.session.flush()

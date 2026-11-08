@@ -64,7 +64,7 @@ class GLAccount(db.Model):
         '4000', '4100', '4200', '4300', '4400', '4500',
         '5000', '5100', '5150', '5200', '5300',
         '6000', '6100', '6200', '6300', '6400', '6500', '6600', '6700',
-        '6800', '6900', '6950', '6960', '6990',
+        '6800', '6900', '6910', '6950', '6960', '6990',
     })
 
     # F8: الاستثناءات الموثّقة لحركة مدين على حساب طبيعيته دائنة.
@@ -110,6 +110,7 @@ class GLAccount(db.Model):
         '6700': 'عكس مصروف الاتصالات',
         '6800': 'عكس مصروف القرطاسية',
         '6900': 'عكس خسارة فرق العملة',
+        '6910': 'عكس حصة الشريك عند توزيع الخسارة',
         '6950': 'عكس المصروفات البنكية',
         '6990': 'عكس المصروفات المتنوعة',
     }
@@ -537,9 +538,13 @@ class GLJournalLine(TenantScopedMixin, db.Model):
     # مركز التكلفة (اختياري)
     cost_center_id = db.Column(db.Integer, db.ForeignKey('cost_centers.id'))
 
+    # معرّف الشريك (عميل) — تُسند لهذا الطرف حصة في القيد (مثلاً توزيع أرباح)
+    party_id = db.Column(db.Integer, db.ForeignKey('customers.id', ondelete='SET NULL'), nullable=True, index=True)
+
     entry = db.relationship('GLJournalEntry', back_populates='lines')
     account = db.relationship('GLAccount')
     cost_center = db.relationship('CostCenter')
+    party = db.relationship('Customer', foreign_keys=[party_id])
 
     def __repr__(self):
         return f'<GLLine acc={self.account_id} d={self.debit} c={self.credit}>'

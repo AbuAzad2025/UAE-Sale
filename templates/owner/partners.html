@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% block title %}توزيع أرباح الشركاء{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="mb-3 d-flex justify-content-between align-items-center">
+    <h2 class="mb-0"><i class="fas fa-handshake text-success"></i> توزيع أرباح الشركاء</h2>
+    <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> رجوع للوحة المالك</a>
+  </div>
+
+  {% if not impersonated %}
+  <div class="alert alert-warning">
+    <strong>لا توجد شركة مختارة — عرض تجميعي للقراءة فقط.</strong><br>
+    لإدارة شركاء شركة محددة (إعداد النسب، تسجيل المسحوبات، تنفيذ التوزيع) استخدم
+    مبدّل الشركات في الأعلى لتدخل سياق الشركة، ثم افتح هذه الصفحة مرة أخرى.
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header"><h4 class="mb-0">النتيجة والشركاء لكل شركة — الفترة {{ period_from }} ← {{ period_to }}</h4></div>
+    <div class="card-body p-0">
+      <table class="table table-striped mb-0">
+        <thead class="thead-light">
+          <tr><th>#</th><th>الشركة</th><th>صافي النتيجة</th><th>عدد الشركاء</th><th>المسحوبات (3300/3350)</th></tr>
+        </thead>
+        <tbody>
+          {% for row in per_tenant %}
+          <tr>
+            <td>{{ row.tenant.id }}</td>
+            <td><strong>{{ row.tenant.name }}</strong></td>
+            <td>{% if row.net is none %}<span class="text-muted">—</span>{% else %}{{ '{:,.3f}'.format(row.net) }}{% endif %}</td>
+            <td>{{ row.partners }}</td>
+            <td>{{ '{:,.3f}'.format(row.draws) }}</td>
+          </tr>
+          {% endfor %}
+          {% if not per_tenant %}
+          <tr><td colspan="5" class="text-center text-muted py-4">لا توجد شركات مفعلة</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+
+  <div class="alert alert-info">
+    <i class="fas fa-building"></i> أنت الآن في سياق الشركة: <strong>{{ impersonated.name }}</strong> — كل عملية من هذه الصفحة تُرحَّل على أستاذ هذه الشركة فقط وتظهر هويتها في كل قيد.
+  </div>
+
+  <form method="get" class="card mb-3 p-3">
+    <div class="row align-items-end">
+      <div class="col-md-3">
+        <label for="from">من تاريخ</label>
+        <input type="date" class="form-control" id="from" name="from" value="{{ period_from.isoformat() }}">
+      </div>
+      <div class="col-md-3">
+        <label for="to">إلى تاريخ</label>
+        <input type="date" class="form-control" id="to" name="to" value="{{ period_to.isoformat() }}">
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-outline-primary"><i class="fas fa-sync"></i> تحديث المعاينة</button>
+      </div>
+      <div class="col-md-3 text-md-right">
+        <small class="text-muted d-block">العملة: {{ base_currency }}</small>
+      </div>
+    </div>
+  </form>
+
+  <div class="row mb-3">
+    <div class="col-md-4">
+      <div class="card text-center h-100">
+        <div class="card-body">
+          <div class="text-muted small">صافي نتيجة الفترة (إيرادات − مصروفات)</div>
+          <div class="h3 {% if net_income >= 0 %}text-success{% else %}text-danger{% endif %}" dir="ltr">{{ '{:,.3f}'.format(net_income) }}</div>
+          <small class="text-muted">{{ period_from }} ← {{ period_to }}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-center h-100">
+        <div class="card-body">
+          <div class="text-muted small">شركاء مُعرَّفون في هذه الشركة</div>
+          <div class="h3">{{ company_partners | length }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-center h-100">
+        <div class="card-body">
+          <div class="text-muted small">مستوى المنتج</div>
+          <div class="h3">{{ product_partner_rows | length }}</div>
+          <small class="text-muted">نسبة لكل شريك في منتج (تُرحَّل مع كل فاتورة فورًا)</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">المعاينة قبل التوزيع النهائي</h4>
+      <form method="post" onsubmit="return confirm('سيُرحَّل قيد التوزيع في الأستاذ الآن. هل أنت متأكد؟')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="distribute">
+        <input type="hidden" name="from" value="{{ period_from.isoformat() }}">
+        <input type="hidden" name="to" value="{{ period_to.isoformat() }}">
+        <button type="submit" class="btn btn-success"><i class="fas fa-check-double"></i> تنفيذ التوزيع وترحيل القيد</button>
+      </form>
+    </div>
+    <div class="card-body">
+      <p class="text-muted mb-2">يُخصم من حصة كل شريك: مسحوباته (مدين 3300/3350) ومبيعات تمت له في الفترة. الخسارة تُحمَّل بنسبتها نفسها. الملاك المتبقون يأخذون الباقي بما فيها نصيبهم من الخسارة.</p>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped mb-0">
+          <thead class="thead-light">
+            <tr><th>الشريك</th><th>النسبة %</th><th>نصيب النتيجة</th><th>المسحوبات</th><th>مبيعات له</th><th>الصافي المستحق</th></tr>
+          </thead>
+          <tbody>
+            {% for r in preview_rows %}
+            <tr class="{% if r.partner_id is none %}table-secondary{% endif %}">
+              <td>{{ r.partner_name }}</td>
+              <td>{{ '%s' % r.partner_share_pct }}</td>
+              <td>{{ '{:,.3f}'.format(r.share_amount) }}</td>
+              <td>{{ '{:,.3f}'.format(r.draws_deducted) }}</td>
+              <td>{{ '{:,.3f}'.format(r.sales_to_partner_deducted) }}</td>
+              <td><strong>{{ '{:,.3f}'.format(r.net_payout) }}</strong></td>
+            </tr>
+            {% endfor %}
+            {% if not preview_rows %}
+            <tr><td colspan="6" class="text-center text-muted py-3">لا توجد نتيجة للتوزيع في هذه الفترة</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header"><h4 class="mb-0">إعداد الشركاء (مستوى المنتج ومستوى الشركة)</h4></div>
+    <div class="card-body">
+      <form method="post" class="row align-items-end mb-3 border-bottom pb-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="set_scope">
+        <div class="col-md-4">
+          <label>العميل</label>
+          <select class="form-control" name="customer_id" required>
+            <option value="">— اختر العميل —</option>
+            {% for c in customer_options %}
+            <option value="{{ c.id }}">{{ c.name }} — {{ 'شريك' if c.customer_type == 'partner' else c.customer_type }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label>نوع الشراكة</label>
+          <select class="form-control" name="scope">
+            <option value="none">ليس شريكًا</option>
+            <option value="product">شريك منتج</option>
+            <option value="company">شريك شركة</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label>النسبة % (شريك الشركة فقط)</label>
+          <input type="number" step="0.001" min="0" max="100" class="form-control" name="share" placeholder="مثال: 25">
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> حفظ</button>
+        </div>
+      </form>
+
+      <div class="table-responsive">
+        <table class="table table-sm table-striped mb-0">
+          <thead class="thead-light">
+            <tr><th>الاسم</th><th>نوع</th><th>النسبة %</th><th>رصيد جاري الشريك (3350)</th></tr>
+          </thead>
+          <tbody>
+            {% for p in company_partners %}
+            <tr>
+              <td>{{ p.name }}</td>
+              <td>
+                {% if p.partner_scope == 'product' %}<span class="badge badge-info">شريك منتج</span>
+                {% elif p.partner_scope == 'company' %}<span class="badge badge-success">شريك شركة</span>
+                {% else %}<span class="badge badge-secondary">{{ p.partner_scope }}</span>{% endif %}
+              </td>
+              <td>{{ p.partner_share }}</td>
+              <td>{{ '{:,.3f}'.format(partner_balances.get(p.id, 0)) }}</td>
+            </tr>
+            {% endfor %}
+            {% if not company_partners %}
+            <tr><td colspan="4" class="text-center text-muted py-3">لا يوجد شركاء معرَّفون بعد</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header"><h4 class="mb-0">تسجيل مسحوبات شريك</h4></div>
+        <div class="card-body">
+          <p class="text-muted">تُسجل المسحوبات كمدين على جاري الشريك (3350) وتُخصم تلقائيًا من توزيعه القادم.</p>
+          <form method="post" onsubmit="return confirm('تأكيد تسجيل المسحوبات؟')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="record_draw">
+            <div class="form-group">
+              <label>الشريك</label>
+              <select class="form-control" name="partner_id" required>
+                <option value="">— اختر الشريك —</option>
+                {% for p in company_partners %}
+                {% if p.is_active %}<option value="{{ p.id }}">{{ p.name }}</option>{% endif %}
+                {% endfor %}
+              </select>
+            </div>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>المبلغ</label>
+                  <input type="number" step="0.001" min="0.001" class="form-control" name="amount" required>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>من حساب</label>
+                  <select class="form-control" name="source">
+                    <option value="cash">الصندوق (1110)</option>
+                    <option value="bank">البنك (1120)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-outline-danger"><i class="fas fa-hand-holding-usd"></i> تسجيل المسحوبات</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header"><h4 class="mb-0">شركاء المنتجات</h4></div>
+        <div class="card-body p-0">
+          <p class="text-muted px-3 pt-2">تُدار النسب لكل منتج من شاشة المنتج (تعديل المنتج → قسم الشركاء). هذه خلاصة للروابط القائمة.</p>
+          <div class="table-responsive">
+            <table class="table table-sm table-striped mb-0">
+              <thead class="thead-light"><tr><th>المنتج</th><th>الشريك</th><th>النسبة %</th></tr></thead>
+              <tbody>
+                {% for row in product_partner_rows %}
+                <tr><td>{{ row.product_name }}</td><td>{{ row.partner_name }}</td><td>{{ row.percentage }}</td></tr>
+                {% endfor %}
+                {% if not product_partner_rows %}
+                <tr><td colspan="3" class="text-center text-muted py-3">لا توجد نسب شركاء على منتجات بعد</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

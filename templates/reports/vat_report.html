@@ -81,8 +81,30 @@
     <div class="info-box bg-gradient-info">
       <span class="info-box-icon"><i class="fas fa-percent"></i></span>
       <div class="info-box-content">
-        <span class="info-box-text">النسبة</span>
-        <span class="info-box-number">5%</span>
+        <span class="info-box-text">النسب المطبّقة</span>
+        <span class="info-box-number">
+          {% if by_rate %}{% for r in by_rate %}{{ '%g'|format(r.rate) }}%{{ ', ' if not loop.last }}{% endfor %}{% else %}—{% endif %}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row mb-4">
+  <div class="col-md-4">
+    <div class="info-box bg-gradient-secondary">
+      <span class="info-box-icon"><i class="fas fa-ban"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">مشتريات غير قابلة لاسترداد الضريبة (تكلفة)</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(summary.total_non_recoverable_vat) }} — {{ "{:,.2f}".format(summary.total_non_recoverable_base) }} أساس</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="info-box bg-gradient-info">
+      <span class="info-box-icon"><i class="fas fa-exchange-alt"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Reverse Charge — ضريبة ذاتية التقييم</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(summary.total_reverse_charge_vat) }} — {{ "{:,.2f}".format(summary.total_reverse_charge_base) }} أساس</span>
       </div>
     </div>
   </div>
@@ -578,6 +600,87 @@
     </div>
   </div>
 </div>
+<!-- تجميع حسب النسبة + Reverse Charge + غير قابلة للاسترداد -->
+{% if by_rate %}
+<div class="card mt-3">
+  <div class="card-header">
+    <h4 class="mb-0"><i class="fas fa-percent mr-2"></i>التجميع حسب النسبة</h4>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-striped mb-0">
+      <thead class="thead-light">
+        <tr><th>النسبة</th><th>مبيعات خاضعة (أساس)</th><th>ضريبة مبيعات</th><th>مشتريات خاضعة (أساس)</th><th>ضريبة مشتريات</th><th>Reverse Charge VAT</th></tr>
+      </thead>
+      <tbody>
+        {% for r in by_rate %}
+        <tr>
+          <td>{{ '%g'|format(r.rate) }}%</td>
+          <td>{{ "{:,.3f}".format(r.sales_net) }}</td>
+          <td>{{ "{:,.3f}".format(r.sales_vat) }}</td>
+          <td>{{ "{:,.3f}".format(r.purchases_net) }}</td>
+          <td>{{ "{:,.3f}".format(r.purchases_vat) }}</td>
+          <td>{{ "{:,.3f}".format(r.reverse_charge_vat) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if reverse_charge_purchases %}
+<div class="card mt-3">
+  <div class="card-header">
+    <h4 class="mb-0"><i class="fas fa-exchange-alt mr-2"></i>عكس الضريبة (Reverse Charge) — ضريبة ذاتية التقييم</h4>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-striped mb-0">
+      <thead class="thead-light">
+        <tr><th>رقم الفاتورة</th><th>التاريخ</th><th>المورد</th><th>الأساس</th><th>النسبة</th><th>الضريبة (ذاتية)</th></tr>
+      </thead>
+      <tbody>
+        {% for r in reverse_charge_purchases %}
+        <tr>
+          <td>{{ r.number }}</td>
+          <td>{{ r.date.strftime('%Y-%m-%d') if r.date else '' }}</td>
+          <td>{{ r.party }}</td>
+          <td>{{ "{:,.3f}".format(r.net_amount) }}</td>
+          <td>{{ '%g'|format(r.tax_rate) }}%</td>
+          <td>{{ "{:,.3f}".format(r.tax_amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if non_recoverable_purchases %}
+<div class="card mt-3">
+  <div class="card-header">
+    <h4 class="mb-0"><i class="fas fa-ban mr-2"></i>مشتريات غير قابلة للاسترداد — الضريبة تُحمّل على التكلفة</h4>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-striped mb-0">
+      <thead class="thead-light">
+        <tr><th>رقم الفاتورة</th><th>التاريخ</th><th>المورد</th><th>الأساس</th><th>النسبة</th><th>الضريبة (تكلفة)</th></tr>
+      </thead>
+      <tbody>
+        {% for r in non_recoverable_purchases %}
+        <tr>
+          <td>{{ r.number }}</td>
+          <td>{{ r.date.strftime('%Y-%m-%d') if r.date else '' }}</td>
+          <td>{{ r.party }}</td>
+          <td>{{ "{:,.3f}".format(r.net_amount) }}</td>
+          <td>{{ '%g'|format(r.tax_rate) }}%</td>
+          <td>{{ "{:,.3f}".format(r.tax_amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_css %}

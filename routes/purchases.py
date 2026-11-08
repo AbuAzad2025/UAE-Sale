@@ -116,6 +116,14 @@ def create():  # noqa: C901
                 user_rate=user_exchange_rate
             )
 
+            # checkbox gone from checked state sends nothing — distinguish
+            # 'form without the flag at all' (legacy payloads / test suites
+            # that never render the page) from 'user unchecked it':
+            _vals = request.form.getlist('vat_recoverable')
+            vat_recoverable = (('on' in _vals or '1' in _vals or 'true' in _vals)
+                               if _vals else True)
+            reverse_charge = request.form.get('reverse_charge') in ('on', '1', 'true')
+
             purchase = Purchase(
                 purchase_number=purchase_number,
                 supplier_id=supplier_id,
@@ -129,6 +137,8 @@ def create():  # noqa: C901
                 tax_rate=_purchase_tax_rate,
                 tax_inclusive=request.form.get('tax_inclusive') in ('on', '1', 'true'),
                 tax_treatment=_purchase_treatment,
+                vat_recoverable=vat_recoverable,
+                reverse_charge=reverse_charge,
                 notes=request.form.get('notes'),
                 user_id=current_user.id,
                 subtotal=0,
@@ -163,6 +173,9 @@ def create():  # noqa: C901
                 quantity = request.form.get(f'lines[{i}][quantity]', type=float)
                 unit_cost = request.form.get(f'lines[{i}][unit_cost]', type=float)
                 discount_percent = request.form.get(f'lines[{i}][discount_percent]', type=float, default=0)
+                _line_treatment = (request.form.get(f'lines[{i}][tax_treatment]') or 'standard').strip().lower()
+                if _line_treatment not in ('standard', 'zero', 'exempt'):
+                    _line_treatment = 'standard'
 
                 current_app.logger.info(f"Processing line {i}: product_id={product_id}, qty={quantity}, cost={unit_cost}")
 
@@ -175,7 +188,8 @@ def create():  # noqa: C901
                             product_id=product_id,
                             quantity=quantity,
                             unit_cost=unit_cost,
-                            discount_percent=discount_percent
+                            discount_percent=discount_percent,
+                            tax_treatment=_line_treatment,
                         )
 
                         line.calculate_line_total()
@@ -214,32 +228,12 @@ def create():  # noqa: C901
             # A purchase discount reduces the cost of the goods, so the
             # inventory is debited with the amount actually paid for them.
             # الضريبة لا تدخل في تكلفة المخزون سواء كانت إضافية أو داخلة بالسعر.
-            inventory_cost = (Decimal(str(purchase.total_amount or 0))
-                              - Decimal(str(purchase.tax_amount or 0))).quantize(
-                                  Decimal('0.001'), rounding=ROUND_HALF_UP)
-            if inventory_cost < 0:
-                inventory_cost = Decimal('0.000')
-
-            # إعداد قيود اليومية مع فصل الضريبة
-            from services.account_resolution import AccountResolver, AccountRole
-            lines = [
-                # مدين: المخزون (بالمبلغ المدفوع فعلياً، قبل الضريبة)
-                {'account': AccountResolver.resolve(AccountRole.INVENTORY, tenant_id=purchase.tenant_id),
-                 'debit': inventory_cost,
-                 'description': f'شراء بضاعة {purchase.purchase_number}'},
-                # دائن: المورد (بالمبلغ الإجمالي)
-                {'account': AccountResolver.resolve(AccountRole.AP_CONTROL, tenant_id=purchase.tenant_id),
-                 'credit': purchase.total_amount,
-                 'description': f'ذمم دائنة - مورد: {purchase.supplier_name}'}
-            ]
-
-            # إذا وجدت ضريبة، تضاف كمدين (ضريبة مدخلات / قابلة للاسترداد)
-            if purchase.tax_amount > 0:
-                lines.append({
-                    'account': AccountResolver.resolve(AccountRole.TAX_PAYABLE, tenant_id=purchase.tenant_id),
-                    'debit': purchase.tax_amount,
-                    'description': f'ضريبة القيمة المضافة (شراء) {purchase.purchase_number}'
-                })
+            # القيد: مبني عبر `services/purchase_gl.py` — يعالج ضريبة إضافية/شاملة،
+            # ضريبة غير قابلة للاسترداد (تُحمّل على تكلفة البضاعة) وعكس الضريبة
+            # (Reverse Charge للخدمات من موردين أجانب: تُسجّل ضريبة مدخلات ومخرجات
+            # متوازنة بالطرفين، والمورد يُسجَّل بالمبلغ الصافي فقط).
+            from services.purchase_gl import build_purchase_gl_lines
+            lines = build_purchase_gl_lines(purchase)
 
             GLService.post_entry(
                 lines,
@@ -312,7 +306,11 @@ def print_purchase(id):
     
     template_labels = {'simple': 'مبسط'}
     available_templates = [(k, v) for k, v in template_labels.items()]
-    
+
+    from utils.amount_in_words import amount_in_words
+    amount_words_ar = amount_in_words(purchase.total_amount, purchase.currency, 'ar')
+    amount_words_en = amount_in_words(purchase.total_amount, purchase.currency, 'en')
+
     return render_template(
         'purchases/print.html',
         purchase=purchase,
@@ -321,6 +319,8 @@ def print_purchase(id):
         document_id=purchase.id,
         available_templates=available_templates,
         current_template=template,
+        amount_words_ar=amount_words_ar,
+        amount_words_en=amount_words_en,
     )
 
 
@@ -513,9 +513,12 @@ def api_calculate_purchase_totals():
                     line_discount = line_subtotal * (discount_percent / Decimal('100'))
                     line_total = (line_subtotal - line_discount).quantize(
                         Decimal('0.001'), rounding=ROUND_HALF_UP)
+                    _line_treat = (line.get('tax_treatment') or 'standard').strip().lower()
+                    if _line_treat not in ('standard', 'zero', 'exempt'):
+                        _line_treat = 'standard'
                     subtotal += line_total
                     line_specs.append({'line_total': line_total,
-                                       'tax_treatment': 'standard'})
+                                       'tax_treatment': _line_treat})
             except (ValueError, TypeError, KeyError):
                 continue
 

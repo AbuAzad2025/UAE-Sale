@@ -141,6 +141,15 @@ a.btn.btn-outline-secondary span {
         <div class="col-md-4">
           <div class="form-group">
             <label>
+              <i class="fas fa-receipt text-warning"></i> الرقم الضريبي (TRN)
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الرقم الضريبي للعميل — يُطبع على الفاتورة الضريبية إن وُجد (اختياري)"></i>
+            </label>
+            {{ form.tax_number(class="form-control", placeholder="100000000000003") }}
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-group">
+            <label>
               <i class="fas fa-calendar-check text-info"></i> شروط الدفع (أيام)
               <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عدد الأيام قبل استحقاق الفاتورة (0 = عند الاستحقاق فوراً)"></i>
             </label>

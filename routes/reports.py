@@ -1457,43 +1457,145 @@ def _vat_report_data(date_from=None, date_to=None):
     purchases_query = purchases_query.filter(
         ~Purchase.id.in_(_archived_record_ids('purchases')))
 
+    def _purchase_tax_rows(purchase):
+        """Rows for the VAT report — mirror of `_sale_tax_rows` for purchases.
+
+        Per-line buckets with FX-to-base conversion; invoice-level zero/exempt
+        treatment overrides every line. Reverse-charge and non-recoverable
+        flags ride on the row for the report's disclosure sections.
+        """
+        from services.sale_tax_calculation import sale_tax_totals_mixed
+
+        fx = Decimal(str(purchase.exchange_rate or 1))
+        if fx <= 0:
+            fx = Decimal('1')
+        rate = Decimal(str(purchase.tax_rate or 0))
+        invoice_treatment = getattr(purchase, 'tax_treatment', None) or 'standard'
+        lines = list(purchase.lines or [])
+        if not lines:
+            gross_base = purchase.amount_base or Decimal('0')
+            tax_base = Decimal(str(purchase.tax_amount or 0)) * fx
+            net_all = gross_base - tax_base
+            if invoice_treatment == 'zero':
+                return [('zero', net_all, Decimal('0'))]
+            if invoice_treatment == 'exempt':
+                return [('exempt', net_all, Decimal('0'))]
+            if rate > 0:
+                return [('standard', net_all, tax_base.quantize(
+                    Decimal('0.001'), rounding=ROUND_HALF_UP))]
+            return []
+        specs = [{'line_total': line.line_total,
+                  'tax_treatment': getattr(line, 'tax_treatment', None) or 'standard'}
+                 for line in lines]
+        tax, total, net_std, net_zero, net_exempt = sale_tax_totals_mixed(
+            specs, purchase.discount_amount, Decimal('0'), rate,
+            bool(purchase.tax_inclusive), invoice_treatment=invoice_treatment)
+        q = lambda v: (Decimal(str(v)) * fx).quantize(
+            Decimal('0.001'), rounding=ROUND_HALF_UP)
+        return [(bucket, q(net), q(tax) if bucket == 'standard' else Decimal('0'))
+                for bucket, net in (('standard', net_std),
+                                    ('zero', net_zero),
+                                    ('exempt', net_exempt)) if net > 0]
+
     taxable_purchases = []
     zero_rated_purchases = []
     exempt_purchases = []
     unclassified_purchases = []
+    non_recoverable_purchases = []
+    reverse_charge_purchases = []
     total_taxable_purchases = Decimal('0')
     total_zero_rated_purchases = Decimal('0')
     total_input_vat = Decimal('0')
     total_exempt_purchases = Decimal('0')
     total_unclassified_purchases = Decimal('0')
+    total_non_recoverable_vat = Decimal('0')
+    total_non_recoverable_base = Decimal('0')
+    total_reverse_charge_vat = Decimal('0')
+    total_reverse_charge_base = Decimal('0')
 
     for purchase in purchases_query.order_by(Purchase.purchase_date).all():
         net_base, tax_base, tax_rate = _vat_base_amounts(purchase)
-        _purchase_treatment = getattr(purchase, 'tax_treatment', None) or 'standard'
-        row = {
+        treatment = getattr(purchase, 'tax_treatment', None) or 'standard'
+        recoverable = bool(getattr(purchase, 'vat_recoverable', True))
+        reverse_charge = bool(getattr(purchase, 'reverse_charge', False))
+        base_row = {
             'number': purchase.purchase_number,
             'date': purchase.purchase_date,
             'party': (purchase.supplier.name if purchase.supplier
                       else purchase.supplier_name),
-            'net_amount': net_base,
             'gross_amount': purchase.amount_base or Decimal('0'),
-            'tax_rate': tax_rate,
-            'tax_amount': tax_base,
+            'recoverable': recoverable,
+            'reverse_charge': reverse_charge,
         }
-        if tax_rate > 0:
-            taxable_purchases.append(row)
-            total_taxable_purchases += net_base
-            total_input_vat += tax_base
-        elif _purchase_treatment == 'zero':
-            zero_rated_purchases.append(row)
-            total_zero_rated_purchases += net_base
-        elif _purchase_treatment == 'exempt':
-            exempt_purchases.append(row)
-            total_exempt_purchases += net_base
-        else:
-            # نسبة صفر بلا تصنيف — لا تُصنّف آلياً.
-            unclassified_purchases.append(row)
+        if tax_rate == 0 and treatment == 'standard':
+            unclassified_purchases.append({
+                **base_row,
+                'net_amount': net_base,
+                'tax_rate': tax_rate,
+                'tax_amount': tax_base,
+                'treatment': 'standard',
+            })
             total_unclassified_purchases += net_base
+            continue
+        for bucket, net, _tax in _purchase_tax_rows(purchase):
+            row = {
+                **base_row,
+                'net_amount': net,
+                'tax_rate': tax_rate if bucket == 'standard' else Decimal('0'),
+                'tax_amount': _tax,
+                'treatment': bucket,
+            }
+            if bucket == 'standard':
+                if reverse_charge:
+                    reverse_charge_purchases.append(row)
+                    total_reverse_charge_vat += _tax
+                    total_reverse_charge_base += net
+                if recoverable:
+                    taxable_purchases.append(row)
+                    total_taxable_purchases += net
+                    total_input_vat += _tax
+                else:
+                    non_recoverable_purchases.append(row)
+                    total_non_recoverable_vat += _tax
+                    total_non_recoverable_base += net
+            elif bucket == 'zero':
+                zero_rated_purchases.append(row)
+                total_zero_rated_purchases += net
+            else:
+                exempt_purchases.append(row)
+                total_exempt_purchases += net
+
+    # Reverse charge: ضريبة المخرجات تُقيّم ذاتياً من المشتري — تُضاف للأرقام
+    total_output_vat += total_reverse_charge_vat
+
+    # التجميع حسب النسبة (by rate) — للمبيعات والمشتريات
+    rate_map = {}
+
+    def _accrue(rate, side, net, tax):
+        r = (Decimal(str(rate or 0))).quantize(Decimal('0.01'))
+        entry = rate_map.setdefault(str(r), {
+            'rate': r,
+            'sales_net': Decimal('0'), 'sales_vat': Decimal('0'),
+            'purchases_net': Decimal('0'), 'purchases_vat': Decimal('0'),
+            'reverse_charge_vat': Decimal('0'),
+        })
+        if side == 'sales':
+            entry['sales_net'] += net
+            entry['sales_vat'] += tax
+        else:
+            entry['purchases_net'] += net
+            entry['purchases_vat'] += tax
+
+    for r in taxable_sales:
+        _accrue(r['tax_rate'], 'sales', r['net_amount'], r['tax_amount'])
+    for r in taxable_purchases:
+        _accrue(r['tax_rate'], 'purchases', r['net_amount'], r['tax_amount'])
+    for r in reverse_charge_purchases:
+        key = str((Decimal(str(r['tax_rate'] or 0))).quantize(Decimal('0.01')))
+        entry = rate_map.get(key)
+        if entry:
+            entry['reverse_charge_vat'] += r['tax_amount']
+    by_rate = [rate_map[k] for k in sorted(rate_map, key=lambda k: Decimal(k))]
 
     # المرتجعات تخصم من المبيعات الخاضعة ومن ضريبة المخرجات
     total_taxable_sales -= credit_net_by_treatment['standard']
@@ -1517,6 +1619,10 @@ def _vat_report_data(date_from=None, date_to=None):
         'total_zero_rated_purchases': total_zero_rated_purchases,
         'total_unclassified_purchases': total_unclassified_purchases,
         'total_exempt_purchases': total_exempt_purchases,
+        'total_non_recoverable_vat': total_non_recoverable_vat,
+        'total_non_recoverable_base': total_non_recoverable_base,
+        'total_reverse_charge_vat': total_reverse_charge_vat,
+        'total_reverse_charge_base': total_reverse_charge_base,
         'net_vat': net_vat,
         'vat_payable': net_vat if net_vat > 0 else Decimal('0'),
         'vat_refund': abs(net_vat) if net_vat < 0 else Decimal('0'),
@@ -1532,6 +1638,9 @@ def _vat_report_data(date_from=None, date_to=None):
         'zero_rated_purchases': zero_rated_purchases,
         'unclassified_purchases': unclassified_purchases,
         'exempt_purchases': exempt_purchases,
+        'non_recoverable_purchases': non_recoverable_purchases,
+        'reverse_charge_purchases': reverse_charge_purchases,
+        'by_rate': by_rate,
         'summary': summary,
         'date_from': date_from or '',
         'date_to': date_to or '',
@@ -1561,6 +1670,9 @@ def vat_report():
                            zero_rated_purchases=data['zero_rated_purchases'],
                            unclassified_purchases=data['unclassified_purchases'],
                            exempt_purchases=data['exempt_purchases'],
+                           non_recoverable_purchases=data['non_recoverable_purchases'],
+                           reverse_charge_purchases=data['reverse_charge_purchases'],
+                           by_rate=data['by_rate'],
                            summary=data['summary'],
                            date_from=data['date_from'],
                            date_to=data['date_to'])
@@ -1801,6 +1913,9 @@ def export_vat_report():  # noqa: C901
     zero_rated_purchase_rows = [_purchase_row(r) for r in data['zero_rated_purchases']]
     unclassified_purchase_rows = [_purchase_row(r) for r in data['unclassified_purchases']]
     exempt_purchase_rows = [_purchase_row(r) for r in data['exempt_purchases']]
+    by_rate_rows = [[f"{r['rate']}%", float(r['sales_net']), float(r['sales_vat']),
+                     float(r['purchases_net']), float(r['purchases_vat']),
+                     float(r['reverse_charge_vat'])] for r in data['by_rate']]
 
     total_output = summary['total_output_vat']
     total_input = summary['total_input_vat']
@@ -1851,6 +1966,21 @@ def export_vat_report():  # noqa: C901
                ('المجموع', summary['total_taxable_purchases'], total_input))
         _sheet('المشتريات المعفاة', purchase_headers, exempt_purchase_rows,
                '7F8C8D', ('المجموع', summary['total_exempt_purchases'], 0))
+        non_recoverable_rows = [_purchase_row(r) for r in data['non_recoverable_purchases']]
+        reverse_charge_rows = [_purchase_row(r) for r in data['reverse_charge_purchases']]
+        _sheet('غير قابلة للاسترداد', purchase_headers, non_recoverable_rows,
+               '34495E', ('المجموع', summary['total_non_recoverable_base'],
+                           summary['total_non_recoverable_vat']))
+        _sheet('عكس الضريبة (RC)', purchase_headers, reverse_charge_rows,
+               '16A085', ('المجموع', summary['total_reverse_charge_base'],
+                           summary['total_reverse_charge_vat']))
+        by_rate_headers = ['النسبة', 'مبيعات خاضعة (أساس)', 'ضريبة مبيعات',
+                           'مشتريات خاضعة (أساس)', 'ضريبة مشتريات',
+                           'Reverse Charge VAT']
+        by_rate_rows = [[f"{r['rate']}%", float(r['sales_net']), float(r['sales_vat']),
+                         float(r['purchases_net']), float(r['purchases_vat']),
+                         float(r['reverse_charge_vat'])] for r in data['by_rate']]
+        _sheet('التجميع حسب النسبة', by_rate_headers, by_rate_rows, '1ABC9C')
 
         ws3 = wb.create_sheet('الملخص')
         ws3.sheet_view.rightToLeft = True
@@ -1867,6 +1997,10 @@ def export_vat_report():  # noqa: C901
             ('إجمالي المشتريات المعفاة', float(summary['total_exempt_purchases'])),
             ('إجمالي المشتريات الصفرية', float(summary['total_zero_rated_purchases'])),
             ('مشتريات صفر بلا تصنيف', float(summary['total_unclassified_purchases'])),
+            ('مشتريات غير قابلة للاسترداد (أساس)', float(summary['total_non_recoverable_base'])),
+            ('ضريبة غير قابلة للاسترداد', float(summary['total_non_recoverable_vat'])),
+            ('Reverse Charge — ضريبة ذاتية (أساس)', float(summary['total_reverse_charge_base'])),
+            ('Reverse Charge — ضريبة ذاتية التقييم', float(summary['total_reverse_charge_vat'])),
             ('الرصيد النهائي', float(net_vat)),
         ]
         for ri, (label, value) in enumerate(summary_rows, 1):
@@ -1902,7 +2036,10 @@ def export_vat_report():  # noqa: C901
                 [['── المشتريات الخاضعة للضريبة ──'] + [''] * 5] + [purchase_headers] + purchase_rows +
                 [['── المشتريات الصفرية (0%) ──'] + [''] * 5] + [purchase_headers] + zero_rated_purchase_rows +
                 [['── مشتريات صفر بلا تصنيف (تحتاج مراجعة) ──'] + [''] * 5] + [purchase_headers] + unclassified_purchase_rows +
-                [['── المشتريات المعفاة ──'] + [''] * 5] + [purchase_headers] + exempt_purchase_rows
+                [['── المشتريات المعفاة ──'] + [''] * 5] + [purchase_headers] + exempt_purchase_rows +
+                [['── مشتريات غير قابلة للاسترداد (تكلفة) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['non_recoverable_purchases']] +
+                [['── عكس الضريبة (Reverse Charge) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['reverse_charge_purchases']] +
+                [['── التجميع حسب النسبة ──'] + [''] * 5] + [['النسبة', 'مبيعات خاضعة', 'ضريبة مبيعات', 'مشتريات خاضعة', 'ضريبة مشتريات', 'Reverse Charge VAT']] + by_rate_rows
             )
             summary_pdf = {
                 'Output VAT': float(total_output),
@@ -1914,6 +2051,8 @@ def export_vat_report():  # noqa: C901
                 'Unclassified 0% Purchases': float(summary['total_unclassified_purchases']),
                 'Exempt Sales': float(summary['total_exempt_sales']),
                 'Exempt Purchases': float(summary['total_exempt_purchases']),
+                'Non-recoverable VAT': float(summary['total_non_recoverable_vat']),
+                'Reverse Charge VAT': float(summary['total_reverse_charge_vat']),
                 'Net VAT': float(net_vat),
             }
             return ExportService.export_to_pdf('تقرير الضريبة المضافة (VAT) — UAE 5%',
@@ -1932,6 +2071,9 @@ def export_vat_report():  # noqa: C901
                 [['── المشتريات الصفرية (0%) ──'] + [''] * 5] + [purchase_headers] + zero_rated_purchase_rows +
                 [['── مشتريات صفر بلا تصنيف (تحتاج مراجعة) ──'] + [''] * 5] + [purchase_headers] + unclassified_purchase_rows +
                 [['── المشتريات المعفاة ──'] + [''] * 5] + [purchase_headers] + exempt_purchase_rows +
+                [['── مشتريات غير قابلة للاسترداد (تكلفة) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['non_recoverable_purchases']] +
+                [['── عكس الضريبة (Reverse Charge) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['reverse_charge_purchases']] +
+                [['── التجميع حسب النسبة ──'] + [''] * 5] + [['النسبة', 'مبيعات خاضعة', 'ضريبة مبيعات', 'مشتريات خاضعة', 'ضريبة مشتريات', 'Reverse Charge VAT']] + by_rate_rows +
                 [['── الملخص ──'] + [''] * 5,
                  ['الأساس الخاضع للمبيعات', float(summary['total_taxable_sales'])],
                  ['ضريبة المبيعات (Output VAT)', float(total_output)],
@@ -1945,6 +2087,10 @@ def export_vat_report():  # noqa: C901
                  ['إجمالي المشتريات المعفاة', float(summary['total_exempt_purchases'])],
                  ['إجمالي المشتريات الصفرية', float(summary['total_zero_rated_purchases'])],
                  ['مشتريات صفر بلا تصنيف', float(summary['total_unclassified_purchases'])],
+                 ['مشتريات غير قابلة للاسترداد (أساس)', float(summary['total_non_recoverable_base'])],
+                 ['ضريبة غير قابلة للاسترداد', float(summary['total_non_recoverable_vat'])],
+                 ['Reverse Charge — ضريبة ذاتية (أساس)', float(summary['total_reverse_charge_base'])],
+                 ['Reverse Charge — ضريبة ذاتية التقييم', float(summary['total_reverse_charge_vat'])],
                  ['الرصيد النهائي', float(net_vat)]]
             )
             return ExportService.export_to_csv(combined, sales_headers, 'vat_report.csv')

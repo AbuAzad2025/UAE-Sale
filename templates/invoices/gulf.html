@@ -109,6 +109,7 @@
         <p><strong>الاسم:</strong> {{ sale.customer.name }}</p>
         {% if sale.customer.phone %}<p><strong>الهاتف:</strong> {{ sale.customer.phone }}</p>{% endif %}
         {% if sale.customer.email %}<p><strong>البريد:</strong> {{ sale.customer.email }}</p>{% endif %}
+        {% if sale.customer.tax_number %}<p><strong>الرقم الضريبي:</strong> {{ sale.customer.tax_number }}</p>{% endif %}
       </div>
       <div class="info-box">
         <h3>📅 بيانات الفاتورة</h3>
@@ -170,6 +171,10 @@
         <span>⭐ الإجمالي النهائي ⭐</span>
         <strong>{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency }}</strong>
       </div>
+    <div class="amount-words" style="margin-top:6px; font-size:8.5px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
+      {% if amount_words_ar %}<div>{{ amount_words_ar }}</div>{% endif %}
+      {% if amount_words_en %}<div dir="ltr" style="text-align:right;">{{ amount_words_en }}</div>{% endif %}
+    </div>
     </div>
 
     {% if sale.payments %}

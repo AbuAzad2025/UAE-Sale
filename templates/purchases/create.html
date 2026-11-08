@@ -310,6 +310,15 @@
               <input type="checkbox" name="tax_inclusive" class="form-check-input" id="tax_inclusive" value="on">
               <label class="form-check-label" for="tax_inclusive">الأسعار شاملة الضريبة</label>
             </div>
+            <div class="form-check mt-2">
+              <input type="hidden" name="vat_recoverable" value="0">
+              <input type="checkbox" name="vat_recoverable" class="form-check-input" id="vat_recoverable" value="on" checked>
+              <label class="form-check-label" for="vat_recoverable">ضريبة المدخلات قابلة للاسترداد (أزل العلامة إذا لم تكن — سيارات/ترفيه/مصاريف غير قابلة للاسترداد)</label>
+            </div>
+            <div class="form-check mt-1">
+              <input type="checkbox" name="reverse_charge" class="form-check-input" id="reverse_charge" value="on">
+              <label class="form-check-label" for="reverse_charge">مورد أجنبي — عكس الضريبة (Reverse Charge): المورد لا يضيف ضريبة؛ الشركة تُقيّد ضريبة مدخلات ومخرجات متوازنة</label>
+            </div>
           </div>
         </div>
       </div>
@@ -412,7 +421,7 @@ function addLine() {
          style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px;">
       <div class="row align-items-end">
         <!-- المنتج -->
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="small" for="line_${lineIndex}_product_id"><i class="fas fa-box"></i> المنتج</label>
           <select name="lines[${lineIndex}][product_id]" 
                   id="line_${lineIndex}_product_id"
@@ -441,7 +450,7 @@ function addLine() {
         </div>
         
         <!-- الخصم -->
-        <div class="col-md-2">
+        <div class="col-md-1">
           <label class="small" for="line_${lineIndex}_discount"><i class="fas fa-percentage"></i> خصم%</label>
           <input type="number" name="lines[${lineIndex}][discount_percent]" 
                  id="line_${lineIndex}_discount"
@@ -449,6 +458,19 @@ function addLine() {
                  placeholder="0" value="0" step="0.01" min="0" max="100">
         </div>
         
+        <!-- per-line tax treatment -->
+        <div class="col-md-2">
+          <label class="small" for="line_${lineIndex}_tax_treatment">المعاملة الضريبية</label>
+          <select name="lines[${lineIndex}][tax_treatment]"
+                  id="line_${lineIndex}_tax_treatment"
+                  class="form-control tax-treatment-input" data-line="${lineIndex}"
+                  onchange="calculateTotals()">
+            <option value="standard">خاضعة (عادية)</option>
+            <option value="zero">صفرية 0%</option>
+            <option value="exempt">معفاة</option>
+          </select>
+        </div>
+
         <!-- الإجمالي -->
         <div class="col-md-1">
           <label class="small" for="line_total_${lineIndex}"><i class="fas fa-equals"></i> المجموع</label>
@@ -594,16 +616,18 @@ async function calculateTotals() {
     $('.product-line').each(function() {
       const lineId = $(this).attr('id');
       const lineNumber = lineId.split('_')[1];
-      
+
       const qty = parseFloat($(`.line-quantity[data-line="${lineNumber}"]`).val()) || 0;
       const cost = parseFloat($(`.line-cost[data-line="${lineNumber}"]`).val()) || 0;
       const discount = parseFloat($(`.line-discount[data-line="${lineNumber}"]`).val()) || 0;
-      
+      const treatment = $(`.tax-treatment-input[data-line="${lineNumber}"]`).val() || 'standard';
+
       if (qty > 0 || cost > 0) {
         lines.push({
           quantity: qty,
           unit_cost: cost,
-          discount_percent: discount
+          discount_percent: discount,
+          tax_treatment: treatment
         });
       }
     });
@@ -640,42 +664,63 @@ async function calculateTotals() {
   }
 }
 
-function _purchaseTaxParts(subtotal) {
-  const treatment = $('#tax_treatment').val() || 'standard';
+// تقدير محلي فقط — الباكند يحسب فعليًا ويعاد كتابته عند الحفظ.
+function _purchaseTaxParts() {
+  const invTreatment = $('#tax_treatment').val() || 'standard';
   const inclusive = $('#tax_inclusive').is(':checked');
-  const rate = treatment === 'standard' ? (parseFloat($('#tax_rate').val()) || 0) : 0;
-  if (inclusive) {
-    const tax = subtotal - subtotal / (1 + rate / 100);
-    return { tax, total: subtotal };
+  const rate = invTreatment === 'standard' ? (parseFloat($('#tax_rate').val()) || 0) : 0;
+  let std = 0, zero = 0, exempt = 0;
+  $('.product-line').each(function() {
+    const id = $(this).attr('id').split('_')[1];
+    const q = parseFloat($(`.line-quantity[data-line="${id}"]`).val()) || 0;
+    const c = parseFloat($(`.line-cost[data-line="${id}"]`).val()) || 0;
+    const d = parseFloat($(`.line-discount[data-line="${id}"]`).val()) || 0;
+    const t = invTreatment !== 'standard'
+      ? invTreatment
+      : ($(`.tax-treatment-input[data-line="${id}"]`).val() || 'standard');
+    const lt = q * c * (1 - d / 100);
+    if (t === 'zero') zero += lt; else if (t === 'exempt') exempt += lt; else std += lt;
+  });
+  const subtotal = std + zero + exempt;
+  if (invTreatment !== 'standard' || subtotal <= 0) {
+    return { tax: 0, total: subtotal, subtotal };
   }
-  const tax = subtotal * rate / 100;
-  return { tax, total: subtotal + tax };
+  // لا خصم على مستوى المستند في شاشة المشتريات — يُطبَّق خصم البند فقط
+  const stdBase = std;
+  let tax, total;
+  if (inclusive) {
+    const net = stdBase / (1 + rate / 100);
+    tax = stdBase - net;
+    total = subtotal;
+  } else {
+    tax = stdBase * rate / 100;
+    total = subtotal + tax;
+  }
+  return { tax, total, subtotal };
 }
 
 // Fallback: حساب محلي
 function calculateTotalsClientSide() {
-  let subtotal = 0;
-  
   $('.product-line').each(function() {
     const lineId = $(this).attr('id');
     const lineNumber = lineId.split('_')[1];
-    
+
     const qty = parseFloat($(`.line-quantity[data-line="${lineNumber}"]`).val()) || 0;
     const cost = parseFloat($(`.line-cost[data-line="${lineNumber}"]`).val()) || 0;
     const discount = parseFloat($(`.line-discount[data-line="${lineNumber}"]`).val()) || 0;
-    
+
     const lineSubtotal = qty * cost;
     const lineDiscountAmount = lineSubtotal * (discount / 100);
     const lineTotal = lineSubtotal - lineDiscountAmount;
-    
+
     $(`#line_total_${lineNumber}`).val(lineTotal.toFixed(2));
-    subtotal += lineTotal;
   });
-  
-  const parts = _purchaseTaxParts(subtotal);
+
+  const parts = _purchaseTaxParts();
+  const subtotal = parts.subtotal;
   const taxAmount = parts.tax;
   const total = parts.total;
-  
+
   $('#summary_subtotal').text(subtotal.toFixed(2) + ' ' + base_currency);
   $('#summary_tax').text(taxAmount.toFixed(2) + ' ' + base_currency);
   $('#summary_total').text(total.toFixed(2) + ' ' + base_currency);}
@@ -698,28 +743,23 @@ function debugTotals() {
 // =====================================
 // Force Calculate - حساب فوري قوي
 // =====================================
-function forceCalculate() {  
-  let subtotal = 0;
-  let lineCount = 0;
-  
-  // إجبار حساب كل سطر
+function forceCalculate() {
   $('.product-line').each(function() {
     const lineId = $(this).attr('id');
     const lineNumber = lineId.split('_')[1];
-    
     const qty = parseFloat($(`.line-quantity[data-line="${lineNumber}"]`).val()) || 0;
     const cost = parseFloat($(`.line-cost[data-line="${lineNumber}"]`).val()) || 0;
-    const discount = parseFloat($(`.line-discount[data-line="${lineNumber}"]`).val()) || 0;    
+    const discount = parseFloat($(`.line-discount[data-line="${lineNumber}"]`).val()) || 0;
+
     const lineSubtotal = qty * cost;
     const lineDiscountAmount = lineSubtotal * (discount / 100);
     const lineTotal = lineSubtotal - lineDiscountAmount;
     
     $(`#line_total_${lineNumber}`).val(lineTotal.toFixed(2));
-    subtotal += lineTotal;
-    lineCount++;
   });
   
-  const parts = _purchaseTaxParts(subtotal);
+  const parts = _purchaseTaxParts();
+  const subtotal = parts.subtotal;
   const taxAmount = parts.tax;
   const total = parts.total;
   

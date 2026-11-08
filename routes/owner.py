@@ -3971,13 +3971,28 @@ def partners():
     }
 
     if imp is not None:
+        from sqlalchemy import or_
+        linked_subq = db.session.query(ProductPartner.partner_customer_id).distinct().scalar_subquery()
         net = pp.compute_net_income(period_from, period_to)
         preview_rows = pp.preview_partner_distributions(period_from, period_to,
                                                         tenant_id=imp.id)
         company_partners = (Customer.query
-                            .filter(Customer.partner_scope != 'none')
+                            .filter(or_(Customer.partner_scope != 'none',
+                                        Customer.id.in_(linked_subq)))
                             .order_by(Customer.partner_scope.asc(), Customer.name.asc())
                             .all())
+        # عدّاد روابط المنتج لكل شريك + استحقاقه المتراكم في الفترة
+        link_counts = {}
+        accrual = {}
+        ids = [p.id for p in company_partners]
+        if ids:
+            for pid, cnt in (db.session.query(ProductPartner.partner_customer_id,
+                                              func.count(ProductPartner.id))
+                             .filter(ProductPartner.partner_customer_id.in_(ids))
+                             .group_by(ProductPartner.partner_customer_id).all()):
+                link_counts[pid] = cnt
+            for pid in ids:
+                accrual[pid] = pp._product_shares_in_period(pid, period_from, period_to)
 
         # رصيد جاري كل شريك من الأستاذ (3350) مع طرفه
         partner_ids = [p.id for p in company_partners]
@@ -4010,6 +4025,8 @@ def partners():
             'partner_balances': balances,
             'product_partner_rows': product_rows,
             'base_currency': CurrencyService.get_base_currency(),
+            'product_link_counts': link_counts,
+            'product_accrual': accrual,
             'customer_options': (Customer.query
                                  .filter_by(is_active=True)
                                  .order_by(Customer.name.asc())

@@ -104,11 +104,16 @@
       </form>
     </div>
     <div class="card-body">
-      <p class="text-muted mb-2">يُخصم من حصة كل شريك: مسحوباته (مدين 3300/3350) ومبيعات تمت له في الفترة. الخسارة تُحمَّل بنسبتها نفسها. الملاك المتبقون يأخذون الباقي بما فيها نصيبهم من الخسارة.</p>
+      <p class="text-muted mb-2">يُخصم من حصة كل شريك شركة:</p>
+      <ul class="text-muted mb-2">
+        <li>المسحوبات المرتبطة به (قيود <code>PartnerDraw</code> بطرفه).</li>
+        <li>مبيعات غير مسددة تمت له في الفترة (<code>balance_due × سعر الصرف</code>).</li>
+        <li>حصصه من المنتجات لا تُخصم هنا — تُدفع تلقائيًا مع كل فاتورة، وتُعرض للمعلومة فقط في عمود "حصص المنتج في الفترة".</li>
+      </ul>
       <div class="table-responsive">
         <table class="table table-sm table-striped mb-0">
           <thead class="thead-light">
-            <tr><th>الشريك</th><th>النسبة %</th><th>نصيب النتيجة</th><th>المسحوبات</th><th>مبيعات له</th><th>الصافي المستحق</th></tr>
+            <tr><th>الشريك</th><th>النسبة %</th><th>نصيب النتيجة</th><th>المسحوبات</th><th>مبيعات غير مسددة له</th><th>الصافي (شركة)</th><th>حصص المنتج في الفترة</th><th>الإجمالي (شركة+منتج)</th></tr>
           </thead>
           <tbody>
             {% for r in preview_rows %}
@@ -119,6 +124,8 @@
               <td>{{ '{:,.3f}'.format(r.draws_deducted) }}</td>
               <td>{{ '{:,.3f}'.format(r.sales_to_partner_deducted) }}</td>
               <td><strong>{{ '{:,.3f}'.format(r.net_payout) }}</strong></td>
+              <td>{{ '{:,.3f}'.format(r.product_shares_in_period) }}</td>
+              <td><strong>{{ '{:,.3f}'.format(r.total_entitlement) }}</strong></td>
             </tr>
             {% endfor %}
             {% if not preview_rows %}
@@ -146,16 +153,19 @@
           </select>
         </div>
         <div class="col-md-2">
-          <label>نوع الشراكة</label>
+          <label>نوع الشراكة للشركة</label>
           <select class="form-control" name="scope">
-            <option value="none">ليس شريكًا</option>
-            <option value="product">شريك منتج</option>
+            <option value="none">ليس شريك شركة</option>
+            <option value="product">ليس شريك شركة (له روابط منتج)</option>
             <option value="company">شريك شركة</option>
           </select>
         </div>
         <div class="col-md-2">
           <label>النسبة % (شريك الشركة فقط)</label>
           <input type="number" step="0.001" min="0" max="100" class="form-control" name="share" placeholder="مثال: 25">
+        </div>
+        <div class="col-md-4">
+          <small class="text-muted">الشخص يمكن أن يكون شريك منتج (روابط من شاشة المنتج) وشريك شركة في آنٍ واحد — النسبة هنا للشركة فقط، وفصل الأدوار لا يحذف أي رابط.</small>
         </div>
         <div class="col-md-2">
           <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> حفظ</button>
@@ -165,23 +175,28 @@
       <div class="table-responsive">
         <table class="table table-sm table-striped mb-0">
           <thead class="thead-light">
-            <tr><th>الاسم</th><th>نوع</th><th>النسبة %</th><th>رصيد جاري الشريك (3350)</th></tr>
+            <tr><th>الاسم</th><th>شريك شركة</th><th>شريك منتج</th><th>حصص المنتج في الفترة</th><th>رصيد جاري الشريك (3350)</th></tr>
           </thead>
           <tbody>
             {% for p in company_partners %}
             <tr>
               <td>{{ p.name }}</td>
               <td>
-                {% if p.partner_scope == 'product' %}<span class="badge badge-info">شريك منتج</span>
-                {% elif p.partner_scope == 'company' %}<span class="badge badge-success">شريك شركة</span>
-                {% else %}<span class="badge badge-secondary">{{ p.partner_scope }}</span>{% endif %}
+                {% if p.partner_scope == 'company' %}<span class="badge badge-success">شركة {{ p.partner_share }}%</span>
+                {% else %}<span class="badge badge-secondary">—</span>{% endif %}
               </td>
-              <td>{{ p.partner_share }}</td>
+              <td>
+                {% set links = product_link_counts.get(p.id, 0) %}
+                {% if links %}<span class="badge badge-info">منتج ({{ links }} رابط)</span>
+                {% elif p.partner_scope == 'product' %}<span class="badge badge-info">منتج</span>
+                {% else %}<span class="badge badge-secondary">—</span>{% endif %}
+              </td>
+              <td>{{ '{:,.3f}'.format(product_accrual.get(p.id, 0)) }}</td>
               <td>{{ '{:,.3f}'.format(partner_balances.get(p.id, 0)) }}</td>
             </tr>
             {% endfor %}
             {% if not company_partners %}
-            <tr><td colspan="4" class="text-center text-muted py-3">لا يوجد شركاء معرَّفون بعد</td></tr>
+            <tr><td colspan="5" class="text-center text-muted py-3">لا يوجد شركاء معرَّفون بعد — إما شريك شركة هنا أو شريك منتج من شاشة المنتج</td></tr>
             {% endif %}
           </tbody>
         </table>

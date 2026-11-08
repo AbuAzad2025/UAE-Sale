@@ -262,6 +262,11 @@ class ReturnService:
                 'description': f'Credit Customer for Return {sale.sale_number}'
             })
 
+            # عكس تناسبي لحصص شركاء المنتج مع الكمية المرتجعة — داخل نفس
+            # المعاملة؛ الفشل يُجهض المرتجع كاملًا (الذرّية قبل أي شيء).
+            from services.partner_profit import post_partner_shares_for_return
+            post_partner_shares_for_return(product_return, sale)
+
             # Post GL Entry
             if gl_lines:
                 GLService.post_entry(

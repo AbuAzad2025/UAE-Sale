@@ -517,6 +517,11 @@ class SaleService:
                     exchange_rate=1.0
                 )
 
+            # توزيع أرباح شركاء المنتج فورًا — داخل نفس المعاملة؛ الفشل يُجهض
+            # الفاتورة كاملة (لا يُسمح بفاتورة بلا قيد حصص الشركاء).
+            from services.partner_profit import post_partner_shares_for_sale
+            post_partner_shares_for_sale(sale)
+
             db.session.commit()
 
             current_app.logger.info(f'Sale created: {sale.sale_number}')

@@ -3833,3 +3833,212 @@ def incidents():
 def owner_guide():
     """دليل المالك — يحتوي على معلومات تقنية حساسة."""
     return render_template('owner/guide.html')
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# توزيع أرباح الشركاء — مستويا المنتج (فوري) والشركة (دوري)
+# يُدار لكل تينانت عبر "مبدّل الشركة" في لوحة المالك؛ بلا تينانت مختار تُعرض
+# نظرة تجميعية للقراءة فقط.
+# ─────────────────────────────────────────────────────────────────────────────
+@owner_bp.route('/partners', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def partners():
+    from datetime import date as _date
+
+    from flask import session
+    from models import Customer, Tenant, Product, ProductPartner
+    from models.gl import GLAccount, GLJournalLine
+    from services import partner_profit as pp
+    from services.account_resolution import AccountRole
+    from services.currency_service import CurrencyService
+    from sqlalchemy import func
+
+    def _impersonated_tenant():
+        raw = session.get('impersonate_tenant_id')
+        if not raw:
+            return None
+        try:
+            return Tenant.query.get(int(raw))
+        except (ValueError, TypeError):
+            return None
+
+    def _parse_day(raw, default=None):
+        raw = (raw or '').strip()
+        if not raw:
+            return default
+        try:
+            return _date.fromisoformat(raw)
+        except ValueError:
+            return default
+
+    imp = _impersonated_tenant()
+    today = _date.today()
+    default_from = today.replace(day=1)
+
+    period_from = _parse_day(request.values.get('from'), default_from)
+    period_to = _parse_day(request.values.get('to'), today)
+
+    # ── فرض مبدّل الشركة لأي عملية تعديل ─────────────────────────────────────
+    if request.method == 'POST':
+        if imp is None:
+            flash('⛔ اختر شركة من مبدّل الشركات في الأعلى قبل تعديل إعدادات الشركاء.', 'danger')
+            return redirect(url_for('owner.partners'))
+
+        action = (request.form.get('action') or '').strip()
+        try:
+            if action == 'set_scope':
+                cid = request.form.get('customer_id', type=int)
+                customer = Customer.query.get(cid) if cid else None
+                if customer is None:
+                    raise ValueError('العميل غير موجود')
+                scope = (request.form.get('scope') or '').strip()
+                if scope not in ('none', 'product', 'company'):
+                    raise ValueError('نوع الشراكة غير صالح')
+                if scope == 'company':
+                    share_raw = (request.form.get('share') or '').strip()
+                    share = Decimal(share_raw)
+                    if share <= 0 or share > 100:
+                        raise ValueError('النسبة يجب أن تكون بين 0 و 100')
+                    customer.partner_scope = 'company'
+                    customer.partner_share = share
+                    customer.customer_type = 'partner'
+                    changes = {'partner_scope': 'company', 'partner_share': str(share)}
+                elif scope == 'product':
+                    customer.partner_scope = 'product'
+                    customer.partner_share = None
+                    customer.customer_type = 'partner'
+                    changes = {'partner_scope': 'product', 'partner_share': None}
+                else:
+                    customer.partner_scope = 'none'
+                    customer.partner_share = None
+                    if customer.customer_type == 'partner':
+                        customer.customer_type = 'regular'
+                    changes = {'partner_scope': 'none', 'partner_share': None}
+                db.session.commit()
+                create_audit_log('set_partner_scope', 'customers', customer.id,
+                                 changes=changes)
+                flash('✅ تم تحديث إعدادات الشريك', 'success')
+
+            elif action == 'record_draw':
+                pid = request.form.get('partner_id', type=int)
+                amount_raw = (request.form.get('amount') or '').strip()
+                source = (request.form.get('source') or 'cash').strip().lower()
+                partner = Customer.query.get(pid) if pid else None
+                if partner is None or not partner.is_active:
+                    raise ValueError('الشريك غير موجود')
+                amount = Decimal(amount_raw)
+                if amount <= 0:
+                    raise ValueError('مبلغ المسحوبات يجب أن يكون أكبر من صفر')
+                role = AccountRole.CASH if source != 'bank' else AccountRole.BANK
+                entry = pp.post_partner_draw(
+                    partner.id, amount,
+                    credit_account_role=role,
+                    description=f'مسحوبات الشريك {partner.name}')
+                db.session.commit()
+                create_audit_log('record_partner_draw', 'gl_journal_entries', entry.id,
+                                 changes={'partner_id': partner.id, 'amount': str(amount),
+                                          'entry_number': entry.entry_number})
+                flash(f'✅ سُجّلت مسحوبات الشريك — قيد {entry.entry_number}', 'success')
+
+            elif action == 'distribute':
+                d_from = _parse_day(request.form.get('from'), period_from)
+                d_to = _parse_day(request.form.get('to'), period_to)
+                entry = pp.post_partner_distributions(d_from, d_to, tenant_id=imp.id)
+                db.session.commit()
+                if entry is not None:
+                    create_audit_log('post_partner_distribution', 'gl_journal_entries', entry.id,
+                                     changes={'period_from': str(d_from), 'period_to': str(d_to),
+                                              'entry_number': entry.entry_number})
+                    flash(f'✅ تم توزيع النتيجة — قيد {entry.entry_number}', 'success')
+                else:
+                    flash('ℹ️ لا توجد نتيجة موجبة أو نسب موزَّعة في هذه الفترة.', 'info')
+            else:
+                flash('⛔ إجراء غير معروف', 'danger')
+        except Exception as exc:
+            db.session.rollback()
+            flash(f'⛔ {exc}', 'danger')
+
+        qs = f'?from={period_from.isoformat()}&to={period_to.isoformat()}'
+        return redirect(url_for('owner.partners') + qs)
+
+    # ── عرض ───────────────────────────────────────────────────────────────────
+    ctx = {
+        'impersonated': imp,
+        'period_from': period_from,
+        'period_to': period_to,
+        'today': today,
+    }
+
+    if imp is not None:
+        net = pp.compute_net_income(period_from, period_to)
+        preview_rows = pp.preview_partner_distributions(period_from, period_to,
+                                                        tenant_id=imp.id)
+        company_partners = (Customer.query
+                            .filter(Customer.partner_scope != 'none')
+                            .order_by(Customer.partner_scope.asc(), Customer.name.asc())
+                            .all())
+
+        # رصيد جاري كل شريك من الأستاذ (3350) مع طرفه
+        partner_ids = [p.id for p in company_partners]
+        balances = {}
+        if partner_ids:
+            q = (db.session.query(
+                     GLJournalLine.party_id,
+                     func.coalesce(func.sum(GLJournalLine.credit - GLJournalLine.debit), 0))
+                  .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
+                  .filter(GLAccount.code == '3350',
+                          GLJournalLine.party_id.in_(partner_ids))
+                  .group_by(GLJournalLine.party_id))
+            for party_id, bal in q.all():
+                balances[party_id] = Decimal(str(bal or 0))
+
+        # شركاء المنتجات (روابط النسب لكل منتج)
+        product_rows = (db.session.query(
+                            Product.name.label('product_name'),
+                            Customer.name.label('partner_name'),
+                            ProductPartner.percentage)
+                        .join(Product, Product.id == ProductPartner.product_id)
+                        .join(Customer, Customer.id == ProductPartner.partner_customer_id)
+                        .order_by(Product.id.asc(), ProductPartner.id.asc())
+                        .all())
+
+        ctx.update({
+            'net_income': net,
+            'preview_rows': preview_rows,
+            'company_partners': company_partners,
+            'partner_balances': balances,
+            'product_partner_rows': product_rows,
+            'base_currency': CurrencyService.get_base_currency(),
+            'customer_options': (Customer.query
+                                 .filter_by(is_active=True)
+                                 .order_by(Customer.name.asc())
+                                 .limit(300)
+                                 .all()),
+        })
+    else:
+        # ملخص تجميعي للمنصة — قراءة فقط لكل شركة
+        per_tenant = []
+        from models.tenant_scope import run_in_tenant_context
+        tenants = Tenant.query.filter_by(is_active=True).order_by(Tenant.id.asc()).all()
+        for t in tenants:
+            try:
+                def _collect():
+                    net = pp.compute_net_income(period_from, period_to)
+                    count = (Customer.query
+                             .filter(Customer.partner_scope != 'none')
+                             .count())
+                    draws = (db.session.query(
+                                 func.coalesce(func.sum(GLJournalLine.debit), 0))
+                             .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
+                             .filter(GLAccount.code.in_(('3300', '3350')))
+                             .scalar())
+                    return net, count, Decimal(str(draws or 0))
+                net, pcount, draws_total = run_in_tenant_context(t.id, _collect)
+            except Exception:
+                net, pcount, draws_total = None, 0, Decimal('0')
+            per_tenant.append({'tenant': t, 'net': net, 'partners': pcount,
+                               'draws': draws_total})
+        ctx['per_tenant'] = per_tenant
+
+    return render_template('owner/partners.html', **ctx)

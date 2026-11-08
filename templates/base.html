@@ -930,6 +930,12 @@
             </a>
           </li>
           <li class="nav-item">
+            <a href="{{ url_for('owner.partners') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.partners') %}active{% endif %}">
+              <i class="nav-icon fas fa-handshake text-success"></i>
+              <p>توزيع أرباح الشركاء</p>
+            </a>
+          </li>
+          <li class="nav-item">
             <a href="{{ url_for('owner.support_inbox') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.support_ticket') %}active{% endif %}">
               <i class="nav-icon fas fa-inbox text-info"></i>
               <p>صندوق وارد الدعم</p>

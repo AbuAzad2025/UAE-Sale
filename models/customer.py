@@ -251,6 +251,11 @@ class Customer(TenantScopedMixin, db.Model):
 
     customer_type = db.Column(db.String(20), nullable=False, default='regular', index=True)
 
+    # نوع شراكة العميل: 'none' (ليس شريك) | 'product' (حصة على منتج ما) | 'company' (حصة من أرباح الشركة)
+    partner_scope = db.Column(db.String(16), nullable=False, default='none', server_default='none')
+    # نسبة حصة شريك الشركة (مثلاً 30.000 = 30%) — NULL لغير شركاء الشركة
+    partner_share = db.Column(db.Numeric(6, 3), nullable=True)
+
     customer_classification = db.Column(db.String(20), default='regular', index=True)
 
     phone = db.Column(db.String(30))

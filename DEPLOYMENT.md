@@ -123,7 +123,7 @@ flask db current
 
 > **ترتيب الترحيلات الضريبية (مطلوب الالتزام):** `b5_tax_per_tenant` →
 > `b6_corp_tax` → `b7_tenant_invoice_profile` → `b8_vat_treatments` →
-> `b9_purchase_tax_treatment` → `b10_sale_line_tax_treatment` → `b11_expense_tenant` → `b12_purchase_list_tenant` → `b13_payroll_leave_type_tenant` → `b14_product_group_tenant` → `b15_shipment_lines_tenant` → `b16_tax_rulesets` → `b17_purchase_vat_features` → `b18_taxruleset_unique_defaults` → `b19_ruleset_effective_dates` → `b20_expense_tax` → `b21_vat_split_accounts` → `b22_compliance_credentials` → `b23_subscription_plans` → `b24_support_incidents_backups`.
+> `b9_purchase_tax_treatment` → `b10_sale_line_tax_treatment` → `b11_expense_tenant` → `b12_purchase_list_tenant` → `b13_payroll_leave_type_tenant` → `b14_product_group_tenant` → `b15_shipment_lines_tenant` → `b16_tax_rulesets` → `b17_purchase_vat_features` → `b18_taxruleset_unique_defaults` → `b19_ruleset_effective_dates` → `b20_expense_tax` → `b21_vat_split_accounts` → `b22_compliance_credentials` → `b23_subscription_plans` → `b24_support_incidents_backups` → `b25_partners`.
 > ملاحظة تشغيلية على `b6_corp_tax`: نسخته الحالية **لم تعد** تفرض تبديل عملة
 > أساس التينانتات تلقائياً. أي بيئة قديمة طُبّقت عليها النسخة القديمة وتغيّرت
 > عملات فيها تحتاج مراجعة يدوية — لا تُعالج بأي ترحيل آخر.
@@ -173,7 +173,24 @@ flask db current
 > `b23` ينشئ `subscription_plans` (basic/pro/enterprise بأسعار أولية ثم تُعدَّل)
 > + عمود `tenants.contract_signed_at`. `b24` ينشئ `support_tickets` (tenant-scoped)،
 > `incidents` (سجل حوادث المالك)، و`backup_verifications` (سجل التحقق).
-> قبل نشر أي منهما: `flask db upgrade` باتجاه head (= `b24_support_incidents_backups`).
+> **`b25_partners` — توزيع أرباح الشركاء (مستويا المنتج والشركة):** يضيف
+> `customers.partner_scope` (`none|product|company`) و`customers.partner_share`
+> (نسبة شريك الشركة بالمائة، مثال `25.000` = 25%) و`gl_journal_lines.party_id`
+> (FK ← customers.id، `ondelete=SET NULL`) لتتبع جار الشريك بدقة.
+> **سلوك التشغيل بعد الترقية:**
+> * **فواتير البيع تُرحِّل فورًا** قيد حصص شركاء المنتج (Dr `6910` المصطلقات/إقفال
+>   بحسب الربح أو الخسارة / Cr أو Dr `3350` جاري الشركاء مع `party_id`).
+> * **المرتجعات تعكس الحصة تناسبيًا** بالكمية المرتجعة؛ **الإلغاء يعكس القيد
+>   المنتج-الشريك كاملًا** عبر مسار عكس القيود العادي (`reference_type='Sale'`).
+> * **توزيع الشركة يُنفَّذ من** `/owner/partners` (يتطلب دخول سياق شركة عبر
+>   مبدّل الشركات) — معاينة قبل الترحيل، خصم المسحوبات (قيود `PartnerDraw`)
+>   والمبيعات له من حصته، منع الترحيل المكرر لنفس الفترة (`notes` تحمل علامة
+>   الفترة). الخسارة تُحمَّل على الشركاء بنسبتهم نفسها. **النسبة تُقرأ لحظة
+>   الفاتورة** — الفواتير السابقة تبقى بنسبتها القديمة.
+> * حساب `6910` (حصص الشركاء في الأرباح) مُبذَر تلقائيًا بأول قيد تسوية عبر
+>   `ensure_core_accounts()` إن لم يكن موجودًا، ولا يُعدَّل ولا يُحذف.
+> قبل نشر أي منها: `flask db upgrade` باتجاه head (= `b25_partners`).
+> فحص Round-Trip إلزامي على Postgres قبل النشر (الترقية → التراجع خطوة → إعادة الترقية).
 >
 > **صفحة التحقق العميق من النسخ الاحتياطية + cron (موصى بها يوميًا):**
 > `/owner/backups/verify-latest` — فحص كل نسخة (حجم، SHA-256، جداول ≥ 30، مؤشرات بيانات).

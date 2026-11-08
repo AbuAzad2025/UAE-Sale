@@ -372,7 +372,7 @@ def preview_partner_distributions(period_from=None, period_to=None, tenant_id=No
     net = compute_net_income(period_from, period_to)
 
     query = (Customer.query
-             .filter_by(customer_type='partner', partner_scope='company', is_active=True)
+             .filter_by(partner_scope='company', is_active=True)
              .filter(Customer.partner_share.isnot(None)))
     if tenant_id is not None:
         query = query.filter(Customer.tenant_id == tenant_id)
@@ -508,7 +508,7 @@ def post_partner_distributions(period_from=None, period_to=None, tenant_id=None,
         return None
 
     query = (Customer.query
-             .filter_by(customer_type='partner', partner_scope='company', is_active=True)
+             .filter_by(partner_scope='company', is_active=True)
              .filter(Customer.partner_share.isnot(None)))
     if tid is not None:
         query = query.filter(Customer.tenant_id == tid)

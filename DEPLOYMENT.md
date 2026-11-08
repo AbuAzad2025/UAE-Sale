@@ -123,7 +123,7 @@ flask db current
 
 > **ترتيب الترحيلات الضريبية (مطلوب الالتزام):** `b5_tax_per_tenant` →
 > `b6_corp_tax` → `b7_tenant_invoice_profile` → `b8_vat_treatments` →
-> `b9_purchase_tax_treatment` → `b10_sale_line_tax_treatment` → `b11_expense_tenant` → `b12_purchase_list_tenant` → `b13_payroll_leave_type_tenant` → `b14_product_group_tenant` → `b15_shipment_lines_tenant` → `b16_tax_rulesets` → `b17_purchase_vat_features` → `b18_taxruleset_unique_defaults` → `b19_ruleset_effective_dates` → `b20_expense_tax` → `b21_vat_split_accounts` → `b22_compliance_credentials`.
+> `b9_purchase_tax_treatment` → `b10_sale_line_tax_treatment` → `b11_expense_tenant` → `b12_purchase_list_tenant` → `b13_payroll_leave_type_tenant` → `b14_product_group_tenant` → `b15_shipment_lines_tenant` → `b16_tax_rulesets` → `b17_purchase_vat_features` → `b18_taxruleset_unique_defaults` → `b19_ruleset_effective_dates` → `b20_expense_tax` → `b21_vat_split_accounts` → `b22_compliance_credentials` → `b23_subscription_plans` → `b24_support_incidents_backups`.
 > ملاحظة تشغيلية على `b6_corp_tax`: نسخته الحالية **لم تعد** تفرض تبديل عملة
 > أساس التينانتات تلقائياً. أي بيئة قديمة طُبّقت عليها النسخة القديمة وتغيّرت
 > عملات فيها تحتاج مراجعة يدوية — لا تُعالج بأي ترحيل آخر.
@@ -168,6 +168,19 @@ flask db current
 > عن كل واجهة، وكل حفظ/تحقق/مسح يُسجَّل في `audit_logs`.
 > **[ادعاء صادق]**: لا إرسال، لا توقيع، لا رفع إلى أي سلطة — حتى بعد التثبيت.
 > قبل أي تقديم إقرار، يلزم عقد وشهادة من السلطة بالفرض القانوني.
+
+> **`b23_subscription_plans` + `b24_support_incidents_backups` — الباقات والدعم والنسخ:**
+> `b23` ينشئ `subscription_plans` (basic/pro/enterprise بأسعار أولية ثم تُعدَّل)
+> + عمود `tenants.contract_signed_at`. `b24` ينشئ `support_tickets` (tenant-scoped)،
+> `incidents` (سجل حوادث المالك)، و`backup_verifications` (سجل التحقق).
+> قبل نشر أي منهما: `flask db upgrade` باتجاه head (= `b24_support_incidents_backups`).
+>
+> **صفحة التحقق العميق من النسخ الاحتياطية + cron (موصى بها يوميًا):**
+> `/owner/backups/verify-latest` — فحص كل نسخة (حجم، SHA-256، جداول ≥ 30، مؤشرات بيانات).
+> على PythonAnywhere → Scheduled Tasks: أمر يومي الساعة 03:00:
+> `cd ~/AzadERP && venv/bin/flask verify-backup`
+> أي فشل يظهر في القائمة ويُسجَّل عبر `audit_logs` و`backup_verifications`. **[ادعاء صادق]**:
+> التحقق ليس إعادة استعادة اختبارية — هو تحقق محتوى؛ الاستعادة الفعلية من اختصاص الناشر وتحت مسؤوليته.
 
 ---
 

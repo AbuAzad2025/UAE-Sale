@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شروط الخدمة — {{ config.COMPANY_NAME_AR }}</title>
+    <meta name="description" content="شروط الخدمة والتعاقد لمنصة AzadERP — تكملة صريحة لعينة العقد.">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/public_simple.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/lang_pills.css') }}">
+    <style>
+      .doc { max-width: 880px; margin: 0 auto; background: #fff; border-radius: 14px; padding: 28px 32px; box-shadow: 0 8px 30px rgba(0,0,0,.06); }
+      .doc h1 { font-size: 1.8rem; margin-bottom: .5rem; color: #0b3d2e; }
+      .doc h2 { font-size: 1.15rem; margin-top: 1.6rem; color: #0b3d2e; border-bottom: 2px solid #e6e9e8; padding-bottom: .4rem; }
+      .doc p, .doc li { font-size: .95rem; line-height: 1.9; color: #1d2a26; }
+      .doc ul, .doc ol { padding-inline-start: 1.4rem; }
+      .doc .muted { color: #6b7a74; font-size: .85rem; }
+      .doc .legal-note { background: #fff4d6; border: 1px solid #f0c24b; padding: 12px 14px; border-radius: 10px; font-size: .9rem; margin-bottom: 1.2rem; }
+    </style>
+</head>
+<body>
+    <div class="lang-switcher">
+        <a href="{{ url_for('language.set_language', lang='ar') }}" class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}"><i class="fas fa-check"></i>العربية</a>
+        <a href="{{ url_for('language.set_language', lang='en') }}" class="lang-pill {% if session.get('language') == 'en' %}active{% endif %}"><i class="fas fa-check"></i>English</a>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">{{ config.COMPANY_NAME_AR }}</div>
+        <div>
+            <a href="{{ url_for('public.landing') }}">الرئيسية</a>
+            <a href="{{ url_for('public.pricing') }}">الأسعار</a>
+            <a href="{{ url_for('public.sla') }}">SLA</a>
+            <a href="{{ url_for('public.user_guide') }}">دليل المستخدم</a>
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> دخول</a>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <div class="doc">
+            <h1>شروط الخدمة والتعاقد</h1>
+            <p class="muted">آخر تحديث: 2026-11-08 — عينة تعاقدية عامة؛ الصيغة النهائية بموجب العقد المبرم مع كل جهة.</p>
+
+            <div class="legal-note">
+                <strong>ملاحظة قانونية صريحة:</strong> هذه الصفحة ليست استشارة قانونية، وأي التزام نهائي يبدأ بعقد مكتوب محدد يفيد بتوقيعه وأطرافه. الامتثال الضريبي الكامل لأي دولة يتطلب عقدًا وشهادة من سلطة تلك الدولة.
+            </div>
+
+            <h2>1. التعريفات</h2>
+            <ul>
+                <li><strong>"المنصة"</strong> أو <strong>"النظام"</strong>: تطبيق AzadERP بكل واجهاته (ويب، طباعة، تقارير).</li>
+                <li><strong>"العميل"</strong>: الشركة أو الجهة المرخص لها باستخدام المنصة بموجب عقد اشتراك فعّال.</li>
+                <li><strong>"البيانات"</strong>: كل ما يُدخله العميل في المنصة، ولا سيما القيود المحاسبية والقيود الائتمانية.</li>
+            </ul>
+
+            <h2>2. نطاق الترخيص</h2>
+            <ol>
+                <li>الترخيص لا يمنح حق بيع أو تأجير أو توزيع المنصة كوحدة — فقط الاستخدام الداخلي من قبل العميل.</li>
+                <li>عدد المستخدمين/المنتجات/العملاء المرخص به في الباقة المتفق عليها؛ لا تُفرض تقنيًا ويجب على العميل الالتزام بها بمسؤولية.</li>
+                <li>لا يجوز استخدام المنصة لأي غرض مخالف للقانون أو لانتهاكات تتعلق بالضرائب أو غسل الأموال.</li>
+            </ol>
+
+            <h2>3. الخصوصية والبيانات</h2>
+            <p>البيانات ملك العميل وحده. لا تطلع المنصة على أي بيانات إلا للضرورة القصوى للمهمة (كعرض التقارير)، ولا تُنقل لأي جهة أخرى دون موافقة كتابية، ما لم يلزم به حكم قضائي أو طلب رسمي من جهة رقابية.</p>
+
+            <h2>4. الاشتراك والدفع</h2>
+            <ol>
+                <li>تتجدد الباقة كل سنة ما لم يُلغِها العميل قبل موعد التجديد بعد الإشعار من المنصة.</li>
+                <li>الأسعار في <a href="{{ url_for('public.pricing') }}">صفحة الأسعار</a>؛ تخضع أي زيادة لإشعار مسبق بثلاثين يومًا.</li>
+                <li>التأخير في الدفع يخول المنصة تعليق الحسابات حتى الاستلام؛ لا تُحذف بيانات العميل بسبب التأخير.</li>
+            </ol>
+
+            <h2>5. الضرائب والامتثال</h2>
+            <p><strong>مهم:</strong> المنصة تدعم إعدادات الضريبة (قواعد الدولة، الشهادات، التقارير) تقنيًا، لكنها <strong>لا تمنح شهادة امتثال</strong> أمام أي سلطة. الإقرارات القانونية تطلب عقدًا وشهادة من سلطة الدولة، إما مباشرة أو عبر مزود معتمد. ما توفره المنصة: بيانات جاهزة بكفاءة 100% لاستهلاك المختص — لا أكثر ولا أقل.</p>
+
+            <h2>6. التوفر ومستوى الخدمة</h2>
+            <p>أهداف مستوى الخدمة في <a href="{{ url_for('public.sla') }}">وثيقة SLA</a>. الصيانة المجدولة تُعلن مسبقًا على <a href="{{ url_for('public.contact') }}">قنوات التواصل</a>.</p>
+
+            <h2>7. المسؤولية</h2>
+            <ol>
+                <li>المنصة غير مسؤولة عن قرارات تشغيلية اتخذها العميل بناءً على التحليلات أو التوقعات الذكية.</li>
+                <li>الحد الأقصى للمسؤولية: قيمة الاشتراك المدفوع للدورة الحالية.</li>
+                <li>لا تنطبق هذه الحدود حيث لا يجيز القانون ذلك؛ في حال الإهمال الجسيم أو سوء النية.</li>
+            </ol>
+
+            <h2>8. إنهاء التعاقد</h2>
+            <ol>
+                <li>يمكن لأي طرف إنهاء الاشتراك بإشعار 30 يومًا قبل نهاية الدورة.</li>
+                <li>عند نهاية التعاقد، للعميل الحق في تصدير بياناته (CSV/PDF/طباعة) قبل حذفها نهائيًا.</li>
+                <li>للمنصة حق تعليق أي حساب يخالف هذه الشروط بإشعار.</li>
+            </ol>
+
+            <h2>9. القانون الواجب التطبيق</h2>
+            <p>يخضع هذا الاتفاق للقانون الإماراتي أو قانون بلد العميل (حيث يُنص في العقد). أي نزاع يُحال أولًا للمفاوضة، ثم للتحكيم.</p>
+
+            <p class="muted">الاستفسار: <a href="{{ url_for('public.contact') }}">اتصل بنا</a> أو عبر <a href="{{ url_for('auth.support') }}">الدعم</a>.</p>
+        </div>
+    </div>
+</body>
+</html>

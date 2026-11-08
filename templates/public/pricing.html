@@ -35,59 +35,30 @@
 
     <div class="pricing-container">
         <div class="pricing-grid">
-            
-            <!-- Basic Plan -->
+            {% for p in plans %}
+            <div class="price-card {% if loop.index == 2 %}featured{% endif %}">
+                {% if loop.index == 2 %}<div class="badge">الأكثر شعبية</div>{% endif %}
+                <div class="plan-name">{{ p.name_ar }}</div>
+                <div class="price">{{ "{:,.0f}".format(p.price_month) }} {{ p.currency }}<small>/شهرياً</small></div>
+                <div class="price-note">أو {{ "{:,.0f}".format(p.price_year) }} {{ p.currency }} سنوياً (شهري {{ "{:,.0f}".format((p.price_year / 12) if p.price_year else p.price_month) }} {{ p.currency }})<br>
+                    للمؤسسات التي لا تتجاوز {{ p.max_users }} مستخدمين و{{ "{:,.0f}".format(p.max_products) }} منتجًا</div>
+                <ul class="features-list">
+                    {% if p.features_ar %}{% for line in p.features_ar.splitlines() %}{% if line.strip() %}<li><i class="fas fa-check"></i> {{ line.strip() }}</li>{% endif %}{% endfor %}{% else %}
+                    <li><i class="fas fa-check"></i> {{ p.max_users }} مستخدمين</li>
+                    <li><i class="fas fa-check"></i> مبيعات ومشتريات ومخزون</li>
+                    <li><i class="fas fa-check"></i> فواتير وطباعة</li>
+                    <li><i class="fas fa-check"></i> تقارير VAT</li>
+                    <li><i class="fas fa-check"></i> دعم عبر التذاكر</li>
+                    {% endif %}
+                </ul>
+                <button class="btn-select" onclick="contact('{{ p.slug }}')">اختر الباقة</button>
+            </div>
+            {% else %}
             <div class="price-card">
-                <div class="plan-name">الباقة الأساسية</div>
-                <div class="price">$50<small>/شهرياً</small></div>
-                <div class="price-note">أو $80 شهرياً مع استضافة مُدارة<br>للشركات الصغيرة والمتوسطة</div>
-                <ul class="features-list">
-                    <li><i class="fas fa-check"></i> 3 مستخدمين</li>
-                    <li><i class="fas fa-check"></i> مبيعات ومشتريات</li>
-                    <li><i class="fas fa-check"></i> إدارة مخزون</li>
-                    <li><i class="fas fa-check"></i> فواتير إلكترونية</li>
-                    <li><i class="fas fa-check"></i> عملاء وموردون</li>
-                    <li><i class="fas fa-check"></i> تقارير أساسية</li>
-                    <li><i class="fas fa-check"></i> دعم واتساب</li>
-                </ul>
-                <button class="btn-select" onclick="contact('basic')">اختر الباقة</button>
+                <div class="plan-name">لا توجد خطط معروضة حاليًا</div>
+                <div class="price-note">اضبط الأسعار في /owner/plans أولًا.</div>
             </div>
-
-            <!-- Professional Plan -->
-            <div class="price-card featured">
-                <div class="badge">الأكثر شعبية</div>
-                <div class="plan-name">الباقة الاحترافية</div>
-                <div class="price">$100<small>/شهرياً</small></div>
-                <div class="price-note">أو $130 شهرياً مع استضافة مُدارة<br>للشركات النامية</div>
-                <ul class="features-list">
-                    <li><i class="fas fa-check"></i> 10 مستخدمين</li>
-                    <li><i class="fas fa-check"></i> كل ميزات الأساسية</li>
-                    <li><i class="fas fa-check"></i> ذكاء اصطناعي</li>
-                    <li><i class="fas fa-check"></i> دفتر أستاذ GL</li>
-                    <li><i class="fas fa-check"></i> تقارير متقدمة</li>
-                    <li><i class="fas fa-check"></i> API للربط</li>
-                    <li><i class="fas fa-check"></i> دعم فني 24/7</li>
-                </ul>
-                <button class="btn-select" onclick="contact('professional')">اختر الباقة</button>
-            </div>
-
-            <!-- Enterprise Plan -->
-            <div class="price-card">
-                <div class="plan-name">باقة الشركات والمؤسسات</div>
-                <div class="price">$120<small>/شهرياً</small></div>
-                <div class="price-note">أو $150 شهرياً مع استضافة مُدارة<br>حلول مخصصة للمؤسسات</div>
-                <ul class="features-list">
-                    <li><i class="fas fa-check"></i> مستخدمين غير محدودين</li>
-                    <li><i class="fas fa-check"></i> كل الميزات المتقدمة</li>
-                    <li><i class="fas fa-check"></i> تخصيص كامل للنظام</li>
-                    <li><i class="fas fa-check"></i> تدريب مجاني للموظفين</li>
-                    <li><i class="fas fa-check"></i> استضافة خاصة</li>
-                    <li><i class="fas fa-check"></i> ربط مع أنظمة أخرى</li>
-                    <li><i class="fas fa-check"></i> مدير حساب مخصص</li>
-                    <li><i class="fas fa-check"></i> SLA مضمون</li>
-                </ul>
-                <button class="btn-select" onclick="contact('enterprise')">تواصل معنا</button>
-            </div>
+            {% endfor %}
         </div>
     </div>
 

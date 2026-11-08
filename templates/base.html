@@ -696,7 +696,16 @@
               {% if current_user.has_permission('manage_purchases') %}
               <li class="nav-item"><a href="{{ url_for('erp_modules.purchase_orders') }}" class="nav-link"><i class="fas fa-shopping-cart nav-icon"></i><p>أوامر الشراء</p></a></li>
               {% endif %}
-              {% if current_user.has_permission('manage_warehouse') %}
+              {% if current_user.has_permission('manage_backups') %}
+           <li class="nav-item">
+             <a href="{{ url_for('owner.verify_latest_backup') }}" class="nav-link">
+               <i class="nav-icon fas fa-clipboard-check"></i>
+               <p>التحقق من النسخ الاحتياطية</p>
+             </a>
+           </li>
+           {% endif %}
+
+           {% if current_user.has_permission('manage_warehouse') %}
               <li class="nav-item"><a href="{{ url_for('shipments.list_shipments') }}" class="nav-link"><i class="fas fa-truck nav-icon"></i><p>الإرساليات</p></a></li>
               <li class="nav-item"><a href="{{ url_for('inbound_shipments.list_inbound') }}" class="nav-link"><i class="fas fa-dolly nav-icon"></i><p>الشحنات الواردة</p></a></li>
               <li class="nav-item"><a href="{{ url_for('erp_modules.stock_transfers') }}" class="nav-link"><i class="fas fa-exchange-alt nav-icon"></i><p>نقل المخزون</p></a></li>
@@ -816,8 +825,8 @@
           {% endif %}
 
           {% if current_user.has_permission('manage_backups') %}
-          <li class="nav-item {% if request.endpoint and request.endpoint in ['owner.list_backups', 'owner.scheduled_backups'] %}menu-open{% endif %}">
-            <a href="{{ url_for('owner.list_backups') }}" class="nav-link {% if request.endpoint and request.endpoint in ['owner.list_backups', 'owner.scheduled_backups'] %}active{% endif %}">
+          <li class="nav-item {% if request.endpoint and request.endpoint in ['owner.list_backups', 'owner.scheduled_backups', 'owner.verify_latest_backup'] %}menu-open{% endif %}">
+            <a href="{{ url_for('owner.list_backups') }}" class="nav-link {% if request.endpoint and request.endpoint in ['owner.list_backups', 'owner.scheduled_backups', 'owner.verify_latest_backup'] %}active{% endif %}">
               <i class="nav-icon fas fa-database"></i>
               <p>النسخ الاحتياطية</p>
             </a>
@@ -912,6 +921,24 @@
             <a href="{{ url_for('owner.tenants_list') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.tenant') %}active{% endif %}">
               <i class="nav-icon fas fa-building text-success"></i>
               <p>المستأجرون</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('owner.plans') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.plans') %}active{% endif %}">
+              <i class="nav-icon fas fa-layer-group text-info"></i>
+              <p>الخطط والأسعار</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('owner.support_inbox') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.support_ticket') %}active{% endif %}">
+              <i class="nav-icon fas fa-inbox text-info"></i>
+              <p>صندوق وارد الدعم</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('owner.incidents') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.incidents') %}active{% endif %}">
+              <i class="nav-icon fas fa-bolt text-danger"></i>
+              <p>سجل الحوادث</p>
             </a>
           </li>
           <li class="nav-item">
@@ -1065,6 +1092,10 @@
           <a href="{{ url_for('public.user_guide') }}" class="footer-inline-link" title="دليل المستخدم">
             <i class="fas fa-book"></i>
           </a>
+          <a href="{{ url_for('public.sla') }}" class="footer-inline-link" title="SLA — التزامات التشغيل"><i class="fas fa-life-ring"></i></a>
+          <a href="{{ url_for('public.contract') }}" class="footer-inline-link" title="عقد الاشتراك (نموذج)"><i class="fas fa-file-contract"></i></a>
+          <a href="{{ url_for('public.terms') }}" class="footer-inline-link" title="شروط الخدمة"><i class="fas fa-gavel"></i></a>
+          <a href="{{ url_for('public.privacy') }}" class="footer-inline-link" title="سياسة الخصوصية"><i class="fas fa-user-shield"></i></a>
           <a href="#" class="footer-inline-link" title="{{ (_t.address_ar if _t and _t.address_ar else (_t.city if _t else config.COMPANY_ADDRESS)) }}">
             <i class="fas fa-map-marker-alt"></i>
           </a>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLA — {{ config.COMPANY_NAME_AR }}</title>
+    <meta name="description" content="Service level commitments for AzadERP — availability, response, incident handling, maintenance.">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/public_simple.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/lang_pills.css') }}">
+    <style>
+      .doc { max-width: 880px; margin: 0 auto; background: #fff; border-radius: 14px; padding: 28px 32px; box-shadow: 0 8px 30px rgba(0,0,0,.06); }
+      .doc h1 { font-size: 1.8rem; margin-bottom: .5rem; color: #0b3d2e; }
+      .doc h2 { font-size: 1.15rem; margin-top: 1.6rem; color: #0b3d2e; border-bottom: 2px solid #e6e9e8; padding-bottom: .4rem; }
+      .doc p, .doc li { font-size: .95rem; line-height: 1.9; color: #1d2a26; }
+      .doc .muted { color: #6b7a74; font-size: .85rem; }
+      .doc table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+      .doc th, .doc td { border: 1px solid #e3e8e6; padding: 10px 12px; font-size: .92rem; text-align: left; }
+      .doc thead th { background: #eef7f1; color: #0b3d2e; }
+    </style>
+</head>
+<body>
+    <div class="lang-switcher">
+        <a href="{{ url_for('language.set_language', lang='ar') }}" class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}">العربية</a>
+        <a href="{{ url_for('language.set_language', lang='en') }}" class="lang-pill {% if session.get('language') == 'en' %}active{% endif %}">English</a>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">{{ config.COMPANY_NAME_AR }}</div>
+        <div>
+            <a href="{{ url_for('public.landing') }}">Home</a>
+            <a href="{{ url_for('public.pricing') }}">Pricing</a>
+            <a href="{{ url_for('public.contract') }}">Contract</a>
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Sign in</a>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <div class="doc">
+            <h1>Service Level Agreement (SLA)</h1>
+            <p class="muted">Last updated: 2026-11-08 — operational targets; actuals measured from real incidents and tickets.</p>
+
+            <h2>1. Monthly availability target</h2>
+            <ul>
+                <li>Target: <strong>99.5%</strong> per month (no more than 216 minutes unplanned downtime/month).</li>
+                <li>Scheduled maintenance excluded; announced in advance.</li>
+                <li>Any breach beyond target: explained in writing within 48h of closure.</li>
+            </ul>
+
+            <h2>2. Incident response and resolution</h2>
+            <table>
+              <thead><tr><th>Priority</th><th>First response</th><th>Initial resolution</th><th>Updates</th></tr></thead>
+              <tbody>
+                <tr><td><strong>SEV-1</strong> (full outage / data loss risk)</td><td>≤ 30 min</td><td>≤ 2 h</td><td>hourly</td></tr>
+                <tr><td><strong>SEV-2</strong> (major branch/tenant impact)</td><td>≤ 1 h</td><td>≤ 8 h</td><td>every 4h</td></tr>
+                <tr><td><strong>SEV-3</strong> (partial fault, workaround exists)</td><td>≤ 4 h</td><td>≤ 5 business days</td><td>daily</td></tr>
+              </tbody>
+            </table>
+
+            <h2>3. Tickets and support</h2>
+            <table>
+              <thead><tr><th>Priority</th><th>First response</th><th>Resolution target</th><th>Days</th></tr></thead>
+              <tbody>
+                <tr><td>urgent</td><td>≤ 4 h</td><td>≤ 1 business day</td><td>Sat–Thu</td></tr>
+                <tr><td>high</td><td>≤ 24 h</td><td>≤ 3 business days</td><td>Sat–Thu</td></tr>
+                <tr><td>normal</td><td>≤ 72 h</td><td>≤ 5 business days</td><td>Sat–Thu</td></tr>
+                <tr><td>low</td><td>≤ 1 week</td><td>as-scheduled</td><td>Sat–Thu</td></tr>
+              </tbody>
+            </table>
+
+            <h2>4. Backups</h2>
+            <ul>
+                <li>Automated backups per configured frequency (daily default).</li>
+                <li>Every backup is content-verified automatically (size, checksum, tables, data markers) — visible to the owner in the dashboard.</li>
+                <li>Retention: the 5 latest backups on-server; customer responsible for off-site copies.</li>
+            </ul>
+
+            <h2>5. Maintenance</h2>
+            <ul>
+                <li>Upgrades, security patches, migrations out-of-peak-hours.</li>
+                <li>User impact announced at least 72 hours ahead — via tickets, email, or the in-app banner.</li>
+            </ul>
+
+            <h2>6. Scope and exclusions</h2>
+            <p>Not liable for outages caused by: customer network, misuse, unauthorised third-party access, or force majeure. These targets are operational intent — not absolute guarantees; this page does not modify the executed contract.</p>
+
+            <p class="muted">Applies to all customers regardless of plan. Enterprise/government deals may include a custom SLA in the contract. Questions: <a href="{{ url_for('public.contact') }}">contact us</a>.</p>
+        </div>
+    </div>
+</body>
+</html>

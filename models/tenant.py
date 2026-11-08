@@ -63,6 +63,8 @@ class Tenant(db.Model):
 
     # Subscription - الاشتراك
     subscription_plan = db.Column(db.String(50), default='basic')  # basic, pro, enterprise
+    # تاريخ توقيع العقد من قبل الشركة (اختياري) — يظهر في النموذج فقط للمصادقة المبدئية
+    contract_signed_at = db.Column(db.DateTime, nullable=True)
     subscription_start = db.Column(db.DateTime)
     subscription_end = db.Column(db.DateTime)
     is_trial = db.Column(db.Boolean, default=False)

@@ -268,6 +268,8 @@ def create_app(config_class=Config):  # noqa: C901
     # app.register_blueprint(notifications_bp)
     app.register_blueprint(warehouse_bp)
     app.register_blueprint(language_bp)
+    from routes.support import support_bp
+    app.register_blueprint(support_bp)
     # Always register AI bp (either real or fallback)
     app.register_blueprint(ai_bp)
     app.register_blueprint(users_bp)

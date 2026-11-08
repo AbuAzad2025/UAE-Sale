@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}التذكرة #{{ ticket.id }}{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="mb-3">
+    <a href="{{ url_for('support.tickets_list') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> رجوع للتذاكر</a>
+  </div>
+
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div>
+        <h3 class="mb-0">#{{ ticket.id }} — {{ ticket.subject }}</h3>
+        <small class="text-muted">{{ category_label.get(ticket.category, ticket.category) }} — {{ ticket.created_at.strftime('%Y-%m-%d %H:%M') if ticket.created_at else '' }}</small>
+      </div>
+      <div>
+        <span class="badge badge-{{ 'danger' if ticket.priority == 'urgent' else ('warning' if ticket.priority == 'high' else 'secondary') }} badge-lg">{{ priority_label.get(ticket.priority, ticket.priority) }}</span>
+        <span class="badge badge-{{ 'success' if ticket.status == 'resolved' else ('warning' if ticket.status == 'in_progress' else ('danger' if ticket.status == 'closed' else 'info')) }} badge-lg">{{ ticket.status }}</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <pre style="white-space: pre-wrap; font-family: inherit; background: #f7faf8; border-radius: 10px; padding: 16px;">{{ ticket.description }}</pre>
+
+      {% if ticket.resolution_notes %}
+      <h5 class="mt-3">ردّ الفريق / الحل:</h5>
+      <pre style="white-space: pre-wrap; font-family: inherit; background: #eef7ef; border-radius: 10px; padding: 16px; border-right: 4px solid #2e7d32;">{{ ticket.resolution_notes }}</pre>
+      {% endif %}
+
+      <h5 class="mt-3">مؤشرات SLA</h5>
+      <p class="text-muted small mb-0">الحالة: <strong>{{ ticket.sla_status() }}</strong> — الرد الأول والتحديثات حسب أولوية التذكرة الموثقة في <a href="{{ url_for('public.sla') }}">وثيقة SLA</a>.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -205,7 +205,7 @@ class TestOwnerTaxRulesets:
         resp = client.post('/owner/tax-rulesets', data={
             'action': 'create',
             'country_code': 'XX',
-            'country_name': '??? ???? ???????',
+            'country_name': 'بلا حالة قانونية',
             'vat_rate': '8.25',
             'vat_label': 'TESTVAT',
             'corp_tax_rate': '1.50',
@@ -214,7 +214,7 @@ class TestOwnerTaxRulesets:
             'einvoice_required': 'on',
             'einvoice_status': 'manual',
             'authority_name': 'Test Authority',
-            'authority_notes': '??????',
+            'authority_notes': 'اختبار',
             'compliance_notes': 'test ruleset',
             'is_active': 'on',
         }, follow_redirects=False)
@@ -231,14 +231,14 @@ class TestOwnerTaxRulesets:
             'action': 'update',
             'id': row.id,
             'country_code': 'XX',
-            'country_name': '??? ???? ???????',
+            'country_name': 'بلا حالة قانونية',
             'vat_rate': '7.50',
             'vat_label': 'TESTVAT',
             'corp_tax_rate': '2.00',
             'corp_tax_threshold': '2000',
             'authority_name': 'Test Authority',
             'einvoice_status': 'manual',
-            'authority_notes': '??????',
+            'authority_notes': 'اختبار',
             'compliance_notes': 'updated',
         }, follow_redirects=False)
         assert resp.status_code == 302
@@ -253,7 +253,7 @@ class TestOwnerTaxRulesets:
 class TestOwnerComplianceCredentials:
     def _get_tenant(self, db, slug="test-tenant-cc"):
         from models import Tenant
-        t = Tenant(name="CC Test Tenant", name_ar="?????? ??????", slug=slug,
+        t = Tenant(name="CC Test Tenant", name_ar="مستأجر اختبار", slug=slug,
                    is_active=True)
         db.session.add(t)
         db.session.commit()
@@ -284,7 +284,7 @@ class TestOwnerComplianceCredentials:
             "certificate_pem": "-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----",
             "zatca_api_environment": "integration",
             "request_id": "REQ-1",
-            "notes": "?????? ???",
+            "notes": "اختبار آلي",
         }, follow_redirects=False)
         assert resp.status_code == 302
 
@@ -329,3 +329,145 @@ class TestOwnerComplianceCredentials:
         html = resp.get_data(as_text=True)
         assert "SUPER-SECRET-CSID-DO-NOT-LEAK-9999" not in html
         assert "secret-material" not in html
+
+
+class TestOwnerPlans:
+    def test_owner_can_view(self, client, owner_client_user, db):
+        _login(client, owner_client_user)
+        assert client.get("/owner/plans").status_code == 200
+
+    def test_non_owner_redirected(self, client, plain_user):
+        _login(client, plain_user)
+        resp = client.get("/owner/plans", follow_redirects=False)
+        assert resp.status_code == 302
+
+    def test_create_toggle_roundtrip(self, client, owner_client_user, db):
+        from models import SubscriptionPlan
+
+        _login(client, owner_client_user)
+        resp = client.post("/owner/plans", data={
+            "action": "create",
+            "slug": "platinum_test",
+            "name_ar": "باقة مميزة اختبار",
+            "name_en": "Platinum Test",
+            "price_year": "499.00",
+            "price_month": "49.00",
+            "currency": "AED",
+            "max_users": "25",
+            "max_products": "9999",
+            "max_customers": "99999",
+            "sort_order": "40",
+            "is_public": "on",
+            "is_active": "on",
+            "features_ar": "كل ميزات الاحترافية",
+            "features_en": "All pro features",
+        }, follow_redirects=False)
+        assert resp.status_code == 302
+
+        row = SubscriptionPlan.query.filter_by(slug="platinum_test").first()
+        assert row is not None
+        assert str(row.price_year) == "499.00"
+        assert row.is_active is True
+
+        resp = client.post(f"/owner/plans/{row.id}/toggle",
+                           data={}, follow_redirects=False)
+        assert resp.status_code == 302
+        db.session.expire_all()
+        row = SubscriptionPlan.query.filter_by(slug="platinum_test").first()
+        assert row.is_active is False
+
+
+class TestOwnerIncidents:
+    def test_owner_can_view(self, client, owner_client_user, db):
+        _login(client, owner_client_user)
+        assert client.get("/owner/incidents").status_code == 200
+
+    def test_create_and_resolve(self, client, owner_client_user, db):
+        from models import Incident
+
+        _login(client, owner_client_user)
+        resp = client.post("/owner/incidents", data={
+            "action": "create",
+            "title": "اختبار حادث آلي",
+            "severity": "sev2",
+            "status": "open",
+            "impact": "فرع اختباري فقط",
+        }, follow_redirects=False)
+        assert resp.status_code == 302
+
+        row = Incident.query.filter_by(title="اختبار حادث آلي").first()
+        assert row is not None
+        assert row.status == "open"
+
+        resp = client.post("/owner/incidents", data={
+            "action": "resolve",
+            "incident_id": str(row.id),
+            "resolution_notes": "الحل: إعادة تشغيل الخدمة",
+        }, follow_redirects=False)
+        assert resp.status_code == 302
+        db.session.expire_all()
+        assert Incident.query.get(row.id).status == "resolved"
+
+
+class TestOwnerSupportInbox:
+    def _make_tenant(self, db, slug):
+        from models import Tenant
+        t = Tenant(name=f"Secret Co {slug}", name_ar=f"شركة {slug}",
+                   slug=slug, is_active=True)
+        db.session.add(t)
+        db.session.commit()
+        return t
+
+    def _make_user(self, db, role, tenant_id, username):
+        from models import User
+        u = User(username=username, email=f"{username}@t.com", full_name=username,
+                 is_active=True, role_id=role.id, tenant_id=tenant_id)
+        u.set_password("Pass123!")
+        db.session.add(u)
+        db.session.commit()
+        return u
+
+    def test_tenant_sees_only_own_tickets(self, client, db):
+        from models import Role, User, SupportTicket
+
+        t1 = self._make_tenant(db, "alpha-inbox")
+        t2 = self._make_tenant(db, "beta-inbox")
+        role = Role.query.filter_by(slug="seller").first()
+        if role is None:
+            from models import Permission
+            role = Role(name="Seller", name_ar="بائع", slug="seller")
+            db.session.add(role)
+            db.session.flush()
+        u1 = self._make_user(db, role, t1.id, "inbox_u1")
+        u2 = self._make_user(db, role, t2.id, "inbox_u2")
+
+        db.session.add(SupportTicket(tenant_id=t1.id, author_user_id=u1.id,
+                                     subject="تذكرة ألفا", description="أ"))
+        db.session.add(SupportTicket(tenant_id=t2.id, author_user_id=u2.id,
+                                     subject="تذكرة بيتا", description="ب"))
+        db.session.commit()
+
+        client.post("/auth/login", data={"username": u1.username,
+                                         "password": "Pass123!"},
+                    follow_redirects=True)
+        resp = client.get("/support/tickets")
+        html = resp.get_data(as_text=True)
+        assert "تذكرة ألفا" in html
+        assert "تذكرة بيتا" not in html
+
+    def test_owner_sees_all_tickets(self, client, db, owner_client_user):
+        from models import SupportTicket
+
+        t1 = self._make_tenant(db, "alpha-all")
+        t2 = self._make_tenant(db, "beta-all")
+        owner = owner_client_user
+        db.session.add(SupportTicket(tenant_id=t1.id, author_user_id=owner.id,
+                                     subject="تذكرة في الإنبوكس", description="x"))
+        db.session.add(SupportTicket(tenant_id=t2.id, author_user_id=owner.id,
+                                     subject="تذكرة ثانية في الإنبوكس", description="y"))
+        db.session.commit()
+        _login(client, owner)
+        resp = client.get("/owner/support-tickets")
+        html = resp.get_data(as_text=True)
+        assert "تذكرة في الإنبوكس" in html
+        assert "تذكرة ثانية في الإنبوكس" in html

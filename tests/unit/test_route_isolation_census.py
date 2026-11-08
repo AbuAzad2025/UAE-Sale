@@ -80,12 +80,12 @@ def test_full_inventory_count(app):
     from utils import route_scope
 
     audit = route_scope.audit_routes(app)
-    assert len(audit) == 500
+    assert len(audit) == 513
     scopes = {}
     for entry in audit:
         scopes[entry['scope']] = scopes.get(entry['scope'], 0) + 1
     # نطاقات معروفة للتحقق من سلامة المسح — أي تغيير يزيح العدد وباهتز
-    assert scopes.get('tenant', 0) == 349
-    assert scopes.get('platform', 0) == 122
-    assert scopes.get('public', 0) == 23
+    assert scopes.get('tenant', 0) == 352
+    assert scopes.get('platform', 0) == 128
+    assert scopes.get('public', 0) == 27
     assert scopes.get('system', 0) == 6

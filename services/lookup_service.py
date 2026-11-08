@@ -30,6 +30,18 @@ def _base_list(group):
     reg = _registry()
     if group not in reg:
         raise ValueError(f'مجموعة ثوابت غير معروفة: {group}')
+    if group == 'subscription_plans':
+        # القاعدة الحية تتفوق على الثابتة — الأسعار والأوصاف من /owner/plans
+        try:
+            from models import SubscriptionPlan
+            plans = (SubscriptionPlan.query
+                     .filter_by(is_active=True)
+                     .order_by(SubscriptionPlan.sort_order, SubscriptionPlan.id)
+                     .all())
+            if plans:
+                return [(p.slug, {'ar': p.name_ar, 'en': p.name_en or p.name_ar}) for p in plans]
+        except Exception:
+            pass
     source = reg[group]['source']
     return list(getattr(_constants, source))
 

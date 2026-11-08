@@ -374,7 +374,7 @@
 | `/monitoring/health` | `monitoring.health` | platform | — |
 | `/monitoring/metrics` | `monitoring.metrics` | platform | login_required |
 
-## routes.owner (platform) — 79 مسار
+## routes.owner (platform) — 85 مسار
 
 | Path | Endpoint | Scope | Markers |
 |---|---|---|---|
@@ -389,6 +389,7 @@
 | `/owner/backups/download/<filename>` | `owner.download_backup` | platform | permission_required, login_required |
 | `/owner/backups/list` | `owner.list_backups` | platform | permission_required, login_required |
 | `/owner/backups/restore/<filename>` | `owner.restore_backup` | platform | owner_required, login_required |
+| `/owner/backups/verify-latest` | `owner.verify_latest_backup` | platform | permission_required, login_required |
 | `/owner/backups/verify/<filename>` | `owner.verify_backup` | platform | permission_required, login_required |
 | `/owner/browse-table/<table_name>` | `owner.browse_table` | platform | owner_required, login_required |
 | `/owner/cards-vault` | `owner.cards_vault` | platform | owner_required, login_required |
@@ -421,6 +422,7 @@
 | `/owner/fx-revaluation/` | `owner.fx_revaluation` | platform | permission_required, login_required |
 | `/owner/guide` | `owner.owner_guide` | platform | owner_required, login_required |
 | `/owner/import-export-tools` | `owner.import_export_tools` | platform | owner_required, login_required |
+| `/owner/incidents` | `owner.incidents` | platform | owner_required, login_required |
 | `/owner/integrations` | `owner.integrations` | platform | owner_required, login_required |
 | `/owner/integrations/update/<service>` | `owner.update_integration` | platform | owner_required, login_required |
 | `/owner/invoice-settings` | `owner.invoice_settings` | platform | owner_required, login_required |
@@ -430,6 +432,8 @@
 | `/owner/notification-templates` | `owner.notification_templates` | platform | owner_required, login_required |
 | `/owner/payment-gateways` | `owner.payment_gateways` | platform | owner_required, login_required |
 | `/owner/performance-metrics` | `owner.performance_metrics` | platform | owner_required, login_required |
+| `/owner/plans` | `owner.plans` | platform | owner_required, login_required |
+| `/owner/plans/<int:plan_id>/toggle` | `owner.toggle_plan` | platform | owner_required, login_required |
 | `/owner/preview-invoice/<template>` | `owner.preview_invoice` | platform | owner_required, login_required |
 | `/owner/preview-receipt/<template>` | `owner.preview_receipt` | platform | owner_required, login_required |
 | `/owner/product-performance` | `owner.product_performance` | platform | owner_required, login_required |
@@ -441,6 +445,8 @@
 | `/owner/security-alerts` | `owner.security_alerts` | platform | owner_required, login_required |
 | `/owner/security-alerts/<int:id>/resolve` | `owner.resolve_alert` | platform | get_owned_or_404, owner_required, login_required |
 | `/owner/sms-settings` | `owner.sms_settings` | platform | owner_required, login_required |
+| `/owner/support-tickets` | `owner.support_inbox` | platform | owner_required, login_required |
+| `/owner/support-tickets/<int:ticket_id>/status` | `owner.support_ticket_status` | platform | owner_required, login_required |
 | `/owner/system-config` | `owner.system_config` | platform | owner_required, login_required |
 | `/owner/system-health` | `owner.system_health` | platform | owner_required, login_required |
 | `/owner/system-stats` | `owner.system_stats` | platform | owner_required, login_required |
@@ -542,16 +548,20 @@
 | `/products/categories/create` | `products.create_category` | tenant | permission_required, login_required |
 | `/products/create` | `products.create` | tenant | get_owned_or_404, permission_required, login_required |
 
-## routes.public (public) — 8 مسار
+## routes.public (public) — 12 مسار
 
 | Path | Endpoint | Scope | Markers |
 |---|---|---|---|
 | `/contact` | `public.contact` | public | — |
+| `/contract` | `public.contract` | public | — |
 | `/demo` | `public.demo` | public | — |
 | `/features` | `public.features` | public | — |
 | `/pricing` | `public.pricing` | public | — |
+| `/privacy` | `public.privacy` | public | — |
 | `/robots.txt` | `public.robots` | public | — |
 | `/sitemap.xml` | `public.sitemap` | public | — |
+| `/sla` | `public.sla` | public | — |
+| `/terms` | `public.terms` | public | — |
 | `/user-guide` | `public.user_guide` | public | — |
 | `/welcome` | `public.landing` | public | — |
 
@@ -642,6 +652,14 @@
 | `/suppliers/api/search` | `suppliers.api_search` | tenant | permission_required, login_required |
 | `/suppliers/create` | `suppliers.create` | tenant | current_tenant, permission_required, login_required |
 
+## routes.support (tenant) — 3 مسار
+
+| Path | Endpoint | Scope | Markers |
+|---|---|---|---|
+| `/support/tickets` | `support.tickets_list` | tenant | tenant_id, get_current_tenant_id, current_tenant, scope, login_required |
+| `/support/tickets/<int:id>` | `support.ticket_view` | tenant | get_owned_or_404, login_required |
+| `/support/tickets/new` | `support.ticket_new` | tenant | tenant_id, get_current_tenant_id, current_tenant, scope, login_required |
+
 ## routes.users (tenant) — 7 مسار
 
 | Path | Endpoint | Scope | Markers |
@@ -698,21 +716,21 @@
 
 ## الملخص
 
-* **إجمالي المسارات:** 500
-* **platform:** 122
-* **public:** 23
+* **إجمالي المسارات:** 513
+* **platform:** 128
+* **public:** 27
 * **system:** 6
-* **tenant:** 349
+* **tenant:** 352
 
 ### أكثر علامات العزل استخدامًا
-* `login_required`: 464
-* `permission_required`: 259
-* `get_owned_or_404`: 89
-* `owner_required`: 73
-* `tenant_id`: 17
-* `current_tenant`: 13
-* `scope`: 9
-* `get_current_tenant_id`: 5
+* `login_required`: 473
+* `permission_required`: 260
+* `get_owned_or_404`: 90
+* `owner_required`: 78
+* `tenant_id`: 19
+* `current_tenant`: 15
+* `scope`: 11
+* `get_current_tenant_id`: 7
 
 **ملاحظة قانونية:** هذه المسارد حصرًا على مستوى الكود. لا شرط فيها
 يتعلق بمعايير التدقيق الخارجي أو اعتماد منصات سلطة. الامتثال القانوني

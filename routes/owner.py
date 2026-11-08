@@ -3344,6 +3344,67 @@ def fx_revaluation():
     )
 
 
+@owner_bp.route('/tax-rulesets', methods=['GET', 'POST'])
+@login_required
+@owner_required
+def tax_rulesets():
+    """قواعد الضريبة للدول — ديناميكية قابلة للتعديل.
+
+    كل دولة لهذه اللوحة لها شاهد رئيسي على الضريبة المستحقة على الدولة؛
+    يمكن للإدارة تعديل النسب والعتبات والملاحظات القانونية من هذه الواجهة
+    دون الحاجة لتغيير الكود. التكامل الفعلي مع سلطة كل دولة (مثل ZATCA/ETA/FTA)
+    غير مدعوم هنا ولا يُدَّعى — وهذه ملاحظة قانونية صريحة تُعرض على كل قاعدة.
+    """
+    from models import TaxRuleset
+    from services.compliance import country_compliance_snapshot
+
+    EDITABLE_FIELDS = ('vat_rate', 'vat_label', 'corp_tax_rate', 'corp_tax_threshold',
+                       'einvoice_required', 'einvoice_status', 'vat_enabled_default',
+                       'corp_tax_enabled_default',
+                       'authority_name', 'authority_portal_url',
+                       'authority_notes', 'compliance_notes')
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action in ('update', 'create'):
+            ruleset_id = int(request.form.get('id')) if request.form.get('id') else None
+            row = db.session.get(TaxRuleset, ruleset_id) if ruleset_id else TaxRuleset()
+            try:
+                row.country_code = (request.form.get('country_code') or '').strip().upper()[:2]
+                row.country_name = (request.form.get('country_name') or '').strip()
+                row.vat_rate = Decimal(str(request.form.get('vat_rate', '0') or '0')).quantize(Decimal('0.01'))
+                row.vat_label = (request.form.get('vat_label') or 'VAT').strip()
+                row.corp_tax_rate = Decimal(str(request.form.get('corp_tax_rate', '0') or '0')).quantize(Decimal('0.01'))
+                row.corp_tax_threshold = Decimal(str(request.form.get('corp_tax_threshold', '0') or '0'))
+                row.vat_enabled_default = request.form.get('vat_enabled_default') == 'on'
+                row.corp_tax_enabled_default = request.form.get('corp_tax_enabled_default') == 'on'
+                row.einvoice_required = request.form.get('einvoice_required') == 'on'
+                row.einvoice_status = (request.form.get('einvoice_status') or 'manual').strip()
+                row.authority_name = (request.form.get('authority_name') or '').strip() or None
+                row.authority_portal_url = (request.form.get('authority_portal_url') or '').strip() or None
+                row.authority_notes = (request.form.get('authority_notes') or '').strip() or None
+                row.compliance_notes = (request.form.get('compliance_notes') or '').strip() or None
+                row.is_active = request.form.get('is_active') == 'on'
+                if not row.country_code or not row.country_name:
+                    raise ValueError('رمز الدولة واسمها مطلوبان')
+                db.session.add(row)
+                db.session.commit()
+                flash('✅ تم حفظ قاعدة الضريبة', 'success')
+                return redirect(url_for('owner.tax_rulesets'))
+            except Exception as exc:
+                db.session.rollback()
+                flash(f'⛔ {exc}', 'danger')
+
+    rulesets = TaxRuleset.query.filter_by(tenant_id=None).order_by(TaxRuleset.country_code).all()
+    compliance = country_compliance_snapshot()
+    return render_template(
+        'owner/tax_rulesets.html',
+        rulesets=rulesets,
+        compliance=compliance,
+        editable_fields=EDITABLE_FIELDS,
+    )
+
+
 @owner_bp.route('/guide')
 @login_required
 @owner_required

@@ -21,6 +21,7 @@ from .invoice_settings import InvoiceSettings
 from .tenant import Tenant
 from .system_settings import SystemSettings
 from .integration_settings import IntegrationSettings
+from .tax_ruleset import TaxRuleset, seed_default_rulesets, ruleset_for_tenant
 from .donation import Donation
 from .payment_vault import PaymentVault, PaymentTransaction, PaymentLog
 from .card_payment import CardPayment
@@ -102,7 +103,7 @@ __all__ = [
     'Expense', 'ExpenseCategory',
     'InvoiceSettings',
     'Tenant',
-    'SystemSettings',
+    'SystemSettings', 'TaxRuleset', 'seed_default_rulesets', 'ruleset_for_tenant',
     'IntegrationSettings',
     'Donation',
     'CardPayment',

@@ -123,7 +123,7 @@ flask db current
 
 > **ترتيب الترحيلات الضريبية (مطلوب الالتزام):** `b5_tax_per_tenant` →
 > `b6_corp_tax` → `b7_tenant_invoice_profile` → `b8_vat_treatments` →
-> `b9_purchase_tax_treatment` → `b10_sale_line_tax_treatment`.
+> `b9_purchase_tax_treatment` → `b10_sale_line_tax_treatment` → `b11_expense_tenant` → `b12_purchase_list_tenant` → `b13_payroll_leave_type_tenant` → `b14_product_group_tenant` → `b15_shipment_lines_tenant` → `b16_tax_rulesets`.
 > ملاحظة تشغيلية على `b6_corp_tax`: نسخته الحالية **لم تعد** تفرض تبديل عملة
 > أساس التينانتات تلقائياً. أي بيئة قديمة طُبّقت عليها النسخة القديمة وتغيّرت
 > عملات فيها تحتاج مراجعة يدوية — لا تُعالج بأي ترحيل آخر.
@@ -133,6 +133,14 @@ flask db current
 > **تطبيق يرفض التشغيل على قاعدة غير مُرحَّلة:** عند أول تشغيل على قاعدة
 > فارغة سيظهر `Application cannot run in a degraded state` — هذا سلوك
 > مقصود. شغّل `flask db upgrade` أولاً.
+
+> **`b16_tax_rulesets` — قواعد ضريبة لكل دولة (قابلة للتعديل):** يُنشئ جدول
+> `tax_rulesets` ويزرع الأسطر الافتراضية لـ 11 دولة (AE/SA/EG/JO/TR/GB/DE/
+> OM/BH/KW/QA). قانونيًا: هي **مرجع نسب جاهز للتعديل فقط** — لا تُثبت ولا تُطال
+> أي اعتماد ضريبي من أي سلطة. التكامل الفعلي مع سلطة كل دولة (مثل ZATCA/ETA/
+> FTA...) غير منفّذ ولا تُدَّعى فعاليته؛ كل دولة تتطلب عقدًا وشهادة من السلطة.
+> بعد الترقية: راجع `/owner/tax-rulesets` كمالك، عدّل أي نسبة من اللوحة — تُحفظ
+> في قاعدة البيانات دون أي تغيير للكود.
 
 ---
 

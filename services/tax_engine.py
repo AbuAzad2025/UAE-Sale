@@ -236,6 +236,15 @@ COUNTRY_LABEL_AR = {
 def country_rate(country_code):
     if not country_code:
         return None
+    # أولوية للقاعدة المخزَّنة في قاعدة البيانات (قابل للتعديل من المالك)
+    # ثم الاحتياطي الثابت فقط إذا غاب الجدول — وهو دائمًا ممكن التزويد
+    try:
+        from models.tax_ruleset import TaxRuleset
+        row = TaxRuleset.query.filter_by(country_code=country_code.upper(), tenant_id=None, is_active=True).first()
+        if row is not None and row.vat_rate is not None:
+            return Decimal(str(row.vat_rate))
+    except Exception:
+        pass
     return COUNTRY_VAT.get(country_code.upper())
 
 
@@ -247,6 +256,15 @@ def resolve(tenant, explicit_rate=None, explicit_inclusive=None):
     if not getattr(tenant, 'enable_tax', True):
         return Decimal('0'), bool(explicit_inclusive) if explicit_inclusive is not None else False
     rate = explicit_rate if explicit_rate is not None else getattr(tenant, 'default_tax_rate', None)
+    if rate is None:
+        # احترم قاعدة الدولة المخزَّنة أولاً؛ ثم الاحتياطي الثابت
+        try:
+            from models.tax_ruleset import ruleset_for_tenant
+            ruleset = ruleset_for_tenant(tenant)
+            if ruleset is not None and ruleset.vat_rate is not None:
+                rate = ruleset.vat_rate
+        except Exception:
+            rate = None
     if rate is None:
         rate = getattr(tenant, 'tax_country_rate', None)
     if rate is None:

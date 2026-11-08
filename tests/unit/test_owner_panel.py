@@ -85,6 +85,7 @@ OWNER_READ_PAGES = [
     # settings pages (probed 200)
     '/owner/api-keys',
     '/owner/ip-whitelist',
+    '/owner/tax-rulesets',
     '/owner/tax-settings',
     '/owner/currency-settings',
     '/owner/payment-gateways',
@@ -183,3 +184,67 @@ class TestOwnerPaymentGateways:
         assert resp.status_code == 302
         from models import PaymentVault
         assert PaymentVault.query.first().stripe_publishable_key == 'pk_test_123'
+
+
+class TestOwnerTaxRulesets:
+    def test_owner_can_view(self, client, owner_client_user, db):
+        _login(client, owner_client_user)
+        assert client.get('/owner/tax-rulesets').status_code == 200
+
+    def test_non_owner_redirected(self, client, plain_user):
+        _login(client, plain_user)
+        resp = client.get('/owner/tax-rulesets', follow_redirects=False)
+        assert resp.status_code == 302
+
+    def test_create_and_update_roundtrip(self, client, owner_client_user, db):
+        from decimal import Decimal
+        from models import TaxRuleset
+
+        _login(client, owner_client_user)
+
+        resp = client.post('/owner/tax-rulesets', data={
+            'action': 'create',
+            'country_code': 'XX',
+            'country_name': '??? ???? ???????',
+            'vat_rate': '8.25',
+            'vat_label': 'TESTVAT',
+            'corp_tax_rate': '1.50',
+            'corp_tax_threshold': '1000',
+            'vat_enabled_default': 'on',
+            'einvoice_required': 'on',
+            'einvoice_status': 'manual',
+            'authority_name': 'Test Authority',
+            'authority_notes': '??????',
+            'compliance_notes': 'test ruleset',
+            'is_active': 'on',
+        }, follow_redirects=False)
+        assert resp.status_code == 302
+
+        row = TaxRuleset.query.filter_by(country_code='XX', tenant_id=None).first()
+        assert row is not None
+        assert row.vat_rate == Decimal('8.25')
+        assert row.corp_tax_rate == Decimal('1.50')
+        assert row.einvoice_required is True
+        assert row.authority_name == 'Test Authority'
+
+        resp = client.post('/owner/tax-rulesets', data={
+            'action': 'update',
+            'id': row.id,
+            'country_code': 'XX',
+            'country_name': '??? ???? ???????',
+            'vat_rate': '7.50',
+            'vat_label': 'TESTVAT',
+            'corp_tax_rate': '2.00',
+            'corp_tax_threshold': '2000',
+            'authority_name': 'Test Authority',
+            'einvoice_status': 'manual',
+            'authority_notes': '??????',
+            'compliance_notes': 'updated',
+        }, follow_redirects=False)
+        assert resp.status_code == 302
+
+        _db.session.expire_all()
+        row = TaxRuleset.query.filter_by(country_code='XX', tenant_id=None).first()
+        assert row.vat_rate == Decimal('7.50')
+        assert row.corp_tax_threshold in (Decimal('2000.00'), Decimal('2000'))
+        assert row.is_active is False  # unchecked checkbox -> False after update

@@ -67,11 +67,16 @@ def db(app):
         except Exception:
             pass
         if IS_POSTGRES:
-            # Drop all tables first (clean slate) ignoring FK errors
+            # The application sets statement_timeout=5000 on every connection; the
+            # schema reset is one big DDL statement and can exceed it on CI
+            # runners — lift it on THIS session before the reset. Application
+            # queries after this point keep the pool-level default.
             try:
+                _db.session.execute(_db.text('SET statement_timeout = 0'))
                 _db.session.execute(_db.text(
                     'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
                 ))
+                _db.session.execute(_db.text('SET statement_timeout = 5000'))
                 _db.session.commit()
             except Exception:
                 _db.session.rollback()
@@ -101,9 +106,11 @@ def db(app):
             pass
         if IS_POSTGRES:
             try:
+                _db.session.execute(_db.text('SET statement_timeout = 0'))
                 _db.session.execute(_db.text(
                     'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
                 ))
+                _db.session.execute(_db.text('SET statement_timeout = 5000'))
                 _db.session.commit()
             except Exception:
                 _db.session.rollback()

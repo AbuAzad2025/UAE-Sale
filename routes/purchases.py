@@ -266,7 +266,7 @@ def create():  # noqa: C901
             current_app.logger.exception('handler failed')
             flash(f'❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
 
-    exchange_rates = CurrencyService.get_all_rates('AED')
+    exchange_rates = CurrencyService.get_all_rates(CurrencyService.get_base_currency())
     warehouses = Warehouse.query.filter_by(is_active=True).order_by(
         Warehouse.is_main.desc(), Warehouse.name
     ).all()

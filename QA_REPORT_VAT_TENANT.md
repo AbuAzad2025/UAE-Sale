@@ -71,8 +71,8 @@
 
 ### مفتوح / غير منجز بعد هذه الدفعة
 
-- **Alembic Round-Trip لـ `b16_tax_rulesets` على Postgres** (يُتحقق آليًا عبر `.github/workflows/alembic_roundtrip.yml` بعد دفع هذا الالتزام).
+- **Alembic Round-Trip لـ `b16_tax_rulesets` على Postgres 15**: ✅ أخضر على push لـ `9a5501f` (2026-11-08T16:16Z، 1m31s).
 - إعادة التشغيل كاملة عبر CI/E2E على هذه الدفعة (b16 + واجهة المالك + لقطة الامتثال).
 - مراجعة محاسب معتمد لكل دولة قبل اعتبار أي "شهادة امتثال" مُنجزة.
 - b6_corp_tax تاريخيًا لمسها التغيير تلقائيًا — لا تُعاد صياغتها صامتة (انظري `DEPLOYMENT.md`).
-- CI `integration` على `0152f19`: فشل في خطوة "Run integration tests" بعد حوالي 15 دقيقة — **السبب لم يُشخص بعد** (اللوغ لا يصبح متاحًا عبر `gh` إلا بعد اكتمال الـ run). المطلوب: جمع اللوغ فور اكتمال الـ run ثم مطابقة الاختبار المُخفق مع الالتزام الأخير قبل أي تعديل.
+- CI `integration` على `0152f19`: ثبت السبب بعد اكتمال الـ run — `psycopg2.errors.QueryCanceled: canceling statement due to statement timeout` في خطوة إعادة بناء السكيما (`DROP SCHEMA public CASCADE`) داخل `tests/conftest.py::db` (التطبيق يفرض `statement_timeout=5000` على كل اتصال). بقية 510 اختبارات مرت. الإصلاح في `42c0c28`: رفع التوقيت على الجلسة أثناء الريست فقط + `STATEMENT_TIMEOUT_MS` في `config.py` (افتراضي 5000 كما هو).

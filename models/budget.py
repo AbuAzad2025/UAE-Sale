@@ -4,16 +4,18 @@
 
 from datetime import datetime, timezone
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 from decimal import Decimal
 
 
-class Budget(db.Model):
+class Budget(TenantScopedMixin, db.Model):
     """
     الموازنة السنوية/الشهرية
     """
     __tablename__ = 'budgets'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     budget_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     name_ar = db.Column(db.String(200), nullable=False)
     name_en = db.Column(db.String(200))
@@ -139,13 +141,14 @@ class Budget(db.Model):
         db.session.commit()
 
 
-class BudgetLine(db.Model):
+class BudgetLine(TenantScopedMixin, db.Model):
     """
     سطور الموازنة - حساب واحد
     """
     __tablename__ = 'budget_lines'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     budget_id = db.Column(db.Integer, db.ForeignKey('budgets.id'), nullable=False)
     account_id = db.Column(db.Integer, db.ForeignKey('gl_accounts.id'), nullable=False)
 

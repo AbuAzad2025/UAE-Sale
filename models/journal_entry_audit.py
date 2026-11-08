@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
 def _fmt_money(value) -> str:
@@ -38,7 +39,7 @@ def _fmt_money(value) -> str:
         return str(value)
 
 
-class JournalEntryAudit(db.Model):
+class JournalEntryAudit(TenantScopedMixin, db.Model):
     """Immutable audit trail for mutations on GL journal entries."""
 
     __tablename__ = 'journal_entry_audits'
@@ -52,6 +53,7 @@ class JournalEntryAudit(db.Model):
     ACTION_POST = 'post'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
 
     journal_entry_id = db.Column(
         db.Integer,

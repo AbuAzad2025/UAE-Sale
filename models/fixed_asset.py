@@ -4,16 +4,18 @@
 
 from datetime import datetime, timezone, date
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 from decimal import Decimal, ROUND_HALF_UP
 
 
-class FixedAsset(db.Model):
+class FixedAsset(TenantScopedMixin, db.Model):
     """
     الأصول الثابتة
     """
     __tablename__ = 'fixed_assets'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     asset_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     name_ar = db.Column(db.String(200), nullable=False)
     name_en = db.Column(db.String(200))
@@ -292,13 +294,14 @@ class FixedAsset(db.Model):
         db.session.commit()
 
 
-class DepreciationSchedule(db.Model):
+class DepreciationSchedule(TenantScopedMixin, db.Model):
     """
     جدول الاستهلاك - سجل استهلاك شهري
     """
     __tablename__ = 'depreciation_schedules'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
     asset_id = db.Column(db.Integer, db.ForeignKey('fixed_assets.id'), nullable=False, index=True)
 
     period_date = db.Column(db.Date, nullable=False, index=True)  # نهاية الشهر/الفترة

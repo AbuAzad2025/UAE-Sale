@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
-class AuditLog(db.Model):
+class AuditLog(TenantScopedMixin, db.Model):
     __tablename__ = 'audit_logs'
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
 
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
 

@@ -286,15 +286,30 @@ class TestTenantScopedRegistered:
     def test_all_core_models_registered(self):
         from models.tenant_scope import _tenant_scoped_tables
         expected = {
+            # أصناف مترابطة مباشرةً (مواقع عمل + أرصدة):
             'sales', 'sale_lines', 'purchases', 'purchase_lines',
             'payments', 'receipts', 'customers', 'suppliers',
             'products', 'stock_movements', 'cheques', 'gl_journal_entries',
-            'gl_journal_lines', 'warehouses', 'shipments', 'inbound_shipments',
-            # `users` carries a tenant_id but had no module-level
-            # register_tenant_scoped() call, so user records were readable by
-            # every tenant. It is registered through
-            # _BUILTIN_SCOPED_TABLES now.
+            'gl_journal_lines', 'warehouses', 'shipments', 'shipment_lines',
+            'inbound_shipments', 'inbound_shipment_lines',
             'users',
             'write_offs',
+            # الدفع من الدفعة b11+ — اكتمل عزل تينانت في نموذج المصروفات:
+            'expenses',
+            # HR — الرواتب وكشوفات الحضور:
+            'departments', 'employees', 'leave_types', 'leave_requests',
+            'payslips', 'payslip_lines',
+            # ERP modules:
+            'quotations', 'quotation_lines', 'purchase_orders', 'purchase_order_lines',
+            'stock_transfers', 'stock_transfer_lines', 'stock_takes', 'stock_take_items',
+            'dunning_letters', 'recurring_expenses', 'product_lots',
+            'warehouse_bins', 'product_bins', 'e_invoices',
+            # بيانات عمل خاصة بالمستأجر:
+            'customs_taxes', 'advanced_expenses', 'tax_calculation_rules',
+            'approval_workflows', 'approval_requests', 'approval_levels',
+            'bank_reconciliations', 'bank_reconciliation_items',
+            'budgets', 'budget_lines', 'cost_centers',
+            'fixed_assets', 'depreciation_schedules',
+            'archived_records', 'audit_logs', 'journal_entry_audits',
         }
         assert expected == _tenant_scoped_tables

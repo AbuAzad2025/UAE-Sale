@@ -95,7 +95,15 @@ class Config:
     if _db_uri.startswith("postgresql"):
         SQLALCHEMY_ENGINE_OPTIONS["pool_size"] = 10
         SQLALCHEMY_ENGINE_OPTIONS["max_overflow"] = 20
-        SQLALCHEMY_ENGINE_OPTIONS["connect_args"] = {"options": "-c statement_timeout=5000"}
+        # Statement timeout guard against runaway queries — 5s in production by
+        # default, overridable via env (CI fixtures that reset the schema set
+        # STATEMENT_TIMEOUT_MS=0 locally via SET instead of raising it here).
+        _statement_timeout = os.environ.get("STATEMENT_TIMEOUT_MS", "5000").strip()
+        try:
+            _statement_timeout = str(int(_statement_timeout))
+        except ValueError:
+            _statement_timeout = "5000"
+        SQLALCHEMY_ENGINE_OPTIONS["connect_args"] = {"options": f"-c statement_timeout={_statement_timeout}"}
 
     SQLALCHEMY_ECHO = False
 

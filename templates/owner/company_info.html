@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}شركة أزاد للأنظمة الذكية - معلومات الشركة وإعدادات الهوية{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - معلومات الشركة وإعدادات الهوية{% endblock %}
 
 {% block content %}
 <div class="company-profile-wrapper">

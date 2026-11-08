@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - سند قبض #{{ receipt.receipt_number }}{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - سند قبض #{{ receipt.receipt_number }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center flex-wrap">
   <div>

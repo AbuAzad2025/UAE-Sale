@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}شركة أزاد للأنظمة الذكية - قيود اليومية{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - قيود اليومية{% endblock %}
 
 {% block content %}
 <div class="content-wrapper">

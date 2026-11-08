@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}شركة أزاد للأنظمة الذكية - النظرة المالية الشاملة والتقارير{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - النظرة المالية الشاملة والتقارير{% endblock %}
 
 {% block content %}
 <div class="content-wrapper">

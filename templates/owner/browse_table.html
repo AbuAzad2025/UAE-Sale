@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}شركة أزاد للأنظمة الذكية - تصفح {{ table_name }} وإدارة البيانات{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - تصفح {{ table_name }} وإدارة البيانات{% endblock %}
 {% block page_title %}تصفح جدول: <code>{{ table_name }}</code>{% endblock %}
 
 {% block content %}

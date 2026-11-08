@@ -3,7 +3,7 @@
 <head>
   <base href="{{ request.script_root }}/">
   <meta charset="utf-8">
-  <title>{% block title %}{{ config.COMPANY_NAME_AR }}{% endblock %}</title>
+  <title>{% block title %}{{ (current_tenant.name_ar if current_tenant else None) or config.COMPANY_NAME_AR }}{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; media-src 'self' data:; connect-src 'self'; frame-src 'self';">
@@ -16,7 +16,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   
   <!-- SEO Meta Tags -->
-  <meta name="description" content="{% block meta_description %}شركة أزاد للأنظمة الذكية - نظام متكامل لإدارة المستودعات والمبيعات والمشتريات مع ذكاء اصطناعي متقدم{% endblock %}">
+  <meta name="description" content="{% block meta_description %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - نظام متكامل لإدارة المستودعات والمبيعات والمشتريات مع ذكاء اصطناعي متقدم{% endblock %}">
   <meta name="keywords" content="{% block meta_keywords %}نظام إدارة المستودعات، برنامج محاسبة، فواتير إلكترونية، إدارة المبيعات، إدارة المخزون، ذكاء اصطناعي، الإمارات، دبي، أبوظبي{% endblock %}">
   <meta name="author" content="شركة أزاد للأنظمة الذكية">
   <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
@@ -1030,36 +1030,37 @@
   </div>
 
   <footer class="main-footer main-footer-azad">
+    {% set _t = current_tenant %}
     <div class="footer-container">
       <div class="footer-inline">
         <!-- Brand -->
         <div class="footer-inline-brand">
-          <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad" class="footer-logo">
-          <span class="footer-brand-name">Azad Smart Systems</span>
+          <img src="{{ _t.logo_url if _t and _t.logo_url else url_for('static', filename='img/azad_logo.png') }}" alt="{{ (_t.name_ar if _t else None) or 'Azad' }}" class="footer-logo">
+          <span class="footer-brand-name">{{ (_t.name_ar if _t else None) or 'Azad Smart Systems' }}</span>
         </div>
 
         <!-- Contact links -->
         <div class="footer-inline-contact">
-          <a href="tel:{{ config.COMPANY_PHONE }}" class="footer-inline-link" title="{{ config.COMPANY_PHONE }}">
+          <a href="tel:{{ _t.phone_1 if _t and _t.phone_1 else config.COMPANY_PHONE }}" class="footer-inline-link" title="{{ _t.phone_1 if _t and _t.phone_1 else config.COMPANY_PHONE }}">
             <i class="fas fa-phone"></i>
           </a>
-          <a href="mailto:{{ config.COMPANY_EMAIL }}" class="footer-inline-link" title="{{ config.COMPANY_EMAIL }}">
+          <a href="mailto:{{ _t.email if _t and _t.email else config.COMPANY_EMAIL }}" class="footer-inline-link" title="{{ _t.email if _t and _t.email else config.COMPANY_EMAIL }}">
             <i class="fas fa-envelope"></i>
           </a>
-          <a href="{{ config.COMPANY_WEBSITE if config and config.COMPANY_WEBSITE else '#' }}" class="footer-inline-link" title="{{ config.COMPANY_WEBSITE if config and config.COMPANY_WEBSITE else 'azadsystems.com' }}" target="_blank">
+          <a href="{{ (_t.website if _t and _t.website else config.COMPANY_WEBSITE) or '#' }}" class="footer-inline-link" title="{{ (_t.website if _t and _t.website else config.COMPANY_WEBSITE) or 'azadsystems.com' }}" target="_blank">
             <i class="fas fa-globe"></i>
           </a>
           <a href="{{ url_for('public.user_guide') }}" class="footer-inline-link" title="دليل المستخدم">
             <i class="fas fa-book"></i>
           </a>
-          <a href="#" class="footer-inline-link" title="{{ config.COMPANY_ADDRESS }}">
+          <a href="#" class="footer-inline-link" title="{{ (_t.address_ar if _t and _t.address_ar else (_t.city if _t else config.COMPANY_ADDRESS)) }}">
             <i class="fas fa-map-marker-alt"></i>
           </a>
         </div>
 
         <!-- Copyright & Version -->
         <div class="footer-inline-meta">
-          <span class="footer-copyright">&copy; {{ current_year }} Azad Smart Systems</span>
+          <span class="footer-copyright">&copy; {{ current_year }} {{ (_t.name_ar if _t else None) or 'Azad Smart Systems' }}</span>
           <span class="footer-version">v{{ config.APP_VERSION }}</span>
         </div>
       </div>

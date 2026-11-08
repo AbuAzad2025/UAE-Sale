@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - ميزان المراجعة{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - ميزان المراجعة{% endblock %}
 {% block page_title %}ميزان المراجعة - Trial Balance{% endblock %}
 
 {% block content %}

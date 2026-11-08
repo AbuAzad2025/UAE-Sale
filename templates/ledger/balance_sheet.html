@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - الميزانية العمومية{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - الميزانية العمومية{% endblock %}
 {% block page_title %}الميزانية العمومية - Balance Sheet{% endblock %}
 
 {% block content %}

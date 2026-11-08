@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}شركة أزاد للأنظمة الذكية - فئات المنتجات وإدارة التصنيف{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - فئات المنتجات وإدارة التصنيف{% endblock %}
 
 {% block content %}
 <div class="content-wrapper">

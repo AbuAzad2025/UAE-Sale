@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - {% if is_payment %}إنشاء سند صرف جديد{% else %}إنشاء سند قبض جديد{% endif %}{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - {% if is_payment %}إنشاء سند صرف جديد{% else %}إنشاء سند قبض جديد{% endif %}{% endblock %}
 {% block page_title %}{% if is_payment %}سند صرف جديد{% else %}سند قبض جديد{% endif %}{% endblock %}
 
 {% block extra_css %}

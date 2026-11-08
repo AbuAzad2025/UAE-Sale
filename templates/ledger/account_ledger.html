@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - دفتر حساب {{ account.name }}{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - دفتر حساب {{ account.name }}{% endblock %}
 {% block page_title %}دفتر حساب: {{ account.code }} - {{ account.name }}{% endblock %}
 
 {% block content %}

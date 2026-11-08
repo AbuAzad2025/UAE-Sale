@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - تنبيهات الشيكات والاستحقاقات{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - تنبيهات الشيكات والاستحقاقات{% endblock %}
 {% block page_title %}<i class="fas fa-bell"></i> تنبيهات الشيكات{% endblock %}
 
 {% block content %}

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}شركة أزاد للأنظمة الذكية - إحصائيات النظام والأداء{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إحصائيات النظام والأداء{% endblock %}
 
 {% block content %}
 <div class="content-wrapper">

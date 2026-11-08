@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - إدارة المستخدمين والصلاحيات{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إدارة المستخدمين والصلاحيات{% endblock %}
 {% block page_title %}المستخدمين{% endblock %}
 
 {% block content %}

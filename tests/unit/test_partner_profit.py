@@ -525,3 +525,74 @@ class TestPreviewShowsTotalEntitlement:
         assert row['product_shares_in_period'] == Decimal('16.000')
         assert row['net_payout'] >= Decimal('0')
         assert row['total_entitlement'] == row['net_payout'] + row['product_shares_in_period']
+
+
+class TestInclusiveVatProductShare:
+    """شامل الضريبة يُحسم من أساس ربح الشريك (لا تدفع ضريبة من ربحه)."""
+
+    def test_inclusive_vat_deducted_from_partner_base(
+            self, db, owner_user, test_customer, test_product, partner_customer, gl_accounts):
+        from services.sale_service import SaleService
+
+        partner_customer.partner_scope = 'product'
+        db.session.add(ProductPartner(
+            product_id=test_product.id,
+            partner_customer_id=partner_customer.id,
+            percentage=Decimal('25.00'),
+        ))
+        test_product.average_cost = Decimal('30')
+        test_product.cost_price = Decimal('30')
+        test_product.tax_treatment = 'standard'
+        db.session.commit()
+
+        SaleService.create_sale(
+            customer=test_customer,
+            seller=owner_user,
+            lines_data=[{
+                'product': test_product,
+                'quantity': Decimal('1'),
+                'unit_price': Decimal('105'),   # شامل 5%
+            }],
+            currency='AED',
+            user_exchange_rate='1',
+            tax_rate=Decimal('5'),
+            tax_inclusive=True,
+        )
+        net_owed = sum(l.credit - l.debit
+                       for l in _partner_lines(db, partner_customer.id).all())
+        # net 100 - cost 30 = 70 → 25% = 17.5
+        assert net_owed == Decimal('17.500')
+
+    def test_inclusive_vat_mixed_treatments_only_standard_taxed(
+            self, db, owner_user, test_customer, test_product, partner_customer, gl_accounts):
+        from services.sale_service import SaleService
+
+        partner_customer.partner_scope = 'product'
+        db.session.add(ProductPartner(
+            product_id=test_product.id,
+            partner_customer_id=partner_customer.id,
+            percentage=Decimal('100.00'),
+        ))
+        test_product.average_cost = Decimal('10')
+        test_product.cost_price = Decimal('10')
+        test_product.tax_treatment = 'zero'  # سطر صفري — لا يُستخرج منها ضريبة
+        db.session.commit()
+
+        SaleService.create_sale(
+            customer=test_customer,
+            seller=owner_user,
+            lines_data=[{
+                'product': test_product,
+                'quantity': Decimal('1'),
+                'unit_price': Decimal('100'),
+                'tax_treatment': 'zero',
+            }],
+            currency='AED',
+            user_exchange_rate='1',
+            tax_rate=Decimal('5'),
+            tax_inclusive=True,
+        )
+        net_owed = sum(l.credit - l.debit
+                       for l in _partner_lines(db, partner_customer.id).all())
+        # لا ضريبة على السطر الصفري: 100 - 10 = 90 → 100% = 90
+        assert net_owed == Decimal('90.000')

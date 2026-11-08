@@ -174,7 +174,10 @@ jobs:
   # ── Unit tests (SQLite, no services) ──
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # المتسابق نفسه يستغرق 33–46 دقيقة حسب تزامن التشغيلات — المهلة السابقة
+    # 45 دقيقة قتلت تشغيلًا ناجحًا في منتصف الطريق؛ 90 دقيقة فوق أسوأ تباين
+    # مرصود.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
         with:

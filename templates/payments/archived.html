@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - الأرشيف{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - الأرشيف{% endblock %}
 {% block page_title %}أرشيف المدفوعات{% endblock %}
 
 {% block content %}

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - تفاصيل الشيك #{{ cheque.cheque_bank_number }}{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - تفاصيل الشيك #{{ cheque.cheque_bank_number }}{% endblock %}
 {% block page_title %}<i class="fas fa-money-check"></i> تفاصيل الشيك{% endblock %}
 
 {% block content %}

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - دفتر الأستاذ العام{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - دفتر الأستاذ العام{% endblock %}
 {% block page_title %}دفتر الأستاذ - General Ledger{% endblock %}
 
 {% block content %}

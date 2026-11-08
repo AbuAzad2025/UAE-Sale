@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - لوحة المالك الرئيسية{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - لوحة المالك الرئيسية{% endblock %}
 {% block page_title %}👑 لوحة المالك - God Mode{% endblock %}
 
 {% block extra_css %}

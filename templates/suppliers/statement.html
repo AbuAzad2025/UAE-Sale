@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}شركة أزاد للأنظمة الذكية - كشف حساب المورد {{ supplier.name }}{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - كشف حساب المورد {{ supplier.name }}{% endblock %}
 
 {% block extra_css %}
 <style>

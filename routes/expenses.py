@@ -136,40 +136,39 @@ def create():  # noqa: C901
                 db.session.add(cheque)
                 db.session.flush()
 
-            try:
-                GLService.ensure_core_accounts()
+            # معاملات كاملة مع مصروف + قيد + شيك: أي فشل يُرجع الكل
+            GLService.ensure_core_accounts()
+            from services.account_resolution import AccountResolver, AccountRole
+            category = expense.category
+            # 1) حساب الفئة (إذنابة) أو حساب افتراضي عام (6990) لتكاليف تسييرية
+            expense_account = (category.gl_account_code if category and category.gl_account_code
+                               else '6990')
 
-                category = expense.category
-                expense_account = category.gl_account_code if category and category.gl_account_code else '6990'
+            if expense.payment_method == 'cash':
+                payment_account = AccountResolver.resolve(AccountRole.CASH, tenant_id=expense.tenant_id)
+            elif expense.payment_method == 'cheque':
+                # ذمم دائنة إلى شيكات (تُسوّى عندما يُحَّصَل الشيك)
+                payment_account = AccountResolver.resolve(AccountRole.AP_CONTROL, tenant_id=expense.tenant_id)
+            else:
+                payment_account = AccountResolver.resolve(AccountRole.BANK, tenant_id=expense.tenant_id)
 
-                # Determine Payment Account
-                if expense.payment_method == 'cash':
-                    payment_account = '1110'
-                elif expense.payment_method == 'cheque':
-                    payment_account = '2110'  # Accounts Payable (cleared by Cheque Issue)
-                else:
-                    payment_account = '1120'
+            lines = [
+                {'account': expense_account, 'debit': expense.amount, 'description': expense.description},
+                {'account': payment_account, 'credit': expense.amount, 'description': f'دفع {expense.payment_method}'}
+            ]
 
-                lines = [
-                    {'account': expense_account, 'debit': expense.amount, 'description': expense.description},
-                    {'account': payment_account, 'credit': expense.amount, 'description': f'دفع {expense.payment_method}'}
-                ]
+            GLService.post_entry(
+                lines,
+                description=f'Expense {expense.expense_number}',
+                reference_type='Expense',
+                reference_id=expense.id,
+                currency=expense.currency,
+                exchange_rate=expense.exchange_rate
+            )
 
-                GLService.post_entry(
-                    lines,
-                    description=f'Expense {expense.expense_number}',
-                    reference_type='Expense',
-                    reference_id=expense.id,
-                    currency=expense.currency,
-                    exchange_rate=expense.exchange_rate
-                )
-
-                # If Cheque, issue it (GL: Debit 2110, Credit 2120)
-                if cheque:
-                    cheque.issue_cheque()
-
-            except Exception as e:
-                current_app.logger.warning(f'GL posting failed: {e}')
+            # If Cheque, issue it (GL: Debit 2110, Credit 2120)
+            if cheque:
+                cheque.issue_cheque()
 
             db.session.commit()
 

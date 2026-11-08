@@ -774,29 +774,28 @@ def create_voucher_submit():  # noqa: C901
                 db.session.add(payment)
                 db.session.flush()
 
-                try:
-                    from services.gl_service import GLService
-                    GLService.ensure_core_accounts()
-                    if payment_method == 'cash':
-                        debit_account = '1110'
-                    elif payment_method in ('bank_transfer', 'card'):
-                        debit_account = '1120'
-                    else:
-                        debit_account = '1110'
-                    lines = [
-                        {'account': debit_account, 'debit': amount_decimal, 'description': f'استرداد من المورد {supplier.name}'},
-                        {'account': '2110', 'credit': amount_decimal, 'description': f'سند قبض من مورد {payment.payment_number}'}
-                    ]
-                    GLService.post_entry(
-                        lines,
-                        description=f'Supplier Refund {payment.payment_number}',
-                        reference_type='Payment',
-                        reference_id=payment.id,
-                        currency=currency,
-                        exchange_rate=exchange_rate
-                    )
-                except Exception as e:
-                    current_app.logger.warning(f'GL posting failed for supplier refund: {e}')
+                # الذرّية: الفاتورة والقيد في معاملة واحدة — فشل القيد
+                # يُرجِع السند كله (لا "سند بلا قيد" صامت).
+                from services.gl_service import GLService
+                from services.account_resolution import AccountResolver, AccountRole
+                GLService.ensure_core_accounts()
+                debit_account = AccountResolver.resolve(AccountRole.CASH) \
+                    if payment_method == 'cash' else AccountResolver.resolve(AccountRole.BANK)
+                lines = [
+                    {'account': debit_account, 'debit': amount_decimal,
+                     'description': f'استرداد من المورد {supplier.name}'},
+                    {'account': AccountResolver.resolve(AccountRole.AP_CONTROL),
+                     'credit': amount_decimal,
+                     'description': f'سند قبض من مورد {payment.payment_number}'}
+                ]
+                GLService.post_entry(
+                    lines,
+                    description=f'Supplier Refund {payment.payment_number}',
+                    reference_type='Payment',
+                    reference_id=payment.id,
+                    currency=currency,
+                    exchange_rate=exchange_rate
+                )
 
                 db.session.commit()
                 flash('تم إنشاء سند قبض من مورد بنجاح', 'success')
@@ -862,30 +861,29 @@ def create_voucher_submit():  # noqa: C901
                     cheque.issue_cheque()
 
                 else:
-                    # GL Entry for Standard Payment (Cash/Bank)
-                    try:
-                        from services.gl_service import GLService
-                        GLService.ensure_core_accounts()
+                    # GL Entry for Standard Payment (Cash/Bank) — ذري مع السند
+                    from services.gl_service import GLService
+                    from services.account_resolution import AccountResolver, AccountRole
+                    GLService.ensure_core_accounts()
 
-                        # Credit: Cash/Bank
-                        credit_account = '1110'  # Cash
-                        if payment_method == 'bank_transfer' or payment_method == 'card':
-                            credit_account = '1120'  # Bank
-
-                        lines = [
-                            {'account': '2110', 'debit': payment.amount, 'description': f'سداد للمورد {payment.supplier_name}'},
-                            {'account': credit_account, 'credit': payment.amount, 'description': f'سند صرف {payment.payment_number}'}
-                        ]
-                        GLService.post_entry(
-                            lines,
-                            description=f'Payment {payment.payment_number}',
-                            reference_type='Payment',
-                            reference_id=payment.id,
-                            currency=currency,
-                            exchange_rate=exchange_rate
-                        )
-                    except Exception as e:
-                        current_app.logger.error(f"GL Posting failed for supplier payment: {e}")
+                    credit_account = (AccountResolver.resolve(AccountRole.BANK)
+                                      if payment_method in ('bank_transfer', 'card')
+                                      else AccountResolver.resolve(AccountRole.CASH))
+                    lines = [
+                        {'account': AccountResolver.resolve(AccountRole.AP_CONTROL),
+                         'debit': payment.amount,
+                         'description': f'سداد للمورد {payment.supplier_name}'},
+                        {'account': credit_account, 'credit': payment.amount,
+                         'description': f'سند صرف {payment.payment_number}'}
+                    ]
+                    GLService.post_entry(
+                        lines,
+                        description=f'Payment {payment.payment_number}',
+                        reference_type='Payment',
+                        reference_id=payment.id,
+                        currency=currency,
+                        exchange_rate=exchange_rate
+                    )
 
                 db.session.commit()
                 flash('تم إنشاء سند صرف لمورد بنجاح', 'success')
@@ -938,37 +936,34 @@ def create_voucher_submit():  # noqa: C901
                     db.session.add(cheque)
                     db.session.flush()
 
-                    # استخدام منطق الشيك المحاسبي المركزي
-                    try:
-                        cheque.issue_cheque()
-                    except Exception as e:
-                        current_app.logger.error(f"Cheque issue accounting failed: {e}")
+                    # استخدام منطق الشيك المحاسبي المركزي — فشل يُرجع السند
+                    cheque.issue_cheque()
 
                 else:
                     # GL Entry for Customer/Partner/Merchant Payment (Non-Cheque)
-                    try:
-                        from services.gl_service import GLService
-                        GLService.ensure_core_accounts()
+                    # ذرّي مع السند: فشل القيد يُرجِع السند كله
+                    from services.gl_service import GLService
+                    GLService.ensure_core_accounts()
 
-                        credit_account = GLService.get_payment_debit_account(payment_method)
+                    credit_account = GLService.get_payment_debit_account(payment_method)
 
-                        # Debit Account based on Customer Type
-                        debit_account = GLService.get_customer_credit_account(customer)
+                    # Debit Account based on Customer Type
+                    debit_account = GLService.get_customer_credit_account(customer)
 
-                        lines = [
-                            {'account': debit_account, 'debit': payment.amount, 'description': f'سداد/سحب {customer.name}'},
-                            {'account': credit_account, 'credit': payment.amount, 'description': f'سند صرف {payment.payment_number}'}
-                        ]
-                        GLService.post_entry(
-                            lines,
-                            description=f'Payment {payment.payment_number}',
-                            reference_type='Payment',
-                            reference_id=payment.id,
-                            currency=currency,
-                            exchange_rate=exchange_rate
-                        )
-                    except Exception as e:
-                        current_app.logger.error(f"GL Posting failed for customer payment: {e}")
+                    lines = [
+                        {'account': debit_account, 'debit': payment.amount,
+                         'description': f'سداد/سحب {customer.name}'},
+                        {'account': credit_account, 'credit': payment.amount,
+                         'description': f'سند صرف {payment.payment_number}'}
+                    ]
+                    GLService.post_entry(
+                        lines,
+                        description=f'Payment {payment.payment_number}',
+                        reference_type='Payment',
+                        reference_id=payment.id,
+                        currency=currency,
+                        exchange_rate=exchange_rate
+                    )
 
                 db.session.commit()
                 flash('تم إنشاء سند صرف لعميل/شريك بنجاح', 'success')

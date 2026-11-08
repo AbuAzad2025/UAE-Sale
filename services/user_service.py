@@ -100,7 +100,7 @@ def _check_password(password):
 def _check_tenant_quota(tenant_id):
     if tenant_id is None:
         return
-    tenant = Tenant.query.get(tenant_id)
+    tenant = db.session.get(Tenant, tenant_id)
     if tenant is None:
         raise ValidationError('المستأجر المحدد غير موجود.')
     if not tenant.is_active or tenant.is_suspended:
@@ -144,7 +144,7 @@ class UserService:
         if not is_owner and getattr(role, 'slug', None) not in ('super_admin', 'developer'):
             if tenant_id is None:
                 raise ValidationError('لا يمكن إنشاء مستخدم بلا شركة. اختر الشركة أولاً.')
-            tenant_obj = Tenant.query.get(tenant_id)
+            tenant_obj = db.session.get(Tenant, tenant_id)
             if tenant_obj is None:
                 raise ValidationError('الشركة المحددة غير موجودة.')
             if not tenant_obj.is_active or tenant_obj.is_suspended:

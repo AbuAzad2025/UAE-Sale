@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block title %}قواعد الضريبة للدول{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="mb-3">
+    <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-right"></i> رجوع للوحة المالك
+    </a>
+    <a href="{{ url_for('owner.tax_settings') }}" class="btn btn-info">
+      <i class="fas fa-percent"></i> إعدادات النظام العامة
+    </a>
+  </div>
+
+  <div class="alert alert-warning border border-warning mb-3">
+    <h5 class="mb-2"><i class="fas fa-exclamation-triangle"></i> حدود الامتثال القانوني — صراحة</h5>
+    <p class="mb-1">هذا المسار يحرّر قواعد الضريبة للدول (نسب، عتبات ضريبة الشركات، تبعات إلكترونية). <strong>لا يُكتب ولا يُقرّ التطبيق أي إقرار ضريبي أمام أي سلطة دولة</strong> — كل دولة تتطلب:</p>
+    <ol class="mb-0">
+      <li><strong>عقدًا وشهادة رقمية معتمدة</strong> من السلطة (ZATCA/FTA/ETA/…)</li>
+      <li><strong>تكامل مع API السلطة</strong> بشهادة مخصصة لكل شركة</li>
+      <li>جاهز<strong>ة عملياتية للمختص بالدولة</strong> للتوقيع على الإقرار</li>
+    </ol>
+    <p class="mt-2 mb-0">هذه شروط ليست تقنية؛ هي قانونية تتطلب مزود خدمات مالي معتمد من الدولة المعنية. التطبيق يوفر <strong>بيانات جاهزة بكفاءة 100% للاستهلاك من المختص</strong>.</p>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h4 class="mb-0"><i class="fas fa-globe"></i> قواعد الضريبة للدول ({{ rulesets | length }})</h4>
+      <button class="btn btn-success" data-toggle="collapse" data-target="#newRulesetPanel">
+        <i class="fas fa-plus"></i> إضافة دولة جديدة
+      </button>
+    </div>
+
+    <!-- New ruleset form -->
+    <div id="newRulesetPanel" class="collapse card-body border-top">
+      <form method="post" action="{{ url_for('owner.tax_rulesets') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="create">
+        <div class="row">
+          <div class="col-md-3"><div class="form-group"><label>رمز ISO-2 *</label><input class="form-control" name="country_code" maxlength="2" required placeholder="AE"></div></div>
+          <div class="col-md-9"><div class="form-group"><label>اسم الدولة *</label><input class="form-control" name="country_name" required placeholder="الإمارات العربية المتحدة"></div></div>
+        </div>
+        <div class="row">
+          <div class="col-md-3"><div class="form-group"><label>نسبة VAT %</label><input type="number" step="0.01" min="0" max="100" class="form-control" name="vat_rate" value="0.00"></div></div>
+          <div class="col-md-3"><div class="form-group"><label>تسمية الضريبة</label><input class="form-control" name="vat_label" value="VAT"></div></div>
+          <div class="col-md-3"><div class="form-group"><label>ضريبة الشركات %</label><input type="number" step="0.01" min="0" max="100" class="form-control" name="corp_tax_rate" value="0.00"></div></div>
+          <div class="col-md-3"><div class="form-group"><label>عتبة ضريبة الشركات</label><input type="number" step="1" min="0" class="form-control" name="corp_tax_threshold" value="0"></div></div>
+        </div>
+        <div class="row">
+          <div class="col-md-3"><div class="form-group"><label><input type="checkbox" name="vat_enabled_default" checked> تفعيل VAT افتراضيًا</label></div></div>
+          <div class="col-md-3"><div class="form-group"><label><input type="checkbox" name="corp_tax_enabled_default"> تفعيل ضريبة الشركات افتراضيًا</label></div></div>
+          <div class="col-md-3"><div class="form-group"><label><input type="checkbox" name="einvoice_required"> فاتورة إلكترونية إلزامية</label></div></div>
+          <div class="col-md-3"><div class="form-group"><label><input type="checkbox" name="is_active" checked> نشط</label></div></div>
+        </div>
+        <div class="row">
+          <div class="col-md-4"><div class="form-group"><label>حالة التكامل الإلكتروني</label><select class="form-control" name="einvoice_status"><option value="none">لا شيء</option><option value="manual" selected>يدوي (مستخدم مسؤول)</option><option value="zatca_pending">ZATCA pending</option><option value="eta_pending">ETA pending</option><option value="integrated">متكامل</option></select></div></div>
+          <div class="col-md-4"><div class="form-group"><label>السلطة المختصة</label><input class="form-control" name="authority_name" placeholder="مثال: FTA"></div></div>
+          <div class="col-md-4"><div class="form-group"><label>رابط بوابة السلطة</label><input class="form-control" name="authority_portal_url" placeholder="https://…"></div></div>
+        </div>
+        <div class="row">
+          <div class="col-md-6"><div class="form-group"><label>ملاحظات الامتثال</label><textarea class="form-control" name="authority_notes" rows="2"></textarea></div></div>
+          <div class="col-md-6"><div class="form-group"><label>ملاحظات داخلية</label><textarea class="form-control" name="compliance_notes" rows="2"></textarea></div></div>
+        </div>
+        <button class="btn btn-primary"><i class="fas fa-save"></i> حفظ</button>
+      </form>
+    </div>
+
+    <div class="card-body p-0">
+      <table class="table table-striped mb-0">
+        <thead class="thead-light">
+          <tr>
+            <th>الدولة</th><th>VAT %</th><th>ضريبة الشركات %</th><th>عتبة CT</th><th>e-فاتورة</th><th>النظام</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rulesets %}
+          <tr>
+            <td><strong>{{ r.country_code }}</strong> — {{ r.country_name }}</td>
+            <td>{{ '%.2f'|format(r.vat_rate) }} %</td>
+            <td>{{ '%.2f'|format(r.corp_tax_rate) }} %</td>
+            <td>{{ '{:,.0f}'.format(r.corp_tax_threshold or 0) }}</td>
+            <td>{% if r.einvoice_required %}<span class="badge badge-warning">{{ r.einvoice_status }}</span>{% else %}<span class="badge badge-secondary">غير مطلوب</span>{% endif %}</td>
+            <td>{{ r.vat_label }}</td>
+            <td><button class="btn btn-sm btn-outline-primary" data-toggle="collapse" data-target="#edit_ruleset_{{ r.id }}"><i class="fas fa-edit"></i></button></td>
+          </tr>
+          <tr class="collapse" id="edit_ruleset_{{ r.id }}">
+            <td colspan="7">
+              <form method="post" action="{{ url_for('owner.tax_rulesets') }}" class="p-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="id" value="{{ r.id }}">
+                <div class="row">
+                  <div class="col-md-3"><div class="form-group"><label>رمز ISO-2</label><input class="form-control" name="country_code" maxlength="2" value="{{ r.country_code }}" required></div></div>
+                  <div class="col-md-9"><div class="form-group"><label>اسم الدولة</label><input class="form-control" name="country_name" value="{{ r.country_name }}" required></div></div>
+                </div>
+                <div class="row">
+                  <div class="col-md-2"><div class="form-group"><label>VAT %</label><input type="number" step="0.01" min="0" max="100" class="form-control" name="vat_rate" value="{{ r.vat_rate }}"></div></div>
+                  <div class="col-md-2"><div class="form-group"><label>التسمية</label><input class="form-control" name="vat_label" value="{{ r.vat_label }}"></div></div>
+                  <div class="col-md-2"><div class="form-group"><label>CT %</label><input type="number" step="0.01" min="0" max="100" class="form-control" name="corp_tax_rate" value="{{ r.corp_tax_rate }}"></div></div>
+                  <div class="col-md-2"><div class="form-group"><label>عتبة CT</label><input type="number" step="1" min="0" class="form-control" name="corp_tax_threshold" value="{{ r.corp_tax_threshold }}"></div></div>
+                  <div class="col-md-2"><div class="form-group"><label><input type="checkbox" name="einvoice_required" {% if r.einvoice_required %}checked{% endif %}> e-فاتورة إلزامية</label></div></div>
+                  <div class="col-md-2"><div class="form-group"><label><input type="checkbox" name="vat_enabled_default" {% if r.vat_enabled_default %}checked{% endif %}> VAT افتراضيًا</label></div></div>
+                </div>
+                <div class="row">
+                  <div class="col-md-4"><div class="form-group"><label>حالة التكامل</label><select class="form-control" name="einvoice_status"><option value="none" {% if r.einvoice_status == 'none' %}selected{% endif %}>لا شيء</option><option value="manual" {% if r.einvoice_status == 'manual' %}selected{% endif %}>يدوي</option><option value="zatca_pending" {% if r.einvoice_status == 'zatca_pending' %}selected{% endif %}>ZATCA pending</option><option value="eta_pending" {% if r.einvoice_status == 'eta_pending' %}selected{% endif %}>ETA pending</option><option value="integrated" {% if r.einvoice_status == 'integrated' %}selected{% endif %}>متكامل</option></select></div></div>
+                  <div class="col-md-4"><div class="form-group"><label>السلطة</label><input class="form-control" name="authority_name" value="{{ r.authority_name or '' }}"></div></div>
+                  <div class="col-md-4"><div class="form-group"><label>بوابة السلطة</label><input class="form-control" name="authority_portal_url" value="{{ r.authority_portal_url or '' }}"></div></div>
+                </div>
+                <div class="row">
+                  <div class="col-md-4"><div class="form-group"><label><input type="checkbox" name="corp_tax_enabled_default" {% if r.corp_tax_enabled_default %}checked{% endif %}> CT افتراضيًا</label></div></div>
+                  <div class="col-md-4"><div class="form-group"><label><input type="checkbox" name="is_active" {% if r.is_active %}checked{% endif %}> نشط</label></div></div>
+                </div>
+                <div class="row">
+                  <div class="col-md-6"><div class="form-group"><label>ملاحظات الامتثال</label><textarea class="form-control" name="authority_notes" rows="2">{{ r.authority_notes or '' }}</textarea></div></div>
+                  <div class="col-md-6"><div class="form-group"><label>ملاحظات داخلية</label><textarea class="form-control" name="compliance_notes" rows="2">{{ r.compliance_notes or '' }}</textarea></div></div>
+                </div>
+                <button class="btn btn-primary"><i class="fas fa-save"></i> حفظ</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h4 class="mb-0"><i class="fas fa-clipboard-check"></i> لقطة الامتثال — صادق بالدولة (ISO-2)</h4>
+    </div>
+    <div class="card-body">
+      <p class="text-muted">كل بند في هذه القائمة يُقيّم الواقع تحت تصرف التطبيق. <strong>مدعوم</strong> = يعمل الآن بـ 100% تحت بيانات المستخدم وحسابه. <strong>جزئي</strong> = يعمل بالحد الأدنى، يحتاج خطوة إجرائية من المختص. <strong>غير مدعوم</strong> = يحتاج عقدًا وشهادة من سلطة الدولة — لا يُمكن تدبرها برمز.</p>
+
+      {% for c in compliance %}
+      <div class="card mb-3 border-{% if c.is_ready_for_legal_approval %}success{% elif c.supported > 0 %}warning{% else %}danger{% endif %}">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div><strong>{{ c.country_code }}</strong> — {{ c.name }} <small class="text-muted">({{ c.authority }})</small></div>
+          <div class="btn-group">
+            <span class="badge badge-success mr-1">مدعوم: {{ c.supported }}</span>
+            <span class="badge badge-warning mr-1">جزئي: {{ c.partial }}</span>
+            <span class="badge badge-danger">غير مدعوم: {{ c.not_supported }}</span>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <ol class="list-group list-group-flush">
+            {% for f in c.features %}
+            <li class="list-group-item d-flex justify-content-between align-items-start">
+              <div class="mr-2">
+                <strong>{{ f.name }}</strong>
+                <div class="small text-muted">{{ f.detail }}</div>
+              </div>
+              <span class="badge badge-{{ 'success' if f.status == 'supported' else ('warning' if f.status == 'partial' else 'danger') }}">{{ f.status | upper }}</span>
+            </li>
+            {% endfor %}
+          </ol>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <p class="text-muted small"><strong>ملاحظة قانونية:</strong> أي شهادة رقم ضريبي خارجي / واجهة ZATCA/FTA/ETA تُتطلب بموجب عقد مع السلطة والمنشأة يقوم بكشفها. التطبيق وحده لا يحول أي منشأة إلى "معتمدة قانونيًا".</p>
+</div>
+{% endblock %}

@@ -328,7 +328,8 @@ def assert_same_tenant(obj, exc_cls=ValueError, message=None):
             raise exc_cls(message or 'Cross-tenant access denied')
 
 
-def get_owned_or_raise(model, pk, exc_cls=ValueError, missing_message=None, tenant_message=None):
+def get_owned_or_raise(model, pk, exc_cls=ValueError, missing_message=None, tenant_message=None,
+                      for_update=False):
     """Service-layer variant of ``get_owned_or_404``.
 
     Returns ``None`` if the row is missing (caller keeps its own
@@ -338,9 +339,18 @@ def get_owned_or_raise(model, pk, exc_cls=ValueError, missing_message=None, tena
     SECURITY: Enforces strict tenant equality (obj_tenant == actor_tenant)
     for all non-owner actors. Unscoped objects (obj_tenant is None) are
     ONLY accessible by owner/super_admin — regular tenants are denied.
+
+    ``for_update`` — re-fetches the row with ``SELECT ... FOR UPDATE``
+    so concurrent transactions serialize on it.  Use for high-contention
+    rows (stock, balances, quotation status, partner share).
     """
     from extensions import db
-    obj = db.session.get(model, pk)
+    if for_update:
+        # Fresh query (not identity-map lookup) so FOR UPDATE actually
+        # acquires the row lock on the database.
+        obj = model.query.filter_by(id=pk).with_for_update().first()
+    else:
+        obj = db.session.get(model, pk)
     if obj is None:
         return None
     from flask_login import current_user

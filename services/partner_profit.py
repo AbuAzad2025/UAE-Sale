@@ -521,6 +521,11 @@ def post_partner_distributions(period_from=None, period_to=None, tenant_id=None,
         query = query.filter(Customer.tenant_id == tid)
     partners = query.order_by(Customer.partner_share.desc(), Customer.id.asc()).all()
 
+    # 🔒 Concurrency: lock each partner's customer row so two concurrent
+    # distributions cannot both read the same draws/sales/balance.
+    for p in partners:
+        Customer.query.filter_by(id=p.id).with_for_update().first()
+
     total_pct = sum(_num(p.partner_share) for p in partners)
     if total_pct > Decimal('100'):
         raise ValueError('مجموع نسب الشركاء يتجاوز 100%')

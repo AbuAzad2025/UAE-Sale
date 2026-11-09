@@ -183,8 +183,12 @@ class SaleService:
         if tax_rate_decimal < Decimal('0') or tax_rate_decimal > Decimal('100'):
             raise ValidationError('نسبة الضريبة يجب أن تكون بين 0 و 100')
 
-        # تحديد المستودع بطريقة ذكية
         from models import Warehouse
+        # 🔒 Concurrency: lock the customer row (balance/total_purchases are
+        # derived from sales; concurrent sales must serialize on the customer).
+        from utils.decorators import get_owned_or_raise
+        from models import Customer
+        customer = get_owned_or_raise(Customer, customer.id, for_update=True) or customer
         if not warehouse_id:
             # البحث عن المستودع الرئيسي أولاً
             warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()

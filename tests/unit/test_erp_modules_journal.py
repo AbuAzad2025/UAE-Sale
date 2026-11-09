@@ -73,7 +73,8 @@ def _make_quotation(db, owner_user, test_customer, test_product, warehouse, **ov
     ]
     return QuotationService.create_quotation(
         customer_id=test_customer.id, seller_id=owner_user.id, lines_data=lines,
-        warehouse_id=warehouse.id, currency='AED', discount_amount=10,
+        warehouse_id=warehouse.id, currency='AED', user_exchange_rate=1,
+        discount_amount=10,
         shipping_cost=5, tax_rate=5, **overrides,
     )
 

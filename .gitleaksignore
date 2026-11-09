@@ -7,3 +7,5 @@
 # The working tree scans clean; if a genuine legacy secret resurfaces in
 # history, add its exact fingerprint below (after rotating it out of
 # production).
+# Documentation example only — the literal string "REDACTED" is not a secret.
+22952c996202c3bf635f0789080a63addbbec92f:README.md:sidekiq-secret:50

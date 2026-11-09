@@ -1,0 +1,100 @@
+{% extends 'base_print.html' %}
+
+{% block print_title %}عرض سعر #{{ quotation.quotation_number }}{% endblock %}
+
+{% block extra_print_css %}
+<style>
+  .quotation-header { background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%); color: white; padding: 15px 20px; text-align: center; }
+  .quotation-title { background: linear-gradient(to right, #cfe2ff 0%, #b6d4fe 100%); padding: 8px; text-align: center; border-bottom: 1px solid #0d6efd; }
+  .quotation-title h2 { color: #0d6efd; font-size: 9px; margin: 0; }
+  .content { padding: 10px; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 8px; }
+  thead { background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%); color: white; }
+  th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid #e0e0e0; }
+  .total-section { margin-top: 12px; background: #f8f9fa; padding: 12px 15px; border-radius: 6px; }
+  .total-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 9px; }
+  .total-row.final { border-top: 2px solid #0d6efd; padding-top: 8px; margin-top: 8px; font-size: 9px; font-weight: 700; color: #0d6efd; }
+  .footer { background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%); color: white; padding: 8px; text-align: center; margin-top: 10px; border-radius: 0 0 8px 8px; font-size: 9px; }
+  .expired-banner { background: #f8d7da; color: #842029; padding: 6px; text-align: center; font-weight: 700; margin-bottom: 8px; }
+</style>
+{% endblock %}
+
+{% block document_content %}
+<div class="document">
+  <div class="quotation">
+    <div class="quotation-header">
+      {% if settings and settings.show_logo and settings.logo_url %}
+      <img src="{{ settings.logo_url if settings.logo_url.startswith(('https://', 'http://', '/')) else url_for('static', filename=settings.logo_url) }}" alt="Logo" class="logo">
+      {% endif %}
+      <div class="company-name">{{ settings.company_name_ar or settings.company_name or '' }}</div>
+      <div class="company-info">
+        {% if settings and settings.tax_number %}TRN: {{ settings.tax_number }} | {% endif %}
+        {% if settings and settings.address %}{{ settings.address }}{% endif %}
+      </div>
+    </div>
+    <div class="quotation-title">
+      <h2>عرض أسعار — QUOTATION</h2>
+      <div class="purchase-number">{{ quotation.quotation_number }}</div>
+    </div>
+    <div class="content">
+      {% if quotation.is_expired %}
+      <div class="expired-banner">⚠️ انتهت صلاحية هذا العرض ({{ quotation.valid_until }})</div>
+      {% endif %}
+      <div class="info-grid">
+        <div class="info-box">
+          <h3>العميل</h3>
+          <p><strong>{{ quotation.customer.name if quotation.customer else '—' }}</strong></p>
+          {% if quotation.customer and quotation.customer.phone %}<p>هاتف: {{ quotation.customer.phone }}</p>{% endif %}
+          {% if quotation.customer and quotation.customer.tax_number %}<p>TRN: {{ quotation.customer.tax_number }}</p>{% endif %}
+        </div>
+        <div class="info-box">
+          <h3>تفاصيل العرض</h3>
+          <p>التاريخ: {{ quotation.quotation_date }}</p>
+          <p>صالح حتى: {{ quotation.valid_until }}</p>
+          <p>الحالة: {{ quotation.status_ar }}</p>
+          {% if quotation.currency %}<p>العملة: {{ quotation.currency }}</p>{% endif %}
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>المنتج</th>
+            <th>الكمية</th>
+            <th>السعر unit</th>
+            <th>الخصم %</th>
+            <th>الإجمالي</th>
+            <th>المعاملة</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in quotation.lines %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ line.product.name if line.product else '—' }}</td>
+            <td>{{ line.quantity }}</td>
+            <td>{{ '{:,.3f}'.format(line.unit_price) }}</td>
+            <td>{{ line.discount_percent or 0 }}</td>
+            <td>{{ '{:,.3f}'.format(line.line_total) }}</td>
+            <td>{{ line.tax_treatment or 'standard' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="total-section">
+        <div class="total-row"><span>المجموع الفرعي</span><span>{{ '{:,.3f}'.format(quotation.subtotal) }}</span></div>
+        {% if quotation.discount_amount %}<div class="total-row"><span>الخصم</span><span>- {{ '{:,.3f}'.format(quotation.discount_amount) }}</span></div>{% endif %}
+        {% if quotation.shipping_cost %}<div class="total-row"><span>الشحن</span><span>{{ '{:,.3f}'.format(quotation.shipping_cost) }}</span></div>{% endif %}
+        {% if quotation.tax_amount %}<div class="total-row"><span>الضريبة</span><span>{{ '{:,.3f}'.format(quotation.tax_amount) }}</span></div>{% endif %}
+        <div class="total-row final"><span>الإجمالي</span><span>{{ '{:,.3f}'.format(quotation.total_amount) }} {{ quotation.currency }}</span></div>
+      </div>
+      {% if quotation.payment_terms %}<div class="mt-2"><strong>شروط الدفع:</strong> {{ quotation.payment_terms }}</div>{% endif %}
+      {% if quotation.terms_and_conditions %}<div class="mt-2"><strong>الشروط والأحكام:</strong> {{ quotation.terms_and_conditions }}</div>{% endif %}
+      {% if quotation.notes %}<div class="mt-2"><strong>ملاحظات:</strong> {{ quotation.notes }}</div>{% endif %}
+    </div>
+    <div class="footer">
+      <p>صُدر بواسطة AzadERP — {{ settings.company_name_ar or settings.company_name or '' }}</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

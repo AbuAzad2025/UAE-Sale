@@ -2,7 +2,7 @@
 ERP Extended Modules Routes
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
@@ -33,7 +33,20 @@ erp_bp = Blueprint('erp_modules', __name__, url_prefix='/erp')
 def quotations():
     page = request.args.get('page', 1, type=int)
     status = request.args.get('status', '', type=str)
-    query = Quotation.query
+    query = Quotation.query.filter_by(is_active=True)
+    # auto-expire on access
+    try:
+        expired_candidates = Quotation.query.filter(
+            Quotation.status.in_(['draft', 'sent']),
+            Quotation.valid_until < date.today(),
+            Quotation.is_active.is_(True),
+        ).all()
+        for q in expired_candidates:
+            q.status = 'expired'
+        if expired_candidates:
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
     if status:
         query = query.filter_by(status=status)
     pagination = query.order_by(Quotation.created_at.desc()).paginate(page=page, per_page=20, error_out=False)
@@ -57,14 +70,19 @@ def create_quotation():
                 qty = request.form.get(f'lines[{i}][quantity]', type=float)
                 price = request.form.get(f'lines[{i}][unit_price]', type=float)
                 disc = request.form.get(f'lines[{i}][discount_percent]', 0, type=float)
+                line_treatment = request.form.get(f'lines[{i}][tax_treatment]', 'standard', type=str)
                 if pid and qty and qty > 0:
-                    lines_data.append({'product_id': pid, 'quantity': qty, 'unit_price': price, 'discount_percent': disc})
+                    lines_data.append({
+                        'product_id': pid, 'quantity': qty, 'unit_price': price,
+                        'discount_percent': disc, 'tax_treatment': line_treatment,
+                    })
                 i += 1
 
             if not lines_data:
                 flash('⚠️ يجب إضافة منتج واحد على الأقل', 'danger')
                 return redirect(url_for('erp_modules.create_quotation'))
 
+            tax_inclusive = request.form.get('tax_inclusive') == 'on'
             q = QuotationService.create_quotation(
                 customer_id=customer_id,
                 seller_id=current_user.id,
@@ -72,9 +90,14 @@ def create_quotation():
                 warehouse_id=request.form.get('warehouse_id', type=int),
                 currency=request.form.get('currency', 'AED'),
                 discount_amount=request.form.get('discount_amount', 0, type=float),
+                shipping_cost=request.form.get('shipping_cost', 0, type=float),
                 tax_rate=request.form.get('tax_rate', 0, type=float),
+                tax_inclusive=tax_inclusive,
+                tax_treatment=request.form.get('tax_treatment', 'standard', type=str),
                 valid_days=request.form.get('valid_days', 30, type=int),
                 notes=request.form.get('notes'),
+                payment_terms=request.form.get('payment_terms'),
+                terms_and_conditions=request.form.get('terms_and_conditions'),
             )
             create_audit_log('create', 'quotations', q.id)
             flash(f'✅ تم إنشاء عرض الأسعار {q.quotation_number}', 'success')
@@ -96,8 +119,44 @@ def create_quotation():
 @permission_required('manage_sales')
 def view_quotation(id):
     q = db.get_or_404(Quotation, id)
+    QuotationService._auto_expire(q)
+    db.session.commit()
     return render_template('erp/view_quotation.html', quotation=q)
 
+@erp_bp.route('/quotations/<int:id>/duplicate', methods=['POST'])
+@login_required
+@permission_required('manage_sales')
+def duplicate_quotation(id):
+    try:
+        new_q = QuotationService.duplicate_quotation(id, current_user.id)
+        create_audit_log('create', 'quotations', new_q.id, changes={'duplicated_from': id})
+        flash(f'✅ تم تكرار عرض الأسعار → {new_q.quotation_number}', 'success')
+        return redirect(url_for('erp_modules.view_quotation', id=new_q.id))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: {e}', 'danger')
+        return redirect(url_for('erp_modules.view_quotation', id=id))
+
+@erp_bp.route('/quotations/<int:id>/delete', methods=['POST'])
+@login_required
+@permission_required('manage_sales')
+def delete_quotation(id):
+    q = db.get_or_404(Quotation, id)
+    if q.status != 'draft':
+        flash('⚠️ لا يمكن حذف عرض أسعار غير مسودة', 'danger')
+        return redirect(url_for('erp_modules.view_quotation', id=id))
+    try:
+        db.session.delete(q)
+        db.session.commit()
+        create_audit_log('delete', 'quotations', id)
+        flash('✅ تم حذف عرض الأسعار', 'success')
+        return redirect(url_for('erp_modules.quotations'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: {e}', 'danger')
+        return redirect(url_for('erp_modules.view_quotation', id=id))
 
 @erp_bp.route('/quotations/<int:id>/status', methods=['POST'])
 @login_required
@@ -105,12 +164,38 @@ def view_quotation(id):
 def update_quotation_status(id):
     q = db.get_or_404(Quotation, id)
     new_status = request.form.get('status')
-    if new_status in ('sent', 'accepted', 'rejected'):
-        q.status = new_status
-        db.session.commit()
+    try:
+        if new_status == 'sent':
+            QuotationService.send_quotation(id)
+        elif new_status == 'accepted':
+            QuotationService.accept_quotation(id)
+        elif new_status == 'rejected':
+            QuotationService.reject_quotation(id)
+        else:
+            raise ValueError('حالة غير معروفة')
         flash(f'✅ تم تحديث الحالة إلى {q.status_ar}', 'success')
+    except (ValueError, Exception) as e:
+        db.session.rollback()
+        current_app.logger.exception('handler failed')
+        flash(f'⚠️ {e}', 'danger')
     return redirect(url_for('erp_modules.view_quotation', id=id))
 
+
+@erp_bp.route('/quotations/<int:id>/print')
+@login_required
+@permission_required('manage_sales')
+def print_quotation(id):
+    q = db.get_or_404(Quotation, id)
+    QuotationService._auto_expire(q)
+    db.session.commit()
+    from config import Config
+    settings = InvoiceSettings.get_active()
+    from utils.invoice_header import document_tenant, with_tenant_header
+    try:
+        settings = with_tenant_header(settings, document_tenant(q))
+    except ValueError:
+        abort(409, description='لا يمكن الطباعة: الشركة المالكة للمستند غير محددة')
+    return render_template('erp/print_quotation.html', quotation=q, settings=settings)
 
 @erp_bp.route('/quotations/<int:id>/convert', methods=['POST'])
 @login_required
@@ -121,12 +206,14 @@ def convert_quotation(id):
         create_audit_log('convert', 'quotations', id)
         flash(f'✅ تم التحويل إلى فاتورة {sale.sale_number}', 'success')
         return redirect(url_for('sales.view', id=sale.id))
-    except ValidationError as e:
+    except (ValueError, ValidationError) as e:
+        db.session.rollback()
         flash(f'⚠️ {e}', 'danger')
         return redirect(url_for('erp_modules.view_quotation', id=id))
-    except ValueError as e:
+    except Exception as e:
+        db.session.rollback()
         current_app.logger.exception('handler failed')
-        flash('⚠️ حدث خطأ غير متوقع', 'danger')
+        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
         return redirect(url_for('erp_modules.view_quotation', id=id))
 
 # ==================== PURCHASE ORDERS ====================

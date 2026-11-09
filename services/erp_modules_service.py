@@ -21,18 +21,42 @@ logger = logging.getLogger(__name__)
 class QuotationService:
 
     @staticmethod
+    def _auto_expire(q):
+        """تُغلق عرض السعر تلقائيًا إن انتهت صلاحيته."""
+        if q.is_expired and q.status in ('draft', 'sent'):
+            q.status = 'expired'
+            db.session.flush()
+        return q
+
+    @staticmethod
     def create_quotation(customer_id, seller_id, lines_data, warehouse_id=None,
-                         currency='AED', user_exchange_rate=None,
-                         discount_amount=0, shipping_cost=0, tax_rate=0,
-                         valid_days=30, notes=None):
+                          currency=None, user_exchange_rate=None,
+                          discount_amount=0, shipping_cost=0, tax_rate=0,
+                          tax_inclusive=None, tax_treatment=None,
+                          valid_days=30, notes=None,
+                          payment_terms=None, terms_and_conditions=None):
         from models import Customer, User, Product
         from services.currency_service import CurrencyService
+        from services.costing_service import CostingService
 
         customer = db.get_or_404(Customer, customer_id)
         _ = db.get_or_404(User, seller_id)
 
-        exchange_rate = CurrencyService.get_exchange_rate(currency, 'AED', user_rate=user_exchange_rate)
+        if currency is None:
+            try:
+                currency = CurrencyService.get_base_currency()
+            except Exception:
+                currency = 'ILS'
+
+        exchange_rate = CurrencyService.get_exchange_rate(
+            currency, CurrencyService.get_base_currency(), user_rate=user_exchange_rate)
+
         today = date.today()
+        treatment = (tax_treatment or 'standard').strip().lower()
+        if treatment not in ('standard', 'zero', 'exempt'):
+            raise ValueError('المعاملة الضريبية غير صالحة')
+        if treatment in ('zero', 'exempt'):
+            tax_rate = Decimal('0')
 
         q = Quotation(
             quotation_number=generate_number('QT', Quotation, 'quotation_number'),
@@ -40,13 +64,19 @@ class QuotationService:
             seller_id=seller_id,
             warehouse_id=warehouse_id,
             quotation_date=today,
-            valid_until=today + timedelta(days=valid_days),
+            valid_until=today + timedelta(days=int(valid_days or 30)),
+            validity_days=int(valid_days or 30),
             currency=currency,
             exchange_rate=exchange_rate,
             discount_amount=Decimal(str(discount_amount)),
             shipping_cost=Decimal(str(shipping_cost)),
             tax_rate=Decimal(str(tax_rate)),
+            tax_inclusive=bool(tax_inclusive) if tax_inclusive is not None else False,
+            tax_treatment=treatment,
+            payment_terms=payment_terms,
+            terms_and_conditions=terms_and_conditions,
             notes=notes,
+            status='draft',
         )
         db.session.add(q)
         db.session.flush()
@@ -55,12 +85,26 @@ class QuotationService:
             product = db.session.get(Product, ld['product_id'])
             if not product:
                 continue
+            qty = Decimal(str(ld['quantity']))
+            if qty <= 0:
+                continue
+            unit_price = Decimal(str(ld.get('unit_price') or product.get_price_for_customer(customer.customer_type)))
+            disc = Decimal(str(ld.get('discount_percent', 0)))
+            line_treatment = (ld.get('tax_treatment') or getattr(product, 'tax_treatment', None) or treatment or 'standard').strip().lower()
+            if line_treatment not in ('standard', 'zero', 'exempt'):
+                line_treatment = 'standard'
+            try:
+                cost_basis = CostingService.get_cost_basis(product)
+            except Exception:
+                cost_basis = getattr(product, 'average_cost', None) or getattr(product, 'cost_price', None)
             line = QuotationLine(
                 quotation_id=q.id,
                 product_id=product.id,
-                quantity=Decimal(str(ld['quantity'])),
-                unit_price=Decimal(str(ld.get('unit_price') or product.get_price_for_customer(customer.customer_type))),
-                discount_percent=Decimal(str(ld.get('discount_percent', 0))),
+                quantity=qty,
+                unit_price=unit_price,
+                discount_percent=disc,
+                cost_price=Decimal(str(cost_basis)) if cost_basis else None,
+                tax_treatment=line_treatment,
             )
             line.calculate_line_total()
             db.session.add(line)
@@ -71,45 +115,134 @@ class QuotationService:
 
     @staticmethod
     def convert_to_sale(quotation_id, user_id):
-        """Convert accepted quotation to a sale"""
+        """Convert accepted quotation to a sale — guarded against double conversion."""
         from services.sale_service import SaleService
+        from services.stock_service import StockService
+        from models import Product as Prod
 
         q = db.get_or_404(Quotation, quotation_id)
+        QuotationService._auto_expire(q)
+        if q.status == 'converted' or q.converted_sale_id is not None:
+            raise ValueError('عرض الأسعار هذا مُحَوَّل بالفعل إلى فاتورة')
         if q.status not in ('accepted', 'sent', 'draft'):
             raise ValueError('لا يمكن تحويل فاتورة بحالة: ' + q.status_ar)
         if q.is_expired:
             raise ValueError('عرض الأسعار منتهي الصلاحية')
 
-        from models import Customer, User, Product as Prod
+        from models import Customer, User
         customer = db.session.get(Customer, q.customer_id)
         seller = db.session.get(User, q.seller_id)
         lines_data = []
         for ln in q.lines:
             product = db.session.get(Prod, ln.product_id)
-            if product:
-                lines_data.append({
-                    'product': product,
-                    'quantity': ln.quantity,
-                    'unit_price': ln.unit_price,
-                    'discount_percent': ln.discount_percent,
-                })
+            if not product:
+                continue
+            try:
+                StockService.require_cost_basis(product)
+            except Exception:
+                pass
+            lines_data.append({
+                'product': product,
+                'quantity': ln.quantity,
+                'unit_price': ln.unit_price,
+                'discount_percent': ln.discount_percent,
+                'tax_treatment': getattr(ln, 'tax_treatment', None) or 'standard',
+            })
+
         sale = SaleService.create_sale(
             customer=customer,
             seller=seller,
             lines_data=lines_data,
             warehouse_id=q.warehouse_id,
             currency=q.currency,
-            user_exchange_rate=float(q.exchange_rate),
-            discount_amount=float(q.discount_amount),
-            shipping_cost=float(q.shipping_cost),
-            tax_rate=float(q.tax_rate),
+            user_exchange_rate=Decimal(str(q.exchange_rate)) if q.exchange_rate else Decimal('1'),
+            discount_amount=Decimal(str(q.discount_amount)) if q.discount_amount else Decimal('0'),
+            shipping_cost=Decimal(str(q.shipping_cost)) if q.shipping_cost else Decimal('0'),
+            tax_rate=Decimal(str(q.tax_rate)) if q.tax_rate else Decimal('0'),
+            tax_inclusive=bool(getattr(q, 'tax_inclusive', False)),
+            tax_treatment=getattr(q, 'tax_treatment', None) or 'standard',
             notes=f'[محولة من عرض أسعار {q.quotation_number}] {q.notes or ""}',
         )
         q.status = 'converted'
         q.converted_sale_id = sale.id
+        q.converted_at = datetime.now(timezone.utc)
         db.session.commit()
         return sale
 
+    @staticmethod
+    def send_quotation(quotation_id):
+        q = db.get_or_404(Quotation, quotation_id)
+        QuotationService._auto_expire(q)
+        if q.status not in ('draft', 'sent'):
+            raise ValueError('لا يمكن إرسال عرض بحالة: ' + q.status_ar)
+        q.status = 'sent'
+        db.session.commit()
+        return q
+
+    @staticmethod
+    def accept_quotation(quotation_id):
+        q = db.get_or_404(Quotation, quotation_id)
+        QuotationService._auto_expire(q)
+        if q.status == 'converted':
+            raise ValueError('عرض أسعار مُحَوَّل بالفعل')
+        if q.is_expired:
+            raise ValueError('عرض الأسعار منتهي الصلاحية')
+        if q.status not in ('sent', 'draft'):
+            raise ValueError('لا يمكن قبول عرض بحالة: ' + q.status_ar)
+        q.status = 'accepted'
+        db.session.commit()
+        return q
+
+    @staticmethod
+    def reject_quotation(quotation_id):
+        q = db.get_or_404(Quotation, quotation_id)
+        if q.status == 'converted':
+            raise ValueError('عرض أسعار مُحَوَّل بالفعل — لا يمكن رفضه')
+        q.status = 'rejected'
+        db.session.commit()
+        return q
+
+    @staticmethod
+    def duplicate_quotation(quotation_id, seller_id=None):
+        q = db.get_or_404(Quotation, quotation_id)
+        new_q = Quotation(
+            quotation_number=generate_number('QT', Quotation, 'quotation_number'),
+            customer_id=q.customer_id,
+            seller_id=seller_id or q.seller_id,
+            warehouse_id=q.warehouse_id,
+            quotation_date=date.today(),
+            valid_until=date.today() + timedelta(days=q.validity_days or 30),
+            validity_days=q.validity_days,
+            currency=q.currency,
+            exchange_rate=q.exchange_rate,
+            discount_amount=q.discount_amount,
+            shipping_cost=q.shipping_cost,
+            tax_rate=q.tax_rate,
+            tax_inclusive=q.tax_inclusive,
+            tax_treatment=q.tax_treatment,
+            payment_terms=q.payment_terms,
+            terms_and_conditions=q.terms_and_conditions,
+            notes=q.notes,
+            status='draft',
+        )
+        db.session.add(new_q)
+        db.session.flush()
+        for ln in q.lines:
+            new_line = QuotationLine(
+                quotation_id=new_q.id,
+                product_id=ln.product_id,
+                quantity=ln.quantity,
+                unit_price=ln.unit_price,
+                discount_percent=ln.discount_percent,
+                cost_price=ln.cost_price,
+                tax_treatment=ln.tax_treatment,
+                notes=ln.notes,
+            )
+            new_line.calculate_line_total()
+            db.session.add(new_line)
+        new_q.calculate_totals()
+        db.session.commit()
+        return new_q
 
 class PurchaseOrderService:
 

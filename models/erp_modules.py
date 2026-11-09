@@ -54,15 +54,26 @@ class Quotation(TenantScopedMixin, db.Model):
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     total_amount = db.Column(db.Numeric(15, 3), default=0)
 
+    # Phase 1 — ضريبة على مستوى الفاتورة (شاملة/إضافية + معاملة)
+    tax_inclusive = db.Column(db.Boolean, default=False, nullable=False, server_default=db.text('false'))
+    tax_treatment = db.Column(db.String(10), default='standard', nullable=False, server_default='standard')
+    # draft, sent, accepted, rejected, expired, converted
+
     currency = db.Column(db.String(3), default='ILS')
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
     amount_base = db.Column(db.Numeric(15, 3), default=0)
 
     status = db.Column(db.String(20), default='draft', index=True)
-    # draft, sent, accepted, rejected, expired, converted
 
     converted_sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'))
+    converted_at = db.Column(db.DateTime, nullable=True)
     notes = db.Column(db.Text)
+
+    # Phase 1 — شروط/صلاحية/نشاط
+    payment_terms = db.Column(db.Text, nullable=True)
+    terms_and_conditions = db.Column(db.Text, nullable=True)
+    validity_days = db.Column(db.Integer, default=30, nullable=False, server_default='30')
+    is_active = db.Column(db.Boolean, default=True, nullable=False, server_default=db.text('true'))
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
@@ -77,12 +88,33 @@ class Quotation(TenantScopedMixin, db.Model):
         self.subtotal = sum((Decimal(str(ln.line_total)) for ln in self.lines), Decimal('0'))
         disc = Decimal(str(self.discount_amount)) if self.discount_amount else Decimal('0')
         ship = Decimal(str(self.shipping_cost)) if self.shipping_cost else Decimal('0')
-        tax_r = Decimal(str(self.tax_rate)) if self.tax_rate else Decimal('0')
-        taxable = self.subtotal - disc + ship
-        self.tax_amount = (taxable * (tax_r / Decimal('100'))).quantize(Decimal('0.01'), ROUND_HALF_UP)
-        self.total_amount = (taxable + self.tax_amount).quantize(Decimal('0.001'), ROUND_HALF_UP)
+        rate = Decimal(str(self.tax_rate)) if self.tax_rate else Decimal('0')
+
+        from services.sale_tax_calculation import sale_tax_totals_mixed
+        line_specs = [
+            {'line_total': ln.line_total,
+             'tax_treatment': getattr(ln, 'tax_treatment', None) or 'standard'}
+            for ln in self.lines
+        ]
+        inclusive = bool(getattr(self, 'tax_inclusive', False))
+        invoice_treatment = getattr(self, 'tax_treatment', None) or 'standard'
+        self.tax_amount, self.total_amount, _ns, _nz, _ne = sale_tax_totals_mixed(
+            line_specs, disc, ship, rate, inclusive,
+            invoice_treatment=invoice_treatment)
         ex = Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal('1')
-        self.amount_base = (self.total_amount * ex).quantize(Decimal('0.001'), ROUND_HALF_UP)
+        if (self.currency or 'ILS') == 'ILS':
+            self.amount_base = self.total_amount
+        else:
+            try:
+                from services.currency_service import CurrencyService
+                _base = CurrencyService.get_base_currency()
+            except Exception:
+                _base = 'ILS'
+            if (self.currency or _base) == _base:
+                self.amount_base = self.total_amount
+            else:
+                self.amount_base = (self.total_amount * ex).quantize(
+                    Decimal('0.001'), rounding=ROUND_HALF_UP)
 
     @property
     def is_expired(self):
@@ -113,6 +145,9 @@ class QuotationLine(TenantScopedMixin, db.Model):
     unit_price = db.Column(db.Numeric(15, 3), nullable=False)
     discount_percent = db.Column(db.Numeric(5, 2), default=0)
     line_total = db.Column(db.Numeric(15, 3), nullable=False)
+    # Phase 1 — لقطة تكلفة + معاملة ضريبية (مطابقة لـ SaleLine)
+    cost_price = db.Column(db.Numeric(15, 3), nullable=True)
+    tax_treatment = db.Column(db.String(10), default='standard', nullable=False, server_default='standard')
     notes = db.Column(db.String(255))
 
     quotation = db.relationship('Quotation', back_populates='lines')

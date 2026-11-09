@@ -1,4 +1,4 @@
-# Route Isolation Audit — 514 مسارًا
+# Route Isolation Audit — 517 مسارًا
 
 **توليد:** `scripts/gen_route_audit_doc.py` — لا يُعدَّل يدويًا؛ أي تغيير يُعاد توليد
 الفحص عبر التشغيل: `python -m scripts.gen_route_audit_doc` والالتزام بها في كل
@@ -208,7 +208,7 @@
 | `/customers/api/search` | `customers.api_search` | tenant | login_required |
 | `/customers/create` | `customers.create` | tenant | current_tenant, permission_required, login_required |
 
-## routes.erp_modules (tenant) — 37 مسار
+## routes.erp_modules (tenant) — 40 مسار
 
 | Path | Endpoint | Scope | Markers |
 |---|---|---|---|
@@ -235,6 +235,9 @@
 | `/erp/quotations` | `erp_modules.quotations` | tenant | permission_required, login_required |
 | `/erp/quotations/<int:id>` | `erp_modules.view_quotation` | tenant | permission_required, login_required |
 | `/erp/quotations/<int:id>/convert` | `erp_modules.convert_quotation` | tenant | permission_required, login_required |
+| `/erp/quotations/<int:id>/delete` | `erp_modules.delete_quotation` | tenant | permission_required, login_required |
+| `/erp/quotations/<int:id>/duplicate` | `erp_modules.duplicate_quotation` | tenant | permission_required, login_required |
+| `/erp/quotations/<int:id>/print` | `erp_modules.print_quotation` | tenant | permission_required, login_required |
 | `/erp/quotations/<int:id>/status` | `erp_modules.update_quotation_status` | tenant | permission_required, login_required |
 | `/erp/quotations/create` | `erp_modules.create_quotation` | tenant | permission_required, login_required |
 | `/erp/recurring-expenses` | `erp_modules.recurring_expenses` | tenant | permission_required, login_required |
@@ -717,15 +720,15 @@
 
 ## الملخص
 
-* **إجمالي المسارات:** 514
+* **إجمالي المسارات:** 517
 * **platform:** 128
 * **public:** 27
 * **system:** 7
-* **tenant:** 352
+* **tenant:** 355
 
 ### أكثر علامات العزل استخدامًا
-* `login_required`: 474
-* `permission_required`: 260
+* `login_required`: 477
+* `permission_required`: 263
 * `get_owned_or_404`: 90
 * `owner_required`: 79
 * `tenant_id`: 20

@@ -3694,7 +3694,6 @@ INCIDENT_SEVERITIES = ('sev1', 'sev2', 'sev3')
 def support_inbox():
     """صندوق وارد تذاكر الدعم — المالك يرى ويحل كل التذاكر."""
     from models import SupportTicket
-    from datetime import datetime, timezone
 
     status = (request.args.get('status') or '').strip()
     category = (request.args.get('category') or '').strip()

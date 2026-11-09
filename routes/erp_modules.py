@@ -2,13 +2,13 @@
 ERP Extended Modules Routes
 """
 
-from datetime import datetime, timezone, date, timedelta
+from datetime import datetime, timezone, date
 from decimal import Decimal
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, abort
 from flask_login import login_required, current_user
 from extensions import db
 from models.erp_modules import (
-    Quotation, PurchaseOrder, FiscalPeriod, StockTransfer,
+    Quotation, PurchaseOrder, StockTransfer,
     StockTake, DunningLetter, RecurringExpense, ProductLot,
     WarehouseBin, EInvoice,
 )
@@ -189,7 +189,6 @@ def print_quotation(id):
     QuotationService._auto_expire(q)
     db.session.commit()
     from models.invoice_settings import InvoiceSettings
-    from config import Config
     settings = InvoiceSettings.get_active()
     from utils.invoice_header import document_tenant, with_tenant_header
     try:

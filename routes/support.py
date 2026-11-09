@@ -4,15 +4,14 @@
 /owner/support-tickets. المؤسسة أو المطور المطلوب منه إضافة مسار جديد
 يجب أن يُضيفه إلى utils/route_scope.py (حتمي — test_route_isolation_census).
 """
-from datetime import datetime, timezone
 
 from flask import (Blueprint, render_template, request, redirect, url_for,
-                   flash, abort)
+                   flash)
 from flask_login import login_required, current_user
 
 from extensions import db
 from models import SupportTicket
-from utils.decorators import permission_required, get_owned_or_404
+from utils.decorators import get_owned_or_404
 from utils.helpers import create_audit_log
 
 support_bp = Blueprint('support', __name__, url_prefix='/support')

@@ -6,7 +6,6 @@ from services.stock_service import StockService
 from utils.decorators import permission_required, admin_required, get_owned_or_404
 
 from decimal import Decimal
-import os
 
 warehouse_bp = Blueprint('warehouse', __name__, url_prefix='/warehouse')
 

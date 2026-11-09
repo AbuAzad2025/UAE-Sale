@@ -2,7 +2,6 @@ from flask import Blueprint, request, jsonify, flash
 from flask_login import login_required
 from services.whatsapp_service import WhatsAppService
 from utils.decorators import admin_required, permission_required, get_owned_or_404
-from extensions import db
 
 whatsapp_bp = Blueprint('whatsapp', __name__, url_prefix='/whatsapp')
 

@@ -450,7 +450,6 @@ def _marker_window(marker):
 
 def _guard_against_overlapping_periods(period_from, period_to, tid):
     """يرفض توزيع أي فترة تتقاطع مع توزيع سابق مُرحَّل لنفس التينانت."""
-    from models import GLJournalEntry
 
     req_from = period_from or date.min
     req_to = period_to or date.max
@@ -488,7 +487,7 @@ def post_partner_distributions(period_from=None, period_to=None, tenant_id=None,
     توزيع سابق مُرحَّل ترفع ``ValueError`` — الربح لا يُوزَّع مرتين.
     ``force=True`` يتخطى فحص التقاطع (للاستخدامات الإدارية المقصودة فقط).
     """
-    from models import Customer, GLJournalEntry, GLJournalLine  # noqa: F401
+    from models import Customer, GLJournalLine  # noqa: F401
     from services.currency_service import CurrencyService
     from services.gl_service import GLService
 

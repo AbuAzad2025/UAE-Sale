@@ -62,7 +62,6 @@ from services.account_resolution import AccountResolver, AccountRole
 from services.currency_service import CurrencyService
 from utils.decorators import get_owned_or_raise
 from utils.errors import ValidationError
-from utils.helpers import generate_number
 
 _PAYMENT_METHOD_ROLES = {
     "cash": AccountRole.CASH,

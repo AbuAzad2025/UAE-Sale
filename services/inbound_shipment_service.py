@@ -5,7 +5,7 @@ Trusted: StockMovement + TenantScopedMixin + PurchaseOrder receive pattern.
 Only put_away moves stock (C1: no GL until sale).
 """
 
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from extensions import db

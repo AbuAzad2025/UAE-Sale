@@ -294,7 +294,6 @@ def execute_plan(plan, user, confirmed: bool = False) -> dict:
                     'response': f'✅ تم تسجيل مشتريات #{getattr(pur, "id", "?")} من {supp.name}.', 'needs_clarification': False}
 
         if tool == 'create_cheque':
-            from datetime import date
             ch = cmd.create_cheque(cheque_number=p.get('cheque_number'),
                                    amount=_dec(p.get('amount')),
                                    due_date=None, cheque_type=p.get('cheque_type', 'postdated'),

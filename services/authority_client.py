@@ -9,10 +9,9 @@
 
 هذا الملف **لا** يدّعي أن أي تكامل مع أي سلطة موجود الآن.
 """
-import json
 from datetime import datetime, timezone
 
-from services.compliance_credentials import authority_country, AUTHORITY_REGISTRY
+from services.compliance_credentials import AUTHORITY_REGISTRY
 from models.tenant_scope import get_current_tenant_id
 
 

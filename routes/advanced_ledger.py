@@ -3,12 +3,10 @@ from flask_login import login_required, current_user
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 from extensions import db
-from models import GLAccount, GLJournalEntry, Cheque
+from models import GLAccount, Cheque
 from models.advanced_accounting import CustomsTax, AdvancedExpense
-from models.customer import Customer
 from models.supplier import Supplier
 from models.expense import ExpenseCategory
-from services.advanced_journal_manager import AdvancedJournalEntryManager
 from services.cheque_accounting_integration import ChequeAccountingIntegration
 from services.real_time_listeners import accounting_event_stream
 from services.advanced_analytics import AdvancedFinancialAnalytics

@@ -10,7 +10,6 @@ from flask import Blueprint, request, jsonify, render_template, current_app, abo
 from flask_login import login_required, current_user
 from extensions import csrf, db
 from flask_wtf.csrf import validate_csrf as validate_csrf_token
-from werkzeug.exceptions import BadRequest
 from services.ai_service import AIService, AIServiceError
 import pandas as pd
 from ai_knowledge.learning_system import learning_system

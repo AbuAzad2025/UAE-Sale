@@ -1757,7 +1757,6 @@ class AIService:
         """
         try:
             from models import Product, Customer
-            from extensions import db
 
             product = get_owned_or_raise(Product, product_id)
             customer = get_owned_or_raise(Customer, customer_id) if customer_id else None

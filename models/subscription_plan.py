@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from extensions import db
-from decimal import Decimal
 
 
 class SubscriptionPlan(db.Model):

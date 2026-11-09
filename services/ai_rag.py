@@ -74,7 +74,7 @@ def _db_context(message: str, user) -> str:
         # مرشح ملازم يضمن عدم تسريب عدّات تينانت آخر.
         _tid = None
         try:
-            from models.tenant_scope import get_current_tenant_id, TENANT_LESS_SCOPE
+            from models.tenant_scope import get_current_tenant_id
             _tid = get_current_tenant_id()
             if user is not None:
                 if getattr(user, 'is_owner', False):

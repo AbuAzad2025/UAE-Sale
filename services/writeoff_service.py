@@ -217,6 +217,7 @@ class WriteOffService:
                         'account': ar_account.code,
                         'credit': amount_dec,
                         'description': f'إقفال ذمم مدينة - {customer.name}',
+                        **({'party_id': customer.id} if getattr(customer, 'customer_type', None) == 'partner' else {}),
                     },
                 ],
                 description=f'مديونية مشطوبة - {customer.name}',

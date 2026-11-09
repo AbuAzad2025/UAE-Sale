@@ -866,3 +866,150 @@ class TestPartnerProfitEdges:
         sale_mock.subtotal = D('0')
 
         assert compute_partner_shares(sale_mock) == {}
+
+
+class TestPartnerDrawsViaAnyPath:
+    """المسحوبات: تُحتسب آليًا بأي مسار موسوم بطرف الشريك — القيد اليدوي يشمل."""
+
+    def test_manual_journal_tagged_3350_debit_counts_as_draw(
+            self, db, app, company_partner, gl_accounts):
+        from decimal import Decimal as D
+        from services.gl_service import GLService
+        from services import partner_profit as pp
+
+        # إيراد 1000
+        from services.account_resolution import AccountResolver, AccountRole
+        GLService.post_entry(
+            [{'account': AccountResolver.resolve(AccountRole.CASH),
+              'debit': D('1000'), 'description': 'd'},
+             {'account': AccountResolver.resolve(AccountRole.SALES_REVENUE),
+              'credit': D('1000'), 'description': 'd'}],
+            description='إيراد', reference_type='Test', exchange_rate=D('1'))
+
+        # قيد يدوي بطرف الشريك على حسابه الجاري — يسجل كمسحوبات تلقائيًا
+        entry = GLService.create_manual_entry(
+            description='مسحوبات الشريك من المالك',
+            lines=[
+                {'account_code': '3350', 'debit': D('120'),
+                 'description': 'مسحوبات', 'party_id': company_partner.id},
+                {'account_code': '1110', 'credit': D('120'),
+                 'description': 'صرف نقدي'},
+            ],
+            notes='قيد يدوي',
+        )
+        assert entry is not None
+        assert pp._draws_for_partner(company_partner.id) == D('120.000')
+
+        # المعاينة تُخصم منها المسحوبات تلقائيًا
+        row = next(r for r in pp.preview_partner_distributions(None, None)
+                   if r['partner_id'] == company_partner.id)
+        assert row['draws_deducted'] == D('120.000')
+        assert row['net_payout'] == D('130.000')
+
+    def test_partner_share_entries_themselves_are_never_draws(
+            self, db, owner_user, test_customer, test_product, partner_customer, gl_accounts):
+        from services.sale_service import SaleService
+        from services import partner_profit as pp
+        from models import ProductPartner
+
+        db.session.add(ProductPartner(
+            product_id=test_product.id,
+            partner_customer_id=partner_customer.id,
+            percentage=Decimal('25.00'),
+        ))
+        test_product.average_cost = Decimal('30')
+        test_product.cost_price = Decimal('30')
+        db.session.commit()
+
+        sale = SaleService.create_sale(
+            customer=test_customer,
+            seller=owner_user,
+            lines_data=[{
+                'product': test_product,
+                'quantity': Decimal('1'),
+                'unit_price': Decimal('100'),
+                'tax_treatment': 'exempt',
+            }],
+            currency='AED',
+            user_exchange_rate='1',
+        )
+        # عكسات الشريك من البيع لا تُحسب مسحوبات
+        assert pp._draws_for_partner(partner_customer.id) == Decimal('0.000')
+
+        SaleService.cancel_sale(sale)
+        assert pp._draws_for_partner(partner_customer.id) == Decimal('0.000')
+
+    def test_refund_to_partner_zeroed_sales_deduction(
+            self, db, owner_user, test_product, company_partner, gl_accounts):
+        from decimal import Decimal as D
+        from services.sale_service import SaleService
+        from services.return_service import ReturnService
+        from services import partner_profit as pp
+        from models import SaleLine
+
+        company_partner.customer_type = 'partner'
+        company_partner.partner_scope = 'company'
+        db.session.commit()
+
+        test_product.average_cost = Decimal('30')
+        test_product.cost_price = Decimal('30')
+        db.session.commit()
+
+        sale = SaleService.create_sale(
+            customer=company_partner,
+            seller=owner_user,
+            lines_data=[{
+                'product': test_product,
+                'quantity': Decimal('2'),
+                'unit_price': Decimal('50'),
+                'tax_treatment': 'exempt',
+            }],
+            currency='AED',
+            user_exchange_rate='1',
+        )
+        line = SaleLine.query.filter_by(sale_id=sale.id).first()
+        # مرتجع كامل → balance_due = 0 → الخصم = صفر
+        ReturnService.create_return(
+            sale.id,
+            [{'sale_line_id': line.id, 'quantity': Decimal('2'), 'condition': 'good'}],
+            user_id=owner_user.id,
+        )
+        assert pp._sales_to_partner(company_partner.id) == D('0.000')
+
+    def test_partial_return_prorates_sales_deduction(
+            self, db, owner_user, test_product, company_partner, gl_accounts):
+        from decimal import Decimal as D
+        from services.sale_service import SaleService
+        from services.return_service import ReturnService
+        from services import partner_profit as pp
+        from models import SaleLine
+
+        company_partner.customer_type = 'partner'
+        company_partner.partner_scope = 'company'
+        db.session.commit()
+
+        test_product.average_cost = Decimal('30')
+        test_product.cost_price = Decimal('30')
+        db.session.commit()
+
+        sale = SaleService.create_sale(
+            customer=company_partner,
+            seller=owner_user,
+            lines_data=[{
+                'product': test_product,
+                'quantity': Decimal('2'),
+                'unit_price': Decimal('50'),
+                'tax_treatment': 'exempt',
+            }],
+            currency='AED',
+            user_exchange_rate='1',
+        )
+        line = SaleLine.query.filter_by(sale_id=sale.id).first()
+        # مرتجع نصف → balance_due = 50
+        ReturnService.create_return(
+            sale.id,
+            [{'sale_line_id': line.id, 'quantity': Decimal('1'), 'condition': 'good'}],
+            user_id=owner_user.id,
+        )
+        remaining = pp._sales_to_partner(company_partner.id)
+        assert remaining == D('50.000')

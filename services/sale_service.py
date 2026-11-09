@@ -447,16 +447,19 @@ class SaleService:
             # AR and Revenue should be in Transaction Currency (Foreign)
             # GLService.post_entry will handle conversion to base currency
 
+            _partner_id = customer.id if getattr(customer, 'customer_type', None) == 'partner' else None
             lines = [
                 {
                     'account': ar_account,
                     'debit': sale.total_amount,  # Use Foreign Amount
-                    'description': f'فاتورة {sale.sale_number}'
+                    'description': f'فاتورة {sale.sale_number}',
+                    **({'party_id': _partner_id} if _partner_id else {}),
                 },
                 {
                     'account': resolve_account('SALES_REVENUE'),
                     'credit': sale.subtotal - sale.tax_amount if getattr(sale, 'tax_inclusive', False) else sale.subtotal,
-                    'description': 'إيرادات المبيعات'
+                    'description': 'إيرادات المبيعات',
+                    **({'party_id': _partner_id} if _partner_id else {}),
                 },
             ]
 
@@ -643,17 +646,20 @@ class SaleService:
 
             # Determine Credit Account (AR)
             credit_account = GLService.get_customer_credit_account(sale.customer)
+            _partner_id = sale.customer.id if getattr(sale.customer, 'customer_type', None) == 'partner' else None
 
             lines = [
                 {
                     'account': debit_account,
                     'debit': amount_decimal,
-                    'description': f'Payment for Sale {sale.sale_number} ({payment_method})'
+                    'description': f'Payment for Sale {sale.sale_number} ({payment_method})',
+                    **({'party_id': _partner_id} if _partner_id else {}),
                 },
                 {
                     'account': credit_account,  # Accounts Receivable
                     'credit': amount_decimal,
-                    'description': f'Payment Received {payment.payment_number}'
+                    'description': f'Payment Received {payment.payment_number}',
+                    **({'party_id': _partner_id} if _partner_id else {}),
                 }
             ]
 

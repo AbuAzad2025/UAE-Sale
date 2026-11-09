@@ -11,19 +11,34 @@
       </div>
       <div class="card-body">
         <div class="row mb-4">
-          <div class="col-md-4"><p><strong>التاريخ:</strong> {{ quotation.quotation_date.strftime('%Y-%m-%d') if quotation.quotation_date else '' }}</p><p><strong>صالح حتى:</strong> {{ quotation.valid_until.strftime('%Y-%m-%d') if quotation.valid_until else '' }}</p></div>
-          <div class="col-md-4 text-center"><h3 class="text-primary">{{ "{:,.2f}".format(quotation.total_amount|float) }} د.إ</h3></div>
-          <div class="col-md-4 text-left"><p><strong>العملة:</strong> {{ quotation.currency }}</p><p><strong>الضريبة:</strong> {{ quotation.tax_rate }}%</p></div>
-        </div>
-        <table class="table table-bordered">
-          <thead><tr><th>المنتج</th><th>الكمية</th><th>السعر</th><th>الخصم%</th><th>الإجمالي</th></tr></thead>
-          <tbody>
-          {% for line in quotation.lines %}
-          <tr><td>{{ line.product.name if line.product else '-' }}</td><td>{{ line.quantity }}</td><td>{{ "{:,.2f}".format(line.unit_price|float) }}</td><td>{{ line.discount_percent }}%</td><td>{{ "{:,.2f}".format(line.line_total|float) }}</td></tr>
-          {% endfor %}
-          </tbody>
-        </table>
-        {% if quotation.notes %}<p><strong>ملاحظات:</strong> {{ quotation.notes }}</p>{% endif %}
+        <div class="col-md-4"><p><strong>التاريخ:</strong> {{ quotation.quotation_date.strftime('%Y-%m-%d') if quotation.quotation_date else '' }}</p><p><strong>صالح حتى:</strong> {{ quotation.valid_until.strftime('%Y-%m-%d') if quotation.valid_until else '' }}</p></div>
+        <div class="col-md-4 text-center"><h3 class="text-primary">{{ "{:,.2f}".format(quotation.total_amount|float) }} {{ quotation.currency }}</h3></div>
+        <div class="col-md-4 text-left"><p><strong>العملة:</strong> {{ quotation.currency }}</p><p><strong>الضريبة:</strong> {{ quotation.tax_rate }}% ({% if quotation.tax_inclusive %}شاملة{% else %}إضافية{% endif %}) — {{ quotation.tax_treatment or 'standard' }}</p></div>
+      </div>
+      <table class="table table-bordered">
+        <thead><tr><th>المنتج</th><th>الكمية</th><th>السعر</th><th>الخصم%</th><th>المعاملة</th><th>الإجمالي</th></tr></thead>
+        <tbody>
+        {% for line in quotation.lines %}
+        <tr><td>{{ line.product.name if line.product else '-' }}</td><td>{{ line.quantity }}</td><td>{{ "{:,.2f}".format(line.unit_price|float) }}</td><td>{{ line.discount_percent }}%</td><td>{{ line.tax_treatment or 'standard' }}</td><td>{{ "{:,.2f}".format(line.line_total|float) }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if quotation.payment_terms %}<p><strong>شروط الدفع:</strong> {{ quotation.payment_terms }}</p>{% endif %}
+      {% if quotation.terms_and_conditions %}<p><strong>الشروط والأحكام:</strong> {{ quotation.terms_and_conditions }}</p>{% endif %}
+      {% if quotation.notes %}<p><strong>ملاحظات:</strong> {{ quotation.notes }}</p>{% endif %}
+      <hr>
+      <div class="mb-2">
+        <a href="{{ url_for('erp_modules.print_quotation', id=quotation.id) }}" class="btn btn-outline-secondary btn-sm" target="_blank"><i class="fas fa-print mr-1"></i>طباعة</a>
+        <form method="POST" action="{{ url_for('erp_modules.duplicate_quotation', id=quotation.id) }}" style="display:inline">
+          <button type="submit" class="btn btn-outline-primary btn-sm"><i class="fas fa-copy mr-1"></i>تكرار</button>
+        </form>
+        {% if quotation.status == 'draft' %}
+        <form method="POST" action="{{ url_for('erp_modules.delete_quotation', id=quotation.id) }}" style="display:inline" onsubmit="return confirm('حذف عرض الأسعار؟')">
+          <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-trash mr-1"></i>حذف</button>
+        </form>
+        {% endif %}
+      </div>
+      {% if quotation.status in ('draft', 'sent') %}      {% if quotation.notes %}<p><strong>ملاحظات:</strong> {{ quotation.notes }}</p>{% endif %}
         <hr>
         {% if quotation.status in ('draft', 'sent') %}
         <form method="POST" action="{{ url_for('erp_modules.update_quotation_status', id=quotation.id) }}" style="display:inline">

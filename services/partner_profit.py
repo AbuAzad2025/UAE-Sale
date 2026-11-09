@@ -301,17 +301,25 @@ def compute_net_income(period_from=None, period_to=None):
 
 
 def _draws_for_partner(partner_id, period_from=None, period_to=None):
-    """مسحوبات الشريك — فقط قيود السحوبات الموسومة بطرفه (لا تشمل العكسات
-    التي تولدها قيود المرتجعات/الإلغاءات/توزيع الخسارة حتى لا تُحسب مرتين)."""
-    from sqlalchemy import func
+    """مسحوبات الشريك — أي مدين على جاري الشريك/المالك بطرفه في الفترة.
+
+    تُحتسب القيود الموسومة بطرف الشريك على الحسابات الجارية (3300/3350) —
+    يشمل ذلك المسحوبات اليدوية من واجهة القيد اليدوي (post_partner_draw
+    أو قيد مباشر بأي طريقة)، ويستثني القيود المُولَّدة تلقائيًا (عكسات البيع/
+    المرتجع/توزيع الخسارة/توزيع الأرباح) حتى لا تُحسب مرتين.
+    """
+    from sqlalchemy import func, or_
     from models import GLAccount, GLJournalEntry as _Entry
 
     q = (db.session.query(func.coalesce(func.sum(GLJournalLine.debit), 0))
          .join(_Entry, _Entry.id == GLJournalLine.entry_id)
          .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
          .filter(_Entry.is_posted.is_(True),
-                 _Entry.reference_type == 'PartnerDraw',
-                 GLJournalLine.party_id == partner_id))
+                 _Entry.is_reversed.is_(False),
+                 GLAccount.code.in_(('3300', '3350')),
+                 GLJournalLine.party_id == partner_id,
+                 or_(_Entry.reference_type.is_(None),
+                     _Entry.reference_type.notin_(('Sale', 'ProductReturn', 'PartnerDistribution')))))
     if period_from is not None:
         q = q.filter(_Entry.entry_date >= period_from)
     if period_to is not None:

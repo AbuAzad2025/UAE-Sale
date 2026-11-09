@@ -675,13 +675,16 @@ class PaymentService:
             ar_account = GLService.get_customer_credit_account(customer)
             cash_account = GLService.get_payment_debit_account(
                 payment_method or 'cash')
+            _partner_id = customer.id if getattr(customer, 'customer_type', None) == 'partner' else None
 
             entry = GLService.post_entry(
                 [
                     {'account': ar_account, 'debit': amount_decimal,
-                     'description': f'صرف مسترد للعميل {customer.name}'},
+                     'description': f'صرف مسترد للعميل {customer.name}',
+                     **({'party_id': _partner_id} if _partner_id else {})},
                     {'account': cash_account, 'credit': amount_decimal,
-                     'description': f'صرف مسترد {payment.payment_number}'},
+                     'description': f'صرف مسترد {payment.payment_number}',
+                     **({'party_id': _partner_id} if _partner_id else {})},
                 ],
                 description=f'Refund {payment.payment_number}',
                 reference_type='Payment',

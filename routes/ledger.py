@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, flash, redirect,
 from flask_login import login_required, current_user
 from sqlalchemy import and_, case, func
 from extensions import db
-from models import GLAccount, GLJournalEntry, GLJournalLine, PaymentVault
+from models import GLAccount, GLJournalEntry, GLJournalLine, PaymentVault, Customer
 from services.gl_service import GLService
 from services.cash_flow_service import CashFlowService
 from utils.decorators import admin_required, permission_required, get_owned_or_404
@@ -869,6 +869,7 @@ def manual_entry():  # noqa: C901
                 debit = request.form.get(f'line_{i}_debit', 0)
                 credit = request.form.get(f'line_{i}_credit', 0)
                 line_description = request.form.get(f'line_{i}_description', '')
+                line_party = request.form.get(f'line_{i}_party', '').strip()
 
                 # تحويل القيم الفارغة إلى صفر
                 try:
@@ -879,12 +880,15 @@ def manual_entry():  # noqa: C901
 
                 # إضافة السطر فقط إذا كان فيه قيمة
                 if debit_value > 0 or credit_value > 0:
-                    lines.append({
+                    line_dict = {
                         'account_code': account_code,
                         'debit': debit_value,
                         'credit': credit_value,
                         'description': line_description
-                    })
+                    }
+                    if line_party.isdigit():
+                        line_dict['party_id'] = int(line_party)
+                    lines.append(line_dict)
 
                 i += 1
 
@@ -921,7 +925,15 @@ def manual_entry():  # noqa: C901
     # الحصول على الحسابات النشطة (غير رئيسية)
     accounts = GLAccount.query.filter_by(is_active=True, is_header=False).order_by(GLAccount.code).all()
 
-    return render_template('ledger/manual_entry.html', accounts=accounts, today=date.today())
+    # شركاء محددون كعملاء (customer_type='partner') لتمكين تمييز سطر القيد بطرف الشريك
+    partners = (Customer.query
+                .filter(Customer.is_active.is_(True), Customer.customer_type == 'partner')
+                .order_by(Customer.name.asc())
+                .limit(500)
+                .all())
+
+    return render_template('ledger/manual_entry.html', accounts=accounts,
+                           partners=partners, today=date.today())
 
 
 @ledger_bp.route('/entry/<int:id>')

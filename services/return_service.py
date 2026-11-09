@@ -255,11 +255,13 @@ class ReturnService:
                 })
 
             # Credit Accounts Receivable (Reducing customer debt)
+            _return_party = sale.customer.id if getattr(sale.customer, 'customer_type', None) == 'partner' else None
             gl_lines.append({
                 'account': GLService.get_customer_credit_account(sale.customer),
                 'debit': 0,
                 'credit': gross_return_amount,
-                'description': f'Credit Customer for Return {sale.sale_number}'
+                'description': f'Credit Customer for Return {sale.sale_number}',
+                **({'party_id': _return_party} if _return_party else {}),
             })
 
             # عكس تناسبي لحصص شركاء المنتج مع الكمية المرتجعة — داخل نفس
@@ -298,11 +300,14 @@ class ReturnService:
             if cash_out_base > 0:
                 _ar_acct = GLService.get_customer_credit_account(sale.customer)
                 _cash_acct = GLService.get_payment_debit_account('cash')
+                _refund_party = sale.customer.id if getattr(sale.customer, 'customer_type', None) == 'partner' else None
                 GLService.post_entry(
                     [{'account': _ar_acct, 'debit': cash_out_base,
-                      'description': f'تسوية مرتجع نقدي {product_return.return_number}'},
+                      'description': f'تسوية مرتجع نقدي {product_return.return_number}',
+                      **({'party_id': _refund_party} if _refund_party else {})},
                      {'account': _cash_acct, 'credit': cash_out_base,
-                      'description': f'صرف مسترد {product_return.return_number}'}],
+                      'description': f'صرف مسترد {product_return.return_number}',
+                      **({'party_id': _refund_party} if _refund_party else {})}],
                     description=f'Cash refund {product_return.return_number} for Sale {sale.sale_number}',
                     reference_type='ProductReturn',
                     reference_id=product_return.id,

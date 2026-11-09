@@ -153,21 +153,22 @@
             <table class="table table-bordered mb-0" id="linesTable">
               <thead class="bg-light">
                 <tr>
-                  <th width="5%">#</th>
-                  <th width="35%">الحساب <span class="text-danger">*</span></th>
-                  <th width="30%">البيان</th>
-                  <th width="15%" class="text-center">
+                  <th width="4%">#</th>
+                  <th width="27%">الحساب <span class="text-danger">*</span></th>
+                  <th width="24%">البيان</th>
+                  <th width="13%" class="text-center">
                     <i class="fas fa-arrow-down text-success mr-1"></i>
                     <strong class="text-success">مدين</strong>
                     <br>
                     <small class="text-muted">(لنا)</small>
                   </th>
-                  <th width="15%" class="text-center">
+                  <th width="13%" class="text-center">
                     <i class="fas fa-arrow-up text-danger mr-1"></i>
                     <strong class="text-danger">دائن</strong>
                     <br>
                     <small class="text-muted">(علينا)</small>
                   </th>
+                  <th width="19%">الشريك <small class="text-muted">(اختياري)</small></th>
                 </tr>
               </thead>
               <tbody id="linesTableBody">
@@ -175,7 +176,7 @@
               </tbody>
               <tfoot class="bg-light">
                 <tr>
-                  <th colspan="3" class="text-left">الإجمالي:</th>
+                  <th colspan="4" class="text-left">الإجمالي:</th>
                   <th class="text-center text-success">
                     <span id="totalDebit">0.00</span>
                   </th>
@@ -184,7 +185,7 @@
                   </th>
                 </tr>
                 <tr id="balanceRow">
-                  <th colspan="3" class="text-left">الفرق:</th>
+                  <th colspan="4" class="text-left">الفرق:</th>
                   <th colspan="2" class="text-center" id="balanceCell">
                     <span id="difference" class="badge badge-secondary">0.00</span>
                   </th>
@@ -233,6 +234,16 @@ const accounts = [
   {% endfor %}
 ];
 
+// شركاء العملاء (من Backend) — لربط سطر القيد بمحاضر الشريك
+const partners = [
+  {% for partner in partners | default([]) %}
+  {
+    id: {{ partner.id }},
+    name: '{{ partner.name }}'
+  }{{ ',' if not loop.last else '' }}
+  {% endfor %}
+];
+
 let lineCounter = 0;
 
 // إضافة سطر جديد
@@ -249,16 +260,22 @@ function addLine() {
       </select>
     </td>
     <td>
-      <input type="text" name="line_${lineCounter}_description" class="form-control" 
+      <input type="text" name="line_${lineCounter}_description" class="form-control"
              placeholder="البيان (اختياري)">
     </td>
     <td>
-      <input type="number" name="line_${lineCounter}_debit" class="form-control text-center debit-input" 
+      <input type="number" name="line_${lineCounter}_debit" class="form-control text-center debit-input"
              step="0.01" min="0" value="0" oninput="handleDebitChange(this)" onchange="handleDebitChange(this)" onkeyup="calculateJournalTotals()">
     </td>
     <td>
-      <input type="number" name="line_${lineCounter}_credit" class="form-control text-center credit-input" 
+      <input type="number" name="line_${lineCounter}_credit" class="form-control text-center credit-input"
              step="0.01" min="0" value="0" oninput="handleCreditChange(this)" onchange="handleCreditChange(this)" onkeyup="calculateJournalTotals()">
+    </td>
+    <td>
+      <select name="line_${lineCounter}_party" class="form-control partner-select">
+        <option value="">— بلا —</option>
+        ${partners.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+      </select>
     </td>
   `;
   tbody.appendChild(row);
@@ -407,16 +424,22 @@ function addLineWithData(accountCode, accountName, debit, credit) {
       </select>
     </td>
     <td>
-      <input type="text" name="line_${lineCounter}_description" class="form-control" 
+      <input type="text" name="line_${lineCounter}_description" class="form-control"
              value="${accountName}" placeholder="البيان (اختياري)">
     </td>
     <td>
-      <input type="number" name="line_${lineCounter}_debit" class="form-control text-center debit-input" 
+      <input type="number" name="line_${lineCounter}_debit" class="form-control text-center debit-input"
              step="0.01" min="0" value="${debit}" oninput="handleDebitChange(this)" onchange="handleDebitChange(this)" onkeyup="calculateJournalTotals()">
     </td>
     <td>
-      <input type="number" name="line_${lineCounter}_credit" class="form-control text-center credit-input" 
+      <input type="number" name="line_${lineCounter}_credit" class="form-control text-center credit-input"
              step="0.01" min="0" value="${credit}" oninput="handleCreditChange(this)" onchange="handleCreditChange(this)" onkeyup="calculateJournalTotals()">
+    </td>
+    <td>
+      <select name="line_${lineCounter}_party" class="form-control partner-select">
+        <option value="">— بلا —</option>
+        ${partners.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+      </select>
     </td>
   `;
   tbody.appendChild(row);

@@ -722,12 +722,13 @@ class GLService:
             for item in normalized:
                 db.session.add(
                     GLJournalLine(
-                        entry_id=entry.id,
-                        account_id=item.account.id,
+                        entry=entry,
+                        account=item.account,
                         description=item.description or "",
                         debit=item.debit,
                         credit=item.credit,
                         amount_base=item.amount_base,
+                        party_id=getattr(item, 'party_id', None),
                     )
                 )
             db.session.flush()

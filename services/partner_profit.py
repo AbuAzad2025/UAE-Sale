@@ -386,21 +386,26 @@ def preview_partner_distributions(period_from=None, period_to=None, tenant_id=No
         query = query.filter(Customer.tenant_id == tenant_id)
     partners = query.order_by(Customer.partner_share.desc(), Customer.id.asc()).all()
 
+    # استعلامات مجمعة (N+1 fix) — استعلام واحد لكل aggregate
+    product_accrual = _product_shares_bulk([p.id for p in partners], period_from, period_to)
+    draws_bulk = _draws_for_partners_bulk([p.id for p in partners], period_from, period_to)
+    sales_bulk = _sales_to_partners_bulk([p.id for p in partners], period_from, period_to)
+
     total_pct = sum(_num(p.partner_share) for p in partners)
     residual_pct = max(Decimal('100') - total_pct, ZERO)
     rows = []
     for partner in partners:
         pct = _num(partner.partner_share)
         share = _q3(net * pct / Decimal('100'))
-        draws = _draws_for_partner(partner.id, period_from, period_to)
-        sales_to_him = _sales_to_partner(partner.id, period_from, period_to)
+        draws = draws_bulk.get(partner.id, ZERO)
+        sales_to_him = sales_bulk.get(partner.id, ZERO)
         if share >= ZERO:
             deductions = _q3(draws + sales_to_him)
             payout = max(_q3(share - deductions), ZERO)
         else:
             deductions = ZERO
             payout = share  # الخسارة تُحمَّل كاملة على الشريك
-        products = _product_shares_in_period(partner.id, period_from, period_to)
+        products = product_accrual.get(partner.id, ZERO)
         rows.append({
             'partner_id': partner.id,
             'partner_name': partner.name,
@@ -526,6 +531,10 @@ def post_partner_distributions(period_from=None, period_to=None, tenant_id=None,
     for p in partners:
         Customer.query.filter_by(id=p.id).with_for_update().first()
 
+    # استعلامات مجمعة (N+1 fix)
+    draws_bulk = _draws_for_partners_bulk([p.id for p in partners], period_from, period_to)
+    sales_bulk = _sales_to_partners_bulk([p.id for p in partners], period_from, period_to)
+
     total_pct = sum(_num(p.partner_share) for p in partners)
     if total_pct > Decimal('100'):
         raise ValueError('مجموع نسب الشركاء يتجاوز 100%')
@@ -540,8 +549,8 @@ def post_partner_distributions(period_from=None, period_to=None, tenant_id=None,
         pct = _num(partner.partner_share)
         share = _q3(net * pct / Decimal('100'))
         if share >= ZERO:
-            draws = _draws_for_partner(partner.id, period_from, period_to)
-            sales_to_him = _sales_to_partner(partner.id, period_from, period_to)
+            draws = draws_bulk.get(partner.id, ZERO)
+            sales_to_him = sales_bulk.get(partner.id, ZERO)
             payout = max(_q3(share - draws - sales_to_him), ZERO)
         else:
             payout = share  # تحمل الخسارة
@@ -691,3 +700,72 @@ def main(argv=None):
 
 if __name__ == '__main__':
     main()
+
+def _product_shares_bulk(partner_ids, period_from=None, period_to=None):
+    """حصص المنتجات متراكمة في الفترة — dict {partner_id: Decimal} (استعلام واحد).
+
+    يحل محل N استعلام فردي (واحد لكل شريك) — يُستخدم في المعاينة وصفحة المالك.
+    """
+    from sqlalchemy import func
+    from models import GLAccount, GLJournalEntry as _Entry
+
+    if not partner_ids:
+        return {}
+    q = (db.session.query(
+             GLJournalLine.party_id,
+             func.coalesce(func.sum(GLJournalLine.debit - GLJournalLine.credit), 0))
+         .join(_Entry, _Entry.id == GLJournalLine.entry_id)
+         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
+         .filter(_Entry.is_posted.is_(True),
+                 GLAccount.code == '6910',
+                 GLJournalLine.party_id.in_(list(partner_ids))))
+    if period_from is not None:
+        q = q.filter(_Entry.entry_date >= period_from)
+    if period_to is not None:
+        q = q.filter(_Entry.entry_date <= period_to)
+    q = q.group_by(GLJournalLine.party_id)
+    return {pid: _q3(total) for pid, total in q.all()}
+
+def _draws_for_partners_bulk(partner_ids, period_from=None, period_to=None):
+    """مسحوبات كل شريك في استعلام واحد (N+1 fix)."""
+    from sqlalchemy import func
+    from models import GLAccount, GLJournalEntry as _Entry
+
+    if not partner_ids:
+        return {}
+    from sqlalchemy import or_
+    q = (db.session.query(GLJournalLine.party_id,
+                          func.coalesce(func.sum(GLJournalLine.debit), 0))
+         .join(_Entry, _Entry.id == GLJournalLine.entry_id)
+         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
+         .filter(_Entry.is_posted.is_(True),
+                 _Entry.is_reversed.is_(False),
+                 GLAccount.code.in_(('3300', '3350')),
+                 GLJournalLine.party_id.in_(list(partner_ids)),
+                 or_(_Entry.reference_type.is_(None),
+                     _Entry.reference_type.notin_(('Sale', 'ProductReturn', 'PartnerDistribution')))))
+    if period_from is not None:
+        q = q.filter(_Entry.entry_date >= period_from)
+    if period_to is not None:
+        q = q.filter(_Entry.entry_date <= period_to)
+    q = q.group_by(GLJournalLine.party_id)
+    return {pid: _q3(total) for pid, total in q.all()}
+
+
+def _sales_to_partners_bulk(partner_ids, period_from=None, period_to=None):
+    """مبيعات غير مسددة لكل شريك في استعلام واحد (N+1 fix)."""
+    from sqlalchemy import func
+    from models import Sale
+
+    if not partner_ids:
+        return {}
+    q = (db.session.query(Sale.customer_id,
+                          func.coalesce(func.sum(Sale.balance_due * func.coalesce(Sale.exchange_rate, 1)), 0))
+         .filter(Sale.customer_id.in_(list(partner_ids)),
+                 Sale.status != 'cancelled'))
+    if period_from is not None:
+        q = q.filter(Sale.sale_date >= period_from)
+    if period_to is not None:
+        q = q.filter(Sale.sale_date <= period_to)
+    q = q.group_by(Sale.customer_id)
+    return {pid: _q3(total) for pid, total in q.all()}

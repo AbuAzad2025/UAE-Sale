@@ -3996,8 +3996,8 @@ def partners():
                              .filter(ProductPartner.partner_customer_id.in_(ids))
                              .group_by(ProductPartner.partner_customer_id).all()):
                 link_counts[pid] = cnt
-            for pid in ids:
-                accrual[pid] = pp._product_shares_in_period(pid, period_from, period_to)
+            # استعلام واحد لحصص المنتجات (N+1 fix)
+            accrual = pp._product_shares_bulk(ids, period_from, period_to)
 
         # رصيد جاري كل شريك من الأستاذ (3350) مع طرفه
         partner_ids = [p.id for p in company_partners]

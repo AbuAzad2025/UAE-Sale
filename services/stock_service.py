@@ -166,7 +166,13 @@ class StockService:
         بالضبط — عقد واحد مضمون في موضع واحد.
         """
         product = get_owned_or_raise(Product, product_id,
-                                     missing_message=f'⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.')
+                                     missing_message=f'⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.',
+                                     for_update=True)
+        # 🔒 Concurrency hardening: lock the product row before mutating
+        # stock/cost so two concurrent sales cannot both read the same
+        # available_stock and oversell or corrupt the moving average.
+        if product is not None:
+            product = db.session.get(Product, product.id, with_for_update=True) or product
 
         if not product:
             raise ValueError(f'⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.')

@@ -77,7 +77,7 @@ class ReturnService:
                 if quantity <= 0:
                     continue
 
-                sale_line = get_owned_or_raise(SaleLine, sale_line_id)
+                sale_line = get_owned_or_raise(SaleLine, sale_line_id, for_update=True)
                 if not sale_line:
                     raise ValueError(f"Sale line {sale_line_id} not found.")
                 # Must sit outside the `not found` branch: it used to be nested

@@ -121,6 +121,9 @@ class QuotationService:
         from models import Product as Prod
 
         q = db.get_or_404(Quotation, quotation_id)
+        # 🔒 Concurrency: lock the quotation row so two concurrent converts
+        # cannot both pass the status/converted_sale_id guards.
+        q = Quotation.query.filter_by(id=quotation_id).with_for_update().first() or q
         QuotationService._auto_expire(q)
         if q.status == 'converted' or q.converted_sale_id is not None:
             raise ValueError('عرض الأسعار هذا مُحَوَّل بالفعل إلى فاتورة')

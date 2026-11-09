@@ -330,6 +330,8 @@ class PaymentService:
         purchase_id = payment_data.get('purchase_id')
 
         customer = get_owned_or_raise(Customer, customer_id, missing_message='العميل غير موجود')
+        # 🔒 Concurrency: lock customer row (balance is derived).
+        customer = get_owned_or_raise(Customer, customer.id, for_update=True) or customer
         receipt = None
         gl_posted = None
         gl_entry_ref = None

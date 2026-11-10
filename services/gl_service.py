@@ -339,6 +339,11 @@ class GLService:
             ("6950", "مصروفات بنكية", "Bank Charges", "expense", "6000", False, 1),
             ("6960", "مديونية مشطوبة", "Bad debt expense", "expense", "6000", False, 1),
             ("6990", "مصروفات متنوعة", "Miscellaneous Expenses", "expense", "6000", False, 1),
+            # Maintenance module accounts (M2)
+            ("1131", "ذمم الصيانة مدينة", "Maintenance AR", "asset", "1130", False, 3),
+            ("2111", "ذمم الصيانة دائنة", "Maintenance AP", "liability", "2110", False, 3),
+            ("4210", "إيرادات الصيانة", "Maintenance Revenue", "revenue", "4200", False, 2),
+            ("5101", "تكلفة الصيانة", "Maintenance COGS", "expense", "5100", False, 2),
         ]
         created_any = False
         cache: dict[str, GLAccount] = {}

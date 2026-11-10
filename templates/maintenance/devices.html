@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}سجل الأجهزة{% endblock %}
+{% block page_title %}<i class="fas fa-mobile-alt mr-2"></i>سجل الأجهزة/workshop{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">سجل الأجهزة/workshop</h5>
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addDeviceModal"><i class="fas fa-plus mr-1"></i>جهاز جديد</button>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover">
+        <thead>
+          <tr>
+            <th>العميل</th>
+            <th>العلامة التجارية</th>
+            <th>الموديل</th>
+            <th>الرقم التسلسلي</th>
+            <th>الـ IMEI</th>
+            <th>اللوحة</th>
+            <th>تاريخ الشراء</th>
+            <th>انتهاء الكفالة</th>
+            <th>نوع الكفالة</th>
+            <th>تحت الكفالة</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for d in devices %}
+          <tr>
+            <td>{{ d.customer.name if d.customer else '-' }}</td>
+            <td>{{ d.brand or '-' }}</td>
+            <td>{{ d.model or '-' }}</td>
+            <td>{{ d.serial_number or '-' }}</td>
+            <td>{{ d.imei or '-' }}</td>
+            <td>{{ d.plate or '-' }}</td>
+            <td>{{ d.purchase_date.strftime('%Y-%m-%d') if d.purchase_date else '-' }}</td>
+            <td>{{ d.warranty_end_date.strftime('%Y-%m-%d') if d.warranty_end_date else '-' }}</td>
+            <td>{{ d.warranty_type or '-' }}</td>
+            <td><span class="badge bg-{{ 'success' if d.is_under_warranty else 'secondary' }}">{{ 'نعم' if d.is_under_warranty else 'لا' }}</span></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="10" class="text-center text-muted py-4">لا توجد أجهزة</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add Device Modal -->
+<div class="modal fade" id="addDeviceModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title">إضافة جهاز للسجل</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">العميل</label>
+            <select name="customer_id" class="form-select" required>
+              <option value="">اختر العميل</option>
+              {% for c in customers %}
+              <option value="{{ c.id }}">{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">المنتج</label>
+            <select name="product_id" class="form-select">
+              <option value="">اختر المنتج (اختياري)</option>
+              {% for p in products %}
+              <option value="{{ p.id }}">{{ p.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الرقم التسلسلي</label>
+            <input type="text" name="serial_number" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الـ IMEI</label>
+            <input type="text" name="imei" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">لوحة السيارة</label>
+            <input type="text" name="plate" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الماركة</label>
+            <input type="text" name="brand" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الموديل</label>
+            <input type="text" name="model" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">تاريخ الشراء</label>
+            <input type="date" name="purchase_date" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">انتهاء الكفالة</label>
+            <input type="date" name="warranty_end_date" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">نوع الكفالة</label>
+            <select name="warranty_type" class="form-select">
+              <option value="">اختر النوع</option>
+              <option value="manufacturer">الشركة المصنعة</option>
+              <option value="extended">ممددة</option>
+              <option value="dealer">وكيل</option>
+              <option value="insurance">تأمين</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input type="checkbox" name="is_under_warranty" class="form-check-input">
+              <label class="form-check-label">تحت الكفالة حالياً</label>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">ملاحظات الكفالة</label>
+            <textarea name="warranty_notes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-primary">إضافة الجهاز</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

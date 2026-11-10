@@ -83,6 +83,7 @@ class Tenant(db.Model):
     enable_ai = db.Column(db.Boolean, default=True)
     enable_reports = db.Column(db.Boolean, default=True)
     enable_api = db.Column(db.Boolean, default=False)
+    enable_maintenance = db.Column(db.Boolean, default=True)
 
     # Preferences - التفضيلات
     default_currency = db.Column(db.String(3), default='AED')

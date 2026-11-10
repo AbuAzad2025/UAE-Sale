@@ -75,44 +75,8 @@
     </div>
   </div>
 
-  <div class="col-lg-3 col-md-6 col-sm-6">
-    <div class="small-box bg-gradient-success shadow">
-      <div class="inner">
-        <h3>{{ total_customers }}</h3>
-        <p><i class="fas fa-user-tie mr-1"></i> العملاء</p>
-      </div>
-      <div class="icon"><i class="fas fa-handshake"></i></div>
-      <a href="{{ url_for('customers.index') }}" class="small-box-footer">
-        عرض الكل <i class="fas fa-arrow-circle-left ml-1"></i>
-      </a>
-    </div>
-  </div>
-
-  <div class="col-lg-3 col-md-6 col-sm-6">
-    <div class="small-box bg-gradient-warning shadow">
-      <div class="inner">
-        <h3 class="text-white">{{ total_sales }}</h3>
-        <p class="text-white"><i class="fas fa-shopping-cart mr-1"></i> المبيعات</p>
-      </div>
-      <div class="icon"><i class="fas fa-chart-line"></i></div>
-      <a href="{{ url_for('sales.index') }}" class="small-box-footer">
-        عرض الكل <i class="fas fa-arrow-circle-left ml-1"></i>
-      </a>
-    </div>
-  </div>
-
-  <div class="col-lg-3 col-md-6 col-sm-6">
-    <div class="small-box bg-gradient-danger shadow">
-      <div class="inner">
-        <h3>{{ "{:,.0f}".format(stats.year_sales_amount|default(0)) }}</h3>
-        <p><i class="fas fa-money-bill-wave mr-1"></i> الإيرادات ({{ base_currency }})</p>
-      </div>
-      <div class="icon"><i class="fas fa-coins"></i></div>
-      <a href="{{ url_for('reports.sales') }}" class="small-box-footer">
-        التقارير <i class="fas fa-arrow-circle-left ml-1"></i>
-      </a>
-    </div>
-  </div>
+  <!-- Tenant-specific KPIs (customers/sales/revenue) removed from platform owner dashboard.
+       Accessible via impersonation. -->
 </div>
 
 <!-- بطاقات الأدوات والإعدادات -->
@@ -258,25 +222,8 @@
     </div>
   </div>
 
-  <div class="col-lg-3 col-md-6">
-    <div class="card shadow-sm border-0 hover-lift">
-      <div class="card-header bg-gradient-danger text-white">
-        <h5 class="mb-0"><i class="fas fa-chart-bar mr-2"></i> تحليلات متقدمة</h5>
-      </div>
-      <div class="card-body">
-        <p class="text-muted small mb-3"><i class="fas fa-info-circle mr-1"></i> رؤى عميقة وتنبؤات مالية</p>
-        <a href="{{ url_for('owner.financial_dashboard_advanced') }}" class="btn btn-outline-success btn-sm btn-block mb-2"><i class="fas fa-chart-pie mr-1"></i> لوحة مالية</a>
-        <a href="{{ url_for('owner.financial_overview') }}" class="btn btn-outline-secondary btn-sm btn-block mb-2"><i class="fas fa-table mr-1"></i> ملخص الفترات</a>
-        <a href="{{ url_for('owner.sales_insights') }}" class="btn btn-outline-primary btn-sm btn-block mb-2"><i class="fas fa-shopping-cart mr-1"></i> تحليل المبيعات</a>
-        <a href="{{ url_for('owner.customer_insights') }}" class="btn btn-outline-info btn-sm btn-block mb-2"><i class="fas fa-users mr-1"></i> تحليل العملاء</a>
-        <a href="{{ url_for('owner.product_performance') }}" class="btn btn-outline-warning btn-sm btn-block mb-2"><i class="fas fa-box mr-1"></i> أداء المنتجات</a>
-        <a href="{{ url_for('owner.fx_revaluation') }}" class="btn btn-outline-dark btn-sm btn-block mb-2"><i class="fas fa-exchange-alt mr-1"></i> تسوية فرق العملة</a>
-        <a href="{{ url_for('owner.forecasting') }}" class="btn btn-outline-danger btn-sm btn-block"><i class="fas fa-chart-line mr-1"></i> التنبؤ</a>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-lg-3 col-md-6">
+  <!-- Advanced analytics (tenant-specific) removed from platform owner dashboard. -->
+<div class="col-lg-3 col-md-6">
     <div class="card shadow-sm border-0 hover-lift">
       <div class="card-header bg-gradient-warning text-white">
         <h5 class="mb-0"><i class="fas fa-cog mr-2"></i> إعدادات متقدمة</h5>
@@ -286,7 +233,7 @@
         <a href="{{ url_for('owner.tax_settings') }}" class="btn btn-outline-success btn-sm btn-block mb-2"><i class="fas fa-percent mr-1"></i> الضرائب</a>
         <a href="{{ url_for('owner.tax_rulesets') }}" class="btn btn-outline-dark btn-sm btn-block mb-2"><i class="fas fa-globe mr-1"></i> قواعد الضريبة للدول</a>
         <a href="{{ url_for('owner.plans') }}" class="btn btn-outline-warning btn-sm btn-block mb-2"><i class="fas fa-layer-group mr-1"></i> الخطط والأسعار</a>
-        <a href="{{ url_for('owner.partners') }}" class="btn btn-outline-success btn-sm btn-block mb-2"><i class="fas fa-handshake mr-1"></i> توزيع أرباح الشركاء</a>
+        <!-- Partner profit distribution (tenant-specific) removed from platform owner dashboard. -->
         <a href="{{ url_for('owner.support_inbox') }}" class="btn btn-outline-info btn-sm btn-block mb-2"><i class="fas fa-inbox mr-1"></i> صندوق وارد الدعم</a>
         <a href="{{ url_for('owner.incidents') }}" class="btn btn-outline-danger btn-sm btn-block mb-2"><i class="fas fa-bolt mr-1"></i> سجل الحوادث</a>
         <a href="{{ url_for('owner.compliance_credentials') }}" class="btn btn-outline-warning btn-sm btn-block mb-2"><i class="fas fa-key mr-1"></i> اعتمادات الامتثال للشركات</a>
@@ -318,6 +265,7 @@
 </div>
 
 <!-- الإحصائيات -->
+<!-- الإحصائيات (مستوى المنصة فقط) -->
 <div class="row mt-3">
   <div class="col-lg-3 col-md-6">
     <div class="info-box shadow-sm">
@@ -328,37 +276,8 @@
       </div>
     </div>
   </div>
-
-  <div class="col-lg-3 col-md-6">
-    <div class="info-box shadow-sm">
-      <span class="info-box-icon bg-success"><i class="fas fa-user-tie"></i></span>
-      <div class="info-box-content">
-        <span class="info-box-text">العملاء</span>
-        <span class="info-box-number">{{ total_customers }}</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-lg-3 col-md-6">
-    <div class="info-box shadow-sm">
-      <span class="info-box-icon bg-warning"><i class="fas fa-shopping-cart"></i></span>
-      <div class="info-box-content">
-        <span class="info-box-text">المبيعات</span>
-        <span class="info-box-number">{{ total_sales }}</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-lg-3 col-md-6">
-    <div class="info-box shadow-sm">
-      <span class="info-box-icon bg-danger"><i class="fas fa-coins"></i></span>
-      <div class="info-box-content">
-        <span class="info-box-text">الإيرادات ({{ base_currency }})</span>
-        <span class="info-box-number">{{ "{:,.0f}".format(stats.year_sales_amount|default(0)) }}</span>
-      </div>
-    </div>
-  </div>
 </div>
+
 
 <div class="card">
   <div class="card-header">

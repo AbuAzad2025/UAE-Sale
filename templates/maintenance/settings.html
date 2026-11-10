@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}إعدادات الصيانة{% endblock %}
+{% block page_title %}<i class="fas fa-cogs mr-2"></i>إعدادات الصيانة{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0">إعدادات وحدة الصيانة</h5></div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">المستودع الافتراضي للصيانة</label>
+              <select name="default_warehouse_id" class="form-select">
+                <option value="">اختر المستودع</option>
+                {% for w in warehouses %}
+                <option value="{{ w.id }}" {% if settings.default_warehouse_id==w.id %}selected{% endif %}>{{ w.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">سقف الخصم النسبي الأقصى (%)</label>
+              <input type="number" name="max_discount_percent" value="{{ settings.max_discount_percent }}" step="0.01" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">سقف الخصم القيمة الأقصى</label>
+              <input type="number" name="max_discount_value" value="{{ settings.max_discount_value }}" step="0.001" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <div class="form-check">
+                <input type="checkbox" name="require_warranty_check" class="form-check-input" {% if settings.require_warranty_check %}checked{% endif %}>
+                <label class="form-check-label">مطلوب فحص الكفالة عند الاستقبال</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">لون under warranty</label>
+              <input type="color" name="color_warranty" value="{{ settings.color_warranty }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">لون expired</label>
+              <input type="color" name="color_non_warranty" value="{{ settings.color_non_warranty }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">لون unknown</label>
+              <input type="color" name="color_unknown" value="{{ settings.color_unknown }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-6">
+              <div class="form-check">
+                <input type="checkbox" name="allow_engineer_cancel_warranty" class="form-check-input" {% if settings.allow_engineer_cancel_warranty %}checked{% endif %}>
+                <label class="form-check-label">السماح للمهندس بإلغاء الكفالة</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-check">
+                <input type="checkbox" name="allow_engineer_restore_warranty" class="form-check-input" {% if settings.allow_engineer_restore_warranty %}checked{% endif %}>
+                <label class="form-check-label">السماح للمهندس بإعادة الكفالة</label>
+              </div>
+            </div>
+          </div>
+          <div class="d-grid gap-2 mt-4">
+            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save mr-1"></i>حفظ الإعدادات</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0">معلومات</h5></div>
+      <div class="card-body">
+        <p class="text-muted small"><i class="fas fa-info-circle mr-1"></i>هذه الإعدادات خاصة بهذا التينانت فقط.</p>
+        <p class="text-muted small"><i class="fas fa-shield-alt mr-1"></i>سقف الخصم يمنع المهندسين من تطبيق خصم يتجاوز الحد المسموح بدون موافقة المدير.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

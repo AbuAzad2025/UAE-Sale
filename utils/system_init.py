@@ -106,6 +106,13 @@ def _ensure_permissions():
         {'code': 'manage_settings', 'name': 'Manage Settings', 'name_ar': 'إدارة الإعدادات', 'category': 'admin'},
         {'code': 'view_products', 'name': 'View Products', 'name_ar': 'عرض المنتجات', 'category': 'products'},
         {'code': 'view_costs', 'name': 'View Costs', 'name_ar': 'عرض التكاليف', 'category': 'finance'},
+        # Maintenance module permissions (M1-M7)
+        {'code': 'maintenance_view', 'name': 'View Maintenance', 'name_ar': 'عرض الصيانة', 'category': 'maintenance'},
+        {'code': 'maintenance_receive', 'name': 'Maintenance Reception', 'name_ar': 'استقبال الصيانة', 'category': 'maintenance'},
+        {'code': 'maintenance_work', 'name': 'Maintenance Work', 'name_ar': 'أعمال الصيانة', 'category': 'maintenance'},
+        {'code': 'maintenance_close', 'name': 'Maintenance Close', 'name_ar': 'إنهاء الصيانة', 'category': 'maintenance'},
+        {'code': 'maintenance_discount', 'name': 'Maintenance Discount', 'name_ar': 'خصم الصيانة', 'category': 'maintenance'},
+        {'code': 'maintenance_settings', 'name': 'Maintenance Settings', 'name_ar': 'إعدادات الصيانة', 'category': 'maintenance'},
     ]
 
     added = 0

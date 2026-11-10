@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}أوامر الصيانة{% endblock %}
+{% block page_title %}<i class="fas fa-tools mr-2"></i>أوامر الصيانة{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">أوامر الصيانة</h5>
+    <a href="{{ url_for('maintenance.create_order') }}" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i>أمر جديد</a>
+  </div>
+  <div class="card-body p-0">
+    <form method="get" class="p-3 border-bottom">
+      <div class="row g-2">
+        <div class="col-md-3">
+          <input type="text" name="status" value="{{ status or '' }}" class="form-control form-control-sm" placeholder="الحالة">
+        </div>
+        <div class="col-md-3">
+          <input type="date" name="date_from" value="{{ date_from or '' }}" class="form-control form-control-sm" placeholder="من">
+        </div>
+        <div class="col-md-3">
+          <input type="date" name="date_to" value="{{ date_to or '' }}" class="form-control form-control-sm" placeholder="إلى">
+        </div>
+        <div class="col-md-2">
+          <select name="warranty" class="form-select form-select-sm">
+            <option value="">الكفالة</option>
+            <option value="under_warranty" {% if warranty=='under_warranty' %}selected{% endif %}>تحت الكفالة</option>
+            <option value="expired" {% if warranty=='expired' %}selected{% endif %}>منتهية</option>
+            <option value="void" {% if warranty=='void' %}selected{% endif %}>ملغاة</option>
+            <option value="unknown" {% if warranty=='unknown' %}selected{% endif %}>غير محدد</option>
+          </select>
+        </div>
+        <div class="col-md-1">
+          <button type="submit" class="btn btn-sm btn-outline-primary w-100">بحث</button>
+        </div>
+      </div>
+    </form>
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>رقم الأمر</th>
+            <th>العميل</th>
+            <th>الجهاز</th>
+            <th>التاريخ</th>
+            <th>الحالة</th>
+            <th>الكفالة</th>
+            <th>الإجمالي</th>
+            <th>المتبقي</th>
+            <th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for order in orders %}
+          <tr>
+            <td><strong>{{ order.order_no }}</strong></td>
+            <td>{{ order.customer.name if order.customer else '-' }}</td>
+            <td>{{ order.device_brand or '-' }} {{ order.device_model or '-' }}</td>
+            <td>{{ order.received_at.strftime('%Y-%m-%d') if order.received_at else '-' }}</td>
+            <td>
+              <span class="badge badge-{{ 'success' if order.status=='closed' else ('warning' if order.status in ('in_progress','diagnosis') else 'secondary') }}">{{ order.status }}</span>
+            </td>
+            <td>
+              <span class="badge" style="background-color: {{ order.color_tag or '#f59e0b' }}; color: #fff;">
+                {{ order.warranty_status or '-' }}
+              </span>
+            </td>
+            <td>{{ "{:,.2f}".format(order.total_amount|float) }}</td>
+            <td>{{ "{:,.2f}".format(order.balance_due|float) }}</td>
+            <td>
+              <a href="{{ url_for('maintenance.view_order', id=order.id) }}" class="btn btn-sm btn-outline-primary">عرض</a>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="9" class="text-center text-muted py-4">لا توجد أوامر صيانة</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="p-3">
+      {% if pagination.has_prev %}
+        <a href="{{ url_for('maintenance.list_orders', page=pagination.prev_num, status=status, date_from=date_from, date_to=date_to, warranty=warranty) }}" class="btn btn-sm btn-outline-secondary">السابقة</a>
+      {% endif %}
+      <span class="mx-2">صفحة {{ pagination.page }} من {{ pagination.pages }}</span>
+      {% if pagination.has_next %}
+        <a href="{{ url_for('maintenance.list_orders', page=pagination.next_num, status=status, date_from=date_from, date_to=date_to, warranty=warranty) }}" class="btn btn-sm btn-outline-secondary">التالي</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

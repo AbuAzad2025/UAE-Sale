@@ -51,6 +51,7 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
     received_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     engineer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     service_advisor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
 
     # المالي
     payment_mode = db.Column(db.String(20), default='cash')  # cash/card/cheque/transfer/account

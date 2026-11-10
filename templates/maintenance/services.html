@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% block title %}الخدمات الثابتة{% endblock %}
+{% block page_title %}<i class="fas fa-list-ul mr-2"></i>الخدمات الثابتة للسعر{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">الخدمات الثابتة للسعر</h5>
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addServiceModal"><i class="fas fa-plus mr-1"></i>خدمة جديدة</button>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover">
+        <thead>
+          <tr>
+            <th>الكود</th>
+            <th>الاسم</th>
+            <th>الاسم بالعربية</th>
+            <th>الفئة</th>
+            <th>السعر الثابت</th>
+            <th>المدة (دقيقة)</th>
+            <th>الضريبة %</th>
+            <th>يتطلب قطع</th>
+            <th>الحالة</th>
+            <th>الترتيب</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for sv in services %}
+          <tr>
+            <td>{{ sv.service_code }}</td>
+            <td>{{ sv.name }}</td>
+            <td>{{ sv.name_ar or '-' }}</td>
+            <td>{{ sv.category }}</td>
+            <td>{{ "{:,.2f}".format(sv.fixed_price|float) }}</td>
+            <td>{{ sv.duration_minutes }}</td>
+            <td>{{ sv.tax_rate }}</td>
+            <td>{{ 'نعم' if sv.requires_parts else 'لا' }}</td>
+            <td><span class="badge bg-{{ 'success' if sv.is_active else 'danger' }}">{{ 'فعال' if sv.is_active else 'مStopped' }}</span></td>
+            <td>{{ sv.sort_order }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="10" class="text-center text-muted py-4">لا توجد خدمات</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add Service Modal -->
+<div class="modal fade" id="addServiceModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title">إضافة خدمة ثابتة</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">كود الخدمة</label>
+            <input type="text" name="service_code" class="form-control" placeholder="مثال: MECH-001" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">اسم الخدمة</label>
+            <input type="text" name="name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الاسم بالعربية</label>
+            <input type="text" name="name_ar" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الفئة</label>
+            <select name="category" class="form-select">
+              <option value="mechanical">ميكانيك</option>
+              <option value="electrical">كهرباء</option>
+              <option value="labor">جهد work</option>
+              <option value="diagnostic">تشخيص</option>
+              <option value="other">أخرى</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">السعر الثابت</label>
+            <input type="number" name="fixed_price" step="0.001" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">المدة المتوقعة (دقيقة)</label>
+            <input type="number" name="duration_minutes" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">معدل الضريبة %</label>
+            <input type="number" name="tax_rate" value="5" step="0.01" class="form-control">
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input type="checkbox" name="is_active" class="form-check-input" checked>
+              <label class="form-check-label">الخدمة نشطة</label>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input type="checkbox" name="requires_parts" class="form-check-input">
+              <label class="form-check-label">تتطلب قطع غيار</label>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الترتيب</label>
+            <input type="number" name="sort_order" value="0" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-primary">إضافة الخدمة</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

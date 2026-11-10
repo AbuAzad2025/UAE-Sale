@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% block title %}أمر الصيانة {{ order.order_no }}{% endblock %}
+{% block page_title %}<i class="fas fa-file-contract mr-2"></i>أمر الصيانة: {{ order.order_no }}{% endblock %}
+{% block content %}
+{% if order.color_tag %}
+<div class="alert alert-info" style="background-color: {{ order.color_tag }}; color: #fff; border: none;">
+  <i class="fas fa-shield-alt mr-2"></i>حالة الكفالة: <strong>{{ order.warranty_status or '-' }}</strong>
+</div>
+{% endif %}
+
+<div class="row">
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0">معلومات الأمر</h5></div>
+      <div class="card-body">
+        <p><strong>رقم الأمر:</strong> {{ order.order_no }}</p>
+        <p><strong>العميل:</strong> {{ order.customer.name if order.customer else '-' }}</p>
+        <p><strong>التاريخ:</strong> {{ order.received_at.strftime('%Y-%m-%d %H:%M') if order.received_at else '-' }}</p>
+        <p><strong>الحالة:</strong>
+          <span class="badge badge-{{ 'success' if order.status=='closed' else ('warning' if order.status in ('in_progress','diagnosis') else 'secondary') }}">
+            {{ order.status }}
+          </span>
+        </p>
+        <p><strong>الأولوية:</strong> {{ order.priority }}</p>
+        <p><strong>طريقة الدفع:</strong> {{ order.payment_mode }}</p>
+        <p><strong>الدفعة المقدمة:</strong> {{ "{:,.2f}".format(order.deposit|float) }}</p>
+        <hr>
+        <p><strong>المجموع الفرعي:</strong> {{ "{:,.2f}".format(order.subtotal|float) }}</p>
+        <p><strong>الخصم الإجمالي:</strong> {{ "{:,.2f}".format(order.discount_total_value|float) }}</p>
+        <p><strong>الضريبة:</strong> {{ "{:,.2f}".format(order.tax_amount|float) }}</p>
+        <p><strong>الإجمالي:</strong> {{ "{:,.2f}".format(order.total_amount|float) }}</p>
+        <p><strong>المدفوع:</strong> {{ "{:,.2f}".format(order.paid_amount|float) }}</p>
+        <p><strong>المتبقي:</strong> {{ "{:,.2f}".format(order.balance_due|float) }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0">بيانات الجهاز</h5></div>
+      <div class="card-body">
+        <p><strong>الماركة:</strong> {{ order.device_brand or '-' }}</p>
+        <p><strong>الموديل:</strong> {{ order.device_model or '-' }}</p>
+        <p><strong>الرقم التسلسلي:</strong> {{ order.device_serial or '-' }}</p>
+        <p><strong>الـ IMEI:</strong> {{ order.device_imei or '-' }}</p>
+        <p><strong>اللوحة:</strong> {{ order.device_plate or '-' }}</p>
+        <p><strong>المشكلة:</strong> {{ order.device_problem or '-' }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0">الإجراءات السريعة</h5></div>
+      <div class="card-body">
+        {% if order.status in ('received','diagnosis') %}
+        <form method="POST" action="{{ url_for('maintenance.change_order_status', id=order.id) }}" style="display:inline-block; margin-bottom: 10px;">
+          <select name="status" class="form-select form-select-sm">
+            <option value="diagnosis">التشخيص</option>
+            <option value="cancelled">إلغاء الأمر</option>
+          </select>
+          <button type="submit" class="btn btn-sm btn-primary mt-2">تغيير الحالة</button>
+        </form>
+        {% elif order.status == 'diagnosis' %}
+        <form method="POST" action="{{ url_for('maintenance.change_order_status', id=order.id) }}" style="display:inline-block; margin-bottom: 10px;">
+          <select name="status" class="form-select form-select-sm">
+            <option value="waiting_approval">انتظار الموافقة</option>
+            <option value="in_progress">بدء التنفيذ</option>
+          </select>
+          <button type="submit" class="btn btn-sm btn-primary mt-2">تغيير الحالة</button>
+        </form>
+        {% elif order.status == 'in_progress' %}
+        <form method="POST" action="{{ url_for('maintenance.change_order_status', id=order.id) }}" style="display:inline-block; margin-bottom: 10px;">
+          <select name="status" class="form-select form-select-sm">
+            <option value="waiting_parts">انتظار قطع غيار</option>
+            <option value="ready">جاهز للتسليم</option>
+          </select>
+          <button type="submit" class="btn btn-sm btn-primary mt-2">تغيير الحالة</button>
+        </form>
+        {% elif order.status == 'ready' %}
+        <form method="POST" action="{{ url_for('maintenance.change_order_status', id=order.id) }}" style="display:inline-block; margin-bottom: 10px;">
+          <select name="status" class="form-select form-select-sm">
+            <option value="closed">إغلاق الأمر</option>
+          </select>
+          <button type="submit" class="btn btn-sm btn-success mt-2">إغلاق الأمر</button>
+        </form>
+        {% endif %}
+
+        {% if order.status not in ('closed','cancelled') %}
+        <hr>
+        <form method="POST" action="{{ url_for('maintenance.warranty', id=order.id) }}" style="display:inline-block; margin-bottom: 10px;">
+          <select name="action" class="form-select form-select-sm">
+            <option value="checked">فحص الكفالة</option>
+            <option value="void">إلغاء الكفالة</option>
+            <option value="restore">إعادة الكفالة</option>
+          </select>
+          <button type="submit" class="btn btn-sm btn-info mt-2">إجراء الكفالة</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-4">
+  <!-- بنود القطع -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between">
+        <h5 class="mb-0">بنود القطع</h5>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addItemModal"><i class="fas fa-plus mr-1"></i>إضافة قطعة</button>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-bordered table-hover mb-0">
+          <thead><tr><th>المنتج</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead>
+          <tbody>
+          {% for it in order.items %}
+          <tr>
+            <td>{{ it.product.name if it.product else '-' }}</td>
+            <td>{{ it.quantity }}</td>
+            <td>{{ "{:,.2f}".format(it.unit_price|float) }}</td>
+            <td>{{ "{:,.2f}".format(it.line_total|float) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted">لا توجد بنود</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- بنود الخدمات -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between">
+        <h5 class="mb-0">البنود الخدمية</h5>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addServiceModal"><i class="fas fa-plus mr-1"></i>إضافة خدمة</button>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-bordered table-hover mb-0">
+          <thead><tr><th>الخدمة</th><th>السعر</th><th>المدة (دقيقة)</th><th>الإجمالي</th></tr></thead>
+          <tbody>
+          {% for sv in order.services %}
+          <tr>
+            <td>{{ sv.service_name }}</td>
+            <td>{{ "{:,.2f}".format(sv.unit_price|float) }}</td>
+            <td>{{ sv.duration_minutes }}</td>
+            <td>{{ "{:,.2f}".format(sv.line_total|float) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted">لا توجد خدمات</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if order.status == 'closed' %}
+<div class="row mt-4">
+  <div class="col-md-6">
+    <div class="card bg-success text-white">
+      <div class="card-body">
+        <h5 class="card-title">تم إغلاق الأمر</h5>
+        <p class="mb-0">المبلغ المدفوع: {{ "{:,.2f}".format(order.paid_amount|float) }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Add Item Modal -->
+<div class="modal fade" id="addItemModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('maintenance.add_item', id=order.id) }}">
+        <div class="modal-header">
+          <h5 class="modal-title">إضافة قطعة غيار</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">المنتج</label>
+            <select name="product_id" class="form-select" required>
+              <option value="">اختر المنتج</option>
+              {% for p in products %}
+              <option value="{{ p.id }}">{{ p.name }} ({{ p.sku }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الكمية</label>
+            <input type="number" name="quantity" value="1" step="0.001" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">السعر للوحدة</label>
+            <input type="number" name="unit_price" step="0.001" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الخصم %</label>
+            <input type="number" name="discount_percent" value="0" step="0.01" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">معدل الضريبة %</label>
+            <input type="number" name="tax_rate" value="5" step="0.01" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-primary">إضافة</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Add Service Modal -->
+<div class="modal fade" id="addServiceModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('maintenance.add_service', id=order.id) }}">
+        <div class="modal-header">
+          <h5 class="modal-title">إضافة خدمة</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">اسم الخدمة</label>
+            <input type="text" name="service_name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الاسم بالعربية</label>
+            <input type="text" name="service_name_ar" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">السعر للوحدة</label>
+            <input type="number" name="unit_price" step="0.001" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">المدة (دقيقة)</label>
+            <input type="number" name="duration_minutes" value="0" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">معدل الضريبة %</label>
+            <input type="number" name="tax_rate" value="5" step="0.01" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-primary">إضافة</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

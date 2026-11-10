@@ -1,4 +1,4 @@
-# Route Isolation Audit — 517 مسارًا
+# Route Isolation Audit — 516 مسارًا
 
 **توليد:** `scripts/gen_route_audit_doc.py` — لا يُعدَّل يدويًا؛ أي تغيير يُعاد توليد
 الفحص عبر التشغيل: `python -m scripts.gen_route_audit_doc` والالتزام بها في كل
@@ -441,7 +441,6 @@
 | `/owner/preview-invoice/<template>` | `owner.preview_invoice` | platform | owner_required, login_required |
 | `/owner/preview-receipt/<template>` | `owner.preview_receipt` | platform | owner_required, login_required |
 | `/owner/product-performance` | `owner.product_performance` | platform | owner_required, login_required |
-| `/owner/reports` | `owner.reports` | platform | login_required |
 | `/owner/roles-permissions` | `owner.roles_permissions` | platform | owner_required, login_required |
 | `/owner/roles/<int:role_id>/permissions` | `owner.update_role_permissions` | platform | owner_required, login_required |
 | `/owner/sales-insights` | `owner.sales_insights` | platform | owner_required, login_required |
@@ -720,8 +719,8 @@
 
 ## الملخص
 
-* **إجمالي المسارات:** 517
-* **platform:** 128
+* **إجمالي المسارات:** 516
+* **platform:** 127
 * **public:** 27
 * **system:** 7
 * **tenant:** 355

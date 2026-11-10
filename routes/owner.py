@@ -1343,31 +1343,6 @@ def scheduled_backups():
                            stats=stats)
 
 
-@owner_bp.route('/reports')
-@login_required
-def reports():
-    """صفحة التقارير"""
-    if not current_user.is_owner:
-        flash('غير مصرح لك بالوصول لهذه الصفحة', 'error')
-        return redirect(url_for('main.dashboard'))
-
-    # إحصائيات عامة
-    from models import User, Customer, Product, Sale, Receipt, PaymentVault, Donation, Payment  # noqa: F811  (local import intentional)
-
-    vault = PaymentVault.query.first()
-    stats = {
-        'total_users': User.query.count(),
-        'total_customers': Customer.query.count(),
-        'total_products': Product.query.count(),
-        'total_sales': Sale.query.count(),
-        'total_invoices': Sale.query.filter(Sale.payment_status == 'paid').count(),
-        'total_receipts': Receipt.query.count(),
-        'total_donations': Donation.query.filter_by(transaction_type='donation').count(),
-        'total_payments': Payment.query.count(),
-        'vault_status': vault.is_locked if vault else True
-    }
-
-    return render_template('owner/reports.html', stats=stats)
 
 
 @owner_bp.route('/company-info', methods=['GET', 'POST'])

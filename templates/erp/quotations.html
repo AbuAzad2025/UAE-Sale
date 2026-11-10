@@ -2,9 +2,28 @@
 {% block title %}عروض الأسعار{% endblock %}
 {% block page_title %}<i class="fas fa-file-invoice mr-2"></i>عروض الأسعار{% endblock %}
 {% block content %}
-<div class="mb-3">
+<div class="mb-3 d-flex justify-content-between">
   <a href="{{ url_for('erp_modules.create_quotation') }}" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>عرض سعر جديد</a>
 </div>
+<div class="card mb-3"><div class="card-body">
+  <form method="get" class="form-inline flex-wrap">
+    <input type="text" name="q" value="{{ search or '' }}" class="form-control mr-2 mb-2" placeholder="بحث (رقم/عميل)">
+    <select name="status" class="form-control mr-2 mb-2">
+      <option value="">كل الحالات</option>
+      {% for s in ['draft','sent','accepted','rejected','expired','converted'] %}
+      <option value="{{ s }}" {% if status==s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <input type="date" name="date_from" value="{{ date_from or '' }}" class="form-control mr-2 mb-2" placeholder="من">
+    <input type="date" name="date_to" value="{{ date_to or '' }}" class="form-control mr-2 mb-2" placeholder="إلى">
+    <div class="form-check mr-2 mb-2">
+      <input type="checkbox" name="all_versions" value="1" id="av" {% if show_all_versions %}checked{% endif %} class="form-check-input">
+      <label for="av" class="form-check-label mr-1">إظهار كل النسخ</label>
+    </div>
+    <button type="submit" class="btn btn-outline-primary mb-2"><i class="fas fa-search"></i> بحث</button>
+    <a href="{{ url_for('erp_modules.quotations') }}" class="btn btn-outline-secondary mb-2 mr-2">إعادة</a>
+  </form>
+</div></div>
 <div class="card"><div class="card-body">
   <table class="table table-bordered table-striped">
     <thead><tr><th>الرقم</th><th>العميل</th><th>التاريخ</th><th>الصلاحية</th><th>الإجمالي</th><th>الحالة</th><th>إجراءات</th></tr></thead>

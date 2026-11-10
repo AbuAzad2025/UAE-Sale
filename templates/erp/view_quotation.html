@@ -10,6 +10,18 @@
         <span class="badge badge-lg badge-{{ 'success' if quotation.status=='accepted' else ('danger' if quotation.status=='rejected' else 'info') }}">{{ quotation.status_ar }}</span>
       </div>
       <div class="card-body">
+        {% if quotation.expires_soon %}
+        <div class="alert alert-warning"><i class="fas fa-exclamation-triangle mr-1"></i>⚠️ هذا العرض سينتهي خلال 3 أيام ({{ quotation.valid_until.strftime('%Y-%m-%d') }}).</div>
+        {% endif %}
+        {% if quotation.is_expired %}
+        <div class="alert alert-danger"><i class="fas fa-times-circle mr-1"></i>❌ هذا العرض منتهي الصلاحية.</div>
+        {% endif %}
+        {% if quotation.version and quotation.version > 1 %}
+        <div class="alert alert-info"><i class="fas fa-code-branch mr-1"></i>نسخة {{ quotation.version_label }}{% if quotation.version_notes %} — {{ quotation.version_notes }}{% endif %}</div>
+        {% endif %}
+        {% if quotation.email_sent_at %}
+        <div class="alert alert-success"><i class="fas fa-envelope mr-1"></i>تم إرسال العرض بالبريد إلى {{ quotation.email_sent_to }} في {{ quotation.email_sent_at.strftime('%Y-%m-%d %H:%M') }}</div>
+        {% endif %}
         <div class="row mb-4">
           <div class="col-md-4"><p><strong>التاريخ:</strong> {{ quotation.quotation_date.strftime('%Y-%m-%d') if quotation.quotation_date else '' }}</p><p><strong>صالح حتى:</strong> {{ quotation.valid_until.strftime('%Y-%m-%d') if quotation.valid_until else '' }}</p></div>
           <div class="col-md-4 text-center"><h3 class="text-primary">{{ "{:,.2f}".format(quotation.total_amount|float) }} {{ quotation.currency }}</h3></div>
@@ -29,6 +41,14 @@
         <hr>
         <div class="mb-2">
           <a href="{{ url_for('erp_modules.print_quotation', id=quotation.id) }}" class="btn btn-outline-secondary btn-sm" target="_blank"><i class="fas fa-print mr-1"></i>طباعة</a>
+  <button type="button" class="btn btn-outline-info btn-sm" data-toggle="modal" data-target="#emailModal"><i class="fas fa-envelope mr-1"></i>إرسال بالبريد</button>
+  <form method="POST" action="{{ url_for('erp_modules.whatsapp_quotation', id=quotation.id) }}" style="display:inline">
+    <button type="submit" class="btn btn-outline-success btn-sm"><i class="fab fa-whatsapp mr-1"></i>واتساب</button>
+  </form>
+  <form method="POST" action="{{ url_for('erp_modules.version_quotation', id=quotation.id) }}" style="display:inline">
+    <input type="hidden" name="version_notes" value="نسخة جديدة">
+    <button type="submit" class="btn btn-outline-warning btn-sm"><i class="fas fa-code-branch mr-1"></i>نسخة جديدة</button>
+  </form>
           <form method="POST" action="{{ url_for('erp_modules.duplicate_quotation', id=quotation.id) }}" style="display:inline">
             <button type="submit" class="btn btn-outline-primary btn-sm"><i class="fas fa-copy mr-1"></i>تكرار</button>
           </form>
@@ -53,6 +73,30 @@
         <a href="{{ url_for('sales.view', id=quotation.converted_sale_id) }}" class="btn btn-info"><i class="fas fa-link mr-1"></i>عرض الفاتورة المرتبطة</a>
         {% endif %}
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Email Modal -->
+<div class="modal fade" id="emailModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('erp_modules.email_quotation', id=quotation.id) }}">
+        <div class="modal-header">
+          <h5 class="modal-title">إرسال عرض السعر بالبريد</h5>
+          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>البريد الإلكتروني للمستلم</label>
+            <input type="email" name="recipient_email" class="form-control" value="{{ quotation.customer.email if quotation.customer else '' }}" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane mr-1"></i>إرسال</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>

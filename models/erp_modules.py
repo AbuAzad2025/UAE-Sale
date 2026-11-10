@@ -75,6 +75,16 @@ class Quotation(TenantScopedMixin, db.Model):
     validity_days = db.Column(db.Integer, default=30, nullable=False, server_default='30')
     is_active = db.Column(db.Boolean, default=True, nullable=False, server_default=db.text('true'))
 
+    # Phase 2 — versioning
+    version = db.Column(db.Integer, default=1, nullable=False, server_default='1')
+    parent_quotation_id = db.Column(db.Integer, db.ForeignKey('quotations.id'), nullable=True)
+    is_latest_version = db.Column(db.Boolean, default=True, nullable=False, server_default=db.text('true'))
+    version_notes = db.Column(db.Text, nullable=True)
+
+    # Phase 2 — email tracking
+    email_sent_at = db.Column(db.DateTime, nullable=True)
+    email_sent_to = db.Column(db.String(255), nullable=True)
+
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
                            onupdate=lambda: datetime.now(timezone.utc))
@@ -83,6 +93,19 @@ class Quotation(TenantScopedMixin, db.Model):
     seller = db.relationship('User', foreign_keys=[seller_id])
     lines = db.relationship('QuotationLine', back_populates='quotation', cascade='all, delete-orphan')
     converted_sale = db.relationship('Sale', foreign_keys=[converted_sale_id])
+    parent_quotation = db.relationship('Quotation', remote_side=[id], foreign_keys=[parent_quotation_id], backref='child_versions')
+
+    @property
+    def expires_soon(self):
+        """True if quotation expires within 3 days."""
+        if not self.valid_until or self.status in ('converted', 'rejected', 'expired'):
+            return False
+        from datetime import date, timedelta
+        return date.today() >= (self.valid_until - timedelta(days=3)) and not self.is_expired
+
+    @property
+    def version_label(self):
+        return f'v{self.version or 1}'
 
     def calculate_totals(self):
         self.subtotal = sum((Decimal(str(ln.line_total)) for ln in self.lines), Decimal('0'))

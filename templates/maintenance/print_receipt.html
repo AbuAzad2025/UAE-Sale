@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}إيصال قبض - {{ order.order_no }}{% endblock %}
+{% block page_title %}<i class="fas fa-money-bill-wave mr-2"></i>إيصال قبض - {{ order.order_no }}{% endblock %}
+{% block content %}
+<style>
+  .invoice-wrapper { max-width: 800px; margin: 20px auto; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+  .invoice-header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+  .invoice-logo h2 { margin: 0; color: #2c3e50; }
+  .invoice-logo p { margin: 5px 0 0; color: #7f8c8d; }
+  .invoice-meta p { margin: 3px 0; }
+  .invoice-body { margin-bottom: 30px; }
+  .invoice-body h4 { border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-top: 20px; }
+  .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  .invoice-table th, .invoice-table td { border: 1px solid #ddd; padding: 10px; text-align: right; }
+  .invoice-table th { background-color: #f2f2f2; }
+  .invoice-table tfoot td, .invoice-table tfoot th { border-top: 2px solid #333; font-weight: bold; }
+  .invoice-footer { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px; font-size: 0.9em; color: #7f8c8d; }
+  .text-right { text-align: right; }
+  @media print { .no-print { display: none; } body { -webkit-print-color-adjust: exact; } }
+</style>
+<div class="invoice-wrapper">
+  <div class="invoice-header">
+    <div class="invoice-logo">
+      <h2>🔧 أزاد - وحدة الصيانة</h2>
+      <p>إيصال قبض رسمي</p>
+    </div>
+    <div class="invoice-meta">
+      <p><strong>رقم الإيصال:</strong> {{ receipt.receipt_no if receipt else '-' }}</p>
+      <p><strong>رقم الأمر:</strong> {{ order.order_no }}</p>
+      <p><strong>التاريخ:</strong> {{ receipt.posted_at.strftime('%Y-%m-%d %H:%M') if receipt and receipt.posted_at else '-' }}</p>
+      <p><strong>طريقة الدفع:</strong> {{ receipt.payment_method if receipt else '-' }}</p>
+    </div>
+  </div>
+
+  <div class="invoice-body">
+    <div class="customer-info">
+      <h4>بيانات العميل:</h4>
+      <p><strong>الاسم:</strong> {{ order.customer.name if order.customer else '-' }}</p>
+      <p><strong>الهاتف:</strong> {{ order.customer.phone if order.customer else '-' }}</p>
+    </div>
+
+    <div class="device-info">
+      <h4>بيانات الجهاز:</h4>
+      <p><strong>الماركة:</strong> {{ order.device_brand or '-' }}</p>
+      <p><strong>الموديل:</strong> {{ order.device_model or '-' }}</p>
+      <p><strong>الرقم التسلسلي:</strong> {{ order.device_serial or '-' }}</p>
+    </div>
+
+    <table class="invoice-table">
+      <thead>
+        <tr>
+          <th>البند</th>
+          <th class="text-right">المبلغ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>مبلغ القبض لأمر الصيانة</td>
+          <td class="text-right">{{ "{:,.3f}".format(receipt.amount|float) if receipt else '0.000' }}</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <th>المبلغ الإجمالي المدفوع</th>
+          <td class="text-right">{{ "{:,.3f}".format(receipt.amount|float) if receipt else '0.000' }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="invoice-footer">
+    <p><strong>الحالة:</strong> {{ order.status }}</p>
+    <p><strong>المتبقي على الأمر:</strong> {{ "{:,.3f}".format(order.balance_due|float) }}</p>
+    <p class="text-muted small">شكراً لتعاملكم معنا، نتمنى لكم خدمة مرضية.</p>
+  </div>
+</div>
+
+<script>
+  window.print();
+</script>
+{% endblock %}

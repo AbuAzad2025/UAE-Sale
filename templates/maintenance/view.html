@@ -8,6 +8,23 @@
 </div>
 {% endif %}
 
+<!-- أزرار الإجراءات الرئيسية -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="btn-group" role="group">
+      <a href="{{ url_for('maintenance.print_receipt', id=order.id) }}" class="btn btn-success btn-sm"><i class="fas fa-print mr-1"></i>طباعة الإيصال</a>
+      {% if order.invoice %}
+      <a href="{{ url_for('maintenance.print_invoice', id=order.id) }}" class="btn btn-info btn-sm"><i class="fas fa-file-invoice mr-1"></i>طباعة الفاتورة</a>
+      {% else %}
+      <form method="POST" action="{{ url_for('maintenance.create_invoice', id=order.id) }}" style="display:inline-block">
+        <button type="submit" class="btn btn-info btn-sm"><i class="fas fa-file-invoice mr-1"></i>إنشاء فاتورة</button>
+      </form>
+      {% endif %}
+      <a href="{{ url_for('maintenance.list_orders') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left mr-1"></i>العودة للقائمة</a>
+    </div>
+  </div>
+</div>
+
 <div class="row">
   <div class="col-lg-4">
     <div class="card">
@@ -38,7 +55,7 @@
     <div class="card">
       <div class="card-header"><h5 class="mb-0">بيانات الجهاز</h5></div>
       <div class="card-body">
-        <p><strong>الماركة:</strong> {{ order.device_brand or '-' }}</p>
+        <p><strong>المarka:</strong> {{ order.device_brand or '-' }}</p>
         <p><strong>الموديل:</strong> {{ order.device_model or '-' }}</p>
         <p><strong>الرقم التسلسلي:</strong> {{ order.device_serial or '-' }}</p>
         <p><strong>الـ IMEI:</strong> {{ order.device_imei or '-' }}</p>
@@ -51,48 +68,79 @@
     <div class="card">
       <div class="card-header"><h5 class="mb-0">الإجراءات السريعة</h5></div>
       <div class="card-body">
+
+        <!-- تغيير الحالة -->
         {% if order.status in ('received','diagnosis') %}
-        <form method="POST" action="{{ url_for('maintenance.change_order_status', id=order.id) }}" style="display:inline-block; margin-bottom: 10px;">
+        <form method="POST" action="{{ url_for('maintenance.change_order_status', id=order.id) }}" style="display:inline-block; margin-bottom: 8px;">
           <select name="status" class="form-select form-select-sm">
             <option value="diagnosis">التشخيص</option>
             <option value="cancelled">إلغاء الأمر</option>
           </select>
-          <button type="submit" class="btn btn-sm btn-primary mt-2">تغيير الحالة</button>
+          <button type="submit" class="btn btn-sm btn-primary mt-1 w-100">تغيير الحالة</button>
         </form>
         {% elif order.status == 'diagnosis' %}
-        <form method="POST" action="{{ url_for('maintenance.change_order_status', id=order.id) }}" style="display:inline-block; margin-bottom: 10px;">
+        <form method="POST" action="{{ url_for('maintenance.change_order_status', id=order.id) }}" style="display:inline-block; margin-bottom: 8px;">
           <select name="status" class="form-select form-select-sm">
             <option value="waiting_approval">انتظار الموافقة</option>
             <option value="in_progress">بدء التنفيذ</option>
           </select>
-          <button type="submit" class="btn btn-sm btn-primary mt-2">تغيير الحالة</button>
+          <button type="submit" class="btn btn-sm btn-primary mt-1 w-100">تغيير الحالة</button>
         </form>
         {% elif order.status == 'in_progress' %}
-        <form method="POST" action="{{ url_for('maintenance.change_order_status', id=order.id) }}" style="display:inline-block; margin-bottom: 10px;">
+        <form method="POST" action="{{ url_for('maintenance.change_order_status', id=order.id) }}" style="display:inline-block; margin-bottom: 8px;">
           <select name="status" class="form-select form-select-sm">
             <option value="waiting_parts">انتظار قطع غيار</option>
             <option value="ready">جاهز للتسليم</option>
           </select>
-          <button type="submit" class="btn btn-sm btn-primary mt-2">تغيير الحالة</button>
+          <button type="submit" class="btn btn-sm btn-primary mt-1 w-100">تغيير الحالة</button>
         </form>
         {% elif order.status == 'ready' %}
-        <form method="POST" action="{{ url_for('maintenance.change_order_status', id=order.id) }}" style="display:inline-block; margin-bottom: 10px;">
+        <form method="POST" action="{{ url_for('maintenance.change_order_status', id=order.id) }}" style="display:inline-block; margin-bottom: 8px;">
           <select name="status" class="form-select form-select-sm">
             <option value="closed">إغلاق الأمر</option>
           </select>
-          <button type="submit" class="btn btn-sm btn-success mt-2">إغلاق الأمر</button>
+          <button type="submit" class="btn btn-sm btn-success mt-1 w-100">إغلاق الأمر</button>
         </form>
         {% endif %}
 
+        <!-- مراقبة الكفالة -->
         {% if order.status not in ('closed','cancelled') %}
         <hr>
-        <form method="POST" action="{{ url_for('maintenance.warranty', id=order.id) }}" style="display:inline-block; margin-bottom: 10px;">
+        <form method="POST" action="{{ url_for('maintenance.warranty', id=order.id) }}" style="display:inline-block; margin-bottom: 8px;">
           <select name="action" class="form-select form-select-sm">
             <option value="checked">فحص الكفالة</option>
             <option value="void">إلغاء الكفالة</option>
             <option value="restore">إعادة الكفالة</option>
           </select>
-          <button type="submit" class="btn btn-sm btn-info mt-2">إجراء الكفالة</button>
+          <button type="submit" class="btn btn-sm btn-info mt-1 w-100">إجراء الكفالة</button>
+        </form>
+        {% endif %}
+
+        <!-- فترة الضمان ما بعد الصيانة -->
+        {% if order.status == 'closed' %}
+        <hr>
+        <form method="POST" action="{{ url_for('maintenance.set_warranty_period', id=order.id) }}" style="display:inline-block; margin-bottom: 8px;">
+          <input type="number" name="warranty_days" value="30" min="0" class="form-control form-control-sm" placeholder="أيام الضمان">
+          <button type="submit" class="btn btn-sm btn-warning mt-1 w-100">تعيين ضمان ما بعد الصيانة</button>
+        </form>
+        {% endif %}
+
+        <!-- إشعار العميل -->
+        <hr>
+        <form method="POST" action="{{ url_for('maintenance.notify_customer', id=order.id) }}" style="display:inline-block; margin-bottom: 8px;">
+          <select name="channel" class="form-select form-select-sm">
+            <option value="whatsapp">واتساب</option>
+            <option value="email">بريد إلكتروني</option>
+            <option value="sms">رسالة نصية</option>
+          </select>
+          <button type="submit" class="btn btn-sm btn-outline-info mt-1 w-100">إشعار العميل</button>
+        </form>
+
+        <!-- أرشفة الأمر -->
+        {% if order.status in ('closed','cancelled') %}
+        <hr>
+        <form method="POST" action="{{ url_for('maintenance.archive_order', id=order.id) }}" style="display:inline-block; margin-bottom: 8px;" onsubmit="return confirm('هل أنت متأكد من أرشفة هذا الأمر؟')">
+          <button type="submit" class="btn btn-sm btn-outline-secondary mt-1 w-100">أرشفة الأمر</button>
         </form>
         {% endif %}
       </div>
@@ -100,27 +148,82 @@
   </div>
 </div>
 
+<!--评价 العميل عند الإغلاق -->
+{% if order.status == 'closed' and order.customer_rating is none %}
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card border-warning">
+      <div class="card-header bg-warning text-dark">
+        <h6 class="mb-0"><i class="fas fa-star mr-1"></i>تقييم العميل للخدمة</h6>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('maintenance.rate_order', id=order.id) }}">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">التقييم (من 5 نجوم)</label>
+              <select name="rating" class="form-select" required>
+                <option value="">اختر التقييم</option>
+                <option value="5">⭐⭐⭐⭐⭐ ممتاز</option>
+                <option value="4">⭐⭐⭐⭐ جيد جداً</option>
+                <option value="3">⭐⭐⭐ جيد</option>
+                <option value="2">⭐⭐ ضعيف</option>
+                <option value="1">⭐ سيء جداً</option>
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">تعليق العميل</label>
+              <textarea name="comment" class="form-control" rows="3" placeholder="اكتب ملاحظات العميل حول الخدمة"></textarea>
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-warning"><i class="fas fa-star mr-1"></i>حفظ التقييم</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% elif order.status == 'closed' and order.customer_rating is not none %}
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card bg-success text-white">
+      <div class="card-body">
+        <h6 class="mb-2"><i class="fas fa-star mr-1"></i>تقييم العميل: {{ order.customer_rating }}/5</h6>
+        {% if order.customer_comment %}
+        <p class="mb-0">{{ order.customer_comment }}</p>
+        {% endif %}
+        <p class="mb-0"><small>تم التقييم في: {{ order.rated_at.strftime('%Y-%m-%d %H:%M') if order.rated_at else '-' }}</small></p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <div class="row mt-4">
   <!-- بنود القطع -->
   <div class="col-md-6">
     <div class="card">
       <div class="card-header d-flex justify-content-between">
         <h5 class="mb-0">بنود القطع</h5>
+        {% if order.status not in ('closed','cancelled') %}
         <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addItemModal"><i class="fas fa-plus mr-1"></i>إضافة قطعة</button>
+        {% endif %}
       </div>
       <div class="card-body p-0">
         <table class="table table-bordered table-hover mb-0">
-          <thead><tr><th>المنتج</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead>
+          <thead><tr><th>المنتج</th><th>الكمية</th><th>السعر</th><th>الخصم</th><th>الضريبة</th><th>الإجمالي</th></tr></thead>
           <tbody>
           {% for it in order.items %}
           <tr>
             <td>{{ it.product.name if it.product else '-' }}</td>
             <td>{{ it.quantity }}</td>
             <td>{{ "{:,.2f}".format(it.unit_price|float) }}</td>
+            <td>{{ "{:,.2f}".format(it.discount_value|float) }}</td>
+            <td>{{ "{:,.2f}".format(it.tax_amount|float) }}</td>
             <td>{{ "{:,.2f}".format(it.line_total|float) }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="4" class="text-center text-muted">لا توجد بنود</td></tr>
+          <tr><td colspan="6" class="text-center text-muted">لا توجد بنود</td></tr>
           {% endfor %}
           </tbody>
         </table>
@@ -133,7 +236,9 @@
     <div class="card">
       <div class="card-header d-flex justify-content-between">
         <h5 class="mb-0">البنود الخدمية</h5>
+        {% if order.status not in ('closed','cancelled') %}
         <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addServiceModal"><i class="fas fa-plus mr-1"></i>إضافة خدمة</button>
+        {% endif %}
       </div>
       <div class="card-body p-0">
         <table class="table table-bordered table-hover mb-0">
@@ -156,13 +261,34 @@
   </div>
 </div>
 
-{% if order.status == 'closed' %}
+<!-- نموذج الخصم على مستوى الأمر -->
+{% if order.status not in ('closed','cancelled') %}
 <div class="row mt-4">
-  <div class="col-md-6">
-    <div class="card bg-success text-white">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0">تطبيق خصم على مستوى الأمر</h5></div>
       <div class="card-body">
-        <h5 class="card-title">تم إغلاق الأمر</h5>
-        <p class="mb-0">المبلغ المدفوع: {{ "{:,.2f}".format(order.paid_amount|float) }}</p>
+        <form method="POST" action="{{ url_for('maintenance.apply_discount', id=order.id) }}">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">الخصم نسبة %</label>
+              <input type="number" name="discount_percent" value="0" step="0.01" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">الخصم قيمة</label>
+              <input type="number" name="discount_value" value="0" step="0.001" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <div class="form-check mt-5">
+                <input type="checkbox" name="override" class="form-check-input">
+                <label class="form-check-label">تجاوز السقف (مدير فقط)</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-warning"><i class="fas fa-percentage mr-1"></i>تطبيق الخصم</button>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -185,6 +311,15 @@
               <option value="">اختر المنتج</option>
               {% for p in products %}
               <option value="{{ p.id }}">{{ p.name }} ({{ p.sku }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">المستودع</label>
+            <select name="warehouse_id" class="form-select">
+              <option value="">اختر المستودع</option>
+              {% for w in warehouses %}
+              <option value="{{ w.id }}">{{ w.name }}</option>
               {% endfor %}
             </select>
           </div>
@@ -233,6 +368,10 @@
             <input type="text" name="service_name_ar" class="form-control">
           </div>
           <div class="mb-3">
+            <label class="form-label">كود الخدمة</label>
+            <input type="text" name="service_code" class="form-control" placeholder="مثال: MECH-001">
+          </div>
+          <div class="mb-3">
             <label class="form-label">السعر للوحدة</label>
             <input type="number" name="unit_price" step="0.001" class="form-control" required>
           </div>
@@ -253,4 +392,5 @@
     </div>
   </div>
 </div>
+
 {% endblock %}

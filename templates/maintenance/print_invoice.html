@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block title %}فاتورة صيانة - {{ order.order_no }}{% endblock %}
+{% block page_title %}<i class="fas fa-file-invoice mr-2"></i>فاتورة صيانة - {{ order.order_no }}{% endblock %}
+{% block content %}
+<style>
+  .invoice-wrapper { max-width: 800px; margin: 20px auto; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+  .invoice-header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+  .invoice-logo h2 { margin: 0; color: #2c3e50; }
+  .invoice-logo p { margin: 5px 0 0; color: #7f8c8d; }
+  .invoice-meta p { margin: 3px 0; }
+  .invoice-body { margin-bottom: 30px; }
+  .invoice-body h4 { border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-top: 20px; }
+  .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  .invoice-table th, .invoice-table td { border: 1px solid #ddd; padding: 10px; text-align: right; }
+  .invoice-table th { background-color: #f2f2f2; }
+  .invoice-table tfoot td, .invoice-table tfoot th { border-top: 2px solid #333; font-weight: bold; }
+  .invoice-footer { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px; font-size: 0.9em; color: #7f8c8d; }
+  .text-right { text-align: right; }
+  @media print { .no-print { display: none; } body { -webkit-print-color-adjust: exact; } }
+</style>
+<div class="invoice-wrapper">
+  <div class="invoice-header">
+    <div class="invoice-logo">
+      <h2>🔧 أزاد - وحدة الصيانة</h2>
+      <p>فاتورة صيانة رسمية</p>
+    </div>
+    <div class="invoice-meta">
+      <p><strong>رقم الفاتورة:</strong> {{ order.invoice.invoice_no if order.invoice else '-' }}</p>
+      <p><strong>رقم الأمر:</strong> {{ order.order_no }}</p>
+      <p><strong>تاريخ الفاتورة:</strong> {{ order.invoice.posted_at.strftime('%Y-%m-%d %H:%M') if order.invoice and order.invoice.posted_at else '-' }}</p>
+      <p><strong>طريقة الدفع:</strong> {{ order.payment_mode }}</p>
+    </div>
+  </div>
+
+  <div class="invoice-body">
+    <div class="customer-info">
+      <h4>بيانات العميل:</h4>
+      <p><strong>الاسم:</strong> {{ order.customer.name if order.customer else '-' }}</p>
+      <p><strong>الهاتف:</strong> {{ order.customer.phone if order.customer else '-' }}</p>
+    </div>
+
+    <div class="device-info">
+      <h4>بيانات الجهاز:</h4>
+      <p><strong>المarka:</strong> {{ order.device_brand or '-' }}</p>
+      <p><strong>الموديل:</strong> {{ order.device_model or '-' }}</p>
+      <p><strong>الرقم التسلسلي:</strong> {{ order.device_serial or '-' }}</p>
+      <p><strong>الـ IMEI:</strong> {{ order.device_imei or '-' }}</p>
+      <p><strong>المشكلة:</strong> {{ order.device_problem or '-' }}</p>
+    </div>
+
+    <table class="invoice-table">
+      <thead>
+        <tr>
+          <th>الوصف</th>
+          <th class="text-right">الكمية</th>
+          <th class="text-right">السعر</th>
+          <th class="text-right">الإجمالي</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in order.items %}
+        <tr>
+          <td>{{ it.product.name if it.product else 'قطعة غير محددة' }}</td>
+          <td class="text-right">{{ it.quantity }}</td>
+          <td class="text-right">{{ "{:,.3f}".format(it.unit_price|float) }}</td>
+          <td class="text-right">{{ "{:,.3f}".format(it.line_total|float) }}</td>
+        </tr>
+        {% endfor %}
+        {% for sv in order.services %}
+        <tr>
+          <td>{{ sv.service_name }} {{ sv.service_name_ar or '' }}</td>
+          <td class="text-right">1</td>
+          <td class="text-right">{{ "{:,.3f}".format(sv.unit_price|float) }}</td>
+          <td class="text-right">{{ "{:,.3f}".format(sv.line_total|float) }}</td>
+        </tr>
+        {% endfor %}
+        <tr>
+          <td>المجموع الفرعي</td>
+          <td class="text-right"></td>
+          <td class="text-right"></td>
+          <td class="text-right">{{ "{:,.3f}".format(order.subtotal|float) }}</td>
+        </tr>
+        <tr>
+          <td>الخصم</td>
+          <td class="text-right"></td>
+          <td class="text-right"></td>
+          <td class="text-right">- {{ "{:,.3f}".format(order.discount_total_value|float) }}</td>
+        </tr>
+        <tr>
+          <td>الضريبة</td>
+          <td class="text-right"></td>
+          <td class="text-right"></td>
+          <td class="text-right">{{ "{:,.3f}".format(order.tax_amount|float) }}</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <th>الإجمالي النهائي</th>
+          <th class="text-right"></th>
+          <th class="text-right"></th>
+          <td class="text-right" style="font-size: 1.2em; font-weight: bold;">{{ "{:,.3f}".format(order.total_amount|float) }}</td>
+        </tr>
+        <tr>
+          <th>المدفوع</th>
+          <td class="text-right"></td>
+          <td class="text-right"></td>
+          <td class="text-right">{{ "{:,.3f}".format(order.paid_amount|float) }}</td>
+        </tr>
+        <tr>
+          <th>المتبقي</th>
+          <td class="text-right"></td>
+          <td class="text-right"></td>
+          <td class="text-right">{{ "{:,.3f}".format(order.balance_due|float) }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="invoice-footer">
+    <p><strong>حالة الضمان:</strong> {{ order.warranty_status or '-' }}</p>
+    <p><strong>ملاحظات الضمان:</strong> {{ order.warranty_notes or '-' }}</p>
+    <p class="text-muted small">شكراً لتعاملكم معنا. الضمان ساري وفقاً للشروط المتفق عليها.</p>
+  </div>
+</div>
+
+<script>
+  window.print();
+</script>
+{% endblock %}

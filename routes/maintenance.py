@@ -13,12 +13,14 @@ from services.maintenance_service import (
 )
 from models.maintenance import (
     MaintenanceOrder, MaintenanceOrderItem, MaintenanceOrderService,
-    MaintenanceReceipt, MaintenanceInvoice, MaintenanceReturn,
-    MaintenanceSetting, MaintenanceService, MaintenanceWarrantyAudit,
-    MaintenanceDeviceRegistry,
+    MaintenanceOrderStatusLog, MaintenanceReceipt, MaintenanceInvoice,
+    MaintenanceReturn, MaintenanceReturnLine, MaintenanceSetting,
+    MaintenanceService, MaintenanceWarrantyAudit, MaintenanceDeviceRegistry,
 )
-from models import Customer, Product, User
+from models import Customer, Product, User, Warehouse
 from decimal import Decimal
+from sqlalchemy import func
+from datetime import date, timedelta
 
 maintenance_bp = Blueprint('maintenance', __name__, url_prefix='/maintenance')
 install_feature_gate(maintenance_bp, 'maintenance')
@@ -103,7 +105,8 @@ def view_order(id):
         flash('أمر الصيانة غير موجود', 'danger')
         return redirect(url_for('maintenance.list_orders'))
     products = Product.query.filter_by(is_active=True).all()
-    return render_template('maintenance/view.html', order=order, products=products)
+    warehouses = Warehouse.query.filter_by(is_active=True).all()
+    return render_template('maintenance/view.html', order=order, products=products, warehouses=warehouses)
 
 
 # ---------------------------------------------------------------------------
@@ -390,3 +393,225 @@ def devices_list():
     products = Product.query.filter_by(is_active=True).all()
     return render_template('maintenance/devices.html',
                            devices=devices, customers=customers, products=products)
+
+
+# ===========================================================================
+# Print Receipt & Invoice
+# ===========================================================================
+@maintenance_bp.route('/<int:id>/print-receipt')
+@login_required
+@permission_required('maintenance_view')
+def print_receipt(id):
+    order = get_owned_or_raise(MaintenanceOrder, id)
+    if order is None:
+        flash('أمر الصيانة غير موجود', 'danger')
+        return redirect(url_for('maintenance.list_orders'))
+    receipts = order.receipts
+    return render_template('maintenance/print_receipt.html', order=order, receipts=receipts)
+
+
+@maintenance_bp.route('/<int:id>/print-invoice')
+@login_required
+@permission_required('maintenance_view')
+def print_invoice(id):
+    order = get_owned_or_raise(MaintenanceOrder, id)
+    if order is None:
+        flash('أمر الصيانة غير موجود', 'danger')
+        return redirect(url_for('maintenance.list_orders'))
+    return render_template('maintenance/print_invoice.html', order=order)
+
+
+# ===========================================================================
+# Cost Report / Maintenance Profitability
+# ===========================================================================
+@maintenance_bp.route('/cost-report')
+@login_required
+@permission_required('maintenance_view')
+def maintenance_cost_report():
+    tenant_id = current_user.tenant_id or current_user.id
+    date_from = request.args.get('date_from', '', type=str).strip()
+    date_to = request.args.get('date_to', '', type=str).strip()
+
+    q = MaintenanceOrder.query.filter_by(tenant_id=tenant_id, is_archived=False)
+    if date_from:
+        q = q.filter(MaintenanceOrder.received_at >= date_from)
+    if date_to:
+        q = q.filter(MaintenanceOrder.received_at <= date_to)
+
+    orders = q.all()
+
+    # حساب التكاليف والأرباح لكل أمر
+    order_details = []
+    total_revenue = Decimal('0')
+    total_cost = Decimal('0')
+    total_discount = Decimal('0')
+    total_tax = Decimal('0')
+    total_paid = Decimal('0')
+
+    for o in orders:
+        parts_cost = sum((Decimal(str(it.unit_price)) * Decimal(str(it.quantity)) for it in o.items), Decimal('0'))
+        total_cost += parts_cost
+        total_revenue += Decimal(str(o.total_amount))
+        total_discount += Decimal(str(o.discount_total_value or 0))
+        total_tax += Decimal(str(o.tax_amount or 0))
+        total_paid += Decimal(str(o.paid_amount or 0))
+        
+        order_profit = Decimal(str(o.total_amount)) - parts_cost
+        order_profit_pct = (order_profit / Decimal(str(o.total_amount)) * 100) if o.total_amount > 0 else Decimal('0')
+        
+        order_details.append({
+            'order': o,
+            'parts_cost': parts_cost,
+            'profit': order_profit,
+            'profit_pct': order_profit_pct,
+        })
+
+    gross_profit = total_revenue - total_cost
+    profit_margin = (gross_profit / total_revenue * 100) if total_revenue > 0 else Decimal('0')
+
+    # Per engineer performance
+    engineer_stats = {}
+    for o in orders:
+        eng = o.engineer_id
+        if eng not in engineer_stats:
+            engineer_stats[eng] = {'orders': 0, 'revenue': Decimal('0'), 'cost': Decimal('0')}
+        engineer_stats[eng]['orders'] += 1
+        engineer_stats[eng]['revenue'] += Decimal(str(o.total_amount))
+
+    # Monthly trend (last 6 months)
+    from datetime import date as _date
+    today = _date.today()
+    monthly = []
+    for m in range(5, -1, -1):
+        y = today.year
+        mo = today.month - m
+        while mo <= 0:
+            mo += 12
+            y -= 1
+        month_start = _date(y, mo, 1)
+        if mo == 12:
+            month_end = _date(y + 1, 1, 1)
+        else:
+            month_end = _date(y, mo + 1, 1)
+        month_orders = [o for o in orders if o.received_at and month_start <= o.received_at.date() < month_end]
+        m_rev = sum((Decimal(str(o.total_amount)) for o in month_orders), Decimal('0'))
+        m_cost = sum((Decimal(str(sum((Decimal(str(it.unit_price)) * Decimal(str(it.quantity)) for it in o.items), Decimal('0')))) for o in month_orders), Decimal('0'))
+        monthly.append({
+            'label': month_start.strftime('%Y-%m'),
+            'orders': len(month_orders),
+            'revenue': float(m_rev),
+            'cost': float(m_cost),
+            'profit': float(m_rev - m_cost),
+        })
+
+    return render_template('maintenance/cost_report.html',
+                           order_details=order_details,
+                           total_revenue=total_revenue,
+                           total_cost=total_cost,
+                           total_discount=total_discount,
+                           total_tax=total_tax,
+                           total_paid=total_paid,
+                           gross_profit=gross_profit,
+                           profit_margin=profit_margin,
+                           engineer_stats=engineer_stats,
+                           monthly=monthly,
+                           date_from=date_from,
+                           date_to=date_to)
+
+
+# ===========================================================================
+# Customer Rating
+# ===========================================================================
+@maintenance_bp.route('/<int:id>/rate', methods=['POST'])
+@login_required
+@permission_required('maintenance_view')
+def rate_order(id):
+    order = get_owned_or_raise(MaintenanceOrder, id)
+    if order is None:
+        flash('أمر الصيانة غير موجود', 'danger')
+        return redirect(url_for('maintenance.list_orders'))
+
+    rating = request.form.get('rating', type=int)
+    comment = request.form.get('comment', '')
+
+    if not rating or rating < 1 or rating > 5:
+        flash('التقييم يجب أن يكون بين 1 و 5', 'danger')
+        return redirect(url_for('maintenance.view_order', id=id))
+
+    order.customer_rating = rating
+    order.customer_comment = comment
+    order.rated_at = datetime.now(timezone.utc)
+    db.session.commit()
+    flash('تم تسجيل تقييم العميل بنجاح', 'success')
+    return redirect(url_for('maintenance.view_order', id=id))
+
+
+# ===========================================================================
+# Warranty Period / Post-Service Warranty
+# ===========================================================================
+@maintenance_bp.route('/<int:id>/warranty-period', methods=['POST'])
+@login_required
+@permission_required('maintenance_work')
+def set_warranty_period(id):
+    order = get_owned_or_raise(MaintenanceOrder, id)
+    if order is None:
+        flash('أمر الصيانة غير موجود', 'danger')
+        return redirect(url_for('maintenance.list_orders'))
+
+    warranty_days = request.form.get('warranty_days', type=int)
+    warranty_notes = request.form.get('warranty_notes', '')
+
+    if not warranty_days or warranty_days < 0:
+        flash('أيام الضمان يجب أن تكون رقماً موجبا', 'danger')
+        return redirect(url_for('maintenance.view_order', id=id))
+
+    order.warranty_period_days = warranty_days
+    order.warranty_period_notes = warranty_notes
+    order.warranty_period_start = date.today()
+    order.warranty_period_end = date.today() + timedelta(days=warranty_days)
+    db.session.commit()
+    flash(f'تم تعيين فترة ضمان {warranty_days} يوم', 'success')
+    return redirect(url_for('maintenance.view_order', id=id))
+
+
+# ===========================================================================
+# Notify Customer (WhatsApp / Email placeholder)
+# ===========================================================================
+@maintenance_bp.route('/<int:id>/notify', methods=['POST'])
+@login_required
+@permission_required('maintenance_work')
+def notify_customer(id):
+    order = get_owned_or_raise(MaintenanceOrder, id)
+    if order is None:
+        flash('أمر الصيانة غير موجود', 'danger')
+        return redirect(url_for('maintenance.list_orders'))
+
+    channel = request.form.get('channel', 'whatsapp')
+    message = request.form.get('message', '')
+
+    if not message:
+        message = f"عزيزي العميل، أصبح أمر الصيانة رقم {order.order_no} جاهزاً للاستلام. يرجى مراجعتنا."
+
+    # Placeholder for WhatsApp/Email integration
+    flash(f'تم إرسال الإشعار عبر {channel} للعميل (تنبيه: بحاجة تفعيل مزود الخدمة)', 'info')
+    return redirect(url_for('maintenance.view_order', id=id))
+
+
+# ===========================================================================
+# Archive Order (Soft Delete)
+# ===========================================================================
+@maintenance_bp.route('/<int:id>/archive', methods=['POST'])
+@login_required
+@permission_required('maintenance_close')
+def archive_order(id):
+    order = get_owned_or_raise(MaintenanceOrder, id)
+    if order is None:
+        flash('أمر الصيانة غير موجود', 'danger')
+        return redirect(url_for('maintenance.list_orders'))
+
+    order.is_archived = True
+    order.archived_at = datetime.now(timezone.utc)
+    order.archived_by = current_user.id
+    db.session.commit()
+    flash('تم أرشفة أمر الصيانة', 'success')
+    return redirect(url_for('maintenance.list_orders'))

@@ -53,6 +53,17 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
     service_advisor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     notes = db.Column(db.Text, nullable=True)
 
+    # تقييم العميل
+    customer_rating = db.Column(db.Integer, nullable=True)  # 1-5
+    customer_comment = db.Column(db.Text, nullable=True)
+    rated_at = db.Column(db.DateTime, nullable=True)
+
+    # فترة ضمان ما بعد الصيانة
+    warranty_period_days = db.Column(db.Integer, nullable=True)
+    warranty_period_notes = db.Column(db.Text, nullable=True)
+    warranty_period_start = db.Column(db.Date, nullable=True)
+    warranty_period_end = db.Column(db.Date, nullable=True)
+
     # المالي
     payment_mode = db.Column(db.String(20), default='cash')  # cash/card/cheque/transfer/account
     deposit = db.Column(db.Numeric(15, 3), default=0)

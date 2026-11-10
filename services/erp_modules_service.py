@@ -14,6 +14,7 @@ from models.erp_modules import (
 )
 from utils.helpers import generate_number
 from utils.errors import ValidationError
+from utils.decorators import get_owned_or_raise
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +121,9 @@ class QuotationService:
         from services.stock_service import StockService
         from models import Product as Prod
 
-        q = db.get_or_404(Quotation, quotation_id)
+        q = get_owned_or_raise(Quotation, quotation_id)
+        if q is None:
+            raise ValueError('عرض الأسعار غير موجود')
         # 🔒 Concurrency: lock the quotation row so two concurrent converts
         # cannot both pass the status/converted_sale_id guards.
         q = Quotation.query.filter_by(id=quotation_id).with_for_update().first() or q
@@ -174,7 +177,9 @@ class QuotationService:
 
     @staticmethod
     def send_quotation(quotation_id):
-        q = db.get_or_404(Quotation, quotation_id)
+        q = get_owned_or_raise(Quotation, quotation_id)
+        if q is None:
+            raise ValueError('عرض الأسعار غير موجود')
         QuotationService._auto_expire(q)
         if q.status not in ('draft', 'sent'):
             raise ValueError('لا يمكن إرسال عرض بحالة: ' + q.status_ar)
@@ -184,7 +189,9 @@ class QuotationService:
 
     @staticmethod
     def accept_quotation(quotation_id):
-        q = db.get_or_404(Quotation, quotation_id)
+        q = get_owned_or_raise(Quotation, quotation_id)
+        if q is None:
+            raise ValueError('عرض الأسعار غير موجود')
         QuotationService._auto_expire(q)
         if q.status == 'converted':
             raise ValueError('عرض أسعار مُحَوَّل بالفعل')
@@ -198,7 +205,9 @@ class QuotationService:
 
     @staticmethod
     def reject_quotation(quotation_id):
-        q = db.get_or_404(Quotation, quotation_id)
+        q = get_owned_or_raise(Quotation, quotation_id)
+        if q is None:
+            raise ValueError('عرض الأسعار غير موجود')
         if q.status == 'converted':
             raise ValueError('عرض أسعار مُحَوَّل بالفعل — لا يمكن رفضه')
         q.status = 'rejected'
@@ -207,7 +216,9 @@ class QuotationService:
 
     @staticmethod
     def duplicate_quotation(quotation_id, seller_id=None):
-        q = db.get_or_404(Quotation, quotation_id)
+        q = get_owned_or_raise(Quotation, quotation_id)
+        if q is None:
+            raise ValueError('عرض الأسعار غير موجود')
         new_q = Quotation(
             quotation_number=generate_number('QT', Quotation, 'quotation_number'),
             customer_id=q.customer_id,
@@ -227,7 +238,13 @@ class QuotationService:
             terms_and_conditions=q.terms_and_conditions,
             notes=q.notes,
             status='draft',
+            version=q.version + 1 if q.version else 2,
+            parent_quotation_id=q.id,
+            is_latest_version=True,
+            version_notes=f'نسخة من {q.quotation_number} (v{q.version or 1})',
         )
+        # Mark old version as not latest
+        q.is_latest_version = False
         db.session.add(new_q)
         db.session.flush()
         for ln in q.lines:
@@ -246,6 +263,47 @@ class QuotationService:
         new_q.calculate_totals()
         db.session.commit()
         return new_q
+
+    @staticmethod
+    def create_version(quotation_id, changes=None, seller_id=None, notes=None):
+        """Create a new version of a quotation (revision)."""
+        q = get_owned_or_raise(Quotation, quotation_id)
+        if q is None:
+            raise ValueError('عرض الأسعار غير موجود')
+        new_q = QuotationService.duplicate_quotation(quotation_id, seller_id=seller_id)
+        if notes:
+            new_q.version_notes = notes
+        new_q.status = 'draft'
+        db.session.commit()
+        return new_q
+
+    @staticmethod
+    def send_quotation_email(quotation_id, recipient_email=None, subject=None, body=None):
+        """Send quotation via email."""
+        from flask_mail import Message
+        from extensions import mail
+        q = get_owned_or_raise(Quotation, quotation_id)
+        if q is None:
+            raise ValueError('عرض الأسعار غير موجود')
+        to_email = recipient_email or (q.customer.email if q.customer else None)
+        if not to_email:
+            raise ValueError('لا يوجد بريد إلكتروني للعميل')
+        msg = Message(
+            subject=subject or f'عرض سعر رقم {q.quotation_number}',
+            recipients=[to_email],
+            body=body or f'تجدون في المرفق عرض السعر رقم {q.quotation_number}.\n'
+                        f'الإجمالي: {q.total_amount} {q.currency}\n'
+                        f'صالح حتى: {q.valid_until}',
+        )
+        try:
+            mail.send(msg)
+            q.email_sent_at = datetime.now(timezone.utc)
+            q.email_sent_to = to_email
+            db.session.commit()
+            return True
+        except Exception as e:
+            logger.error('Failed to send quotation email: %s', e)
+            raise
 
 class PurchaseOrderService:
 

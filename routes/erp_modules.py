@@ -33,6 +33,11 @@ erp_bp = Blueprint('erp_modules', __name__, url_prefix='/erp')
 def quotations():
     page = request.args.get('page', 1, type=int)
     status = request.args.get('status', '', type=str)
+    search = request.args.get('q', '', type=str).strip()
+    date_from = request.args.get('date_from', '', type=str).strip()
+    date_to = request.args.get('date_to', '', type=str).strip()
+    show_all_versions = request.args.get('all_versions', '', type=str).strip() == '1'
+
     query = Quotation.query.filter_by(is_active=True)
     # auto-expire on access
     try:
@@ -47,10 +52,39 @@ def quotations():
             db.session.commit()
     except Exception:
         db.session.rollback()
+
+    if not show_all_versions:
+        query = query.filter_by(is_latest_version=True)
     if status:
         query = query.filter_by(status=status)
+    if search:
+        from models import Customer
+        query = query.join(Customer, Quotation.customer_id == Customer.id, isouter=True).filter(
+            db.or_(
+                Quotation.quotation_number.ilike(f'%{search}%'),
+                Customer.name.ilike(f'%{search}%'),
+                Customer.name_ar.ilike(f'%{search}%'),
+            )
+        )
+    if date_from:
+        try:
+            from datetime import datetime as _dt
+            df = _dt.strptime(date_from, '%Y-%m-%d').date()
+            query = query.filter(Quotation.quotation_date >= df)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            from datetime import datetime as _dt
+            dt_ = _dt.strptime(date_to, '%Y-%m-%d').date()
+            query = query.filter(Quotation.quotation_date <= dt_)
+        except ValueError:
+            pass
+
     pagination = query.order_by(Quotation.created_at.desc()).paginate(page=page, per_page=20, error_out=False)
-    return render_template('erp/quotations.html', quotations=pagination.items, pagination=pagination)
+    return render_template('erp/quotations.html', quotations=pagination.items, pagination=pagination,
+                           search=search, status=status, date_from=date_from, date_to=date_to,
+                           show_all_versions=show_all_versions)
 
 
 @erp_bp.route('/quotations/create', methods=['GET', 'POST'])
@@ -137,6 +171,67 @@ def duplicate_quotation(id):
         current_app.logger.exception('handler failed')
         flash(f'❌ خطأ: {e}', 'danger')
         return redirect(url_for('erp_modules.view_quotation', id=id))
+
+@erp_bp.route('/quotations/<int:id>/email', methods=['POST'])
+@login_required
+@permission_required('manage_sales')
+def email_quotation(id):
+    try:
+        recipient = request.form.get('recipient_email', '').strip() or None
+        QuotationService.send_quotation_email(id, recipient_email=recipient)
+        flash('✅ تم إرسال عرض السعر بالبريد الإلكتروني', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ في الإرسال: {e}', 'danger')
+    return redirect(url_for('erp_modules.view_quotation', id=id))
+
+
+@erp_bp.route('/quotations/<int:id>/whatsapp', methods=['POST'])
+@login_required
+@permission_required('manage_sales')
+def whatsapp_quotation(id):
+    try:
+        from services.whatsapp_service import WhatsAppService
+        from models.erp_modules import Quotation
+        q = Quotation.query.get(id)
+        if not q or not q.customer or not q.customer.phone:
+            flash('❌ لا يوجد رقم هاتف للعميل', 'danger')
+            return redirect(url_for('erp_modules.view_quotation', id=id))
+        result = WhatsAppService.send_quotation(
+            phone=q.customer.phone,
+            quotation_number=q.quotation_number,
+            total_amount=str(q.total_amount),
+            currency=q.currency or 'AED',
+            valid_until=q.valid_until.strftime('%Y-%m-%d') if q.valid_until else None,
+        )
+        if result.get('success'):
+            flash('✅ تم إرسال عرض السعر عبر واتساب', 'success')
+        else:
+            flash(f"❌ فشل الإرسال: {result.get('error', 'خطأ غير معروف')}", 'danger')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: {e}', 'danger')
+    return redirect(url_for('erp_modules.view_quotation', id=id))
+
+
+@erp_bp.route('/quotations/<int:id>/version', methods=['POST'])
+@login_required
+@permission_required('manage_sales')
+def version_quotation(id):
+    try:
+        notes = request.form.get('version_notes', '').strip() or None
+        new_q = QuotationService.create_version(id, notes=notes, seller_id=current_user.id)
+        create_audit_log('create', 'quotations', new_q.id, changes={'versioned_from': id})
+        flash(f'✅ تم إنشاء نسخة جديدة → {new_q.quotation_number} (v{new_q.version})', 'success')
+        return redirect(url_for('erp_modules.view_quotation', id=new_q.id))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('handler failed')
+        flash(f'❌ خطأ: {e}', 'danger')
+        return redirect(url_for('erp_modules.view_quotation', id=id))
+
 
 @erp_bp.route('/quotations/<int:id>/delete', methods=['POST'])
 @login_required

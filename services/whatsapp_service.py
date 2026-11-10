@@ -131,6 +131,49 @@ class WhatsAppService:
             }
 
     @staticmethod
+    def send_quotation(phone: str, quotation_number: str, total_amount: str = None,
+                       currency: str = 'AED', valid_until: str = None, pdf_url: str = None) -> Dict:
+        if not WhatsAppService.is_enabled():
+            return {'success': False, 'error': 'WhatsApp not configured'}
+
+        api_key = os.environ.get('WHATSAPP_API_KEY')
+        api_url = os.environ.get('WHATSAPP_API_URL', 'https://api.ultramsg.com')
+        instance_id = os.environ.get('WHATSAPP_INSTANCE_ID')
+
+        if not all([api_key, instance_id]):
+            return {'success': False, 'error': 'Missing configuration'}
+
+        phone_clean = phone.replace('+', '').replace(' ', '').replace('-', '')
+        if not phone_clean.startswith('971'):
+            phone_clean = '971' + phone_clean.lstrip('0')
+
+        total_str = f'{total_amount} {currency}' if total_amount else ''
+        validity_str = f'\nصالح حتى: {valid_until}' if valid_until else ''
+        message = f"""
+السلام عليكم ورحمة الله وبركاته
+
+تجدون في المرفق عرض السعر رقم {quotation_number}.
+{total_str}{validity_str}
+
+شكراً لتعاملكم معنا.
+"""
+        try:
+            url = f'{api_url}/{instance_id}/messages/chat'
+            payload = {
+                'token': api_key,
+                'to': phone_clean,
+                'body': message.strip(),
+            }
+            if pdf_url:
+                payload['document'] = pdf_url
+            response = requests.post(url, data=payload, timeout=30)
+            if response.status_code == 200:
+                return {'success': True, 'response': response.json()}
+            return {'success': False, 'error': response.text}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    @staticmethod
     def send_custom_message(phone: str, message: str) -> Dict:
         if not WhatsAppService.is_enabled():
             return {'success': False, 'error': 'WhatsApp not configured'}

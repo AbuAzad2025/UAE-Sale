@@ -19,6 +19,7 @@ class Warehouse(db.Model):
     manager_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     is_active = db.Column(db.Boolean, default=True)
     is_main = db.Column(db.Boolean, default=False)
+    is_maintenance_warehouse = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     parent = db.relationship('Warehouse', remote_side=[id], backref='sub_warehouses')
@@ -103,6 +104,8 @@ class StockMovement(TenantScopedMixin, db.Model):
             'adjustment': {'ar': 'تسوية', 'en': 'Adjustment'},
             'return': {'ar': 'إرجاع', 'en': 'Return'},
             'damage': {'ar': 'تالف', 'en': 'Damage'},
+            'maintenance': {'ar': 'صرف صيانة', 'en': 'Maintenance Issue'},
+            'maintenance_return': {'ar': 'إرجاع صيانة', 'en': 'Maintenance Return'},
         }
         return types.get(self.movement_type, {}).get(lang, self.movement_type)
 

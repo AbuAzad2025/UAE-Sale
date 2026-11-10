@@ -60,6 +60,12 @@ from .erp_modules import (
     StockTake, StockTakeItem, DunningLetter, RecurringExpense,
     ProductLot, WarehouseBin, ProductBin, EInvoice,
 )
+from .maintenance import (
+    MaintenanceOrder, MaintenanceOrderItem, MaintenanceOrderService,
+    MaintenanceOrderStatusLog, MaintenanceReceipt, MaintenanceInvoice,
+    MaintenanceReturn, MaintenanceReturnLine, MaintenanceSetting,
+    MaintenanceService, MaintenanceWarrantyAudit, MaintenanceDeviceRegistry,
+)
 from .validators import (
     single_parent_validator, direction_fk_validator, tenant_consistency_validator,
 )

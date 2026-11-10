@@ -63,7 +63,6 @@ OWNER_READ_PAGES = [
     '/owner/roles-permissions',
     '/owner/financial-overview',
     '/owner/database-tools',
-    '/owner/reports',
     '/owner/system-health',
     '/owner/activity-monitor',
     '/owner/error-logs',

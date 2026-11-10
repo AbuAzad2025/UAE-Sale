@@ -3357,7 +3357,7 @@ def _run_owner(client, db, sc, fixtures):
         '/owner/import-export-tools', '/owner/integrations',
         '/owner/invoice-settings', '/owner/ip-whitelist',
         '/owner/notification-templates', '/owner/payment-gateways',
-        '/owner/performance-metrics', '/owner/reports',
+        '/owner/performance-metrics',
         '/owner/scheduled-backups', '/owner/sms-settings',
         '/owner/system-config', '/owner/tax-settings', '/owner/tax-rulesets', '/owner/verify-backups',
         '/owner/whatsapp-settings', '/owner/tenants/new',

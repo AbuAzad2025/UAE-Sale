@@ -68,6 +68,119 @@ def index():
     return render_template('reports/index.html')
 
 
+@reports_bp.route('/quotation-pipeline')
+@login_required
+@permission_required('view_reports')
+def quotation_pipeline():
+    """تقرير خط أنابيب عروض الأسعار — Quotation Pipeline / Funnel."""
+    from models.erp_modules import Quotation, QuotationLine
+    from models import Customer
+    from sqlalchemy import func
+    from datetime import date, timedelta
+
+    date_from = request.args.get('date_from', '', type=str)
+    date_to = request.args.get('date_to', '', type=str)
+
+    base = Quotation.query.filter_by(is_active=True)
+    if date_from:
+        base = base.filter(Quotation.quotation_date >= date_from)
+    if date_to:
+        base = base.filter(Quotation.quotation_date <= date_to)
+
+    # Status counts + values
+    status_rows = db.session.query(
+        Quotation.status,
+        func.count(Quotation.id).label('cnt'),
+        func.coalesce(func.sum(Quotation.total_amount), 0).label('value'),
+    ).filter(Quotation.is_active.is_(True))
+    if date_from:
+        status_rows = status_rows.filter(Quotation.quotation_date >= date_from)
+    if date_to:
+        status_rows = status_rows.filter(Quotation.quotation_date <= date_to)
+    status_rows = status_rows.group_by(Quotation.status).all()
+
+    status_map = {r.status: {'count': r.cnt, 'value': float(r.value or 0)} for r in status_rows}
+    statuses = ['draft', 'sent', 'accepted', 'rejected', 'expired', 'converted']
+    status_labels = {'draft': 'مسودة', 'sent': 'مرسلة', 'accepted': 'مقبولة',
+                     'rejected': 'مرفوضة', 'expired': 'منتهية', 'converted': 'محولة'}
+    pipeline = []
+    total_count = 0
+    total_value = 0.0
+    for s in statuses:
+        info = status_map.get(s, {'count': 0, 'value': 0.0})
+        pipeline.append({'status': s, 'label': status_labels.get(s, s),
+                         'count': info['count'], 'value': info['value']})
+        total_count += info['count']
+        total_value += info['value']
+
+    # Conversion rate
+    accepted = status_map.get('accepted', {}).get('count', 0) + status_map.get('converted', {}).get('count', 0)
+    conversion_rate = (accepted / total_count * 100) if total_count else 0.0
+
+    # Top customers by quotation value
+    top_customers = db.session.query(
+        Customer.name,
+        func.count(Quotation.id).label('cnt'),
+        func.coalesce(func.sum(Quotation.total_amount), 0).label('value'),
+    ).join(Quotation, Quotation.customer_id == Customer.id).filter(
+        Quotation.is_active.is_(True)
+    )
+    if date_from:
+        top_customers = top_customers.filter(Quotation.quotation_date >= date_from)
+    if date_to:
+        top_customers = top_customers.filter(Quotation.quotation_date <= date_to)
+    top_customers = top_customers.group_by(Customer.id, Customer.name).order_by(
+        func.sum(Quotation.total_amount).desc()
+    ).limit(10).all()
+
+    # Monthly trend (last 6 months)
+    from datetime import date as _d
+    today = _d.today()
+    monthly = []
+    for m in range(5, -1, -1):
+        # compute month
+        y = today.year
+        mo = today.month - m
+        while mo <= 0:
+            mo += 12
+            y -= 1
+        month_start = _d(y, mo, 1)
+        if mo == 12:
+            month_end = _d(y + 1, 1, 1)
+        else:
+            month_end = _d(y, mo + 1, 1)
+        cnt = Quotation.query.filter(
+            Quotation.is_active.is_(True),
+            Quotation.quotation_date >= month_start,
+            Quotation.quotation_date < month_end,
+        ).count()
+        val = db.session.query(func.coalesce(func.sum(Quotation.total_amount), 0)).filter(
+            Quotation.is_active.is_(True),
+            Quotation.quotation_date >= month_start,
+            Quotation.quotation_date < month_end,
+        ).scalar() or 0
+        monthly.append({'label': month_start.strftime('%Y-%m'), 'count': cnt, 'value': float(val)})
+
+    # Expiring soon (within 7 days, not converted/rejected)
+    expiring = Quotation.query.filter(
+        Quotation.is_active.is_(True),
+        Quotation.status.in_(['draft', 'sent']),
+        Quotation.valid_until >= today,
+        Quotation.valid_until <= today + timedelta(days=7),
+    ).order_by(Quotation.valid_until.asc()).limit(20).all()
+
+    return render_template('reports/quotation_pipeline.html',
+                           pipeline=pipeline,
+                           total_count=total_count,
+                           total_value=total_value,
+                           conversion_rate=conversion_rate,
+                           top_customers=top_customers,
+                           monthly=monthly,
+                           expiring=expiring,
+                           date_from=date_from,
+                           date_to=date_to)
+
+
 @reports_bp.route('/partners')
 @login_required
 @permission_required('view_reports')

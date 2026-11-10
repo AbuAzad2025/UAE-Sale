@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block title %}تقرير خط أنابيب عروض الأسعار{% endblock %}
+{% block page_title %}<i class="fas fa-funnel-dollar mr-2"></i>تقرير خط أنابيب عروض الأسعار{% endblock %}
+{% block content %}
+<div class="row mb-3">
+  <div class="col-12">
+    <form method="get" class="form-inline">
+      <input type="date" name="date_from" value="{{ date_from or '' }}" class="form-control mr-2" placeholder="من">
+      <input type="date" name="date_to" value="{{ date_to or '' }}" class="form-control mr-2" placeholder="إلى">
+      <button type="submit" class="btn btn-primary"><i class="fas fa-filter mr-1"></i>تصفية</button>
+    </form>
+  </div>
+</div>
+
+<!-- KPI cards -->
+<div class="row">
+  <div class="col-md-3">
+    <div class="info-box bg-gradient-primary">
+      <span class="info-box-icon"><i class="fas fa-file-invoice"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">إجمالي العروض</span>
+        <span class="info-box-number">{{ total_count }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="info-box bg-gradient-success">
+      <span class="info-box-icon"><i class="fas fa-money-bill"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">القيمة الإجمالية</span>
+        <span class="info-box-number">{{ "{:,.0f}".format(total_value) }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="info-box bg-gradient-info">
+      <span class="info-box-icon"><i class="fas fa-percentage"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">معدل التحويل</span>
+        <span class="info-box-number">{{ "%.1f"|format(conversion_rate) }}%</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="info-box bg-gradient-warning">
+      <span class="info-box-icon"><i class="fas fa-clock"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">تنتهي قريباً</span>
+        <span class="info-box-number">{{ expiring|length }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pipeline funnel -->
+<div class="row">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">خط الأنابيب (Funnel)</h3></div>
+      <div class="card-body p-0">
+        <table class="table table-bordered mb-0">
+          <thead><tr><th>الحالة</th><th>العدد</th><th>القيمة</th><th>النسبة</th></tr></thead>
+          <tbody>
+          {% for p in pipeline %}
+          <tr>
+            <td>{{ p.label }}</td>
+            <td>{{ p.count }}</td>
+            <td>{{ "{:,.2f}".format(p.value) }}</td>
+            <td>{% if total_count %}{{ "%.1f"|format(p.count/total_count*100) }}%{% else %}0%{% endif %}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+          <tfoot><tr class="font-weight-bold"><td>المجموع</td><td>{{ total_count }}</td><td>{{ "{:,.2f}".format(total_value) }}</td><td>100%</td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monthly trend -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">الاتجاه الشهري</h3></div>
+      <div class="card-body p-0">
+        <table class="table table-bordered mb-0">
+          <thead><tr><th>الشهر</th><th>العدد</th><th>القيمة</th></tr></thead>
+          <tbody>
+          {% for m in monthly %}
+          <tr><td>{{ m.label }}</td><td>{{ m.count }}</td><td>{{ "{:,.2f}".format(m.value) }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Top customers -->
+<div class="row">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">أفضل 10 عملاء (حسب قيمة العروض)</h3></div>
+      <div class="card-body p-0">
+        <table class="table table-bordered mb-0">
+          <thead><tr><th>العميل</th><th>العدد</th><th>القيمة</th></tr></thead>
+          <tbody>
+          {% for c in top_customers %}
+          <tr><td>{{ c.name }}</td><td>{{ c.cnt }}</td><td>{{ "{:,.2f}".format(c.value or 0) }}</td></tr>
+          {% else %}<tr><td colspan="3" class="text-center text-muted">لا توجد بيانات</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expiring soon -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">تنتهي خلال 7 أيام</h3></div>
+      <div class="card-body p-0">
+        <table class="table table-bordered mb-0">
+          <thead><tr><th>الرقم</th><th>العميل</th><th>الصلاحية</th><th>القيمة</th></tr></thead>
+          <tbody>
+          {% for q in expiring %}
+          <tr>
+            <td><a href="{{ url_for('erp_modules.view_quotation', id=q.id) }}">{{ q.quotation_number }}</a></td>
+            <td>{{ q.customer.name if q.customer else '-' }}</td>
+            <td>{{ q.valid_until.strftime('%Y-%m-%d') if q.valid_until else '-' }}</td>
+            <td>{{ "{:,.2f}".format(q.total_amount|float) }}</td>
+          </tr>
+          {% else %}<tr><td colspan="4" class="text-center text-muted">لا توجد عروض تنتهي قريباً</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

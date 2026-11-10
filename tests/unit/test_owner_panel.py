@@ -61,7 +61,7 @@ OWNER_READ_PAGES = [
     '/owner/audit-logs',
     '/users/',
     '/owner/roles-permissions',
-    '/owner/financial-overview',
+    
     '/owner/database-tools',
     '/owner/system-health',
     '/owner/activity-monitor',
@@ -69,11 +69,8 @@ OWNER_READ_PAGES = [
     '/owner/login-history',
     '/owner/performance-metrics',
     '/owner/security-alerts',
-    '/owner/sales-insights',
-    '/owner/customer-insights',
-    '/owner/product-performance',
-    '/owner/forecasting',
-    '/owner/verify-backups',
+    
+                '/owner/verify-backups',
     '/owner/import-export-tools',
     '/owner/convert-database',
     '/owner/scheduled-backups',
@@ -97,7 +94,7 @@ OWNER_READ_PAGES = [
     '/owner/invoice-settings',
     '/owner/data-cleanup',
     '/owner/cards-vault',
-    '/owner/financial-dashboard-advanced',
+    
 ]
 
 

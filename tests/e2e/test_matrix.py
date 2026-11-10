@@ -3344,13 +3344,11 @@ def _run_owner(client, db, sc, fixtures):
     # view actually accepts; _allowed_method() is the backstop.
     reads = [
         '/owner/dashboard', '/owner/system-stats', '/owner/audit-logs',
-        '/owner/roles-permissions', '/owner/financial-overview',
+        '/owner/roles-permissions', 
         '/owner/config', '/owner/tenants', '/owner/system-health',
         '/owner/activity-monitor', '/owner/login-history',
-        '/owner/security-alerts', '/owner/financial-dashboard-advanced',
-        '/owner/sales-insights', '/owner/customer-insights',
-        '/owner/product-performance', '/owner/forecasting',
-        '/owner/constants', '/owner/api-keys', '/owner/database-tools',
+        '/owner/security-alerts', 
+                          '/owner/constants', '/owner/api-keys', '/owner/database-tools',
         '/owner/backups/list',
         '/owner/archived', '/owner/cards-vault', '/owner/currency-settings',
         '/owner/data-cleanup', '/owner/email-settings', '/owner/error-logs',

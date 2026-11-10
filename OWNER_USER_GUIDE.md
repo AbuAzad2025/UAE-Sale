@@ -119,18 +119,11 @@
 
 ## 10. تقارير (Reports)
 
-### `/owner/reports`
-### `/owner/financial-overview`
-### `/owner/financial-dashboard-advanced`
 
 ---
 
 ## 11. تحليلات (Analytics)
 
-### `/owner/sales-insights`
-### `/owner/customer-insights`
-### `/owner/product-performance`
-### `/owner/forecasting`
 
 ---
 

@@ -1,4 +1,4 @@
-# Route Isolation Audit — 516 مسارًا
+# Route Isolation Audit — 510 مسارًا
 
 **توليد:** `scripts/gen_route_audit_doc.py` — لا يُعدَّل يدويًا؛ أي تغيير يُعاد توليد
 الفحص عبر التشغيل: `python -m scripts.gen_route_audit_doc` والالتزام بها في كل
@@ -408,7 +408,6 @@
 | `/owner/constants/<group>/visibility` | `owner.constants_visibility` | platform | owner_required, login_required |
 | `/owner/convert-database` | `owner.convert_database` | platform | owner_required, login_required |
 | `/owner/currency-settings` | `owner.currency_settings` | platform | owner_required, login_required |
-| `/owner/customer-insights` | `owner.customer_insights` | platform | owner_required, login_required |
 | `/owner/dashboard` | `owner.dashboard` | platform | owner_required, login_required |
 | `/owner/data-cleanup` | `owner.data_cleanup` | platform | owner_required, login_required |
 | `/owner/database-optimize` | `owner.database_optimize` | platform | owner_required, login_required |
@@ -419,9 +418,6 @@
 | `/owner/error-logs/<int:log_id>/resolve` | `owner.error_log_resolve` | platform | owner_required, login_required |
 | `/owner/export-database` | `owner.export_database` | platform | owner_required, login_required |
 | `/owner/export-excel/<table_name>` | `owner.export_excel` | platform | owner_required, login_required |
-| `/owner/financial-dashboard-advanced` | `owner.financial_dashboard_advanced` | platform | owner_required, login_required |
-| `/owner/financial-overview` | `owner.financial_overview` | platform | owner_required, login_required |
-| `/owner/forecasting` | `owner.forecasting` | platform | owner_required, login_required |
 | `/owner/fx-revaluation/` | `owner.fx_revaluation` | platform | permission_required, login_required |
 | `/owner/guide` | `owner.owner_guide` | platform | owner_required, login_required |
 | `/owner/import-export-tools` | `owner.import_export_tools` | platform | owner_required, login_required |
@@ -440,10 +436,8 @@
 | `/owner/plans/<int:plan_id>/toggle` | `owner.toggle_plan` | platform | owner_required, login_required |
 | `/owner/preview-invoice/<template>` | `owner.preview_invoice` | platform | owner_required, login_required |
 | `/owner/preview-receipt/<template>` | `owner.preview_receipt` | platform | owner_required, login_required |
-| `/owner/product-performance` | `owner.product_performance` | platform | owner_required, login_required |
 | `/owner/roles-permissions` | `owner.roles_permissions` | platform | owner_required, login_required |
 | `/owner/roles/<int:role_id>/permissions` | `owner.update_role_permissions` | platform | owner_required, login_required |
-| `/owner/sales-insights` | `owner.sales_insights` | platform | owner_required, login_required |
 | `/owner/scheduled-backups` | `owner.scheduled_backups` | platform | permission_required, login_required |
 | `/owner/security-alerts` | `owner.security_alerts` | platform | owner_required, login_required |
 | `/owner/security-alerts/<int:id>/resolve` | `owner.resolve_alert` | platform | get_owned_or_404, owner_required, login_required |
@@ -719,8 +713,8 @@
 
 ## الملخص
 
-* **إجمالي المسارات:** 516
-* **platform:** 127
+* **إجمالي المسارات:** 510
+* **platform:** 121
 * **public:** 27
 * **system:** 7
 * **tenant:** 355

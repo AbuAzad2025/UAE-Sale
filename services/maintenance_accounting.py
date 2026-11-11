@@ -104,10 +104,17 @@ def order_parts_cost(order) -> Decimal:
 
 
 def order_net_revenue(order) -> Decimal:
-    """Revenue net of VAT and discounts for the order."""
+    """Revenue net of VAT and discounts for the order, in transaction currency."""
     total = D(str(getattr(order, 'total_amount', 0) or 0))
     tax = D(str(getattr(order, 'tax_amount', 0) or 0))
     return (total - tax).quantize(D('0.001'))
+
+
+def order_net_revenue_base(order) -> Decimal:
+    """Revenue net of VAT and discounts for the order, in base currency."""
+    total_base = D(str(getattr(order, 'total_amount_base', 0) or 0))
+    tax_base = D(str(getattr(order, 'tax_amount_base', 0) or 0))
+    return (total_base - tax_base).quantize(D('0.001'))
 
 
 # ---------------------------------------------------------------------------
@@ -261,11 +268,11 @@ def post_maintenance_invoice(order, invoice, *, created_by=None, entry_date=None
     _assert_not_posted(REFERENCE_INVOICE, invoice.id,
                        'سبق ترحيل فاتورة هذا الأمر — لا يمكن الترحيل مرتين')
     accounts = maintenance_accounts(order.tenant_id)
-    # صافي الإيراد = الإجمالي - الضريبة (بعملة الأساس إذا توفرت)
-    total_base = D(str(getattr(invoice, 'total_amount_base', None) or 
-                       order.total_amount or 0)).quantize(D('0.001'))
-    tax_base = D(str(getattr(invoice, 'tax_amount_base', None) or 
-                     order.tax_amount or 0)).quantize(D('0.001'))
+    # المبالغ بعملة الأساس إلزامية على الفاتورة (تم إنشاؤها عبر create_maintenance_invoice)
+    total_base = D(str(getattr(invoice, 'total_amount_base', None))).quantize(D('0.001'))
+    tax_base = D(str(getattr(invoice, 'tax_amount_base', None))).quantize(D('0.001'))
+    if total_base <= 0:
+        raise ValidationError(f'فاتورة {invoice.invoice_no} تفتقر لمبلغ الإجمالي بالعملة الأساسية.')
     net_revenue = (total_base - tax_base).quantize(D('0.001'))
     vat = tax_base
     debit_account = accounts['ar']
@@ -294,8 +301,11 @@ def post_maintenance_receipt(receipt, *, created_by=None, entry_date=None):
     order = receipt.order
     accounts = maintenance_accounts(order.tenant_id)
     debit_account = payment_debit_account(receipt.payment_method, order.tenant_id)
-    # استخدام المبلغ المحول لعملة الأساس إذا كان متاحاً
-    amount = D(str(getattr(receipt, 'amount_base', None) or receipt.amount or 0)).quantize(D('0.001'))
+    # المبلغ المحول لعملة الأساس إلزامي — لا احتياطي بالمبلغ المحلي
+    amount_base = getattr(receipt, 'amount_base', None)
+    if amount_base is None:
+        raise ValidationError(f'سند القبض {receipt.receipt_no} يفتقر لمبلغ العملة الأساسية (amount_base). يرجى إعادة إنشاء السند.')
+    amount = D(str(amount_base)).quantize(D('0.001'))
     lines = build_receipt_lines(amount, debit_account, accounts)
     entry = _post(
         lines,
@@ -319,7 +329,10 @@ def post_deposit_receipt(order, receipt, *, created_by=None, entry_date=None):
                        'سبق ترحيل هذا السند — لا يمكن الترحيل مرتين')
     accounts = maintenance_accounts(order.tenant_id)
     debit_account = payment_debit_account(receipt.payment_method, order.tenant_id)
-    amount = D(str(getattr(receipt, 'amount_base', None) or receipt.amount or 0)).quantize(D('0.001'))
+    amount_base = getattr(receipt, 'amount_base', None)
+    if amount_base is None:
+        raise ValidationError(f'سند الدفعة المقدمة {receipt.receipt_no} يفتقر لمبلغ العملة الأساسية (amount_base).')
+    amount = D(str(amount_base)).quantize(D('0.001'))
     lines = build_receipt_lines(amount, debit_account, accounts)
     entry = _post(
         lines,
@@ -353,8 +366,10 @@ def post_warranty_reclassification(order, *, created_by=None, entry_date=None):
 def post_return_cost(order, return_obj, amount, *, created_by=None, entry_date=None):
     """Return parts to stock and reverse their cost."""
     accounts = maintenance_accounts(order.tenant_id)
-    # استخدام المبلغ المحول لعملة الأساس إذا كان متاحاً
-    amount = D(str(getattr(return_obj, 'amount_base', None) or amount or 0)).quantize(D('0.001'))
+    # المبلغ المحول لعملة الأساس من تكلفة القطع المرتجعة
+    amount = D(str(amount or 0)).quantize(D('0.001'))
+    if amount <= 0:
+        return None
     lines = build_return_cost_lines(amount, accounts)
     if not lines:
         return None
@@ -407,11 +422,12 @@ def post_maintenance_credit_note(order, credit_note, *, created_by=None,
     _assert_not_posted(REFERENCE_CREDIT_NOTE, credit_note.id,
                        'سبق ترحيل إشعار الدائن لهذا الأمر')
     accounts = maintenance_accounts(order.tenant_id)
-    # صافي الإيراد المقلوب = الإجمالي - الضريبة (بعملة الأساس إذا توفرت)
-    total_base = D(str(getattr(credit_note, 'amount_base', None) or 
-                       order_net_revenue(order))).quantize(D('0.001'))
-    tax_base = D(str(getattr(credit_note, 'amount_base', None) and 
-                     order.tax_amount or 0)).quantize(D('0.001'))
+    # المبالغ بعملة الأساس إلزامية على إشعار الدائن (المبلغ الإجمالي)
+    total_base = D(str(getattr(credit_note, 'amount_base', None))).quantize(D('0.001'))
+    # الضريبة المقلوبة تأتي من الفاتورة الأصلية (بعملة الأساس)
+    tax_base = D(str(getattr(order.invoice, 'tax_amount_base', None) or 0)).quantize(D('0.001'))
+    if total_base <= 0:
+        raise ValidationError(f'إشعار الدائن {credit_note.credit_note_no} يفتقر لمبلغ الإجمالي بالعملة الأساسية.')
     net_revenue = (total_base - tax_base).quantize(D('0.001'))
     vat = tax_base
     debit_account = accounts['ar']
@@ -473,8 +489,10 @@ def post_supplier_payment(payment, *, created_by=None, entry_date=None):
     tenant_id = payment.tenant_id
     accounts = maintenance_accounts(tenant_id)
     debit_account = payment_debit_account(payment.payment_method, tenant_id)
-    # استخدام المبلغ المحول لعملة الأساس إذا كان متاحاً
-    amount = D(str(getattr(payment, 'amount_base', None) or payment.amount or 0)).quantize(D('0.001'))
+    amount_base = getattr(payment, 'amount_base', None)
+    if amount_base is None:
+        raise ValidationError(f'سداد المورد {payment.reference_number or payment.id} يفتقر لمبلغ العملة الأساسية (amount_base).')
+    amount = D(str(amount_base)).quantize(D('0.001'))
     lines = build_supplier_payment_lines(amount, debit_account, accounts)
     if not lines:
         return None

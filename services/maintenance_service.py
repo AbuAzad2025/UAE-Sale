@@ -308,29 +308,32 @@ def _assert_within_credit_limit(order):
     if limit <= 0:
         return
     outstanding = _maintenance_receivable(customer.id, order.tenant_id)
-    exposure = D(str(customer.balance or 0)) + outstanding + D(str(order.balance_due or 0))
+    # جميع المبالغ بعملة الأساس للمقارنة الصحيحة
+    customer_balance_base = D(str(getattr(customer, 'balance_base', None) or customer.balance or 0))
+    order_balance_base = D(str(getattr(order, 'balance_due_base', None) or order.balance_due or 0))
+    exposure = customer_balance_base + outstanding + order_balance_base
     if exposure > limit:
         raise ValidationError(
             f'تجاوز حد ائتمان العميل "{customer.name}"\n'
-            f'💡 الحد: {limit:,.3f} د.إ | الرصيد الحالي: {customer.balance or 0:,.3f} د.إ | '
+            f'💡 الحد: {limit:,.3f} د.إ | الرصيد الحالي: {customer_balance_base:,.3f} د.إ | '
             f'ذمم الصيانة: {outstanding:,.3f} د.إ | المستحق بعد التسليم: {exposure:,.3f} د.إ'
         )
 
 
 def _maintenance_receivable(customer_id, tenant_id) -> Decimal:
-    """Outstanding maintenance receivable of a customer (invoices - receipts)."""
+    """Outstanding maintenance receivable of a customer (invoices - receipts) in base currency."""
     invoiced = D('0')
     for invoice in MaintenanceInvoice.query.join(
             MaintenanceOrder, MaintenanceOrder.id == MaintenanceInvoice.maintenance_order_id
     ).filter(MaintenanceOrder.tenant_id == tenant_id,
               MaintenanceOrder.customer_id == customer_id).all():
-        invoiced += D(str(invoice.total_amount or 0))
+        invoiced += D(str(getattr(invoice, 'total_amount_base', None) or invoice.total_amount or 0))
     collected = D('0')
     for receipt in MaintenanceReceipt.query.join(
             MaintenanceOrder, MaintenanceOrder.id == MaintenanceReceipt.maintenance_order_id
     ).filter(MaintenanceOrder.tenant_id == tenant_id,
               MaintenanceOrder.customer_id == customer_id).all():
-        collected += D(str(receipt.amount or 0))
+        collected += D(str(getattr(receipt, 'amount_base', None) or receipt.amount or 0))
     return (invoiced - collected).quantize(D('0.001'))
 
 
@@ -425,6 +428,9 @@ def add_order_item(order_id, product_id, quantity, unit_price, tenant_id,
         tax_rate=tax_rate,
         cost_price=unit_cost,
         cost_source='inventory',
+        currency=order.currency,
+        exchange_rate=order.exchange_rate,
+        amount_base=(unit_price * D(str(order.exchange_rate or 1))).quantize(D('0.001')),
     )
     line.calculate_line_total()
     db.session.add(line)
@@ -499,6 +505,9 @@ def add_order_service(order_id, service_code, service_name, service_name_ar,
         engineer_id=engineer_id,
         cost_price=cost_price,
         cost_source='labor',
+        currency=order.currency,
+        exchange_rate=order.exchange_rate,
+        amount_base=(unit_price * D(str(order.exchange_rate or 1))).quantize(D('0.001')),
     )
     line.calculate_line_total()
     db.session.add(line)
@@ -633,17 +642,18 @@ def create_receipt(order_id, amount, payment_method, cashier_id, reference_type=
         raise ValidationError('أمر الضمان لا يُقبض عليه من العميل')
 
     amount = _decimal(amount, 'المبلغ', allow_zero=False)
-    balance = D(str(order.balance_due or 0))
-    if not is_deposit:
-        if balance <= 0:
-            raise ValidationError('لا يوجد مبلغ مستحق على هذا الأمر')
-        if amount > balance:
-            raise ValidationError(f'المبلغ أكبر من المتبقي على الأمر ({balance:,.3f} د.إ)')
-
     # تحديد العملة وسعر الصرف (تيرث من الأمر إذا لم تُحدد)
     receipt_currency = currency or order.currency
     receipt_exchange_rate = exchange_rate if exchange_rate is not None else order.exchange_rate
     amount_base = (amount * D(str(receipt_exchange_rate or 1))).quantize(D('0.001'))
+
+    # مقارنة المبلغ المحول بعملة الأساس مع الرصيد المستحق بعملة الأساس
+    balance_base = D(str(order.balance_due_base or 0))
+    if not is_deposit:
+        if balance_base <= 0:
+            raise ValidationError('لا يوجد مبلغ مستحق على هذا الأمر')
+        if amount_base > balance_base:
+            raise ValidationError(f'المبلغ أكبر من المتبقي على الأمر ({balance_base:,.3f} {order.currency or "AED"})')
 
     receipt_no = _next_receipt_number()
     receipt = MaintenanceReceipt(
@@ -668,7 +678,9 @@ def create_receipt(order_id, amount, payment_method, cashier_id, reference_type=
         accounting.post_maintenance_receipt(receipt, created_by=cashier_id)
 
     order.paid_amount = D(str(order.paid_amount or 0)) + amount
+    order.paid_amount_base = D(str(order.paid_amount_base or 0)) + amount_base
     order.balance_due = order.total_amount - order.paid_amount
+    order.balance_due_base = order.total_amount_base - order.paid_amount_base
     return receipt
 
 
@@ -1052,8 +1064,8 @@ def get_maintenance_cost_analysis(tenant_id, date_from=None, date_to=None):
                           for it in order.items), ZERO)
         labor_cost = sum((D(str(sv.cost_price or 0)) for sv in order.services), ZERO)
         total_cost = parts_cost + labor_cost
-        # Revenue is recognised net of VAT; VAT is a liability, not revenue.
-        revenue = D(str(order.total_amount or 0)) - D(str(order.tax_amount or 0))
+        # الإيراد الصافي بعملة الأساس (إجمالي - ضريبة)
+        revenue = D(str(getattr(order, 'total_amount_base', None) or order.total_amount or 0)) - D(str(getattr(order, 'tax_amount_base', None) or order.tax_amount or 0))
 
         analysis['total_revenue'] += revenue
         analysis['total_parts_cost'] += parts_cost
@@ -1257,7 +1269,8 @@ def receive_maintenance_purchase(purchase_id, user_id):
 
 @tx
 def pay_maintenance_supplier(supplier_id, amount, payment_method, user_id,
-                              reference_number=None, notes=None):
+                              reference_number=None, notes=None,
+                              currency=None, exchange_rate=None):
     """Settle what the tenant owes a supplier for maintenance parts."""
     require_maintenance_actor(user_id, 'maintenance_cashier')
     tenant_id = current_maintenance_tenant()
@@ -1270,13 +1283,20 @@ def pay_maintenance_supplier(supplier_id, amount, payment_method, user_id,
 
     outstanding = _maintenance_payable(supplier.id, tenant_id)
     amount = _decimal(amount, 'المبلغ', allow_zero=False)
-    if amount > outstanding:
+    # تحديد العملة وسعر الصرف للدفعة (تيرث من العملة الأساسية للنظام إذا لم تُحدد)
+    pay_currency = currency or 'AED'
+    pay_exchange_rate = exchange_rate if exchange_rate is not None else D('1')
+    amount_base = (amount * pay_exchange_rate).quantize(D('0.001'))
+    if amount_base > outstanding:
         raise ValidationError(f'المبلغ أكبر من الذمم الدائنة ({outstanding:,.3f} د.إ)')
 
     from utils.helpers import generate_number
     payment = MaintenanceSupplierPayment(
         tenant_id=tenant_id,
         supplier_id=supplier.id,
+        currency=pay_currency,
+        exchange_rate=pay_exchange_rate,
+        amount_base=amount_base,
         amount=amount,
         payment_method=payment_method,
         reference_number=reference_number,
@@ -1295,16 +1315,16 @@ def pay_maintenance_supplier(supplier_id, amount, payment_method, user_id,
 
 
 def _maintenance_payable(supplier_id, tenant_id) -> Decimal:
-    """Outstanding maintenance payable of a supplier (received - paid)."""
+    """Outstanding maintenance payable of a supplier (received - paid) in base currency."""
     from models.erp_modules import PurchaseOrder
     received = ZERO
     for purchase in PurchaseOrder.query.filter_by(
             tenant_id=tenant_id, supplier_id=supplier_id, status='received').all():
-        received += D(str(purchase.total_amount or 0))
+        received += D(str(getattr(purchase, 'total_amount_base', None) or purchase.total_amount or 0))
     paid = ZERO
     for payment in MaintenanceSupplierPayment.query.filter_by(
             tenant_id=tenant_id, supplier_id=supplier_id).all():
-        paid += D(str(payment.amount or 0))
+        paid += D(str(getattr(payment, 'amount_base', None) or payment.amount or 0))
     return (received - paid).quantize(D('0.001'))
 
 

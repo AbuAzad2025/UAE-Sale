@@ -100,6 +100,20 @@
                 <label class="form-check-label">نعم</label>
               </div>
             </div>
+            <div class="col-md-4">
+              <label class="form-label">العملة</label>
+              <select name="currency" class="form-select">
+                <option value="AED">درهم إماراتي (AED)</option>
+                <option value="USD">دولار أمريكي (USD)</option>
+                <option value="SAR">ريال سعودي (SAR)</option>
+                <option value="EGP">جنيه مصري (EGP)</option>
+                <option value="ILS">شيقل إسرائيلي (ILS)</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">سعر الصرف (مقابل عملة التينانت الأساسية)</label>
+              <input type="number" name="exchange_rate" value="1" step="0.000001" class="form-control">
+            </div>
             <div class="col-12">
               <label class="form-label">ملاحظات</label>
               <textarea name="notes" class="form-control" rows="2"></textarea>

@@ -42,6 +42,9 @@
         </p>
         <p><strong>الأولوية:</strong> {{ order.priority }}</p>
         <p><strong>طريقة الدفع:</strong> {{ order.payment_mode }}</p>
+        <p><strong>العملة:</strong> {{ order.currency or 'AED' }}
+          {% if order.exchange_rate %} (سعر الصرف: {{ "{:,.6f}".format(order.exchange_rate) }}){% endif %}</p>
+        <p><strong>الإجمالي بعملة الأساس:</strong> {{ "{:,.3f}".format(order.total_amount_base or 0) }}</p>
         <p><strong>الكفالة:</strong> {{ order.warranty_status or '-' }}</p>
         <hr>
         <p><strong>المجموع الفرعي:</strong> {{ "{:,.3f}".format(order.subtotal or 0) }}</p>

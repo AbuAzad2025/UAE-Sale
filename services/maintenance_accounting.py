@@ -261,8 +261,11 @@ def post_maintenance_invoice(order, invoice, *, created_by=None, entry_date=None
     _assert_not_posted(REFERENCE_INVOICE, invoice.id,
                        'سبق ترحيل فاتورة هذا الأمر — لا يمكن الترحيل مرتين')
     accounts = maintenance_accounts(order.tenant_id)
-    net_revenue = order_net_revenue(order)
-    vat = D(str(order.tax_amount or 0)).quantize(D('0.001'))
+    # استخدام المبلغ المحول لعملة الأساس إذا كان متاحاً، وإلا استخدام المبلغ محلياً
+    net_revenue = D(str(getattr(invoice, 'total_amount_base', None) or 
+                        order_net_revenue(order))).quantize(D('0.001'))
+    vat = D(str(getattr(invoice, 'tax_amount_base', None) or 
+                order.tax_amount or 0)).quantize(D('0.001'))
     debit_account = accounts['ar']
     lines = build_invoice_lines(net_revenue, vat, debit_account, accounts)
     entry = _post(
@@ -289,7 +292,9 @@ def post_maintenance_receipt(receipt, *, created_by=None, entry_date=None):
     order = receipt.order
     accounts = maintenance_accounts(order.tenant_id)
     debit_account = payment_debit_account(receipt.payment_method, order.tenant_id)
-    lines = build_receipt_lines(receipt.amount, debit_account, accounts)
+    # استخدام المبلغ المحول لعملة الأساس إذا كان متاحاً
+    amount = D(str(getattr(receipt, 'amount_base', None) or receipt.amount or 0)).quantize(D('0.001'))
+    lines = build_receipt_lines(amount, debit_account, accounts)
     entry = _post(
         lines,
         description=f'سند قبض صيانة {receipt.receipt_no} - {order.order_no}',
@@ -312,7 +317,8 @@ def post_deposit_receipt(order, receipt, *, created_by=None, entry_date=None):
                        'سبق ترحيل هذا السند — لا يمكن الترحيل مرتين')
     accounts = maintenance_accounts(order.tenant_id)
     debit_account = payment_debit_account(receipt.payment_method, order.tenant_id)
-    lines = build_receipt_lines(receipt.amount, debit_account, accounts)
+    amount = D(str(getattr(receipt, 'amount_base', None) or receipt.amount or 0)).quantize(D('0.001'))
+    lines = build_receipt_lines(amount, debit_account, accounts)
     entry = _post(
         lines,
         description=f'دفعة مقدمة - أمر صيانة {order.order_no}',
@@ -345,6 +351,8 @@ def post_warranty_reclassification(order, *, created_by=None, entry_date=None):
 def post_return_cost(order, return_obj, amount, *, created_by=None, entry_date=None):
     """Return parts to stock and reverse their cost."""
     accounts = maintenance_accounts(order.tenant_id)
+    # استخدام المبلغ المحول لعملة الأساس إذا كان متاحاً
+    amount = D(str(getattr(return_obj, 'amount_base', None) or amount or 0)).quantize(D('0.001'))
     lines = build_return_cost_lines(amount, accounts)
     if not lines:
         return None
@@ -397,8 +405,10 @@ def post_maintenance_credit_note(order, credit_note, *, created_by=None,
     _assert_not_posted(REFERENCE_CREDIT_NOTE, credit_note.id,
                        'سبق ترحيل إشعار الدائن لهذا الأمر')
     accounts = maintenance_accounts(order.tenant_id)
-    net_revenue = order_net_revenue(order)
-    vat = D(str(order.tax_amount or 0)).quantize(D('0.001'))
+    net_revenue = D(str(getattr(credit_note, 'amount_base', None) or 
+                        order_net_revenue(order))).quantize(D('0.001'))
+    vat = D(str(getattr(credit_note, 'amount_base', None) and 
+                order.tax_amount or 0)).quantize(D('0.001'))
     debit_account = accounts['ar']
     lines = build_credit_note_lines(net_revenue, vat, debit_account, accounts)
     entry = _post(
@@ -458,7 +468,9 @@ def post_supplier_payment(payment, *, created_by=None, entry_date=None):
     tenant_id = payment.tenant_id
     accounts = maintenance_accounts(tenant_id)
     debit_account = payment_debit_account(payment.payment_method, tenant_id)
-    lines = build_supplier_payment_lines(payment.amount, debit_account, accounts)
+    # استخدام المبلغ المحول لعملة الأساس إذا كان متاحاً
+    amount = D(str(getattr(payment, 'amount_base', None) or payment.amount or 0)).quantize(D('0.001'))
+    lines = build_supplier_payment_lines(amount, debit_account, accounts)
     if not lines:
         return None
     return _post(

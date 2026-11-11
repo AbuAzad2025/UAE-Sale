@@ -136,6 +136,8 @@ def create_order():
                 payment_mode=request.form.get('payment_mode', 'cash'),
                 deposit=request.form.get('deposit', 0),
                 tax_inclusive=request.form.get('tax_inclusive') == 'on',
+                currency=request.form.get('currency', 'AED'),
+                exchange_rate=request.form.get('exchange_rate', 1),
                 engineer_id=request.form.get('engineer_id', type=int) or None,
                 service_advisor_id=request.form.get('service_advisor_id', type=int) or None,
             )
@@ -148,9 +150,11 @@ def create_order():
                         amount=deposit,
                         payment_method=request.form.get('deposit_payment_method', 'cash'),
                         cashier_id=current_user.id,
+                        currency=request.form.get('currency', 'AED'),
+                        exchange_rate=request.form.get('exchange_rate', 1),
                         is_deposit=True,
                     )
-                    flash(f'تم تسجيل دفعة مقدمة {deposit:,.3f} د.إ مع الأمر', 'info')
+                    flash(f'تم تسجيل دفعة مقدمة {deposit:,.3f} {request.form.get("currency", "AED")}', 'info')
                 except ValidationError as exc:
                     _flash_error(exc)
             flash(f'تم إنشاء أمر الصيانة {order.order_no}', 'success')
@@ -318,6 +322,8 @@ def receive(id):
             amount=request.form.get('amount', type=float),
             payment_method=request.form.get('payment_method', 'cash'),
             cashier_id=current_user.id,
+            currency=request.form.get('currency'),
+            exchange_rate=request.form.get('exchange_rate', type=float),
         )
         flash(f'تم إنشاء سند قبض {receipt.receipt_no}', 'success')
     except ValidationError as exc:
@@ -333,7 +339,9 @@ def receive(id):
 @permission_required('maintenance_close')
 def create_invoice(id):
     try:
-        invoice = create_maintenance_invoice(id, current_user.id)
+        invoice = create_maintenance_invoice(id, current_user.id,
+                                             currency=request.form.get('currency'),
+                                             exchange_rate=request.form.get('exchange_rate', type=float))
         flash(f'تم إنشاء فاتورة الصيانة {invoice.invoice_no} وترحيل قيدها', 'success')
     except ValidationError as exc:
         _flash_error(exc)
@@ -352,6 +360,8 @@ def create_credit_note(id):
             order_id=id,
             created_by=current_user.id,
             reason=request.form.get('reason', ''),
+            currency=request.form.get('currency'),
+            exchange_rate=request.form.get('exchange_rate', type=float),
         )
         flash(f'تم إنشاء إشعار دائن {cn.credit_note_no} وترحيل قيده', 'success')
     except ValidationError as exc:
@@ -383,6 +393,8 @@ def create_return(id):
             returned_by=current_user.id,
             reason=request.form.get('reason', ''),
             lines=lines,
+            currency=request.form.get('currency'),
+            exchange_rate=request.form.get('exchange_rate', type=float),
         )
         flash(f'تم إنشاء مرتجع الصيانة {ret.return_no}', 'success')
     except ValidationError as exc:

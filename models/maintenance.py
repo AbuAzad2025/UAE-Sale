@@ -71,7 +71,11 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
     warranty_period_start = db.Column(db.Date, nullable=True)
     warranty_period_end = db.Column(db.Date, nullable=True)
 
-    # المالي
+    # المالي - العملة
+    currency = db.Column(db.String(3), default='AED', nullable=False, index=True)  # عملة المعاملة
+    exchange_rate = db.Column(db.Numeric(15, 6), default=1, nullable=False)  # سعر الصرف مقابل عملة التينانت الأساسية
+    amount_base = db.Column(db.Numeric(15, 3), default=0, nullable=False)  # المبلغ المحول لعملة التينانت الأساسية
+
     payment_mode = db.Column(db.String(20), default='cash')  # cash/card/cheque/transfer/account
     deposit = db.Column(db.Numeric(15, 3), default=0)
     deposit_payment_method = db.Column(db.String(20), nullable=True)
@@ -84,6 +88,11 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
     total_amount = db.Column(db.Numeric(15, 3), default=0)
     paid_amount = db.Column(db.Numeric(15, 3), default=0)
     balance_due = db.Column(db.Numeric(15, 3), default=0)
+    subtotal_base = db.Column(db.Numeric(15, 3), default=0)  # المبلغ الفرعي بعملة الأساس
+    tax_amount_base = db.Column(db.Numeric(15, 3), default=0)  # الضريبة بعملة الأساس
+    total_amount_base = db.Column(db.Numeric(15, 3), default=0)  # الإجمالي بعملة الأساس
+    paid_amount_base = db.Column(db.Numeric(15, 3), default=0)  # المبلغ المسدد بعملة الأساس
+    balance_due_base = db.Column(db.Numeric(15, 3), default=0)  # الرصيد المستحق بعملة الأساس
 
     # تفاصيل التكلفة والسعر
     cost_price_total = db.Column(db.Numeric(15, 3), default=0)  # تكلفة القطع والخدمات الفعلية
@@ -173,6 +182,14 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
         self.total_amount = totals.total_amount
         self.balance_due = self.total_amount - Decimal(str(self.paid_amount or 0))
 
+        # تحويل المبالغ إلى عملة التينانت الأساسية
+        rate = D(str(self.exchange_rate or 1))
+        self.subtotal_base = (self.subtotal * rate).quantize(D('0.001'))
+        self.tax_amount_base = (self.tax_amount * rate).quantize(D('0.001'))
+        self.total_amount_base = (self.total_amount * rate).quantize(D('0.001'))
+        self.paid_amount_base = (self.paid_amount * rate).quantize(D('0.001'))
+        self.balance_due_base = (self.balance_due * rate).quantize(D('0.001'))
+
         # Actual cost of the work (analytic: the GL carries the inventory-backed
         # part; labour is tracked here because the payroll flow expenses wages
         # at payment time and has no accrual clearing path).
@@ -199,6 +216,10 @@ class MaintenanceOrderItem(db.Model):
     warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), nullable=True)
     quantity = db.Column(db.Numeric(15, 3), default=1)
     unit_price = db.Column(db.Numeric(15, 3), default=0)
+    # عملة البند (تيرث من الأمر إذا لم تُحدد)
+    currency = db.Column(db.String(3), nullable=True)
+    exchange_rate = db.Column(db.Numeric(15, 6), nullable=True)
+    amount_base = db.Column(db.Numeric(15, 3), nullable=True)  # السعر totale بعملة الأساس
     discount_percent = db.Column(db.Numeric(5, 2), default=0)
     discount_value = db.Column(db.Numeric(15, 3), default=0)
     line_discount_mode = db.Column(db.String(10), default='percent')  # percent/value
@@ -264,6 +285,10 @@ class MaintenanceOrderService(db.Model):
     service_name_ar = db.Column(db.String(200), nullable=True)
     unit_price = db.Column(db.Numeric(15, 3), default=0)
     duration_minutes = db.Column(db.Integer, default=0)
+    # عملة البند (تيرث من الأمر إذا لم تُحدد)
+    currency = db.Column(db.String(3), nullable=True)
+    exchange_rate = db.Column(db.Numeric(15, 6), nullable=True)
+    amount_base = db.Column(db.Numeric(15, 3), nullable=True)  # السعر totale بعملة الأساس
     discount_percent = db.Column(db.Numeric(5, 2), default=0)
     discount_value = db.Column(db.Numeric(15, 3), default=0)
     tax_rate = db.Column(db.Numeric(5, 2), default=0)
@@ -332,6 +357,10 @@ class MaintenanceReceipt(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     maintenance_order_id = db.Column(db.Integer, db.ForeignKey('maintenance_orders.id'), nullable=False, index=True)
     receipt_no = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    # عملة القبض
+    currency = db.Column(db.String(3), nullable=True)
+    exchange_rate = db.Column(db.Numeric(15, 6), nullable=True)
+    amount_base = db.Column(db.Numeric(15, 3), nullable=True)  # المبلغ المحول بعملة الأساس
     amount = db.Column(db.Numeric(15, 3), default=0)
     payment_method = db.Column(db.String(20), nullable=False)  # cash/card/cheque/transfer
     cashier_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -355,12 +384,21 @@ class MaintenanceInvoice(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     maintenance_order_id = db.Column(db.Integer, db.ForeignKey('maintenance_orders.id'), nullable=False, index=True, unique=True)
     invoice_no = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    # عملة الفاتورة
+    currency = db.Column(db.String(3), nullable=True)
+    exchange_rate = db.Column(db.Numeric(15, 6), nullable=True)
+    amount_base = db.Column(db.Numeric(15, 3), nullable=True)  # المبلغ الإجمالي بعملة الأساس
     subtotal = db.Column(db.Numeric(15, 3), default=0)
     discount_total = db.Column(db.Numeric(15, 3), default=0)
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     total_amount = db.Column(db.Numeric(15, 3), default=0)
     paid_amount = db.Column(db.Numeric(15, 3), default=0)
     balance_due = db.Column(db.Numeric(15, 3), default=0)
+    subtotal_base = db.Column(db.Numeric(15, 3), default=0)
+    tax_amount_base = db.Column(db.Numeric(15, 3), default=0)
+    total_amount_base = db.Column(db.Numeric(15, 3), default=0)
+    paid_amount_base = db.Column(db.Numeric(15, 3), default=0)
+    balance_due_base = db.Column(db.Numeric(15, 3), default=0)
     posted = db.Column(db.Boolean, default=False)
     posted_at = db.Column(db.DateTime, nullable=True)
     gl_posted = db.Column(db.Boolean, default=False)
@@ -379,9 +417,14 @@ class MaintenanceReturn(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     maintenance_order_id = db.Column(db.Integer, db.ForeignKey('maintenance_orders.id'), nullable=False, index=True)
     return_no = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    # عملة المرتجع
+    currency = db.Column(db.String(3), nullable=True)
+    exchange_rate = db.Column(db.Numeric(15, 6), nullable=True)
+    amount_base = db.Column(db.Numeric(15, 3), nullable=True)  # المبلغ المحول بعملة الأساس
     returned_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     reason = db.Column(db.Text, nullable=True)
     total_value = db.Column(db.Numeric(15, 3), default=0)
+    total_value_base = db.Column(db.Numeric(15, 3), default=0)
     posted = db.Column(db.Boolean, default=False)
     posted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -493,6 +536,10 @@ class MaintenanceSupplierPayment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=False, index=True)
     supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=False, index=True)
+    # عملة السداد
+    currency = db.Column(db.String(3), nullable=True)
+    exchange_rate = db.Column(db.Numeric(15, 6), nullable=True)
+    amount_base = db.Column(db.Numeric(15, 3), nullable=True)  # المبلغ المحول بعملة الأساس
     amount = db.Column(db.Numeric(15, 3), default=0)
     payment_method = db.Column(db.String(20), default='cash')
     reference_number = db.Column(db.String(50), nullable=True)
@@ -516,9 +563,14 @@ class MaintenanceCreditNote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     maintenance_order_id = db.Column(db.Integer, db.ForeignKey('maintenance_orders.id'), nullable=False, index=True)
     credit_note_no = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    # عملة إشعار الدائن
+    currency = db.Column(db.String(3), nullable=True)
+    exchange_rate = db.Column(db.Numeric(15, 6), nullable=True)
+    amount_base = db.Column(db.Numeric(15, 3), nullable=True)  # المبلغ المحول بعملة الأساس
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     reason = db.Column(db.Text, nullable=True)
     total_value = db.Column(db.Numeric(15, 3), default=0)
+    total_value_base = db.Column(db.Numeric(15, 3), default=0)
     posted = db.Column(db.Boolean, default=False)
     posted_at = db.Column(db.DateTime, nullable=True)
     gl_posted = db.Column(db.Boolean, default=False)

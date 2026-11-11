@@ -188,7 +188,7 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
         self.tax_amount_base = (self.tax_amount * rate).quantize(Decimal('0.001'))
         self.total_amount_base = (self.total_amount * rate).quantize(Decimal('0.001'))
         self.paid_amount_base = (self.paid_amount * rate).quantize(Decimal('0.001'))
-        self.balance_due_base = (self.balance_due * rate).quantize(Decimal('0.001'))
+        self.balance_due_base = (self.total_amount_base - self.paid_amount_base).quantize(Decimal('0.001'))
 
         # Actual cost of the work (analytic: the GL carries the inventory-backed
         # part; labour is tracked here because the payroll flow expenses wages

@@ -261,11 +261,13 @@ def post_maintenance_invoice(order, invoice, *, created_by=None, entry_date=None
     _assert_not_posted(REFERENCE_INVOICE, invoice.id,
                        'سبق ترحيل فاتورة هذا الأمر — لا يمكن الترحيل مرتين')
     accounts = maintenance_accounts(order.tenant_id)
-    # استخدام المبلغ المحول لعملة الأساس إذا كان متاحاً، وإلا استخدام المبلغ محلياً
-    net_revenue = D(str(getattr(invoice, 'total_amount_base', None) or 
-                        order_net_revenue(order))).quantize(D('0.001'))
-    vat = D(str(getattr(invoice, 'tax_amount_base', None) or 
-                order.tax_amount or 0)).quantize(D('0.001'))
+    # صافي الإيراد = الإجمالي - الضريبة (بعملة الأساس إذا توفرت)
+    total_base = D(str(getattr(invoice, 'total_amount_base', None) or 
+                       order.total_amount or 0)).quantize(D('0.001'))
+    tax_base = D(str(getattr(invoice, 'tax_amount_base', None) or 
+                     order.tax_amount or 0)).quantize(D('0.001'))
+    net_revenue = (total_base - tax_base).quantize(D('0.001'))
+    vat = tax_base
     debit_account = accounts['ar']
     lines = build_invoice_lines(net_revenue, vat, debit_account, accounts)
     entry = _post(
@@ -405,10 +407,13 @@ def post_maintenance_credit_note(order, credit_note, *, created_by=None,
     _assert_not_posted(REFERENCE_CREDIT_NOTE, credit_note.id,
                        'سبق ترحيل إشعار الدائن لهذا الأمر')
     accounts = maintenance_accounts(order.tenant_id)
-    net_revenue = D(str(getattr(credit_note, 'amount_base', None) or 
-                        order_net_revenue(order))).quantize(D('0.001'))
-    vat = D(str(getattr(credit_note, 'amount_base', None) and 
-                order.tax_amount or 0)).quantize(D('0.001'))
+    # صافي الإيراد المقلوب = الإجمالي - الضريبة (بعملة الأساس إذا توفرت)
+    total_base = D(str(getattr(credit_note, 'amount_base', None) or 
+                       order_net_revenue(order))).quantize(D('0.001'))
+    tax_base = D(str(getattr(credit_note, 'amount_base', None) and 
+                     order.tax_amount or 0)).quantize(D('0.001'))
+    net_revenue = (total_base - tax_base).quantize(D('0.001'))
+    vat = tax_base
     debit_account = accounts['ar']
     lines = build_credit_note_lines(net_revenue, vat, debit_account, accounts)
     entry = _post(

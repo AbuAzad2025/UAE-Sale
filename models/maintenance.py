@@ -183,12 +183,12 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
         self.balance_due = self.total_amount - Decimal(str(self.paid_amount or 0))
 
         # تحويل المبالغ إلى عملة التينانت الأساسية
-        rate = D(str(self.exchange_rate or 1))
-        self.subtotal_base = (self.subtotal * rate).quantize(D('0.001'))
-        self.tax_amount_base = (self.tax_amount * rate).quantize(D('0.001'))
-        self.total_amount_base = (self.total_amount * rate).quantize(D('0.001'))
-        self.paid_amount_base = (self.paid_amount * rate).quantize(D('0.001'))
-        self.balance_due_base = (self.balance_due * rate).quantize(D('0.001'))
+        rate = Decimal(str(self.exchange_rate or 1))
+        self.subtotal_base = (self.subtotal * rate).quantize(Decimal('0.001'))
+        self.tax_amount_base = (self.tax_amount * rate).quantize(Decimal('0.001'))
+        self.total_amount_base = (self.total_amount * rate).quantize(Decimal('0.001'))
+        self.paid_amount_base = (self.paid_amount * rate).quantize(Decimal('0.001'))
+        self.balance_due_base = (self.balance_due * rate).quantize(Decimal('0.001'))
 
         # Actual cost of the work (analytic: the GL carries the inventory-backed
         # part; labour is tracked here because the payroll flow expenses wages

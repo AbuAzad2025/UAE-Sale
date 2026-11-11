@@ -177,6 +177,10 @@ def login():
 
         create_audit_log('login', 'users', user.id)
 
+        # Force password change on first login if required
+        if getattr(user, 'must_change_password', False):
+            return redirect(url_for('users.change_password'))
+
         next_page = request.args.get('next')
         # Only relative paths; reject protocol-relative '//evil.com' open redirects
         if next_page and next_page.startswith('/') and not next_page.startswith('//'):

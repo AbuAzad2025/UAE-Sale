@@ -263,6 +263,7 @@ class UserService:
             raise ValidationError('كلمة المرور الجديدة يجب أن تختلف عن الحالية.')
         _check_password(new_password)
         user.set_password(new_password)
+        user.must_change_password = False
         db.session.commit()
         return user
 

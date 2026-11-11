@@ -12,6 +12,7 @@ from services.maintenance_service import (
     create_maintenance_order, change_status, add_order_item, add_order_service,
     apply_order_discount, warranty_action, create_receipt, create_maintenance_invoice,
     create_maintenance_return, get_orders, get_maintenance_cost_analysis,
+    get_overdue_orders,
     quality_check, set_completion_time, send_customer_notification,
     create_maintenance_purchase, receive_maintenance_purchase, pay_maintenance_supplier,
     ALLOWED_TRANSITIONS, BILLABLE_STATUSES,
@@ -102,10 +103,11 @@ def list_orders():
     except ValidationError as exc:
         _flash_error(exc)
         return redirect(url_for('maintenance.list_orders'))
+    overdue = get_overdue_orders(_tenant_id())
     return render_template('maintenance/list.html',
                            orders=pagination.items, pagination=pagination,
                            status=status, date_from=date_from, date_to=date_to,
-                           warranty=warranty)
+                           warranty=warranty, overdue=overdue)
 
 
 # ---------------------------------------------------------------------------

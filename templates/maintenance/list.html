@@ -2,7 +2,18 @@
 {% block title %}أوامر الصيانة{% endblock %}
 {% block page_title %}<i class="fas fa-tools mr-2"></i>أوامر الصيانة{% endblock %}
 {% block content %}
-<div class="alert alert-warning" role="alert">وحدة الصيانة قيد التدقيق وليست للاستخدام الفعلي. العمليات المالية والمخزنية والضمان والإغلاق موقوفة مؤقتاً.</div>
+<div class="alert alert-info" role="alert">الاستقبال وتغيير الحالة وإصدار الفاتورة والتحصيل مفعّلة. المرتجعات مسموحة قبل الفاتورة فقط.</div>
+{% if overdue %}
+<div class="alert alert-danger" role="alert">
+  <i class="fas fa-exclamation-triangle mr-1"></i>
+  {{ overdue|length }} أمر تجاوز مدة المتابعة (أكثر من 7 أيام بدون إغلاق).
+  <ul class="mb-0 mt-2">
+    {% for order in overdue[:10] %}
+    <li><a href="{{ url_for('maintenance.view_order', id=order.id) }}">{{ order.order_no }}</a> — {{ order.customer.name if order.customer else '-' }} ({{ order.status }})</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="mb-0">أوامر الصيانة</h5>

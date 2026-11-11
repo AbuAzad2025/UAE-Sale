@@ -339,6 +339,7 @@ class GLService:
             ("6950", "مصروفات بنكية", "Bank Charges", "expense", "6000", False, 1),
             ("6960", "مديونية مشطوبة", "Bad debt expense", "expense", "6000", False, 1),
             ("6990", "مصروفات متنوعة", "Miscellaneous Expenses", "expense", "6000", False, 1),
+            ("6401", "مصروف الضمان", "Warranty Expense", "expense", "6400", False, 2),
             # Maintenance module accounts (M2)
             ("1131", "ذمم الصيانة مدينة", "Maintenance AR", "asset", "1130", False, 3),
             ("2111", "ذمم الصيانة دائنة", "Maintenance AP", "liability", "2110", False, 3),

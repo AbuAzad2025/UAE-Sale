@@ -25,26 +25,26 @@
     <div class="row g-3 mb-4">
       <div class="col-md-3">
         <div class="bg-primary text-white p-3 rounded">
-          <h6>الإيرادات الإجمالية</h6>
-          <h2>{{ "{:,.3f}".format(total_revenue|float) }}</h2>
+          <h6>الإيرادات الإجمالية (صافي من الضريبة)</h6>
+          <h2>{{ "{:,.3f}".format(total_revenue) }}</h2>
         </div>
       </div>
       <div class="col-md-3">
         <div class="bg-danger text-white p-3 rounded">
           <h6>التكلفة الإجمالية</h6>
-          <h2>{{ "{:,.3f}".format(total_cost|float) }}</h2>
+          <h2>{{ "{:,.3f}".format(total_cost) }}</h2>
         </div>
       </div>
       <div class="col-md-3">
         <div class="bg-success text-white p-3 rounded">
           <h6>الربح الإجمالي</h6>
-          <h2>{{ "{:,.3f}".format(gross_profit|float) }}</h2>
+          <h2>{{ "{:,.3f}".format(gross_profit) }}</h2>
         </div>
       </div>
       <div class="col-md-3">
         <div class="bg-info text-white p-3 rounded">
           <h6>هامش الربح</h6>
-          <h2>{{ "%.1f"|format(profit_margin|float) }}%</h2>
+          <h2>{{ "%.1f"|format(profit_margin) }}%</h2>
         </div>
       </div>
     </div>
@@ -53,25 +53,25 @@
       <div class="col-md-3">
         <div class="p-3 rounded border">
           <h6>الخصم الإجمالي</h6>
-          <p class="mb-0">{{ "{:,.3f}".format(total_discount|float) }}</p>
+          <p class="mb-0">{{ "{:,.3f}".format(total_discount) }}</p>
         </div>
       </div>
       <div class="col-md-3">
         <div class="p-3 rounded border">
           <h6>الضريبة الإجمالية</h6>
-          <p class="mb-0">{{ "{:,.3f}".format(total_tax|float) }}</p>
+          <p class="mb-0">{{ "{:,.3f}".format(total_tax) }}</p>
         </div>
       </div>
       <div class="col-md-3">
         <div class="p-3 rounded border">
           <h6>المدفوع</h6>
-          <p class="mb-0">{{ "{:,.3f}".format(total_paid|float) }}</p>
+          <p class="mb-0">{{ "{:,.3f}".format(total_paid) }}</p>
         </div>
       </div>
       <div class="col-md-3">
         <div class="p-3 rounded border">
           <h6>عدد الأوامر</h6>
-          <p class="mb-0">{{ orders|length }}</p>
+          <p class="mb-0">{{ total_orders }}</p>
         </div>
       </div>
     </div>
@@ -92,7 +92,7 @@
           <tr>
             <td>المهندس #{{ eng_id }}</td>
             <td class="text-right">{{ stats.orders }}</td>
-            <td class="text-right">{{ "{:,.3f}".format(stats.revenue|float) }}</td>
+            <td class="text-right">{{ "{:,.3f}".format(stats.revenue) }}</td>
           </tr>
           {% else %}
           <tr><td colspan="3" class="text-center text-muted">لا توجد بيانات</td></tr>
@@ -138,7 +138,9 @@
           <th>رقم الأمر</th>
           <th>العميل</th>
           <th>التاريخ</th>
-          <th class="text-right">الإيرادات</th>
+          <th class="text-right">الإيرادات (صافي)</th>
+          <th class="text-right">تكلفة القطع</th>
+          <th class="text-right">تكلفة العمل</th>
           <th class="text-right">التكلفة</th>
           <th class="text-right">الربح</th>
           <th class="text-right">الربح %</th>
@@ -151,10 +153,12 @@
         <td><a href="{{ url_for('maintenance.view_order', id=o.id) }}">{{ o.order_no }}</a></td>
         <td>{{ o.customer.name if o.customer else '-' }}</td>
         <td>{{ o.received_at.strftime('%Y-%m-%d') if o.received_at else '-' }}</td>
-        <td class="text-right">{{ "{:,.3f}".format(o.total_amount|float) }}</td>
-        <td class="text-right">{{ "{:,.3f}".format(d.parts_cost|float) }}</td>
-        <td class="text-right">{{ "{:,.3f}".format(d.profit|float) }}</td>
-        <td class="text-right">{{ "%.1f"|format(d.profit_pct|float) }}%</td>
+        <td class="text-right">{{ "{:,.3f}".format(d.revenue) }}</td>
+        <td class="text-right">{{ "{:,.3f}".format(d.parts_cost) }}</td>
+        <td class="text-right">{{ "{:,.3f}".format(d.labor_cost) }}</td>
+        <td class="text-right">{{ "{:,.3f}".format(d.cost) }}</td>
+        <td class="text-right">{{ "{:,.3f}".format(d.profit) }}</td>
+        <td class="text-right">{{ "%.1f"|format(d.profit_pct) }}%</td>
       </tr>
       {% else %}
       <tr><td colspan="7" class="text-center text-muted">لا توجد أوامر</td></tr>

@@ -2,10 +2,13 @@
 {% block title %}سجل الأجهزة{% endblock %}
 {% block page_title %}<i class="fas fa-mobile-alt mr-2"></i>سجل الأجهزة/workshop{% endblock %}
 {% block content %}
+<div class="alert alert-info">سجل الأجهزة يوثّق الكفالة. إدخال سجل جديد يتطلب صلاحية إعدادات الصيانة.</div>
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
-    <h5 class="mb-0">سجل الأجهزة/workshop</h5>
+    <h5 class="mb-0">سجل الأجهزة</h5>
+    {% if current_user.has_permission('maintenance_settings') %}
     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addDeviceModal"><i class="fas fa-plus mr-1"></i>جهاز جديد</button>
+    {% endif %}
   </div>
   <div class="card-body">
     <div class="table-responsive">
@@ -27,7 +30,7 @@
         <tbody>
         {% for d in devices %}
           <tr>
-            <td>{{ d.customer.name if d.customer else '-' }}</td>
+            <td>{{ d.customer.name if d.customer and d.customer.tenant_id == d.tenant_id else '-' }}</td>
             <td>{{ d.brand or '-' }}</td>
             <td>{{ d.model or '-' }}</td>
             <td>{{ d.serial_number or '-' }}</td>
@@ -47,11 +50,13 @@
   </div>
 </div>
 
+{% if current_user.has_permission('maintenance_settings') %}
 <!-- Add Device Modal -->
 <div class="modal fade" id="addDeviceModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-header">
           <h5 class="modal-title">إضافة جهاز للسجل</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -132,4 +137,5 @@
     </div>
   </div>
 </div>
+{% endif %}
 {% endblock %}

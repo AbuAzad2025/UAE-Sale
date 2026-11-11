@@ -2,10 +2,13 @@
 {% block title %}الخدمات الثابتة{% endblock %}
 {% block page_title %}<i class="fas fa-list-ul mr-2"></i>الخدمات الثابتة للسعر{% endblock %}
 {% block content %}
+<div class="alert alert-info">الخدمات الثابتة السعر مرجع لأسعار الصيانة؛ يمكن تطبيق سعرها على أمر الصيانة أثناء التنفيذ.</div>
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="mb-0">الخدمات الثابتة للسعر</h5>
+    {% if current_user.has_permission('maintenance_settings') %}
     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addServiceModal"><i class="fas fa-plus mr-1"></i>خدمة جديدة</button>
+    {% endif %}
   </div>
   <div class="card-body">
     <div class="table-responsive">
@@ -31,7 +34,7 @@
             <td>{{ sv.name }}</td>
             <td>{{ sv.name_ar or '-' }}</td>
             <td>{{ sv.category }}</td>
-            <td>{{ "{:,.2f}".format(sv.fixed_price|float) }}</td>
+            <td>{{ "{:,.3f}".format(sv.fixed_price or 0) }}</td>
             <td>{{ sv.duration_minutes }}</td>
             <td>{{ sv.tax_rate }}</td>
             <td>{{ 'نعم' if sv.requires_parts else 'لا' }}</td>
@@ -47,11 +50,13 @@
   </div>
 </div>
 
+{% if current_user.has_permission('maintenance_settings') %}
 <!-- Add Service Modal -->
 <div class="modal fade" id="addServiceModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-header">
           <h5 class="modal-title">إضافة خدمة ثابتة</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -116,4 +121,5 @@
     </div>
   </div>
 </div>
+{% endif %}
 {% endblock %}

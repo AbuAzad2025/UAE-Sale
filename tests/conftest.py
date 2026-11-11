@@ -24,12 +24,40 @@ os.environ.setdefault('CACHE_TYPE', 'flask_caching.backends.SimpleCache')
 if 'DATABASE_URL' not in os.environ:
     os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
 
+# This fixture resets PostgreSQL's entire public schema. Refuse the development
+# database outright, and require an explicit opt-in for any other PostgreSQL
+# database BEFORE importing/creating the Flask app (startup can migrate data).
+_database_url = os.environ.get('DATABASE_URL', '')
+IS_POSTGRES = _database_url.startswith(('postgresql', 'postgres://'))
+if _database_url.startswith('sqlite'):
+    from sqlalchemy.engine import make_url
+
+    _sqlite_database = make_url(_database_url).database
+    if _sqlite_database not in (None, '', ':memory:') and os.environ.get('ALLOW_DESTRUCTIVE_SQLITE_TESTS') != '1':
+        raise pytest.UsageError(
+            'SQLite test fixtures drop tables; set ALLOW_DESTRUCTIVE_SQLITE_TESTS=1 '
+            'only for a disposable database file'
+        )
+if IS_POSTGRES:
+    from sqlalchemy.engine import make_url
+
+    _parsed_test_url = make_url(_database_url.replace('postgres://', 'postgresql://', 1))
+    # libpq query parameters can override the URL path or use a service file;
+    # don't permit either to disguise the database the fixture will destroy.
+    if not _parsed_test_url.database or {'dbname', 'service'} & set(_parsed_test_url.query):
+        raise pytest.UsageError('Destructive PostgreSQL tests require an explicit, unambiguous database name')
+    _test_database_name = _parsed_test_url.database
+    if _test_database_name.casefold() == 'erp-lite':
+        raise pytest.UsageError('Refusing destructive PostgreSQL tests against ERP-lite')
+    if os.environ.get('ALLOW_DESTRUCTIVE_POSTGRES_TESTS') != '1':
+        raise pytest.UsageError(
+            'PostgreSQL test fixtures drop schema public; set '
+            'ALLOW_DESTRUCTIVE_POSTGRES_TESTS=1 only for a disposable database'
+        )
+
 from app import create_app  # noqa: E402
 from extensions import db as _db  # noqa: E402
 from models import User, Role, Permission, Customer, Product, ProductCategory, Sale, SaleLine  # noqa: E402
-
-IS_POSTGRES = os.environ.get('DATABASE_URL', '').startswith('postgresql')
-
 
 @pytest.fixture(scope='session')
 def app():

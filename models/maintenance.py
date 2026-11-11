@@ -2,10 +2,17 @@
 Maintenance Module Models — نماذج وحدة الصيانة
 """
 from datetime import date, datetime, time, timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
+from sqlalchemy import DDL, event
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
 from utils.helpers import generate_number
+
+
+def _effective_quantity(quantity, returned_quantity):
+    """The quantity still on the order after the returned parts/services."""
+    effective = Decimal(str(quantity or 0)) - Decimal(str(returned_quantity or 0))
+    return effective if effective > 0 else Decimal('0')
 
 
 # ---------------------------------------------------------------------------
@@ -77,6 +84,15 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
     paid_amount = db.Column(db.Numeric(15, 3), default=0)
     balance_due = db.Column(db.Numeric(15, 3), default=0)
 
+    # تفاصيل التكلفة والسعر
+    cost_price_total = db.Column(db.Numeric(15, 3), default=0)  # تكلفة القطع والخدمات الفعلية
+    selling_price_total = db.Column(db.Numeric(15, 3), default=0)  # سعر البيع للعميل
+    technician_notes = db.Column(db.Text, nullable=True)  # ملاحظات المهندس الداخلية
+    quality_check_passed = db.Column(db.Boolean, default=False)  # فحص جودة مكتمل
+    quality_check_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    quality_check_at = db.Column(db.DateTime, nullable=True)
+    completion_time_hours = db.Column(db.Numeric(10, 2), nullable=True)  # وقت الإكمال بالساعات
+
     # الموافقات والتدقيق
     is_archived = db.Column(db.Boolean, default=False)
     archived_at = db.Column(db.DateTime, nullable=True)
@@ -99,18 +115,73 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
     returns = db.relationship('MaintenanceReturn', back_populates='order', cascade='all, delete-orphan')
 
     def calculate_totals(self):
-        self.subtotal = sum((Decimal(str(it.line_total)) for it in self.items), Decimal('0')) + \
-                        sum((Decimal(str(sv.line_total)) for sv in self.services), Decimal('0'))
-        disc_val = Decimal(str(self.discount_total_value or 0))
-        disc_pct = Decimal(str(self.discount_total_percent or 0))
-        if disc_pct > 0:
-            self.subtotal = self.subtotal * (1 - disc_pct / 100)
-        rate = Decimal(str(self.tax_rate or 0)) if hasattr(self, 'tax_rate') else Decimal('0')
-        # tax handled at line level; aggregate here
-        self.tax_amount = sum((Decimal(str(it.tax_amount or 0)) for it in self.items), Decimal('0')) + \
-                          sum((Decimal(str(sv.tax_amount or 0)) for sv in self.services), Decimal('0'))
-        self.total_amount = self.subtotal + self.tax_amount - disc_val
+        """Recompute every amount of the document from the pricing engine.
+
+        Field meaning (kept consistent with services/maintenance_pricing.py):
+
+        * ``subtotal``             price basis of the lines after their own
+                                   discounts, before the order-level discount
+        * ``discount_line_total``  sum of the line discounts
+        * ``discount_total_value`` the applied order-level discount (money)
+        * ``tax_amount``           total VAT
+        * ``total_amount``         net of VAT plus VAT, after all discounts
+
+        The net revenue of the document is ``total_amount - tax_amount``.
+        """
+        from services.maintenance_pricing import PriceLine, calculate_maintenance_pricing
+
+        price_lines = []
+        for item in self.items:
+            price_lines.append(PriceLine(
+                quantity=_effective_quantity(item.quantity, item.returned_quantity),
+                unit_price=item.unit_price,
+                tax_rate=item.tax_rate, tax_treatment='standard',
+                discount_mode=item.line_discount_mode or 'percent',
+                discount_percent=item.discount_percent, discount_value=item.discount_value,
+            ))
+        for service in self.services:
+            price_lines.append(PriceLine(
+                quantity=_effective_quantity(service.quantity, service.returned_quantity),
+                unit_price=service.unit_price,
+                tax_rate=service.tax_rate, tax_treatment='standard',
+                discount_mode='percent',
+                discount_percent=service.discount_percent,
+                discount_value=service.discount_value,
+            ))
+
+        percent = Decimal(str(self.discount_total_percent or 0))
+        # When a percentage is applied, the stored money amount is the derived
+        # one, so it must not be sent to the engine as a second discount.
+        value = Decimal(str(self.discount_total_value or 0)) if percent <= 0 else Decimal('0')
+        totals = calculate_maintenance_pricing(
+            price_lines,
+            tax_inclusive=bool(self.tax_inclusive),
+            discount_percent=percent,
+            discount_value=value,
+        )
+
+        for line, calculated in zip(list(self.items) + list(self.services), totals.lines):
+            line.tax_amount = calculated.tax_amount
+            line.line_total = calculated.total_amount
+
+        self.subtotal = totals.price_basis_subtotal
+        self.discount_line_total = totals.line_discount
+        self.discount_total_value = totals.order_discount
+        self.tax_amount = totals.tax_amount
+        self.total_amount = totals.total_amount
         self.balance_due = self.total_amount - Decimal(str(self.paid_amount or 0))
+
+        # Actual cost of the work (analytic: the GL carries the inventory-backed
+        # part; labour is tracked here because the payroll flow expenses wages
+        # at payment time and has no accrual clearing path).
+        parts_cost = sum((Decimal(str(it.cost_price or 0))
+                          * _effective_quantity(it.quantity, it.returned_quantity)
+                          for it in self.items), Decimal('0'))
+        labor_cost = sum((Decimal(str(sv.cost_price or 0))
+                          * _effective_quantity(sv.quantity, sv.returned_quantity)
+                          for sv in self.services), Decimal('0'))
+        self.cost_price_total = parts_cost + labor_cost
+        self.selling_price_total = self.total_amount
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +204,9 @@ class MaintenanceOrderItem(db.Model):
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     line_total = db.Column(db.Numeric(15, 3), default=0)
     movement_id = db.Column(db.Integer, db.ForeignKey('stock_movements.id'), nullable=True)
+    cost_price = db.Column(db.Numeric(15, 3), default=0)  # التكلفة الفعلية للقطعة من المخزون
+    cost_source = db.Column(db.String(50), default='inventory')  # inventory/supplier/manual
+    returned_quantity = db.Column(db.Numeric(15, 3), default=0)  # الكمية المرتجعة إلى المخزون
 
     order = db.relationship('MaintenanceOrder', back_populates='items')
     product = db.relationship('Product')
@@ -140,11 +214,19 @@ class MaintenanceOrderItem(db.Model):
     movement = db.relationship('StockMovement')
 
     def calculate_line_total(self):
+        """Line amounts: net after the line discount, VAT, and the gross total.
+
+        The stored ``line_total`` is GROSS (net + VAT) and ``tax_amount`` is
+        the VAT part of it, so the net revenue of a line is
+        ``line_total - tax_amount``. Exclusive prices add VAT on top; an
+        inclusive price is de-composed into net and VAT.
+        """
         qty = Decimal(str(self.quantity or 0))
         price = Decimal(str(self.unit_price or 0))
         disc_pct = Decimal(str(self.discount_percent or 0))
         disc_val = Decimal(str(self.discount_value or 0))
         rate = Decimal(str(self.tax_rate or 0))
+        inclusive = bool(getattr(self.order, 'tax_inclusive', False))
 
         base = qty * price
         if self.line_discount_mode == 'percent':
@@ -153,8 +235,17 @@ class MaintenanceOrderItem(db.Model):
             base = base - disc_val
         if base < 0:
             base = Decimal('0')
-        self.tax_amount = (base * rate / 100).quantize(Decimal('0.001'))
-        self.line_total = (base + self.tax_amount).quantize(Decimal('0.001'))
+        base = base.quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
+
+        if inclusive and rate > 0:
+            divisor = Decimal('1') + rate / Decimal('100')
+            net = (base / divisor).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
+            tax = base - net
+        else:
+            net = base
+            tax = (base * rate / Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        self.tax_amount = tax
+        self.line_total = (net + tax).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
 
 
 # ---------------------------------------------------------------------------
@@ -177,23 +268,37 @@ class MaintenanceOrderService(db.Model):
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     line_total = db.Column(db.Numeric(15, 3), default=0)
     engineer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    cost_price = db.Column(db.Numeric(15, 3), default=0)  # تكلفة الخدمة الفعلية (راتب المهندس/المورد)
+    cost_source = db.Column(db.String(50), default='labor')  # labor/supplier/manual
+    quantity = db.Column(db.Numeric(15, 3), default=1)
+    returned_quantity = db.Column(db.Numeric(15, 3), default=0)
 
     order = db.relationship('MaintenanceOrder', back_populates='services')
     engineer = db.relationship('User', foreign_keys=[engineer_id])
 
     def calculate_line_total(self):
-        qty = Decimal('1')
+        """Service line amounts: net after the line discount, VAT, gross total."""
+        qty = Decimal(str(self.quantity or 1))
         price = Decimal(str(self.unit_price or 0))
         disc_pct = Decimal(str(self.discount_percent or 0))
         disc_val = Decimal(str(self.discount_value or 0))
         rate = Decimal(str(self.tax_rate or 0))
+        inclusive = bool(getattr(self.order, 'tax_inclusive', False))
 
-        base = qty * price
-        base = base * (1 - disc_pct / 100) - disc_val
+        base = qty * price * (1 - disc_pct / 100) - disc_val
         if base < 0:
             base = Decimal('0')
-        self.tax_amount = (base * rate / 100).quantize(Decimal('0.001'))
-        self.line_total = (base + self.tax_amount).quantize(Decimal('0.001'))
+        base = base.quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
+
+        if inclusive and rate > 0:
+            divisor = Decimal('1') + rate / Decimal('100')
+            net = (base / divisor).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
+            tax = base - net
+        else:
+            net = base
+            tax = (base * rate / Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        self.tax_amount = tax
+        self.line_total = (net + tax).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
 
 
 # ---------------------------------------------------------------------------
@@ -377,7 +482,30 @@ class MaintenanceWarrantyAudit(db.Model):
 
 
 # ---------------------------------------------------------------------------
-# 12. سجل الأجهزة
+# 13. سجل مدفوعات ذمم الصيانة للموردين
+# ---------------------------------------------------------------------------
+class MaintenanceSupplierPayment(db.Model):
+    """سداد ذمم الصيانة دائنة لمورد قطع"""
+    __tablename__ = 'maintenance_supplier_payments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=False, index=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=False, index=True)
+    amount = db.Column(db.Numeric(15, 3), default=0)
+    payment_method = db.Column(db.String(20), default='cash')
+    reference_number = db.Column(db.String(50), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    posted = db.Column(db.Boolean, default=False)
+    posted_at = db.Column(db.DateTime, nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    supplier = db.relationship('Supplier')
+    user = db.relationship('User')
+
+
+# ---------------------------------------------------------------------------
+# 14. سجل الأجهزة
 # ---------------------------------------------------------------------------
 class MaintenanceDeviceRegistry(db.Model):
     """سجل أجهزة العملاء"""
@@ -400,3 +528,26 @@ class MaintenanceDeviceRegistry(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
                            onupdate=lambda: datetime.now(timezone.utc))
+
+    customer = db.relationship('Customer')
+
+
+def _reject_audit_mutation(mapper, connection, target):
+    """An audit record must be corrected by appending, never edited or deleted."""
+    raise ValueError('Maintenance audit records are append-only')
+
+
+for _audit_model in (MaintenanceOrderStatusLog, MaintenanceWarrantyAudit):
+    event.listen(_audit_model, 'before_update', _reject_audit_mutation)
+    event.listen(_audit_model, 'before_delete', _reject_audit_mutation)
+
+    # Local SQLite testing uses create_all instead of Alembic. Install matching
+    # database guards there too; PostgreSQL gets its triggers via migration b33.
+    for _action in ('UPDATE', 'DELETE'):
+        _trigger = f'trg_{_audit_model.__tablename__}_{_action.lower()}_b33'
+        _ddl = DDL(
+            f'CREATE TRIGGER IF NOT EXISTS {_trigger} BEFORE {_action} '
+            f'ON {_audit_model.__tablename__} BEGIN '
+            "SELECT RAISE(ABORT, 'Maintenance audit records are append-only'); END"
+        )
+        event.listen(_audit_model.__table__, 'after_create', _ddl.execute_if(dialect='sqlite'))

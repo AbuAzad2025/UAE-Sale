@@ -79,6 +79,13 @@ class AccountRole(str, Enum):
     MISC_EXPENSE = 'MISC_EXPENSE'
     BAD_DEBT_EXPENSE = 'BAD_DEBT_EXPENSE'
 
+    # Maintenance module
+    MAINTENANCE_AR = 'MAINTENANCE_AR'
+    MAINTENANCE_AP = 'MAINTENANCE_AP'
+    MAINTENANCE_REVENUE = 'MAINTENANCE_REVENUE'
+    MAINTENANCE_COGS = 'MAINTENANCE_COGS'
+    WARRANTY_EXPENSE = 'WARRANTY_EXPENSE'
+
 
 # Fallback defaults == today's literal codes (zero behavior change).
 DEFAULT_ROLE_MAP = {
@@ -132,6 +139,11 @@ DEFAULT_ROLE_MAP = {
     AccountRole.BANK_CHARGES.value: '6950',
     AccountRole.MISC_EXPENSE.value: '6990',
     AccountRole.BAD_DEBT_EXPENSE.value: '6960',
+    AccountRole.MAINTENANCE_AR.value: '1131',
+    AccountRole.MAINTENANCE_AP.value: '2111',
+    AccountRole.MAINTENANCE_REVENUE.value: '4210',
+    AccountRole.MAINTENANCE_COGS.value: '5101',
+    AccountRole.WARRANTY_EXPENSE.value: '6401',
 }
 
 GLOBAL_MAP_KEY = 'gl_role_map'

@@ -201,7 +201,30 @@ flask db current
 
 ---
 
-## 5. إنشاء حساب المالك
+## 5. وحدة الصيانة (Maintenance Module)
+
+عند إنشاء تينانت جديد من لوحة المالك (`/owner/tenants/new`):
+
+- يُنشأ تلقائياً 13 دور و13 مستخدم افتراضي (7 عام + 6 صيانة إذا كان `enable_maintenance` مفعلاً)
+- كل مستخدم باسم `{تغنيت_السبل}_مسمى_الدور` (مثال: `garageA_maintenance_reception`)
+- كل مستخدم بكلمة مرور مؤقتة `Test-password-123!` ويجب تغييرها عند أول تسجيل دخول
+- إذا كان `enable_maintenance=False`، لن تُنشأ أدوار الصيانة لهذا التينانت
+- يمكن تغيير `enable_maintenance` لاحقًا من صفحة تعديل التينانت
+
+### creds الافتراضية لكل دور صيانة
+
+| الدور | اسم المستخدم | الصلاحيات |
+|-------|-------------|-----------|
+| استقبال | `{slug}_maintenance_reception` | view + receive |
+| مهندس | `{slug}_maintenance_engineer` | view + work |
+| صندوق | `{slug}_maintenance_cashier` | view + cashier |
+| إغلاق | `{slug}_maintenance_closer` | view + close |
+| خصم | `{slug}_maintenance_discount` | view + discount |
+| إعدادات | `{slug}_maintenance_settings` | view + purchase + settings |
+
+---
+
+## 6. إنشاء حساب المالك
 
 يُنشأ المالك تلقائياً عند أول تشغيل باستخدام `OWNER_PASSWORD`:
 

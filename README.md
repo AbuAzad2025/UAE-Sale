@@ -47,6 +47,7 @@ Azad ERP is a comprehensive business management system designed for small to med
 | **Customers** | Customer management, credit limits, payment terms, AR aging |
 | **Suppliers** | Supplier management, payment terms, AP aging |
 | **Products** | Product catalog, categories, pricing, cost tracking |
+| **Maintenance** | Reception, diagnosis/repair, parts/services, warranty, discounts, invoices/receipts/printing, returns, accounting, cost reports |
 
 ### Advanced Features
 
@@ -68,14 +69,36 @@ Azad ERP is a comprehensive business management system designed for small to med
 | **WhatsApp Integration** | Customer communication via WhatsApp |
 | **Backup & Restore** | Automated daily backups with restore capability |
 
+### Maintenance Module Features
+
+| Feature | Description | Permissions |
+|---------|-------------|-------------|
+| **Reception** | Create maintenance orders, device intake, customer info | `maintenance_receive` |
+| **Diagnosis & Repair** | Add parts (at actual cost), services (labor tracking), status changes | `maintenance_work` |
+| **Parts/Services Issue** | Post parts issue at actual moving-average cost to GL | `maintenance_work` |
+| **Discounts** | Order-level discount with cap enforcement | `maintenance_discount` |
+| **Warranty** | Warranty status tracking, warranty expense reclassification (6401) | `maintenance_work` |
+| **Invoices** | Post invoice: revenue (net), VAT, labor cost accrual to Salaries Payable | `maintenance_close` |
+| **Receipts** | Cash/bank collection, deposit receipts with GL posting | `maintenance_cashier` |
+| **Printing** | Print receipt, invoice, intake with historical record banners | `maintenance_view` |
+| **Returns** | Return parts after billing with credit note reversal | `maintenance_close` |
+| **Credit Notes** | Reverse invoice revenue/VAT, unblock returns after billing | `maintenance_close` |
+| **Cost Report** | Actual parts cost + labor cost vs net revenue analysis | `maintenance_view` |
+| **Purchases** | Purchase parts from supplier, goods receipt, supplier payment | `maintenance_purchase` |
+| **Device Registry** | Device serial numbers, warranty eligibility checks | `maintenance_settings` |
+| **Quality Check** | Quality check recording, completion time tracking | `maintenance_work` |
+
 ### Financial Integrity Guarantees
 
 - ✅ **Double-entry accounting**: Every transaction posts balanced entries
 - ✅ **Pre-write guards**: COGS required, stock availability checked
 - ✅ **Fiscal period enforcement**: No posting to closed periods
 - ✅ **Tenant isolation**: Row-level filtering on all tenant-scoped tables
-- ✅ **Audit trail**: All financial changes logged and tamper-protected
+- ✅ **Audit trail**: All financial changes logged and tamper-protected (append-only)
 - ✅ **Reconciliation**: AR/AP sub-ledgers reconcile to GL control accounts
+- ✅ **No duplicate postings**: `_assert_not_posted` prevents duplicate GL entries per document reference
+- ✅ **Fail-closed feature gates**: `utils/feature_guards.py` fails closed (503) on verification failure
+- ✅ **No unsafe tenant derivation**: Tenant never derived from `current_user.id`
 
 ---
 
@@ -198,6 +221,12 @@ Expected response:
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Detailed deployment guide for PythonAnywhere |
 | [QA_REPORT_TEMPLATE.md](QA_REPORT_TEMPLATE.md) | QA reporting template |
 | [.env.example](.env.example) | Environment variables reference |
+| [MAINTENANCE_USER_GUIDE.md](MAINTENANCE_USER_GUIDE.md) | Maintenance module user guide (reception → invoice → receipt → printing) |
+| [FULL_USER_GUIDE.md](FULL_USER_GUIDE.md) | Complete user guide (all modules) |
+| [OWNER_USER_GUIDE.md](OWNER_USER_GUIDE.md) | Owner dashboard / platform admin guide |
+| [docs/maintenance_status.md](docs/maintenance_status.md) | Maintenance module technical status & accounting policy |
+| [docs/SECURITY_ROLE_AUDIT.md](docs/SECURITY_ROLE_AUDIT.md) | Security role audit details |
+| [docs/ROUTE_ISOLATION_AUDIT.md](docs/ROUTE_ISOLATION_AUDIT.md) | Route isolation audit details |
 
 ### Key Directories
 
@@ -237,10 +266,21 @@ python -m pytest tests/unit/test_writeoffs_p0.py -v -p no:randomly
 
 ### Test Coverage
 
-- **Unit Tests**: 2000+ tests
-- **Integration Tests**: 500+ tests
-- **E2E Tests**: 300+ tests
-- **Route Coverage**: 486/486 (100%)
+| Test Suite | Count | Description |
+|------------|-------|-------------|
+| **Unit Tests** | 2000+ | Business logic, pricing engine, system init, account resolution |
+| **Integration Tests** | 500+ | Full HTTP-level tests on real PostgreSQL (ERP-lite) |
+| **E2E Tests** | 300+ | Browser-path smoke tests over real HTTP with CSRF |
+| **Maintenance Security** | 57 | Tenant isolation, IDOR, CSRF, tenant scoping, audit immutability, financial cycle |
+| **Maintenance Pricing** | 24 | Inclusive/exclusive pricing, mixed tax, order discount allocation |
+| **Route Coverage** | 486/486 | 100% of routes covered by E2E tests |
+| **Total** | **3400+** | All tests passing on CI |
+
+### Maintenance Test Details
+
+- `tests/security/test_maintenance_safety.py` — 32 tests: isolation, IDOR, CSRF, tenant scoping, audit immutability
+- `tests/security/test_maintenance_finance.py` — 25 tests: GL balance, warranty, returns, credit notes, deposits, supplier payments
+- `tests/unit/test_maintenance_pricing.py` — 24 tests: pricing engine
 
 ---
 

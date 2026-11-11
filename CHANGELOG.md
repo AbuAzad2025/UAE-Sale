@@ -2,6 +2,68 @@
 
 All notable changes to the Azad ERP system are documented here.
 
+## [2.1.0] - 2026-11-11
+
+### 🟢 Maintenance Module — Complete Release (M1–M7)
+
+#### Module Overview
+Full maintenance module for garage/workshop management with strict tenant isolation, role-based access, balanced GL postings, and end-to-end tested financial cycle.
+
+**Included Features:**
+- **Reception**: Create maintenance orders with device intake, customer info, problem description
+- **Diagnosis & Repair**: Add parts (at actual moving-average cost), services with labor tracking, quality checks, completion times
+- **Parts/Services Issue**: GL posting at actual cost (Dr 5101 / Cr 1140)
+- **Discounts**: Order-level discount with cap enforcement and settings override
+- **Warranty**: Warranty status tracking, warranty expense reclassification (Dr 6401 / Cr 5101)
+- **Invoices**: Post revenue (net), VAT, labor cost accrual (Dr 6400 / Cr 2140 Salaries Payable)
+- **Receipts**: Cash/bank collection with GL posting, deposit receipts at reception
+- **Returns**: Post-return cost reversal with GL (Dr 1140 / Cr 5101), credit note support
+- **Credit Notes**: Reverse invoice revenue/VAT, unblock returns after billing
+- **Printing**: Print receipt, invoice, intake with historical record warning banners
+- **Cost Report**: Actual parts cost + labor cost vs net revenue profitability analysis
+- **Purchases**: Purchase parts from supplier, goods receipt, supplier payment (GL: Dr 1140+1141 / Cr 2111)
+- **Device Registry**: Serial numbers, warranty eligibility, audit trail
+- **Quality Check & Completion Time**: Transactional recording with audit
+
+**Accounting Accounts Added:**
+- `1131` — Maintenance Receivables
+- `2111` — Maintenance Payables (supplier)
+- `4210` — Maintenance Revenue
+- `5101` — Maintenance COGS
+- `6401` — Warranty Expense
+
+#### Role-Based Access (Maintenance)
+| Role | Permissions | Coverage |
+|------|------------|----------|
+| `maintenance_reception` | view + receive | Order creation |
+| `maintenance_engineer` | view + work | Parts/services, status, quality |
+| `maintenance_cashier` | view + cashier | Collections/receipts |
+| `maintenance_closer` | view + close | Invoicing, closing, delivery |
+| `maintenance_discount` | view + discount | Discount application |
+| `maintenance_settings` | view + purchase + settings | Settings, devices, supplier purchases |
+| `manager` | All 8 maintenance permissions | Full module access |
+| `inventory` | view + work + purchase | Parts purchase/receipt |
+
+**Security:** Tenant-scoped roles created automatically per tenant (only when `enable_maintenance=True`). Default users created per role with `must_change_password=True`. No unsafe tenant derivation from user ID.
+
+#### Testing
+- **Maintenance Safety**: 32 tests (isolation, IDOR, CSRF, tenant scoping, audit immutability)
+- **Maintenance Finance**: 25 tests (GL balance, warranty, returns, credit notes, deposits, supplier payments)
+- **Maintenance Pricing**: 24 tests (inclusive/exclusive, mixed tax, largest remainder discount)
+- **E2E Smoke Test**: Real HTTP with CSRF: reception → parts → services → invoice → receipts → delivery → printing with ledger verification
+
+### 🔴 Major Fixes
+- **Route Census**: Added `routes.maintenance` to `MODULE_SCOPE` (was unclassified)
+- **FX Revaluation Token**: Defined `_FX_REVALUATION_CONFIRM_TOKEN` module-level constant (fixed `F821` lint error)
+- **Tenant Isolation Tests**: Updated assertions for auto-provisioned maintenance roles and default users
+- **Route Inventory Count**: Updated expected route counts (542 total, 387 tenant, 121 platform)
+
+### 📊 Test Suite
+- **Total Tests**: ~3400+ across unit, integration, E2E, and maintenance-specific suites
+- **All CI jobs passing**: test, frontend, integration, lint, security-scan, alembic-smoke, verify-boot, repo-security
+
+---
+
 ## [2.0.0] - 2026-10-25
 
 ### 🔴 Major Financial Integrity Fixes (P0)

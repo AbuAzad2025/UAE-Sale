@@ -244,6 +244,20 @@ OPERATIONAL_ROLES = {
                   ['manage_warehouse', 'manage_products', 'view_products',
                    'maintenance_view', 'maintenance_work', 'maintenance_purchase']),
     'viewer': ('Viewer', 'مشاهد', ['view_reports', 'view_ledger']),
+    # Maintenance module roles (only created when enable_maintenance=True)
+    'maintenance_reception': ('Maintenance Reception', 'استقبال صيانة',
+                              ['maintenance_view', 'maintenance_receive']),
+    'maintenance_engineer': ('Maintenance Engineer', 'مهندس صيانة',
+                            ['maintenance_view', 'maintenance_work']),
+    'maintenance_cashier': ('Maintenance Cashier', 'صندوق صيانة',
+                           ['maintenance_view', 'maintenance_cashier']),
+    'maintenance_closer': ('Maintenance Closer', 'إنهاء صيانة',
+                          ['maintenance_view', 'maintenance_close']),
+    'maintenance_discount': ('Maintenance Discount', 'خصم صيانة',
+                           ['maintenance_view', 'maintenance_discount']),
+    'maintenance_settings': ('Maintenance Settings', 'إعدادات صيانة',
+                            ['maintenance_view', 'maintenance_settings',
+                             'maintenance_purchase']),
 }
 
 
@@ -290,9 +304,12 @@ def _ensure_operational_roles_for_tenant(tenant_id):
 
 def _ensure_operational_roles_for_tenant(tenant_id):
     """Create operational roles and default users for a new tenant.
-    
-    Each tenant gets its own set of roles with prefixed usernames:
-    {tenant_slug}_{role_slug}
+
+    Roles are created based on the tenant's enabled features:
+    - Core roles (manager, seller, accountant, cashier, hr, inventory, viewer)
+      are always created.
+    - Maintenance roles (maintenance_reception, maintenance_engineer, etc.)
+      are only created if enable_maintenance=True.
     """
     from models import User, Role, Permission, Tenant
     from werkzeug.security import generate_password_hash
@@ -306,6 +323,14 @@ def _ensure_operational_roles_for_tenant(tenant_id):
     tenant_slug = tenant.slug
 
     for slug, (name, name_ar, codes) in OPERATIONAL_ROLES.items():
+        # Skip maintenance roles if maintenance is not enabled
+        if slug.startswith('maintenance_') and not getattr(tenant, 'enable_maintenance', False):
+            continue
+
+        # Skip roles whose permissions aren't all available
+        if not all(c in perms for c in codes):
+            continue
+
         # Create role if not exists for this tenant
         role = Role.query.filter_by(slug=slug, tenant_id=tenant_id).first()
         if not role:

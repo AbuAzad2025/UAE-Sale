@@ -27,6 +27,10 @@ EXPECTED_PERMS = {
     'admin', 'manage_backups',
     'manage_hr', 'manage_approvals', 'manage_settings', 'view_products',
     'view_costs',
+    # Maintenance module
+    'maintenance_view', 'maintenance_receive', 'maintenance_cashier',
+    'maintenance_work', 'maintenance_close', 'maintenance_discount',
+    'maintenance_settings', 'maintenance_purchase',
 }
 
 

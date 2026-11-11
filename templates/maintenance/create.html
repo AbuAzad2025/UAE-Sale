@@ -53,6 +53,15 @@
               <textarea name="device_problem" class="form-control" rows="3" placeholder="وصف المشكلة التي يشكو منها العميل"></textarea>
             </div>
             <div class="col-md-6">
+              <label class="form-label">المهندس المسؤول</label>
+              <select name="engineer_id" class="form-select">
+                <option value="">يُحدد لاحقاً</option>
+                {% for e in engineers %}
+                <option value="{{ e.id }}">{{ e.full_name or e.username }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
               <label class="form-label">طريقة الدفع</label>
               <select name="payment_mode" class="form-select">
                 <option value="cash">نقدي</option>

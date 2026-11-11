@@ -44,9 +44,10 @@ class Role(db.Model):
     __tablename__ = 'roles'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True, nullable=False)  # Display name
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    name = db.Column(db.String(50), unique=False, nullable=False)  # Display name
     name_ar = db.Column(db.String(50))  # Arabic name
-    slug = db.Column(db.String(50), unique=True, nullable=False, index=True)  # e.g., 'super_admin'
+    slug = db.Column(db.String(50), nullable=False, index=True)  # e.g., 'manager'
     description = db.Column(db.String(255))
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -55,6 +56,7 @@ class Role(db.Model):
     # Relationships
     permissions = db.relationship('Permission', secondary=role_permissions, backref='roles', lazy='joined')
     users = db.relationship('User', back_populates='role', lazy='dynamic')
+    tenant = db.relationship('Tenant', foreign_keys=[tenant_id])
 
     def __repr__(self):
         return f'<Role {self.name}>'
@@ -96,6 +98,7 @@ class User(UserMixin, db.Model):
 
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     email_verified = db.Column(db.Boolean, default=False)
+    must_change_password = db.Column(db.Boolean, default=False, nullable=False)
 
     # Login tracking
     last_login = db.Column(db.DateTime)

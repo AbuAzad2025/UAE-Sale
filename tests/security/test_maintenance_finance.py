@@ -17,6 +17,7 @@ if _url.get_backend_name() != 'sqlite' or _url.database not in (None, '', ':memo
     pytest.skip('Maintenance financial tests require in-memory SQLite', allow_module_level=True)
 
 from flask import g  # noqa: E402
+from flask_login import login_user  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 from werkzeug.security import generate_password_hash  # noqa: E402
 
@@ -24,10 +25,24 @@ from extensions import db  # noqa: E402
 from models import Customer, Permission, Product, ProductCategory, Role, Tenant, User, Warehouse  # noqa: E402
 from models.gl import GLAccount, GLJournalEntry, GLJournalLine  # noqa: E402
 from models.maintenance import (  # noqa: E402
-    MaintenanceInvoice, MaintenanceOrder, MaintenanceOrderStatusLog, MaintenanceReceipt,
+    MaintenanceCreditNote, MaintenanceInvoice, MaintenanceOrder, MaintenanceOrderStatusLog, MaintenanceReceipt,
 )
 from services.gl_service import GLService  # noqa: E402
 from utils.errors import ValidationError  # noqa: E402
+
+def _login(client, user):
+    g.pop('_login_user', None)
+    with client.session_transaction() as session:
+        session.clear()
+    response = client.post('/auth/login', data={
+        'username': user.username, 'password': PASSWORD,
+    })
+    assert response.status_code == 302
+    g.pop('_login_user', None)
+
+
+PASSWORD = 'Test-password-123!'
+
 
 D = Decimal
 
@@ -411,7 +426,113 @@ def test_a_return_after_the_invoice_is_refused(client, env):
     assert order.returns == [] or len(order.returns) == 0
 
 
-def test_discount_respects_the_tenant_cap_and_reduces_the_revenue(client, env):
+def test_deposit_creates_receipt_and_gl_posting(client, env):
+    """A deposit at reception creates a receipt and posts GL."""
+    _login(client, env['admin'])
+    response = client.post('/maintenance/create', data={
+        'customer_id': env['customer'].id,
+        'device_serial': 'DEP-SMOKE-1',
+        'deposit': '200',
+        'deposit_payment_method': 'cash',
+    })
+    assert response.status_code == 302
+    db.session.expire_all()
+    order = MaintenanceOrder.query.filter_by(device_serial='DEP-SMOKE-1').one()
+    assert order.deposit == D('200.000')
+    assert order.paid_amount == D('200.000')
+    assert order.balance_due == D('-200.000')
+    receipt = MaintenanceReceipt.query.filter_by(maintenance_order_id=order.id).one()
+    assert receipt.amount == D('200.000')
+    assert receipt.posted is True
+    debit, credit, lines = _gl_total('maintenance_deposit', receipt.id)
+    assert debit == credit == D('200.000')
+    assert ('1110', D('200.000'), D('0')) in lines   # cash
+    assert ('1131', D('0'), D('200.000')) in lines   # maintenance receivable
+
+
+def test_credit_note_reverses_invoice_and_allows_return(client, db, env):
+    """A credit note reverses revenue/VAT and unblocks returns after invoicing."""
+    from models.maintenance import MaintenanceCreditNote
+
+    order = _create_order(client, env)
+    _add_part(client, env, order)
+    _advance(client, env, order, 'diagnosis')
+    _advance(client, env, order, 'in_progress')
+    _advance(client, env, order, 'ready')
+    client.post(f'/maintenance/{order.id}/invoice')
+    db.session.expire_all()
+    order = db.session.get(MaintenanceOrder, order.id)
+    invoice = order.invoice
+    assert invoice.gl_posted is True
+
+    # Credit note reverses revenue and VAT.
+    response = client.post(f'/maintenance/{order.id}/credit-note', data={
+        'reason': 'خطأ في الفاتورة',
+    })
+    assert response.status_code == 302
+    db.session.expire_all()
+    cn = MaintenanceCreditNote.query.filter_by(maintenance_order_id=order.id).one()
+    assert cn.posted is True
+    assert cn.gl_posted is True
+
+    debit, credit, lines = _gl_total('maintenance_credit_note', cn.id)
+    assert debit == credit == invoice.total_amount
+    assert ('4210', D(str(invoice.total_amount - invoice.tax_amount)), D('0')) in lines
+    assert ('2131', D(str(invoice.tax_amount)), D('0')) in lines
+    assert ('1131', D('0'), D(str(invoice.total_amount))) in lines
+
+    # After the credit note, returns are allowed again.
+    item_id = order.items[0].id
+    response = client.post(f'/maintenance/{order.id}/return', data={
+        'order_item_id': item_id, 'quantity': '1', 'reason': 'بعد الإشعار',
+    })
+    assert response.status_code == 302
+    db.session.expire_all()
+    assert len(db.session.get(MaintenanceOrder, order.id).returns) == 1
+
+
+def test_credit_note_reverses_invoice_and_allows_return(client, db, env):
+    """سند الائتمان يعكس الإيراد والضريبة، ويتيح المرتجع بعد الفاتورة."""
+    from models.maintenance import MaintenanceCreditNote
+
+    order = _create_order(client, env)
+    _add_part(client, env, order)
+    _advance(client, env, order, 'diagnosis')
+    _advance(client, env, order, 'in_progress')
+    _advance(client, env, order, 'ready')
+    client.post(f'/maintenance/{order.id}/invoice')
+    db.session.expire_all()
+    order = db.session.get(MaintenanceOrder, order.id)
+    invoice = order.invoice
+    assert invoice.gl_posted is True
+
+    # سند الائتمان يعكس الإيراد والضريبة.
+    response = client.post(f'/maintenance/{order.id}/credit-note', data={
+        'reason': 'خطأ في الفاتورة',
+    })
+    assert response.status_code == 302
+    db.session.expire_all()
+    cn = MaintenanceCreditNote.query.filter_by(maintenance_order_id=order.id).one()
+    assert cn.posted is True
+    assert cn.gl_posted is True
+
+    debit, credit, lines = _gl_total('maintenance_credit_note', cn.id)
+    assert debit == credit == invoice.total_amount
+    assert ('4210', D(str(invoice.total_amount - invoice.tax_amount)), D('0')) in lines
+    assert ('2131', D(str(invoice.tax_amount)), D('0')) in lines
+    assert ('1131', D('0'), D(str(invoice.total_amount))) in lines
+
+    # بعد السند الائتماني، المرتجع متاح مرة أخرى.
+    item_id = order.items[0].id
+    response = client.post(f'/maintenance/{order.id}/return', data={
+        'order_item_id': item_id, 'quantity': '1', 'reason': 'بعد السند',
+    })
+    assert response.status_code == 302
+    db.session.expire_all()
+    assert len(db.session.get(MaintenanceOrder, order.id).returns) == 1
+
+
+def test_every_posting_of_the_order_is_balanced(client, env):
     order = _create_order(client, env)
     _add_part(client, env, order)
     db.session.expire_all()
@@ -643,6 +764,88 @@ def test_a_supplier_payment_cannot_exceed_the_payable(client, db, env):
     db.session.expire_all()
     assert GLJournalEntry.query.filter_by(
         reference_type='maintenance_supplier_payment').count() == 0
+
+
+def test_credit_note_reverses_invoice_and_allows_return(client, db, env):
+    """A credit note reverses revenue/VAT and unblocks returns after invoicing."""
+    from models.maintenance import MaintenanceCreditNote
+
+    order = _create_order(client, env)
+    _add_part(client, env, order)
+    _advance(client, env, order, 'diagnosis')
+    _advance(client, env, order, 'in_progress')
+    _advance(client, env, order, 'ready')
+    client.post(f'/maintenance/{order.id}/invoice')
+    db.session.expire_all()
+    order = db.session.get(MaintenanceOrder, order.id)
+    invoice = order.invoice
+    assert invoice.gl_posted is True
+
+    # Credit note reverses revenue and VAT.
+    response = client.post(f'/maintenance/{order.id}/credit-note', data={
+        'reason': 'خطأ في الفاتورة',
+    })
+    assert response.status_code == 302
+    db.session.expire_all()
+    cn = MaintenanceCreditNote.query.filter_by(maintenance_order_id=order.id).one()
+    assert cn.posted is True
+    assert cn.gl_posted is True
+
+    debit, credit, lines = _gl_total('maintenance_credit_note', cn.id)
+    assert debit == credit == invoice.total_amount
+    assert ('4210', D(str(invoice.total_amount - invoice.tax_amount)), D('0')) in lines
+    assert ('2131', D(str(invoice.tax_amount)), D('0')) in lines
+    assert ('1131', D('0'), D(str(invoice.total_amount))) in lines
+
+    # After the credit note, returns are allowed again.
+    item_id = order.items[0].id
+    response = client.post(f'/maintenance/{order.id}/return', data={
+        'order_item_id': item_id, 'quantity': '1', 'reason': 'بعد الإشعار',
+    })
+    assert response.status_code == 302
+    db.session.expire_all()
+    assert len(db.session.get(MaintenanceOrder, order.id).returns) == 1
+
+
+def test_credit_note_reverses_invoice_and_allows_return(client, db, env):
+    """A credit note reverses revenue/VAT and unblocks returns after invoicing."""
+    from models.maintenance import MaintenanceCreditNote
+
+    order = _create_order(client, env)
+    _add_part(client, env, order)
+    _advance(client, env, order, 'diagnosis')
+    _advance(client, env, order, 'in_progress')
+    _advance(client, env, order, 'ready')
+    client.post(f'/maintenance/{order.id}/invoice')
+    db.session.expire_all()
+    order = db.session.get(MaintenanceOrder, order.id)
+    invoice = order.invoice
+    assert invoice.gl_posted is True
+
+    # Credit note reverses revenue and VAT.
+    response = client.post(f'/maintenance/{order.id}/credit-note', data={
+        'reason': 'خطأ في الفاتورة',
+    })
+    assert response.status_code == 302
+    db.session.expire_all()
+    cn = MaintenanceCreditNote.query.filter_by(maintenance_order_id=order.id).one()
+    assert cn.posted is True
+    assert cn.gl_posted is True
+
+    debit, credit, lines = _gl_total('maintenance_credit_note', cn.id)
+    assert debit == credit == invoice.total_amount
+    assert ('4210', D(str(invoice.total_amount - invoice.tax_amount)), D('0')) in lines
+    assert ('2131', D(str(invoice.tax_amount)), D('0')) in lines
+    assert ('1131', D('0'), D(str(invoice.total_amount))) in lines
+
+    # After the credit note, returns are allowed again.
+    item_id = order.items[0].id
+    response = client.post(f'/maintenance/{order.id}/return', data={
+        'order_item_id': item_id, 'quantity': '1', 'reason': 'بعد الإشعار',
+    })
+    assert response.status_code == 302
+    db.session.expire_all()
+    assert len(db.session.get(MaintenanceOrder, order.id).returns) == 1
 
 
 def test_every_posting_of_the_order_is_balanced(client, env):

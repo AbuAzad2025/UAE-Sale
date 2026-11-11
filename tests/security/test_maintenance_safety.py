@@ -221,15 +221,22 @@ def test_date_filter_includes_the_entire_last_day(client, db, maintenance_env):
     assert client.get('/maintenance/?date_from=2026-04-16&date_to=2026-04-15').status_code == 302
 
 
-def test_deposit_does_not_create_unrecorded_payment(client, maintenance_env):
+def test_deposit_creates_linked_receipt(client, maintenance_env):
+    """A deposit at reception creates a linked receipt with a GL posting."""
     env = maintenance_env
     _login(client, env['users']['reception'])
     response = client.post('/maintenance/create', data={
         'customer_id': env['customers'][0].id, 'deposit': '100',
+        'deposit_payment_method': 'cash',
     })
-    assert response.status_code == 200
-    assert MaintenanceOrder.query.count() == 2
-    assert MaintenanceReceipt.query.count() == 0
+    assert response.status_code == 302
+    # Find the new order (the one with deposit)
+    order = MaintenanceOrder.query.filter_by(deposit=Decimal('100')).one()
+    assert MaintenanceReceipt.query.count() == 1
+    receipt = MaintenanceReceipt.query.one()
+    assert receipt.amount == Decimal('100')
+    assert receipt.posted is True
+    assert order.paid_amount == Decimal('100')
 
 
 def test_engineer_cannot_close_or_fabricate_payment(client, db, maintenance_env):

@@ -15,6 +15,7 @@ from utils.helpers import create_audit_log, append_audit_record
 from models.api_key import APIKey
 from models.error_log import ErrorLog
 from utils.decorators import owner_required, permission_required, _role_level as _role_level_canon, get_owned_or_404
+from utils.system_init import _ensure_operational_roles_for_tenant
 from utils.db_safety import (
     validate_table_name, validate_backup_filename, is_protected_table,
 )
@@ -1691,6 +1692,9 @@ def tenant_new():
                 'slug': tenant.slug,
                 'country': tenant.country,
             }, commit=False)
+            db.session.commit()
+            # Create operational roles for this tenant
+            _ensure_operational_roles_for_tenant(tenant.id)
             db.session.commit()
             flash(f'تم إنشاء المستأجر "{tenant.name_ar}" بنجاح', 'success')
             return redirect(url_for('owner.tenant_detail', id=tenant.id))

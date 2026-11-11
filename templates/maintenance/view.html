@@ -236,6 +236,45 @@
   </div>
 </div>
 
+{% if order.invoice %}
+<div class="row mt-4">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">إشعار دائن (لإلغاء الفاتورة)</h5>
+      </div>
+      <div class="card-body">
+        <table class="table table-bordered mb-0">
+          <thead><tr><th>رقم الإشعار</th><th>المبلغ</th><th>الحالة المحاسبية</th></tr></thead>
+          <tbody>
+          {% for cn in order.credit_notes %}
+          <tr>
+            <td>{{ cn.credit_note_no }}</td>
+            <td>{{ "{:,.3f}".format(cn.total_value or 0) }}</td>
+            <td><span class="badge bg-{{ 'success' if cn.gl_posted else 'warning' }}">{{ 'مرحّل' if cn.gl_posted else 'غير مرحّل' }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="3" class="text-center text-muted">لا توجد إشعارات دائن</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% if order.status not in ('closed', 'cancelled') and order.invoice.gl_posted %}
+        <form method="POST" action="{{ url_for('maintenance.create_credit_note', id=order.id) }}" class="mt-3">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-2">
+            <label class="form-label">سبب الإشعار</label>
+            <textarea name="reason" class="form-control" rows="2" placeholder="سبب إلغاء الفاتورة"></textarea>
+          </div>
+          <button type="submit" class="btn btn-outline-danger">إنشاء إشعار دائن</button>
+          <small class="text-muted">سيُعكس الإيراد والضريبة، ويصبح الأمر مؤهلاً للمرتجع.</small>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- سجل حالات الأمر -->
 <div class="row mt-4">
   <div class="col-12">

@@ -56,6 +56,8 @@ REFERENCE_RETURN = 'maintenance_return'
 REFERENCE_ORDER = 'maintenance_order'
 REFERENCE_PURCHASE = 'maintenance_purchase'
 REFERENCE_SUPPLIER_PAYMENT = 'maintenance_supplier_payment'
+REFERENCE_CREDIT_NOTE = 'maintenance_credit_note'
+REFERENCE_DEPOSIT = 'maintenance_deposit'
 
 
 def maintenance_accounts(tenant_id=None) -> dict:
@@ -66,12 +68,14 @@ def maintenance_accounts(tenant_id=None) -> dict:
         'revenue': AccountResolver.resolve(AccountRole.MAINTENANCE_REVENUE, tenant_id),
         'cogs': AccountResolver.resolve(AccountRole.MAINTENANCE_COGS, tenant_id),
         'warranty_expense': AccountResolver.resolve(AccountRole.WARRANTY_EXPENSE, tenant_id),
+        'maintenance_expense': AccountResolver.resolve(AccountRole.MAINTENANCE_EXPENSE, tenant_id),
         'inventory': AccountResolver.resolve(AccountRole.INVENTORY, tenant_id),
         'vat_output': AccountResolver.resolve(AccountRole.VAT_OUTPUT, tenant_id),
         'vat_input': AccountResolver.resolve(AccountRole.VAT_INPUT, tenant_id),
         'cash': AccountResolver.resolve(AccountRole.CASH, tenant_id),
         'bank': AccountResolver.resolve(AccountRole.BANK, tenant_id),
         'under_collection': AccountResolver.resolve(AccountRole.UNDER_COLLECTION, tenant_id),
+        'salaries_payable': AccountResolver.resolve(AccountRole.SALARIES_PAYABLE, tenant_id),
     }
 
 
@@ -269,6 +273,12 @@ def post_maintenance_invoice(order, invoice, *, created_by=None, entry_date=None
     )
     invoice.gl_posted = True
     db.session.flush()
+
+    # Accrue labor cost at billing time: debit maintenance expense,
+    # credit salaries payable. The payroll run later settles salaries payable
+    # to cash.
+    post_maintenance_labor_cost(order, created_by=created_by,
+                                entry_date=entry_date)
     return entry
 
 
@@ -284,6 +294,29 @@ def post_maintenance_receipt(receipt, *, created_by=None, entry_date=None):
         lines,
         description=f'سند قبض صيانة {receipt.receipt_no} - {order.order_no}',
         reference_type=REFERENCE_RECEIPT, reference_id=receipt.id,
+        created_by=created_by, entry_date=entry_date,
+    )
+    receipt.posted = True
+    receipt.posted_at = datetime.now(timezone.utc)
+    db.session.flush()
+    return entry
+
+
+def post_deposit_receipt(order, receipt, *, created_by=None, entry_date=None):
+    """Post a deposit receipt linked to a maintenance order.
+    
+    The deposit is treated as an advance payment: debit cash/bank,
+    credit the maintenance receivable.
+    """
+    _assert_not_posted(REFERENCE_DEPOSIT, receipt.id,
+                       'سبق ترحيل هذا السند — لا يمكن الترحيل مرتين')
+    accounts = maintenance_accounts(order.tenant_id)
+    debit_account = payment_debit_account(receipt.payment_method, order.tenant_id)
+    lines = build_receipt_lines(receipt.amount, debit_account, accounts)
+    entry = _post(
+        lines,
+        description=f'دفعة مقدمة - أمر صيانة {order.order_no}',
+        reference_type=REFERENCE_DEPOSIT, reference_id=receipt.id,
         created_by=created_by, entry_date=entry_date,
     )
     receipt.posted = True
@@ -319,6 +352,86 @@ def post_return_cost(order, return_obj, amount, *, created_by=None, entry_date=N
         lines,
         description=f'مرتجع قطع صيانة {getattr(return_obj, "return_no", "")} - {order.order_no}',
         reference_type=REFERENCE_RETURN, reference_id=return_obj.id,
+        created_by=created_by, entry_date=entry_date,
+    )
+
+
+def build_credit_note_lines(net_revenue, vat, debit_account, accounts) -> list:
+    """Credit note: reverse revenue and VAT, credit receivable / debit cash.
+    
+    Mirrors the invoice lines in reverse: debit revenue/VAT, credit receivable.
+    """
+    net_revenue = D(str(net_revenue or 0)).quantize(D('0.001'))
+    vat = D(str(vat or 0)).quantize(D('0.001'))
+    total = net_revenue + vat
+    if total <= 0:
+        return []
+    lines = [
+        {'account': accounts['revenue'], 'debit': net_revenue,
+         'description': 'إشعار دائن - عكس إيراد صيانة'},
+    ]
+    if vat > 0:
+        lines.append({'account': accounts['vat_output'], 'debit': vat,
+                      'description': 'إشعار دائن - عكس ضريبة القيمة المضافة'})
+    lines.append({'account': debit_account, 'credit': total,
+                  'description': 'إشعار دائن - عكس ذمم صيانة مدينة'})
+    return lines
+
+
+def build_labor_cost_lines(amount, accounts) -> list:
+    """Labor cost accrual: debit maintenance expense, credit salaries payable."""
+    amount = D(str(amount or 0)).quantize(D('0.001'))
+    if amount <= 0:
+        return []
+    return [
+        {'account': accounts['maintenance_expense'], 'debit': amount,
+         'description': 'تكلفة عمل صيانة - رواتب مستحقة'},
+        {'account': accounts['salaries_payable'], 'credit': amount,
+         'description': 'تكلفة عمل صيانة - رواتب مستحقة'},
+    ]
+
+
+def post_maintenance_credit_note(order, credit_note, *, created_by=None,
+                                  entry_date=None):
+    """Reverse the invoice revenue and VAT via a credit note."""
+    _assert_not_posted(REFERENCE_CREDIT_NOTE, credit_note.id,
+                       'سبق ترحيل إشعار الدائن لهذا الأمر')
+    accounts = maintenance_accounts(order.tenant_id)
+    net_revenue = order_net_revenue(order)
+    vat = D(str(order.tax_amount or 0)).quantize(D('0.001'))
+    debit_account = accounts['ar']
+    lines = build_credit_note_lines(net_revenue, vat, debit_account, accounts)
+    entry = _post(
+        lines,
+        description=f'إشعار دائن صيانة - {order.order_no}',
+        reference_type=REFERENCE_CREDIT_NOTE, reference_id=credit_note.id,
+        created_by=created_by, entry_date=entry_date,
+    )
+    credit_note.gl_posted = True
+    credit_note.posted = True
+    credit_note.posted_at = datetime.now(timezone.utc)
+    db.session.flush()
+    return entry
+
+
+def post_maintenance_labor_cost(order, *, created_by=None, entry_date=None):
+    """Accrue labor cost for services on the order.
+    
+    Debit maintenance COGS, credit Salaries Payable. Idempotent per order.
+    """
+    _assert_not_posted(REFERENCE_ORDER + ':labor', order.id,
+                       'سبق ترحيل تكلفة العمل لهذا الأمر')
+    accounts = maintenance_accounts(order.tenant_id)
+    labor_cost = sum((D(str(sv.cost_price or 0))
+                      * D(str(sv.quantity or 1))
+                      for sv in order.services), ZERO)
+    if labor_cost <= 0:
+        return None
+    lines = build_labor_cost_lines(labor_cost, accounts)
+    return _post(
+        lines,
+        description=f'تكلفة عمل صيانة - {order.order_no}',
+        reference_type=REFERENCE_ORDER + ':labor', reference_id=order.id,
         created_by=created_by, entry_date=entry_date,
     )
 

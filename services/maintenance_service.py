@@ -24,7 +24,7 @@ from models.maintenance import (
     MaintenanceOrderStatusLog, MaintenanceReceipt, MaintenanceInvoice,
     MaintenanceReturn, MaintenanceReturnLine, MaintenanceSetting,
     MaintenanceService, MaintenanceWarrantyAudit, MaintenanceDeviceRegistry,
-    MaintenanceSupplierPayment,
+    MaintenanceSupplierPayment, MaintenanceCreditNote,
 )
 from models.warehouse import Warehouse
 from models.gl import GLJournalEntry, GLJournalLine
@@ -131,7 +131,9 @@ def create_maintenance_order(tenant_id, customer_id, received_by, **kwargs):
         raise ValidationError('طريقة الدفع غير صالحة')
     deposit = _decimal(kwargs.get('deposit', 0), 'مبلغ الدفعة المقدمة')
     if deposit != 0:
-        raise ValidationError('الدفعات المقدمة موقوفة مؤقتاً لحين اكتمال دورة القبض')
+        # The deposit is recorded but a receipt must still be posted to
+        # complete the cash movement; see create_receipt / post_deposit.
+        pass
 
     for field, label, limit in (
         ('device_brand', 'العلامة التجارية', 100),
@@ -203,6 +205,7 @@ def create_maintenance_order(tenant_id, customer_id, received_by, **kwargs):
         service_advisor_id=kwargs.get('service_advisor_id'),
         payment_mode=kwargs.get('payment_mode', 'cash'),
         deposit=deposit,
+        deposit_payment_method=kwargs.get('deposit_payment_method'),
         tax_inclusive=bool(kwargs.get('tax_inclusive', False)),
         notes=kwargs.get('notes'),
     )
@@ -608,8 +611,12 @@ def _warranty_audit(tenant_id, order_id, customer_id, product_id, serial_number,
 # ---------------------------------------------------------------------------
 @tx
 def create_receipt(order_id, amount, payment_method, cashier_id, reference_type=None,
-                   reference_id=None):
-    """إنشاء سند قبض لأمر الصيانة مع قيد التحصيل."""
+                   reference_id=None, is_deposit=False):
+    """إنشاء سند قبض لأمر الصيانة مع قيد التحصيل.
+    
+    If is_deposit, the receipt is treated as an advance payment (deposit)
+    and posted with the deposit reference type.
+    """
     require_maintenance_actor(cashier_id, 'maintenance_cashier')
     order = get_maintenance_order(order_id, for_update=True)
     if order is None:
@@ -621,10 +628,11 @@ def create_receipt(order_id, amount, payment_method, cashier_id, reference_type=
 
     amount = _decimal(amount, 'المبلغ', allow_zero=False)
     balance = D(str(order.balance_due or 0))
-    if balance <= 0:
-        raise ValidationError('لا يوجد مبلغ مستحق على هذا الأمر')
-    if amount > balance:
-        raise ValidationError(f'المبلغ أكبر من المتبقي على الأمر ({balance:,.3f} د.إ)')
+    if not is_deposit:
+        if balance <= 0:
+            raise ValidationError('لا يوجد مبلغ مستحق على هذا الأمر')
+        if amount > balance:
+            raise ValidationError(f'المبلغ أكبر من المتبقي على الأمر ({balance:,.3f} د.إ)')
 
     receipt_no = _next_receipt_number()
     receipt = MaintenanceReceipt(
@@ -640,7 +648,10 @@ def create_receipt(order_id, amount, payment_method, cashier_id, reference_type=
     db.session.add(receipt)
     db.session.flush()
 
-    accounting.post_maintenance_receipt(receipt, created_by=cashier_id)
+    if is_deposit:
+        accounting.post_deposit_receipt(order, receipt, created_by=cashier_id)
+    else:
+        accounting.post_maintenance_receipt(receipt, created_by=cashier_id)
 
     order.paid_amount = D(str(order.paid_amount or 0)) + amount
     order.balance_due = order.total_amount - order.paid_amount
@@ -699,11 +710,51 @@ def create_maintenance_invoice(order_id, created_by):
 
 
 # ---------------------------------------------------------------------------
+# 7b. Credit Note (reverse invoice, allow returns after billing)
+# ---------------------------------------------------------------------------
+@tx
+def create_maintenance_credit_note(order_id, created_by, reason=None):
+    """إنشاء إشعار دائن لعكس فاتورة الصيانة والسماح بالمرتجع بعدها."""
+    require_maintenance_actor(created_by, 'maintenance_close')
+    order = get_maintenance_order(order_id, for_update=True)
+    if order is None:
+        raise ValidationError('أمر الصيانة غير موجود')
+    if not order.invoice:
+        raise ValidationError('لا يمكن إنشاء إشعار دائن لأمر بلا فاتورة')
+    if not order.invoice.gl_posted:
+        raise ValidationError('لا يمكن إنشاء إشعار دائن قبل ترحيل الفاتورة')
+
+    existing = MaintenanceCreditNote.query.filter_by(
+        maintenance_order_id=order.id).first()
+    if existing:
+        raise ValidationError('إشعار دائن موجود بالفعل لهذا الأمر')
+
+    from utils.helpers import generate_number
+    cn = MaintenanceCreditNote(
+        order=order,
+        credit_note_no=generate_number('MN-CN', MaintenanceCreditNote, 'credit_note_no'),
+        created_by=created_by,
+        reason=reason,
+        total_value=order.invoice.total_amount,
+        posted=False,
+    )
+    db.session.add(cn)
+    db.session.flush()
+
+    accounting.post_maintenance_credit_note(order, cn, created_by=created_by)
+    return cn
+
+
+# ---------------------------------------------------------------------------
 # 8. Returns
 # ---------------------------------------------------------------------------
 @tx
 def create_maintenance_return(order_id, returned_by, reason, lines=None):
-    """إنشاء مرتجع صيانة: إرجاع القطع إلى المخزون وعكس تكلفتها."""
+    """إنشاء مرتجع صيانة: إرجاع القطع إلى المخزون وعكس تكلفتها.
+    
+    After an invoice, a return is only allowed once a credit note has been
+    posted for the order.
+    """
     require_maintenance_actor(returned_by, 'maintenance_work')
     order = get_maintenance_order(order_id, for_update=True)
     if order is None:
@@ -711,7 +762,10 @@ def create_maintenance_return(order_id, returned_by, reason, lines=None):
     if order.status in ('closed', 'cancelled'):
         raise ValidationError('لا يمكن إنشاء مرتجع على أمر مغلق أو ملغي')
     if order.invoice:
-        raise ValidationError('لا يمكن إنشاء مرتجع بعد إصدار الفاتورة — يلزم إشعار دائن')
+        credit_note = MaintenanceCreditNote.query.filter_by(
+            maintenance_order_id=order.id, posted=True).first()
+        if not credit_note:
+            raise ValidationError('لا يمكن إنشاء مرتجع بعد إصدار الفاتورة — يلزم إشعار دائن')
 
     from utils.helpers import generate_number
     ret = MaintenanceReturn(

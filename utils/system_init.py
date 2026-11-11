@@ -267,6 +267,84 @@ def _ensure_operational_roles():
     db.session.commit()
 
 
+def _ensure_operational_roles_for_tenant(tenant_id):
+    """Create operational roles for a new tenant."""
+    perms = {p.code: p for p in Permission.query.all()}
+    for slug, (name, name_ar, codes) in OPERATIONAL_ROLES.items():
+        if Role.query.filter_by(slug=slug, tenant_id=tenant_id).first() is not None:
+            continue
+        role = Role(
+            name=name,
+            name_ar=name_ar,
+            slug=slug,
+            tenant_id=tenant_id,
+            description=f'Tenant operational role ({slug})',
+            is_active=True,
+        )
+        role.permissions = [perms[c] for c in codes if c in perms]
+        db.session.add(role)
+        current_app.logger.info(
+            f"SystemInit: Created operational role '{slug}' for tenant {tenant_id}.")
+    db.session.commit()
+
+
+def _ensure_operational_roles_for_tenant(tenant_id):
+    """Create operational roles and default users for a new tenant.
+    
+    Each tenant gets its own set of roles with prefixed usernames:
+    {tenant_slug}_{role_slug}
+    """
+    from models import User, Role, Permission, Tenant
+    from werkzeug.security import generate_password_hash
+
+    perms = {p.code: p for p in Permission.query.all()}
+
+    tenant = Tenant.query.filter_by(id=tenant_id).first()
+    if not tenant:
+        return
+
+    tenant_slug = tenant.slug
+
+    for slug, (name, name_ar, codes) in OPERATIONAL_ROLES.items():
+        # Create role if not exists for this tenant
+        role = Role.query.filter_by(slug=slug, tenant_id=tenant_id).first()
+        if not role:
+            role = Role(
+                name=name,
+                name_ar=name_ar,
+                slug=slug,
+                tenant_id=tenant_id,
+                description=f'Tenant operational role ({slug})',
+                is_active=True,
+            )
+            role.permissions = [perms[c] for c in codes if c in perms]
+            db.session.add(role)
+            db.session.flush()  # Get role.id
+
+        # Create default user for this role if not exists
+        username = f"{tenant_slug}_{slug}"
+        email = f"{username}@{tenant.slug}.local"
+
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            continue
+
+        user = User(
+            username=username,
+            email=email,
+            full_name=name,
+            tenant_id=tenant_id,
+            role_id=role.id,
+            is_active=True,
+            is_owner=False,
+            must_change_password=True,  # Force password change on first login
+        )
+        user.set_password('Test-password-123!')  # Default password
+        db.session.add(user)
+
+    db.session.commit()
+
+
 def _ensure_owner_user(role):
     """Ensure the Master Owner User exists"""
     username = current_app.config.get('OWNER_USERNAME', 'owner')

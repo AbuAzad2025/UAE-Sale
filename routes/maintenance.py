@@ -11,7 +11,8 @@ from services.maintenance_security import current_maintenance_tenant, get_mainte
 from services.maintenance_service import (
     create_maintenance_order, change_status, add_order_item, add_order_service,
     apply_order_discount, warranty_action, create_receipt, create_maintenance_invoice,
-    create_maintenance_return, get_orders, get_maintenance_cost_analysis,
+    create_maintenance_return, create_maintenance_credit_note,
+    get_orders, get_maintenance_cost_analysis,
     get_overdue_orders,
     quality_check, set_completion_time, send_customer_notification,
     create_maintenance_purchase, receive_maintenance_purchase, pay_maintenance_supplier,
@@ -37,7 +38,8 @@ ALLOWED_WRITE_ENDPOINTS = {
     'maintenance.create_order', 'maintenance.change_order_status',
     'maintenance.add_item', 'maintenance.add_service', 'maintenance.apply_discount',
     'maintenance.warranty', 'maintenance.receive', 'maintenance.create_invoice',
-    'maintenance.create_return', 'maintenance.quality_check',
+    'maintenance.create_credit_note', 'maintenance.create_return',
+    'maintenance.quality_check',
     'maintenance.set_completion_time', 'maintenance.rate_order',
     'maintenance.set_warranty_period', 'maintenance.archive_order',
     'maintenance.notify_customer',
@@ -137,6 +139,20 @@ def create_order():
                 engineer_id=request.form.get('engineer_id', type=int) or None,
                 service_advisor_id=request.form.get('service_advisor_id', type=int) or None,
             )
+            # If a deposit was specified, create a linked receipt immediately.
+            deposit = request.form.get('deposit', type=float) or 0
+            if deposit and deposit > 0:
+                try:
+                    create_receipt(
+                        order_id=order.id,
+                        amount=deposit,
+                        payment_method=request.form.get('deposit_payment_method', 'cash'),
+                        cashier_id=current_user.id,
+                        is_deposit=True,
+                    )
+                    flash(f'تم تسجيل دفعة مقدمة {deposit:,.3f} د.إ مع الأمر', 'info')
+                except ValidationError as exc:
+                    _flash_error(exc)
             flash(f'تم إنشاء أمر الصيانة {order.order_no}', 'success')
             return redirect(url_for('maintenance.view_order', id=order.id))
         except ValidationError as exc:
@@ -319,6 +335,25 @@ def create_invoice(id):
     try:
         invoice = create_maintenance_invoice(id, current_user.id)
         flash(f'تم إنشاء فاتورة الصيانة {invoice.invoice_no} وترحيل قيدها', 'success')
+    except ValidationError as exc:
+        _flash_error(exc)
+    return redirect(url_for('maintenance.view_order', id=id))
+
+
+# ---------------------------------------------------------------------------
+# Credit Note
+# ---------------------------------------------------------------------------
+@maintenance_bp.route('/<int:id>/credit-note', methods=['POST'])
+@login_required
+@permission_required('maintenance_close')
+def create_credit_note(id):
+    try:
+        cn = create_maintenance_credit_note(
+            order_id=id,
+            created_by=current_user.id,
+            reason=request.form.get('reason', ''),
+        )
+        flash(f'تم إنشاء إشعار دائن {cn.credit_note_no} وترحيل قيده', 'success')
     except ValidationError as exc:
         _flash_error(exc)
     return redirect(url_for('maintenance.view_order', id=id))

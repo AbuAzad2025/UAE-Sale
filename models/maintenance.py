@@ -74,6 +74,7 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
     # المالي
     payment_mode = db.Column(db.String(20), default='cash')  # cash/card/cheque/transfer/account
     deposit = db.Column(db.Numeric(15, 3), default=0)
+    deposit_payment_method = db.Column(db.String(20), nullable=True)
     tax_inclusive = db.Column(db.Boolean, default=False)
     subtotal = db.Column(db.Numeric(15, 3), default=0)
     discount_line_total = db.Column(db.Numeric(15, 3), default=0)
@@ -113,6 +114,7 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
     receipts = db.relationship('MaintenanceReceipt', back_populates='order', cascade='all, delete-orphan')
     invoice = db.relationship('MaintenanceInvoice', back_populates='order', uselist=False, cascade='all, delete-orphan')
     returns = db.relationship('MaintenanceReturn', back_populates='order', cascade='all, delete-orphan')
+    credit_notes = db.relationship('MaintenanceCreditNote', back_populates='order', cascade='all, delete-orphan')
 
     def calculate_totals(self):
         """Recompute every amount of the document from the pricing engine.
@@ -501,6 +503,28 @@ class MaintenanceSupplierPayment(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     supplier = db.relationship('Supplier')
+    user = db.relationship('User')
+
+
+# ---------------------------------------------------------------------------
+# 13. إشعارات الدائن للصيانة (لإلغاء الفاتورة والسماح بالمرتجع بعدها)
+# ---------------------------------------------------------------------------
+class MaintenanceCreditNote(db.Model):
+    """إشعار دائن لصيانة — لعكس الفاتورة والسماح بالمرتجع بعدها."""
+    __tablename__ = 'maintenance_credit_notes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    maintenance_order_id = db.Column(db.Integer, db.ForeignKey('maintenance_orders.id'), nullable=False, index=True)
+    credit_note_no = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    reason = db.Column(db.Text, nullable=True)
+    total_value = db.Column(db.Numeric(15, 3), default=0)
+    posted = db.Column(db.Boolean, default=False)
+    posted_at = db.Column(db.DateTime, nullable=True)
+    gl_posted = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    order = db.relationship('MaintenanceOrder', back_populates='credit_notes')
     user = db.relationship('User')
 
 

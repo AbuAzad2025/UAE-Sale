@@ -32,6 +32,7 @@ MODULE_SCOPE = {
     'routes.inbound_shipments': 'tenant',
     'routes.language': 'public',
     'routes.ledger': 'tenant',
+    'routes.maintenance': 'tenant',
     'routes.main': 'tenant',
     'routes.monitoring': 'platform',
     'utils.monitoring': 'system',

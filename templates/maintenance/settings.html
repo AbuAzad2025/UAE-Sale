@@ -2,12 +2,14 @@
 {% block title %}إعدادات الصيانة{% endblock %}
 {% block page_title %}<i class="fas fa-cogs mr-2"></i>إعدادات الصيانة{% endblock %}
 {% block content %}
+<div class="alert alert-info">هذه الإعدادات خاصة بهذا التينانت: سقف الخصم، وفحص الكفالة، وصلاحية المهندس في تغيير الضمان.</div>
 <div class="row">
   <div class="col-lg-8">
     <div class="card">
       <div class="card-header"><h5 class="mb-0">إعدادات وحدة الصيانة</h5></div>
       <div class="card-body">
         <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label">المستودع الافتراضي للصيانة</label>

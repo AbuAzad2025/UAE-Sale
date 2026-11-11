@@ -2,10 +2,11 @@
 {% block title %}أوامر الصيانة{% endblock %}
 {% block page_title %}<i class="fas fa-tools mr-2"></i>أوامر الصيانة{% endblock %}
 {% block content %}
+<div class="alert alert-warning" role="alert">وحدة الصيانة قيد التدقيق وليست للاستخدام الفعلي. العمليات المالية والمخزنية والضمان والإغلاق موقوفة مؤقتاً.</div>
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="mb-0">أوامر الصيانة</h5>
-    <a href="{{ url_for('maintenance.create_order') }}" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i>أمر جديد</a>
+    {% if current_user.has_permission('maintenance_receive') %}<a href="{{ url_for('maintenance.create_order') }}" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i>أمر جديد</a>{% endif %}
   </div>
   <div class="card-body p-0">
     <form method="get" class="p-3 border-bottom">
@@ -63,8 +64,8 @@
                 {{ order.warranty_status or '-' }}
               </span>
             </td>
-            <td>{{ "{:,.2f}".format(order.total_amount|float) }}</td>
-            <td>{{ "{:,.2f}".format(order.balance_due|float) }}</td>
+            <td>{{ "{:,.3f}".format(order.total_amount or 0) }}</td>
+            <td>{{ "{:,.3f}".format(order.balance_due or 0) }}</td>
             <td>
               <a href="{{ url_for('maintenance.view_order', id=order.id) }}" class="btn btn-sm btn-outline-primary">عرض</a>
             </td>

@@ -19,10 +19,12 @@
   @media print { .no-print { display: none; } body { -webkit-print-color-adjust: exact; } }
 </style>
 <div class="invoice-wrapper">
+  <div class="alert alert-info"><strong>فاتورة صيانة مُرحَّلة.</strong>
+    المبالغ هي لقطة لحظة إصدار الفاتورة؛ أي تعديل لاحق على الأمر لا يغيّر هذه الوثيقة.</div>
   <div class="invoice-header">
     <div class="invoice-logo">
-      <h2>🔧 أزاد - وحدة الصيانة</h2>
-      <p>فاتورة صيانة رسمية</p>
+      <h2>{{ tenant.name_ar or tenant.name }}</h2>
+      <p>سجل فاتورة صيانة تاريخي</p>
     </div>
     <div class="invoice-meta">
       <p><strong>رقم الفاتورة:</strong> {{ order.invoice.invoice_no if order.invoice else '-' }}</p>
@@ -41,7 +43,7 @@
 
     <div class="device-info">
       <h4>بيانات الجهاز:</h4>
-      <p><strong>المarka:</strong> {{ order.device_brand or '-' }}</p>
+      <p><strong>الماركة:</strong> {{ order.device_brand or '-' }}</p>
       <p><strong>الموديل:</strong> {{ order.device_model or '-' }}</p>
       <p><strong>الرقم التسلسلي:</strong> {{ order.device_serial or '-' }}</p>
       <p><strong>الـ IMEI:</strong> {{ order.device_imei or '-' }}</p>
@@ -60,37 +62,37 @@
       <tbody>
         {% for it in order.items %}
         <tr>
-          <td>{{ it.product.name if it.product else 'قطعة غير محددة' }}</td>
+          <td>{{ it.product.name if it.product and it.product.tenant_id == order.tenant_id else 'قطعة غير محددة' }}</td>
           <td class="text-right">{{ it.quantity }}</td>
-          <td class="text-right">{{ "{:,.3f}".format(it.unit_price|float) }}</td>
-          <td class="text-right">{{ "{:,.3f}".format(it.line_total|float) }}</td>
+          <td class="text-right">{{ "{:,.3f}".format(it.unit_price or 0) }}</td>
+          <td class="text-right">{{ "{:,.3f}".format(it.line_total or 0) }}</td>
         </tr>
         {% endfor %}
         {% for sv in order.services %}
         <tr>
           <td>{{ sv.service_name }} {{ sv.service_name_ar or '' }}</td>
           <td class="text-right">1</td>
-          <td class="text-right">{{ "{:,.3f}".format(sv.unit_price|float) }}</td>
-          <td class="text-right">{{ "{:,.3f}".format(sv.line_total|float) }}</td>
+          <td class="text-right">{{ "{:,.3f}".format(sv.unit_price or 0) }}</td>
+          <td class="text-right">{{ "{:,.3f}".format(sv.line_total or 0) }}</td>
         </tr>
         {% endfor %}
         <tr>
           <td>المجموع الفرعي</td>
           <td class="text-right"></td>
           <td class="text-right"></td>
-          <td class="text-right">{{ "{:,.3f}".format(order.subtotal|float) }}</td>
+          <td class="text-right">{{ "{:,.3f}".format(order.invoice.subtotal or 0) }}</td>
         </tr>
         <tr>
           <td>الخصم</td>
           <td class="text-right"></td>
           <td class="text-right"></td>
-          <td class="text-right">- {{ "{:,.3f}".format(order.discount_total_value|float) }}</td>
+          <td class="text-right">- {{ "{:,.3f}".format(order.invoice.discount_total or 0) }}</td>
         </tr>
         <tr>
           <td>الضريبة</td>
           <td class="text-right"></td>
           <td class="text-right"></td>
-          <td class="text-right">{{ "{:,.3f}".format(order.tax_amount|float) }}</td>
+          <td class="text-right">{{ "{:,.3f}".format(order.invoice.tax_amount or 0) }}</td>
         </tr>
       </tbody>
       <tfoot>
@@ -98,19 +100,19 @@
           <th>الإجمالي النهائي</th>
           <th class="text-right"></th>
           <th class="text-right"></th>
-          <td class="text-right" style="font-size: 1.2em; font-weight: bold;">{{ "{:,.3f}".format(order.total_amount|float) }}</td>
+          <td class="text-right" style="font-size: 1.2em; font-weight: bold;">{{ "{:,.3f}".format(order.invoice.total_amount or 0) }}</td>
         </tr>
         <tr>
-          <th>المدفوع</th>
+          <th>المدفوع عند إصدار السجل</th>
           <td class="text-right"></td>
           <td class="text-right"></td>
-          <td class="text-right">{{ "{:,.3f}".format(order.paid_amount|float) }}</td>
+          <td class="text-right">{{ "{:,.3f}".format(order.invoice.paid_amount or 0) }}</td>
         </tr>
         <tr>
-          <th>المتبقي</th>
+          <th>المتبقي عند إصدار السجل</th>
           <td class="text-right"></td>
           <td class="text-right"></td>
-          <td class="text-right">{{ "{:,.3f}".format(order.balance_due|float) }}</td>
+          <td class="text-right">{{ "{:,.3f}".format(order.invoice.balance_due or 0) }}</td>
         </tr>
       </tfoot>
     </table>

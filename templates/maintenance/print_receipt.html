@@ -19,10 +19,12 @@
   @media print { .no-print { display: none; } body { -webkit-print-color-adjust: exact; } }
 </style>
 <div class="invoice-wrapper">
+  <div class="alert alert-info"><strong>سند قبض صيانة مُرحَّل.</strong>
+    المبلغ هو لقطة لحظة القبض؛ المتبقي المعروض على الأمر يأتي من سجله الحالي.</div>
   <div class="invoice-header">
     <div class="invoice-logo">
-      <h2>🔧 أزاد - وحدة الصيانة</h2>
-      <p>إيصال قبض رسمي</p>
+      <h2>{{ tenant.name_ar or tenant.name }}</h2>
+      <p>سجل قبض تاريخي</p>
     </div>
     <div class="invoice-meta">
       <p><strong>رقم الإيصال:</strong> {{ receipt.receipt_no if receipt else '-' }}</p>
@@ -56,13 +58,13 @@
       <tbody>
         <tr>
           <td>مبلغ القبض لأمر الصيانة</td>
-          <td class="text-right">{{ "{:,.3f}".format(receipt.amount|float) if receipt else '0.000' }}</td>
+          <td class="text-right">{{ "{:,.3f}".format(receipt.amount or 0) if receipt else '0.000' }}</td>
         </tr>
       </tbody>
       <tfoot>
         <tr>
           <th>المبلغ الإجمالي المدفوع</th>
-          <td class="text-right">{{ "{:,.3f}".format(receipt.amount|float) if receipt else '0.000' }}</td>
+          <td class="text-right">{{ "{:,.3f}".format(receipt.amount or 0) if receipt else '0.000' }}</td>
         </tr>
       </tfoot>
     </table>
@@ -70,7 +72,7 @@
 
   <div class="invoice-footer">
     <p><strong>الحالة:</strong> {{ order.status }}</p>
-    <p><strong>المتبقي على الأمر:</strong> {{ "{:,.3f}".format(order.balance_due|float) }}</p>
+    <p><strong>المتبقي الحالي بحسب سجل الأمر غير المدقق:</strong> {{ "{:,.3f}".format(order.balance_due or 0) }}</p>
     <p class="text-muted small">شكراً لتعاملكم معنا، نتمنى لكم خدمة مرضية.</p>
   </div>
 </div>

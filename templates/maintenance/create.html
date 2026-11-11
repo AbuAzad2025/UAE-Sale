@@ -2,12 +2,14 @@
 {% block title %}أمر صيانة جديد{% endblock %}
 {% block page_title %}<i class="fas fa-plus mr-2"></i>أمر صيانة جديد{% endblock %}
 {% block content %}
+<div class="alert alert-info" role="alert">تُسجَّل الدفعة المقدمة في السجل فقط؛ لا يمكن تسجيلها قبل ربطها بسند قبض فعلي.</div>
 <div class="row">
   <div class="col-lg-8">
     <div class="card">
       <div class="card-header"><h5 class="mb-0">بيانات الأمر والجهاز</h5></div>
       <div class="card-body">
         <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label">العميل</label>
@@ -19,7 +21,7 @@
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">첫وية الأولوية</label>
+              <label class="form-label">الأولوية</label>
               <select name="priority" class="form-select">
                 <option value="normal">عادي</option>
                 <option value="urgent">عاجل</option>
@@ -61,8 +63,8 @@
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">مبلغ الدفعة المقدمة</label>
-              <input type="number" name="deposit" value="0" step="0.001" class="form-control">
+              <label class="form-label">الدفعة المقدمة</label>
+              <input type="text" value="غير متاحة حالياً" class="form-control" disabled>
             </div>
             <div class="col-md-6">
               <label class="form-label">السعر شامل الضريبة</label>
@@ -89,7 +91,7 @@
       <div class="card-header"><h5 class="mb-0">معلومات سريعة</h5></div>
       <div class="card-body">
         <p class="text-muted small"><i class="fas fa-info-circle mr-1"></i>سيتم إنشاء رقم أمر تلقائياً عند الحفظ.</p>
-        <p class="text-muted small"><i class="fas fa-shield-alt mr-1"></i>سيتم فحص الكفالة تلقائياً عند إدخال الرقم التسلسلي.</p>
+        <p class="text-muted small"><i class="fas fa-shield-alt mr-1"></i>يُبحث بمعرّفات الجهاز في سجل العميل فقط؛ لا يُفترض وجود ضمان من فاتورة بيع.</p>
         <p class="text-muted small"><i class="fas fa-user-tag mr-1"></i>سيتم تعيينك كمستلم الأمر تلقائياً.</p>
       </div>
     </div>

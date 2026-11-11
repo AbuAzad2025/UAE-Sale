@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>استلام جهاز - {{ order.order_no }}</title>
+  <style>
+    body { font-family: Tahoma, Arial, sans-serif; color: #222; margin: 24px; }
+    main { max-width: 800px; margin: auto; }
+    h1, h2 { margin-bottom: 8px; }
+    .warning { border: 2px solid #a66b00; padding: 12px; margin: 18px 0; }
+    .meta, .device { width: 100%; border-collapse: collapse; margin: 18px 0; }
+    th, td { border: 1px solid #aaa; padding: 10px; text-align: right; vertical-align: top; overflow-wrap: anywhere; }
+    th { width: 25%; background: #f2f2f2; }
+    .problem { white-space: pre-wrap; }
+    .signatures { display: flex; justify-content: space-between; gap: 32px; margin-top: 50px; }
+    .signature { flex: 1; border-top: 1px solid #555; padding-top: 8px; }
+    .no-print { margin-bottom: 20px; }
+    @media print { .no-print { display: none; } body { margin: 0; } }
+  </style>
+</head>
+<body>
+<main>
+  <div class="no-print"><button type="button" onclick="window.print()">طباعة</button></div>
+  <h1>{{ tenant.name_ar or tenant.name }}</h1>
+  <h2>سند استلام جهاز للصيانة</h2>
+  <div class="warning"><strong>سند استلام جهاز — ليس فاتورة ولا سند قبض ولا إثبات ضمان.</strong>
+    يوثّق تسليم الجهاز فقط، والإيراد والتحصيل يُسجَّلان في مستنداتهما.</div>
+  <table class="meta">
+    <tr><th>رقم الأمر</th><td>{{ order.order_no }}</td></tr>
+    <tr><th>تاريخ الاستلام</th><td>{{ order.received_at.strftime('%Y-%m-%d %H:%M') if order.received_at else '-' }}</td></tr>
+    <tr><th>العميل</th><td>{{ order.customer.name }}</td></tr>
+    <tr><th>الهاتف</th><td>{{ order.customer.phone or '-' }}</td></tr>
+    <tr><th>مستلم الجهاز</th><td>{{ (order.received_by_user.full_name or order.received_by_user.username) if order.received_by_user and order.received_by_user.tenant_id == order.tenant_id else '-' }}</td></tr>
+  </table>
+  <table class="device">
+    <tr><th>العلامة التجارية</th><td>{{ order.device_brand or '-' }}</td></tr>
+    <tr><th>الموديل</th><td>{{ order.device_model or '-' }}</td></tr>
+    <tr><th>الرقم التسلسلي</th><td>{{ order.device_serial or '-' }}</td></tr>
+    <tr><th>IMEI</th><td>{{ order.device_imei or '-' }}</td></tr>
+    <tr><th>رقم اللوحة</th><td>{{ order.device_plate or '-' }}</td></tr>
+    <tr><th>المشكلة المبلغ عنها</th><td class="problem">{{ order.device_problem or '-' }}</td></tr>
+  </table>
+  <div class="signatures"><div class="signature">توقيع العميل</div><div class="signature">توقيع المستلم</div></div>
+</main>
+</body>
+</html>

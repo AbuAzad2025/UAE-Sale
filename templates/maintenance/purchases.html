@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block title %}شراء قطع الصيانة{% endblock %}
+{% block page_title %}<i class="fas fa-truck mr-2"></i>شراء قطع الصيانة{% endblock %}
+{% block content %}
+<div class="alert alert-info">أمر الشراء ليس حدثاً مالياً: لا يُرحَّل شيء في الأستاذ حتى استلام البضاعة، وعندها تُشحن المخزون وتُقيَّد ذمم الصيانة دائنة.</div>
+
+<div class="row">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0">أوامر شراء قطع الصيانة</h5></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover mb-0">
+            <thead><tr><th>الرقم</th><th>المورد</th><th>المستودع</th><th>الإجمالي</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+            <tbody>
+            {% for purchase in purchases %}
+            <tr>
+              <td>{{ purchase.po_number }}</td>
+              <td>{{ purchase.supplier.name if purchase.supplier else '-' }}</td>
+              <td>{{ purchase.warehouse.name if purchase.warehouse else '-' }}</td>
+              <td>{{ "{:,.3f}".format(purchase.total_amount or 0) }}</td>
+              <td><span class="badge bg-{{ 'success' if purchase.status == 'received' else 'secondary' }}">{{ purchase.status_ar }}</span></td>
+              <td>
+                {% if purchase.status != 'received' and purchase.status != 'cancelled' %}
+                <form method="POST" action="{{ url_for('maintenance.receive_purchase', id=purchase.id) }}" style="display:inline-block">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-outline-success">استلام</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted">لا توجد أوامر شراء</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-4">
+      <div class="card-header"><h5 class="mb-0">سداد ذمم الصيانة للمورد</h5></div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('maintenance.pay_supplier') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">المورد</label>
+              <select name="supplier_id" class="form-select" required>
+                <option value="">اختر المورد</option>
+                {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">المبلغ</label>
+              <input type="number" name="amount" step="0.001" min="0.001" class="form-control" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">طريقة الدفع</label>
+              <select name="payment_method" class="form-select">
+                <option value="cash">نقدي</option>
+                <option value="transfer">تحويل</option>
+                <option value="card">بطاقة</option>
+                <option value="cheque">شيك</option>
+              </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+              <button type="submit" class="btn btn-success w-100">سداد</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><h5 class="mb-0">أمر شراء جديد</h5></div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('maintenance.purchases_list') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">المورد</label>
+            <select name="supplier_id" class="form-select" required>
+              <option value="">اختر المورد</option>
+              {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">المستودع</label>
+            <select name="warehouse_id" class="form-select" required>
+              <option value="">اختر المستودع</option>
+              {% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">المنتج</label>
+            <select name="product_id" class="form-select" required>
+              <option value="">اختر المنتج</option>
+              {% for p in products %}<option value="{{ p.id }}">{{ p.name }} ({{ p.sku }})</option>{% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الكمية</label>
+            <input type="number" name="quantity" step="0.001" min="0.001" value="1" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">تكلفة الوحدة</label>
+            <input type="number" name="unit_cost" step="0.001" min="0.001" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">معدل الضريبة %</label>
+            <input type="number" name="tax_rate" step="0.01" min="0" max="100" value="0" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">تاريخ التسليم المتوقع</label>
+            <input type="date" name="expected_delivery" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">ملاحظات</label>
+            <textarea name="notes" class="form-control" rows="2"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save mr-1"></i>إنشاء أمر الشراء</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

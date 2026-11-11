@@ -239,10 +239,13 @@ class TestTenantIsolationRegression:
             clear_current_tenant_id()
 
         # Users: explicit per-tenant scoping (the route-level pattern).
-        assert {u.username for u in
-                User.query.filter_by(tenant_id=a.id).all()} == {'iso_a'}
-        assert {u.username for u in
-                User.query.filter_by(tenant_id=b.id).all()} == {'iso_b'}
+        # (Default operational users are also created per tenant now.)
+        a_users = {u.username for u in User.query.filter_by(tenant_id=a.id).all()}
+        b_users = {u.username for u in User.query.filter_by(tenant_id=b.id).all()}
+        assert 'iso_a' in a_users
+        assert 'iso_b' in b_users
+        assert 'iso_b' not in a_users
+        assert 'iso_a' not in b_users
 
         # Unscoped (owner) context still sees everything.
         assert Customer.query.filter(
@@ -315,11 +318,17 @@ class TestTenantUserProvisioning:
         _owner_login(client, owner_user)
         role = self._role()
         t = self._tenant(client, owner_user)
-        t.max_users = 1
+        # Account for the default operational users created per tenant.
+        from models import User as _U
+        current_count = _U.query.filter_by(tenant_id=t.id).count()
+        t.max_users = current_count + 1
         _db.session.commit()
         client.post(f'/users/create?tenant_id={t.id}',
                     data=self._payload(role.id, username='first_one'))
         assert User.query.filter_by(username='first_one').first() is not None
+        # Now at capacity — second user should be rejected.
+        t.max_users = current_count + 1
+        _db.session.commit()
         client.post(f'/users/create?tenant_id={t.id}',
                     data=self._payload(role.id, username='second_one'))
         assert User.query.filter_by(username='second_one').first() is None

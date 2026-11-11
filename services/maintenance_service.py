@@ -130,6 +130,9 @@ def create_maintenance_order(tenant_id, customer_id, received_by, **kwargs):
     if kwargs.get('payment_mode', 'cash') not in ('cash', 'card', 'cheque', 'transfer', 'account'):
         raise ValidationError('طريقة الدفع غير صالحة')
     deposit = _decimal(kwargs.get('deposit', 0), 'مبلغ الدفعة المقدمة')
+    # العملة وسعر الصرف للأمر (تُورث من تينانت إذا لم تُحدد)
+    currency = _intake_text(kwargs.get('currency'), 'العملة', 3) or 'AED'
+    exchange_rate = _decimal(kwargs.get('exchange_rate', 1), 'سعر الصرف', maximum=Decimal('1000000'))
     if deposit != 0:
         # The deposit is recorded but a receipt must still be posted to
         # complete the cash movement; see create_receipt / post_deposit.
@@ -207,6 +210,8 @@ def create_maintenance_order(tenant_id, customer_id, received_by, **kwargs):
         deposit=deposit,
         deposit_payment_method=kwargs.get('deposit_payment_method'),
         tax_inclusive=bool(kwargs.get('tax_inclusive', False)),
+        currency=currency,
+        exchange_rate=exchange_rate,
         notes=kwargs.get('notes'),
     )
     db.session.add(order)
@@ -611,7 +616,8 @@ def _warranty_audit(tenant_id, order_id, customer_id, product_id, serial_number,
 # ---------------------------------------------------------------------------
 @tx
 def create_receipt(order_id, amount, payment_method, cashier_id, reference_type=None,
-                   reference_id=None, is_deposit=False):
+                   reference_id=None, is_deposit=False,
+                   currency=None, exchange_rate=None):
     """إنشاء سند قبض لأمر الصيانة مع قيد التحصيل.
     
     If is_deposit, the receipt is treated as an advance payment (deposit)
@@ -634,10 +640,18 @@ def create_receipt(order_id, amount, payment_method, cashier_id, reference_type=
         if amount > balance:
             raise ValidationError(f'المبلغ أكبر من المتبقي على الأمر ({balance:,.3f} د.إ)')
 
+    # تحديد العملة وسعر الصرف (تيرث من الأمر إذا لم تُحدد)
+    receipt_currency = currency or order.currency
+    receipt_exchange_rate = exchange_rate if exchange_rate is not None else order.exchange_rate
+    amount_base = (amount * D(str(receipt_exchange_rate or 1))).quantize(D('0.001'))
+
     receipt_no = _next_receipt_number()
     receipt = MaintenanceReceipt(
         maintenance_order_id=order.id,
         receipt_no=receipt_no,
+        currency=receipt_currency,
+        exchange_rate=receipt_exchange_rate,
+        amount_base=amount_base,
         amount=amount,
         payment_method=payment_method,
         cashier_id=cashier_id,
@@ -667,7 +681,8 @@ def _next_receipt_number():
 # 7. Maintenance invoice
 # ---------------------------------------------------------------------------
 @tx
-def create_maintenance_invoice(order_id, created_by):
+def create_maintenance_invoice(order_id, created_by,
+                               currency=None, exchange_rate=None):
     """إنشاء فاتورة صيانة مستقلة وترحيل إيرادها وضريبتها."""
     require_maintenance_actor(created_by, 'maintenance_close')
     order = get_maintenance_order(order_id, for_update=True)
@@ -688,16 +703,33 @@ def create_maintenance_invoice(order_id, created_by):
     if net + vat <= 0:
         raise ValidationError('لا يمكن إصدار فاتورة بقيمة صفر')
 
+    # تحديد العملة وسعر الصرف للفاتورة (تيرث من الأمر إذا لم تُحدد)
+    invoice_currency = currency or order.currency
+    invoice_exchange_rate = exchange_rate if exchange_rate is not None else order.exchange_rate
+    total_amount_base = (order.total_amount * D(str(invoice_exchange_rate or 1))).quantize(D('0.001'))
+    subtotal_base = (order.subtotal * D(str(invoice_exchange_rate or 1))).quantize(D('0.001'))
+    tax_amount_base = (order.tax_amount * D(str(invoice_exchange_rate or 1))).quantize(D('0.001'))
+    paid_amount_base = (order.paid_amount * D(str(invoice_exchange_rate or 1))).quantize(D('0.001'))
+    balance_due_base = (order.balance_due * D(str(invoice_exchange_rate or 1))).quantize(D('0.001'))
+
     from utils.helpers import generate_number
     invoice = MaintenanceInvoice(
         order=order,
         invoice_no=generate_number('MI', MaintenanceInvoice, 'invoice_no'),
+        currency=invoice_currency,
+        exchange_rate=invoice_exchange_rate,
+        amount_base=total_amount_base,
         subtotal=order.subtotal,
         discount_total=order.discount_total_value,
         tax_amount=vat,
         total_amount=order.total_amount,
         paid_amount=order.paid_amount,
         balance_due=order.balance_due,
+        subtotal_base=subtotal_base,
+        tax_amount_base=tax_amount_base,
+        total_amount_base=total_amount_base,
+        paid_amount_base=paid_amount_base,
+        balance_due_base=balance_due_base,
         posted=True,
         posted_at=datetime.now(timezone.utc),
         gl_posted=False,
@@ -713,7 +745,8 @@ def create_maintenance_invoice(order_id, created_by):
 # 7b. Credit Note (reverse invoice, allow returns after billing)
 # ---------------------------------------------------------------------------
 @tx
-def create_maintenance_credit_note(order_id, created_by, reason=None):
+def create_maintenance_credit_note(order_id, created_by, reason=None,
+                                   currency=None, exchange_rate=None):
     """إنشاء إشعار دائن لعكس فاتورة الصيانة والسماح بالمرتجع بعدها."""
     require_maintenance_actor(created_by, 'maintenance_close')
     order = get_maintenance_order(order_id, for_update=True)
@@ -729,13 +762,22 @@ def create_maintenance_credit_note(order_id, created_by, reason=None):
     if existing:
         raise ValidationError('إشعار دائن موجود بالفعل لهذا الأمر')
 
+    # تحديد العملة وسعر الصرف (تيرث من الفاتورة إذا لم تُحدد)
+    cn_currency = currency or order.invoice.currency
+    cn_exchange_rate = exchange_rate if exchange_rate is not None else order.invoice.exchange_rate
+    total_value_base = (order.invoice.total_amount * D(str(cn_exchange_rate or 1))).quantize(D('0.001'))
+
     from utils.helpers import generate_number
     cn = MaintenanceCreditNote(
         order=order,
         credit_note_no=generate_number('MN-CN', MaintenanceCreditNote, 'credit_note_no'),
         created_by=created_by,
+        currency=cn_currency,
+        exchange_rate=cn_exchange_rate,
+        amount_base=total_value_base,
         reason=reason,
         total_value=order.invoice.total_amount,
+        total_value_base=total_value_base,
         posted=False,
     )
     db.session.add(cn)
@@ -749,7 +791,8 @@ def create_maintenance_credit_note(order_id, created_by, reason=None):
 # 8. Returns
 # ---------------------------------------------------------------------------
 @tx
-def create_maintenance_return(order_id, returned_by, reason, lines=None):
+def create_maintenance_return(order_id, returned_by, reason, lines=None,
+                              currency=None, exchange_rate=None):
     """إنشاء مرتجع صيانة: إرجاع القطع إلى المخزون وعكس تكلفتها.
     
     After an invoice, a return is only allowed once a credit note has been
@@ -767,19 +810,27 @@ def create_maintenance_return(order_id, returned_by, reason, lines=None):
         if not credit_note:
             raise ValidationError('لا يمكن إنشاء مرتجع بعد إصدار الفاتورة — يلزم إشعار دائن')
 
+    # تحديد العملة وسعر الصرف للمرتجع (تيرث من الأمر إذا لم تُحدد)
+    ret_currency = currency or order.currency
+    ret_exchange_rate = exchange_rate if exchange_rate is not None else order.exchange_rate
+
     from utils.helpers import generate_number
     ret = MaintenanceReturn(
         order=order,
         return_no=generate_number('MR', MaintenanceReturn, 'return_no'),
         returned_by=returned_by,
+        currency=ret_currency,
+        exchange_rate=ret_exchange_rate,
         reason=reason,
         total_value=ZERO,
+        total_value_base=ZERO,
         posted=False,
     )
     db.session.add(ret)
     db.session.flush()
 
     total = ZERO
+    total_base = ZERO
     cost_total = ZERO
     for ln in (lines or []):
         item = None
@@ -818,6 +869,7 @@ def create_maintenance_return(order_id, returned_by, reason, lines=None):
         )
         rline.line_total = rline.quantity * rline.unit_price
         total += rline.line_total
+        total_base += (rline.line_total * D(str(ret_exchange_rate or 1))).quantize(D('0.001'))
         db.session.add(rline)
 
         if item is not None and item.warehouse_id:
@@ -832,6 +884,7 @@ def create_maintenance_return(order_id, returned_by, reason, lines=None):
             )
 
     ret.total_value = total
+    ret.total_value_base = total_base
     if cost_total > 0:
         accounting.post_return_cost(order, ret, cost_total, created_by=returned_by)
         ret.posted = True

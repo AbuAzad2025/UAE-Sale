@@ -15,6 +15,7 @@ from models import Sale, SaleLine, Customer, Product, InvoiceSettings
 from services.sale_service import SaleService
 from services import due_date_service
 from utils.decorators import permission_required, get_owned_or_404
+from utils.transaction import atomic_transaction
 from routes.ledger import reverse_or_purge_gl_entries
 
 from utils.helpers import create_audit_log
@@ -107,7 +108,13 @@ def create():  # noqa: C901
             customer = get_owned_or_404(Customer, customer_id)
 
             lines_data = []
-            line_count = int(request.form.get("line_count", 0))
+            try:
+                line_count = int(request.form.get("line_count", 0))
+            except (ValueError, TypeError):
+                from utils.error_messages import ErrorMessages
+
+                flash(ErrorMessages.sale_no_lines(), "danger")
+                return redirect(url_for("sales.create"))
 
             for i in range(line_count):
                 try:
@@ -171,7 +178,13 @@ def create():  # noqa: C901
             discount_amount = request.form.get("discount_amount", type=float, default=0)
             shipping_cost = request.form.get("shipping_cost", type=float, default=0)
             _raw_tax = request.form.get("tax_rate")
-            tax_rate = float(_raw_tax) if _raw_tax not in (None, "") else None
+            try:
+                tax_rate = (
+                    float(_raw_tax) if _raw_tax not in (None, "") else None
+                )
+            except (ValueError, TypeError):
+                flash("⚠️ معدل الضريبة غير صالح.", "danger")
+                return redirect(url_for("sales.create"))
             tax_inclusive = request.form.get("tax_inclusive") in ("on", "1", "true")
             tax_treatment = (
                 (request.form.get("tax_treatment") or "standard").strip().lower()
@@ -203,32 +216,32 @@ def create():  # noqa: C901
             # قراءة warehouse_id من النموذج
             warehouse_id = request.form.get("warehouse_id", type=int)
 
-            sale = SaleService.create_sale(
-                customer=customer,
-                seller=current_user,
-                lines_data=lines_data,
-                warehouse_id=warehouse_id,  # ← تمرير المستودع
-                currency=currency,
-                user_exchange_rate=user_exchange_rate,
-                discount_amount=discount_amount,
-                shipping_cost=shipping_cost,
-                tax_rate=tax_rate,
-                tax_inclusive=tax_inclusive,
-                tax_treatment=tax_treatment,
-                notes=notes,
-                payment_data=payment_data,
-            )
+            with atomic_transaction():
+                sale = SaleService.create_sale(
+                    customer=customer,
+                    seller=current_user,
+                    lines_data=lines_data,
+                    warehouse_id=warehouse_id,  # ← تمرير المستودع
+                    currency=currency,
+                    user_exchange_rate=user_exchange_rate,
+                    discount_amount=discount_amount,
+                    shipping_cost=shipping_cost,
+                    tax_rate=tax_rate,
+                    tax_inclusive=tax_inclusive,
+                    tax_treatment=tax_treatment,
+                    notes=notes,
+                    payment_data=payment_data,
+                )
 
-            # تاريخ الاستحقاق: تاريخ صريح من النموذج، وإلا يُشتق من تاريخ
-            # الفاتورة + شروط دفع العميل (services/due_date_service.py).
-            sale.due_date = due_date_service.due_date_for_sale(
-                sale.sale_date,
-                customer=customer,
-                explicit=request.form.get("due_date"),
-            )
-            db.session.commit()
+                # تاريخ الاستحقاق: تاريخ صريح من النموذج، وإلا يُشتق من تاريخ
+                # الفاتورة + شروط دفع العميل (services/due_date_service.py).
+                sale.due_date = due_date_service.due_date_for_sale(
+                    sale.sale_date,
+                    customer=customer,
+                    explicit=request.form.get("due_date"),
+                )
 
-            create_audit_log("create", "sales", sale.id)
+                create_audit_log("create", "sales", sale.id)
 
             flash("✅ تم إنشاء الفاتورة بنجاح!", "success")
             return redirect(url_for("sales.view", id=sale.id))

@@ -62,7 +62,9 @@ class TestSaleService:
         # حركة المخزون + لقطة التكلفة على سطر البيع
         from models import SaleLine, StockMovement
 
-        assert StockMovement.query.filter_by(product_id=p.id).count() == 1
+        # create_product now records an initial-stock movement (1) and
+        # create_sale records a sale movement (1) -> 2 total
+        assert StockMovement.query.filter_by(product_id=p.id).count() == 2
         line = SaleLine.query.filter_by(sale_id=s.id).one()
         assert Decimal(str(line.cost_price)) == Decimal("10")
 

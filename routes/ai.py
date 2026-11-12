@@ -3378,6 +3378,7 @@ def config():  # noqa: C901
 
 @ai_bp.route('/upload-excel', methods=['POST'])
 @login_required
+@permission_required('manage_products')
 def upload_excel():
     """رفع ومعالجة ملف Excel للمنتجات - المعالج الذكي الخارق"""
     try:
@@ -3416,6 +3417,7 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
     """معالج Excel ذكي خارق - أفضل من البشر"""
     try:
         from models import Product, Warehouse
+        from services.stock_service import StockService
 
         df = pd.read_excel(file, engine='openpyxl')
 
@@ -3434,6 +3436,7 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
         products_created = 0
         products_updated = 0
         errors = []
+        no_cost_warning = False
 
         for index, row in df.iterrows():
             try:
@@ -3457,18 +3460,42 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
 
                 if existing_product:
                     existing_product.regular_price = price
-                    existing_product.current_stock += quantity
                     products_updated += 1
+                    product = existing_product
                 else:
                     product = Product(
                         name=name,
                         part_number=part_number,
                         regular_price=price,
-                        current_stock=quantity,
+                        cost_price=0,
+                        current_stock=0,
                         is_active=True
                     )
                     db.session.add(product)
+                    db.session.flush()
                     products_created += 1
+
+                # Stock movement so average_cost and warehouse stay consistent
+                # with the manual create flow (StockService.create_movement).
+                if quantity and quantity > 0:
+                    try:
+                        StockService.create_movement(
+                            product_id=product.id,
+                            quantity=quantity,
+                            movement_type='adjustment',
+                            reference_type='Excel Import',
+                            reference_id=product.id,
+                            notes=f'استيراد Excel — {name}',
+                            warehouse_id=warehouse_id,
+                        )
+                    except Exception as _mv_err:
+                        current_app.logger.warning(
+                            f'Excel import stock movement failed for {name}: {_mv_err}')
+                        # Fallback: at least keep current_stock in sync
+                        product.current_stock = (product.current_stock or 0) + quantity
+
+                if not product.cost_price:
+                    no_cost_warning = True
 
             except Exception as e:
                 errors.append(f'السطر {index + 2}: حدث خطأ غير متوقع')
@@ -3490,6 +3517,11 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
 
 🤖 تم تدريب AI على البيانات الجديدة!
 🧠 المصدر: GROQ + المحلي - معالج ذكي خارق'''
+
+        if no_cost_warning:
+            message += '''
+
+⚠️ بعض المنتجات بدون تكلفة مسجّلة — لا يمكن بيعها قبل ضبط التكلفة (عدّل المنتج وأضف سعر التكلفة).'''
 
         if errors and len(errors) > 0:
             message += f'\n\n⚠️ تفاصيل الأخطاء:\n{error_details}'

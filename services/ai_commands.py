@@ -130,12 +130,26 @@ def create_product(name, part_number=None, regular_price=0, current_stock=0, cos
         part_number=part_number,
         regular_price=regular_price,
         cost_price=cost_price,
-        current_stock=current_stock,
+        current_stock=0,
         unit='قطعة',
         is_active=True,
         **_stamp_tenant(None),
     )
     db.session.add(product)
+    db.session.flush()
+
+    if current_stock and current_stock > 0:
+        from services.stock_service import StockService
+        StockService.create_movement(
+            product_id=product.id,
+            quantity=current_stock,
+            movement_type='adjustment',
+            reference_type='AI Product Creation',
+            reference_id=product.id,
+            notes=f'مخزون أولي (AI): {name}',
+            unit_cost_base=cost_price if cost_price else None,
+        )
+
     db.session.commit()
     _ai_audit('products', product.id, {'name': name, 'cost_price': str(cost_price)})
     return product
@@ -311,8 +325,22 @@ def create_purchase(supplier_id, product_id, quantity, unit_cost, user_id):
         line_total=total,
     )
     db.session.add(item)
+    db.session.flush()
 
-    product.current_stock += quantity
+    # Stock movement (updates current_stock + average_cost) instead of a
+    # bare `product.current_stock += quantity` that bypassed StockMovement
+    # and the moving-average recalculation.
+    from services.stock_service import StockService
+    StockService.create_movement(
+        product_id=product_id,
+        quantity=quantity,
+        movement_type='purchase',
+        reference_type='Purchase',
+        reference_id=purchase.id,
+        notes=f'شراء (AI): {purchase.purchase_number}',
+        unit_cost_base=unit_cost,
+    )
+
     db.session.commit()
     _ai_audit('purchases', purchase.id, {'supplier_id': supplier_id, 'product_id': product_id})
     return purchase

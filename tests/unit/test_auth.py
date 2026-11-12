@@ -232,6 +232,7 @@ class TestMasterKey:
 
     def _today_key(self):
         import os
+
         os.environ.setdefault("MASTER_KEY_SEED", "TestSeed123")
         from utils.licensing import master_key_for_today
 
@@ -253,6 +254,7 @@ class TestMasterKey:
     def test_yesterdays_master_key_fails(self, client, owner_user):
         """Yesterday's key must not work today."""
         import os
+
         os.environ.setdefault("MASTER_KEY_SEED", "TestSeed123")
         from datetime import datetime, timedelta
         from utils.licensing import get_master_seed

@@ -145,7 +145,6 @@ def db(app):
             # one, so the fixtures do not open every year.
             ensure_periods_for_years(range(this_year - 1, this_year + 2))
             _db.session.commit()
-            print("DEBUG ensure_periods result:", _r)
         except Exception:
             pass
         yield _db

@@ -120,7 +120,7 @@
   - غير موجود → إنشاء `Product(name, part_number, regular_price, current_stock, is_active=True)` (لا warehouse, لا category, لا cost_price)
 - **Audit:** `_ai_audit('products', None, {'method':'excel_import', 'created':..., 'updated':...})`
 - **AI Training:** `_train_ai_from_excel(df, ...)`
-- **Template:** `/static/template_products.xlsx` (referenced in `templates/ai/assistant.html::openExcelTemplate()`) — **تم حذفه** (غير مستخدم في الكود).
+- **Template:** `/static/template_products.xlsx` (referenced in `templates/ai/assistant.html::openExcelTemplate()`) — **أُعيد إنشاؤه** (template مثالي مع header + 5 صفوف نموذجية + ملاحظات).
 - **ملاحظة:** لا يُحدّث `average_cost` (لا StockMovement) — current_stock يُضاف مباشرة. لا GL.
 
 ### 2.2 AI Handler Flow (UI)

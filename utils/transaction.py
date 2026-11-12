@@ -18,6 +18,7 @@ Usage::
     def my_route():
         ...
 """
+
 from contextlib import contextmanager
 from extensions import db
 from flask import current_app

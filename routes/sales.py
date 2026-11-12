@@ -179,9 +179,7 @@ def create():  # noqa: C901
             shipping_cost = request.form.get("shipping_cost", type=float, default=0)
             _raw_tax = request.form.get("tax_rate")
             try:
-                tax_rate = (
-                    float(_raw_tax) if _raw_tax not in (None, "") else None
-                )
+                tax_rate = float(_raw_tax) if _raw_tax not in (None, "") else None
             except (ValueError, TypeError):
                 flash("⚠️ معدل الضريبة غير صالح.", "danger")
                 return redirect(url_for("sales.create"))

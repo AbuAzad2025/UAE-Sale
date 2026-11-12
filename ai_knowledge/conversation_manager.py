@@ -31,34 +31,30 @@ class ConversationManager:
     def __init__(self):
         self.active_conversations = {}  # {user_id: conversation_data}
         self.conversation_styles = {
-            'professional': 'احترافي وواضح',
-            'friendly': 'ودود ومرح',
-            'technical': 'تقني ومفصل',
-            'simple': 'بسيط ومباشر'
+            "professional": "احترافي وواضح",
+            "friendly": "ودود ومرح",
+            "technical": "تقني ومفصل",
+            "simple": "بسيط ومباشر",
         }
 
     def start_conversation(self, user_id: int, user_info: dict = None) -> dict:
         """بدء محادثة جديدة"""
         self.active_conversations[user_id] = {
-            'user_id': user_id,
-            'user_info': user_info or {},
-            'started_at': datetime.now().isoformat(),
-            'messages': [],
-            'context': {},
-            'style': 'professional'  # افتراضي
+            "user_id": user_id,
+            "user_info": user_info or {},
+            "started_at": datetime.now().isoformat(),
+            "messages": [],
+            "context": {},
+            "style": "professional",  # افتراضي
         }
 
         greeting = self._generate_greeting(user_info)
 
-        return {
-            'conversation_id': user_id,
-            'greeting': greeting,
-            'status': 'active'
-        }
+        return {"conversation_id": user_id, "greeting": greeting, "status": "active"}
 
     def _generate_greeting(self, user_info: dict) -> str:
         """توليد تحية مخصصة"""
-        name = user_info.get('name', 'عزيزي') if user_info else 'عزيزي'
+        name = user_info.get("name", "عزيزي") if user_info else "عزيزي"
 
         hour = datetime.now().hour
 
@@ -97,11 +93,13 @@ class ConversationManager:
         conversation = self.active_conversations[user_id]
 
         # إضافة الرسالة للتاريخ
-        conversation['messages'].append({
-            'timestamp': datetime.now().isoformat(),
-            'role': 'user',
-            'content': message
-        })
+        conversation["messages"].append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "role": "user",
+                "content": message,
+            }
+        )
 
         # تحليل النية
         intent, entities = self._analyze_intent(message)
@@ -113,24 +111,26 @@ class ConversationManager:
         response = self._generate_response(user_id, message, intent, entities)
 
         # إضافة الرد للتاريخ
-        conversation['messages'].append({
-            'timestamp': datetime.now().isoformat(),
-            'role': 'assistant',
-            'content': response['text']
-        })
+        conversation["messages"].append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "role": "assistant",
+                "content": response["text"],
+            }
+        )
 
         # توليد اقتراحات للمتابعة
         suggestions = self._generate_suggestions(intent, entities)
 
         # حفظ في الذاكرة طويلة المدى
-        self._save_to_long_term_memory(user_id, message, response['text'])
+        self._save_to_long_term_memory(user_id, message, response["text"])
 
         return {
-            'response': response['text'],
-            'context_updated': True,
-            'suggestions': suggestions,
-            'intent': intent,
-            'confidence': response['confidence']
+            "response": response["text"],
+            "context_updated": True,
+            "suggestions": suggestions,
+            "intent": intent,
+            "confidence": response["confidence"],
         }
 
     def _analyze_intent(self, message: str) -> tuple:  # noqa: C901
@@ -138,37 +138,44 @@ class ConversationManager:
         message_lower = message.lower()
 
         # تحديد النية
-        if any(kw in message_lower for kw in ['سعر', 'price', 'كم', 'how much']):
-            intent = 'pricing_query'
-        elif any(kw in message_lower for kw in ['توقع', 'predict', 'متوقع', 'forecast']):
-            intent = 'prediction_query'
-        elif any(kw in message_lower for kw in ['محاسبة', 'قيد', 'accounting', 'journal']):
-            intent = 'accounting_query'
-        elif any(kw in message_lower for kw in ['صيانة', 'maintenance', 'إصلاح', 'repair']):
-            intent = 'maintenance_query'
-        elif any(kw in message_lower for kw in ['مخزون', 'inventory', 'stock']):
-            intent = 'inventory_query'
-        elif any(kw in message_lower for kw in ['عميل', 'customer', 'زبون']):
-            intent = 'customer_query'
-        elif any(kw in message_lower for kw in ['كيف', 'how', 'طريقة', 'method']):
-            intent = 'howto_query'
+        if any(kw in message_lower for kw in ["سعر", "price", "كم", "how much"]):
+            intent = "pricing_query"
+        elif any(
+            kw in message_lower for kw in ["توقع", "predict", "متوقع", "forecast"]
+        ):
+            intent = "prediction_query"
+        elif any(
+            kw in message_lower for kw in ["محاسبة", "قيد", "accounting", "journal"]
+        ):
+            intent = "accounting_query"
+        elif any(
+            kw in message_lower for kw in ["صيانة", "maintenance", "إصلاح", "repair"]
+        ):
+            intent = "maintenance_query"
+        elif any(kw in message_lower for kw in ["مخزون", "inventory", "stock"]):
+            intent = "inventory_query"
+        elif any(kw in message_lower for kw in ["عميل", "customer", "زبون"]):
+            intent = "customer_query"
+        elif any(kw in message_lower for kw in ["كيف", "how", "طريقة", "method"]):
+            intent = "howto_query"
         else:
-            intent = 'general_query'
+            intent = "general_query"
 
         # استخراج الكيانات (entities)
         entities = {}
 
         # أرقام
         import re
-        numbers = re.findall(r'\d+', message)
+
+        numbers = re.findall(r"\d+", message)
         if numbers:
-            entities['numbers'] = numbers
+            entities["numbers"] = numbers
 
         # كلمات مفتاحية
-        if 'منتج' in message_lower:
-            entities['entity_type'] = 'product'
-        elif 'عميل' in message_lower:
-            entities['entity_type'] = 'customer'
+        if "منتج" in message_lower:
+            entities["entity_type"] = "product"
+        elif "عميل" in message_lower:
+            entities["entity_type"] = "customer"
 
         return intent, entities
 
@@ -177,28 +184,32 @@ class ConversationManager:
         conversation = self.active_conversations[user_id]
 
         # تحديث السياق
-        conversation['context']['last_intent'] = intent
-        conversation['context']['last_entities'] = entities
-        conversation['context']['updated_at'] = datetime.now().isoformat()
+        conversation["context"]["last_intent"] = intent
+        conversation["context"]["last_entities"] = entities
+        conversation["context"]["updated_at"] = datetime.now().isoformat()
 
         # الاحتفاظ بتاريخ النيات
-        if 'intent_history' not in conversation['context']:
-            conversation['context']['intent_history'] = []
+        if "intent_history" not in conversation["context"]:
+            conversation["context"]["intent_history"] = []
 
-        conversation['context']['intent_history'].append(intent)
+        conversation["context"]["intent_history"].append(intent)
 
         # الاحتفاظ بآخر 10 نيات فقط
-        if len(conversation['context']['intent_history']) > 10:
-            conversation['context']['intent_history'] = conversation['context']['intent_history'][-10:]
+        if len(conversation["context"]["intent_history"]) > 10:
+            conversation["context"]["intent_history"] = conversation["context"][
+                "intent_history"
+            ][-10:]
 
-    def _generate_response(self, user_id: int, message: str, intent: str, entities: dict) -> dict:
+    def _generate_response(
+        self, user_id: int, message: str, intent: str, entities: dict
+    ) -> dict:
         """توليد الرد المناسب"""
         conversation = self.active_conversations[user_id]
-        style = conversation.get('style', 'professional')
+        style = conversation.get("style", "professional")
 
         # استخدام الأنظمة الذكية المتاحة
         try:
-            if intent == 'pricing_query':
+            if intent == "pricing_query":
                 # استخدام Neural Network
                 # from services.ai_service import AIService
 
@@ -212,7 +223,7 @@ class ConversationManager:
 
                 confidence = 0.8
 
-            elif intent == 'prediction_query':
+            elif intent == "prediction_query":
                 response_text = "يمكنني التوقع باستخدام 11 نموذج عصبي مدرب:\n\n"
                 response_text += "📈 توقع المبيعات\n"
                 response_text += "📦 توقع الطلب\n"
@@ -222,7 +233,7 @@ class ConversationManager:
 
                 confidence = 0.9
 
-            elif intent == 'maintenance_query':
+            elif intent == "maintenance_query":
                 response_text = "كمهندس صيانة، يمكنني مساعدتك في:\n\n"
                 response_text += "🔧 تشخيص الأعطال\n"
                 response_text += "⚙️ توقع موعد الصيانة\n"
@@ -232,7 +243,7 @@ class ConversationManager:
 
                 confidence = 0.85
 
-            elif intent == 'accounting_query':
+            elif intent == "accounting_query":
                 response_text = "كمحاسب قانوني، أستطيع:\n\n"
                 response_text += "✅ مراجعة القيود المحاسبية\n"
                 response_text += "📊 إعداد القوائم المالية\n"
@@ -249,51 +260,43 @@ class ConversationManager:
 
                 confidence = 0.6
 
-            return {
-                'text': response_text,
-                'confidence': confidence,
-                'style': style
-            }
+            return {"text": response_text, "confidence": confidence, "style": style}
 
         except Exception as e:
             logger.error(f"Response generation failed: {e}")
             return {
-                'text': "عذراً، حدث خطأ. يمكنك إعادة صياغة السؤال؟",
-                'confidence': 0.3,
-                'style': style
+                "text": "عذراً، حدث خطأ. يمكنك إعادة صياغة السؤال؟",
+                "confidence": 0.3,
+                "style": style,
             }
 
     def _generate_suggestions(self, intent: str, entities: dict) -> List[str]:
         """توليد اقتراحات للمتابعة"""
         suggestions = []
 
-        if intent == 'pricing_query':
+        if intent == "pricing_query":
             suggestions = [
                 "احسب السعر لمنتج محدد",
                 "قارن الأسعار بين منتجات",
-                "اعرض استراتيجية التسعير"
+                "اعرض استراتيجية التسعير",
             ]
 
-        elif intent == 'prediction_query':
+        elif intent == "prediction_query":
             suggestions = [
                 "توقع المبيعات لأسبوع قادم",
                 "توقع التدفق النقدي",
-                "توقع نفاذ المخزون"
+                "توقع نفاذ المخزون",
             ]
 
-        elif intent == 'maintenance_query':
+        elif intent == "maintenance_query":
             suggestions = [
                 "جدول الصيانة الوقائية",
                 "قائمة قطع الغيار المطلوبة",
-                "تقدير تكاليف الصيانة"
+                "تقدير تكاليف الصيانة",
             ]
 
         else:
-            suggestions = [
-                "اسأل عن المبيعات",
-                "اسأل عن المخزون",
-                "اسأل عن العملاء"
-            ]
+            suggestions = ["اسأل عن المبيعات", "اسأل عن المخزون", "اسأل عن العملاء"]
 
         return suggestions[:3]  # أول 3 فقط
 
@@ -313,7 +316,7 @@ class ConversationManager:
         if user_id not in self.active_conversations:
             return []
 
-        messages = self.active_conversations[user_id]['messages']
+        messages = self.active_conversations[user_id]["messages"]
         return messages[-limit:] if messages else []
 
     def end_conversation(self, user_id: int) -> dict:
@@ -322,11 +325,11 @@ class ConversationManager:
             conversation = self.active_conversations[user_id]
 
             summary = {
-                'user_id': user_id,
-                'started_at': conversation['started_at'],
-                'ended_at': datetime.now().isoformat(),
-                'messages_count': len(conversation['messages']),
-                'topics': list(set(conversation['context'].get('intent_history', [])))
+                "user_id": user_id,
+                "started_at": conversation["started_at"],
+                "ended_at": datetime.now().isoformat(),
+                "messages_count": len(conversation["messages"]),
+                "topics": list(set(conversation["context"].get("intent_history", []))),
             }
 
             # حذف من الذاكرة النشطة
@@ -336,12 +339,9 @@ class ConversationManager:
             farewell += "سعيد بخدمتك دائماً.\n"
             farewell += "إلى اللقاء! 👋"
 
-            return {
-                'summary': summary,
-                'farewell': farewell
-            }
+            return {"summary": summary, "farewell": farewell}
 
-        return {'error': 'No active conversation'}
+        return {"error": "No active conversation"}
 
 
 # ============================================================================

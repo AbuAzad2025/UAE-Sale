@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 # Strict-match tolerance: deltas up to 0.01 (inclusive) are considered balanced;
 # anything strictly greater is reported as a break (matches legacy drift rule).
-TOLERANCE = Decimal('0.01')
+TOLERANCE = Decimal("0.01")
 
 
 def to_decimal(value):
@@ -23,13 +23,13 @@ def to_decimal(value):
     never crash on dirty boundary data.
     """
     if value is None:
-        return Decimal('0')
+        return Decimal("0")
     try:
-        d = Decimal(str(value).strip().replace(',', ''))
+        d = Decimal(str(value).strip().replace(",", ""))
     except Exception:
-        return Decimal('0')
+        return Decimal("0")
     if not d.is_finite():
-        return Decimal('0')
+        return Decimal("0")
     return d
 
 
@@ -52,21 +52,23 @@ def get_control_account_balance(account_codes):
 
     codes = [str(c) for c in (account_codes or []) if c]
     if not codes:
-        return Decimal('0')
+        return Decimal("0")
 
     accounts = GLAccount.query.filter(GLAccount.code.in_(codes)).all()
     found = {acc.code for acc in accounts}
     missing = [c for c in codes if c not in found]
     if missing:
-        logger.warning(f'Control account(s) missing from CoA: {missing}')
+        logger.warning(f"Control account(s) missing from CoA: {missing}")
 
-    total = Decimal('0')
+    total = Decimal("0")
     for acc in accounts:
-        raw_net = db.session.query(
-            func.coalesce(func.sum(GLJournalLine.amount_base), 0)
-        ).filter(GLJournalLine.account_id == acc.id).scalar()
+        raw_net = (
+            db.session.query(func.coalesce(func.sum(GLJournalLine.amount_base), 0))
+            .filter(GLJournalLine.account_id == acc.id)
+            .scalar()
+        )
         net = to_decimal(raw_net)
-        total += net if acc.type in ('asset', 'expense') else -net
+        total += net if acc.type in ("asset", "expense") else -net
 
     return total
 
@@ -102,14 +104,16 @@ def check_customer_balance(customer_id=None):
         stored = Decimal(str(customer.balance or 0))
         drift = abs(stored - calculated)
 
-        if drift > Decimal('0.01'):
-            drifts.append({
-                'customer_id': customer.id,
-                'customer_name': customer.name,
-                'stored': float(stored),
-                'calculated': float(calculated),
-                'drift': float(drift),
-            })
+        if drift > Decimal("0.01"):
+            drifts.append(
+                {
+                    "customer_id": customer.id,
+                    "customer_name": customer.name,
+                    "stored": float(stored),
+                    "calculated": float(calculated),
+                    "drift": float(drift),
+                }
+            )
 
             logger.warning(
                 f"Balance drift detected for customer {customer.id} "
@@ -132,17 +136,20 @@ def repair_customer_balance(customer_id=None):
         int: number of records repaired
     """
 
-    lock_name = f'balance_repair:{customer_id or "all"}'
+    lock_name = f"balance_repair:{customer_id or 'all'}"
     repaired = 0
 
     try:
         from utils.distributed_lock import repair_distributed_lock
+
         with repair_distributed_lock(lock_name, timeout=30, blocking_timeout=10):
             repaired = _do_repair(customer_id)
     except ImportError:
         repaired = _do_repair(customer_id)
     except Exception as e:
-        logger.warning(f'Distributed lock failed for {lock_name}: {e} — proceeding without lock')
+        logger.warning(
+            f"Distributed lock failed for {lock_name}: {e} — proceeding without lock"
+        )
         repaired = _do_repair(customer_id)
 
     return repaired
@@ -157,11 +164,11 @@ def _do_repair(customer_id=None):
     drifts = check_customer_balance(customer_id)
 
     for drift_info in drifts:
-        customer = db.session.get(Customer, drift_info['customer_id'])
+        customer = db.session.get(Customer, drift_info["customer_id"])
         if customer:
             # F10: القيمة المحسوبة تشمل الرصيد الافتتاحي — فالإصلاح لا
             # يحذف الرصيد الافتتاحي (كان يُمحى سابقاً).
-            customer.balance = Decimal(str(drift_info['calculated']))
+            customer.balance = Decimal(str(drift_info["calculated"]))
             repaired += 1
             logger.info(
                 f"Repaired balance for customer {customer.id} "

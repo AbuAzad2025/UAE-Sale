@@ -12,8 +12,14 @@ from werkzeug.routing import BuildError  # noqa: E402,F401
 
 from config import Config, ensure_runtime_dirs, assert_production_sanity  # noqa: E402
 from extensions import (  # noqa: E402,F401
-    db, migrate, login_manager, csrf, limiter, mail,
-    init_extensions, setup_logging
+    db,
+    migrate,
+    login_manager,
+    csrf,
+    limiter,
+    mail,
+    init_extensions,
+    setup_logging,
 )
 from utils.monitoring import setup_advanced_logging  # noqa: E402
 from utils.enhanced_logging import setup_enhanced_logging  # noqa: E402
@@ -32,15 +38,15 @@ except ImportError:
 # Decimal-only arithmetic: every boundary value is coerced via Decimal(str(x))
 # so float drift can never reach a rendered amount.
 # ---------------------------------------------------------------------------
-_MONEY_TWO = Decimal('0.01')
-_LRM = '\u200e'  # Left-To-Right Mark: keeps digits contiguous inside RTL rows
+_MONEY_TWO = Decimal("0.01")
+_LRM = "\u200e"  # Left-To-Right Mark: keeps digits contiguous inside RTL rows
 
 _STATUS_BADGE_MAP = {
-    'unpaid': ('warning', 'غير مدفوع'),
-    'partial': ('info', 'جزئي'),
-    'paid': ('success', 'مدفوع'),
-    'void': ('secondary', 'ملغي'),
-    'bounced': ('danger', 'مرتد'),
+    "unpaid": ("warning", "غير مدفوع"),
+    "partial": ("info", "جزئي"),
+    "paid": ("success", "مدفوع"),
+    "void": ("secondary", "ملغي"),
+    "bounced": ("danger", "مرتد"),
 }
 
 
@@ -51,7 +57,7 @@ def _to_decimal(value):
     if value is None or isinstance(value, bool):
         return None
     try:
-        d = Decimal(str(value).strip().replace(',', ''))
+        d = Decimal(str(value).strip().replace(",", ""))
     except (InvalidOperation, ValueError):
         return None
     return d if d.is_finite() else None
@@ -61,18 +67,18 @@ def _format_money(value, currency=None):
     """Quantize to 2dp with thousands separators, LRM-embedded for RTL safety."""
     d = _to_decimal(value)
     if d is None:
-        return '' if value is None else str(value)
+        return "" if value is None else str(value)
     q = d.quantize(_MONEY_TWO, rounding=ROUND_HALF_UP)
-    s = _LRM + format(q, ',.2f') + _LRM
-    return f'{s} {currency}' if currency else s
+    s = _LRM + format(q, ",.2f") + _LRM
+    return f"{s} {currency}" if currency else s
 
 
 def _format_num(value):
     """Plain grouped 2dp numeric string for right-aligned grid cells."""
     d = _to_decimal(value)
     if d is None:
-        return '' if value is None else str(value)
-    return format(d.quantize(_MONEY_TWO, rounding=ROUND_HALF_UP), ',.2f')
+        return "" if value is None else str(value)
+    return format(d.quantize(_MONEY_TWO, rounding=ROUND_HALF_UP), ",.2f")
 
 
 def _status_badge(status):
@@ -82,12 +88,15 @@ def _status_badge(status):
     badge class comes from a hardcoded allowlist map (never user input),
     so there is no XSS vector. nosec B704.
     """
-    key = str(status or '').strip().lower()
+    key = str(status or "").strip().lower()
     cls, label = _STATUS_BADGE_MAP.get(key, (None, None))
     if cls is None:
-        cls, label = 'secondary', str(status or '')
-    return Markup('<span class="badge badge-{}">{}</span>'.format(  # nosec B704
-        escape(cls), escape(label)))
+        cls, label = "secondary", str(status or "")
+    return Markup(
+        '<span class="badge badge-{}">{}</span>'.format(  # nosec B704
+            escape(cls), escape(label)
+        )
+    )
 
 
 def _get_current_tenant():
@@ -95,6 +104,7 @@ def _get_current_tenant():
     try:
         from models.tenant_scope import get_current_tenant_id
         from models import Tenant
+
         tid = get_current_tenant_id()
         if tid:
             return Tenant.query.get(tid)
@@ -102,6 +112,7 @@ def _get_current_tenant():
         pass
     try:
         from models import Tenant
+
         return Tenant.query.filter_by(is_active=True).first()
     except Exception:
         return None
@@ -146,6 +157,7 @@ def create_app(config_class=Config):  # noqa: C901
     # exist yet.  This is the only place the first owner is seeded; no
     # hardcoded user objects in app code or startup scripts.
     from utils.system_init import ensure_system_integrity
+
     try:
         ensure_system_integrity(app)
         app.logger.info("[OK] System integrity verified (Master Key active)")
@@ -162,6 +174,7 @@ def create_app(config_class=Config):  # noqa: C901
     from routes.products import products_bp
     from routes.customers import customers_bp
     from routes.reports import reports_bp
+
     # from routes.settings import settings_bp
     from routes.api import api_bp
     from routes.api_enhanced import api_enhanced_bp
@@ -171,66 +184,89 @@ def create_app(config_class=Config):  # noqa: C901
     from routes.ledger import ledger_bp
     from routes.owner import owner_bp
     from routes.payments import payments_bp
+
     # from routes.notifications import notifications_bp
     from routes.warehouse import warehouse_bp
     from routes.language import language_bp
+
     try:
         from routes.ai import ai_bp
+
         _ = True
     except Exception as e:
         ai_import_error = str(e)
-        app.logger.error("AI Blueprint Import Error: %s", ai_import_error, exc_info=True)
+        app.logger.error(
+            "AI Blueprint Import Error: %s", ai_import_error, exc_info=True
+        )
         _ = False
 
         # Fallback Blueprint to prevent url_for BuildError
         # This ensures the dashboard doesn't crash even if AI modules are missing
         from flask import Blueprint, flash, redirect, url_for  # noqa: F401,F811(local import intentional)
-        ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
 
-        @ai_bp.route('/assistant')
+        ai_bp = Blueprint("ai", __name__, url_prefix="/ai")
+
+        @ai_bp.route("/assistant")
         @login_required
         def assistant_page():
-            flash(f"AI Module failed to load on server start. Please check logs. Error: {ai_import_error}", "error")
-            return redirect(url_for('main.dashboard'))
+            flash(
+                f"AI Module failed to load on server start. Please check logs. Error: {ai_import_error}",
+                "error",
+            )
+            return redirect(url_for("main.dashboard"))
 
-        @ai_bp.route('/config')
+        @ai_bp.route("/config")
         @login_required
         def config():
-            flash(f"AI Module failed to load on server start. Please check logs. Error: {ai_import_error}", "error")
-            return redirect(url_for('main.dashboard'))
+            flash(
+                f"AI Module failed to load on server start. Please check logs. Error: {ai_import_error}",
+                "error",
+            )
+            return redirect(url_for("main.dashboard"))
 
-        @ai_bp.route('/chat', methods=['POST'])
+        @ai_bp.route("/chat", methods=["POST"])
         def chat():
             return {"error": "AI Module Unavailable"}, 503
 
         # Fallback for all other potential AI routes found in routes/ai.py
         # This prevents 404 or BuildError if referenced elsewhere dynamically
-        @ai_bp.route('/recommend-price', methods=['POST'])
-        def recommend_price(): return {"error": "AI Module Unavailable"}, 503
+        @ai_bp.route("/recommend-price", methods=["POST"])
+        def recommend_price():
+            return {"error": "AI Module Unavailable"}, 503
 
-        @ai_bp.route('/check-stock', methods=['POST'])
-        def check_stock(): return {"error": "AI Module Unavailable"}, 503
+        @ai_bp.route("/check-stock", methods=["POST"])
+        def check_stock():
+            return {"error": "AI Module Unavailable"}, 503
 
-        @ai_bp.route('/analyze-customer/<int:customer_id>', methods=['GET'])
-        def analyze_customer(customer_id): return {"error": "AI Module Unavailable"}, 503
+        @ai_bp.route("/analyze-customer/<int:customer_id>", methods=["GET"])
+        def analyze_customer(customer_id):
+            return {"error": "AI Module Unavailable"}, 503
 
-        @ai_bp.route('/exchange-rate/<currency>', methods=['GET'])
-        def exchange_rate(currency): return {"error": "AI Module Unavailable"}, 503
+        @ai_bp.route("/exchange-rate/<currency>", methods=["GET"])
+        def exchange_rate(currency):
+            return {"error": "AI Module Unavailable"}, 503
 
-        @ai_bp.route('/search-market-price/<int:product_id>', methods=['GET'])
-        def search_market_price(product_id): return {"error": "AI Module Unavailable"}, 503
+        @ai_bp.route("/search-market-price/<int:product_id>", methods=["GET"])
+        def search_market_price(product_id):
+            return {"error": "AI Module Unavailable"}, 503
 
-        @ai_bp.route('/find-compatible/<int:product_id>', methods=['GET'])
-        def find_compatible(product_id): return {"error": "AI Module Unavailable"}, 503
+        @ai_bp.route("/find-compatible/<int:product_id>", methods=["GET"])
+        def find_compatible(product_id):
+            return {"error": "AI Module Unavailable"}, 503
 
-        @ai_bp.route('/upload-excel', methods=['POST'])
-        def upload_excel(): return {"error": "AI Module Unavailable"}, 503
+        @ai_bp.route("/upload-excel", methods=["POST"])
+        def upload_excel():
+            return {"error": "AI Module Unavailable"}, 503
 
         # Catch-all for any other AI route to avoid crashes
-        @ai_bp.route('/<path:path>')
+        @ai_bp.route("/<path:path>")
         def catch_all(path):
-            flash(f"AI Feature '{path}' is currently unavailable due to system initialization error.", "warning")
-            return redirect(url_for('main.dashboard'))
+            flash(
+                f"AI Feature '{path}' is currently unavailable due to system initialization error.",
+                "warning",
+            )
+            return redirect(url_for("main.dashboard"))
+
     from routes.users import users_bp
     from routes.cheques import cheques_bp
     from routes.returns import returns_bp
@@ -270,6 +306,7 @@ def create_app(config_class=Config):  # noqa: C901
     app.register_blueprint(warehouse_bp)
     app.register_blueprint(language_bp)
     from routes.support import support_bp
+
     app.register_blueprint(support_bp)
     # Always register AI bp (either real or fallback)
     app.register_blueprint(ai_bp)
@@ -295,6 +332,7 @@ def create_app(config_class=Config):  # noqa: C901
 
     # Error Handlers
     from utils.error_handlers import register_error_handlers
+
     register_error_handlers(app)
 
     # Context Processors
@@ -304,6 +342,7 @@ def create_app(config_class=Config):  # noqa: C901
         from utils.constants import CURRENCIES
         from utils.i18n import t, is_rtl, get_current_language
         from services.lookup_service import get_all as _get_all_lookups
+
         try:
             _lookups = _get_all_lookups()
         except Exception:
@@ -313,7 +352,7 @@ def create_app(config_class=Config):  # noqa: C901
         def get_currency_symbol(code):
             for c_code, data in CURRENCIES:
                 if c_code == code:
-                    return data.get('symbol', code)
+                    return data.get("symbol", code)
             return code
 
         # Owner console — مبدّل الشركة (المالك فقط، قراءة السياق)
@@ -322,37 +361,47 @@ def create_app(config_class=Config):  # noqa: C901
         try:
             from flask_login import current_user as _cu
             from flask import session as _sess
-            if _cu is not None and _cu.is_authenticated and getattr(_cu, 'is_owner', False):
+
+            if (
+                _cu is not None
+                and _cu.is_authenticated
+                and getattr(_cu, "is_owner", False)
+            ):
                 from models import Tenant as _Tenant
-                owner_tenants = _Tenant.query.filter_by(is_active=True).order_by(_Tenant.id.asc()).all()
-                _imp_id = _sess.get('impersonate_tenant_id')
+
+                owner_tenants = (
+                    _Tenant.query.filter_by(is_active=True)
+                    .order_by(_Tenant.id.asc())
+                    .all()
+                )
+                _imp_id = _sess.get("impersonate_tenant_id")
                 if _imp_id is not None:
                     impersonate_tenant = _Tenant.query.get(int(_imp_id))
         except Exception:
             owner_tenants = []
             impersonate_tenant = None
         return {
-            'format_currency': format_currency,
-            'timeago': timeago,
-            't': t,
+            "format_currency": format_currency,
+            "timeago": timeago,
+            "t": t,
             # Evaluated values (not the functions): templates use
             # `{{ current_language }}` and `{% if is_rtl %}` directly.
             # Passing the function object made `is_rtl` always truthy,
             # locking every page to dir="rtl" even in English.
-            'is_rtl': is_rtl(),
-            'current_language': get_current_language(),
-            'get_current_language': get_current_language,
-            'get_currency_symbol': get_currency_symbol,
-            'lookups': _lookups,
-            'lookup_codes': _lookup_codes,
-            'company_name': app.config.get('COMPANY_NAME', 'Garage Manager'),
-            'current_year': datetime.now().year,
-            'now': datetime.now(),
-            'ai_enabled': 'ai' in app.blueprints,
-            'current_tenant': _get_current_tenant(),
-            'owner_tenants': owner_tenants,
-            'impersonate_tenant': impersonate_tenant,
-            'is_impersonating': impersonate_tenant is not None,
+            "is_rtl": is_rtl(),
+            "current_language": get_current_language(),
+            "get_current_language": get_current_language,
+            "get_currency_symbol": get_currency_symbol,
+            "lookups": _lookups,
+            "lookup_codes": _lookup_codes,
+            "company_name": app.config.get("COMPANY_NAME", "Garage Manager"),
+            "current_year": datetime.now().year,
+            "now": datetime.now(),
+            "ai_enabled": "ai" in app.blueprints,
+            "current_tenant": _get_current_tenant(),
+            "owner_tenants": owner_tenants,
+            "impersonate_tenant": impersonate_tenant,
+            "is_impersonating": impersonate_tenant is not None,
         }
 
     def _log_tenant_context_violation(user):
@@ -366,10 +415,12 @@ def create_app(config_class=Config):  # noqa: C901
         """
         try:
             app.logger.warning(
-                'SECURITY: user %s (id=%s) has no tenant_id; scoping them to '
-                'tenant-less rows only. Assign a tenant to grant tenant-wide '
-                'access.',
-                getattr(user, 'username', '?'), getattr(user, 'id', '?'))
+                "SECURITY: user %s (id=%s) has no tenant_id; scoping them to "
+                "tenant-less rows only. Assign a tenant to grant tenant-wide "
+                "access.",
+                getattr(user, "username", "?"),
+                getattr(user, "id", "?"),
+            )
         except Exception:  # pragma: no cover - logging must never raise
             pass
 
@@ -379,33 +430,41 @@ def create_app(config_class=Config):  # noqa: C901
         g.request_id = str(uuid.uuid4())
 
         # Determine language (placeholder)
-        g.lang_code = 'ar'
+        g.lang_code = "ar"
         g.rtl = True
 
         # Multi-tenant: set current tenant from logged-in user
         from models import set_current_tenant_id
         from models.tenant_scope import TENANT_LESS_SCOPE
         from flask_login import current_user  # noqa: F811  (local import intentional)
+
         if current_user.is_authenticated:
             # SECURITY: Session idle timeout — force logout after 30 minutes of inactivity
             from flask import session
             from datetime import datetime as _dt, timedelta as _td
-            last_activity = session.get('last_activity')
+
+            last_activity = session.get("last_activity")
             if last_activity:
                 try:
                     last_seen = _dt.fromisoformat(last_activity)
                     if _dt.now() - last_seen > _td(minutes=30):
                         from flask_login import logout_user
+
                         logout_user()
                         session.clear()
                         from flask import flash
-                        flash('⏰ انتهت صلاحية الجلسة بسبب عدم النشاط. يرجى تسجيل الدخول مرة أخرى.', 'warning')
+
+                        flash(
+                            "⏰ انتهت صلاحية الجلسة بسبب عدم النشاط. يرجى تسجيل الدخول مرة أخرى.",
+                            "warning",
+                        )
                         from flask import request as _req
                         from werkzeug.utils import redirect as _redir
+
                         return _redir(_req.url)
                 except (ValueError, TypeError):
                     pass  # Invalid timestamp — let session continue
-            session['last_activity'] = _dt.now().isoformat()
+            session["last_activity"] = _dt.now().isoformat()
             session.permanent = True
 
             # Owner sees all tenants (no filter); other users are scoped to
@@ -425,19 +484,19 @@ def create_app(config_class=Config):  # noqa: C901
             # Owner + Super Admin يريان كل المنصة (نفس نطاق المشغّل).
             # Super Admin موصوف بأنه "Full system access (except Owner Panel)"
             # لذا يُعامل مثل المالك في تعيين النطاق ولو خلا من pane.
-            _role_slug = getattr(getattr(current_user, 'role', None), 'slug', None)
-            if getattr(current_user, 'is_owner', False) or _role_slug == 'super_admin':
+            _role_slug = getattr(getattr(current_user, "role", None), "slug", None)
+            if getattr(current_user, "is_owner", False) or _role_slug == "super_admin":
                 # Support impersonation: owner who entered a tenant context
                 # operates inside that tenant's rows (writes stamp correctly).
                 _imp_tid = None
                 try:
-                    _imp_val = session.get('impersonate_tenant_id')
+                    _imp_val = session.get("impersonate_tenant_id")
                     if _imp_val is not None:
                         _imp_tid = int(_imp_val)
                 except Exception:
                     _imp_tid = None
                 set_current_tenant_id(_imp_tid)  # None = platform view
-            elif getattr(current_user, 'tenant_id', None):
+            elif getattr(current_user, "tenant_id", None):
                 set_current_tenant_id(current_user.tenant_id)
             else:
                 _log_tenant_context_violation(current_user)
@@ -447,17 +506,24 @@ def create_app(config_class=Config):  # noqa: C901
 
     # CORS initialization
     from flask_cors import CORS
-    CORS(app, origins=app.config.get('CORS_ORIGINS', ['http://localhost:5000']),
-         supports_credentials=True, methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'])
+
+    CORS(
+        app,
+        origins=app.config.get("CORS_ORIGINS", ["http://localhost:5000"]),
+        supports_credentials=True,
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    )
 
     # Security Headers
     @app.after_request
     def add_security_headers(response):
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-        response.headers['X-XSS-Protection'] = '1; mode=block'
-        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=(), payment=()'
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=(), payment=()"
+        )
         # CSP: restrict script/style sources to self + known CDN (AdminLTE uses jsdelivr)
         csp_directives = [
             "default-src 'self'",
@@ -468,16 +534,19 @@ def create_app(config_class=Config):  # noqa: C901
             "connect-src 'self'",
             "frame-ancestors 'self'",
         ]
-        response.headers['Content-Security-Policy'] = '; '.join(csp_directives)
+        response.headers["Content-Security-Policy"] = "; ".join(csp_directives)
         # HSTS: only send over HTTPS (won't affect HTTP in dev, but protects production)
-        if not app.config.get('DEBUG', False):
-            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        if not app.config.get("DEBUG", False):
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
         return response
 
     @app.teardown_appcontext
     def teardown_tenant(exception=None):
         """Clear tenant context at end of request."""
         from models import clear_current_tenant_id
+
         clear_current_tenant_id()
 
     # Dynamic base currency per tenant/company - available in all templates & JS
@@ -485,21 +554,29 @@ def create_app(config_class=Config):  # noqa: C901
     def inject_base_currency():
         try:
             from services.currency_service import CurrencyService
+
             base = CurrencyService.get_base_currency()
         except Exception:
-            base = 'ILS'
+            base = "ILS"
         names = {
-            'ILS': 'شيقل', 'JOD': 'دينار أردني', 'AED': 'درهم إماراتي',
-            'SAR': 'ريال سعودي', 'USD': 'دولار أمريكي', 'EUR': 'يورو',
-            'GBP': 'جنيه إسترليني', 'KWD': 'دينار كويتي', 'QAR': 'ريال قطري',
-            'OMR': 'ريال عماني', 'BHD': 'دينار بحريني',
+            "ILS": "شيقل",
+            "JOD": "دينار أردني",
+            "AED": "درهم إماراتي",
+            "SAR": "ريال سعودي",
+            "USD": "دولار أمريكي",
+            "EUR": "يورو",
+            "GBP": "جنيه إسترليني",
+            "KWD": "دينار كويتي",
+            "QAR": "ريال قطري",
+            "OMR": "ريال عماني",
+            "BHD": "دينار بحريني",
         }
-        return {'base_currency': base, 'base_currency_name': names.get(base, base)}
+        return {"base_currency": base, "base_currency_name": names.get(base, base)}
 
     # Financial grid filters (Agent 7): money / num / status_badge
-    app.template_filter('money')(_format_money)
-    app.template_filter('num')(_format_num)
-    app.template_filter('status_badge')(_status_badge)
+    app.template_filter("money")(_format_money)
+    app.template_filter("num")(_format_num)
+    app.template_filter("status_badge")(_status_badge)
 
     # Initialize tenant filter events
     try:
@@ -508,6 +585,7 @@ def create_app(config_class=Config):  # noqa: C901
             install_tenant_filter_events,
             install_tenant_loader_criteria,
         )
+
         # Register tables that have a tenant_id column but no module-level
         # register_tenant_scoped() call (currently `users`) BEFORE the query
         # hook is installed, so the first query already sees the full set.
@@ -516,13 +594,14 @@ def create_app(config_class=Config):  # noqa: C901
         # Load-time criteria (relationships, joinedload, session.get) which a
         # per-query filter cannot reach.
         install_tenant_loader_criteria()
-        app.logger.info('[OK] Tenant filter events installed')
+        app.logger.info("[OK] Tenant filter events installed")
     except Exception as e:
-        app.logger.warning(f'Tenant filter events not installed: {e}')
+        app.logger.warning(f"Tenant filter events not installed: {e}")
 
     # Initialize Listeners
     try:
         from models.events import register_all_listeners
+
         with app.app_context():
             register_all_listeners()
     except ImportError:
@@ -535,12 +614,13 @@ def create_app(config_class=Config):  # noqa: C901
 
     try:
         from cli_commands import register_cli_commands
+
         register_cli_commands(app)
         app.logger.info("[OK] Enhanced CLI commands registered")
     except ImportError:
-        app.logger.info('CLI commands not available - skipping')
+        app.logger.info("CLI commands not available - skipping")
     except Exception as e:
-        app.logger.warning(f'Enhanced CLI commands not registered: {e}')
+        app.logger.warning(f"Enhanced CLI commands not registered: {e}")
 
     # === MANDATORY STARTUP SCHEMA VERIFICATION ===
     # PostgreSQL (production/CI): widen alembic_version, then run
@@ -555,24 +635,28 @@ def create_app(config_class=Config):  # noqa: C901
     # (assert_production_sanity), so this path never weakens prod safety.
     try:
         from sqlalchemy import text
+
         with app.app_context():
-            if db.engine.dialect.name == 'sqlite':
+            if db.engine.dialect.name == "sqlite":
                 db.create_all()
                 app.logger.info(
-                    '[OK] SQLite schema synchronized via model metadata '
-                    '(Alembic file migrations skipped: SQLite-incompatible DDL).'
+                    "[OK] SQLite schema synchronized via model metadata "
+                    "(Alembic file migrations skipped: SQLite-incompatible DDL)."
                 )
             else:
                 # Pre-step: guarantee alembic_version.version_num can hold
                 # long descriptive revision slugs (VARCHAR(64), not the
                 # Alembic 32-char default) before upgrade() touches it.
                 with db.engine.begin() as _widen_conn:
-                    _widen_conn.execute(text("""
+                    _widen_conn.execute(
+                        text("""
                         CREATE TABLE IF NOT EXISTS alembic_version (
                             version_num VARCHAR(64) NOT NULL PRIMARY KEY
                         );
-                    """))
-                    _widen_conn.execute(text("""
+                    """)
+                    )
+                    _widen_conn.execute(
+                        text("""
                         DO $$
                         BEGIN
                             IF EXISTS (
@@ -586,19 +670,23 @@ def create_app(config_class=Config):  # noqa: C901
                                     ALTER COLUMN version_num TYPE VARCHAR(64);
                             END IF;
                         END $$;
-                    """))
+                    """)
+                    )
 
                 from alembic.command import upgrade as _upgrade
                 from alembic.config import Config
 
-                cfg = Config('migrations/alembic.ini')
-                _upgrade(cfg, 'head')
-                app.logger.info('[OK] Alembic migrations applied — database synchronized.')
+                cfg = Config("migrations/alembic.ini")
+                _upgrade(cfg, "head")
+                app.logger.info(
+                    "[OK] Alembic migrations applied — database synchronized."
+                )
     except Exception as e:
         app.logger.critical(
-            'FATAL: Schema synchronization failed during startup — '
-            'database tables are missing or out of sync. '
-            'Application cannot run in a degraded state. Error: %s', e
+            "FATAL: Schema synchronization failed during startup — "
+            "database tables are missing or out of sync. "
+            "Application cannot run in a degraded state. Error: %s",
+            e,
         )
         raise
 
@@ -612,17 +700,17 @@ def create_app(config_class=Config):  # noqa: C901
     try:
         with app.app_context():
             from services.fiscal_period_guard import ensure_current_period
+
             ensure_current_period()
-            app.logger.info(
-                '[OK] Fiscal period available for the current year.')
+            app.logger.info("[OK] Fiscal period available for the current year.")
     except Exception as e:  # never block boot on this
-        app.logger.warning(
-            'Could not auto-provision the current fiscal period: %s', e)
+        app.logger.warning("Could not auto-provision the current fiscal period: %s", e)
 
     # Step 2: Verify all critical tables exist after migration.
     # Fail-fast policy: halt boot if schema is incomplete even after migrations.
     try:
         from sqlalchemy import inspect
+
         with app.app_context():
             inspector = inspect(db.engine)
             existing_tables = set(inspector.get_table_names())
@@ -630,37 +718,54 @@ def create_app(config_class=Config):  # noqa: C901
             # Tables that MUST exist for the application to function.
             # These are the actual table names from the SQLAlchemy models / migrations.
             critical_tables = {
-                'users', 'roles', 'permissions', 'products',
-                'customers', 'sales', 'tenants', 'system_settings',
-                'gl_accounts', 'gl_journal_entries', 'gl_journal_lines',
-                'expenses', 'integration_settings', 'audit_logs'
+                "users",
+                "roles",
+                "permissions",
+                "products",
+                "customers",
+                "sales",
+                "tenants",
+                "system_settings",
+                "gl_accounts",
+                "gl_journal_entries",
+                "gl_journal_lines",
+                "expenses",
+                "integration_settings",
+                "audit_logs",
             }
 
             missing = critical_tables - existing_tables
             if missing:
                 app.logger.critical(
-                    'FATAL: Missing critical tables after migration: %s. '
-                    'Application cannot start without a complete schema. '
-                    'Manual intervention required.', sorted(missing)
+                    "FATAL: Missing critical tables after migration: %s. "
+                    "Application cannot start without a complete schema. "
+                    "Manual intervention required.",
+                    sorted(missing),
                 )
-                raise RuntimeError(f'Missing critical tables after migration: {sorted(missing)}')
+                raise RuntimeError(
+                    f"Missing critical tables after migration: {sorted(missing)}"
+                )
 
-            app.logger.info('[OK] Schema verification passed: %d tables present', len(existing_tables))
+            app.logger.info(
+                "[OK] Schema verification passed: %d tables present",
+                len(existing_tables),
+            )
     except RuntimeError:
         raise
     except Exception as e:
         app.logger.critical(
-            'FATAL: Schema verification failed during startup. '
-            'Cannot proceed. Error: %s', e
+            "FATAL: Schema verification failed during startup. "
+            "Cannot proceed. Error: %s",
+            e,
         )
         raise
 
-    app.logger.info('[OK] Application initialized successfully')
+    app.logger.info("[OK] Application initialized successfully")
 
     return app
 
 
-if __name__ == '__main__':  # noqa: C901
+if __name__ == "__main__":  # noqa: C901
     _log = logging.getLogger(__name__)
     _log.debug("Entering main block...")
     try:
@@ -680,13 +785,16 @@ if __name__ == '__main__':  # noqa: C901
     )
 
     from services.backup_service import BackupService
+
     BackupService.initialize()
 
-    enable_schedulers = os.environ.get('ENABLE_SCHEDULERS', '1').strip().lower() \
-        not in ('0', 'false', 'no', 'off')
+    enable_schedulers = os.environ.get(
+        "ENABLE_SCHEDULERS", "1"
+    ).strip().lower() not in ("0", "false", "no", "off")
 
     try:
         from services.auto_approval_service import schedule_auto_approval
+
         if enable_schedulers:
             schedule_auto_approval(app)
             app.logger.info("Auto-approval service scheduler started")
@@ -704,21 +812,24 @@ if __name__ == '__main__':  # noqa: C901
         while True:
             try:
                 settings = BackupService.get_schedule_settings()
-                if not settings.get('enabled', True):
+                if not settings.get("enabled", True):
                     time.sleep(3600)
                     continue
 
-                backup_time = str(settings.get('backup_time', '02:00'))
-                target_hour, target_minute = map(int, backup_time.split(':'))
+                backup_time = str(settings.get("backup_time", "02:00"))
+                target_hour, target_minute = map(int, backup_time.split(":"))
                 now = datetime.now()
-                next_backup = now.replace(hour=target_hour, minute=target_minute,
-                                          second=0, microsecond=0)
+                next_backup = now.replace(
+                    hour=target_hour, minute=target_minute, second=0, microsecond=0
+                )
                 if next_backup <= now:
                     next_backup += timedelta(days=1)
 
                 wait_seconds = (next_backup - now).total_seconds()
-                app.logger.info("Next automatic backup scheduled at %s",
-                                next_backup.strftime('%Y-%m-%d %H:%M:%S'))
+                app.logger.info(
+                    "Next automatic backup scheduled at %s",
+                    next_backup.strftime("%Y-%m-%d %H:%M:%S"),
+                )
                 time.sleep(wait_seconds)
 
                 with app.app_context():
@@ -728,10 +839,12 @@ if __name__ == '__main__':  # noqa: C901
                     # thread simply inherits no tenant and runs unfiltered by
                     # accident.
                     from models import run_in_platform_context
-                    backup = run_in_platform_context(
-                        BackupService.auto_backup_daily)
+
+                    backup = run_in_platform_context(BackupService.auto_backup_daily)
                     if backup:
-                        app.logger.info("Automatic backup completed: %s", backup['filename'])
+                        app.logger.info(
+                            "Automatic backup completed: %s", backup["filename"]
+                        )
                     else:
                         app.logger.warning("Automatic backup failed or not due")
 
@@ -746,28 +859,28 @@ if __name__ == '__main__':  # noqa: C901
             app.logger.info("Automatic backup scheduler started")
         except Exception as e:
             import logging
+
             logging.warning(f"Backup scheduler failed to start: {e}")
     else:
         app.logger.info("ENABLE_SCHEDULERS=0 — automatic backup scheduler disabled")
 
-    port = int(os.environ.get('PORT', 5000))
-    host = os.environ.get('HOST', '0.0.0.0')  # nosec B104 - bind address is operator-controlled via HOST env; deployed behind reverse proxy/container for multi-branch access
-    debug_mode = os.environ.get('DEBUG', 'false').lower() in ('true', '1', 'yes')
+    port = int(os.environ.get("PORT", 5000))
+    host = os.environ.get("HOST", "0.0.0.0")  # nosec B104 - bind address is operator-controlled via HOST env; deployed behind reverse proxy/container for multi-branch access
+    debug_mode = os.environ.get("DEBUG", "false").lower() in ("true", "1", "yes")
 
     app.logger.info("Starting UAE-Sale System")
     app.logger.info("Host: %s", host)
     app.logger.info("Port: %s", port)
     app.logger.info("Debug: %s", debug_mode)
     # SECURITY: Redact credentials from database URI before logging
-    _db_log = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-    if '@' in _db_log:
-        _db_log = _db_log.split('@')[0].split('://')[0] + '://***:***@' + _db_log.split('@')[1]
+    _db_log = app.config.get("SQLALCHEMY_DATABASE_URI", "")
+    if "@" in _db_log:
+        _db_log = (
+            _db_log.split("@")[0].split("://")[0]
+            + "://***:***@"
+            + _db_log.split("@")[1]
+        )
     app.logger.info("Database: %s", _db_log)
     app.logger.info("Starting server on http://%s:%s", host, port)
 
-    app.run(
-        host=host,
-        port=port,
-        debug=debug_mode,
-        use_reloader=False
-    )
+    app.run(host=host, port=port, debug=debug_mode, use_reloader=False)

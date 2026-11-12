@@ -16,19 +16,21 @@ class TestJournalEntry:
         from models import GLAccount, GLJournalEntry, GLJournalLine
 
         # Create accounts
-        cash = GLAccount(code='1000', name='Cash', name_ar='صندوق', type='asset')
-        revenue = GLAccount(code='4000', name='Revenue', name_ar='إيرادات', type='revenue')
+        cash = GLAccount(code="1000", name="Cash", name_ar="صندوق", type="asset")
+        revenue = GLAccount(
+            code="4000", name="Revenue", name_ar="إيرادات", type="revenue"
+        )
         db.session.add_all([cash, revenue])
         db.session.flush()
 
         # Create balanced entry
         entry = GLJournalEntry(
-            entry_number='JE-TEST-001',
-            description='Test entry',
-            reference_type='manual',
-            entry_type='manual',
-            total_debit=Decimal('100.000'),
-            total_credit=Decimal('100.000'),
+            entry_number="JE-TEST-001",
+            description="Test entry",
+            reference_type="manual",
+            entry_type="manual",
+            total_debit=Decimal("100.000"),
+            total_credit=Decimal("100.000"),
             created_by=owner_user.id,
         )
         db.session.add(entry)
@@ -38,16 +40,16 @@ class TestJournalEntry:
         debit_line = GLJournalLine(
             entry_id=entry.id,
             account_id=cash.id,
-            debit=Decimal('100.000'),
-            credit=Decimal('0'),
-            amount_base=Decimal('100.000'),
+            debit=Decimal("100.000"),
+            credit=Decimal("0"),
+            amount_base=Decimal("100.000"),
         )
         credit_line = GLJournalLine(
             entry_id=entry.id,
             account_id=revenue.id,
-            debit=Decimal('0'),
-            credit=Decimal('100.000'),
-            amount_base=Decimal('-100.000'),
+            debit=Decimal("0"),
+            credit=Decimal("100.000"),
+            amount_base=Decimal("-100.000"),
         )
         db.session.add_all([debit_line, credit_line])
         db.session.commit()
@@ -60,12 +62,12 @@ class TestJournalEntry:
         from utils.errors import ValidationError
 
         entry = GLJournalEntry(
-            entry_number='JE-TEST-002',
-            description='Unbalanced test entry',
-            reference_type='manual',
-            entry_type='manual',
-            total_debit=Decimal('100.000'),
-            total_credit=Decimal('50.000'),  # Unbalanced!
+            entry_number="JE-TEST-002",
+            description="Unbalanced test entry",
+            reference_type="manual",
+            entry_type="manual",
+            total_debit=Decimal("100.000"),
+            total_credit=Decimal("50.000"),  # Unbalanced!
             created_by=owner_user.id,
         )
         # الاكتشاف على الكائن:
@@ -76,26 +78,27 @@ class TestJournalEntry:
         with pytest.raises(ValidationError):
             db.session.commit()
         db.session.rollback()
-        assert GLJournalEntry.query.filter_by(
-            entry_number='JE-TEST-002').count() == 0
+        assert GLJournalEntry.query.filter_by(entry_number="JE-TEST-002").count() == 0
 
     def test_reverse_entry(self, db, owner_user):
         """Journal entry reversal creates opposite entry."""
         from models import GLAccount, GLJournalEntry, GLJournalLine
 
-        cash = GLAccount(code='1000', name='Cash', name_ar='صندوق', type='asset')
-        revenue = GLAccount(code='4000', name='Revenue', name_ar='إيرادات', type='revenue')
+        cash = GLAccount(code="1000", name="Cash", name_ar="صندوق", type="asset")
+        revenue = GLAccount(
+            code="4000", name="Revenue", name_ar="إيرادات", type="revenue"
+        )
         db.session.add_all([cash, revenue])
         db.session.flush()
 
         # Create original entry
         entry = GLJournalEntry(
-            entry_number='JE-TEST-003',
-            description='Original entry',
-            reference_type='manual',
-            entry_type='manual',
-            total_debit=Decimal('100.000'),
-            total_credit=Decimal('100.000'),
+            entry_number="JE-TEST-003",
+            description="Original entry",
+            reference_type="manual",
+            entry_type="manual",
+            total_debit=Decimal("100.000"),
+            total_credit=Decimal("100.000"),
             created_by=owner_user.id,
         )
         db.session.add(entry)
@@ -104,29 +107,29 @@ class TestJournalEntry:
         debit_line = GLJournalLine(
             entry_id=entry.id,
             account_id=cash.id,
-            debit=Decimal('100.000'),
-            credit=Decimal('0'),
-            amount_base=Decimal('100.000'),
+            debit=Decimal("100.000"),
+            credit=Decimal("0"),
+            amount_base=Decimal("100.000"),
         )
         credit_line = GLJournalLine(
             entry_id=entry.id,
             account_id=revenue.id,
-            debit=Decimal('0'),
-            credit=Decimal('100.000'),
-            amount_base=Decimal('-100.000'),
+            debit=Decimal("0"),
+            credit=Decimal("100.000"),
+            amount_base=Decimal("-100.000"),
         )
         db.session.add_all([debit_line, credit_line])
         db.session.commit()
 
         # Reverse it
-        reversed_entry = entry.reverse_entry(description='Test reversal')
+        reversed_entry = entry.reverse_entry(description="Test reversal")
         db.session.commit()
 
         # Verify reversal
         assert entry.is_reversed
         assert reversed_entry.total_debit == entry.total_credit
         assert reversed_entry.total_credit == entry.total_debit
-        assert reversed_entry.entry_type == 'reversing'
+        assert reversed_entry.entry_type == "reversing"
 
     # LAYER: model — GLJournalEntry.reverse_entry() instance guard.
     # Intentionally overlaps with the manager-level double-reverse tests in
@@ -138,12 +141,12 @@ class TestJournalEntry:
         from models import GLJournalEntry
 
         entry = GLJournalEntry(
-            entry_number='JE-TEST-004',
-            description='Double reverse test',
-            reference_type='manual',
-            entry_type='manual',
-            total_debit=Decimal('100.000'),
-            total_credit=Decimal('100.000'),
+            entry_number="JE-TEST-004",
+            description="Double reverse test",
+            reference_type="manual",
+            entry_type="manual",
+            total_debit=Decimal("100.000"),
+            total_credit=Decimal("100.000"),
             created_by=owner_user.id,
         )
         db.session.add(entry)

@@ -15,6 +15,7 @@ AI Flows Registry — سجل التدفقات الموحّد (Phase 2)
 الـ handler الفعلي للخطوات يبقى في routes/ai.py (Phase 2b سيستخرجه)
 ولكن الـ dispatch (إظهار القائمة) يصبح table-driven.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -49,14 +50,23 @@ FLOWS: tuple[FlowDef, ...] = (
             ("3", "إعطاء دفعة للعميل"),
             ("4", "عرض رصيد العميل"),
         ),
-        example_label="اكتب \"1\" لتعديل رصيد العميل",
+        example_label='اكتب "1" لتعديل رصيد العميل',
         permission="manage_customers",
         last_action="رصيد",
         confirm_required=True,
     ),
     FlowDef(
         key="customer",
-        keywords=("عميل", "عميل جديد", "إضافة عميل", "إنشاء عميل", "زبون", "زبونه", "زبون جديد", "إضافة زبون"),
+        keywords=(
+            "عميل",
+            "عميل جديد",
+            "إضافة عميل",
+            "إنشاء عميل",
+            "زبون",
+            "زبونه",
+            "زبون جديد",
+            "إضافة زبون",
+        ),
         menu_title="تريد إضافة عميل جديد. إليك الخيارات",
         options=(
             ("1", "إضافة عميل جديد"),
@@ -83,7 +93,15 @@ FLOWS: tuple[FlowDef, ...] = (
     ),
     FlowDef(
         key="sale",
-        keywords=("فاتورة", "بيع", "مبيعات", "إنشاء فاتورة", "بيع فلتر", "فلتر", "بيع قطعة"),
+        keywords=(
+            "فاتورة",
+            "بيع",
+            "مبيعات",
+            "إنشاء فاتورة",
+            "بيع فلتر",
+            "فلتر",
+            "بيع قطعة",
+        ),
         menu_title="تريد إنشاء فاتورة مبيعات. إليك الخيارات",
         options=(
             ("1", "إنشاء فاتورة جديدة"),
@@ -239,7 +257,7 @@ def find_flow(msg_lower: str) -> FlowDef | None:
             nk = _normalize(k)
             if nk and nk in msg_lower:
                 score += len(nk)
-                if ' ' in nk:
+                if " " in nk:
                     score += 10  # عبارة مخصصة أثقل
         if score > best_score:
             best_score = score
@@ -263,7 +281,14 @@ def render_menu(flow: FlowDef) -> str:
         hint_range = "1، 2، 3، أو 4"
     else:
         hint_range = "1"
-    lines.extend(["", f"💡 **اكتب رقم الخيار ({hint_range}) وسأرشدك خطوة بخطوة!**", "", f"🤖 مثال: {flow.example_label}"])
+    lines.extend(
+        [
+            "",
+            f"💡 **اكتب رقم الخيار ({hint_range}) وسأرشدك خطوة بخطوة!**",
+            "",
+            f"🤖 مثال: {flow.example_label}",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -271,4 +296,11 @@ def start_context(flow: FlowDef) -> dict:
     return {"last_action": flow.last_action, "step": 0}
 
 
-__all__ = ["FlowDef", "FLOWS", "FLOWS_BY_KEY", "find_flow", "render_menu", "start_context"]
+__all__ = [
+    "FlowDef",
+    "FLOWS",
+    "FLOWS_BY_KEY",
+    "find_flow",
+    "render_menu",
+    "start_context",
+]

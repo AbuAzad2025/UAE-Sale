@@ -8,10 +8,11 @@ so a fresh round-trip stays self-contained.
 Revision ID: b21_vat_split_accounts
 Revises: b20_expense_tax
 """
+
 from alembic import op
 
-revision = 'b21_vat_split_accounts'
-down_revision = 'b20_expense_tax'
+revision = "b21_vat_split_accounts"
+down_revision = "b20_expense_tax"
 branch_labels = None
 depends_on = None
 

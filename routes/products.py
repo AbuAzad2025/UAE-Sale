@@ -1,19 +1,33 @@
 from decimal import Decimal
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
+from flask import (
+    Blueprint,
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    request,
+    jsonify,
+    current_app,
+)
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Product, ProductCategory, Customer, ProductPartner
 from utils.decorators import permission_required, get_owned_or_404
 
-from utils.helpers import create_audit_log, generate_sku, generate_barcode, save_uploaded_file
+from utils.helpers import (
+    create_audit_log,
+    generate_sku,
+    generate_barcode,
+    save_uploaded_file,
+)
 from services.stock_service import StockService
 from services.costing_service import CostingService
 
-products_bp = Blueprint('products', __name__, url_prefix='/products')
+products_bp = Blueprint("products", __name__, url_prefix="/products")
 
 #: أساس تقييم المخزون المعروض — متوسط التكلفة المتحرك لا سعر آخر شراء.
-VALUATION_BASIS = 'المتوسط المتحرك لتكلفة الوحدة (average_cost)'
+VALUATION_BASIS = "المتوسط المتحرك لتكلفة الوحدة (average_cost)"
 
 
 def _average_may_follow_manual_cost(product, stock):
@@ -38,15 +52,14 @@ def _average_may_follow_manual_cost(product, stock):
     if Decimal(str(stock or 0)) > 0:
         return False
     from models import PurchaseLine
-    has_purchases = PurchaseLine.query.filter_by(
-        product_id=product.id).count() > 0
+
+    has_purchases = PurchaseLine.query.filter_by(product_id=product.id).count() > 0
     return not has_purchases
 
 
-
 def _parse_product_partners(form):  # noqa: C901
-    raw_partner_ids = form.getlist('partner_customer_id')
-    raw_percentages = form.getlist('partner_percentage')
+    raw_partner_ids = form.getlist("partner_customer_id")
+    raw_percentages = form.getlist("partner_percentage")
     count = max(len(raw_partner_ids), len(raw_percentages))
 
     seen_partner_ids = set()
@@ -54,8 +67,8 @@ def _parse_product_partners(form):  # noqa: C901
     total = 0.0
 
     for i in range(count):
-        partner_id_raw = (raw_partner_ids[i] if i < len(raw_partner_ids) else '') or ''
-        percentage_raw = (raw_percentages[i] if i < len(raw_percentages) else '') or ''
+        partner_id_raw = (raw_partner_ids[i] if i < len(raw_partner_ids) else "") or ""
+        percentage_raw = (raw_percentages[i] if i < len(raw_percentages) else "") or ""
 
         partner_id_raw = partner_id_raw.strip()
         percentage_raw = percentage_raw.strip()
@@ -64,93 +77,97 @@ def _parse_product_partners(form):  # noqa: C901
             continue
 
         if not partner_id_raw or not percentage_raw:
-            return None, '⚠️ يرجى اختيار الشريك وإدخال نسبته في كل سطر.'
+            return None, "⚠️ يرجى اختيار الشريك وإدخال نسبته في كل سطر."
 
         try:
             partner_id = int(partner_id_raw)
         except Exception:
-            return None, '⚠️ الشريك المحدد غير صالح.'
+            return None, "⚠️ الشريك المحدد غير صالح."
 
         try:
             percentage = float(percentage_raw)
         except Exception:
-            return None, '⚠️ نسبة الشريك غير صحيحة.'
+            return None, "⚠️ نسبة الشريك غير صحيحة."
 
         if percentage <= 0 or percentage > 100:
-            return None, '⚠️ نسبة الشريك يجب أن تكون بين 0 و 100.'
+            return None, "⚠️ نسبة الشريك يجب أن تكون بين 0 و 100."
 
         if partner_id in seen_partner_ids:
-            return None, '⚠️ لا يمكن تكرار نفس الشريك أكثر من مرة لنفس المنتج.'
+            return None, "⚠️ لا يمكن تكرار نفس الشريك أكثر من مرة لنفس المنتج."
 
         from utils.decorators import get_owned_or_404 as _get_owned
+
         try:
             partner_customer = _get_owned(Customer, partner_id, code=404)
         except Exception:
-            return None, '⚠️ الشريك المحدد غير موجود أو غير مُعرّف كـ شريك.'
-        if not partner_customer.is_active or partner_customer.customer_type != 'partner':
-            return None, '⚠️ الشريك المحدد غير موجود أو غير مُعرّف كـ شريك.'
+            return None, "⚠️ الشريك المحدد غير موجود أو غير مُعرّف كـ شريك."
+        if (
+            not partner_customer.is_active
+            or partner_customer.customer_type != "partner"
+        ):
+            return None, "⚠️ الشريك المحدد غير موجود أو غير مُعرّف كـ شريك."
 
         seen_partner_ids.add(partner_id)
         total += percentage
-        partners.append({'partner_customer_id': partner_id, 'percentage': percentage})
+        partners.append({"partner_customer_id": partner_id, "percentage": percentage})
 
     if total > 100.000001:
-        return None, '⚠️ مجموع نسب الشركاء لا يمكن أن يتجاوز 100%.'
+        return None, "⚠️ مجموع نسب الشركاء لا يمكن أن يتجاوز 100%."
 
     return partners, None
 
 
-@products_bp.route('/')
+@products_bp.route("/")
 @login_required
-@permission_required('manage_products')
+@permission_required("manage_products")
 def index():
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    search = request.args.get('search', '', type=str)
-    category_id = request.args.get('category', type=int)
-    stock_filter = request.args.get('stock', '', type=str)
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+    search = request.args.get("search", "", type=str)
+    category_id = request.args.get("category", type=int)
+    stock_filter = request.args.get("stock", "", type=str)
 
     query = Product.query
 
     if search:
-        search_filter = f'%{search}%'
+        search_filter = f"%{search}%"
         query = query.filter(
             db.or_(
                 Product.name.ilike(search_filter),
                 Product.sku.ilike(search_filter),
-                Product.barcode.ilike(search_filter)
+                Product.barcode.ilike(search_filter),
             )
         )
 
     if category_id:
         query = query.filter_by(category_id=category_id)
 
-    if stock_filter == 'low':
+    if stock_filter == "low":
         query = query.filter(Product.current_stock <= Product.min_stock_alert)
-    elif stock_filter == 'out':
+    elif stock_filter == "out":
         query = query.filter(Product.current_stock <= 0)
 
     query = query.filter_by(is_active=True)
 
     pagination = query.order_by(Product.name).paginate(
-        page=page,
-        per_page=per_page,
-        error_out=False
+        page=page, per_page=per_page, error_out=False
     )
 
     categories = ProductCategory.query.filter_by(is_active=True).all()
 
-    return render_template('products/index.html',
-                           products=pagination.items,
-                           pagination=pagination,
-                           categories=categories,
-                           valuation_basis=VALUATION_BASIS)
+    return render_template(
+        "products/index.html",
+        products=pagination.items,
+        pagination=pagination,
+        categories=categories,
+        valuation_basis=VALUATION_BASIS,
+    )
 
 
-@products_bp.route('/create', methods=['GET', 'POST'])
+@products_bp.route("/create", methods=["GET", "POST"])
 @login_required
-@permission_required('manage_products')
-@limiter.limit("10 per minute", methods=['POST'])
+@permission_required("manage_products")
+@limiter.limit("10 per minute", methods=["POST"])
 def create():  # noqa: C901
     from forms.product import ProductForm
     from models import Warehouse
@@ -159,117 +176,176 @@ def create():  # noqa: C901
 
     # تعيين choices للتصنيفات
     categories = ProductCategory.query.filter_by(is_active=True).all()
-    form.category_id.choices = [(0, 'بلا')] + [(c.id, c.name) for c in categories]
+    form.category_id.choices = [(0, "بلا")] + [(c.id, c.name) for c in categories]
     # Live lookup lists (single source of truth); class-level WTForms
     # choices remain as offline fallback.
     try:
         from services.lookup_service import get_lookup
-        form.unit.choices = [('', 'بلا')] + [
-            (c, m.get('ar', c)) for c, m in get_lookup('product_units')]
+
+        form.unit.choices = [("", "بلا")] + [
+            (c, m.get("ar", c)) for c, m in get_lookup("product_units")
+        ]
         form.warranty_unit.choices = [
-            (c, m.get('ar', c)) for c, m in get_lookup('warranty_units')]
+            (c, m.get("ar", c)) for c, m in get_lookup("warranty_units")
+        ]
         form.is_returnable.choices = [
-            (c, m.get('ar', c)) for c, m in get_lookup('yes_no_flags')]
+            (c, m.get("ar", c)) for c, m in get_lookup("yes_no_flags")
+        ]
     except Exception:
         pass
-    preselected_warehouse_id = request.args.get('warehouse_id', type=int)
-    merchants = Customer.query.filter_by(is_active=True, customer_type='merchant').order_by(Customer.name).all()
-    partners = Customer.query.filter_by(is_active=True, customer_type='partner').order_by(Customer.name).all()
+    preselected_warehouse_id = request.args.get("warehouse_id", type=int)
+    merchants = (
+        Customer.query.filter_by(is_active=True, customer_type="merchant")
+        .order_by(Customer.name)
+        .all()
+    )
+    partners = (
+        Customer.query.filter_by(is_active=True, customer_type="partner")
+        .order_by(Customer.name)
+        .all()
+    )
 
-    if request.method == 'POST':
-        current_app.logger.info(f"POST request to create product. Form data keys: {list(request.form.keys())}")
+    if request.method == "POST":
+        current_app.logger.info(
+            f"POST request to create product. Form data keys: {list(request.form.keys())}"
+        )
 
         if form.validate_on_submit():
             try:
                 current_app.logger.info("Form validation passed. Creating product...")
-                sku = request.form.get('sku')
+                sku = request.form.get("sku")
                 if not sku:
                     sku = generate_sku()
 
                 # تحويل الأسعار إلى float مع التعامل مع القيم الفارغة
                 def safe_float(value, default=0.0):
-                    if not value or value.strip() == '':
+                    if not value or value.strip() == "":
                         return default
                     try:
                         return float(value)
                     except (ValueError, TypeError):
                         return default
 
-                warehouse_id = request.form.get('warehouse_id', type=int)
-                current_stock = safe_float(request.form.get('current_stock'))
+                warehouse_id = request.form.get("warehouse_id", type=int)
+                current_stock = safe_float(request.form.get("current_stock"))
                 initial_stock = current_stock
 
                 # التحقق من المستودع
                 if not warehouse_id:
-                    flash('⚠️ يجب اختيار المستودع', 'warning')
+                    flash("⚠️ يجب اختيار المستودع", "warning")
                     warehouses = Warehouse.query.filter_by(is_active=True).all()
-                    return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)  # noqa: E501
+                    return render_template(
+                        "products/create.html",
+                        form=form,
+                        categories=categories,
+                        warehouses=warehouses,
+                        merchants=merchants,
+                        partners=partners,
+                    )  # noqa: E501
 
                 warehouse = get_owned_or_404(Warehouse, warehouse_id, code=404)
                 if not warehouse.is_active:
-                    flash('⚠️ المستودع المحدد غير صالح', 'warning')
+                    flash("⚠️ المستودع المحدد غير صالح", "warning")
                     warehouses = Warehouse.query.filter_by(is_active=True).all()
-                    return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)  # noqa: E501
+                    return render_template(
+                        "products/create.html",
+                        form=form,
+                        categories=categories,
+                        warehouses=warehouses,
+                        merchants=merchants,
+                        partners=partners,
+                    )  # noqa: E501
 
-                merchant_customer_id = request.form.get('merchant_customer_id', type=int)
+                merchant_customer_id = request.form.get(
+                    "merchant_customer_id", type=int
+                )
                 if merchant_customer_id:
-                    merchant_customer = get_owned_or_404(Customer, merchant_customer_id, code=404)
-                    if merchant_customer.customer_type != 'merchant' or not merchant_customer.is_active:
-                        flash('⚠️ التاجر المحدد غير موجود أو غير مُعرّف كتاجر.', 'warning')
+                    merchant_customer = get_owned_or_404(
+                        Customer, merchant_customer_id, code=404
+                    )
+                    if (
+                        merchant_customer.customer_type != "merchant"
+                        or not merchant_customer.is_active
+                    ):
+                        flash("⚠️ التاجر المحدد غير موجود أو غير مُعرّف كتاجر.", "warning")
                         warehouses = Warehouse.query.filter_by(is_active=True).all()
-                        return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)  # noqa: E501
+                        return render_template(
+                            "products/create.html",
+                            form=form,
+                            categories=categories,
+                            warehouses=warehouses,
+                            merchants=merchants,
+                            partners=partners,
+                        )  # noqa: E501
 
                 partner_rows, partner_error = _parse_product_partners(request.form)
                 if partner_error:
-                    flash(partner_error, 'warning')
+                    flash(partner_error, "warning")
                     warehouses = Warehouse.query.filter_by(is_active=True).all()
-                    return render_template('products/create.html', form=form, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)  # noqa: E501
+                    return render_template(
+                        "products/create.html",
+                        form=form,
+                        categories=categories,
+                        warehouses=warehouses,
+                        merchants=merchants,
+                        partners=partners,
+                    )  # noqa: E501
 
-                unit_value = request.form.get('unit') or None
+                unit_value = request.form.get("unit") or None
 
                 # SECURITY: التكلفة تُكتب فقط لمن يملك صلاحية عرض التكاليف،
                 # تماماً كما في مسار التعديل. بدون هذه البوابة يستطيع دور
                 # بلا صلاحية تكلفة إنشاء منتج بتكلفة عشوائية، وتلك التكلفة
                 # هي محرّك قيد تكلفة البضاعة.
-                submitted_cost = safe_float(request.form.get('cost_price'))
+                submitted_cost = safe_float(request.form.get("cost_price"))
                 if current_user.can_see_costs():
                     cost_price = submitted_cost
                 else:
                     if submitted_cost:
                         current_app.logger.warning(
-                            'Role without cost visibility attempted to set '
-                            'cost_price on product creation — ignored')
+                            "Role without cost visibility attempted to set "
+                            "cost_price on product creation — ignored"
+                        )
                     cost_price = 0
 
                 product = Product(
-                    name=request.form.get('name'),
-                    name_ar=request.form.get('name_ar'),
+                    name=request.form.get("name"),
+                    name_ar=request.form.get("name_ar"),
                     sku=sku,
-                    part_number=request.form.get('part_number'),
-                    barcode=request.form.get('barcode') or generate_barcode(),
+                    part_number=request.form.get("part_number"),
+                    barcode=request.form.get("barcode") or generate_barcode(),
                     category_id=(form.category_id.data or None),
-                    regular_price=safe_float(request.form.get('regular_price')),
-                    merchant_price=safe_float(request.form.get('merchant_price')),
-                    merchant_share=safe_float(request.form.get('merchant_share'), default=100.0),
-                    partner_price=safe_float(request.form.get('partner_price')),
+                    regular_price=safe_float(request.form.get("regular_price")),
+                    merchant_price=safe_float(request.form.get("merchant_price")),
+                    merchant_share=safe_float(
+                        request.form.get("merchant_share"), default=100.0
+                    ),
+                    partner_price=safe_float(request.form.get("partner_price")),
                     cost_price=cost_price,
                     current_stock=0,
-                    min_stock_alert=safe_float(request.form.get('min_stock_alert')),
+                    min_stock_alert=safe_float(request.form.get("min_stock_alert")),
                     unit=unit_value,
-                    tax_treatment=(lambda v: v if v in ('standard', 'zero', 'exempt') else 'standard')(
-                        (request.form.get('tax_treatment') or 'standard').strip().lower()),
-                    location=request.form.get('location'),
-                    description=request.form.get('description'),
-                    notes=request.form.get('notes'),
+                    tax_treatment=(
+                        lambda v: (
+                            v if v in ("standard", "zero", "exempt") else "standard"
+                        )
+                    )(
+                        (request.form.get("tax_treatment") or "standard")
+                        .strip()
+                        .lower()
+                    ),
+                    location=request.form.get("location"),
+                    description=request.form.get("description"),
+                    notes=request.form.get("notes"),
                     merchant_customer_id=merchant_customer_id or None,
                 )
 
                 current_app.logger.info(f"Product object created: {product.name}")
 
-                if 'image' in request.files:
-                    file = request.files['image']
+                if "image" in request.files:
+                    file = request.files["image"]
                     if file.filename:
-                        image_path = save_uploaded_file(file, 'products')
+                        image_path = save_uploaded_file(file, "products")
                         if image_path:
                             product.image_url = image_path
 
@@ -278,123 +354,166 @@ def create():  # noqa: C901
 
                 if partner_rows:
                     for row in partner_rows:
-                        product.partner_shares.append(ProductPartner(
-                            product_id=product.id,
-                            partner_customer_id=row['partner_customer_id'],
-                            percentage=row['percentage'],
-                        ))
+                        product.partner_shares.append(
+                            ProductPartner(
+                                product_id=product.id,
+                                partner_customer_id=row["partner_customer_id"],
+                                percentage=row["percentage"],
+                            )
+                        )
 
                 # إضافة حركة مخزون إذا كانت الكمية أكبر من صفر
                 if initial_stock > 0:
                     StockService.create_movement(
                         product_id=product.id,
                         quantity=initial_stock,
-                        movement_type='adjustment',
-                        reference_type='Product Creation',
+                        movement_type="adjustment",
+                        reference_type="Product Creation",
                         reference_id=product.id,
-                        notes=f'مخزون أولي عند إضافة المنتج إلى المستودع: {warehouse.name_ar or warehouse.name}',
-                        warehouse_id=warehouse_id
+                        notes=f"مخزون أولي عند إضافة المنتج إلى المستودع: {warehouse.name_ar or warehouse.name}",
+                        warehouse_id=warehouse_id,
                     )
 
                 # The audit row carries the meaningful payload and is written
                 # INSIDE the transaction of the change it describes.
-                create_audit_log('create', 'products', product.id, changes={
-                    'action': 'create_product',
-                    'sku': product.sku,
-                    'name': product.name,
-                    'regular_price': str(product.regular_price),
-                    'cost_price': str(product.cost_price),
-                    'initial_stock': str(initial_stock),
-                    'warehouse_id': warehouse_id,
-                    'warehouse_name': warehouse.name_ar or warehouse.name,
-                }, commit=False)
+                create_audit_log(
+                    "create",
+                    "products",
+                    product.id,
+                    changes={
+                        "action": "create_product",
+                        "sku": product.sku,
+                        "name": product.name,
+                        "regular_price": str(product.regular_price),
+                        "cost_price": str(product.cost_price),
+                        "initial_stock": str(initial_stock),
+                        "warehouse_id": warehouse_id,
+                        "warehouse_name": warehouse.name_ar or warehouse.name,
+                    },
+                    commit=False,
+                )
 
                 db.session.commit()
-                current_app.logger.info(f"Product saved to database with ID: {product.id}")
+                current_app.logger.info(
+                    f"Product saved to database with ID: {product.id}"
+                )
 
-                flash(f'✓ تم إضافة المنتج "{product.name}" بنجاح إلى المستودع "{warehouse.name_ar or warehouse.name}"', 'success')
+                flash(
+                    f'✓ تم إضافة المنتج "{product.name}" بنجاح إلى المستودع "{warehouse.name_ar or warehouse.name}"',
+                    "success",
+                )
                 if not cost_price:
                     # F2: منتج بلا تكلفة لا يمكن بيعه — بيعه ينتج قيد
                     # إيراد بلا قيد تكلفةCorresponding ولا تسوية للمخزون.
-                    flash('⚠️ المنتج بدون تكلفة مسجّلة — لا يمكن بيعه قبل ضبط التكلفة، وإلا سيُسجَّل الإيراد بلا قيد تكلفة البضاعة.', 'warning')
-                return redirect(url_for('products.index'))
+                    flash(
+                        "⚠️ المنتج بدون تكلفة مسجّلة — لا يمكن بيعه قبل ضبط التكلفة، وإلا سيُسجَّل الإيراد بلا قيد تكلفة البضاعة.",
+                        "warning",
+                    )
+                return redirect(url_for("products.index"))
 
             except Exception as e:
                 db.session.rollback()
                 current_app.logger.error(f"Error creating product: {str(e)}")
-                current_app.logger.exception('handler failed')
-                flash(f'❌ فشل إضافة المنتج: حدث خطأ غير متوقع\n💡 تأكد من:\n   • اسم المنتج فريد\n   • الأسعار صحيحة\n   • SKU غير مكرر', 'danger')
+                current_app.logger.exception("handler failed")
+                flash(
+                    f"❌ فشل إضافة المنتج: حدث خطأ غير متوقع\n💡 تأكد من:\n   • اسم المنتج فريد\n   • الأسعار صحيحة\n   • SKU غير مكرر",
+                    "danger",
+                )
         else:
             # Form validation failed
             current_app.logger.warning(f"Form validation failed. Errors: {form.errors}")
             for field, errors in form.errors.items():
                 for error in errors:
-                    flash(f'⚠️ خطأ في حقل {field}: {error}', 'danger')
+                    flash(f"⚠️ خطأ في حقل {field}: {error}", "danger")
 
     # GET request - إرسال البيانات للقالب
     categories = ProductCategory.query.filter_by(is_active=True).all()
-    warehouses = Warehouse.query.filter_by(is_active=True).order_by(Warehouse.is_main.desc(), Warehouse.created_at.desc(), Warehouse.name).all()
+    warehouses = (
+        Warehouse.query.filter_by(is_active=True)
+        .order_by(Warehouse.is_main.desc(), Warehouse.created_at.desc(), Warehouse.name)
+        .all()
+    )
 
-    return render_template('products/create.html',
-                           form=form,
-                           categories=categories,
-                           warehouses=warehouses,
-                           merchants=merchants,
-                           partners=partners,
-                           preselected_warehouse_id=preselected_warehouse_id)
+    return render_template(
+        "products/create.html",
+        form=form,
+        categories=categories,
+        warehouses=warehouses,
+        merchants=merchants,
+        partners=partners,
+        preselected_warehouse_id=preselected_warehouse_id,
+    )
 
 
-@products_bp.route('/<int:id>')
+@products_bp.route("/<int:id>")
 @login_required
-@permission_required('manage_products')
+@permission_required("manage_products")
 def view(id):
     product = get_owned_or_404(Product, id)
 
-    movements = product.stock_movements.order_by(
-        db.desc('created_at')
-    ).limit(20).all()
+    movements = product.stock_movements.order_by(db.desc("created_at")).limit(20).all()
 
     # القيمة الدفترية = الكمية × المتوسط المتحرك (لا سعر آخر شراء).
-    return render_template('products/view.html',
-                           product=product,
-                           movements=movements,
-                           average_cost=Decimal(str(product.average_cost or 0)),
-                           stock_value=CostingService.stock_value(product),
-                           valuation_basis=VALUATION_BASIS)
+    return render_template(
+        "products/view.html",
+        product=product,
+        movements=movements,
+        average_cost=Decimal(str(product.average_cost or 0)),
+        stock_value=CostingService.stock_value(product),
+        valuation_basis=VALUATION_BASIS,
+    )
 
 
-@products_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@products_bp.route("/<int:id>/edit", methods=["GET", "POST"])
 @login_required
-@permission_required('manage_products')
+@permission_required("manage_products")
 def edit(id):  # noqa: C901
     product = get_owned_or_404(Product, id)
     from forms.product import ProductForm
     from models import Warehouse
+
     form = ProductForm(obj=product)
 
     # تعيين choices للتصنيفات
     categories = ProductCategory.query.filter_by(is_active=True).all()
-    form.category_id.choices = [(0, 'بلا')] + [(c.id, c.name) for c in categories]
+    form.category_id.choices = [(0, "بلا")] + [(c.id, c.name) for c in categories]
     # Live lookup lists (single source of truth); class-level WTForms
     # choices remain as offline fallback.
     try:
         from services.lookup_service import get_lookup
-        form.unit.choices = [('', 'بلا')] + [
-            (c, m.get('ar', c)) for c, m in get_lookup('product_units')]
+
+        form.unit.choices = [("", "بلا")] + [
+            (c, m.get("ar", c)) for c, m in get_lookup("product_units")
+        ]
         form.warranty_unit.choices = [
-            (c, m.get('ar', c)) for c, m in get_lookup('warranty_units')]
+            (c, m.get("ar", c)) for c, m in get_lookup("warranty_units")
+        ]
         form.is_returnable.choices = [
-            (c, m.get('ar', c)) for c, m in get_lookup('yes_no_flags')]
+            (c, m.get("ar", c)) for c, m in get_lookup("yes_no_flags")
+        ]
     except Exception:
         pass
-    warehouses = Warehouse.query.filter_by(is_active=True).order_by(Warehouse.is_main.desc(), Warehouse.name).all()
-    merchants = Customer.query.filter_by(is_active=True, customer_type='merchant').order_by(Customer.name).all()
-    partners = Customer.query.filter_by(is_active=True, customer_type='partner').order_by(Customer.name).all()
+    warehouses = (
+        Warehouse.query.filter_by(is_active=True)
+        .order_by(Warehouse.is_main.desc(), Warehouse.name)
+        .all()
+    )
+    merchants = (
+        Customer.query.filter_by(is_active=True, customer_type="merchant")
+        .order_by(Customer.name)
+        .all()
+    )
+    partners = (
+        Customer.query.filter_by(is_active=True, customer_type="partner")
+        .order_by(Customer.name)
+        .all()
+    )
 
-    if request.method == 'POST' and form.validate_on_submit():
+    if request.method == "POST" and form.validate_on_submit():
         try:
+
             def safe_float(value, default=None):
-                if value is None or value == '':
+                if value is None or value == "":
                     return default
                 try:
                     return float(value)
@@ -402,81 +521,124 @@ def edit(id):  # noqa: C901
                     return default
 
             old_stock = float(product.current_stock or 0)
-            new_stock = safe_float(request.form.get('current_stock'), default=old_stock)
+            new_stock = safe_float(request.form.get("current_stock"), default=old_stock)
             old_cost_price = product.cost_price
             old_average_cost = Decimal(str(product.average_cost or 0))
             cost_edited = False
             average_followed_cost = False
 
             if new_stock is not None and new_stock < 0:
-                flash('⚠️ لا يمكن أن تكون الكمية أقل من صفر.', 'warning')
-                return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)  # noqa: E501
+                flash("⚠️ لا يمكن أن تكون الكمية أقل من صفر.", "warning")
+                return render_template(
+                    "products/edit.html",
+                    form=form,
+                    product=product,
+                    categories=categories,
+                    warehouses=warehouses,
+                    merchants=merchants,
+                    partners=partners,
+                )  # noqa: E501
 
-            warehouse_id = request.form.get('warehouse_id', type=int)
+            warehouse_id = request.form.get("warehouse_id", type=int)
             if warehouse_id:
                 get_owned_or_404(Warehouse, warehouse_id, code=404)
-            merchant_customer_id = request.form.get('merchant_customer_id', type=int)
+            merchant_customer_id = request.form.get("merchant_customer_id", type=int)
             if merchant_customer_id:
-                merchant_customer = get_owned_or_404(Customer, merchant_customer_id, code=404)
-                if merchant_customer.customer_type != 'merchant' or not merchant_customer.is_active:
-                    flash('⚠️ التاجر المحدد غير موجود أو غير مُعرّف كتاجر.', 'warning')
-                    return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)  # noqa: E501
+                merchant_customer = get_owned_or_404(
+                    Customer, merchant_customer_id, code=404
+                )
+                if (
+                    merchant_customer.customer_type != "merchant"
+                    or not merchant_customer.is_active
+                ):
+                    flash("⚠️ التاجر المحدد غير موجود أو غير مُعرّف كتاجر.", "warning")
+                    return render_template(
+                        "products/edit.html",
+                        form=form,
+                        product=product,
+                        categories=categories,
+                        warehouses=warehouses,
+                        merchants=merchants,
+                        partners=partners,
+                    )  # noqa: E501
 
             partner_rows, partner_error = _parse_product_partners(request.form)
             if partner_error:
-                flash(partner_error, 'warning')
-                return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)  # noqa: E501
+                flash(partner_error, "warning")
+                return render_template(
+                    "products/edit.html",
+                    form=form,
+                    product=product,
+                    categories=categories,
+                    warehouses=warehouses,
+                    merchants=merchants,
+                    partners=partners,
+                )  # noqa: E501
 
-            product.name = request.form.get('name')
-            product.name_ar = request.form.get('name_ar')
-            product.sku = request.form.get('sku')
-            product.part_number = request.form.get('part_number')
-            product.barcode = request.form.get('barcode')
-            product.category_id = (form.category_id.data or None)
-            product.regular_price = safe_float(request.form.get('regular_price'), default=0)
-            product.merchant_price = safe_float(request.form.get('merchant_price'))
-            product.merchant_share = safe_float(request.form.get('merchant_share'), default=100.0)
-            product.partner_price = safe_float(request.form.get('partner_price'))
-            product.min_stock_alert = safe_float(request.form.get('min_stock_alert'), default=0)
-            unit_value = request.form.get('unit')
-            if 'unit' in request.form:
+            product.name = request.form.get("name")
+            product.name_ar = request.form.get("name_ar")
+            product.sku = request.form.get("sku")
+            product.part_number = request.form.get("part_number")
+            product.barcode = request.form.get("barcode")
+            product.category_id = form.category_id.data or None
+            product.regular_price = safe_float(
+                request.form.get("regular_price"), default=0
+            )
+            product.merchant_price = safe_float(request.form.get("merchant_price"))
+            product.merchant_share = safe_float(
+                request.form.get("merchant_share"), default=100.0
+            )
+            product.partner_price = safe_float(request.form.get("partner_price"))
+            product.min_stock_alert = safe_float(
+                request.form.get("min_stock_alert"), default=0
+            )
+            unit_value = request.form.get("unit")
+            if "unit" in request.form:
                 product.unit = unit_value or None
-            product.location = request.form.get('location')
-            product.description = request.form.get('description')
-            product.notes = request.form.get('notes')
-            if 'tax_treatment' in request.form:
-                _tt = (request.form.get('tax_treatment') or 'standard').strip().lower()
-                product.tax_treatment = _tt if _tt in ('standard', 'zero', 'exempt') else 'standard'
+            product.location = request.form.get("location")
+            product.description = request.form.get("description")
+            product.notes = request.form.get("notes")
+            if "tax_treatment" in request.form:
+                _tt = (request.form.get("tax_treatment") or "standard").strip().lower()
+                product.tax_treatment = (
+                    _tt if _tt in ("standard", "zero", "exempt") else "standard"
+                )
             product.merchant_customer_id = merchant_customer_id or None
 
             if current_user.can_see_costs():
-                submitted_cost = safe_float(request.form.get('cost_price'))
+                submitted_cost = safe_float(request.form.get("cost_price"))
                 product.cost_price = submitted_cost
                 cost_edited = True
                 # المتوسط المتحرك لا يتبع الحقل المكتوب يدوياً إلا لمنتج
                 # بلا مخزون وبلا تاريخ مشتريات (انظر
                 # _average_may_follow_manual_cost) — فالتقييم يبقى
                 # مشتقاً من الحركات، وهذا ما يجعله يلتقي بالأستاذ.
-                if (submitted_cost is not None
-                        and _average_may_follow_manual_cost(product, old_stock)):
+                if submitted_cost is not None and _average_may_follow_manual_cost(
+                    product, old_stock
+                ):
                     product.average_cost = Decimal(str(submitted_cost)).quantize(
-                        Decimal('0.001'))
+                        Decimal("0.001")
+                    )
                     average_followed_cost = True
-            elif request.form.get('cost_price'):
+            elif request.form.get("cost_price"):
                 # SECURITY: دور بلا صلاحية عرض التكاليف لا يحدد التكلفة —
                 # والتكلفة هي محرّك قيد تكلفة البضاعة وتسوية المخزون.
                 current_app.logger.warning(
-                    'Role without cost visibility attempted to change '
-                    'cost_price of product %s — ignored', product.id)
+                    "Role without cost visibility attempted to change "
+                    "cost_price of product %s — ignored",
+                    product.id,
+                )
 
             product.partner_shares.clear()
             if partner_rows:
                 for row in partner_rows:
-                    product.partner_shares.append(ProductPartner(
-                        product_id=product.id,
-                        partner_customer_id=row['partner_customer_id'],
-                        percentage=row['percentage'],
-                    ))
+                    product.partner_shares.append(
+                        ProductPartner(
+                            product_id=product.id,
+                            partner_customer_id=row["partner_customer_id"],
+                            percentage=row["percentage"],
+                        )
+                    )
 
             if new_stock is not None and abs(new_stock - old_stock) > 1e-6:
                 if not warehouse_id:
@@ -489,63 +651,80 @@ def edit(id):  # noqa: C901
                 StockService.adjust_stock(
                     product.id,
                     Decimal(str(new_stock)) - Decimal(str(old_stock)),
-                    notes=f'تعديل مخزون من {old_stock} إلى {new_stock}',
+                    notes=f"تعديل مخزون من {old_stock} إلى {new_stock}",
                     warehouse_id=warehouse_id,
                     post_gl=True,
-                    reference_type='Product Update',
+                    reference_type="Product Update",
                     reference_id=product.id,
                 )
 
-            if 'image' in request.files:
-                file = request.files['image']
+            if "image" in request.files:
+                file = request.files["image"]
                 if file.filename:
-                    image_path = save_uploaded_file(file, 'products')
+                    image_path = save_uploaded_file(file, "products")
                     if image_path:
                         product.image_url = image_path
 
             # The audit row carries the MEANINGFUL payload (what changed,
             # not just "update") and is written inside the same
             # transaction as the change itself.
-            create_audit_log('update', 'products', product.id, changes={
-                'action': 'edit_product',
-                'sku': product.sku,
-                'name': product.name,
-                'old_stock': str(old_stock),
-                'new_stock': str(new_stock),
-                'old_cost_price': str(old_cost_price),
-                'new_cost_price': str(product.cost_price),
-                'old_average_cost': str(old_average_cost),
-                'new_average_cost': str(product.average_cost),
-                'average_cost_followed_manual_edit': average_followed_cost,
-                'cost_price_visible': bool(current_user.can_see_costs()),
-            }, commit=False)
+            create_audit_log(
+                "update",
+                "products",
+                product.id,
+                changes={
+                    "action": "edit_product",
+                    "sku": product.sku,
+                    "name": product.name,
+                    "old_stock": str(old_stock),
+                    "new_stock": str(new_stock),
+                    "old_cost_price": str(old_cost_price),
+                    "new_cost_price": str(product.cost_price),
+                    "old_average_cost": str(old_average_cost),
+                    "new_average_cost": str(product.average_cost),
+                    "average_cost_followed_manual_edit": average_followed_cost,
+                    "cost_price_visible": bool(current_user.can_see_costs()),
+                },
+                commit=False,
+            )
 
             db.session.commit()
 
-            flash('✅ تم تحديث بيانات المنتج بنجاح!', 'success')
+            flash("✅ تم تحديث بيانات المنتج بنجاح!", "success")
             if cost_edited and not average_followed_cost:
                 # ملاحظة صريحة: التعديل اليدوي لم يحرّك المتوسط — لأن
                 # المتوسط يُشتق من الحركات (مخزون قائم أو تاريخ مشتريات).
-                flash('⚠️ تم تحديث سعر التكلفة المرجعي فقط — متوسط التكلفة '
-                      'المتحرك لم يتغيّر، لأنه يُشتق من حركات المخزون '
-                      '(المتوسط الحالي: '
-                      f'{Decimal(str(product.average_cost or 0))}).\n'
-                      '💡 متوسط التكلفة يتحرك مع كل شراء/إدخال جديد، وهو '
-                      'أساس تقييم المخزون.', 'warning')
-            return redirect(url_for('products.view', id=product.id))
+                flash(
+                    "⚠️ تم تحديث سعر التكلفة المرجعي فقط — متوسط التكلفة "
+                    "المتحرك لم يتغيّر، لأنه يُشتق من حركات المخزون "
+                    "(المتوسط الحالي: "
+                    f"{Decimal(str(product.average_cost or 0))}).\n"
+                    "💡 متوسط التكلفة يتحرك مع كل شراء/إدخال جديد، وهو "
+                    "أساس تقييم المخزون.",
+                    "warning",
+                )
+            return redirect(url_for("products.view", id=product.id))
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
-            flash(f'❌ فشل تحديث المنتج: حدث خطأ غير متوقع', 'danger')
+            current_app.logger.exception("handler failed")
+            flash(f"❌ فشل تحديث المنتج: حدث خطأ غير متوقع", "danger")
 
     categories = ProductCategory.query.filter_by(is_active=True).all()
-    return render_template('products/edit.html', form=form, product=product, categories=categories, warehouses=warehouses, merchants=merchants, partners=partners)  # noqa: E501
+    return render_template(
+        "products/edit.html",
+        form=form,
+        product=product,
+        categories=categories,
+        warehouses=warehouses,
+        merchants=merchants,
+        partners=partners,
+    )  # noqa: E501
 
 
-@products_bp.route('/<int:id>/delete', methods=['POST'])
+@products_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
-@permission_required('manage_products')
+@permission_required("manage_products")
 def delete(id):
     """حذف (إلغاء تفعيل) المنتج - soft delete"""
     product = get_owned_or_404(Product, id)
@@ -553,185 +732,213 @@ def delete(id):
     try:
         # التحقق من وجود عمليات مرتبطة
         from models import SaleLine, PurchaseLine
+
         sales_count = SaleLine.query.filter_by(product_id=id).count()
         purchases_count = PurchaseLine.query.filter_by(product_id=id).count()
 
         if sales_count > 0 or purchases_count > 0:
             # soft delete
             product.is_active = False
-            create_audit_log('deactivate', 'products', id, changes={
-                'action': 'deactivate_product',
-                'sku': product.sku,
-                'name': product.name,
-                'current_stock': str(product.current_stock),
-                'cost_price': str(product.cost_price),
-                'sales_count': sales_count,
-                'purchases_count': purchases_count,
-            }, commit=False)
+            create_audit_log(
+                "deactivate",
+                "products",
+                id,
+                changes={
+                    "action": "deactivate_product",
+                    "sku": product.sku,
+                    "name": product.name,
+                    "current_stock": str(product.current_stock),
+                    "cost_price": str(product.cost_price),
+                    "sales_count": sales_count,
+                    "purchases_count": purchases_count,
+                },
+                commit=False,
+            )
             db.session.commit()
-            flash(f'⚠️ تم إلغاء تفعيل المنتج "{product.name}" (لديه عمليات مسجلة).\n💡 لا يمكن حذفه نهائياً للحفاظ على السجلات.', 'warning')
+            flash(
+                f'⚠️ تم إلغاء تفعيل المنتج "{product.name}" (لديه عمليات مسجلة).\n💡 لا يمكن حذفه نهائياً للحفاظ على السجلات.',
+                "warning",
+            )
         else:
             # hard delete
             audit_payload = {
-                'action': 'delete_product',
-                'sku': product.sku,
-                'name': product.name,
-                'current_stock': str(product.current_stock),
-                'cost_price': str(product.cost_price),
-                'regular_price': str(product.regular_price),
+                "action": "delete_product",
+                "sku": product.sku,
+                "name": product.name,
+                "current_stock": str(product.current_stock),
+                "cost_price": str(product.cost_price),
+                "regular_price": str(product.regular_price),
             }
-            create_audit_log('delete', 'products', id, changes=audit_payload,
-                             commit=False)
+            create_audit_log(
+                "delete", "products", id, changes=audit_payload, commit=False
+            )
             db.session.delete(product)
             db.session.commit()
-            flash(f'✅ تم حذف المنتج "{product.name}" نهائياً!', 'success')
+            flash(f'✅ تم حذف المنتج "{product.name}" نهائياً!', "success")
 
-        return redirect(url_for('products.index'))
+        return redirect(url_for("products.index"))
 
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error deleting product {id}: {e}")
-        current_app.logger.exception('handler failed')
-        flash('❌ فشل حذف المنتج. حدث خطأ غير متوقع.', 'danger')
-        return redirect(url_for('products.view', id=id))
+        current_app.logger.exception("handler failed")
+        flash("❌ فشل حذف المنتج. حدث خطأ غير متوقع.", "danger")
+        return redirect(url_for("products.view", id=id))
 
 
-@products_bp.route('/api/search')
+@products_bp.route("/api/search")
 @login_required
-@permission_required('manage_products')
+@permission_required("manage_products")
 def api_search():
     """API endpoint للبحث عن المنتجات"""
-    query = request.args.get('q', '')
-    _ = request.args.get('page', 1, type=int)
+    query = request.args.get("q", "")
+    _ = request.args.get("page", 1, type=int)
     per_page = 20
 
     # السماح بالبحث حتى بدون query (لعرض كل المنتجات)
     if query and len(query) >= 1:
-        products = Product.query.filter(
-            Product.is_active.is_(True),
-            db.or_(
-                Product.name.ilike(f'%{query}%'),
-                Product.sku.ilike(f'%{query}%'),
-                Product.barcode.ilike(f'%{query}%')
+        products = (
+            Product.query.filter(
+                Product.is_active.is_(True),
+                db.or_(
+                    Product.name.ilike(f"%{query}%"),
+                    Product.sku.ilike(f"%{query}%"),
+                    Product.barcode.ilike(f"%{query}%"),
+                ),
             )
-        ).order_by(Product.name).limit(per_page).all()
+            .order_by(Product.name)
+            .limit(per_page)
+            .all()
+        )
     else:
         # عرض كل المنتجات (مرتبين أبجدياً)
-        products = Product.query.filter_by(
-            is_active=True
-        ).order_by(Product.name).limit(per_page).all()
+        products = (
+            Product.query.filter_by(is_active=True)
+            .order_by(Product.name)
+            .limit(per_page)
+            .all()
+        )
 
-    results = [{
-        'id': p.id,
-        'name': p.name,
-        'code': p.sku or '',
-        'text': f"{p.name} ({p.sku})" if p.sku else p.name,
-        'sku': p.sku,
-        'price': float(p.regular_price),
-        'stock': float(p.current_stock),
-        'unit': p.unit,
-        'is_low_stock': p.is_low_stock(),
-        # SECURITY: بيانات التكلفة لمن يملك صلاحية عرض التكاليف فقط.
-        'average_cost': (float(p.average_cost)
-                         if current_user.can_see_costs() else None),
-        'stock_value': (float(CostingService.stock_value(p))
-                        if current_user.can_see_costs() else None),
-    } for p in products]
+    results = [
+        {
+            "id": p.id,
+            "name": p.name,
+            "code": p.sku or "",
+            "text": f"{p.name} ({p.sku})" if p.sku else p.name,
+            "sku": p.sku,
+            "price": float(p.regular_price),
+            "stock": float(p.current_stock),
+            "unit": p.unit,
+            "is_low_stock": p.is_low_stock(),
+            # SECURITY: بيانات التكلفة لمن يملك صلاحية عرض التكاليف فقط.
+            "average_cost": (
+                float(p.average_cost) if current_user.can_see_costs() else None
+            ),
+            "stock_value": (
+                float(CostingService.stock_value(p))
+                if current_user.can_see_costs()
+                else None
+            ),
+        }
+        for p in products
+    ]
 
     return jsonify(results)
 
 
-@products_bp.route('/categories')
+@products_bp.route("/categories")
 @login_required
-@permission_required('manage_products')
+@permission_required("manage_products")
 def categories():
-    categories = ProductCategory.query.filter_by(is_active=True).order_by(ProductCategory.name).all()
-    return render_template('products/categories.html', categories=categories)
+    categories = (
+        ProductCategory.query.filter_by(is_active=True)
+        .order_by(ProductCategory.name)
+        .all()
+    )
+    return render_template("products/categories.html", categories=categories)
 
 
-@products_bp.route('/categories/create', methods=['POST'])
+@products_bp.route("/categories/create", methods=["POST"])
 @login_required
-@permission_required('manage_products')
+@permission_required("manage_products")
 def create_category():
     try:
         # دعم JSON و Form Data
         data = request.get_json() if request.is_json else request.form
 
-        name = (data.get('name') or '').strip()
-        name_ar = (data.get('name_ar') or '').strip() or None
-        description = (data.get('description') or '').strip() or None
+        name = (data.get("name") or "").strip()
+        name_ar = (data.get("name_ar") or "").strip() or None
+        description = (data.get("description") or "").strip() or None
 
         if not name:
-            message = '⚠️ يجب إدخال اسم الفئة.'
+            message = "⚠️ يجب إدخال اسم الفئة."
             if request.is_json:
-                return jsonify({'success': False, 'error': message}), 400
-            flash(message, 'warning')
-            return redirect(url_for('products.categories'))
+                return jsonify({"success": False, "error": message}), 400
+            flash(message, "warning")
+            return redirect(url_for("products.categories"))
 
         # منع التكرار (نفس الاسم بغض النظر عن حالة الأحرف)
         existing = ProductCategory.query.filter(
             db.func.lower(ProductCategory.name) == name.lower()
         ).first()
         if existing:
-            message = '⚠️ هذه الفئة موجودة مسبقاً.'
+            message = "⚠️ هذه الفئة موجودة مسبقاً."
             if request.is_json:
-                return jsonify({'success': False, 'error': message}), 400
-            flash(message, 'warning')
-            return redirect(url_for('products.categories'))
+                return jsonify({"success": False, "error": message}), 400
+            flash(message, "warning")
+            return redirect(url_for("products.categories"))
 
         category = ProductCategory(
-            name=name,
-            name_ar=name_ar,
-            description=description,
-            is_active=True
+            name=name, name_ar=name_ar, description=description, is_active=True
         )
 
         db.session.add(category)
         db.session.commit()
 
         if request.is_json:
-            return jsonify({
-                'success': True,
-                'message': 'تم إضافة الفئة بنجاح',
-                'category': {
-                    'id': category.id,
-                    'name': category.name,
-                    'name_ar': category.name_ar,
-                    'description': category.description
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "تم إضافة الفئة بنجاح",
+                    "category": {
+                        "id": category.id,
+                        "name": category.name,
+                        "name_ar": category.name_ar,
+                        "description": category.description,
+                    },
                 }
-            })
+            )
 
-        flash('✅ تم إضافة التصنيف بنجاح!', 'success')
-        return redirect(url_for('products.categories'))
+        flash("✅ تم إضافة التصنيف بنجاح!", "success")
+        return redirect(url_for("products.categories"))
 
     except Exception as e:
         db.session.rollback()
 
         if request.is_json:
-            return jsonify({
-                'success': False,
-                'error': 'حدث خطأ غير متوقع'
-            }), 400
+            return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 400
 
-        current_app.logger.exception('handler failed')
-        flash(f'❌ حدث خطأ: حدث خطأ غير متوقع', 'danger')
-        return redirect(url_for('products.categories'))
+        current_app.logger.exception("handler failed")
+        flash(f"❌ حدث خطأ: حدث خطأ غير متوقع", "danger")
+        return redirect(url_for("products.categories"))
 
 
-@products_bp.route('/<int:id>/adjust-stock', methods=['POST'])
+@products_bp.route("/<int:id>/adjust-stock", methods=["POST"])
 @login_required
-@permission_required('manage_products')
+@permission_required("manage_products")
 def adjust_stock(id):
     product = get_owned_or_404(Product, id)
 
     try:
-        adjustment_type = request.form.get('adjustment_type')
-        quantity = float(request.form.get('quantity', 0))
-        reason = request.form.get('reason', 'adjustment')
-        notes = request.form.get('notes', '')
+        adjustment_type = request.form.get("adjustment_type")
+        quantity = float(request.form.get("quantity", 0))
+        reason = request.form.get("reason", "adjustment")
+        notes = request.form.get("notes", "")
 
         if quantity <= 0:
-            return jsonify({'success': False, 'message': 'الكمية يجب أن تكون أكبر من صفر'})
+            return jsonify(
+                {"success": False, "message": "الكمية يجب أن تكون أكبر من صفر"}
+            )
 
         old_stock = Decimal(str(product.current_stock or 0))
 
@@ -739,19 +946,21 @@ def adjust_stock(id):
         # adjustment, otherwise SUM(stock_movements.quantity) drifts away
         # from product.current_stock (a subtraction used to be booked as a
         # positive quantity, i.e. the stock was counted twice).
-        if adjustment_type == 'add':
+        if adjustment_type == "add":
             delta = Decimal(str(quantity))
             new_stock = old_stock + delta
-        elif adjustment_type == 'subtract':
+        elif adjustment_type == "subtract":
             delta = -Decimal(str(quantity))
             new_stock = old_stock + delta
             if new_stock < 0:
-                return jsonify({'success': False, 'message': 'لا يمكن أن يكون المخزون سالباً'})
-        elif adjustment_type == 'set':
+                return jsonify(
+                    {"success": False, "message": "لا يمكن أن يكون المخزون سالباً"}
+                )
+        elif adjustment_type == "set":
             delta = Decimal(str(quantity)) - old_stock
             new_stock = Decimal(str(quantity))
         else:
-            return jsonify({'success': False, 'message': 'نوع التعديل غير صحيح'})
+            return jsonify({"success": False, "message": "نوع التعديل غير صحيح"})
 
         # One transaction: the movement row, the stock delta AND the GL
         # entry (Dr 1140 / Cr 5150 or the reverse). StockService fails
@@ -760,45 +969,54 @@ def adjust_stock(id):
         movement = StockService.adjust_stock(
             product.id,
             delta,
-            notes=notes or f'تعديل يدوي - {reason}',
+            notes=notes or f"تعديل يدوي - {reason}",
             warehouse_id=None,
             post_gl=True,
-            reference_type='Manual Adjustment',
+            reference_type="Manual Adjustment",
         )
 
         # The audit row is written INSIDE the same transaction (no
         # independent commit): either the stock change and its audit trail
         # both land, or neither does.
-        create_audit_log('update', 'products', product.id, changes={
-            'action': 'adjust_stock',
-            'adjustment_type': adjustment_type,
-            'quantity': str(abs(Decimal(str(quantity)))),
-            'delta': str(delta),
-            'old_stock': str(old_stock),
-            'new_stock': str(new_stock),
-            'movement_id': movement.id if movement else None,
-            'movement_quantity': str(movement.quantity) if movement else None,
-            'reason': reason,
-        }, commit=False)
+        create_audit_log(
+            "update",
+            "products",
+            product.id,
+            changes={
+                "action": "adjust_stock",
+                "adjustment_type": adjustment_type,
+                "quantity": str(abs(Decimal(str(quantity)))),
+                "delta": str(delta),
+                "old_stock": str(old_stock),
+                "new_stock": str(new_stock),
+                "movement_id": movement.id if movement else None,
+                "movement_quantity": str(movement.quantity) if movement else None,
+                "reason": reason,
+            },
+            commit=False,
+        )
 
         db.session.commit()
 
-        return jsonify({
-            'success': True,
-            'message': f'تم تعديل المخزون من {old_stock} إلى {new_stock}',
-            'new_stock': float(new_stock),
-            'average_cost': float(Decimal(str(product.average_cost or 0))),
-            'stock_value': float(CostingService.stock_value(product)),
-        })
+        return jsonify(
+            {
+                "success": True,
+                "message": f"تم تعديل المخزون من {old_stock} إلى {new_stock}",
+                "new_stock": float(new_stock),
+                "average_cost": float(Decimal(str(product.average_cost or 0))),
+                "stock_value": float(CostingService.stock_value(product)),
+            }
+        )
 
     except ValueError as e:
         # StockService refuses an adjustment that would drive stock below
         # zero — the message is safe (hand-authored, no schema leak).
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)})
+        return jsonify({"success": False, "message": str(e)})
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f'Error adjusting stock: {e}')
+        current_app.logger.error(f"Error adjusting stock: {e}")
         # The detail stays in the log; str(e) can expose schema and paths.
-        return jsonify({'success': False,
-                        'message': 'حدث خطأ أثناء تعديل المخزون'}), 500
+        return jsonify(
+            {"success": False, "message": "حدث خطأ أثناء تعديل المخزون"}
+        ), 500

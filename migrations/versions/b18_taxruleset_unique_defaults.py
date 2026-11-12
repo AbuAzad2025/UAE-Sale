@@ -3,10 +3,11 @@
 Revision ID: b18_taxruleset_unique_defaults
 Revises: b17_purchase_vat_features
 """
+
 from alembic import op
 
-revision = 'b18_taxruleset_unique_defaults'
-down_revision = 'b17_purchase_vat_features'
+revision = "b18_taxruleset_unique_defaults"
+down_revision = "b17_purchase_vat_features"
 branch_labels = None
 depends_on = None
 

@@ -13,50 +13,53 @@ class SystemSettings(db.Model):
     """
     إعدادات النظام العامة - قابلة للتعديل من لوحة المالك
     """
-    __tablename__ = 'system_settings'
+
+    __tablename__ = "system_settings"
 
     id = db.Column(db.Integer, primary_key=True)
 
     # System Identity - هوية النظام
-    system_name = db.Column(db.String(200), default='Azad Garage System')
-    system_version = db.Column(db.String(20), default='2.0.0')
-    system_mode = db.Column(db.String(20), default='production')  # development, production
+    system_name = db.Column(db.String(200), default="Azad Garage System")
+    system_version = db.Column(db.String(20), default="2.0.0")
+    system_mode = db.Column(
+        db.String(20), default="production"
+    )  # development, production
 
     # UI Settings - إعدادات الواجهة
-    theme = db.Column(db.String(50), default='modern')  # modern, classic, custom
-    primary_color = db.Column(db.String(20), default='#007A3D')
-    secondary_color = db.Column(db.String(20), default='#D4AF37')
-    sidebar_color = db.Column(db.String(20), default='#1a1a1a')
-    navbar_color = db.Column(db.String(20), default='#2d2d2d')
+    theme = db.Column(db.String(50), default="modern")  # modern, classic, custom
+    primary_color = db.Column(db.String(20), default="#007A3D")
+    secondary_color = db.Column(db.String(20), default="#D4AF37")
+    sidebar_color = db.Column(db.String(20), default="#1a1a1a")
+    navbar_color = db.Column(db.String(20), default="#2d2d2d")
 
     # Layout - التخطيط
-    sidebar_position = db.Column(db.String(20), default='right')  # right, left
-    layout_style = db.Column(db.String(20), default='fixed')  # fixed, boxed, fluid
+    sidebar_position = db.Column(db.String(20), default="right")  # right, left
+    layout_style = db.Column(db.String(20), default="fixed")  # fixed, boxed, fluid
     enable_dark_mode = db.Column(db.Boolean, default=True)
     default_dark_mode = db.Column(db.Boolean, default=False)
 
     # Language & Localization - اللغة والترجمة
-    default_language = db.Column(db.String(10), default='ar')
+    default_language = db.Column(db.String(10), default="ar")
     available_languages = db.Column(db.Text, default='["ar", "en"]')  # JSON array
     rtl_enabled = db.Column(db.Boolean, default=True)
 
     # Date & Time - التاريخ والوقت
-    timezone = db.Column(db.String(50), default='Asia/Dubai')
-    date_format = db.Column(db.String(30), default='%Y-%m-%d')
-    time_format = db.Column(db.String(30), default='%H:%M')
-    datetime_format = db.Column(db.String(50), default='%Y-%m-%d %H:%M')
+    timezone = db.Column(db.String(50), default="Asia/Dubai")
+    date_format = db.Column(db.String(30), default="%Y-%m-%d")
+    time_format = db.Column(db.String(30), default="%H:%M")
+    datetime_format = db.Column(db.String(50), default="%Y-%m-%d %H:%M")
 
     # Currency - العملة
-    default_currency = db.Column(db.String(3), default='ILS')
-    currency_symbol = db.Column(db.String(10), default='ILS')
-    currency_position = db.Column(db.String(10), default='after')  # before, after
+    default_currency = db.Column(db.String(3), default="ILS")
+    currency_symbol = db.Column(db.String(10), default="ILS")
+    currency_position = db.Column(db.String(10), default="after")  # before, after
     decimal_places = db.Column(db.Integer, default=2)
 
     # Tax Settings - إعدادات الضرائب
     enable_tax = db.Column(db.Boolean, default=True)
-    tax_name_ar = db.Column(db.String(100), default='ضريبة القيمة المضافة')
-    tax_name_en = db.Column(db.String(100), default='VAT')
-    default_tax_rate = db.Column(db.Numeric(5, 2), default=Decimal('5.00'))
+    tax_name_ar = db.Column(db.String(100), default="ضريبة القيمة المضافة")
+    tax_name_en = db.Column(db.String(100), default="VAT")
+    default_tax_rate = db.Column(db.Numeric(5, 2), default=Decimal("5.00"))
     tax_number_required = db.Column(db.Boolean, default=True)
 
     # Modules - الوحدات
@@ -104,7 +107,9 @@ class SystemSettings(db.Model):
 
     # Backup - النسخ الاحتياطي
     auto_backup_enabled = db.Column(db.Boolean, default=True)
-    backup_frequency = db.Column(db.String(20), default='daily')  # daily, weekly, monthly
+    backup_frequency = db.Column(
+        db.String(20), default="daily"
+    )  # daily, weekly, monthly
     backup_retention_days = db.Column(db.Integer, default=30)
 
     # API Settings - إعدادات API
@@ -144,15 +149,18 @@ class SystemSettings(db.Model):
     # Meta
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
-                           onupdate=lambda: datetime.now(timezone.utc))
-    updated_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    updated_by = db.Column(db.Integer, db.ForeignKey("users.id"))
 
     # Relationships
-    user = db.relationship('User', foreign_keys=[updated_by])
+    user = db.relationship("User", foreign_keys=[updated_by])
 
     def __repr__(self):
-        return f'<SystemSettings {self.system_name}>'
+        return f"<SystemSettings {self.system_name}>"
 
     @staticmethod
     def get_current():
@@ -187,11 +195,11 @@ class SystemSettings(db.Model):
 
     def to_dict(self):
         return {
-            'system_name': self.system_name,
-            'system_version': self.system_version,
-            'theme': self.theme,
-            'default_language': self.default_language,
-            'default_currency': self.default_currency,
-            'timezone': self.timezone,
-            'is_active': self.is_active,
+            "system_name": self.system_name,
+            "system_version": self.system_version,
+            "theme": self.theme,
+            "default_language": self.default_language,
+            "default_currency": self.default_currency,
+            "timezone": self.timezone,
+            "is_active": self.is_active,
         }

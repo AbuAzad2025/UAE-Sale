@@ -2,10 +2,20 @@
 🏪 Suppliers Routes - مسارات الموردين
 إدارة الموردين: عرض، إضافة، تعديل، تقارير
 """
+
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
+from flask import (
+    Blueprint,
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    request,
+    jsonify,
+    current_app,
+)
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Supplier, Purchase, Payment
@@ -14,7 +24,7 @@ from utils.decorators import permission_required, admin_required, get_owned_or_4
 from utils.helpers import create_audit_log
 from sqlalchemy import desc
 
-suppliers_bp = Blueprint('suppliers', __name__, url_prefix='/suppliers')
+suppliers_bp = Blueprint("suppliers", __name__, url_prefix="/suppliers")
 
 
 def _parse_opening_balance(source):
@@ -37,78 +47,80 @@ def _parse_opening_balance(source):
 
     from services.currency_service import CurrencyService
 
-    raw_amount = (source.get('opening_balance') or source.get('initial_balance') or '').strip()
-    raw_currency = (source.get('opening_balance_currency') or '').strip().upper()
-    raw_rate = (source.get('opening_balance_rate') or '').strip()
-    raw_date = (source.get('opening_balance_date') or '').strip()
+    raw_amount = (
+        source.get("opening_balance") or source.get("initial_balance") or ""
+    ).strip()
+    raw_currency = (source.get("opening_balance_currency") or "").strip().upper()
+    raw_rate = (source.get("opening_balance_rate") or "").strip()
+    raw_date = (source.get("opening_balance_date") or "").strip()
 
     if not raw_amount and not raw_currency and not raw_rate and not raw_date:
         return None
 
-    amount = Decimal('0')
+    amount = Decimal("0")
     if raw_amount:
         try:
             amount = Decimal(raw_amount)
         except (InvalidOperation, ValueError):
-            raise ValueError('الرصيد الافتتاحي يجب أن يكون رقماً صحيحاً.')
+            raise ValueError("الرصيد الافتتاحي يجب أن يكون رقماً صحيحاً.")
 
     if raw_currency:
         if len(raw_currency) != 3 or not raw_currency.isalpha():
             raise ValueError(
-                'عملة الرصيد الافتتاحي يجب أن تكون رمزاً من ثلاثة أحرف (مثل AED).')
+                "عملة الرصيد الافتتاحي يجب أن تكون رمزاً من ثلاثة أحرف (مثل AED)."
+            )
         currency = raw_currency
     else:
         try:
             currency = CurrencyService.get_base_currency()
         except Exception:
-            currency = 'ILS'
+            currency = "ILS"
 
-    rate = Decimal('1')
+    rate = Decimal("1")
     if raw_rate:
         try:
             rate = Decimal(raw_rate)
         except (InvalidOperation, ValueError):
-            raise ValueError('سعر صرف الرصيد الافتتاحي يجب أن يكون رقماً صحيحاً.')
+            raise ValueError("سعر صرف الرصيد الافتتاحي يجب أن يكون رقماً صحيحاً.")
         if rate <= 0:
-            raise ValueError('سعر صرف الرصيد الافتتاحي يجب أن يكون أكبر من صفر.')
+            raise ValueError("سعر صرف الرصيد الافتتاحي يجب أن يكون أكبر من صفر.")
 
     opening_date = None
     if raw_date:
         try:
-            opening_date = _datetime.strptime(raw_date, '%Y-%m-%d').date()
+            opening_date = _datetime.strptime(raw_date, "%Y-%m-%d").date()
         except ValueError:
-            raise ValueError(
-                'تاريخ الرصيد الافتتاحي يجب أن يكون بالصيغة YYYY-MM-DD.')
+            raise ValueError("تاريخ الرصيد الافتتاحي يجب أن يكون بالصيغة YYYY-MM-DD.")
 
     return {
-        'amount': amount,
-        'currency': currency,
-        'rate': rate,
-        'date': opening_date,
+        "amount": amount,
+        "currency": currency,
+        "rate": rate,
+        "date": opening_date,
     }
 
 
-@suppliers_bp.route('/')
+@suppliers_bp.route("/")
 @login_required
-@permission_required('manage_suppliers')
+@permission_required("manage_suppliers")
 def index():
     """قائمة الموردين"""
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    search = request.args.get('search', '', type=str)
-    supplier_type = request.args.get('type', '', type=str)
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+    search = request.args.get("search", "", type=str)
+    supplier_type = request.args.get("type", "", type=str)
 
     query = Supplier.query.filter_by(is_active=True)
 
     # البحث
     if search:
-        search_filter = f'%{search}%'
+        search_filter = f"%{search}%"
         query = query.filter(
             db.or_(
                 Supplier.name.ilike(search_filter),
                 Supplier.company_name.ilike(search_filter),
                 Supplier.phone.ilike(search_filter),
-                Supplier.email.ilike(search_filter)
+                Supplier.email.ilike(search_filter),
             )
         )
 
@@ -117,46 +129,50 @@ def index():
         query = query.filter_by(supplier_type=supplier_type)
 
     pagination = query.order_by(Supplier.name).paginate(
-        page=page,
-        per_page=per_page,
-        error_out=False
+        page=page, per_page=per_page, error_out=False
     )
 
     # إحصائيات
     stats = {
-        'total': Supplier.query.filter_by(is_active=True).count(),
-        'verified': Supplier.query.filter_by(is_active=True, is_verified=True).count(),
-        'parts': Supplier.query.filter_by(is_active=True, supplier_type='parts').count(),
-        'equipment': Supplier.query.filter_by(is_active=True, supplier_type='equipment').count(),
+        "total": Supplier.query.filter_by(is_active=True).count(),
+        "verified": Supplier.query.filter_by(is_active=True, is_verified=True).count(),
+        "parts": Supplier.query.filter_by(
+            is_active=True, supplier_type="parts"
+        ).count(),
+        "equipment": Supplier.query.filter_by(
+            is_active=True, supplier_type="equipment"
+        ).count(),
     }
 
-    return render_template('suppliers/index.html',
-                           suppliers=pagination.items,
-                           pagination=pagination,
-                           stats=stats)
+    return render_template(
+        "suppliers/index.html",
+        suppliers=pagination.items,
+        pagination=pagination,
+        stats=stats,
+    )
 
 
-@suppliers_bp.route('/create', methods=['GET', 'POST'])
+@suppliers_bp.route("/create", methods=["GET", "POST"])
 @login_required
-@permission_required('manage_suppliers')
-@limiter.limit("10 per minute", methods=['POST'])
+@permission_required("manage_suppliers")
+@limiter.limit("10 per minute", methods=["POST"])
 def create():
     """إضافة مورد جديد"""
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
-            supplier_type_value = (request.form.get('supplier_type') or '').strip()
+            supplier_type_value = (request.form.get("supplier_type") or "").strip()
             if not supplier_type_value:
-                flash('⚠️ يرجى اختيار نوع المورد.', 'warning')
-                return render_template('suppliers/create.html')
+                flash("⚠️ يرجى اختيار نوع المورد.", "warning")
+                return render_template("suppliers/create.html")
 
-            rating_value = (request.form.get('rating') or '').strip()
+            rating_value = (request.form.get("rating") or "").strip()
             rating = None
             if rating_value:
                 try:
                     rating = int(rating_value)
                 except ValueError:
-                    flash('⚠️ قيمة التقييم غير صحيحة.', 'warning')
-                    return render_template('suppliers/create.html')
+                    flash("⚠️ قيمة التقييم غير صحيحة.", "warning")
+                    return render_template("suppliers/create.html")
 
             # F4: الرصيد الافتتاحي (رصيد مستحق للمورد قبل استخدام النظام).
             # كان يُخزَّن في total_purchases_aed — وهي إحصائية مشتريات
@@ -166,160 +182,188 @@ def create():
 
             # تحذير إرشادي فقط — لا يُمنع الحفظ (صيغة TRN لكل دولة)
             from utils.trn import trn_verdict, current_tenant_country_code
-            _ok, _msg = trn_verdict(request.form.get('tax_number'), current_tenant_country_code())
+
+            _ok, _msg = trn_verdict(
+                request.form.get("tax_number"), current_tenant_country_code()
+            )
             if not _ok and _msg:
-                flash(f'⚠️ {_msg}', 'warning')
+                flash(f"⚠️ {_msg}", "warning")
 
             supplier = Supplier(
-                name=request.form.get('name'),
-                name_en=request.form.get('name_en'),
-                company_name=request.form.get('company_name'),
-                phone=request.form.get('phone'),
-                phone2=request.form.get('phone2'),
-                email=request.form.get('email'),
-                website=request.form.get('website'),
-                address=request.form.get('address'),
-                city=request.form.get('city'),
-                country=request.form.get('country', 'UAE'),
-                tax_number=request.form.get('tax_number'),
-                commercial_registration=request.form.get('commercial_registration'),
+                name=request.form.get("name"),
+                name_en=request.form.get("name_en"),
+                company_name=request.form.get("company_name"),
+                phone=request.form.get("phone"),
+                phone2=request.form.get("phone2"),
+                email=request.form.get("email"),
+                website=request.form.get("website"),
+                address=request.form.get("address"),
+                city=request.form.get("city"),
+                country=request.form.get("country", "UAE"),
+                tax_number=request.form.get("tax_number"),
+                commercial_registration=request.form.get("commercial_registration"),
                 supplier_type=supplier_type_value,
                 rating=rating if rating is not None else None,
-                credit_limit=request.form.get('credit_limit', type=float, default=0),
-                payment_terms_days=request.form.get('payment_terms_days', type=int, default=30),
-                preferred_currency=(request.form.get('preferred_currency') or __import__('services.currency_service', fromlist=['CurrencyService']).CurrencyService.get_base_currency()),
+                credit_limit=request.form.get("credit_limit", type=float, default=0),
+                payment_terms_days=request.form.get(
+                    "payment_terms_days", type=int, default=30
+                ),
+                preferred_currency=(
+                    request.form.get("preferred_currency")
+                    or __import__(
+                        "services.currency_service", fromlist=["CurrencyService"]
+                    ).CurrencyService.get_base_currency()
+                ),
                 total_purchases_aed=0,
                 total_paid_aed=0,
-                notes=request.form.get('notes'),
-                tags=request.form.get('tags'),
-                is_verified=request.form.get('is_verified') == 'on',
-                created_by=current_user.id
+                notes=request.form.get("notes"),
+                tags=request.form.get("tags"),
+                is_verified=request.form.get("is_verified") == "on",
+                created_by=current_user.id,
             )
 
             if opening:
-                supplier.opening_balance = opening['amount']
-                supplier.opening_balance_currency = opening['currency']
-                supplier.opening_balance_rate = opening['rate']
-                supplier.opening_balance_date = opening['date']
+                supplier.opening_balance = opening["amount"]
+                supplier.opening_balance_currency = opening["currency"]
+                supplier.opening_balance_rate = opening["rate"]
+                supplier.opening_balance_date = opening["date"]
 
             db.session.add(supplier)
             db.session.commit()
 
-            create_audit_log('create', 'suppliers', supplier.id)
+            create_audit_log("create", "suppliers", supplier.id)
 
-            flash('✅ تم إضافة المورد بنجاح!', 'success')
-            return redirect(url_for('suppliers.view', id=supplier.id))
+            flash("✅ تم إضافة المورد بنجاح!", "success")
+            return redirect(url_for("suppliers.view", id=supplier.id))
 
         except ValueError as e:
             db.session.rollback()
-            flash(f'❌ {e}', 'danger')
-            return render_template('suppliers/create.html')
+            flash(f"❌ {e}", "danger")
+            return render_template("suppliers/create.html")
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
-            flash(f'❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            current_app.logger.exception("handler failed")
+            flash(
+                f"❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.",
+                "danger",
+            )
 
-    return render_template('suppliers/create.html')
+    return render_template("suppliers/create.html")
 
 
-@suppliers_bp.route('/<int:id>')
+@suppliers_bp.route("/<int:id>")
 @login_required
-@permission_required('manage_suppliers')
+@permission_required("manage_suppliers")
 def view(id):
     """عرض تفاصيل المورد"""
     supplier = get_owned_or_404(Supplier, id)
 
     # آخر المشتريات
-    recent_purchases = supplier.purchases.filter_by(status='confirmed').order_by(
-        desc(Purchase.purchase_date)
-    ).limit(10).all()
+    recent_purchases = (
+        supplier.purchases.filter_by(status="confirmed")
+        .order_by(desc(Purchase.purchase_date))
+        .limit(10)
+        .all()
+    )
 
     # إحصائيات
     stats = {
-        'total_purchases': supplier.purchases.filter_by(status='confirmed').count(),
-        'total_amount': float(supplier.total_purchases_aed or 0),
-        'balance': float(supplier.get_balance_aed()),
-        'avg_purchase': 0
+        "total_purchases": supplier.purchases.filter_by(status="confirmed").count(),
+        "total_amount": float(supplier.total_purchases_aed or 0),
+        "balance": float(supplier.get_balance_aed()),
+        "avg_purchase": 0,
     }
 
-    if stats['total_purchases'] > 0:
-        stats['avg_purchase'] = stats['total_amount'] / stats['total_purchases']
+    if stats["total_purchases"] > 0:
+        stats["avg_purchase"] = stats["total_amount"] / stats["total_purchases"]
 
-    return render_template('suppliers/view.html',
-                           supplier=supplier,
-                           recent_purchases=recent_purchases,
-                           stats=stats)
+    return render_template(
+        "suppliers/view.html",
+        supplier=supplier,
+        recent_purchases=recent_purchases,
+        stats=stats,
+    )
 
 
-@suppliers_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@suppliers_bp.route("/<int:id>/edit", methods=["GET", "POST"])
 @login_required
-@permission_required('manage_suppliers')
+@permission_required("manage_suppliers")
 def edit(id):
     """تعديل المورد"""
     supplier = get_owned_or_404(Supplier, id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             # تحذير إرشادي فقط — لا يُمنع الحفظ (صيغة TRN لكل دولة)
             from utils.trn import trn_verdict, current_tenant_country_code
-            _ok, _msg = trn_verdict(request.form.get('tax_number'), current_tenant_country_code())
-            if not _ok and _msg:
-                flash(f'⚠️ {_msg}', 'warning')
 
-            supplier.name = request.form.get('name')
-            supplier.name_en = request.form.get('name_en')
-            supplier.company_name = request.form.get('company_name')
-            supplier.phone = request.form.get('phone')
-            supplier.phone2 = request.form.get('phone2')
-            supplier.email = request.form.get('email')
-            supplier.website = request.form.get('website')
-            supplier.address = request.form.get('address')
-            supplier.city = request.form.get('city')
-            supplier.country = request.form.get('country')
-            supplier.tax_number = request.form.get('tax_number')
-            supplier.commercial_registration = request.form.get('commercial_registration')
-            supplier_type_value = (request.form.get('supplier_type') or '').strip()
+            _ok, _msg = trn_verdict(
+                request.form.get("tax_number"), current_tenant_country_code()
+            )
+            if not _ok and _msg:
+                flash(f"⚠️ {_msg}", "warning")
+
+            supplier.name = request.form.get("name")
+            supplier.name_en = request.form.get("name_en")
+            supplier.company_name = request.form.get("company_name")
+            supplier.phone = request.form.get("phone")
+            supplier.phone2 = request.form.get("phone2")
+            supplier.email = request.form.get("email")
+            supplier.website = request.form.get("website")
+            supplier.address = request.form.get("address")
+            supplier.city = request.form.get("city")
+            supplier.country = request.form.get("country")
+            supplier.tax_number = request.form.get("tax_number")
+            supplier.commercial_registration = request.form.get(
+                "commercial_registration"
+            )
+            supplier_type_value = (request.form.get("supplier_type") or "").strip()
             supplier.supplier_type = supplier_type_value or None
 
-            rating_value = (request.form.get('rating') or '').strip()
+            rating_value = (request.form.get("rating") or "").strip()
             supplier.rating = int(rating_value) if rating_value else None
-            supplier.credit_limit = request.form.get('credit_limit', type=float)
-            supplier.payment_terms_days = request.form.get('payment_terms_days', type=int)
-            supplier.preferred_currency = request.form.get('preferred_currency')
-            supplier.notes = request.form.get('notes')
-            supplier.tags = request.form.get('tags')
-            supplier.is_verified = request.form.get('is_verified') == 'on'
+            supplier.credit_limit = request.form.get("credit_limit", type=float)
+            supplier.payment_terms_days = request.form.get(
+                "payment_terms_days", type=int
+            )
+            supplier.preferred_currency = request.form.get("preferred_currency")
+            supplier.notes = request.form.get("notes")
+            supplier.tags = request.form.get("tags")
+            supplier.is_verified = request.form.get("is_verified") == "on"
 
             # F4: تعديل الرصيد الافتتاحي (مبلغ + عملة + سعر صرف + تاريخ)
             opening = _parse_opening_balance(request.form)
             if opening:
-                supplier.opening_balance = opening['amount']
-                supplier.opening_balance_currency = opening['currency']
-                supplier.opening_balance_rate = opening['rate']
-                supplier.opening_balance_date = opening['date']
+                supplier.opening_balance = opening["amount"]
+                supplier.opening_balance_currency = opening["currency"]
+                supplier.opening_balance_rate = opening["rate"]
+                supplier.opening_balance_date = opening["date"]
 
             db.session.commit()
 
-            create_audit_log('update', 'suppliers', supplier.id)
+            create_audit_log("update", "suppliers", supplier.id)
 
-            flash('✅ تم تحديث المورد بنجاح!', 'success')
-            return redirect(url_for('suppliers.view', id=supplier.id))
+            flash("✅ تم تحديث المورد بنجاح!", "success")
+            return redirect(url_for("suppliers.view", id=supplier.id))
 
         except ValueError as e:
             db.session.rollback()
-            flash(f'❌ {e}', 'danger')
-            return render_template('suppliers/edit.html', supplier=supplier)
+            flash(f"❌ {e}", "danger")
+            return render_template("suppliers/edit.html", supplier=supplier)
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
-            flash(f'❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            current_app.logger.exception("handler failed")
+            flash(
+                f"❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.",
+                "danger",
+            )
 
-    return render_template('suppliers/edit.html', supplier=supplier)
+    return render_template("suppliers/edit.html", supplier=supplier)
 
 
-@suppliers_bp.route('/<int:id>/delete', methods=['POST'])
+@suppliers_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
-@permission_required('manage_suppliers')
+@permission_required("manage_suppliers")
 def delete(id):
     """حذف (إلغاء تفعيل) المورد"""
     supplier = get_owned_or_404(Supplier, id)
@@ -332,13 +376,16 @@ def delete(id):
         if purchases_count > 0 or payments_count > 0:
             supplier.is_active = False
             db.session.commit()
-            flash(f'⚠️ تم إلغاء تفعيل المورد "{supplier.name}" بدلاً من حذفه لوجود ({purchases_count} فاتورة شراء، {payments_count} دفعة) مرتبطة به.', 'warning')  # noqa: E501
+            flash(
+                f'⚠️ تم إلغاء تفعيل المورد "{supplier.name}" بدلاً من حذفه لوجود ({purchases_count} فاتورة شراء، {payments_count} دفعة) مرتبطة به.',
+                "warning",
+            )  # noqa: E501
         else:
             db.session.delete(supplier)
             db.session.commit()
-            flash(f'✅ تم حذف المورد "{supplier.name}" نهائياً!', 'success')
+            flash(f'✅ تم حذف المورد "{supplier.name}" نهائياً!', "success")
 
-        create_audit_log('delete', 'suppliers', supplier.id)
+        create_audit_log("delete", "suppliers", supplier.id)
 
     except Exception as e:
         db.session.rollback()
@@ -346,68 +393,90 @@ def delete(id):
         try:
             supplier.is_active = False
             db.session.commit()
-            flash(f'⚠️ تعذر الحذف النهائي للمورد "{supplier.name}" بسبب ارتباطات في قاعدة البيانات. تم إلغاء تفعيله بدلاً من ذلك.', 'warning')
+            flash(
+                f'⚠️ تعذر الحذف النهائي للمورد "{supplier.name}" بسبب ارتباطات في قاعدة البيانات. تم إلغاء تفعيله بدلاً من ذلك.',
+                "warning",
+            )
         except Exception:
-            current_app.logger.exception('handler failed')
-            flash(f'❌ حدث خطأ أثناء حذف المورد: حدث خطأ غير متوقع', 'danger')
+            current_app.logger.exception("handler failed")
+            flash(f"❌ حدث خطأ أثناء حذف المورد: حدث خطأ غير متوقع", "danger")
 
-    return redirect(url_for('suppliers.index'))
+    return redirect(url_for("suppliers.index"))
 
 
-@suppliers_bp.route('/<int:id>/statement')
+@suppliers_bp.route("/<int:id>/statement")
 @login_required
 @admin_required
 def statement(id):
     """كشف حساب المورد"""
     supplier = get_owned_or_404(Supplier, id)
 
-    purchases = supplier.purchases.filter_by(status='confirmed').order_by(
-        Purchase.purchase_date.desc()
-    ).all()
+    purchases = (
+        supplier.purchases.filter_by(status="confirmed")
+        .order_by(Purchase.purchase_date.desc())
+        .all()
+    )
 
-    payments = Payment.query.filter_by(supplier_id=id).order_by(Payment.payment_date.desc()).all()
+    payments = (
+        Payment.query.filter_by(supplier_id=id)
+        .order_by(Payment.payment_date.desc())
+        .all()
+    )
 
-    return render_template('suppliers/statement.html',
-                           supplier=supplier,
-                           purchases=purchases,
-                           payments=payments,
-                           now=datetime.now)
+    return render_template(
+        "suppliers/statement.html",
+        supplier=supplier,
+        purchases=purchases,
+        payments=payments,
+        now=datetime.now,
+    )
 
 
-@suppliers_bp.route('/api/search')
+@suppliers_bp.route("/api/search")
 @login_required
-@permission_required('manage_suppliers')
+@permission_required("manage_suppliers")
 def api_search():
     """API endpoint للبحث عن الموردين"""
     try:
-        query = request.args.get('q', '')
-        _ = request.args.get('page', 1, type=int)
+        query = request.args.get("q", "")
+        _ = request.args.get("page", 1, type=int)
         per_page = 20
 
         # السماح بالبحث حتى بدون query (لعرض كل الموردين)
         if query and len(query) >= 1:
-            suppliers = Supplier.query.filter(
-                Supplier.is_active.is_(True),
-                db.or_(
-                    Supplier.name.ilike(f'%{query}%'),
-                    Supplier.phone.ilike(f'%{query}%'),
-                    Supplier.email.ilike(f'%{query}%')
+            suppliers = (
+                Supplier.query.filter(
+                    Supplier.is_active.is_(True),
+                    db.or_(
+                        Supplier.name.ilike(f"%{query}%"),
+                        Supplier.phone.ilike(f"%{query}%"),
+                        Supplier.email.ilike(f"%{query}%"),
+                    ),
                 )
-            ).order_by(Supplier.name).limit(per_page).all()
+                .order_by(Supplier.name)
+                .limit(per_page)
+                .all()
+            )
         else:
             # عرض كل الموردين (مرتبين أبجدياً)
-            suppliers = Supplier.query.filter_by(
-                is_active=True
-            ).order_by(Supplier.name).limit(per_page).all()
+            suppliers = (
+                Supplier.query.filter_by(is_active=True)
+                .order_by(Supplier.name)
+                .limit(per_page)
+                .all()
+            )
 
-        results = [{
-            'id': s.id,
-            'name': s.name,
-            'phone': s.phone or '',
-            'text': f"{s.name} - {s.phone}" if s.phone else s.name,
-            'supplier_type': s.supplier_type,
-            'balance': float(s.get_balance_aed())
-        } for s in suppliers]
+        results = [
+            {
+                "id": s.id,
+                "name": s.name,
+                "phone": s.phone or "",
+                "text": f"{s.name} - {s.phone}" if s.phone else s.name,
+                "supplier_type": s.supplier_type,
+                "balance": float(s.get_balance_aed()),
+            }
+            for s in suppliers
+        ]
 
         return jsonify(results)
     except Exception as e:

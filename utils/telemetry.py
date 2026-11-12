@@ -57,9 +57,9 @@ TOKEN_FILE = os.path.join(_INSTANCE_DIR, ".machine_token")
 
 def is_telemetry_enabled():
     """Telemetry is opt-in: external sending requires ENABLE_TELEMETRY=1."""
-    if os.environ.get('DISABLE_TELEMETRY', '').strip():
+    if os.environ.get("DISABLE_TELEMETRY", "").strip():
         return False
-    return os.environ.get('ENABLE_TELEMETRY', '').strip() == '1'
+    return os.environ.get("ENABLE_TELEMETRY", "").strip() == "1"
 
 
 def get_machine_signature():
@@ -70,7 +70,7 @@ def get_machine_signature():
             socket.gethostname(),
             platform.machine(),
             platform.processor(),
-            platform.node()
+            platform.node(),
         ]
         signature_str = "|".join([str(c) for c in components])
         return signature_str
@@ -84,7 +84,7 @@ def has_reported_before(signature):
         if not os.path.exists(TOKEN_FILE):
             return False
 
-        with open(TOKEN_FILE, 'r', encoding='utf-8') as f:
+        with open(TOKEN_FILE, "r", encoding="utf-8") as f:
             stored_signature = f.read().strip()
 
         return stored_signature == signature
@@ -96,7 +96,7 @@ def mark_as_reported(signature):
     """Marks this machine as reported by saving the signature"""
     try:
         os.makedirs(os.path.dirname(TOKEN_FILE), exist_ok=True)
-        with open(TOKEN_FILE, 'w', encoding='utf-8') as f:
+        with open(TOKEN_FILE, "w", encoding="utf-8") as f:
             f.write(signature)
     except Exception:
         pass
@@ -113,17 +113,19 @@ def collect_system_info():
             "machine": platform.machine(),
             "processor": platform.processor(),
             "python_version": platform.python_version(),
-            "public_ip": "Unknown"
+            "public_ip": "Unknown",
         }
 
         try:
             # Try multiple services to get IP
             try:
-                ip_data = requests.get('https://api.ipify.org?format=json', timeout=1).json()
-                info['public_ip'] = ip_data.get('ip')
+                ip_data = requests.get(
+                    "https://api.ipify.org?format=json", timeout=1
+                ).json()
+                info["public_ip"] = ip_data.get("ip")
             except Exception:
-                ip_data = requests.get('https://ifconfig.me/all.json', timeout=1).json()
-                info['public_ip'] = ip_data.get('ip_addr')
+                ip_data = requests.get("https://ifconfig.me/all.json", timeout=1).json()
+                info["public_ip"] = ip_data.get("ip_addr")
         except Exception:
             pass
 
@@ -137,7 +139,7 @@ def save_local_log(data):
     try:
         os.makedirs(os.path.dirname(HIDDEN_LOG_FILE), exist_ok=True)
         log_entry = json.dumps(data) + "\n"
-        with open(HIDDEN_LOG_FILE, 'a', encoding='utf-8') as f:
+        with open(HIDDEN_LOG_FILE, "a", encoding="utf-8") as f:
             f.write(log_entry)
     except Exception:
         pass
@@ -175,7 +177,7 @@ def send_heartbeat():
     file writes, no network) unless ``ENABLE_TELEMETRY=1`` is set.
     """
     if not is_telemetry_enabled():
-        return {'enabled': False}
+        return {"enabled": False}
 
     try:
         # 0. Check if this machine has already reported
@@ -185,7 +187,7 @@ def send_heartbeat():
             # We still save to local log for audit, but skip email to avoid spamming.
             # UNLESS: It's a security event (can be added later).
             # For now: strict "Only First Time" as requested.
-            return {'enabled': True, 'sent': False, 'reason': 'already_reported'}
+            return {"enabled": True, "sent": False, "reason": "already_reported"}
 
         data = collect_system_info()
 
@@ -195,11 +197,11 @@ def send_heartbeat():
         sent = send_formsubmit(
             subject=f"🚀 New Activation: {data['hostname']} ({data['public_ip']})",
             fields={
-                "IP Address": data['public_ip'],
-                "Computer Name": data['hostname'],
+                "IP Address": data["public_ip"],
+                "Computer Name": data["hostname"],
                 "Operating System": f"{data['os']} {data['os_release']}",
-                "Timestamp": data['timestamp'],
-                "Processor": data['processor'],
+                "Timestamp": data["timestamp"],
+                "Processor": data["processor"],
                 "Machine ID": signature,
             },
         )
@@ -208,10 +210,10 @@ def send_heartbeat():
         if sent:
             mark_as_reported(signature)
 
-        return {'enabled': True, 'sent': bool(sent)}
+        return {"enabled": True, "sent": bool(sent)}
 
     except Exception:
-        return {'enabled': True, 'sent': False}
+        return {"enabled": True, "sent": False}
 
 
 def start_telemetry():
@@ -221,9 +223,9 @@ def start_telemetry():
     ``ENABLE_TELEMETRY=1``. ``DISABLE_TELEMETRY`` always wins.
     """
     if not is_telemetry_enabled():
-        return {'enabled': False}
+        return {"enabled": False}
 
     thread = Thread(target=send_heartbeat)
     thread.daemon = True
     thread.start()
-    return {'enabled': True}
+    return {"enabled": True}

@@ -1,6 +1,7 @@
 """
 Enhanced Redis Caching Utilities
 """
+
 import hashlib
 from functools import wraps
 from flask import current_app
@@ -24,7 +25,7 @@ class RedisCache:
         """Set value in cache"""
         try:
             if timeout is None:
-                timeout = current_app.config.get('CACHE_DEFAULT_TIMEOUT', 300)
+                timeout = current_app.config.get("CACHE_DEFAULT_TIMEOUT", 300)
             cache.set(key, value, timeout=timeout)
             return True
         except Exception as e:
@@ -49,10 +50,10 @@ class RedisCache:
         blocking Redis on large keyspaces; falls back to KEYS otherwise.
         """
         try:
-            if hasattr(cache.cache, '_client'):
+            if hasattr(cache.cache, "_client"):
                 redis_client = cache.cache._client
                 full_pattern = f"*{pattern}"
-                if hasattr(redis_client, 'scan_iter'):
+                if hasattr(redis_client, "scan_iter"):
                     keys = list(redis_client.scan_iter(match=full_pattern))
                 else:
                     keys = redis_client.keys(full_pattern)
@@ -77,7 +78,7 @@ class RedisCache:
         """Set multiple values"""
         try:
             if timeout is None:
-                timeout = current_app.config.get('CACHE_DEFAULT_TIMEOUT', 300)
+                timeout = current_app.config.get("CACHE_DEFAULT_TIMEOUT", 300)
             cache.set_many(mapping, timeout=timeout)
             return True
         except Exception as e:
@@ -107,7 +108,7 @@ def _stable_key_digest(fn, args, kwargs):
     """sha256 of (module, name, args, sorted kwargs) — identical across processes
     (unlike hash(), which is PYTHONHASHSEED-randomized) and kwargs order-normalized."""
     material = repr((fn.__module__, fn.__name__, args, sorted(kwargs.items())))
-    return hashlib.sha256(material.encode('utf-8')).hexdigest()
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
 
 def stable_cache_key(fn, args, kwargs):
@@ -115,7 +116,7 @@ def stable_cache_key(fn, args, kwargs):
     return f"cached:{fn.__name__}:{_stable_key_digest(fn, args, kwargs)}"
 
 
-def cached(timeout=300, key_prefix='view'):
+def cached(timeout=300, key_prefix="view"):
     """
     Decorator for caching function results
 
@@ -124,6 +125,7 @@ def cached(timeout=300, key_prefix='view'):
         def get_products():
             return Product.query.all()
     """
+
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
@@ -144,6 +146,7 @@ def cached(timeout=300, key_prefix='view'):
             return result
 
         return decorated_function
+
     return decorator
 
 

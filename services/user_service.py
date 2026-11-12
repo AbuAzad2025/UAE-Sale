@@ -14,6 +14,7 @@ provisioning) with the STRICTEST rule from each:
 * owners can never be deleted/deactivated through these paths
 * self delete / self-demote are refused
 """
+
 from decimal import Decimal  # noqa: F401  (kept for call-site compat)
 
 from extensions import db
@@ -29,17 +30,19 @@ _UNCHANGED = object()
 
 
 def _actor_level(actor):
-    if getattr(actor, 'is_owner', False):
+    if getattr(actor, "is_owner", False):
         return 100
-    return _canon_role_level(getattr(actor, 'role', None))
+    return _canon_role_level(getattr(actor, "role", None))
 
 
 def _role_level_of(role_or_slug):
     if role_or_slug is None:
         return 0
     if isinstance(role_or_slug, str):
+
         class _R:
             pass
+
         r = _R()
         r.slug = role_or_slug
         return _canon_role_level(r)
@@ -48,53 +51,56 @@ def _role_level_of(role_or_slug):
 
 def _clean_username(raw):
     from utils.sanitizer import InputSanitizer
-    username = InputSanitizer.sanitize_text(raw or '', max_length=50) or ''
+
+    username = InputSanitizer.sanitize_text(raw or "", max_length=50) or ""
     username = username.strip()
-    if not (3 <= len(username) <= 20) or not username.replace('_', '').isalnum():
-        raise ValidationError('اسم المستخدم: 3-20 حرفاً (أحرف لاتينية/أرقام/_).')
+    if not (3 <= len(username) <= 20) or not username.replace("_", "").isalnum():
+        raise ValidationError("اسم المستخدم: 3-20 حرفاً (أحرف لاتينية/أرقام/_).")
     if not username[0].isalpha():
-        raise ValidationError('اسم المستخدم يجب أن يبدأ بحرف.')
+        raise ValidationError("اسم المستخدم يجب أن يبدأ بحرف.")
     return username
 
 
 def _clean_email(raw, required=True):
     from utils.sanitizer import InputSanitizer
-    email = InputSanitizer.sanitize_email(raw or '') or ''
+
+    email = InputSanitizer.sanitize_email(raw or "") or ""
     email = email.strip()
     if not email:
         if required:
-            raise ValidationError('البريد الإلكتروني مطلوب.')
+            raise ValidationError("البريد الإلكتروني مطلوب.")
         return None
-    if '@' not in email or '.' not in email:
-        raise ValidationError('البريد الإلكتروني غير صالح.')
+    if "@" not in email or "." not in email:
+        raise ValidationError("البريد الإلكتروني غير صالح.")
     return email
 
 
 def _resolve_role(role_id, actor):
     if not role_id:
-        raise ValidationError('يرجى اختيار الدور الوظيفي.')
+        raise ValidationError("يرجى اختيار الدور الوظيفي.")
     try:
         role_id = int(role_id)
     except (TypeError, ValueError):
-        raise ValidationError('الدور المختار غير صالح.')
+        raise ValidationError("الدور المختار غير صالح.")
     role = Role.query.get(role_id)
-    if role is None or not getattr(role, 'is_active', True):
-        raise ValidationError('الدور المختار غير صالح.')
+    if role is None or not getattr(role, "is_active", True):
+        raise ValidationError("الدور المختار غير صالح.")
     # NOTE: deliberately NOT calling _enforce_target_role_not_higher here:
     # it reads the global Flask-Login proxy (None outside a request) and
     # aborts 403 instead of raising ValueError.  The explicit actor-based
     # comparison below enforces the identical rule with service semantics.
     actor_level = _actor_level(actor)
     if _role_level_of(role) > actor_level:
-        raise ValidationError('لا يمكنك منح دور أعلى من دورك.')
+        raise ValidationError("لا يمكنك منح دور أعلى من دورك.")
     return role
 
 
 def _check_password(password):
     from utils.password_validator import PasswordValidator
-    valid, errors = PasswordValidator.validate(password or '')
+
+    valid, errors = PasswordValidator.validate(password or "")
     if not valid:
-        raise ValidationError('كلمة المرور ضعيفة:\n' + '\n'.join(errors))
+        raise ValidationError("كلمة المرور ضعيفة:\n" + "\n".join(errors))
 
 
 def _check_tenant_quota(tenant_id):
@@ -102,15 +108,17 @@ def _check_tenant_quota(tenant_id):
         return
     tenant = db.session.get(Tenant, tenant_id)
     if tenant is None:
-        raise ValidationError('المستأجر المحدد غير موجود.')
+        raise ValidationError("المستأجر المحدد غير موجود.")
     if not tenant.is_active or tenant.is_suspended:
-        raise ValidationError('لا يمكن إضافة مستخدمين لمستأجر موقوف أو غير نشط.')
+        raise ValidationError("لا يمكن إضافة مستخدمين لمستأجر موقوف أو غير نشط.")
     if tenant.max_users is not None:
         current = User.query.filter_by(
-            tenant_id=tenant.id, is_owner=False, is_active=True).count()
+            tenant_id=tenant.id, is_owner=False, is_active=True
+        ).count()
         if current >= tenant.max_users:
             raise ValidationError(
-                f'بلغ المستأجر الحد الأقصى للمستخدمين ({tenant.max_users}).')
+                f"بلغ المستأجر الحد الأقصى للمستخدمين ({tenant.max_users})."
+            )
 
 
 class UserService:
@@ -120,9 +128,20 @@ class UserService:
     # provision
     # ------------------------------------------------------------------
     @staticmethod
-    def provision_user(*, username, email, password, role_id, actor,
-                       full_name=None, full_name_ar=None, phone=None,
-                       tenant_id=None, is_owner=False, is_active=True):
+    def provision_user(
+        *,
+        username,
+        email,
+        password,
+        role_id,
+        actor,
+        full_name=None,
+        full_name_ar=None,
+        phone=None,
+        tenant_id=None,
+        is_owner=False,
+        is_active=True,
+    ):
         """Create a user with the merged strict rule-set. Commits."""
         from utils.sanitizer import InputSanitizer
 
@@ -133,31 +152,44 @@ class UserService:
         if User.query.filter_by(email=email).first() is not None:
             raise ValidationError(f'البريد "{email}" مستخدم بالفعل.')
         role = _resolve_role(role_id, actor)
-        if is_owner and not getattr(actor, 'is_owner', False):
-            raise ValidationError('لا يمكن إنشاء مالك جديد إلا من قِبل المالك الحالي.')
+        if is_owner and not getattr(actor, "is_owner", False):
+            raise ValidationError("لا يمكن إنشاء مالك جديد إلا من قِبل المالك الحالي.")
         if tenant_id is not None:
             try:
                 tenant_id = int(tenant_id)
             except (TypeError, ValueError):
-                raise ValidationError('المستأجر المحدد غير صالح.')
+                raise ValidationError("المستأجر المحدد غير صالح.")
         # platform roles بلا تينانت؛ بقيتهم يحتاجون شركة نشطة (يمنع حيازة الهياكل)
-        if not is_owner and getattr(role, 'slug', None) not in ('super_admin', 'developer'):
+        if not is_owner and getattr(role, "slug", None) not in (
+            "super_admin",
+            "developer",
+        ):
             if tenant_id is None:
-                raise ValidationError('لا يمكن إنشاء مستخدم بلا شركة. اختر الشركة أولاً.')
+                raise ValidationError(
+                    "لا يمكن إنشاء مستخدم بلا شركة. اختر الشركة أولاً."
+                )
             tenant_obj = db.session.get(Tenant, tenant_id)
             if tenant_obj is None:
-                raise ValidationError('الشركة المحددة غير موجودة.')
+                raise ValidationError("الشركة المحددة غير موجودة.")
             if not tenant_obj.is_active or tenant_obj.is_suspended:
-                raise ValidationError('لا يمكن إضافة مستخدمين لشركة موقوفة أو موقوفة مؤقتاً.')
+                raise ValidationError(
+                    "لا يمكن إضافة مستخدمين لشركة موقوفة أو موقوفة مؤقتاً."
+                )
         _check_tenant_quota(tenant_id)
         _check_password(password)
 
         user = User(
             username=username,
             email=email,
-            full_name=(InputSanitizer.sanitize_text(full_name or '', max_length=100) or '').strip() or None,
-            full_name_ar=(InputSanitizer.sanitize_text(full_name_ar or '', max_length=100) or '').strip() or None,
-            phone=(phone or '').strip() or None,
+            full_name=(
+                InputSanitizer.sanitize_text(full_name or "", max_length=100) or ""
+            ).strip()
+            or None,
+            full_name_ar=(
+                InputSanitizer.sanitize_text(full_name_ar or "", max_length=100) or ""
+            ).strip()
+            or None,
+            phone=(phone or "").strip() or None,
             role_id=role.id,
             is_owner=bool(is_owner),
             tenant_id=tenant_id,
@@ -173,10 +205,19 @@ class UserService:
     # update
     # ------------------------------------------------------------------
     @staticmethod
-    def update_user(user, *, actor, email=_UNCHANGED, full_name=_UNCHANGED,
-                    full_name_ar=_UNCHANGED, phone=_UNCHANGED,
-                    role_id=_UNCHANGED, is_owner=_UNCHANGED,
-                    is_active=_UNCHANGED, new_password=None):
+    def update_user(
+        user,
+        *,
+        actor,
+        email=_UNCHANGED,
+        full_name=_UNCHANGED,
+        full_name_ar=_UNCHANGED,
+        phone=_UNCHANGED,
+        role_id=_UNCHANGED,
+        is_owner=_UNCHANGED,
+        is_active=_UNCHANGED,
+        new_password=None,
+    ):
         """Update a user. Username is immutable. Commits."""
         from utils.sanitizer import InputSanitizer
 
@@ -187,28 +228,32 @@ class UserService:
                 raise ValidationError(f'البريد "{email}" مستخدم بالفعل.')
             user.email = email
         if full_name is not _UNCHANGED:
-            user.full_name = (InputSanitizer.sanitize_text(full_name or '', max_length=100) or '').strip() or None
+            user.full_name = (
+                InputSanitizer.sanitize_text(full_name or "", max_length=100) or ""
+            ).strip() or None
         if full_name_ar is not _UNCHANGED:
-            user.full_name_ar = (InputSanitizer.sanitize_text(full_name_ar or '', max_length=100) or '').strip() or None
+            user.full_name_ar = (
+                InputSanitizer.sanitize_text(full_name_ar or "", max_length=100) or ""
+            ).strip() or None
         if phone is not _UNCHANGED:
-            user.phone = (phone or '').strip() or None
+            user.phone = (phone or "").strip() or None
         if role_id is not _UNCHANGED and role_id != user.role_id:
             role = _resolve_role(role_id, actor)
             user.role_id = role.id
         if is_owner is not _UNCHANGED and bool(is_owner) != bool(user.is_owner):
-            if not getattr(actor, 'is_owner', False):
-                raise ValidationError('لا يمكن منح صلاحية المالك لغير المالك الحالي.')
-            if user.id == getattr(actor, 'id', None) and not is_owner:
-                raise ValidationError('لا يمكنك سحب صلاحية المالك من حسابك الخاص.')
+            if not getattr(actor, "is_owner", False):
+                raise ValidationError("لا يمكن منح صلاحية المالك لغير المالك الحالي.")
+            if user.id == getattr(actor, "id", None) and not is_owner:
+                raise ValidationError("لا يمكنك سحب صلاحية المالك من حسابك الخاص.")
             user.is_owner = bool(is_owner)
         if is_active is not _UNCHANGED:
             if user.is_owner:
-                raise ValidationError('لا يمكن تعطيل حساب مالك من هنا.')
+                raise ValidationError("لا يمكن تعطيل حساب مالك من هنا.")
             user.is_active = bool(is_active)
         if new_password:
             _check_password(new_password)
             user.set_password(new_password)
-        if hasattr(user, 'updated_by') and getattr(actor, 'id', None):
+        if hasattr(user, "updated_by") and getattr(actor, "id", None):
             try:
                 user.updated_by = actor.id
             except Exception:
@@ -223,7 +268,7 @@ class UserService:
     def set_active(user, active, actor):
         """Enable/disable a user. Owners are immune here."""
         if user.is_owner:
-            raise ValidationError('لا يمكن تعطيل حساب مالك من هنا.')
+            raise ValidationError("لا يمكن تعطيل حساب مالك من هنا.")
         user.is_active = bool(active)
         db.session.commit()
         return user
@@ -235,32 +280,32 @@ class UserService:
         Returns 'deactivated' | 'deleted'.
         """
         if user.is_owner:
-            raise ValidationError('لا يمكن حذف حساب مالك.')
-        if user.id == getattr(actor, 'id', None):
-            raise ValidationError('لا يمكنك حذف حسابك الخاص.')
+            raise ValidationError("لا يمكن حذف حساب مالك.")
+        if user.id == getattr(actor, "id", None):
+            raise ValidationError("لا يمكنك حذف حسابك الخاص.")
         from models import Sale
+
         has_sales = Sale.query.filter_by(seller_id=user.id).count() > 0
         if has_sales:
             user.is_active = False
             db.session.commit()
-            return 'deactivated'
+            return "deactivated"
         db.session.delete(user)
         db.session.commit()
-        return 'deleted'
+        return "deleted"
 
     # ------------------------------------------------------------------
     # self-service password
     # ------------------------------------------------------------------
     @staticmethod
-    def change_own_password(user, current_password, new_password,
-                            confirm_password):
+    def change_own_password(user, current_password, new_password, confirm_password):
         """Self-service change: verifies current, forbids reuse. Commits."""
-        if not user.check_password(current_password or ''):
-            raise ValidationError('كلمة المرور الحالية غير صحيحة.')
-        if (new_password or '') != (confirm_password or ''):
-            raise ValidationError('كلمة المرور الجديدة غير متطابقة.')
+        if not user.check_password(current_password or ""):
+            raise ValidationError("كلمة المرور الحالية غير صحيحة.")
+        if (new_password or "") != (confirm_password or ""):
+            raise ValidationError("كلمة المرور الجديدة غير متطابقة.")
         if user.check_password(new_password):
-            raise ValidationError('كلمة المرور الجديدة يجب أن تختلف عن الحالية.')
+            raise ValidationError("كلمة المرور الجديدة يجب أن تختلف عن الحالية.")
         _check_password(new_password)
         user.set_password(new_password)
         user.must_change_password = False

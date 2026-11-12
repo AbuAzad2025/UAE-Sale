@@ -33,7 +33,7 @@ from datetime import date, datetime, timedelta, timezone
 
 
 # شرائح التأخير — المصدر الوحيد لترتيب الشرائح في كل الشاشات والتقارير
-OVERDUE_BUCKETS = ('not_due', '1-30', '31-60', '61-90', '90+')
+OVERDUE_BUCKETS = ("not_due", "1-30", "31-60", "61-90", "90+")
 
 
 def _to_date(value):
@@ -53,7 +53,7 @@ def _to_date(value):
         if not text:
             return None
         try:
-            return datetime.strptime(text[:10], '%Y-%m-%d').date()
+            return datetime.strptime(text[:10], "%Y-%m-%d").date()
         except ValueError:
             return None
     return None
@@ -64,7 +64,7 @@ def _terms_days(party):
     if party is None:
         return 0
     try:
-        days = int(getattr(party, 'payment_terms_days', None) or 0)
+        days = int(getattr(party, "payment_terms_days", None) or 0)
     except (TypeError, ValueError):
         return 0
     return days if days > 0 else 0
@@ -161,14 +161,14 @@ def bucket_for_overdue(days):
     try:
         value = int(days)
     except (TypeError, ValueError):
-        return 'not_due'
+        return "not_due"
 
     if value <= 0:
-        return 'not_due'
+        return "not_due"
     if value <= 30:
-        return '1-30'
+        return "1-30"
     if value <= 60:
-        return '31-60'
+        return "31-60"
     if value <= 90:
-        return '61-90'
-    return '90+'
+        return "61-90"
+    return "90+"

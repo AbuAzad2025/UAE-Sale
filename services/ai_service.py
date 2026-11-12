@@ -14,6 +14,7 @@ Features:
 - Business Intelligence (ذكاء أعمال)
 - Market Insights (فهم السوق)
 """
+
 import os
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -23,11 +24,16 @@ from extensions import db
 from utils.decorators import get_owned_or_raise
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 # AI Knowledge module imports (lazy — may fail gracefully at runtime)
 try:
-    from ai_knowledge.analytics_predictions import SalesAnalytics, InventoryAnalytics, ProfitAnalytics
+    from ai_knowledge.analytics_predictions import (
+        SalesAnalytics,
+        InventoryAnalytics,
+        ProfitAnalytics,
+    )
 except ImportError:
     SalesAnalytics = InventoryAnalytics = ProfitAnalytics = None
 
@@ -88,7 +94,7 @@ from ai_knowledge import (  # noqa: E402
     user_guide,
     system_knowledge,
     company_info,
-    advanced_laws
+    advanced_laws,
 )
 
 
@@ -97,7 +103,10 @@ class AIServiceError(Exception):
 
     يمكّن المستدعين من التمييز بين "لا بيانات" و"فشل تقني".
     """
-    def __init__(self, message: str, code: str = 'AI_SERVICE_ERROR', details: dict = None):
+
+    def __init__(
+        self, message: str, code: str = "AI_SERVICE_ERROR", details: dict = None
+    ):
         super().__init__(message)
         self.code = code
         self.details = details or {}
@@ -154,6 +163,7 @@ class AIService:
         """الحصول على نظام التعلم"""
         if cls._learning_system is None:
             from ai_knowledge.learning_system import AzadLearningSystem
+
             cls._learning_system = AzadLearningSystem()
         return cls._learning_system
 
@@ -162,6 +172,7 @@ class AIService:
         """الحصول على محرك السياق"""
         if cls._context_engine is None:
             from ai_knowledge.context_engine import ContextEngine
+
             cls._context_engine = ContextEngine()
         return cls._context_engine
 
@@ -170,6 +181,7 @@ class AIService:
         """الحصول على شخصية أزاد"""
         if cls._personality is None:
             from ai_knowledge.azad_personality import AzadPersonality
+
             cls._personality = AzadPersonality()
         return cls._personality
 
@@ -178,6 +190,7 @@ class AIService:
         """الحصول على مدير اللهجات"""
         if cls._dialect_manager is None:
             from ai_knowledge.dialects import DialectManager
+
             cls._dialect_manager = DialectManager()
         return cls._dialect_manager
 
@@ -186,6 +199,7 @@ class AIService:
         """الحصول على قواعد الأمان"""
         if cls._security_rules is None:
             from ai_knowledge.security_rules import SecurityRules
+
             cls._security_rules = SecurityRules()
         return cls._security_rules
 
@@ -194,6 +208,7 @@ class AIService:
         """الحصول على محرك الشبكات العصبية"""
         if cls._neural_engine is None:
             from ai_knowledge.neural_engine import get_neural_engine
+
             cls._neural_engine = get_neural_engine()
         return cls._neural_engine
 
@@ -202,6 +217,7 @@ class AIService:
         """الحصول على محرك التفكير المنطقي"""
         if cls._reasoning_engine is None:
             from ai_knowledge.reasoning_engine import get_reasoning_engine
+
             cls._reasoning_engine = get_reasoning_engine()
         return cls._reasoning_engine
 
@@ -210,6 +226,7 @@ class AIService:
         """الحصول على نظام الذاكرة"""
         if cls._memory_system is None:
             from ai_knowledge.memory_system import get_memory_system
+
             cls._memory_system = get_memory_system()
         return cls._memory_system
 
@@ -218,6 +235,7 @@ class AIService:
         """الحصول على مولد الأكواد"""
         if cls._code_generator is None:
             from ai_knowledge.code_generator import get_code_generator
+
             cls._code_generator = get_code_generator()
         return cls._code_generator
 
@@ -226,6 +244,7 @@ class AIService:
         """الحصول على منسق الوكلاء"""
         if cls._agent_coordinator is None:
             from ai_knowledge.multi_agent_system import get_agent_coordinator
+
             cls._agent_coordinator = get_agent_coordinator()
         return cls._agent_coordinator
 
@@ -234,6 +253,7 @@ class AIService:
         """الحصول على محرك التأمل الذاتي"""
         if cls._reflection_engine is None:
             from ai_knowledge.self_reflection import get_reflection_engine
+
             cls._reflection_engine = get_reflection_engine()
         return cls._reflection_engine
 
@@ -242,6 +262,7 @@ class AIService:
         """الحصول على مدير المحادثات"""
         if cls._conversation_manager is None:
             from ai_knowledge.conversation_manager import get_conversation_manager
+
             cls._conversation_manager = get_conversation_manager()
         return cls._conversation_manager
 
@@ -250,6 +271,7 @@ class AIService:
         """الحصول على معالج الرؤية"""
         if cls._vision_processor is None:
             from ai_knowledge.vision_processor import get_vision_processor
+
             cls._vision_processor = get_vision_processor()
         return cls._vision_processor
 
@@ -258,6 +280,7 @@ class AIService:
         """الحصول على العقل الرئيسي الموحد"""
         if cls._master_brain is None:
             from ai_knowledge.master_brain import get_master_brain
+
             cls._master_brain = get_master_brain()
         return cls._master_brain
 
@@ -266,33 +289,68 @@ class AIService:
         """الحصول على دماغ المحولات (Transformers)"""
         if cls._transformers_brain is None:
             from ai_knowledge.transformers_brain import get_transformers_brain
+
             cls._transformers_brain = get_transformers_brain()
         return cls._transformers_brain
 
     # قائمة الكلمات المفتاحية للمعلومات السرية
     SENSITIVE_KEYWORDS = [
-        'كلمة مرور', 'كلمات مرور', 'كلمة المرور', 'كلمات المرور',
-        'كلمة سر', 'كلمات سر', 'كلمة السر', 'كلمات السر',
-        'باسورد', 'password', 'passwords', 'pass', 'pwd',
-        'معلومات مستخدم', 'معلومات مستخدمين', 'معلومات المستخدم', 'معلومات المستخدمين',
-        'بيانات مستخدم', 'بيانات مستخدمين', 'بيانات المستخدم', 'بيانات المستخدمين',
-        'user info', 'user data', 'users info', 'users data', 'user', 'users',
-        'صلاحيات', 'صلاحية', 'permissions', 'permission', 'roles', 'role', 'access',
-        'مفتاح', 'مفاتيح', 'key', 'keys', 'token', 'tokens', 'secret', 'secrets',
-        'حساب', 'حسابات', 'account', 'accounts', 'account details'
+        "كلمة مرور",
+        "كلمات مرور",
+        "كلمة المرور",
+        "كلمات المرور",
+        "كلمة سر",
+        "كلمات سر",
+        "كلمة السر",
+        "كلمات السر",
+        "باسورد",
+        "password",
+        "passwords",
+        "pass",
+        "pwd",
+        "معلومات مستخدم",
+        "معلومات مستخدمين",
+        "معلومات المستخدم",
+        "معلومات المستخدمين",
+        "بيانات مستخدم",
+        "بيانات مستخدمين",
+        "بيانات المستخدم",
+        "بيانات المستخدمين",
+        "user info",
+        "user data",
+        "users info",
+        "users data",
+        "user",
+        "users",
+        "صلاحيات",
+        "صلاحية",
+        "permissions",
+        "permission",
+        "roles",
+        "role",
+        "access",
+        "مفتاح",
+        "مفاتيح",
+        "key",
+        "keys",
+        "token",
+        "tokens",
+        "secret",
+        "secrets",
+        "حساب",
+        "حسابات",
+        "account",
+        "accounts",
+        "account details",
     ]
 
     GROQ_MODELS = {
-        'fast': 'llama-3.1-70b-versatile',
-        'smart': 'llama-3.1-70b-versatile',
-        'expert': 'llama-3.1-70b-versatile'
+        "fast": "llama-3.1-70b-versatile",
+        "smart": "llama-3.1-70b-versatile",
+        "expert": "llama-3.1-70b-versatile",
     }
 
-    OPENAI_MODELS = {
-        'fast': 'gpt-3.5-turbo',
-        'smart': 'gpt-4',
-        'expert': 'gpt-4-turbo'
-    }
+    OPENAI_MODELS = {"fast": "gpt-3.5-turbo", "smart": "gpt-4", "expert": "gpt-4-turbo"}
 
     @classmethod
     def _handle_ai_error(cls, operation: str, exc: Exception, fallback=None):
@@ -309,7 +367,7 @@ class AIService:
         raise AIServiceError(
             f"{operation} failed: {exc}",
             code=f"{operation.upper()}_FAILED",
-            details={'operation': operation, 'original_error': str(exc)}
+            details={"operation": operation, "original_error": str(exc)},
         )
 
     @staticmethod
@@ -317,12 +375,13 @@ class AIService:
         """الحصول على مفتاح API - يدعم Groq, OpenAI, Gemini"""
         # Reload env to catch manual updates
         from dotenv import load_dotenv
+
         load_dotenv(override=True)
 
         return (
-            os.environ.get('GROQ_API_KEY') or
-            os.environ.get('GEMINI_API_KEY') or
-            os.environ.get('OPENAI_API_KEY')
+            os.environ.get("GROQ_API_KEY")
+            or os.environ.get("GEMINI_API_KEY")
+            or os.environ.get("OPENAI_API_KEY")
         )
 
     @staticmethod
@@ -335,15 +394,16 @@ class AIService:
         """معرفة المزود النشط"""
         # Reload env to catch manual updates
         from dotenv import load_dotenv
+
         load_dotenv(override=True)
 
-        if os.environ.get('GROQ_API_KEY'):
-            return 'groq'
-        elif os.environ.get('GEMINI_API_KEY'):
-            return 'gemini'
-        elif os.environ.get('OPENAI_API_KEY'):
-            return 'openai'
-        return 'local'
+        if os.environ.get("GROQ_API_KEY"):
+            return "groq"
+        elif os.environ.get("GEMINI_API_KEY"):
+            return "gemini"
+        elif os.environ.get("OPENAI_API_KEY"):
+            return "openai"
+        return "local"
 
     @staticmethod
     def is_sensitive_request(message, current_user):
@@ -356,21 +416,49 @@ class AIService:
         message_lower = message.lower()
 
         # إزالة "ال" التعريف للمقارنة الذكية
-        message_normalized = re.sub(r'\bال(\w+)', r'\1', message_lower)
+        message_normalized = re.sub(r"\bال(\w+)", r"\1", message_lower)
 
         # الكلمات الجذرية للمعلومات السرية (بدون ال التعريف)
         _ = [
-            'كلمة', 'كلمات', 'مرور', 'سر', 'باسورد', 'password',
-            'معلومات', 'بيانات', 'مستخدم', 'مستخدمين', 'user',
-            'صلاحيات', 'صلاحية', 'permission', 'role', 'access',
-            'مفتاح', 'مفاتيح', 'key', 'token', 'secret',
-            'حساب', 'حسابات', 'account'
+            "كلمة",
+            "كلمات",
+            "مرور",
+            "سر",
+            "باسورد",
+            "password",
+            "معلومات",
+            "بيانات",
+            "مستخدم",
+            "مستخدمين",
+            "user",
+            "صلاحيات",
+            "صلاحية",
+            "permission",
+            "role",
+            "access",
+            "مفتاح",
+            "مفاتيح",
+            "key",
+            "token",
+            "secret",
+            "حساب",
+            "حسابات",
+            "account",
         ]
 
         # تحليل ذكي: هل الرسالة تحتوي على مجموعة من الكلمات السرية؟
-        password_keywords = ['كلمة', 'كلمات', 'مرور', 'سر', 'password', 'pass', 'pwd', 'باسورد']
-        user_keywords = ['مستخدم', 'مستخدمين', 'user', 'users', 'معلومات', 'بيانات']
-        security_keywords = ['صلاحيات', 'صلاحية', 'permission', 'access', 'role']
+        password_keywords = [
+            "كلمة",
+            "كلمات",
+            "مرور",
+            "سر",
+            "password",
+            "pass",
+            "pwd",
+            "باسورد",
+        ]
+        user_keywords = ["مستخدم", "مستخدمين", "user", "users", "معلومات", "بيانات"]
+        security_keywords = ["صلاحيات", "صلاحية", "permission", "access", "role"]
 
         # فحص ذكي
         is_about_password = any(kw in message_normalized for kw in password_keywords)
@@ -378,22 +466,34 @@ class AIService:
         is_about_security = any(kw in message_normalized for kw in security_keywords)
 
         # إذا كانت الرسالة عن كلمات المرور أو المستخدمين أو الصلاحيات
-        is_sensitive = is_about_password or (is_about_users and len(message_normalized.split()) <= 5) or is_about_security
+        is_sensitive = (
+            is_about_password
+            or (is_about_users and len(message_normalized.split()) <= 5)
+            or is_about_security
+        )
 
         if is_sensitive:
             # إذا كان المستخدم هو المالك، السماح بالوصول
-            if current_user and hasattr(current_user, 'is_owner') and current_user.is_owner:
+            if (
+                current_user
+                and hasattr(current_user, "is_owner")
+                and current_user.is_owner
+            ):
                 return True, True, None
 
             # إذا لم يكن المالك، رفض الوصول
-            return True, False, {
-                'type': 'warning',
-                'message': '🔒 **عذراً، هذه المعلومات سرية**\n\n'
-                'المعلومات التي طلبتها (كلمات المرور، معلومات المستخدمين، الصلاحيات) '
-                'متاحة فقط لمالك النظام.\n\n'
-                'إذا كنت بحاجة للوصول لهذه المعلومات، يرجى التواصل مع مدير النظام.',
-                'icon': '🔒'
-            }
+            return (
+                True,
+                False,
+                {
+                    "type": "warning",
+                    "message": "🔒 **عذراً، هذه المعلومات سرية**\n\n"
+                    "المعلومات التي طلبتها (كلمات المرور، معلومات المستخدمين، الصلاحيات) "
+                    "متاحة فقط لمالك النظام.\n\n"
+                    "إذا كنت بحاجة للوصول لهذه المعلومات، يرجى التواصل مع مدير النظام.",
+                    "icon": "🔒",
+                },
+            )
 
         # ليست معلومات سرية، السماح للجميع
         return False, False, None
@@ -406,43 +506,48 @@ class AIService:
         if username:
             user = User.query.filter(
                 or_(
-                    User.username.ilike(f'%{username}%'),
-                    User.email.ilike(f'%{username}%')
+                    User.username.ilike(f"%{username}%"),
+                    User.email.ilike(f"%{username}%"),
                 )
             ).first()
 
             if not user:
                 return {
-                    'success': False,
-                    'message': f'لم يتم العثور على مستخدم بالاسم: {username}'
+                    "success": False,
+                    "message": f"لم يتم العثور على مستخدم بالاسم: {username}",
                 }
 
             return {
-                'success': True,
-                'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'role': user.role.name_ar if user.role else 'لا يوجد',
-                    'is_active': user.is_active,
-                    'is_owner': user.is_owner,
-                    'created_at': user.created_at.strftime('%Y-%m-%d') if user.created_at else None
-                }
+                "success": True,
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "role": user.role.name_ar if user.role else "لا يوجد",
+                    "is_active": user.is_active,
+                    "is_owner": user.is_owner,
+                    "created_at": user.created_at.strftime("%Y-%m-%d")
+                    if user.created_at
+                    else None,
+                },
             }
         else:
             # جلب جميع المستخدمين
             users = User.query.all()
             return {
-                'success': True,
-                'users': [{
-                    'id': u.id,
-                    'username': u.username,
-                    'email': u.email,
-                    'role': u.role.name_ar if u.role else 'لا يوجد',
-                    'is_active': u.is_active,
-                    'is_owner': u.is_owner
-                } for u in users],
-                'count': len(users)
+                "success": True,
+                "users": [
+                    {
+                        "id": u.id,
+                        "username": u.username,
+                        "email": u.email,
+                        "role": u.role.name_ar if u.role else "لا يوجد",
+                        "is_active": u.is_active,
+                        "is_owner": u.is_owner,
+                    }
+                    for u in users
+                ],
+                "count": len(users),
             }
 
     @staticmethod
@@ -457,17 +562,22 @@ class AIService:
             return None
 
         base_price = product.regular_price
-        if customer.customer_type == 'merchant':
-            base_price = product.get_price_for_customer('merchant')
-        elif customer.customer_type == 'partner':
-            base_price = product.get_price_for_customer('partner')
+        if customer.customer_type == "merchant":
+            base_price = product.get_price_for_customer("merchant")
+        elif customer.customer_type == "partner":
+            base_price = product.get_price_for_customer("partner")
 
         last_30_days = datetime.now() - timedelta(days=30)
-        avg_sale_price = db.session.query(func.avg(SaleLine.unit_price)).join(Sale).filter(
-            SaleLine.product_id == product_id,
-            Sale.customer_id == customer_id,
-            Sale.created_at >= last_30_days
-        ).scalar()
+        avg_sale_price = (
+            db.session.query(func.avg(SaleLine.unit_price))
+            .join(Sale)
+            .filter(
+                SaleLine.product_id == product_id,
+                Sale.customer_id == customer_id,
+                Sale.created_at >= last_30_days,
+            )
+            .scalar()
+        )
 
         if avg_sale_price and avg_sale_price > 0:
             recommended = (Decimal(str(base_price)) + Decimal(str(avg_sale_price))) / 2
@@ -475,10 +585,10 @@ class AIService:
             recommended = base_price
 
         return {
-            'recommended_price': float(recommended),
-            'base_price': float(base_price),
-            'customer_avg': float(avg_sale_price) if avg_sale_price else None,
-            'reason': f'سعر موصى به لـ {customer.name} بناءً على السجل'
+            "recommended_price": float(recommended),
+            "base_price": float(base_price),
+            "customer_avg": float(avg_sale_price) if avg_sale_price else None,
+            "reason": f"سعر موصى به لـ {customer.name} بناءً على السجل",
         }
 
     @staticmethod
@@ -492,14 +602,14 @@ class AIService:
 
         if product.current_stock < quantity:
             return {
-                'type': 'error',
-                'message': f'⚠️ المخزون غير كافٍ! متوفر: {product.current_stock}, مطلوب: {quantity}'
+                "type": "error",
+                "message": f"⚠️ المخزون غير كافٍ! متوفر: {product.current_stock}, مطلوب: {quantity}",
             }
 
         if product.current_stock - quantity < product.min_stock_alert:
             return {
-                'type': 'warning',
-                'message': f'⚡ تحذير: المخزون سينخفض لـ {product.current_stock - quantity} (أقل من الحد الأدنى {product.min_stock_alert})'
+                "type": "warning",
+                "message": f"⚡ تحذير: المخزون سينخفض لـ {product.current_stock - quantity} (أقل من الحد الأدنى {product.min_stock_alert})",
             }
 
         return None
@@ -516,11 +626,11 @@ class AIService:
         from flask_login import current_user
 
         # مفتاح مركب: (tenant_id, customer_id) — يضمن العزل التام
-        actor_tenant = getattr(current_user, 'tenant_id', None)
+        actor_tenant = getattr(current_user, "tenant_id", None)
         cache_key = (actor_tenant, customer_id)
 
         # خزانة بسيطة آمنة للخيوط (thread-safe) بدل lru_cache
-        if not hasattr(AIService, '_customer_analysis_cache'):
+        if not hasattr(AIService, "_customer_analysis_cache"):
             AIService._customer_analysis_cache = {}
             AIService._cache_maxsize = 100
 
@@ -562,19 +672,20 @@ class AIService:
                 return value.replace(tzinfo=timezone.utc)
             return value
 
-        sales = Sale.query.options(
-            joinedload(Sale.customer),
-            joinedload(Sale.lines)
-        ).filter(
-            Sale.customer_id == customer.id,
-            Sale.created_at != None,  # noqa: E711
-            Sale.created_at >= last_90_days
-        ).all()
+        sales = (
+            Sale.query.options(joinedload(Sale.customer), joinedload(Sale.lines))
+            .filter(
+                Sale.customer_id == customer.id,
+                Sale.created_at != None,  # noqa: E711
+                Sale.created_at >= last_90_days,
+            )
+            .all()
+        )
 
         payments = Payment.query.filter(
             Payment.customer_id == customer.id,
             Payment.created_at != None,  # noqa: E711
-            Payment.created_at >= last_90_days
+            Payment.created_at >= last_90_days,
         ).all()
 
         normalized_payment_times = []
@@ -595,7 +706,8 @@ class AIService:
                     continue
 
                 relevant_payments = [
-                    payment_dt for payment_dt, _ in normalized_payment_times
+                    payment_dt
+                    for payment_dt, _ in normalized_payment_times
                     if payment_dt >= sale_created_at
                 ]
 
@@ -613,30 +725,30 @@ class AIService:
 
         current_balance = customer.get_balance_aed()
 
-        risk_level = 'low'
-        if current_balance > total_sales * Decimal('0.5'):
-            risk_level = 'high'
-        elif current_balance > total_sales * Decimal('0.25'):
-            risk_level = 'medium'
+        risk_level = "low"
+        if current_balance > total_sales * Decimal("0.5"):
+            risk_level = "high"
+        elif current_balance > total_sales * Decimal("0.25"):
+            risk_level = "medium"
 
         return {
-            'total_sales_90d': float(total_sales),
-            'total_paid_90d': float(total_paid),
-            'current_balance': float(current_balance),
-            'avg_payment_delay_days': round(avg_days_to_pay, 1),
-            'risk_level': risk_level,
-            'recommendation': AIService._get_risk_recommendation(risk_level)
+            "total_sales_90d": float(total_sales),
+            "total_paid_90d": float(total_paid),
+            "current_balance": float(current_balance),
+            "avg_payment_delay_days": round(avg_days_to_pay, 1),
+            "risk_level": risk_level,
+            "recommendation": AIService._get_risk_recommendation(risk_level),
         }
 
     @staticmethod
     def _get_risk_recommendation(risk_level):
         """توصيات حسب مستوى المخاطر"""
         recommendations = {
-            'low': '✅ عميل ممتاز - يمكن منح ائتمان إضافي',
-            'medium': '⚠️ عميل جيد - المتابعة العادية كافية',
-            'high': '🔴 عميل عالي المخاطر - يُنصح بالدفع المسبق'
+            "low": "✅ عميل ممتاز - يمكن منح ائتمان إضافي",
+            "medium": "⚠️ عميل جيد - المتابعة العادية كافية",
+            "high": "🔴 عميل عالي المخاطر - يُنصح بالدفع المسبق",
         }
-        return recommendations.get(risk_level, 'تحليل غير متوفر')
+        return recommendations.get(risk_level, "تحليل غير متوفر")
 
     @staticmethod
     def get_exchange_rate_suggestion(currency, target_date=None):
@@ -648,36 +760,37 @@ class AIService:
 
         last_7_days = target_date - timedelta(days=7)
 
-        recent_sales = Sale.query.filter(
-            Sale.currency == currency,
-            Sale.created_at >= last_7_days,
-            Sale.exchange_rate > 0
-        ).order_by(Sale.created_at.desc()).limit(10).all()
+        recent_sales = (
+            Sale.query.filter(
+                Sale.currency == currency,
+                Sale.created_at >= last_7_days,
+                Sale.exchange_rate > 0,
+            )
+            .order_by(Sale.created_at.desc())
+            .limit(10)
+            .all()
+        )
 
         if recent_sales:
             avg_rate = sum((s.exchange_rate for s in recent_sales)) / len(recent_sales)
             latest_rate = recent_sales[0].exchange_rate
 
             return {
-                'currency': currency,
-                'suggested_rate': float(avg_rate),
-                'latest_rate': float(latest_rate),
-                'source': 'نظام داخلي - متوسط آخر 7 أيام',
-                'count': len(recent_sales)
+                "currency": currency,
+                "suggested_rate": float(avg_rate),
+                "latest_rate": float(latest_rate),
+                "source": "نظام داخلي - متوسط آخر 7 أيام",
+                "count": len(recent_sales),
             }
 
-        default_rates = {
-            'USD': 3.70,
-            'EUR': 4.05,
-            'ILS': 1.0
-        }
+        default_rates = {"USD": 3.70, "EUR": 4.05, "ILS": 1.0}
 
         return {
-            'currency': currency,
-            'suggested_rate': default_rates.get(currency, 1.0),
-            'latest_rate': None,
-            'source': 'سعر افتراضي',
-            'count': 0
+            "currency": currency,
+            "suggested_rate": default_rates.get(currency, 1.0),
+            "latest_rate": None,
+            "source": "سعر افتراضي",
+            "count": 0,
         }
 
     @staticmethod
@@ -687,26 +800,33 @@ class AIService:
 
         last_30_days = datetime.now(timezone.utc) - timedelta(days=30)
         sales = Sale.query.filter(
-            Sale.sale_date >= last_30_days,
-            Sale.status == 'confirmed'
+            Sale.sale_date >= last_30_days, Sale.status == "confirmed"
         ).all()
 
         if not sales:
-            return {'prediction': None, 'confidence': 0, 'message': 'لا توجد بيانات كافية'}
+            return {
+                "prediction": None,
+                "confidence": 0,
+                "message": "لا توجد بيانات كافية",
+            }
 
         # Calculate daily averages
         daily_sales = {}
         for sale in sales:
             day = sale.sale_date.date()
             if day not in daily_sales:
-                daily_sales[day] = Decimal('0')
+                daily_sales[day] = Decimal("0")
             daily_sales[day] += sale.amount_base
 
         days = sorted(daily_sales.keys())
         values = [float(daily_sales[d]) for d in days]
 
         if len(values) < 7:
-            return {'prediction': None, 'confidence': 0, 'message': 'بيانات غير كافية (يحتاج 7 أيام)'}
+            return {
+                "prediction": None,
+                "confidence": 0,
+                "message": "بيانات غير كافية (يحتاج 7 أيام)",
+            }
 
         # Simple linear regression
         n = len(values)
@@ -716,11 +836,15 @@ class AIService:
         x_mean = sum(x) / n
         y_mean = sum(y) / n
 
-        slope = sum((x[i] - x_mean) * (y[i] - y_mean) for i in range(n)) / sum((x[i] - x_mean) ** 2 for i in range(n))
+        slope = sum((x[i] - x_mean) * (y[i] - y_mean) for i in range(n)) / sum(
+            (x[i] - x_mean) ** 2 for i in range(n)
+        )
         intercept = y_mean - slope * x_mean
 
         # Predict next days
-        predictions = [max(0, slope * (n + i) + intercept) for i in range(1, days_ahead + 1)]
+        predictions = [
+            max(0, slope * (n + i) + intercept) for i in range(1, days_ahead + 1)
+        ]
 
         # Calculate R² for confidence
         y_pred = [slope * i + intercept for i in x]
@@ -728,17 +852,17 @@ class AIService:
         ss_tot = sum((y[i] - y_mean) ** 2 for i in range(n))
         r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
 
-        trend = 'صاعد 📈' if slope > 0 else 'نازل 📉' if slope < 0 else 'مستقر ➡️'
+        trend = "صاعد 📈" if slope > 0 else "نازل 📉" if slope < 0 else "مستقر ➡️"
 
         return {
-            'prediction': {
-                'daily_avg': round(sum(predictions) / len(predictions), 2),
-                'total_predicted': round(sum(predictions), 2),
-                'predictions': [round(p, 2) for p in predictions]
+            "prediction": {
+                "daily_avg": round(sum(predictions) / len(predictions), 2),
+                "total_predicted": round(sum(predictions), 2),
+                "predictions": [round(p, 2) for p in predictions],
             },
-            'trend': {'direction': trend, 'slope': round(slope, 2)},
-            'confidence': int(r_squared * 100),
-            'historical': {'avg_daily': round(y_mean, 2), 'days_analyzed': n}
+            "trend": {"direction": trend, "slope": round(slope, 2)},
+            "confidence": int(r_squared * 100),
+            "historical": {"avg_daily": round(y_mean, 2), "days_analyzed": n},
         }
 
     @staticmethod
@@ -748,15 +872,14 @@ class AIService:
 
         last_30_days = datetime.now(timezone.utc) - timedelta(days=30)
         sales = Sale.query.filter(
-            Sale.sale_date >= last_30_days,
-            Sale.status == 'confirmed'
+            Sale.sale_date >= last_30_days, Sale.status == "confirmed"
         ).all()
 
         if not sales:
-            return {'success': False, 'message': 'لا توجد مبيعات'}
+            return {"success": False, "message": "لا توجد مبيعات"}
 
-        total_revenue = sum((Decimal(str(s.amount_base)) for s in sales), Decimal('0'))
-        total_cost = Decimal('0')
+        total_revenue = sum((Decimal(str(s.amount_base)) for s in sales), Decimal("0"))
+        total_cost = Decimal("0")
 
         products_data = {}
         for sale in sales:
@@ -764,47 +887,53 @@ class AIService:
                 pid = line.product_id
                 if pid not in products_data:
                     products_data[pid] = {
-                        'name': line.product.name if line.product else 'Unknown',
-                        'revenue': Decimal('0'),
-                        'cost': Decimal('0'),
-                        'quantity': Decimal('0')
+                        "name": line.product.name if line.product else "Unknown",
+                        "revenue": Decimal("0"),
+                        "cost": Decimal("0"),
+                        "quantity": Decimal("0"),
                     }
 
                 cost = Decimal(str(line.cost_price)) * Decimal(str(line.quantity))
-                revenue = Decimal(str(line.line_total)) * Decimal(str(sale.exchange_rate))
+                revenue = Decimal(str(line.line_total)) * Decimal(
+                    str(sale.exchange_rate)
+                )
 
-                products_data[pid]['revenue'] += revenue
-                products_data[pid]['cost'] += cost
-                products_data[pid]['quantity'] += Decimal(str(line.quantity))
+                products_data[pid]["revenue"] += revenue
+                products_data[pid]["cost"] += cost
+                products_data[pid]["quantity"] += Decimal(str(line.quantity))
                 total_cost += cost
 
         total_profit = total_revenue - total_cost
-        margin = (total_profit / total_revenue * 100) if total_revenue > 0 else Decimal('0')
+        margin = (
+            (total_profit / total_revenue * 100) if total_revenue > 0 else Decimal("0")
+        )
 
         products_list = []
         for data in products_data.values():
-            if data['revenue'] > 0:
-                prod_margin = (data['revenue'] - data['cost']) / data['revenue'] * 100
-                products_list.append({
-                    'name': data['name'],
-                    'revenue': float(data['revenue']),
-                    'profit': float(data['revenue'] - data['cost']),
-                    'margin': float(prod_margin),
-                    'quantity': float(data['quantity'])
-                })
+            if data["revenue"] > 0:
+                prod_margin = (data["revenue"] - data["cost"]) / data["revenue"] * 100
+                products_list.append(
+                    {
+                        "name": data["name"],
+                        "revenue": float(data["revenue"]),
+                        "profit": float(data["revenue"] - data["cost"]),
+                        "margin": float(prod_margin),
+                        "quantity": float(data["quantity"]),
+                    }
+                )
 
-        products_list.sort(key=lambda x: x['profit'], reverse=True)
+        products_list.sort(key=lambda x: x["profit"], reverse=True)
 
         return {
-            'success': True,
-            'overall': {
-                'revenue': float(total_revenue),
-                'cost': float(total_cost),
-                'profit': float(total_profit),
-                'margin': float(margin)
+            "success": True,
+            "overall": {
+                "revenue": float(total_revenue),
+                "cost": float(total_cost),
+                "profit": float(total_profit),
+                "margin": float(margin),
             },
-            'top_profitable': products_list[:10],
-            'least_profitable': products_list[-5:]
+            "top_profitable": products_list[:10],
+            "least_profitable": products_list[-5:],
         }
 
     @staticmethod
@@ -814,39 +943,46 @@ class AIService:
 
         last_90_days = datetime.now(timezone.utc) - timedelta(days=90)
         sales = Sale.query.filter(
-            Sale.sale_date >= last_90_days,
-            Sale.status == 'confirmed'
+            Sale.sale_date >= last_90_days, Sale.status == "confirmed"
         ).all()
 
         if len(sales) < 10:
-            return {'success': False, 'message': 'بيانات غير كافية'}
+            return {"success": False, "message": "بيانات غير كافية"}
 
         # تحليل زمني
-        weekday_sales = {i: {'count': 0, 'total': Decimal('0')} for i in range(7)}
-        hour_sales = {i: {'count': 0, 'total': Decimal('0')} for i in range(24)}
+        weekday_sales = {i: {"count": 0, "total": Decimal("0")} for i in range(7)}
+        hour_sales = {i: {"count": 0, "total": Decimal("0")} for i in range(24)}
 
         for sale in sales:
             weekday = sale.sale_date.weekday()
             hour = sale.sale_date.hour
 
-            weekday_sales[weekday]['count'] += 1
-            weekday_sales[weekday]['total'] += Decimal(str(sale.amount_base))
-            hour_sales[hour]['count'] += 1
-            hour_sales[hour]['total'] += Decimal(str(sale.amount_base))
+            weekday_sales[weekday]["count"] += 1
+            weekday_sales[weekday]["total"] += Decimal(str(sale.amount_base))
+            hour_sales[hour]["count"] += 1
+            hour_sales[hour]["total"] += Decimal(str(sale.amount_base))
 
-        best_day = max(weekday_sales.items(), key=lambda x: x[1]['total'])
-        peak_hour = max(hour_sales.items(), key=lambda x: x[1]['count'])
+        best_day = max(weekday_sales.items(), key=lambda x: x[1]["total"])
+        peak_hour = max(hour_sales.items(), key=lambda x: x[1]["count"])
 
-        days_ar = ['الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد']
+        days_ar = [
+            "الإثنين",
+            "الثلاثاء",
+            "الأربعاء",
+            "الخميس",
+            "الجمعة",
+            "السبت",
+            "الأحد",
+        ]
 
         return {
-            'success': True,
-            'best_day': {
-                'day': days_ar[best_day[0]],
-                'sales': float(best_day[1]['total']),
-                'count': best_day[1]['count']
+            "success": True,
+            "best_day": {
+                "day": days_ar[best_day[0]],
+                "sales": float(best_day[1]["total"]),
+                "count": best_day[1]["count"],
             },
-            'peak_hour': {'hour': f"{peak_hour[0]}:00", 'count': peak_hour[1]['count']}
+            "peak_hour": {"hour": f"{peak_hour[0]}:00", "count": peak_hour[1]["count"]},
         }
 
     @staticmethod
@@ -857,7 +993,7 @@ class AIService:
         products = Product.query.filter_by(is_active=True).all()
 
         if not products:
-            return {'success': False, 'message': 'لا توجد منتجات'}
+            return {"success": False, "message": "لا توجد منتجات"}
 
         out = sum(1 for p in products if p.current_stock <= 0)
         low = sum(1 for p in products if 0 < p.current_stock <= p.min_stock_alert)
@@ -866,15 +1002,16 @@ class AIService:
         health_score = int((good / len(products)) * 100)
 
         return {
-            'success': True,
-            'summary': {
-                'total': len(products),
-                'out': out,
-                'low': low,
-                'good': good
-            },
-            'health_score': health_score,
-            'rating': 'ممتاز' if health_score >= 80 else 'جيد' if health_score >= 60 else 'مقبول' if health_score >= 40 else 'ضعيف'
+            "success": True,
+            "summary": {"total": len(products), "out": out, "low": low, "good": good},
+            "health_score": health_score,
+            "rating": "ممتاز"
+            if health_score >= 80
+            else "جيد"
+            if health_score >= 60
+            else "مقبول"
+            if health_score >= 40
+            else "ضعيف",
         }
 
     @staticmethod
@@ -883,48 +1020,71 @@ class AIService:
         from ai_knowledge.intelligent_assistant import intelligent_assistant
 
         # ========== المرحلة 1: التحليل المحلي الشامل ==========
-        user_id = context.get('current_user').id if context and context.get('current_user') else None
+        user_id = (
+            context.get("current_user").id
+            if context and context.get("current_user")
+            else None
+        )
 
         # الرد المحلي الذكي (يشمل: فهم النية + بيانات حقيقية + تحليل)
         local_result = intelligent_assistant.process(message, user_id, context)
-        local_response = local_result.get('response', '')
+        local_response = local_result.get("response", "")
 
         # Phase 1: GuideLoader — شرح دقيق من الدليل (بدون تسريب)
         # إذا كان السؤال يطلب شرحاً ولم يعطِ المحلي رداً مفيداً، ارجع للـ Guide
-        _guide_fallback = ''
+        _guide_fallback = ""
         try:
             from ai_knowledge.guide_loader import get_guide_loader
-            _cu = context.get('current_user') if context else None
-            _is_owner = bool(getattr(_cu, 'is_owner', False) or (context or {}).get('is_owner', False))
-            _guide_ctx = get_guide_loader().get_context(message or '', _is_owner, max_chars=6000)
+
+            _cu = context.get("current_user") if context else None
+            _is_owner = bool(
+                getattr(_cu, "is_owner", False)
+                or (context or {}).get("is_owner", False)
+            )
+            _guide_ctx = get_guide_loader().get_context(
+                message or "", _is_owner, max_chars=6000
+            )
             if _guide_ctx:
                 _guide_fallback = _guide_ctx
                 # إذا لم يكن هناك رد محلي، استخدم الدليل كسياق للـ LLM وللملخص المحلي
                 # (بدون تسريب). نستبدل فقط عندما يكون الرد المحلي **فارغاً**
                 # فعلاً — الرد القصير المقصود (مثل stubs الاختبار) يُترك كما هو.
                 if not local_response or not local_response.strip():
-                    local_response = _guide_ctx[:1200] + "\n\n📖 المزيد من التفاصيل في: /user-guide" + (
-                        "\n👑 تفاصيل المالك في: /owner/guide" if _is_owner else ""
+                    local_response = (
+                        _guide_ctx[:1200]
+                        + "\n\n📖 المزيد من التفاصيل في: /user-guide"
+                        + ("\n👑 تفاصيل المالك في: /owner/guide" if _is_owner else "")
                     )
         except Exception:
             pass
-        force_local = context.get('force_local', False) if context else False
+        force_local = context.get("force_local", False) if context else False
         # v2: RAG هجين ببوّابة النية بدل _gather الشامل دائماً
         if force_local:
-            _db_context = ''
+            _db_context = ""
         else:
             try:
                 from services.ai_rag import retrieve as _rag_retrieve
-                _rag_ctx = _rag_retrieve(message or '', (context or {}).get('current_user') if context else None)
+
+                _rag_ctx = _rag_retrieve(
+                    message or "",
+                    (context or {}).get("current_user") if context else None,
+                )
                 # إبقاء الجاري القديم كاحتياط فقط إذا فشل RAG الجديد (قراءات المبيعات/المخزون)
-                _db_context = _rag_ctx or AIService._gather_relevant_knowledge(message, local_result)
+                _db_context = _rag_ctx or AIService._gather_relevant_knowledge(
+                    message, local_result
+                )
             except Exception:
-                _db_context = AIService._gather_relevant_knowledge(message, local_result)
+                _db_context = AIService._gather_relevant_knowledge(
+                    message, local_result
+                )
         # v2.1: حقن خطة منظمة (نية + أداة + حقول ناقصة) حتى يرى Groq النية الدقيقة
-        _plan_hint = ''
+        _plan_hint = ""
         try:
             from services.ai_planner import plan as _plan_fn
-            _p = _plan_fn(message or '', (context or {}).get('current_user') if context else None)
+
+            _p = _plan_fn(
+                message or "", (context or {}).get("current_user") if context else None
+            )
             if _p and _p.tool:
                 _plan_hint = (
                     f"🎯 **نية منظمة:** {_p.intent} | أداة: {_p.tool} | ثقة: {_p.confidence:.2f} "
@@ -933,7 +1093,16 @@ class AIService:
                 )
         except Exception:
             pass
-        knowledge_context = (_guide_fallback + "\n\n---\n\n" + _db_context + ("\n\n" + _plan_hint if _plan_hint else "")).strip() if (_guide_fallback or _db_context or _plan_hint) else ''
+        knowledge_context = (
+            (
+                _guide_fallback
+                + "\n\n---\n\n"
+                + _db_context
+                + ("\n\n" + _plan_hint if _plan_hint else "")
+            ).strip()
+            if (_guide_fallback or _db_context or _plan_hint)
+            else ""
+        )
 
         # Phase 2b: مسار تنفيذ مباشر بدون Groq — الخطة الكاملة تُنفذ فوراً،
         # المدمّرة تتطلب تأكيداً، الناقصة تطلب توضيحاً، والقراءة تُنفذ هنا.
@@ -941,21 +1110,27 @@ class AIService:
         try:
             from services.ai_planner import plan as _plan_fn2
             from services.ai_handlers import dispatch as _exec_plan
-            _current_user = (context or {}).get('current_user') if context else None
-            _confirmed = bool((context or {}).get('confirmed_action'))
-            _p2 = _plan_fn2(message or '', _current_user)
+
+            _current_user = (context or {}).get("current_user") if context else None
+            _confirmed = bool((context or {}).get("confirmed_action"))
+            _p2 = _plan_fn2(message or "", _current_user)
             if _p2 and _p2.tool:
-                _read_tools = ('get_customer_balance', 'inventory_status', 'sales_summary', 'search_customers')
+                _read_tools = (
+                    "get_customer_balance",
+                    "inventory_status",
+                    "sales_summary",
+                    "search_customers",
+                )
                 # الناقصة أو المدمّرة غير المؤكدة → جواب حتمي سريع (بلا LLM)
                 if _p2.missing_fields or (_p2.needs_confirm and not _confirmed):
                     _res = _exec_plan(_p2, _current_user, confirmed=_confirmed)
-                    if _res and _res.get('needs_clarification'):
-                        return _res['response']
+                    if _res and _res.get("needs_clarification"):
+                        return _res["response"]
                 # الكاملة (قراءة أو كتابة غير مدمّرة) → تنفيذ مباشر
                 elif _p2.tool in _read_tools or (_p2.needs_confirm is False):
                     _res = _exec_plan(_p2, _current_user, confirmed=_confirmed)
-                    if _res and _res.get('executed'):
-                        return _res['response']
+                    if _res and _res.get("executed"):
+                        return _res["response"]
         except Exception:
             pass
 
@@ -971,10 +1146,10 @@ class AIService:
                 # تحديد المزود والنموذج
                 provider = AIService.get_provider()
 
-                if provider == 'groq':
+                if provider == "groq":
                     url = "https://api.groq.com/openai/v1/chat/completions"
                     model = "llama-3.3-70b-versatile"
-                elif provider == 'gemini':
+                elif provider == "gemini":
                     url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent"
                     model = "gemini-2.0-flash-exp"
                 else:  # openai
@@ -984,34 +1159,46 @@ class AIService:
                 # GROQ cost optimization: check cache before remote call
                 try:
                     from services import ai_cache as _ai_cache_mod
+
                     _cache_on = _ai_cache_mod.enabled()
                 except Exception:
                     _ai_cache_mod = None
                     _cache_on = False
                 if _cache_on:
-                    _cached = _ai_cache_mod.get(provider, model, message, knowledge_context or "")
+                    _cached = _ai_cache_mod.get(
+                        provider, model, message, knowledge_context or ""
+                    )
                     if _cached:
                         return _cached
 
                 # Groq مع صلاحيات كاملة
                 try:
                     from services.ai_tools import describe_tools as _describe_tools
+
                     _tools_desc = _describe_tools()
                 except Exception:
-                    _tools_desc = '(أدوات غير متاحة مؤقتاً)'
-                _hist_ctx = ''
+                    _tools_desc = "(أدوات غير متاحة مؤقتاً)"
+                _hist_ctx = ""
                 try:
-                    _hist = (context or {}).get('history') or (context or {}).get('conversation_history') or []
+                    _hist = (
+                        (context or {}).get("history")
+                        or (context or {}).get("conversation_history")
+                        or []
+                    )
                     if isinstance(_hist, list) and _hist:
                         _last = _hist[-3:]
                         _lines = []
                         for _t in _last:
                             if isinstance(_t, dict):
-                                _lines.append(f"- {str(_t.get('role', 'user'))}: {str(_t.get('content', ''))[:120]}")
+                                _lines.append(
+                                    f"- {str(_t.get('role', 'user'))}: {str(_t.get('content', ''))[:120]}"
+                                )
                             else:
                                 _lines.append(f"- {str(_t)[:120]}")
                         if _lines:
-                            _hist_ctx = "\n🕘 **سجل المحادثة (أخير 3):**\n" + "\n".join(_lines)
+                            _hist_ctx = "\n🕘 **سجل المحادثة (أخير 3):**\n" + "\n".join(
+                                _lines
+                            )
                 except Exception:
                     pass
                 expert_prompt = """أنت أزاد - مساعد ذكي تفاعلي لنظام إدارة كراجات.
@@ -1044,13 +1231,16 @@ class AIService:
 ⚠️ مهم: إذا سأل عن بيانات - استخدم الأرقام الموجودة.""".format(
                     message=message,
                     history_block=_hist_ctx,
-                    knowledge_context=knowledge_context or 'لا توجد بيانات إضافية',
+                    knowledge_context=knowledge_context or "لا توجد بيانات إضافية",
                     tools=_tools_desc,
                 )
 
                 response = requests.post(
                     url,
-                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
                     json={
                         "model": model,
                         "messages": [
@@ -1058,14 +1248,14 @@ class AIService:
                             {"role": "user", "content": message},
                         ],
                         "temperature": 0.7,
-                        "max_tokens": 2000
+                        "max_tokens": 2000,
                     },
-                    timeout=20
+                    timeout=20,
                 )
 
                 if response.status_code == 200:
                     result = response.json()
-                    groq_response = result['choices'][0]['message']['content']
+                    groq_response = result["choices"][0]["message"]["content"]
 
                     # فحص إذا Groq يطلب تنفيذ action
                     action_result = AIService._execute_ai_action(groq_response, user_id)
@@ -1074,7 +1264,9 @@ class AIService:
 
                     # Groq يدرب المحلي
                     try:
-                        AIService._train_local_from_groq(message, str(local_response), str(groq_response), user_id)
+                        AIService._train_local_from_groq(
+                            message, str(local_response), str(groq_response), user_id
+                        )
                     except Exception as e:
                         print(f"Training skipped: {e}")
 
@@ -1084,7 +1276,13 @@ class AIService:
                     # Store in cache for future identical prompts (cost saving)
                     try:
                         if _cache_on and _ai_cache_mod is not None:
-                            _ai_cache_mod.set_value(provider, model, message, knowledge_context or "", final_answer)
+                            _ai_cache_mod.set_value(
+                                provider,
+                                model,
+                                message,
+                                knowledge_context or "",
+                                final_answer,
+                            )
                     except Exception:
                         pass
 
@@ -1110,30 +1308,42 @@ class AIService:
             from services.ai_tools import TOOLS_BY_NAME
             from services.ai_planner import _REQUIRED as _PLANNER_REQUIRED
 
-            json_match = re.search(r'\{[\s\S]*"action"[\s\S]*\}', groq_response or '')
+            json_match = re.search(r'\{[\s\S]*"action"[\s\S]*\}', groq_response or "")
             if not json_match:
                 return None
             action_data = json.loads(json_match.group(0))
-            action_type = (action_data.get('action') or '').strip()
+            action_type = (action_data.get("action") or "").strip()
             if not action_type:
                 return None
             tool = TOOLS_BY_NAME.get(action_type)
             if tool is None:
                 return None
-            data_needed = action_data.get('data_needed') or list(tool.required_params)
+            data_needed = action_data.get("data_needed") or list(tool.required_params)
             required = list(_PLANNER_REQUIRED.get(action_type) or tool.required_params)
-            missing = [f for f in required if f not in (action_data.get('data') or {})]
+            missing = [f for f in required if f not in (action_data.get("data") or {})]
             labels_ar = {
-                'name': 'الاسم', 'customer_name': 'اسم العميل', 'product_name': 'اسم المنتج',
-                'supplier_name': 'اسم المورد', 'amount': 'المبلغ', 'new_balance': 'الرصيد الجديد',
-                'description': 'الوصف', 'cheque_number': 'رقم الشيك', 'query': 'كلمة البحث',
+                "name": "الاسم",
+                "customer_name": "اسم العميل",
+                "product_name": "اسم المنتج",
+                "supplier_name": "اسم المورد",
+                "amount": "المبلغ",
+                "new_balance": "الرصيد الجديد",
+                "description": "الوصف",
+                "cheque_number": "رقم الشيك",
+                "query": "كلمة البحث",
             }
             if missing:
-                lines = '\n'.join(f'{i+1}. {labels_ar.get(f, f)}' for i, f in enumerate(missing))
-                return (f'✅ تمام! لإتمام **{tool.description}** نحتاج:\n\n{lines}\n\n'
-                        f'أدخلها بصيغة: «{action_type}: ...». لا تنفيذ حتى تكتمل الحقول.')
-            return (f'✅ جاهز! اطلب الآن **{tool.description}** وسيُنفّذ عبر المساعد '
-                    f'(tenant + صلاحية {tool.permission} + تدقيق).')
+                lines = "\n".join(
+                    f"{i + 1}. {labels_ar.get(f, f)}" for i, f in enumerate(missing)
+                )
+                return (
+                    f"✅ تمام! لإتمام **{tool.description}** نحتاج:\n\n{lines}\n\n"
+                    f"أدخلها بصيغة: «{action_type}: ...». لا تنفيذ حتى تكتمل الحقول."
+                )
+            return (
+                f"✅ جاهز! اطلب الآن **{tool.description}** وسيُنفّذ عبر المساعد "
+                f"(tenant + صلاحية {tool.permission} + تدقيق)."
+            )
         except Exception:
             return None
 
@@ -1144,11 +1354,11 @@ class AIService:
             from ai_knowledge.learning_system import learning_system
 
             learning_data = {
-                'question': question,
-                'local_answer': local_answer,
-                'improved_answer': groq_answer,
-                'timestamp': datetime.now().isoformat(),
-                'user_id': user_id
+                "question": question,
+                "local_answer": local_answer,
+                "improved_answer": groq_answer,
+                "timestamp": datetime.now().isoformat(),
+                "user_id": user_id,
             }
 
             learning_system.learn_from_groq_feedback(learning_data)
@@ -1160,7 +1370,17 @@ class AIService:
     def _gather_relevant_knowledge(message, local_result):
         """جمع بيانات شاملة من جميع جداول النظام"""
         try:
-            from models import Sale, Customer, Product, User, Payment, Expense, Purchase, Supplier, Cheque
+            from models import (
+                Sale,
+                Customer,
+                Product,
+                User,
+                Payment,
+                Expense,
+                Purchase,
+                Supplier,
+                Cheque,
+            )
             from extensions import db
             from datetime import datetime, timedelta
             from flask import current_app
@@ -1192,13 +1412,19 @@ class AIService:
 
             cheques_count = Cheque.query.count()
 
-            total_sales_amount = db.session.query(func.sum(Sale.total_amount)).filter(
-                Sale.sale_date >= datetime.now() - timedelta(days=30)
-            ).scalar() or 0
+            total_sales_amount = (
+                db.session.query(func.sum(Sale.total_amount))
+                .filter(Sale.sale_date >= datetime.now() - timedelta(days=30))
+                .scalar()
+                or 0
+            )
 
-            total_expenses_amount = db.session.query(func.sum(Expense.amount_base)).filter(
-                Expense.expense_date >= datetime.now() - timedelta(days=30)
-            ).scalar() or 0
+            total_expenses_amount = (
+                db.session.query(func.sum(Expense.amount_base))
+                .filter(Expense.expense_date >= datetime.now() - timedelta(days=30))
+                .scalar()
+                or 0
+            )
 
             try:
                 net_profit = total_sales_amount - total_expenses_amount
@@ -1228,24 +1454,29 @@ class AIService:
             # بيانات الشركة
             config = current_app.config
             data_parts.append(f"""📞 **بيانات الشركة:**
-- الاسم: {config.get('COMPANY_NAME_AR')}
-- الهاتف: {config.get('COMPANY_PHONE')}
-- WhatsApp: {config.get('COMPANY_WHATSAPP')}
-- العنوان: {config.get('COMPANY_ADDRESS_AR')}""")
+- الاسم: {config.get("COMPANY_NAME_AR")}
+- الهاتف: {config.get("COMPANY_PHONE")}
+- WhatsApp: {config.get("COMPANY_WHATSAPP")}
+- العنوان: {config.get("COMPANY_ADDRESS_AR")}""")
 
             # معلومات المستخدم الحالي
-            current_user = local_result.get('context', {}).get('current_user')
+            current_user = local_result.get("context", {}).get("current_user")
             if current_user:
-                role_name = 'غير محدد'
-                if getattr(current_user, 'role', None):
-                    role_name = getattr(current_user.role, 'name_ar', None) or current_user.role.name
-                owner_label = 'نعم' if getattr(current_user, 'is_owner', False) else 'لا'
+                role_name = "غير محدد"
+                if getattr(current_user, "role", None):
+                    role_name = (
+                        getattr(current_user.role, "name_ar", None)
+                        or current_user.role.name
+                    )
+                owner_label = (
+                    "نعم" if getattr(current_user, "is_owner", False) else "لا"
+                )
                 data_parts.append(f"""👤 **المستخدم الحالي:**
 - الاسم: {current_user.username}
 - الدور: {role_name}
 - Owner: {owner_label}""")
 
-            return '\n\n'.join(data_parts)
+            return "\n\n".join(data_parts)
 
         except Exception as e:
             return f"خطأ في جمع البيانات: {str(e)}"
@@ -1263,33 +1494,39 @@ class AIService:
             # رؤية 1: المخزون المنخفض
             low_stock_count = Product.query.filter(
                 Product.is_active.is_(True),
-                Product.current_stock <= Product.min_stock_alert
+                Product.current_stock <= Product.min_stock_alert,
             ).count()
 
             if low_stock_count > 0:
-                insights.append({
-                    'type': 'warning',
-                    'title': 'تنبيه المخزون',
-                    'message': f'يوجد {low_stock_count} منتج بمخزون منخفض',
-                    'action': 'تحقق من المستودع',
-                    'priority': 'high'
-                })
+                insights.append(
+                    {
+                        "type": "warning",
+                        "title": "تنبيه المخزون",
+                        "message": f"يوجد {low_stock_count} منتج بمخزون منخفض",
+                        "action": "تحقق من المستودع",
+                        "priority": "high",
+                    }
+                )
 
             # رؤية 2: العملاء المتأخرين
             high_balance_customers = Customer.query.filter(
                 Customer.is_active.is_(True)
             ).all()
 
-            overdue_count = sum(1 for c in high_balance_customers if c.get_balance_aed() > 1000)
+            overdue_count = sum(
+                1 for c in high_balance_customers if c.get_balance_aed() > 1000
+            )
 
             if overdue_count > 0:
-                insights.append({
-                    'type': 'info',
-                    'title': 'متابعة المدفوعات',
-                    'message': f'{overdue_count} عميل لديهم ذمم أكثر من 1000 درهم',
-                    'action': 'تواصل مع العملاء',
-                    'priority': 'medium'
-                })
+                insights.append(
+                    {
+                        "type": "info",
+                        "title": "متابعة المدفوعات",
+                        "message": f"{overdue_count} عميل لديهم ذمم أكثر من 1000 درهم",
+                        "action": "تواصل مع العملاء",
+                        "priority": "medium",
+                    }
+                )
 
             # رؤية 3: أداء المبيعات
             today = datetime.now().date()
@@ -1298,24 +1535,28 @@ class AIService:
             ).count()
 
             if today_sales == 0:
-                insights.append({
-                    'type': 'info',
-                    'title': 'مبيعات اليوم',
-                    'message': 'لا توجد مبيعات اليوم',
-                    'action': 'تحفيز المبيعات',
-                    'priority': 'low'
-                })
+                insights.append(
+                    {
+                        "type": "info",
+                        "title": "مبيعات اليوم",
+                        "message": "لا توجد مبيعات اليوم",
+                        "action": "تحفيز المبيعات",
+                        "priority": "low",
+                    }
+                )
 
             return insights
 
         except Exception as e:
-            return [{
-                'type': 'error',
-                'title': 'خطأ',
-                'message': f'فشل توليد الرؤى: {str(e)}',
-                'action': '',
-                'priority': 'low'
-            }]
+            return [
+                {
+                    "type": "error",
+                    "title": "خطأ",
+                    "message": f"فشل توليد الرؤى: {str(e)}",
+                    "action": "",
+                    "priority": "low",
+                }
+            ]
 
     @staticmethod
     def deep_business_analysis():
@@ -1331,18 +1572,18 @@ class AIService:
         """
         try:
             return {
-                'generated_at': datetime.now().isoformat(),
-                'insights': AIService.generate_business_insights(),
-                'profit_margins': AIService.analyze_profit_margins(),
-                'sales_patterns': AIService.detect_sales_patterns(),
-                'inventory_health': AIService.analyze_inventory_health(),
-                'sales_trend': AIService.predict_sales_trend(),
+                "generated_at": datetime.now().isoformat(),
+                "insights": AIService.generate_business_insights(),
+                "profit_margins": AIService.analyze_profit_margins(),
+                "sales_patterns": AIService.detect_sales_patterns(),
+                "inventory_health": AIService.analyze_inventory_health(),
+                "sales_trend": AIService.predict_sales_trend(),
             }
         except Exception as e:
             logger.error(f"Deep business analysis failed: {e}")
             return {
-                'error': 'failed to run deep business analysis',
-                'generated_at': datetime.now().isoformat(),
+                "error": "failed to run deep business analysis",
+                "generated_at": datetime.now().isoformat(),
             }
 
     @staticmethod
@@ -1356,52 +1597,54 @@ class AIService:
             # المنتجات التي تحتاج طلب
             low_stock = Product.query.filter(
                 Product.is_active.is_(True),
-                Product.current_stock <= Product.min_stock_alert
+                Product.current_stock <= Product.min_stock_alert,
             ).all()
 
             for product in low_stock:
                 order_quantity = (product.min_stock_alert * 3) - product.current_stock
-                products_to_order.append({
-                    'product_id': product.id,
-                    'product_name': product.name,
-                    'current_stock': float(product.current_stock),
-                    'recommended_order': float(order_quantity),
-                    'estimated_cost': float(order_quantity * product.cost_price) if product.cost_price else 0
-                })
+                products_to_order.append(
+                    {
+                        "product_id": product.id,
+                        "product_name": product.name,
+                        "current_stock": float(product.current_stock),
+                        "recommended_order": float(order_quantity),
+                        "estimated_cost": float(order_quantity * product.cost_price)
+                        if product.cost_price
+                        else 0,
+                    }
+                )
 
             return {
-                'success': True,
-                'products_to_order': products_to_order,
-                'total_products': len(products_to_order)
+                "success": True,
+                "products_to_order": products_to_order,
+                "total_products": len(products_to_order),
             }
 
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     @staticmethod
     def contextual_help(page, user_role):
         """مساعدة سياقية حسب الصفحة"""
         help_content = {
-            'dashboard': 'لوحة التحكم تعرض إحصائيات شاملة عن النظام',
-            'sales': 'صفحة المبيعات لإدارة الفواتير والمبيعات',
-            'products': 'إدارة المنتجات والمخزون',
-            'customers': 'إدارة العملاء والذمم',
-            'warehouse': 'إدارة المستودعات والمخزون'
+            "dashboard": "لوحة التحكم تعرض إحصائيات شاملة عن النظام",
+            "sales": "صفحة المبيعات لإدارة الفواتير والمبيعات",
+            "products": "إدارة المنتجات والمخزون",
+            "customers": "إدارة العملاء والذمم",
+            "warehouse": "إدارة المستودعات والمخزون",
         }
 
         return {
-            'page': page,
-            'help': help_content.get(page, 'لا توجد مساعدة متاحة لهذه الصفحة'),
-            'user_role': user_role
+            "page": page,
+            "help": help_content.get(page, "لا توجد مساعدة متاحة لهذه الصفحة"),
+            "user_role": user_role,
         }
 
     @staticmethod
     def _local_response(message, context=None):
         """رد محلي ذكي - Backward Compatibility"""
         from ai_knowledge.azad_responses import AzadResponses
+
         return AzadResponses.smart_response(message, context)
 
     # ========================================================================
@@ -1433,7 +1676,7 @@ class AIService:
                 question=message,
                 response=response,
                 user_feedback=None,
-                context={'dialect': detected_dialect, 'context': context}
+                context={"dialect": detected_dialect, "context": context},
             )
 
             return response
@@ -1441,6 +1684,7 @@ class AIService:
         except Exception:
             try:
                 from ai_knowledge.azad_responses import AzadResponses
+
                 return AzadResponses.get_error_response()
             except Exception:
                 return "عذراً، حدث خطأ. يرجى المحاولة مرة أخرى."
@@ -1462,9 +1706,9 @@ class AIService:
             deep_insights = data_analyzer.analyze_sales_patterns(historical_data)
 
             return {
-                'historical': historical_data,
-                'predictions': predictions,
-                'insights': deep_insights
+                "historical": historical_data,
+                "predictions": predictions,
+                "insights": deep_insights,
             }
 
         except Exception:
@@ -1489,9 +1733,9 @@ class AIService:
             slow_moving = inventory_analytics.detect_slow_moving_items()
 
             return {
-                'analysis': analysis,
-                'recommendations': reorder_recommendations,
-                'slow_moving': slow_moving
+                "analysis": analysis,
+                "recommendations": reorder_recommendations,
+                "slow_moving": slow_moving,
             }
 
         except Exception:
@@ -1516,9 +1760,9 @@ class AIService:
             by_customer = profit_analytics.profitability_by_customer()
 
             return {
-                'margins': margins,
-                'by_product': by_product,
-                'by_customer': by_customer
+                "margins": margins,
+                "by_product": by_product,
+                "by_customer": by_customer,
             }
 
         except Exception:
@@ -1532,12 +1776,12 @@ class AIService:
         """
         try:
             # معلومات الضرائب
-            if 'vat' in query.lower() or 'ضريبة' in query:
+            if "vat" in query.lower() or "ضريبة" in query:
                 tax_info = tax_system.get_vat_info()
                 return tax_info
 
             # معلومات الجمارك
-            if 'customs' in query.lower() or 'جمارك' in query:
+            if "customs" in query.lower() or "جمارك" in query:
                 customs_info = customs.get_customs_procedures()
                 return customs_info
 
@@ -1599,10 +1843,7 @@ class AIService:
             # دليل المستخدم
             user_info = user_guide.get_user_guide(topic)
 
-            return {
-                'system_guide': system_info,
-                'user_guide': user_info
-            }
+            return {"system_guide": system_info, "user_guide": user_info}
 
         except Exception:
             return {}
@@ -1740,10 +1981,10 @@ class AIService:
         try:
             security = AIService.get_security_rules()
             is_compliant, warnings = security.check_compliance(operation)
-            return {'compliant': is_compliant, 'warnings': warnings}
+            return {"compliant": is_compliant, "warnings": warnings}
 
         except Exception:
-            return {'compliant': True, 'warnings': []}
+            return {"compliant": True, "warnings": []}
 
     # ========================================================================
     # دوال الشبكات العصبية المتقدمة - Neural Networks
@@ -1759,18 +2000,20 @@ class AIService:
             from models import Product, Customer
 
             product = get_owned_or_raise(Product, product_id)
-            customer = get_owned_or_raise(Customer, customer_id) if customer_id else None
+            customer = (
+                get_owned_or_raise(Customer, customer_id) if customer_id else None
+            )
 
             if not product:
-                return {'error': 'Product not found'}
+                return {"error": "Product not found"}
 
             neural = AIService.get_neural_engine()
 
             result = neural.predict_optimal_price(
                 cost_price=float(product.cost_price),
                 quantity=quantity,
-                customer_type=customer.customer_type if customer else 'regular',
-                category_id=product.category_id or 0
+                customer_type=customer.customer_type if customer else "regular",
+                category_id=product.category_id or 0,
             )
 
             return result
@@ -1793,18 +2036,19 @@ class AIService:
         """
         try:
             pricing = AIService.predict_price_with_neural(
-                product_id, customer_id, quantity)
-            if not pricing or pricing.get('error'):
+                product_id, customer_id, quantity
+            )
+            if not pricing or pricing.get("error"):
                 raise AIServiceError(
-                    'Pricing engine returned no result',
-                    code='PRICING_EMPTY_RESULT',
-                    details={'product_id': product_id, 'customer_id': customer_id}
+                    "Pricing engine returned no result",
+                    code="PRICING_EMPTY_RESULT",
+                    details={"product_id": product_id, "customer_id": customer_id},
                 )
             return pricing
         except AIServiceError:
             raise
         except Exception as e:
-            return AIService._handle_ai_error('smart_pricing_engine', e)
+            return AIService._handle_ai_error("smart_pricing_engine", e)
 
     @staticmethod
     def forecast_sales_neural(days_ahead=7):
@@ -1813,12 +2057,14 @@ class AIService:
             from flask import current_app
 
             neural = AIService.get_neural_engine()
-            forecast = neural.forecast_sales(days_ahead, from_app_context=current_app.app_context)
+            forecast = neural.forecast_sales(
+                days_ahead, from_app_context=current_app.app_context
+            )
 
             return forecast
 
         except Exception as e:
-            return AIService._handle_ai_error('forecast_sales_neural', e)
+            return AIService._handle_ai_error("forecast_sales_neural", e)
 
     @staticmethod
     def detect_fraud_neural(sale_data):
@@ -1830,7 +2076,9 @@ class AIService:
             return result
 
         except Exception as e:
-            return AIService._handle_ai_error('detect_fraud_neural', e, fallback={'is_fraud': False, 'risk_score': 0})
+            return AIService._handle_ai_error(
+                "detect_fraud_neural", e, fallback={"is_fraud": False, "risk_score": 0}
+            )
 
     @staticmethod
     def classify_customer_neural(customer_id):
@@ -1840,14 +2088,13 @@ class AIService:
 
             neural = AIService.get_neural_engine()
             classification = neural.classify_customer_intelligence(
-                customer_id,
-                from_app_context=current_app.app_context
+                customer_id, from_app_context=current_app.app_context
             )
 
             return classification
 
         except Exception as e:
-            return AIService._handle_ai_error('classify_customer_neural', e)
+            return AIService._handle_ai_error("classify_customer_neural", e)
 
     @staticmethod
     def predict_customer_churn():
@@ -1869,11 +2116,11 @@ class AIService:
         try:
             from models import Customer
 
-            churn_risk = {'high': 0.8, 'medium': 0.5, 'low': 0.2}
+            churn_risk = {"high": 0.8, "medium": 0.5, "low": 0.2}
 
-            customers = Customer.query.filter(
-                Customer.is_active.is_(True)
-            ).limit(100).all()
+            customers = (
+                Customer.query.filter(Customer.is_active.is_(True)).limit(100).all()
+            )
 
             rows = []
             for customer in customers:
@@ -1884,47 +2131,51 @@ class AIService:
                     analysis = AIService.analyze_customer_behavior(customer.id)
                 except Exception as e:
                     logger.warning(
-                        f"Skipping customer {customer.id} in churn "
-                        f"watchlist: {e}")
+                        f"Skipping customer {customer.id} in churn watchlist: {e}"
+                    )
                     continue
                 if not analysis:
                     continue
-                risk_level = analysis.get('risk_level', 'low')
-                rows.append({
-                    'customer_id': customer.id,
-                    'customer_name': customer.name,
-                    'churn_risk_score': churn_risk.get(risk_level, 0.2),
-                    'risk_level': risk_level,
-                    'current_balance': analysis.get('current_balance'),
-                    'avg_payment_delay_days': analysis.get(
-                        'avg_payment_delay_days'),
-                    'recommendation': analysis.get('recommendation'),
-                })
+                risk_level = analysis.get("risk_level", "low")
+                rows.append(
+                    {
+                        "customer_id": customer.id,
+                        "customer_name": customer.name,
+                        "churn_risk_score": churn_risk.get(risk_level, 0.2),
+                        "risk_level": risk_level,
+                        "current_balance": analysis.get("current_balance"),
+                        "avg_payment_delay_days": analysis.get(
+                            "avg_payment_delay_days"
+                        ),
+                        "recommendation": analysis.get("recommendation"),
+                    }
+                )
 
-            rows.sort(key=lambda r: (-r['churn_risk_score'],
-                                     -(r['current_balance'] or 0)))
+            rows.sort(
+                key=lambda r: (-r["churn_risk_score"], -(r["current_balance"] or 0))
+            )
 
-            at_risk = [r for r in rows if r['risk_level'] != 'low']
+            at_risk = [r for r in rows if r["risk_level"] != "low"]
 
             return {
-                'generated_at': datetime.now().isoformat(),
-                'customers_analyzed': len(rows),
-                'at_risk_count': len(at_risk),
-                'basis': '90-day sales, payments and balance per customer',
+                "generated_at": datetime.now().isoformat(),
+                "customers_analyzed": len(rows),
+                "at_risk_count": len(at_risk),
+                "basis": "90-day sales, payments and balance per customer",
                 # Every customer scored, so a tenant whose book is healthy
                 # still gets a meaningful response instead of an empty list.
-                'customers': rows[:20],
-                'at_risk_customers': at_risk[:20],
+                "customers": rows[:20],
+                "at_risk_customers": at_risk[:20],
             }
 
         except Exception as e:
             logger.error(f"Churn prediction failed: {e}")
             return {
-                'error': 'failed to build churn watchlist',
-                'customers_analyzed': 0,
-                'at_risk_count': 0,
-                'customers': [],
-                'at_risk_customers': [],
+                "error": "failed to build churn watchlist",
+                "customers_analyzed": 0,
+                "at_risk_count": 0,
+                "customers": [],
+                "at_risk_customers": [],
             }
 
     @staticmethod
@@ -1935,14 +2186,13 @@ class AIService:
 
             neural = AIService.get_neural_engine()
             optimization = neural.optimize_stock_level(
-                product_id,
-                from_app_context=current_app.app_context
+                product_id, from_app_context=current_app.app_context
             )
 
             return optimization
 
         except Exception as e:
-            return AIService._handle_ai_error('optimize_inventory_neural', e)
+            return AIService._handle_ai_error("optimize_inventory_neural", e)
 
     @staticmethod
     def predict_maintenance_neural(product_id):
@@ -1952,14 +2202,13 @@ class AIService:
 
             neural = AIService.get_neural_engine()
             prediction = neural.predict_maintenance_needs(
-                product_id,
-                from_app_context=current_app.app_context
+                product_id, from_app_context=current_app.app_context
             )
 
             return prediction
 
         except Exception as e:
-            return AIService._handle_ai_error('predict_maintenance_neural', e)
+            return AIService._handle_ai_error("predict_maintenance_neural", e)
 
     @staticmethod
     def predict_cash_flow_neural(months_ahead=3):
@@ -1969,14 +2218,13 @@ class AIService:
 
             neural = AIService.get_neural_engine()
             prediction = neural.predict_cash_flow(
-                months_ahead,
-                from_app_context=current_app.app_context
+                months_ahead, from_app_context=current_app.app_context
             )
 
             return prediction
 
         except Exception as e:
-            return AIService._handle_ai_error('predict_cash_flow_neural', e)
+            return AIService._handle_ai_error("predict_cash_flow_neural", e)
 
     @staticmethod
     def predict_cash_flow(days=30):
@@ -2000,19 +2248,19 @@ class AIService:
             prediction = AIService.predict_cash_flow_neural(months_ahead)
 
             return {
-                'generated_at': datetime.now().isoformat(),
-                'requested_days': days,
-                'months_ahead': months_ahead,
-                'prediction': prediction,
+                "generated_at": datetime.now().isoformat(),
+                "requested_days": days,
+                "months_ahead": months_ahead,
+                "prediction": prediction,
             }
 
         except Exception as e:
             logger.error(f"Cash flow prediction failed: {e}")
             return {
-                'error': 'failed to predict cash flow',
-                'requested_days': days,
-                'months_ahead': None,
-                'prediction': {},
+                "error": "failed to predict cash flow",
+                "requested_days": days,
+                "months_ahead": None,
+                "prediction": {},
             }
 
     @staticmethod
@@ -2031,7 +2279,7 @@ class AIService:
 
         except Exception as e:
             logger.error(f"Neural training failed: {e}")
-            return {'success': False, 'error': str(e)}
+            return {"success": False, "error": str(e)}
 
     @staticmethod
     def get_neural_status():
@@ -2044,7 +2292,7 @@ class AIService:
 
         except Exception as e:
             logger.error(f"Failed to get neural status: {e}")
-            return {'trained_models': 0, 'total_models': 0}
+            return {"trained_models": 0, "total_models": 0}
 
     # ========================================================================
     # Advanced Capabilities - القدرات المتقدمة
@@ -2091,26 +2339,20 @@ class AIService:
         try:
             generator = AIService.get_code_generator()
 
-            if code_type == 'sql':
+            if code_type == "sql":
                 code = generator.generate_sql_query(
-                    params.get('intent', 'select'),
-                    params.get('table', ''),
-                    params.get('filters')
+                    params.get("intent", "select"),
+                    params.get("table", ""),
+                    params.get("filters"),
                 )
-            elif code_type == 'python':
+            elif code_type == "python":
                 code = generator.generate_python_function(
-                    params.get('name', 'my_function'),
-                    purpose,
-                    params.get('params', [])
+                    params.get("name", "my_function"), purpose, params.get("params", [])
                 )
             else:
                 code = "# Unsupported code type"
 
-            return {
-                'code': code,
-                'type': code_type,
-                'purpose': purpose
-            }
+            return {"code": code, "type": code_type, "purpose": purpose}
 
         except Exception as e:
             logger.error(f"Code generation failed: {e}")
@@ -2123,7 +2365,7 @@ class AIService:
             memory = AIService.get_memory_system()
             memory.remember_conversation(user_id, message, response)
 
-            return {'status': 'remembered'}
+            return {"status": "remembered"}
 
         except Exception as e:
             logger.error(f"Memory failed: {e}")
@@ -2155,7 +2397,7 @@ class AIService:
 
         except Exception as e:
             logger.error(f"Chat failed: {e}")
-            return {'response': 'عذراً، حدث خطأ'}
+            return {"response": "عذراً، حدث خطأ"}
 
     @staticmethod
     def self_reflect():
@@ -2181,7 +2423,7 @@ class AIService:
             return data
 
         except Exception as e:
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     @staticmethod
     def get_system_capabilities():
@@ -2189,101 +2431,101 @@ class AIService:
         الحصول على قائمة كاملة بقدرات النظام
         """
         return {
-            'neural_networks': {
-                'available': True,
-                'models': 11,
-                'capabilities': [
-                    'Price Optimization',
-                    'Sales Forecasting',
-                    'Customer Classification',
-                    'Fraud Detection',
-                    'Inventory Optimization',
-                    'Demand Prediction',
-                    'Financial Planning',
-                    'Maintenance Prediction',
-                    'Accounting Validation',
-                    'Profit Optimization',
-                    'Churn Prediction'
-                ]
-            },
-            'reasoning': {
-                'available': True,
-                'types': [
-                    'Deep Thinking',
-                    'Chain of Thought',
-                    'Mathematical Reasoning',
-                    'Financial Reasoning',
-                    'Technical Reasoning',
-                    'Business Reasoning'
-                ]
-            },
-            'memory': {
-                'available': True,
-                'types': [
-                    'Episodic Memory (Conversations)',
-                    'Semantic Memory (Facts)',
-                    'Procedural Memory (How-to)',
-                    'User Preferences'
-                ]
-            },
-            'code_generation': {
-                'available': True,
-                'languages': ['SQL', 'Python', 'JavaScript']
-            },
-            'multi_agent': {
-                'available': True,
-                'agents': [
-                    'Sales Agent',
-                    'Accounting Agent',
-                    'Inventory Agent',
-                    'Maintenance Agent',
-                    'Customer Agent',
-                    'Financial Agent',
-                    'Security Agent'
-                ]
-            },
-            'conversation': {
-                'available': True,
-                'features': [
-                    'Context Awareness',
-                    'Natural Responses',
-                    'Multi-turn Dialogs',
-                    'Intent Recognition'
-                ]
-            },
-            'vision': {
-                'available': True,
-                'features': ['Invoice OCR', 'Part Recognition']
-            },
-            'self_improvement': {
-                'available': True,
-                'features': [
-                    'Performance Monitoring',
-                    'Error Learning',
-                    'Self-Reflection',
-                    'Continuous Improvement'
-                ]
-            },
-            'master_brain': {
-                'available': True,
-                'description': 'العقل الموحد الخارق - يجمع كل القدرات',
-                'features': [
-                    'Unified Intelligence',
-                    'Lightning Fast Response',
-                    'Complete Knowledge Base',
-                    'Genius-Level Reasoning',
-                    'Expert in All Domains'
+            "neural_networks": {
+                "available": True,
+                "models": 11,
+                "capabilities": [
+                    "Price Optimization",
+                    "Sales Forecasting",
+                    "Customer Classification",
+                    "Fraud Detection",
+                    "Inventory Optimization",
+                    "Demand Prediction",
+                    "Financial Planning",
+                    "Maintenance Prediction",
+                    "Accounting Validation",
+                    "Profit Optimization",
+                    "Churn Prediction",
                 ],
-                'domains': [
-                    'محاسبة وضرائب',
-                    'إدارة مالية',
-                    'هندسة وصيانة',
-                    'إدارة مخزون',
-                    'قانون تجاري',
-                    'برمجة وتقنية',
-                    'سكرتارية تنفيذية'
-                ]
-            }
+            },
+            "reasoning": {
+                "available": True,
+                "types": [
+                    "Deep Thinking",
+                    "Chain of Thought",
+                    "Mathematical Reasoning",
+                    "Financial Reasoning",
+                    "Technical Reasoning",
+                    "Business Reasoning",
+                ],
+            },
+            "memory": {
+                "available": True,
+                "types": [
+                    "Episodic Memory (Conversations)",
+                    "Semantic Memory (Facts)",
+                    "Procedural Memory (How-to)",
+                    "User Preferences",
+                ],
+            },
+            "code_generation": {
+                "available": True,
+                "languages": ["SQL", "Python", "JavaScript"],
+            },
+            "multi_agent": {
+                "available": True,
+                "agents": [
+                    "Sales Agent",
+                    "Accounting Agent",
+                    "Inventory Agent",
+                    "Maintenance Agent",
+                    "Customer Agent",
+                    "Financial Agent",
+                    "Security Agent",
+                ],
+            },
+            "conversation": {
+                "available": True,
+                "features": [
+                    "Context Awareness",
+                    "Natural Responses",
+                    "Multi-turn Dialogs",
+                    "Intent Recognition",
+                ],
+            },
+            "vision": {
+                "available": True,
+                "features": ["Invoice OCR", "Part Recognition"],
+            },
+            "self_improvement": {
+                "available": True,
+                "features": [
+                    "Performance Monitoring",
+                    "Error Learning",
+                    "Self-Reflection",
+                    "Continuous Improvement",
+                ],
+            },
+            "master_brain": {
+                "available": True,
+                "description": "العقل الموحد الخارق - يجمع كل القدرات",
+                "features": [
+                    "Unified Intelligence",
+                    "Lightning Fast Response",
+                    "Complete Knowledge Base",
+                    "Genius-Level Reasoning",
+                    "Expert in All Domains",
+                ],
+                "domains": [
+                    "محاسبة وضرائب",
+                    "إدارة مالية",
+                    "هندسة وصيانة",
+                    "إدارة مخزون",
+                    "قانون تجاري",
+                    "برمجة وتقنية",
+                    "سكرتارية تنفيذية",
+                ],
+            },
         }
 
     # ========================================================================
@@ -2321,7 +2563,7 @@ class AIService:
 
         except Exception as e:
             logger.error(f"Genius query failed: {e}")
-            return {'answer': 'عذراً، حدث خطأ. يرجى المحاولة مرة أخرى.', 'confidence': 0}
+            return {"answer": "عذراً، حدث خطأ. يرجى المحاولة مرة أخرى.", "confidence": 0}
 
     @staticmethod
     def quick_calculate(formula: str, **params):
@@ -2347,7 +2589,7 @@ class AIService:
             return brain.quick_calc(formula, **params)
 
         except Exception as e:
-            return {'error': str(e), 'success': False}
+            return {"error": str(e), "success": False}
 
     @staticmethod
     def explain_anything(concept: str):
@@ -2378,7 +2620,7 @@ class AIService:
             return brain.validate_accounting_entry(debit, credit)
 
         except Exception as e:
-            return {'error': str(e), 'is_balanced': False}
+            return {"error": str(e), "is_balanced": False}
 
     # ========================================================================
     # Transformers - معمارية المحولات المتقدمة
@@ -2441,9 +2683,9 @@ class AIService:
             understanding = transformers.understand(text)
 
             return {
-                'attention_map': understanding.get('attention_map', {}),
-                'tokens': understanding.get('tokens', []),
-                'visualization': 'خريطة الانتباه جاهزة'
+                "attention_map": understanding.get("attention_map", {}),
+                "tokens": understanding.get("tokens", []),
+                "visualization": "خريطة الانتباه جاهزة",
             }
 
         except Exception:
@@ -2468,7 +2710,7 @@ class AIService:
             return diagnosis
 
         except Exception as e:
-            return {'error': str(e), 'found': False}
+            return {"error": str(e), "found": False}
 
     @staticmethod
     def get_sensor_info(sensor_name: str):
@@ -2485,7 +2727,7 @@ class AIService:
             return info
 
         except Exception as e:
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     @staticmethod
     def get_ecu_knowledge(ecu_type: str):
@@ -2522,13 +2764,13 @@ class AIService:
             stats = learning.get_statistics()
 
             return {
-                'sources': sources,
-                'total_sources': len(sources),
-                'statistics': stats
+                "sources": sources,
+                "total_sources": len(sources),
+                "statistics": stats,
             }
 
         except Exception as e:
-            return {'sources': [], 'error': str(e)}
+            return {"sources": [], "error": str(e)}
 
     @staticmethod
     def learn_from_external(source_type: str, topic: str, content: str):
@@ -2550,4 +2792,4 @@ class AIService:
             return result
 
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return {"success": False, "error": str(e)}

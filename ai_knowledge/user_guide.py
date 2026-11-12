@@ -269,11 +269,11 @@ REPORTING_GUIDE = """
 
 # دليل شامل
 USER_GUIDE = {
-    'quick_start': QUICK_START,
-    'daily_operations': DAILY_OPERATIONS,
-    'common_tasks': COMMON_TASKS,
-    'advanced': ADVANCED_FEATURES,
-    'reporting': REPORTING_GUIDE,
+    "quick_start": QUICK_START,
+    "daily_operations": DAILY_OPERATIONS,
+    "common_tasks": COMMON_TASKS,
+    "advanced": ADVANCED_FEATURES,
+    "reporting": REPORTING_GUIDE,
 }
 
 

@@ -13,7 +13,8 @@ class PaymentVault(db.Model):
     """
     خزينة الدفع السرية - محمية بكلمة مرور منفصلة
     """
-    __tablename__ = 'payment_vault'
+
+    __tablename__ = "payment_vault"
 
     id = db.Column(db.Integer, primary_key=True)
 
@@ -34,7 +35,7 @@ class PaymentVault(db.Model):
     paypal_client_id = db.Column(db.String(255))  # PayPal Client ID
     paypal_client_secret = db.Column(db.String(255))  # PayPal Secret (مشفر)
     paypal_business_email = db.Column(db.String(200))  # البريد التجاري
-    paypal_mode = db.Column(db.String(20), default='sandbox')  # sandbox أو live
+    paypal_mode = db.Column(db.String(20), default="sandbox")  # sandbox أو live
 
     # Bank Account Settings - الحساب البنكي للشركة
     bank_name = db.Column(db.String(200))  # اسم البنك
@@ -44,7 +45,7 @@ class PaymentVault(db.Model):
     bank_swift_code = db.Column(db.String(20))  # SWIFT/BIC Code
     bank_branch = db.Column(db.String(200))  # اسم الفرع
     bank_country = db.Column(db.String(100))  # البلد
-    bank_currency = db.Column(db.String(10), default='USD')  # العملة
+    bank_currency = db.Column(db.String(10), default="USD")  # العملة
 
     # Stripe Settings - إعدادات Stripe
     stripe_publishable_key = db.Column(db.String(255))  # Public Key
@@ -58,9 +59,15 @@ class PaymentVault(db.Model):
     razorpay_key_secret = db.Column(db.String(255))  # Razorpay Secret
 
     # Payment Limits - حدود الدفع
-    min_donation_amount = db.Column(db.Numeric(10, 2), default=Decimal('10.00'))  # الحد الأدنى
-    max_donation_amount = db.Column(db.Numeric(10, 2), default=Decimal('10000.00'))  # الحد الأقصى
-    daily_limit = db.Column(db.Numeric(15, 2), default=Decimal('50000.00'))  # الحد اليومي
+    min_donation_amount = db.Column(
+        db.Numeric(10, 2), default=Decimal("10.00")
+    )  # الحد الأدنى
+    max_donation_amount = db.Column(
+        db.Numeric(10, 2), default=Decimal("10000.00")
+    )  # الحد الأقصى
+    daily_limit = db.Column(
+        db.Numeric(15, 2), default=Decimal("50000.00")
+    )  # الحد اليومي
 
     # Security Settings - إعدادات الأمان
     require_2fa = db.Column(db.Boolean, default=True)  # يتطلب مصادقة ثنائية
@@ -78,11 +85,15 @@ class PaymentVault(db.Model):
 
     # Timestamps - الطوابع الزمنية
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     def set_vault_password(self, password):
         """تعيين كلمة مرور الخزينة"""
-        self.vault_password_hash = generate_password_hash(password, method='pbkdf2:sha256')
+        self.vault_password_hash = generate_password_hash(
+            password, method="pbkdf2:sha256"
+        )
 
     def check_vault_password(self, password):
         """التحقق من كلمة مرور الخزينة"""
@@ -144,20 +155,23 @@ class PaymentTransaction(db.Model):
     """
     معاملات الدفع - محمية داخل الخزينة
     """
-    __tablename__ = 'payment_transactions'
+
+    __tablename__ = "payment_transactions"
 
     id = db.Column(db.Integer, primary_key=True)
 
     # Transaction Info - معلومات المعاملة
-    transaction_id = db.Column(db.String(100), unique=True, nullable=False)  # معرف المعاملة
+    transaction_id = db.Column(
+        db.String(100), unique=True, nullable=False
+    )  # معرف المعاملة
     amount_usd = db.Column(db.Numeric(15, 2), nullable=False)  # المبلغ بالدولار
     amount_crypto = db.Column(db.Numeric(20, 8))  # المبلغ بالعملة الرقمية
     crypto_currency = db.Column(db.String(10), nullable=False)  # العملة الرقمية
 
     # Payment Details - تفاصيل الدفع
     payment_address = db.Column(db.String(255))  # عنوان الدفع
-    payment_status = db.Column(db.String(20), default='pending')  # حالة الدفع
-    payment_method = db.Column(db.String(50), default='crypto')  # طريقة الدفع
+    payment_status = db.Column(db.String(20), default="pending")  # حالة الدفع
+    payment_method = db.Column(db.String(50), default="crypto")  # طريقة الدفع
 
     # Customer Info - معلومات العميل
     customer_email = db.Column(db.String(255))  # إيميل العميل
@@ -171,29 +185,33 @@ class PaymentTransaction(db.Model):
 
     # Timestamps - الطوابع الزمنية
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     completed_at = db.Column(db.DateTime)  # وقت الإكمال
 
     # Relations - العلاقات
-    vault_id = db.Column(db.Integer, db.ForeignKey('payment_vault.id'), nullable=False)
-    vault = db.relationship('PaymentVault', backref='transactions')
+    vault_id = db.Column(db.Integer, db.ForeignKey("payment_vault.id"), nullable=False)
+    vault = db.relationship("PaymentVault", backref="transactions")
 
     def to_dict(self):
         """تحويل إلى قاموس"""
         return {
-            'id': self.id,
-            'transaction_id': self.transaction_id,
-            'amount_usd': float(self.amount_usd),
-            'amount_crypto': float(self.amount_crypto) if self.amount_crypto else None,
-            'crypto_currency': self.crypto_currency,
-            'payment_address': self.payment_address,
-            'payment_status': self.payment_status,
-            'payment_method': self.payment_method,
-            'customer_email': self.customer_email,
-            'customer_name': self.customer_name,
-            'is_verified': self.is_verified,
-            'created_at': self.created_at.isoformat(),
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None
+            "id": self.id,
+            "transaction_id": self.transaction_id,
+            "amount_usd": float(self.amount_usd),
+            "amount_crypto": float(self.amount_crypto) if self.amount_crypto else None,
+            "crypto_currency": self.crypto_currency,
+            "payment_address": self.payment_address,
+            "payment_status": self.payment_status,
+            "payment_method": self.payment_method,
+            "customer_email": self.customer_email,
+            "customer_name": self.customer_name,
+            "is_verified": self.is_verified,
+            "created_at": self.created_at.isoformat(),
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
         }
 
 
@@ -201,14 +219,15 @@ class PaymentLog(db.Model):
     """
     سجل الدفع - محمي داخل الخزينة
     """
-    __tablename__ = 'payment_logs'
+
+    __tablename__ = "payment_logs"
 
     id = db.Column(db.Integer, primary_key=True)
 
     # Log Info - معلومات السجل
     action = db.Column(db.String(100), nullable=False)  # العملية
     description = db.Column(db.Text)  # الوصف
-    level = db.Column(db.String(20), default='info')  # مستوى السجل
+    level = db.Column(db.String(20), default="info")  # مستوى السجل
 
     # Transaction Reference - مرجع المعاملة
     transaction_id = db.Column(db.String(100))  # معرف المعاملة
@@ -222,11 +241,20 @@ class PaymentLog(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relations - العلاقات
-    vault_id = db.Column(db.Integer, db.ForeignKey('payment_vault.id'), nullable=False)
-    vault = db.relationship('PaymentVault', backref='logs')
+    vault_id = db.Column(db.Integer, db.ForeignKey("payment_vault.id"), nullable=False)
+    vault = db.relationship("PaymentVault", backref="logs")
 
     @staticmethod
-    def log_action(vault_id, action, description, level='info', transaction_id=None, amount=None, ip_address=None, user_agent=None):
+    def log_action(
+        vault_id,
+        action,
+        description,
+        level="info",
+        transaction_id=None,
+        amount=None,
+        ip_address=None,
+        user_agent=None,
+    ):
         """تسجيل عمل"""
         log = PaymentLog(
             vault_id=vault_id,
@@ -236,7 +264,7 @@ class PaymentLog(db.Model):
             transaction_id=transaction_id,
             amount=amount,
             ip_address=ip_address,
-            user_agent=user_agent
+            user_agent=user_agent,
         )
         db.session.add(log)
         db.session.commit()

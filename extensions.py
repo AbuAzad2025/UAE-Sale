@@ -31,23 +31,28 @@ except ImportError:
 
 try:
     from flask_compress import Compress
+
     COMPRESS_AVAILABLE = True
 except ImportError:
     COMPRESS_AVAILABLE = False
-    logging.warning("Flask-Compress not available - install with: pip install Flask-Compress Brotli")
+    logging.warning(
+        "Flask-Compress not available - install with: pip install Flask-Compress Brotli"
+    )
 
 
 def get_locale():
     """تحديد اللغة الحالية"""
-    if 'language' in session:
-        return session.get('language', 'ar')
-    return 'ar'
+    if "language" in session:
+        return session.get("language", "ar")
+    return "ar"
 
 
 try:
     from colorama import init as colorama_init, Fore, Style
+
     colorama_init(autoreset=True)
 except ImportError:
+
     class _Fore:
         BLUE = ""
         GREEN = ""
@@ -57,6 +62,7 @@ except ImportError:
     class _Style:
         BRIGHT = ""
         RESET_ALL = ""
+
     Fore, Style = _Fore(), _Style()
 
 
@@ -75,15 +81,15 @@ class ColorFormatter(logging.Formatter):
     """Colored console logging with better PowerShell support"""
 
     COLORS = {
-        "DEBUG": Fore.CYAN + Style.BRIGHT,      # سماوي فاتح
-        "INFO": Fore.WHITE + Style.BRIGHT,     # أبيض فاتح
-        "WARNING": Fore.YELLOW + Style.BRIGHT,    # أصفر فاتح
-        "ERROR": Fore.RED + Style.BRIGHT,       # أحمر فاتح
+        "DEBUG": Fore.CYAN + Style.BRIGHT,  # سماوي فاتح
+        "INFO": Fore.WHITE + Style.BRIGHT,  # أبيض فاتح
+        "WARNING": Fore.YELLOW + Style.BRIGHT,  # أصفر فاتح
+        "ERROR": Fore.RED + Style.BRIGHT,  # أحمر فاتح
         "CRITICAL": Fore.MAGENTA + Style.BRIGHT,  # وردي فاتح
     }
 
     def format(self, record: logging.LogRecord) -> str:
-        use_colors = os.environ.get('FLASK_ENV', 'development') == 'development'
+        use_colors = os.environ.get("FLASK_ENV", "development") == "development"
 
         if use_colors:
             color = self.COLORS.get(record.levelname, "")
@@ -94,7 +100,7 @@ class ColorFormatter(logging.Formatter):
 
         req_id = getattr(record, "request_id", "-")
 
-        timestamp = self.formatTime(record, '%Y-%m-%d %H:%M:%S')
+        timestamp = self.formatTime(record, "%Y-%m-%d %H:%M:%S")
         message = f"[{timestamp}] {color}{record.levelname:8s}{reset} [{req_id}] {record.name}: {record.getMessage()}"
 
         if record.exc_info:
@@ -106,11 +112,14 @@ class ColorFormatter(logging.Formatter):
             target_encoding = "utf-8"
 
         try:
-            message = message.encode(target_encoding, errors='replace').decode(target_encoding, errors='replace')
+            message = message.encode(target_encoding, errors="replace").decode(
+                target_encoding, errors="replace"
+            )
         except Exception:
-            message = message.encode('ascii', 'replace').decode('ascii')
+            message = message.encode("ascii", "replace").decode("ascii")
 
         return message
+
 
 # ======================
 # Setup Logging
@@ -122,16 +131,22 @@ def setup_logging(app):
     level_name = app.config.get("LOG_LEVEL", "INFO").upper()
     level = getattr(logging, level_name, logging.INFO)
 
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         import io
-        if hasattr(sys.stdout, 'buffer'):
-            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-        if hasattr(sys.stderr, 'buffer'):
-            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+        if hasattr(sys.stdout, "buffer"):
+            sys.stdout = io.TextIOWrapper(
+                sys.stdout.buffer, encoding="utf-8", errors="replace"
+            )
+        if hasattr(sys.stderr, "buffer"):
+            sys.stderr = io.TextIOWrapper(
+                sys.stderr.buffer, encoding="utf-8", errors="replace"
+            )
 
     # SECURITY: Install log sanitizer to filter sensitive data from all log output
     try:
         from utils.log_sanitizer import SanitizeFilter
+
         _sanitize = SanitizeFilter()
     except ImportError:
         _sanitize = None
@@ -178,6 +193,7 @@ login_manager.login_message_category = "warning"
 @login_manager.user_loader
 def load_user(user_id):
     from models.user import User
+
     try:
         uid = int(user_id)
     except (TypeError, ValueError):
@@ -190,6 +206,7 @@ def load_user(user_id):
 
 
 from flask_login import AnonymousUserMixin  # noqa: E402
+
 AnonymousUserMixin.is_owner = False
 AnonymousUserMixin.is_super_admin = lambda self: False
 AnonymousUserMixin.is_manager = lambda self: False
@@ -207,6 +224,7 @@ def _rate_limit_key():
     """Custom rate limit key (user or IP)"""
     try:
         from flask_login import current_user
+
         if getattr(current_user, "is_authenticated", False):
             return f"user:{current_user.get_id()}"
     except Exception:
@@ -236,8 +254,9 @@ def init_extensions(app):
     db.init_app(app)
     migrate.init_app(app, db)
 
-    if app.config.get('SQLALCHEMY_ECHO'):
+    if app.config.get("SQLALCHEMY_ECHO"):
         from utils.performance_tracker import log_slow_queries
+
         log_slow_queries(app)
 
     login_manager.init_app(app)
@@ -252,12 +271,16 @@ def init_extensions(app):
         compress.init_app(app)
         logging.info("[OK] Compression enabled")
     else:
-        logging.warning("⚠️ Compression disabled - install Flask-Compress for better performance")
+        logging.warning(
+            "⚠️ Compression disabled - install Flask-Compress for better performance"
+        )
 
     default_limit = app.config.get("RATELIMIT_DEFAULT")
     if default_limit:
         if isinstance(default_limit, str):
-            limiter.default_limits = [ln.strip() for ln in default_limit.split(";") if ln.strip()]
+            limiter.default_limits = [
+                ln.strip() for ln in default_limit.split(";") if ln.strip()
+            ]
         else:
             limiter.default_limits = [default_limit]
 

@@ -85,15 +85,15 @@ except ImportError:  # pragma: no cover - resolver ships in Agent 1's turn
     AccountResolver = None  # type: ignore[assignment,misc]
     AccountRole = None  # type: ignore[assignment,misc]
 
-DEFAULT_AR_CONTROL_CODES = ['1130']
-DEFAULT_AP_CONTROL_CODES = ['2115', '2110']
+DEFAULT_AR_CONTROL_CODES = ["1130"]
+DEFAULT_AP_CONTROL_CODES = ["2115", "2110"]
 # Merchant ('2115') and partner ('3350') invoices bypass the plain AR control;
 # the AR proof must include those buckets or merchant/partner customers always
 # look like breaks.
-DEFAULT_AR_MERCHANT_BUCKETS = ['2115', '3350']
+DEFAULT_AR_MERCHANT_BUCKETS = ["2115", "3350"]
 
 # حالات الشيك التي تعني: استُلم الشيك ولم يُصرف بعد (بلا تسوية للفاتورة).
-_PENDING_CHEQUE_STATUSES = ('pending', 'under_collection', 'deposited')
+_PENDING_CHEQUE_STATUSES = ("pending", "under_collection", "deposited")
 
 
 def _resolve_role_codes(role_value, fallback_codes):
@@ -108,7 +108,7 @@ def _resolve_role_codes(role_value, fallback_codes):
                 return [code] + [c for c in fallback_codes if c != code]
         except Exception as exc:
             logger.warning(
-                f'AccountResolver failed for role {role_value}: {exc} — using literal fallback'
+                f"AccountResolver failed for role {role_value}: {exc} — using literal fallback"
             )
     return list(fallback_codes)
 
@@ -121,16 +121,17 @@ def _ar_control_codes():
     """
     try:
         from services.sale_service import merchant_receivable_codes
+
         buckets = [str(c) for c in merchant_receivable_codes() if c]
     except Exception as exc:
         logger.warning(
-            f'merchant_receivable_codes unavailable ({exc}) — using literal buckets'
+            f"merchant_receivable_codes unavailable ({exc}) — using literal buckets"
         )
         buckets = []
 
     codes = []
     for code in (
-        _resolve_role_codes('AR_CONTROL', DEFAULT_AR_CONTROL_CODES)
+        _resolve_role_codes("AR_CONTROL", DEFAULT_AR_CONTROL_CODES)
         + buckets
         + DEFAULT_AR_MERCHANT_BUCKETS
     ):
@@ -142,10 +143,9 @@ def _ar_control_codes():
 def _ap_control_codes():
     """AP scope per audit mandate: merchants payable ('2115') + AP control ('2110')."""
     codes = []
-    for code in (
-        _resolve_role_codes('MERCHANTS_PAYABLE', ['2115'])
-        + _resolve_role_codes('AP_CONTROL', ['2110'])
-    ):
+    for code in _resolve_role_codes(
+        "MERCHANTS_PAYABLE", ["2115"]
+    ) + _resolve_role_codes("AP_CONTROL", ["2110"]):
         if code not in codes:
             codes.append(code)
     return codes
@@ -153,7 +153,7 @@ def _ap_control_codes():
 
 def _q2(value):
     """Quantize reported money to 0.01."""
-    return Decimal(value).quantize(Decimal('0.01'))
+    return Decimal(value).quantize(Decimal("0.01"))
 
 
 def _ar_debit_normal_balance(account_codes):
@@ -171,7 +171,7 @@ def _ar_debit_normal_balance(account_codes):
 
     wanted = [str(c) for c in (account_codes or []) if c]
     if not wanted:
-        return Decimal('0')
+        return Decimal("0")
 
     rows = (
         db.session.query(
@@ -184,7 +184,7 @@ def _ar_debit_normal_balance(account_codes):
         .all()
     )
 
-    total = Decimal('0')
+    total = Decimal("0")
     found = set()
     for code, raw_net in rows:
         found.add(code)
@@ -192,7 +192,7 @@ def _ar_debit_normal_balance(account_codes):
 
     missing = [c for c in wanted if c not in found]
     if missing:
-        logger.warning(f'AR control account(s) missing from CoA: {missing}')
+        logger.warning(f"AR control account(s) missing from CoA: {missing}")
 
     return total
 
@@ -201,26 +201,27 @@ def _ar_debit_normal_balance(account_codes):
 # بنود التسوية المعروفة (reconciling items)
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _reconciling_item(code, label, amount, sign, note=''):
+
+def _reconciling_item(code, label, amount, sign, note=""):
     """بند تسوية معروف: فرق متوقّع بين الأستاذ والذمم الفرعية.
 
     sign = +1 ⇒ يُضاف المبلغ إلى رصيد حساب الضبط ليطابق الذمم الفرعية،
                 sign = −1 ⇒ يُطرح منه.
     """
     return {
-        'code': code,
-        'label': label,
-        'amount': _q2(amount),
-        'sign': int(sign),
-        'note': note,
+        "code": code,
+        "label": label,
+        "amount": _q2(amount),
+        "sign": int(sign),
+        "note": note,
     }
 
 
 def _reconciling_total(items):
     """Σ(sign × amount) — الأثر الصافي لبنود التسوية على رصيد الحساب."""
-    total = Decimal('0')
+    total = Decimal("0")
     for item in items or []:
-        total += Decimal(str(item.get('sign', 1))) * to_decimal(item.get('amount'))
+        total += Decimal(str(item.get("sign", 1))) * to_decimal(item.get("amount"))
     return total
 
 
@@ -238,9 +239,7 @@ def _pending_cheques(cheque_type, tenant_id=None):
 
     from models import Cheque
 
-    query = db.session.query(
-        func.coalesce(func.sum(Cheque.amount_base), 0)
-    ).filter(
+    query = db.session.query(func.coalesce(func.sum(Cheque.amount_base), 0)).filter(
         Cheque.cheque_type == cheque_type,
         Cheque.status.in_(_PENDING_CHEQUE_STATUSES),
         Cheque.is_active.is_(True),
@@ -262,22 +261,22 @@ def _unallocated_receipts(tenant_id=None):
 
     query = Receipt.query.filter(
         Receipt.payment_confirmed.is_(True),
-        Receipt.direction == 'incoming',
+        Receipt.direction == "incoming",
         Receipt.customer_id.isnot(None),
     )
     if tenant_id is not None:
         query = query.filter(Receipt.tenant_id == tenant_id)
 
-    total = Decimal('0')
+    total = Decimal("0")
     for receipt in query.all():
         try:
             allocations = receipt.get_allocations() or []
         except Exception:
             allocations = []
-        allocated = Decimal('0')
+        allocated = Decimal("0")
         for alloc in allocations:
             try:
-                allocated += to_decimal(alloc.get('amount_base'))
+                allocated += to_decimal(alloc.get("amount_base"))
             except Exception:
                 continue
         leftover = to_decimal(receipt.amount_base) - allocated
@@ -312,21 +311,16 @@ class SubLedgerReconciliation:
 
         # populate_existing: model listeners mutate balances via raw SQL outside
         # the identity map — force a fresh read so stored columns are current.
-        customers = (
-            Customer.query
-            .order_by(Customer.id)
-            .populate_existing()
-            .all()
-        )
+        customers = Customer.query.order_by(Customer.id).populate_existing().all()
         if tenant_id is not None:
             customers = [c for c in customers if c.tenant_id == tenant_id]
 
         connection = db.session.connection()
 
-        subledger_sum = Decimal('0')
-        column_sum = Decimal('0')
-        opening_sum = Decimal('0')
-        inactive_sum = Decimal('0')
+        subledger_sum = Decimal("0")
+        column_sum = Decimal("0")
+        opening_sum = Decimal("0")
+        inactive_sum = Decimal("0")
         breaks = []
         for customer in customers:
             expected = derive_customer_balance(customer.id, connection=connection)
@@ -343,16 +337,18 @@ class SubLedgerReconciliation:
 
             delta = stored - expected
             if abs(delta) > TOLERANCE:
-                breaks.append({
-                    'entity': customer.name,
-                    'entity_id': customer.id,
-                    'expected': _q2(expected),
-                    'stored': _q2(stored),
-                    'delta': _q2(delta),
-                })
+                breaks.append(
+                    {
+                        "entity": customer.name,
+                        "entity_id": customer.id,
+                        "expected": _q2(expected),
+                        "stored": _q2(stored),
+                        "delta": _q2(delta),
+                    }
+                )
                 logger.warning(
-                    f'AR break: customer#{customer.id} ({customer.name}) '
-                    f'expected={expected} stored={stored} delta={delta}'
+                    f"AR break: customer#{customer.id} ({customer.name}) "
+                    f"expected={expected} stored={stored} delta={delta}"
                 )
 
         control_balance = _ar_debit_normal_balance(codes)
@@ -360,39 +356,39 @@ class SubLedgerReconciliation:
         # Section detail lines: one entry per control bucket so reviewers can
         # see exactly which bucket carries (or misses) the value.
         breakdown = [
-            {'account_code': code, 'balance': _q2(_ar_debit_normal_balance([code]))}
+            {"account_code": code, "balance": _q2(_ar_debit_normal_balance([code]))}
             for code in codes
         ]
 
         reconciling_items = [
             _reconciling_item(
-                'pending_incoming_cheques',
-                'شيكات وارد تحت التحصيل (لم تُصرف بعد)',
-                _pending_cheques('incoming', tenant_id=tenant_id),
+                "pending_incoming_cheques",
+                "شيكات وارد تحت التحصيل (لم تُصرف بعد)",
+                _pending_cheques("incoming", tenant_id=tenant_id),
                 1,
-                'الأستاذ يقيّد الدائن على حساب الذمم عند استلام الشيك '
-                'والفاتورة تبقى مفتوحة حتى صرفه.',
+                "الأستاذ يقيّد الدائن على حساب الذمم عند استلام الشيك "
+                "والفاتورة تبقى مفتوحة حتى صرفه.",
             ),
             _reconciling_item(
-                'unallocated_receipts',
-                'سندات قبض مؤكّدة لم تُوزَّع على فواتير',
+                "unallocated_receipts",
+                "سندات قبض مؤكّدة لم تُوزَّع على فواتير",
                 _unallocated_receipts(tenant_id=tenant_id),
                 1,
-                'السند يقيّد الدائن على حساب الذمم دون أن يسوّي فاتورة.',
+                "السند يقيّد الدائن على حساب الذمم دون أن يسوّي فاتورة.",
             ),
             _reconciling_item(
-                'opening_balances',
-                'أرصدة افتتاحية مُرحّلة (خارج قيود الأستاذ)',
+                "opening_balances",
+                "أرصدة افتتاحية مُرحّلة (خارج قيود الأستاذ)",
                 opening_sum,
                 1,
-                'الرصيد الافتتاحي ليس قيداً في الأستاذ إلا إذا رُحّل يدوياً.',
+                "الرصيد الافتتاحي ليس قيداً في الأستاذ إلا إذا رُحّل يدوياً.",
             ),
             _reconciling_item(
-                'inactive_customers',
-                'ذمم عملاء غير نشطين (خارج نطاق المطابقة)',
+                "inactive_customers",
+                "ذمم عملاء غير نشطين (خارج نطاق المطابقة)",
                 inactive_sum,
                 -1,
-                'الأستاذ يحتفظ بمستندات العميل المعطّل، والمطابقة على النشطين.',
+                "الأستاذ يحتفظ بمستندات العميل المعطّل، والمطابقة على النشطين.",
             ),
         ]
         reconciling_total = _reconciling_total(reconciling_items)
@@ -411,19 +407,19 @@ class SubLedgerReconciliation:
         )
 
         return {
-            'section': 'AR',
-            'control_accounts': codes,
-            'control_breakdown': breakdown,
-            'control_balance': _q2(control_balance),
-            'subledger_sum': _q2(subledger_sum),
-            'column_sum': _q2(column_sum),
-            'control_difference': _q2(control_difference),
-            'reconciling_items': reconciling_items,
-            'reconciling_total': _q2(reconciling_total),
-            'adjusted_control_balance': _q2(adjusted_control_balance),
-            'adjusted_control_difference': _q2(adjusted_control_difference),
-            'breaks': breaks,
-            'balanced': balanced,
+            "section": "AR",
+            "control_accounts": codes,
+            "control_breakdown": breakdown,
+            "control_balance": _q2(control_balance),
+            "subledger_sum": _q2(subledger_sum),
+            "column_sum": _q2(column_sum),
+            "control_difference": _q2(control_difference),
+            "reconciling_items": reconciling_items,
+            "reconciling_total": _q2(reconciling_total),
+            "adjusted_control_balance": _q2(adjusted_control_balance),
+            "adjusted_control_difference": _q2(adjusted_control_difference),
+            "breaks": breaks,
+            "balanced": balanced,
         }
 
     # ------------------------------------------------------------------ AP
@@ -447,19 +443,14 @@ class SubLedgerReconciliation:
         codes = _ap_control_codes()
 
         # populate_existing: see reconcile_receivables (raw-SQL listener writes).
-        suppliers = (
-            Supplier.query
-            .order_by(Supplier.id)
-            .populate_existing()
-            .all()
-        )
+        suppliers = Supplier.query.order_by(Supplier.id).populate_existing().all()
         if tenant_id is not None:
             suppliers = [s for s in suppliers if s.tenant_id == tenant_id]
 
-        subledger_sum = Decimal('0')
-        column_sum = Decimal('0')
-        opening_sum = Decimal('0')
-        inactive_sum = Decimal('0')
+        subledger_sum = Decimal("0")
+        column_sum = Decimal("0")
+        opening_sum = Decimal("0")
+        inactive_sum = Decimal("0")
         breaks = []
         for supplier in suppliers:
             total_purchases, total_paid = derive_supplier_totals(supplier.id)
@@ -481,48 +472,50 @@ class SubLedgerReconciliation:
 
             delta = stored - expected
             if abs(delta) > TOLERANCE:
-                breaks.append({
-                    'entity': supplier.name,
-                    'entity_id': supplier.id,
-                    'expected': _q2(expected),
-                    'stored': _q2(stored),
-                    'delta': _q2(delta),
-                })
+                breaks.append(
+                    {
+                        "entity": supplier.name,
+                        "entity_id": supplier.id,
+                        "expected": _q2(expected),
+                        "stored": _q2(stored),
+                        "delta": _q2(delta),
+                    }
+                )
                 logger.warning(
-                    f'AP break: supplier#{supplier.id} ({supplier.name}) '
-                    f'expected={expected} stored={stored} delta={delta}'
+                    f"AP break: supplier#{supplier.id} ({supplier.name}) "
+                    f"expected={expected} stored={stored} delta={delta}"
                 )
 
         control_balance = get_control_account_balance(codes)
 
         # Section detail lines per AP control bucket (merchants vs AP control).
         breakdown = [
-            {'account_code': code, 'balance': _q2(get_control_account_balance([code]))}
+            {"account_code": code, "balance": _q2(get_control_account_balance([code]))}
             for code in codes
         ]
 
         reconciling_items = [
             _reconciling_item(
-                'pending_outgoing_cheques',
-                'شيكات صادرة لم تُصرف بعد',
-                _pending_cheques('outgoing', tenant_id=tenant_id),
+                "pending_outgoing_cheques",
+                "شيكات صادرة لم تُصرف بعد",
+                _pending_cheques("outgoing", tenant_id=tenant_id),
                 1,
-                'إصدار الشيك يقيّده مديناً على حساب الذمم الدائنة '
-                'وفاتورة الشراء تبقى مفتوحة حتى صرفه.',
+                "إصدار الشيك يقيّده مديناً على حساب الذمم الدائنة "
+                "وفاتورة الشراء تبقى مفتوحة حتى صرفه.",
             ),
             _reconciling_item(
-                'opening_balances',
-                'أرصدة افتتاحية مُرحّلة (خارج قيود الأستاذ)',
+                "opening_balances",
+                "أرصدة افتتاحية مُرحّلة (خارج قيود الأستاذ)",
                 opening_sum,
                 1,
-                'الرصيد الافتتاحي ليس قيداً في الأستاذ إلا إذا رُحّل يدوياً.',
+                "الرصيد الافتتاحي ليس قيداً في الأستاذ إلا إذا رُحّل يدوياً.",
             ),
             _reconciling_item(
-                'inactive_suppliers',
-                'ذمم موردين غير نشطين (خارج نطاق المطابقة)',
+                "inactive_suppliers",
+                "ذمم موردين غير نشطين (خارج نطاق المطابقة)",
                 inactive_sum,
                 -1,
-                'الأستاذ يحتفظ بمستندات المورد المعطّل، والمطابقة على النشطين.',
+                "الأستاذ يحتفظ بمستندات المورد المعطّل، والمطابقة على النشطين.",
             ),
         ]
         reconciling_total = _reconciling_total(reconciling_items)
@@ -541,19 +534,19 @@ class SubLedgerReconciliation:
         )
 
         return {
-            'section': 'AP',
-            'control_accounts': codes,
-            'control_breakdown': breakdown,
-            'control_balance': _q2(control_balance),
-            'subledger_sum': _q2(subledger_sum),
-            'column_sum': _q2(column_sum),
-            'control_difference': _q2(control_difference),
-            'reconciling_items': reconciling_items,
-            'reconciling_total': _q2(reconciling_total),
-            'adjusted_control_balance': _q2(adjusted_control_balance),
-            'adjusted_control_difference': _q2(adjusted_control_difference),
-            'breaks': breaks,
-            'balanced': balanced,
+            "section": "AP",
+            "control_accounts": codes,
+            "control_breakdown": breakdown,
+            "control_balance": _q2(control_balance),
+            "subledger_sum": _q2(subledger_sum),
+            "column_sum": _q2(column_sum),
+            "control_difference": _q2(control_difference),
+            "reconciling_items": reconciling_items,
+            "reconciling_total": _q2(reconciling_total),
+            "adjusted_control_balance": _q2(adjusted_control_balance),
+            "adjusted_control_difference": _q2(adjusted_control_difference),
+            "breaks": breaks,
+            "balanced": balanced,
         }
 
     # ----------------------------------------------------------------- All

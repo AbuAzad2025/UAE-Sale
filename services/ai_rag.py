@@ -4,12 +4,13 @@
 الترتيب: دليل (GuideLoader) → ذاكرة المستخدم → بيانات محددة بالنية.
 الميزانية تُحترم حتى لا ينفجر الـ prompt.
 """
+
 from __future__ import annotations
 
 
 def retrieve(message: str, user, max_chars: int = 6000) -> str:
     """استرجاع هجين بحد أقصى max_chars. user للعزل (نطاق دليل + ذاكرة)."""
-    is_owner = bool(getattr(user, 'is_owner', False)) if user else False
+    is_owner = bool(getattr(user, "is_owner", False)) if user else False
     parts: list[str] = []
     used = 0
 
@@ -25,7 +26,8 @@ def retrieve(message: str, user, max_chars: int = 6000) -> str:
     # 1) الدليل (مصدر واحد للحقيقة، مع نطاق is_owner)
     try:
         from ai_knowledge.guide_loader import get_guide_loader
-        ctx = get_guide_loader().get_context(message or '', is_owner, max_chars=3000)
+
+        ctx = get_guide_loader().get_context(message or "", is_owner, max_chars=3000)
         if ctx:
             _add(f"📖 **دليل الاستخدام:**\n{ctx}", 3000)
     except Exception:
@@ -33,10 +35,11 @@ def retrieve(message: str, user, max_chars: int = 6000) -> str:
 
     # 2) ذاكرة المستخدم (episodic + facts) — معزولة بالمستخدم (أقصى 3، مختصرة)
     try:
-        if user and getattr(user, 'id', None):
+        if user and getattr(user, "id", None):
             from ai_knowledge.memory_system import get_memory_system
+
             mem = get_memory_system()
-            similar = mem.recall_similar_conversations(message or '', limit=3)
+            similar = mem.recall_similar_conversations(message or "", limit=3)
             if similar:
                 lines = []
                 for m in similar[:3]:
@@ -51,18 +54,31 @@ def retrieve(message: str, user, max_chars: int = 6000) -> str:
     # يعيش في routes/ai ConversationContextStore. لذا نعتمد على الذاكرة أعلاه.
 
     # 3) بيانات النظام — بوّابية النية (فقط الجداول الضرورية)
-    _add(_db_context(message or '', user), max_chars)
+    _add(_db_context(message or "", user), max_chars)
 
     return ("\n\n".join(parts)).strip()
 
 
 def _db_context(message: str, user) -> str:
     """بيانات محددة بالنية — ليست كل جداول النظام."""
-    msg = (message or '').lower()
-    is_balance = 'رصيد' in msg or 'balance' in msg
-    is_sales = 'فاتورة' in msg or 'بيع' in msg or 'sales' in msg or 'مبيعات' in msg
-    is_inventory = 'مخزون' in msg or 'inventory' in msg or 'stock' in msg
-    is_create = any(w in msg for w in ('انشئ', 'انشاء', 'إنشاء', 'add', 'create', 'سجل', 'جديد', 'اضافة', 'إضافة'))
+    msg = (message or "").lower()
+    is_balance = "رصيد" in msg or "balance" in msg
+    is_sales = "فاتورة" in msg or "بيع" in msg or "sales" in msg or "مبيعات" in msg
+    is_inventory = "مخزون" in msg or "inventory" in msg or "stock" in msg
+    is_create = any(
+        w in msg
+        for w in (
+            "انشئ",
+            "انشاء",
+            "إنشاء",
+            "add",
+            "create",
+            "سجل",
+            "جديد",
+            "اضافة",
+            "إضافة",
+        )
+    )
 
     try:
         from models import Customer, Product, Sale
@@ -75,11 +91,12 @@ def _db_context(message: str, user) -> str:
         _tid = None
         try:
             from models.tenant_scope import get_current_tenant_id
+
             _tid = get_current_tenant_id()
             if user is not None:
-                if getattr(user, 'is_owner', False):
+                if getattr(user, "is_owner", False):
                     _tid = None  # المالك يرى الكل
-                elif getattr(user, 'tenant_id', None) is not None:
+                elif getattr(user, "tenant_id", None) is not None:
                     _tid = user.tenant_id
         except Exception:
             pass
@@ -94,20 +111,36 @@ def _db_context(message: str, user) -> str:
         lines: list[str] = []
         if is_balance:
             count = _scoped(Customer).filter_by(is_active=True).count()
-            lines.append(f"- عملاء نشطون: {count} (للأرصدة التفصيلية اسأل عن عميل محدد)")
+            lines.append(
+                f"- عملاء نشطون: {count} (للأرصدة التفصيلية اسأل عن عميل محدد)"
+            )
         if is_sales:
             since = datetime.now() - timedelta(days=30)
             n = _scoped(Sale).filter(Sale.sale_date >= since).count()
-            total = db.session.query(func.sum(Sale.total_amount)).filter(Sale.sale_date >= since).scalar() or 0
+            total = (
+                db.session.query(func.sum(Sale.total_amount))
+                .filter(Sale.sale_date >= since)
+                .scalar()
+                or 0
+            )
             # ملاحظة: إجمالي المبيعات المُصهَرة بترشيح تينانت طبقة ORM عند توفر سياق الطلب؛
             # مع _tid الدفاعي، تتساوى النتيجة في مسار الطلب.
             lines.append(f"- مبيعات 30 يوم: {n} فاتورة ({total} درهم)")
         if is_inventory:
-            low = _scoped(Product).filter(Product.current_stock <= Product.min_stock_alert, Product.is_active.is_(True)).count()
+            low = (
+                _scoped(Product)
+                .filter(
+                    Product.current_stock <= Product.min_stock_alert,
+                    Product.is_active.is_(True),
+                )
+                .count()
+            )
             total_p = _scoped(Product).filter_by(is_active=True).count()
             lines.append(f"- منتجات: {total_p}، مخزون منخفض: {low}")
         if is_create:
-            lines.append("- لإنشاء كيان جديد يلزم الاسم (+ الهاتف للعميل، التكلفة للمنتج)")
+            lines.append(
+                "- لإنشاء كيان جديد يلزم الاسم (+ الهاتف للعميل، التكلفة للمنتج)"
+            )
         if lines:
             return "📊 **بيانات النظام (مرتبطة بسؤالك):**\n" + "\n".join(lines)
         return ""

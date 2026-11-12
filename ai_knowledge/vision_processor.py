@@ -59,7 +59,7 @@ class VisionProcessor:
         """
         try:
             if not self.ocr_available:
-                return {'error': 'OCR not available', 'confidence': 0}
+                return {"error": "OCR not available", "confidence": 0}
 
             from PIL import Image
 
@@ -70,12 +70,12 @@ class VisionProcessor:
             # للآن، نموذج أساسي
 
             extracted_data = {
-                'invoice_number': self._extract_invoice_number(image),
-                'date': self._extract_date(image),
-                'total': self._extract_total(image),
-                'items': self._extract_items(image),
-                'confidence': 0.75,
-                'method': 'vision_processing'
+                "invoice_number": self._extract_invoice_number(image),
+                "date": self._extract_date(image),
+                "total": self._extract_total(image),
+                "items": self._extract_items(image),
+                "confidence": 0.75,
+                "method": "vision_processing",
             }
 
             logger.info(f"👁️ Invoice read from image: {image_path}")
@@ -84,7 +84,7 @@ class VisionProcessor:
 
         except Exception as e:
             logger.error(f"Invoice OCR failed: {e}")
-            return {'error': str(e), 'confidence': 0}
+            return {"error": str(e), "confidence": 0}
 
     def _extract_invoice_number(self, image) -> str:
         """استخراج رقم الفاتورة"""
@@ -94,7 +94,7 @@ class VisionProcessor:
     def _extract_date(self, image) -> str:
         """استخراج التاريخ"""
         # محاكاة
-        return datetime.now().strftime('%Y-%m-%d')
+        return datetime.now().strftime("%Y-%m-%d")
 
     def _extract_total(self, image) -> float:
         """استخراج المبلغ الإجمالي"""
@@ -124,7 +124,7 @@ class VisionProcessor:
                 image_path = os.path.abspath(image_path)
 
             if not os.path.exists(image_path):
-                return {'error': 'Image file not found'}
+                return {"error": "Image file not found"}
 
             from PIL import Image
 
@@ -132,12 +132,12 @@ class VisionProcessor:
 
             # تحليل بسيط (يمكن استخدام ML لاحقاً)
             analysis = {
-                'part_name': 'Unknown',
-                'part_number': 'N/A',
-                'condition': 'Good',
-                'matches': [],
-                'confidence': 0.6,
-                'method': 'basic_vision'
+                "part_name": "Unknown",
+                "part_number": "N/A",
+                "condition": "Good",
+                "matches": [],
+                "confidence": 0.6,
+                "method": "basic_vision",
             }
 
             logger.info(f"👁️ Part image analyzed: {image_path}")
@@ -146,7 +146,7 @@ class VisionProcessor:
 
         except Exception as e:
             logger.error(f"Part image analysis failed: {e}")
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def extract_text_from_image(self, image_path: str) -> str:
         """

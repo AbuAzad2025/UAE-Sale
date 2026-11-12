@@ -6,50 +6,58 @@ from models.tenant_scope import TenantScopedMixin
 
 
 class ProductCategory(db.Model):
-    __tablename__ = 'product_categories'
+    __tablename__ = "product_categories"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True, index=True)
     name_ar = db.Column(db.String(100))
     description = db.Column(db.Text)
-    parent_id = db.Column(db.Integer, db.ForeignKey('product_categories.id'))
+    parent_id = db.Column(db.Integer, db.ForeignKey("product_categories.id"))
     sort_order = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    parent = db.relationship('ProductCategory', remote_side=[id], backref='subcategories')
-    products = db.relationship('Product', back_populates='category', lazy='dynamic')
+    parent = db.relationship(
+        "ProductCategory", remote_side=[id], backref="subcategories"
+    )
+    products = db.relationship("Product", back_populates="category", lazy="dynamic")
 
     def __repr__(self):
-        return f'<Category {self.name}>'
+        return f"<Category {self.name}>"
 
-    def get_display_name(self, lang='ar'):
-        if lang == 'ar' and self.name_ar:
+    def get_display_name(self, lang="ar"):
+        if lang == "ar" and self.name_ar:
             return self.name_ar
         return self.name
 
 
 class ProductPartner(db.Model):
-    __tablename__ = 'product_partners'
+    __tablename__ = "product_partners"
 
     __table_args__ = (
-        db.UniqueConstraint('product_id', 'partner_customer_id', name='uq_product_partner'),
-        db.Index('idx_product_partner_product', 'product_id'),
-        db.Index('idx_product_partner_partner', 'partner_customer_id'),
+        db.UniqueConstraint(
+            "product_id", "partner_customer_id", name="uq_product_partner"
+        ),
+        db.Index("idx_product_partner_product", "product_id"),
+        db.Index("idx_product_partner_partner", "partner_customer_id"),
     )
 
     id = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
-    partner_customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    partner_customer_id = db.Column(
+        db.Integer, db.ForeignKey("customers.id"), nullable=False
+    )
     percentage = db.Column(db.Numeric(5, 2), nullable=False, default=0)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
 
-    product = db.relationship('Product', back_populates='partner_shares')
-    partner_customer = db.relationship('Customer', foreign_keys=[partner_customer_id])
+    product = db.relationship("Product", back_populates="partner_shares")
+    partner_customer = db.relationship("Customer", foreign_keys=[partner_customer_id])
 
 
 class Product(TenantScopedMixin, db.Model):
-    __tablename__ = 'products'
+    __tablename__ = "products"
 
     # SCHEMA NOTE (F8): the CHECK constraints below are declared by the
     # model, but db.create_all() is not what production runs — the
@@ -59,16 +67,20 @@ class Product(TenantScopedMixin, db.Model):
     # and the route layer refuse it, while the model listener
     # (models/events.py) silently clamps the value to 0.
     __table_args__ = (
-        db.Index('idx_product_active_stock', 'is_active', 'current_stock'),
-        db.Index('idx_product_category_active', 'category_id', 'is_active'),
-        db.CheckConstraint('current_stock >= 0', name='ck_product_stock_non_negative'),
-        db.CheckConstraint('regular_price >= 0', name='ck_product_price_non_negative'),
-        db.CheckConstraint('cost_price >= 0', name='ck_product_cost_non_negative'),
-        db.CheckConstraint('average_cost >= 0', name='ck_product_average_cost_non_negative'),
+        db.Index("idx_product_active_stock", "is_active", "current_stock"),
+        db.Index("idx_product_category_active", "category_id", "is_active"),
+        db.CheckConstraint("current_stock >= 0", name="ck_product_stock_non_negative"),
+        db.CheckConstraint("regular_price >= 0", name="ck_product_price_non_negative"),
+        db.CheckConstraint("cost_price >= 0", name="ck_product_cost_non_negative"),
+        db.CheckConstraint(
+            "average_cost >= 0", name="ck_product_average_cost_non_negative"
+        ),
     )
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
     name = db.Column(db.String(200), nullable=False, index=True)
     name_ar = db.Column(db.String(200))
     commercial_name = db.Column(db.String(200))
@@ -79,20 +91,24 @@ class Product(TenantScopedMixin, db.Model):
 
     country_of_origin = db.Column(db.String(100))
 
-    category_id = db.Column(db.Integer, db.ForeignKey('product_categories.id'))
-    category = db.relationship('ProductCategory', back_populates='products')
+    category_id = db.Column(db.Integer, db.ForeignKey("product_categories.id"))
+    category = db.relationship("ProductCategory", back_populates="products")
 
-    merchant_customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), index=True)
-    merchant_customer = db.relationship('Customer', foreign_keys=[merchant_customer_id])
+    merchant_customer_id = db.Column(
+        db.Integer, db.ForeignKey("customers.id"), index=True
+    )
+    merchant_customer = db.relationship("Customer", foreign_keys=[merchant_customer_id])
 
     cost_price = db.Column(db.Numeric(15, 3), default=0)
     regular_price = db.Column(db.Numeric(15, 3), nullable=False)
     merchant_price = db.Column(db.Numeric(15, 3))
-    merchant_share = db.Column(db.Numeric(5, 2), default=100.0)  # Percentage share for merchant owner
+    merchant_share = db.Column(
+        db.Numeric(5, 2), default=100.0
+    )  # Percentage share for merchant owner
     partner_price = db.Column(db.Numeric(15, 3))
 
     # VAT treatment: standard = نسبة التينانت، zero = خاضعة 0% (تصدير)، exempt = خارج النطاق
-    tax_treatment = db.Column(db.String(10), default='standard')
+    tax_treatment = db.Column(db.String(10), default="standard")
 
     # SCHEMA NOTE (b2_inventory_costing): the running moving weighted average
     # cost per unit, in base currency.  The stock is valued at
@@ -136,13 +152,13 @@ class Product(TenantScopedMixin, db.Model):
         """
         quantity = Decimal(str(self.current_stock or 0))
         average = Decimal(str(self.average_cost or 0))
-        return (quantity * average).quantize(Decimal('0.001'))
+        return (quantity * average).quantize(Decimal("0.001"))
 
-    unit = db.Column(db.String(20), default='piece')
+    unit = db.Column(db.String(20), default="piece")
     location = db.Column(db.String(50))
 
     warranty_period = db.Column(db.Integer, default=0)
-    warranty_unit = db.Column(db.String(20), default='months')
+    warranty_unit = db.Column(db.String(20), default="months")
 
     is_returnable = db.Column(db.Boolean, default=True)
     return_period_days = db.Column(db.Integer, default=7)
@@ -152,22 +168,37 @@ class Product(TenantScopedMixin, db.Model):
     notes = db.Column(db.Text)
 
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
-    sale_lines = db.relationship('SaleLine', back_populates='product', lazy='dynamic')
-    purchase_lines = db.relationship('PurchaseLine', back_populates='product', lazy='dynamic')
-    stock_movements = db.relationship('StockMovement', back_populates='product', lazy='dynamic', cascade='all, delete-orphan')
-    partner_shares = db.relationship('ProductPartner', back_populates='product', cascade='all, delete-orphan')
+    sale_lines = db.relationship("SaleLine", back_populates="product", lazy="dynamic")
+    purchase_lines = db.relationship(
+        "PurchaseLine", back_populates="product", lazy="dynamic"
+    )
+    stock_movements = db.relationship(
+        "StockMovement",
+        back_populates="product",
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+    )
+    partner_shares = db.relationship(
+        "ProductPartner", back_populates="product", cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
-        return f'<Product {self.name}>'
+        return f"<Product {self.name}>"
 
-    def get_price_for_customer(self, customer_type='regular'):
-        if customer_type == 'partner' and self.partner_price:
+    def get_price_for_customer(self, customer_type="regular"):
+        if customer_type == "partner" and self.partner_price:
             # Treat partner_price as percentage discount
             return self.regular_price * (1 - (self.partner_price / 100))
-        elif customer_type == 'merchant' and self.merchant_price:
+        elif customer_type == "merchant" and self.merchant_price:
             # Treat merchant_price as percentage discount
             return self.regular_price * (1 - (self.merchant_price / 100))
         return self.regular_price
@@ -180,37 +211,39 @@ class Product(TenantScopedMixin, db.Model):
     def is_out_of_stock(self):
         return self.current_stock <= 0
 
-    def get_display_name(self, lang='ar'):
-        if lang == 'ar' and self.name_ar:
+    def get_display_name(self, lang="ar"):
+        if lang == "ar" and self.name_ar:
             return self.name_ar
         return self.name
 
     def to_dict(self, include_cost=False):
         data = {
-            'id': self.id,
-            'name': self.name,
-            'name_ar': self.name_ar,
-            'sku': self.sku,
-            'barcode': self.barcode,
-            'category': self.category.name if self.category else None,
-            'regular_price': float(self.regular_price),
-            'merchant_price': float(self.merchant_price) if self.merchant_price else None,
-            'partner_price': float(self.partner_price) if self.partner_price else None,
-            'current_stock': float(self.current_stock),
-            'unit': self.unit,
-            'is_active': self.is_active,
-            'is_low_stock': self.is_low_stock(),
+            "id": self.id,
+            "name": self.name,
+            "name_ar": self.name_ar,
+            "sku": self.sku,
+            "barcode": self.barcode,
+            "category": self.category.name if self.category else None,
+            "regular_price": float(self.regular_price),
+            "merchant_price": float(self.merchant_price)
+            if self.merchant_price
+            else None,
+            "partner_price": float(self.partner_price) if self.partner_price else None,
+            "current_stock": float(self.current_stock),
+            "unit": self.unit,
+            "is_active": self.is_active,
+            "is_low_stock": self.is_low_stock(),
         }
 
         if include_cost:
-            data['cost_price'] = float(self.cost_price)
-            data['average_cost'] = float(self.average_cost or 0)
-            data['stock_value'] = float(self.stock_value)
+            data["cost_price"] = float(self.cost_price)
+            data["average_cost"] = float(self.average_cost or 0)
+            data["stock_value"] = float(self.stock_value)
 
         return data
 
 
-@event.listens_for(Product, 'before_insert')
+@event.listens_for(Product, "before_insert")
 def _seed_average_cost_from_reference_cost(mapper, connection, target):
     """يبذر متوسط التكلفة المتحرك من سعر التكلفة المرجعي عند الإنشاء.
 
@@ -233,4 +266,3 @@ def _seed_average_cost_from_reference_cost(mapper, connection, target):
     if reference <= 0:
         return
     target.average_cost = reference
-

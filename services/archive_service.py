@@ -1,4 +1,4 @@
-﻿from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from flask import current_app
 from flask_login import current_user
@@ -25,17 +25,16 @@ def resolve_model_class(table_name):
 
     for mapper in registry.mappers:
         model = mapper.class_
-        if getattr(model, '__tablename__', None) == table_name:
+        if getattr(model, "__tablename__", None) == table_name:
             return model
     return None
 
 
 class ArchiveService:
-
     @staticmethod
     def archive_record(table_name, record, reason=None, commit=True):
         try:
-            if hasattr(record, 'to_dict'):
+            if hasattr(record, "to_dict"):
                 data = record.to_dict()
             else:
                 data = {}
@@ -51,25 +50,29 @@ class ArchiveService:
                 table_name=table_name,
                 record_id=record.id,
                 data=data,
-                archived_by=current_user.id if (current_user and current_user.is_authenticated) else None,
-                reason=reason
+                archived_by=current_user.id
+                if (current_user and current_user.is_authenticated)
+                else None,
+                reason=reason,
             )
 
             db.session.add(archived)
 
             if commit:
                 db.session.commit()
-                current_app.logger.info(f'Archived: {table_name} #{record.id}')
+                current_app.logger.info(f"Archived: {table_name} #{record.id}")
             else:
                 db.session.flush()
-                current_app.logger.info(f'Archived (Pending Commit): {table_name} #{record.id}')
+                current_app.logger.info(
+                    f"Archived (Pending Commit): {table_name} #{record.id}"
+                )
 
             return archived
 
         except Exception as e:
             if commit:
                 db.session.rollback()
-            current_app.logger.error(f'Archive failed: {e}')
+            current_app.logger.error(f"Archive failed: {e}")
             raise
 
     @staticmethod
@@ -81,16 +84,16 @@ class ArchiveService:
     def hard_delete(table_name, record, archive_first=True):
         try:
             if archive_first:
-                ArchiveService.archive_record(table_name, record, reason='Hard Delete')
+                ArchiveService.archive_record(table_name, record, reason="Hard Delete")
 
             db.session.delete(record)
             db.session.commit()
 
-            current_app.logger.warning(f'Hard deleted: {table_name} #{record.id}')
+            current_app.logger.warning(f"Hard deleted: {table_name} #{record.id}")
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f'Hard delete failed: {e}')
+            current_app.logger.error(f"Hard delete failed: {e}")
             raise
 
     @staticmethod
@@ -99,21 +102,23 @@ class ArchiveService:
             model_class = resolve_model_class(archived_record.table_name)
 
             if not model_class:
-                raise ValueError(f'Model not found: {archived_record.table_name}')
+                raise ValueError(f"Model not found: {archived_record.table_name}")
 
             existing = db.session.get(model_class, archived_record.record_id)
 
             if existing:
                 existing.is_active = True
                 db.session.commit()
-                current_app.logger.info(f'Restored: {archived_record.table_name} #{archived_record.record_id}')
+                current_app.logger.info(
+                    f"Restored: {archived_record.table_name} #{archived_record.record_id}"
+                )
                 return existing
 
-            raise ValueError('Cannot restore: Record not found in database')
+            raise ValueError("Cannot restore: Record not found in database")
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f'Restore failed: {e}')
+            current_app.logger.error(f"Restore failed: {e}")
             raise
 
     @staticmethod
@@ -128,11 +133,11 @@ class ArchiveService:
     @staticmethod
     def cleanup_old_archives(days=365):
         from datetime import timedelta
+
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
         old_archives = ArchivedRecord.query.filter(
-            ArchivedRecord.archived_at < cutoff,
-            ArchivedRecord.can_restore.is_(False)
+            ArchivedRecord.archived_at < cutoff, ArchivedRecord.can_restore.is_(False)
         ).all()
 
         count = 0
@@ -142,6 +147,6 @@ class ArchiveService:
 
         db.session.commit()
 
-        current_app.logger.info(f'Cleaned up {count} old archives')
+        current_app.logger.info(f"Cleaned up {count} old archives")
 
         return count

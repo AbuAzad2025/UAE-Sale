@@ -4,26 +4,25 @@ from typing import Dict
 
 
 class WhatsAppService:
-
     @staticmethod
     def is_enabled() -> bool:
-        return bool(os.environ.get('WHATSAPP_API_KEY'))
+        return bool(os.environ.get("WHATSAPP_API_KEY"))
 
     @staticmethod
     def send_invoice(phone: str, invoice_number: str, pdf_url: str = None) -> Dict:
         if not WhatsAppService.is_enabled():
-            return {'success': False, 'error': 'WhatsApp not configured'}
+            return {"success": False, "error": "WhatsApp not configured"}
 
-        api_key = os.environ.get('WHATSAPP_API_KEY')
-        api_url = os.environ.get('WHATSAPP_API_URL', 'https://api.ultramsg.com')
-        instance_id = os.environ.get('WHATSAPP_INSTANCE_ID')
+        api_key = os.environ.get("WHATSAPP_API_KEY")
+        api_url = os.environ.get("WHATSAPP_API_URL", "https://api.ultramsg.com")
+        instance_id = os.environ.get("WHATSAPP_INSTANCE_ID")
 
         if not all([api_key, instance_id]):
-            return {'success': False, 'error': 'Missing configuration'}
+            return {"success": False, "error": "Missing configuration"}
 
-        phone_clean = phone.replace('+', '').replace(' ', '').replace('-', '')
-        if not phone_clean.startswith('971'):
-            phone_clean = '971' + phone_clean.lstrip('0')
+        phone_clean = phone.replace("+", "").replace(" ", "").replace("-", "")
+        if not phone_clean.startswith("971"):
+            phone_clean = "971" + phone_clean.lstrip("0")
 
         message = """
 السلام عليكم ورحمة الله وبركاته
@@ -37,51 +36,49 @@ class WhatsAppService:
 
         try:
             if pdf_url:
-                endpoint = f'{api_url}/{instance_id}/messages/document'
+                endpoint = f"{api_url}/{instance_id}/messages/document"
                 payload = {
-                    'token': api_key,
-                    'to': phone_clean,
-                    'document': pdf_url,
-                    'caption': message
+                    "token": api_key,
+                    "to": phone_clean,
+                    "document": pdf_url,
+                    "caption": message,
                 }
             else:
-                endpoint = f'{api_url}/{instance_id}/messages/chat'
-                payload = {
-                    'token': api_key,
-                    'to': phone_clean,
-                    'body': message
-                }
+                endpoint = f"{api_url}/{instance_id}/messages/chat"
+                payload = {"token": api_key, "to": phone_clean, "body": message}
 
             response = requests.post(endpoint, data=payload, timeout=10)
             result = response.json()
 
             return {
-                'success': True,
-                'message_id': result.get('id'),
-                'phone': phone_clean
+                "success": True,
+                "message_id": result.get("id"),
+                "phone": phone_clean,
             }
 
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     @staticmethod
-    def send_payment_reminder(phone: str, customer_name: str, amount_due: float) -> Dict:
+    def send_payment_reminder(
+        phone: str, customer_name: str, amount_due: float
+    ) -> Dict:
         if not WhatsAppService.is_enabled():
-            return {'success': False, 'error': 'WhatsApp not configured'}
+            return {"success": False, "error": "WhatsApp not configured"}
 
-        api_key = os.environ.get('WHATSAPP_API_KEY')
-        api_url = os.environ.get('WHATSAPP_API_URL', 'https://api.ultramsg.com')
-        instance_id = os.environ.get('WHATSAPP_INSTANCE_ID')
+        api_key = os.environ.get("WHATSAPP_API_KEY")
+        api_url = os.environ.get("WHATSAPP_API_URL", "https://api.ultramsg.com")
+        instance_id = os.environ.get("WHATSAPP_INSTANCE_ID")
 
         if not all([api_key, api_url, instance_id]):
-            return {'success': False, 'error': 'Missing WhatsApp configuration: WHATSAPP_API_KEY/WHATSAPP_API_URL/WHATSAPP_INSTANCE_ID'}
+            return {
+                "success": False,
+                "error": "Missing WhatsApp configuration: WHATSAPP_API_KEY/WHATSAPP_API_URL/WHATSAPP_INSTANCE_ID",
+            }
 
-        phone_clean = phone.replace('+', '').replace(' ', '').replace('-', '')
-        if not phone_clean.startswith('971'):
-            phone_clean = '971' + phone_clean.lstrip('0')
+        phone_clean = phone.replace("+", "").replace(" ", "").replace("-", "")
+        if not phone_clean.startswith("971"):
+            phone_clean = "971" + phone_clean.lstrip("0")
 
         message = """
 السلام عليكم {customer_name}
@@ -94,61 +91,64 @@ class WhatsAppService:
         """.strip().format(customer_name=customer_name, amount_due=amount_due)
 
         try:
-            endpoint = f'{api_url}/{instance_id}/messages/chat'
-            response = requests.post(endpoint, data={
-                'token': api_key,
-                'to': phone_clean,
-                'body': message
-            }, timeout=10)
+            endpoint = f"{api_url}/{instance_id}/messages/chat"
+            response = requests.post(
+                endpoint,
+                data={"token": api_key, "to": phone_clean, "body": message},
+                timeout=10,
+            )
 
             if response.status_code < 200 or response.status_code >= 300:
                 return {
-                    'success': False,
-                    'error': f'WhatsApp API HTTP {response.status_code}: {response.text[:200]}',
+                    "success": False,
+                    "error": f"WhatsApp API HTTP {response.status_code}: {response.text[:200]}",
                 }
 
             try:
                 result = response.json()
             except ValueError:
                 return {
-                    'success': False,
-                    'error': 'WhatsApp API returned non-JSON response',
+                    "success": False,
+                    "error": "WhatsApp API returned non-JSON response",
                 }
 
-            if isinstance(result, dict) and result.get('error'):
-                return {'success': False, 'error': str(result.get('error'))}
+            if isinstance(result, dict) and result.get("error"):
+                return {"success": False, "error": str(result.get("error"))}
 
             return {
-                'success': True,
-                'message_id': result.get('id') if isinstance(result, dict) else None,
-                'phone': phone_clean
+                "success": True,
+                "message_id": result.get("id") if isinstance(result, dict) else None,
+                "phone": phone_clean,
             }
 
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     @staticmethod
-    def send_quotation(phone: str, quotation_number: str, total_amount: str = None,
-                       currency: str = 'AED', valid_until: str = None, pdf_url: str = None) -> Dict:
+    def send_quotation(
+        phone: str,
+        quotation_number: str,
+        total_amount: str = None,
+        currency: str = "AED",
+        valid_until: str = None,
+        pdf_url: str = None,
+    ) -> Dict:
         if not WhatsAppService.is_enabled():
-            return {'success': False, 'error': 'WhatsApp not configured'}
+            return {"success": False, "error": "WhatsApp not configured"}
 
-        api_key = os.environ.get('WHATSAPP_API_KEY')
-        api_url = os.environ.get('WHATSAPP_API_URL', 'https://api.ultramsg.com')
-        instance_id = os.environ.get('WHATSAPP_INSTANCE_ID')
+        api_key = os.environ.get("WHATSAPP_API_KEY")
+        api_url = os.environ.get("WHATSAPP_API_URL", "https://api.ultramsg.com")
+        instance_id = os.environ.get("WHATSAPP_INSTANCE_ID")
 
         if not all([api_key, instance_id]):
-            return {'success': False, 'error': 'Missing configuration'}
+            return {"success": False, "error": "Missing configuration"}
 
-        phone_clean = phone.replace('+', '').replace(' ', '').replace('-', '')
-        if not phone_clean.startswith('971'):
-            phone_clean = '971' + phone_clean.lstrip('0')
+        phone_clean = phone.replace("+", "").replace(" ", "").replace("-", "")
+        if not phone_clean.startswith("971"):
+            phone_clean = "971" + phone_clean.lstrip("0")
 
-        total_str = f'{total_amount} {currency}' if total_amount else ''
-        validity_str = f'\nصالح حتى: {valid_until}' if valid_until else ''
+        total_str = f"{total_amount} {currency}" if total_amount else ""
+        validity_str = f"\nصالح حتى: {valid_until}" if valid_until else ""
         message = f"""
 السلام عليكم ورحمة الله وبركاته
 
@@ -158,70 +158,70 @@ class WhatsAppService:
 شكراً لتعاملكم معنا.
 """
         try:
-            url = f'{api_url}/{instance_id}/messages/chat'
+            url = f"{api_url}/{instance_id}/messages/chat"
             payload = {
-                'token': api_key,
-                'to': phone_clean,
-                'body': message.strip(),
+                "token": api_key,
+                "to": phone_clean,
+                "body": message.strip(),
             }
             if pdf_url:
-                payload['document'] = pdf_url
+                payload["document"] = pdf_url
             response = requests.post(url, data=payload, timeout=30)
             if response.status_code == 200:
-                return {'success': True, 'response': response.json()}
-            return {'success': False, 'error': response.text}
+                return {"success": True, "response": response.json()}
+            return {"success": False, "error": response.text}
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return {"success": False, "error": str(e)}
 
     @staticmethod
     def send_custom_message(phone: str, message: str) -> Dict:
         if not WhatsAppService.is_enabled():
-            return {'success': False, 'error': 'WhatsApp not configured'}
+            return {"success": False, "error": "WhatsApp not configured"}
 
-        api_key = os.environ.get('WHATSAPP_API_KEY')
-        api_url = os.environ.get('WHATSAPP_API_URL', 'https://api.ultramsg.com')
-        instance_id = os.environ.get('WHATSAPP_INSTANCE_ID')
+        api_key = os.environ.get("WHATSAPP_API_KEY")
+        api_url = os.environ.get("WHATSAPP_API_URL", "https://api.ultramsg.com")
+        instance_id = os.environ.get("WHATSAPP_INSTANCE_ID")
 
         if not all([api_key, api_url, instance_id]):
-            return {'success': False, 'error': 'Missing WhatsApp configuration: WHATSAPP_API_KEY/WHATSAPP_API_URL/WHATSAPP_INSTANCE_ID'}
+            return {
+                "success": False,
+                "error": "Missing WhatsApp configuration: WHATSAPP_API_KEY/WHATSAPP_API_URL/WHATSAPP_INSTANCE_ID",
+            }
 
-        phone_clean = phone.replace('+', '').replace(' ', '').replace('-', '')
-        if not phone_clean.startswith('971'):
-            phone_clean = '971' + phone_clean.lstrip('0')
+        phone_clean = phone.replace("+", "").replace(" ", "").replace("-", "")
+        if not phone_clean.startswith("971"):
+            phone_clean = "971" + phone_clean.lstrip("0")
 
         try:
-            endpoint = f'{api_url}/{instance_id}/messages/chat'
-            response = requests.post(endpoint, data={
-                'token': api_key,
-                'to': phone_clean,
-                'body': message
-            }, timeout=10)
+            endpoint = f"{api_url}/{instance_id}/messages/chat"
+            response = requests.post(
+                endpoint,
+                data={"token": api_key, "to": phone_clean, "body": message},
+                timeout=10,
+            )
 
             if response.status_code < 200 or response.status_code >= 300:
                 return {
-                    'success': False,
-                    'error': f'WhatsApp API HTTP {response.status_code}: {response.text[:200]}',
+                    "success": False,
+                    "error": f"WhatsApp API HTTP {response.status_code}: {response.text[:200]}",
                 }
 
             try:
                 result = response.json()
             except ValueError:
                 return {
-                    'success': False,
-                    'error': 'WhatsApp API returned non-JSON response',
+                    "success": False,
+                    "error": "WhatsApp API returned non-JSON response",
                 }
 
-            if isinstance(result, dict) and result.get('error'):
-                return {'success': False, 'error': str(result.get('error'))}
+            if isinstance(result, dict) and result.get("error"):
+                return {"success": False, "error": str(result.get("error"))}
 
             return {
-                'success': True,
-                'message_id': result.get('id') if isinstance(result, dict) else None,
-                'phone': phone_clean
+                "success": True,
+                "message_id": result.get("id") if isinstance(result, dict) else None,
+                "phone": phone_clean,
             }
 
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            return {"success": False, "error": str(e)}

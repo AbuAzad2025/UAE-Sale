@@ -12,7 +12,8 @@ class Tenant(db.Model):
     """
     معلومات الكراج/الشركة المستأجرة للنظام
     """
-    __tablename__ = 'tenants'
+
+    __tablename__ = "tenants"
 
     id = db.Column(db.Integer, primary_key=True)
 
@@ -23,14 +24,16 @@ class Tenant(db.Model):
     slug = db.Column(db.String(100), unique=True, nullable=False, index=True)
 
     # Business Type - نوع النشاط
-    business_type = db.Column(db.String(50), default='garage')  # garage, workshop, spare_parts, etc.
+    business_type = db.Column(
+        db.String(50), default="garage"
+    )  # garage, workshop, spare_parts, etc.
     industry = db.Column(db.String(100))  # automotive, heavy_equipment, etc.
 
     # Contact Info - معلومات التواصل
     address_ar = db.Column(db.Text)
     address_en = db.Column(db.Text)
     city = db.Column(db.String(100))
-    country = db.Column(db.String(100), default='UAE')
+    country = db.Column(db.String(100), default="UAE")
 
     phone_1 = db.Column(db.String(50))
     phone_2 = db.Column(db.String(50))
@@ -52,17 +55,19 @@ class Tenant(db.Model):
     payment_terms_ar = db.Column(db.Text)
     footer_text_ar = db.Column(db.Text)
     default_invoice_note_ar = db.Column(db.Text)
-    active_template = db.Column(db.String(50), default='modern')
+    active_template = db.Column(db.String(50), default="modern")
 
     # Branding - العلامة التجارية
     logo_url = db.Column(db.String(500))
     logo_dark_url = db.Column(db.String(500))
     favicon_url = db.Column(db.String(500))
-    brand_color_primary = db.Column(db.String(20), default='#007A3D')
-    brand_color_secondary = db.Column(db.String(20), default='#D4AF37')
+    brand_color_primary = db.Column(db.String(20), default="#007A3D")
+    brand_color_secondary = db.Column(db.String(20), default="#D4AF37")
 
     # Subscription - الاشتراك
-    subscription_plan = db.Column(db.String(50), default='basic')  # basic, pro, enterprise
+    subscription_plan = db.Column(
+        db.String(50), default="basic"
+    )  # basic, pro, enterprise
     # تاريخ توقيع العقد من قبل الشركة (اختياري) — يظهر في النموذج فقط للمصادقة المبدئية
     contract_signed_at = db.Column(db.DateTime, nullable=True)
     subscription_start = db.Column(db.DateTime)
@@ -86,24 +91,24 @@ class Tenant(db.Model):
     enable_maintenance = db.Column(db.Boolean, default=True)
 
     # Preferences - التفضيلات
-    default_currency = db.Column(db.String(3), default='AED')
-    default_language = db.Column(db.String(10), default='ar')
-    timezone = db.Column(db.String(50), default='Asia/Dubai')
-    date_format = db.Column(db.String(20), default='%Y-%m-%d')
-    time_format = db.Column(db.String(20), default='%H:%M')
+    default_currency = db.Column(db.String(3), default="AED")
+    default_language = db.Column(db.String(10), default="ar")
+    timezone = db.Column(db.String(50), default="Asia/Dubai")
+    date_format = db.Column(db.String(20), default="%Y-%m-%d")
+    time_format = db.Column(db.String(20), default="%H:%M")
 
     # Financial Settings - إعدادات مالية
     fiscal_year_start = db.Column(db.Integer, default=1)  # Month: 1-12
     enable_tax = db.Column(db.Boolean, default=True)
-    default_tax_rate = db.Column(db.Numeric(5, 2), default=Decimal('5.00'))
+    default_tax_rate = db.Column(db.Numeric(5, 2), default=Decimal("5.00"))
     # الدولة الضريبية (ISO-2) + نسبة الضريبة (UAE 5%، SA 15%...) — المحرك يلتقط الفرع
-    tax_country = db.Column(db.String(2), default='AE')
+    tax_country = db.Column(db.String(2), default="AE")
     # شامل الضريبة (True) أم إضافي (False)
     tax_inclusive = db.Column(db.Boolean, default=False)
     # ضريبة الشركات (الدخل) — لكل تينانت حسب القانون المحلي
     corp_tax_enabled = db.Column(db.Boolean, default=False)
-    corp_tax_rate = db.Column(db.Numeric(5, 2), default=Decimal('9.00'))
-    corp_tax_threshold = db.Column(db.Numeric(15, 2), default=Decimal('375000.00'))
+    corp_tax_rate = db.Column(db.Numeric(5, 2), default=Decimal("9.00"))
+    corp_tax_threshold = db.Column(db.Numeric(15, 2), default=Decimal("375000.00"))
     # عملات مسموحة للشركة (مفصولة بفاصلة، فارغ = كل عملات Lookup)
     allowed_currencies = db.Column(db.Text)
 
@@ -113,15 +118,22 @@ class Tenant(db.Model):
     suspension_reason = db.Column(db.Text)
 
     # Meta
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
-                           onupdate=lambda: datetime.now(timezone.utc))
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id', use_alter=True), nullable=True)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    created_by = db.Column(
+        db.Integer, db.ForeignKey("users.id", use_alter=True), nullable=True
+    )
 
     # Relationships
 
     def __repr__(self):
-        return f'<Tenant {self.name}>'
+        return f"<Tenant {self.name}>"
 
     @staticmethod
     def get_current():
@@ -130,10 +142,10 @@ class Tenant(db.Model):
         if not tenant:
             # Create default tenant
             tenant = Tenant(
-                name='Default Garage',
-                name_ar='كراج افتراضي',
-                slug='default',
-                business_type='garage'
+                name="Default Garage",
+                name_ar="كراج افتراضي",
+                slug="default",
+                business_type="garage",
             )
             db.session.add(tenant)
             db.session.commit()
@@ -154,13 +166,13 @@ class Tenant(db.Model):
 
     def to_dict(self):
         return {
-            'id': self.id,
-            'name': self.name,
-            'name_ar': self.name_ar,
-            'slug': self.slug,
-            'business_type': self.business_type,
-            'country': self.country,
-            'default_currency': self.default_currency,
-            'is_active': self.is_active,
-            'subscription_plan': self.subscription_plan,
+            "id": self.id,
+            "name": self.name,
+            "name_ar": self.name_ar,
+            "slug": self.slug,
+            "business_type": self.business_type,
+            "country": self.country,
+            "default_currency": self.default_currency,
+            "is_active": self.is_active,
+            "subscription_plan": self.subscription_plan,
         }

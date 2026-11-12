@@ -60,7 +60,9 @@ class TransformersBrain:
         # ذاكرة السياق
         self.context_memory = []
 
-        logger.info(f"🤖 Transformers Brain initialized - Vocab: {vocab_size}, Model: {d_model}, Heads: {n_heads}")
+        logger.info(
+            f"🤖 Transformers Brain initialized - Vocab: {vocab_size}, Model: {d_model}, Heads: {n_heads}"
+        )
 
     def _build_vocabulary(self) -> dict:
         """
@@ -68,37 +70,53 @@ class TransformersBrain:
         """
         # كلمات محاسبية
         accounting_words = [
-            'قيد', 'مدين', 'دائن', 'ميزانية', 'أصول', 'خصوم', 'إيرادات', 'مصروفات',
-            'ربح', 'خسارة', 'محاسبة', 'تدقيق', 'مراجعة', 'قوائم', 'مالية'
+            "قيد",
+            "مدين",
+            "دائن",
+            "ميزانية",
+            "أصول",
+            "خصوم",
+            "إيرادات",
+            "مصروفات",
+            "ربح",
+            "خسارة",
+            "محاسبة",
+            "تدقيق",
+            "مراجعة",
+            "قوائم",
+            "مالية",
         ]
 
         # كلمات ضريبية
-        tax_words = [
-            'ضريبة', 'vat', 'جمارك', 'رسوم', 'إعفاء', 'خصم', 'تسجيل'
-        ]
+        tax_words = ["ضريبة", "vat", "جمارك", "رسوم", "إعفاء", "خصم", "تسجيل"]
 
         # كلمات إدارية
         management_words = [
-            'مخزون', 'طلب', 'عميل', 'مورد', 'مبيعات', 'مشتريات', 'إدارة', 'تخطيط'
+            "مخزون",
+            "طلب",
+            "عميل",
+            "مورد",
+            "مبيعات",
+            "مشتريات",
+            "إدارة",
+            "تخطيط",
         ]
 
         # كلمات هندسية
-        engineering_words = [
-            'محرك', 'صيانة', 'إصلاح', 'زيت', 'فرامل', 'معدات', 'أعطال'
-        ]
+        engineering_words = ["محرك", "صيانة", "إصلاح", "زيت", "فرامل", "معدات", "أعطال"]
 
         # دمج كل الكلمات
         all_words = accounting_words + tax_words + management_words + engineering_words
 
         # إضافة كلمات عامة
-        all_words.extend(['ما', 'كيف', 'متى', 'أين', 'لماذا', 'هل', 'هذا', 'ذلك'])
+        all_words.extend(["ما", "كيف", "متى", "أين", "لماذا", "هل", "هذا", "ذلك"])
 
         # بناء القاموس
         vocab = {word: idx for idx, word in enumerate(all_words)}
-        vocab['<PAD>'] = len(vocab)  # Padding
-        vocab['<UNK>'] = len(vocab)  # Unknown
-        vocab['<START>'] = len(vocab)  # Start
-        vocab['<END>'] = len(vocab)  # End
+        vocab["<PAD>"] = len(vocab)  # Padding
+        vocab["<UNK>"] = len(vocab)  # Unknown
+        vocab["<START>"] = len(vocab)  # Start
+        vocab["<END>"] = len(vocab)  # End
 
         return vocab
 
@@ -106,7 +124,9 @@ class TransformersBrain:
     # Self-Attention Mechanism - آلية الانتباه الذاتي
     # ========================================================================
 
-    def self_attention(self, query: List[float], key: List[float], value: List[float]) -> List[float]:
+    def self_attention(
+        self, query: List[float], key: List[float], value: List[float]
+    ) -> List[float]:
         """
         آلية الانتباه الذاتي
 
@@ -135,7 +155,9 @@ class TransformersBrain:
 
         return output
 
-    def multi_head_attention(self, query: List[float], key: List[float], value: List[float]) -> List[float]:
+    def multi_head_attention(
+        self, query: List[float], key: List[float], value: List[float]
+    ) -> List[float]:
         """
         الانتباه متعدد الرؤوس
 
@@ -149,7 +171,7 @@ class TransformersBrain:
             heads_output.extend(head_output)
 
         # دمج النتائج
-        return heads_output[:self.d_model]  # تقليم للحجم الصحيح
+        return heads_output[: self.d_model]  # تقليم للحجم الصحيح
 
     def _dot_product(self, vec1: List[float], vec2: List[float]) -> float:
         """حساب الضرب النقطي"""
@@ -201,7 +223,7 @@ class TransformersBrain:
         # الطبقة الثانية (تقليص)
         output = [h * 0.25 for h in hidden]
 
-        return output[:self.d_model]
+        return output[: self.d_model]
 
     # ========================================================================
     # Transformer Block - كتلة المحول
@@ -267,8 +289,9 @@ class TransformersBrain:
         tokens = self._tokenize(text)
 
         # 2. Word Embeddings (تضمين الكلمات)
-        embeddings = [self._get_embedding(token, pos)
-                      for pos, token in enumerate(tokens)]
+        embeddings = [
+            self._get_embedding(token, pos) for pos, token in enumerate(tokens)
+        ]
 
         # 3. تطبيق Transformer Blocks
         transformed = embeddings[0] if embeddings else [0.0] * self.d_model
@@ -285,14 +308,14 @@ class TransformersBrain:
         attention_map = self._build_attention_map(tokens)
 
         return {
-            'tokens': tokens,
-            'embeddings': embeddings,
-            'attention_map': attention_map,
-            'semantic_representation': transformed,
-            'intent': intent,
-            'entities': entities,
-            'confidence': 0.92,
-            'model': 'transformers'
+            "tokens": tokens,
+            "embeddings": embeddings,
+            "attention_map": attention_map,
+            "semantic_representation": transformed,
+            "intent": intent,
+            "entities": entities,
+            "confidence": 0.92,
+            "model": "transformers",
         }
 
     def _tokenize(self, text: str) -> List[str]:
@@ -316,7 +339,7 @@ class TransformersBrain:
             word_emb = self.word_embeddings[token]
         else:
             # إنشاء embedding عشوائي متسق
-            word_idx = self.vocabulary.get(token, self.vocabulary['<UNK>'])
+            word_idx = self.vocabulary.get(token, self.vocabulary["<UNK>"])
             np.random.seed(word_idx)  # ثبات النتائج
             word_emb = np.random.randn(self.d_model).tolist()
             self.word_embeddings[token] = word_emb
@@ -334,39 +357,40 @@ class TransformersBrain:
         text_lower = text.lower()
 
         # تحليل النية
-        if '؟' in text or any(kw in text_lower for kw in ['ما', 'كيف', 'متى', 'أين']):
-            return 'question'
-        elif any(kw in text_lower for kw in ['احسب', 'calculate']):
-            return 'calculation'
-        elif any(kw in text_lower for kw in ['اشرح', 'explain']):
-            return 'explanation'
-        elif any(kw in text_lower for kw in ['توقع', 'predict']):
-            return 'prediction'
+        if "؟" in text or any(kw in text_lower for kw in ["ما", "كيف", "متى", "أين"]):
+            return "question"
+        elif any(kw in text_lower for kw in ["احسب", "calculate"]):
+            return "calculation"
+        elif any(kw in text_lower for kw in ["اشرح", "explain"]):
+            return "explanation"
+        elif any(kw in text_lower for kw in ["توقع", "predict"]):
+            return "prediction"
         else:
-            return 'statement'
+            return "statement"
 
     def _extract_entities(self, text: str, tokens: List[str]) -> Dict[str, List[str]]:
         """استخراج الكيانات المسماة"""
         entities = {
-            'numbers': [],
-            'accounting_terms': [],
-            'tax_terms': [],
-            'management_terms': []
+            "numbers": [],
+            "accounting_terms": [],
+            "tax_terms": [],
+            "management_terms": [],
         }
 
         # استخراج الأرقام
         import re
-        numbers = re.findall(r'\d+\.?\d*', text)
-        entities['numbers'] = numbers
+
+        numbers = re.findall(r"\d+\.?\d*", text)
+        entities["numbers"] = numbers
 
         # استخراج المصطلحات
         for token in tokens:
-            if token in ['قيد', 'مدين', 'دائن', 'ميزانية']:
-                entities['accounting_terms'].append(token)
-            elif token in ['ضريبة', 'vat', 'جمارك']:
-                entities['tax_terms'].append(token)
-            elif token in ['مخزون', 'عميل', 'مورد']:
-                entities['management_terms'].append(token)
+            if token in ["قيد", "مدين", "دائن", "ميزانية"]:
+                entities["accounting_terms"].append(token)
+            elif token in ["ضريبة", "vat", "جمارك"]:
+                entities["tax_terms"].append(token)
+            elif token in ["مخزون", "عميل", "مورد"]:
+                entities["management_terms"].append(token)
 
         return entities
 
@@ -413,21 +437,23 @@ class TransformersBrain:
         understanding = self.understand(prompt)
 
         # توليد الرد بناءً على النية
-        intent = understanding['intent']
-        entities = understanding['entities']
+        intent = understanding["intent"]
+        entities = understanding["entities"]
 
-        if intent == 'question':
-            if entities['tax_terms']:
-                response = "📊 بناءً على تحليل Transformers، سأجيب عن سؤالك حول الضرائب..."
-            elif entities['accounting_terms']:
+        if intent == "question":
+            if entities["tax_terms"]:
+                response = (
+                    "📊 بناءً على تحليل Transformers، سأجيب عن سؤالك حول الضرائب..."
+                )
+            elif entities["accounting_terms"]:
                 response = "💼 بناءً على فهمي العميق للمحاسبة..."
             else:
                 response = "🤔 دعني أفكر في سؤالك باستخدام الانتباه متعدد الرؤوس..."
 
-        elif intent == 'calculation':
+        elif intent == "calculation":
             response = "🧮 سأحسب ذلك باستخدام معالجة متقدمة..."
 
-        elif intent == 'prediction':
+        elif intent == "prediction":
             response = "🔮 بناءً على تحليل الأنماط باستخدام Transformers..."
 
         else:
@@ -443,13 +469,15 @@ class TransformersBrain:
         """إضافة للسياق"""
         understanding = self.understand(text)
 
-        self.context_memory.append({
-            'text': text,
-            'timestamp': datetime.now().isoformat(),
-            'representation': understanding['semantic_representation'],
-            'intent': understanding['intent'],
-            'entities': understanding['entities']
-        })
+        self.context_memory.append(
+            {
+                "text": text,
+                "timestamp": datetime.now().isoformat(),
+                "representation": understanding["semantic_representation"],
+                "intent": understanding["intent"],
+                "entities": understanding["entities"],
+            }
+        )
 
         # الاحتفاظ بآخر 20 فقط
         if len(self.context_memory) > 20:
@@ -460,7 +488,7 @@ class TransformersBrain:
         if not self.context_memory:
             return "لا يوجد سياق سابق"
 
-        intents = [ctx['intent'] for ctx in self.context_memory]
+        intents = [ctx["intent"] for ctx in self.context_memory]
         most_common_intent = max(set(intents), key=intents.count)
 
         return f"السياق: {len(self.context_memory)} رسالة - النية الغالبة: {most_common_intent}"

@@ -52,17 +52,17 @@ except Exception:  # pragma: no cover - الوحدة تُسلَّم بالتوا
     AccountResolver = None  # type: ignore[assignment,misc]
 
 FALLBACK_ACCOUNT_CODES = {
-    'AR_CONTROL': '1130',
-    'AP_CONTROL': '2110',
-    'FX_GAIN': '4400',
-    'FX_LOSS': '6900',
+    "AR_CONTROL": "1130",
+    "AP_CONTROL": "2110",
+    "FX_GAIN": "4400",
+    "FX_LOSS": "6900",
 }
 
-MONEY_QUANTUM = Decimal('0.01')
-ZERO = Decimal('0.00')
-BALANCE_TOLERANCE = Decimal('0.0001')
+MONEY_QUANTUM = Decimal("0.01")
+ZERO = Decimal("0.00")
+BALANCE_TOLERANCE = Decimal("0.0001")
 # الحالة التي تكون فيها الفاتورة أو الشراء مُرحَّلة في الأستاذ العام
-POSTED_STATUS = 'confirmed'
+POSTED_STATUS = "confirmed"
 
 
 def _q2(value):
@@ -75,11 +75,11 @@ def _dec(value):
     if isinstance(value, Decimal):
         return value
     if value is None:
-        return Decimal('0')
+        return Decimal("0")
     try:
         return Decimal(str(value))
     except Exception:
-        return Decimal('0')
+        return Decimal("0")
 
 
 def _resolve_account(role_value, fallback_code):
@@ -95,17 +95,25 @@ def _resolve_account(role_value, fallback_code):
 
 def _clamp_non_negative(value):
     value = Decimal(str(value))
-    return value if value > 0 else Decimal('0.00')
+    return value if value > 0 else Decimal("0.00")
 
 
 def _balance_sheet_line(code, role_label, delta):
     """مدين/دائن سطر ميزانية حسب إشارة الفرق (None إذا لا فرق)."""
     if delta > 0:
-        return {'account_code': code, 'account_role': role_label,
-                'debit': delta, 'credit': Decimal('0.00')}
+        return {
+            "account_code": code,
+            "account_role": role_label,
+            "debit": delta,
+            "credit": Decimal("0.00"),
+        }
     if delta < 0:
-        return {'account_code': code, 'account_role': role_label,
-                'debit': Decimal('0.00'), 'credit': -delta}
+        return {
+            "account_code": code,
+            "account_role": role_label,
+            "debit": Decimal("0.00"),
+            "credit": -delta,
+        }
     return None
 
 
@@ -125,7 +133,7 @@ def _as_of_datetime(value):
             parsed = datetime.fromisoformat(text)
         except ValueError:
             try:
-                parsed = datetime.strptime(text, '%Y-%m-%d')
+                parsed = datetime.strptime(text, "%Y-%m-%d")
             except ValueError:
                 return None
         if len(text) == 10:
@@ -160,7 +168,7 @@ def _approved_returns(sale_ids):
     # دفعات صغيرة: SQLite/MySQL تحدّ عدد المتغيرات في استعلام واحد.
     unique_ids = list(dict.fromkeys(sale_ids))
     for start in range(0, len(unique_ids), 400):
-        batch = unique_ids[start:start + 400]
+        batch = unique_ids[start : start + 400]
         try:
             rows = db.session.execute(
                 select(
@@ -169,7 +177,7 @@ def _approved_returns(sale_ids):
                     ProductReturn.__table__.c.exchange_rate,
                 ).where(
                     ProductReturn.__table__.c.sale_id.in_(batch),
-                    ProductReturn.__table__.c.status == 'approved',
+                    ProductReturn.__table__.c.status == "approved",
                 )
             ).fetchall()
         except Exception:  # pragma: no cover - لا يُفشل التسوية بسبب المرتجعات
@@ -177,7 +185,7 @@ def _approved_returns(sale_ids):
         for row in rows:
             foreign = _dec(row.refund_amount)
             rate = _dec(row.exchange_rate or 1)
-            base, foreign_total = totals.get(row.sale_id, (Decimal('0'), Decimal('0')))
+            base, foreign_total = totals.get(row.sale_id, (Decimal("0"), Decimal("0")))
             totals[row.sale_id] = (base + foreign * rate, foreign_total + foreign)
     return totals
 
@@ -193,7 +201,7 @@ class FXRateUnavailable(ValueError):
 class FXRevaluationService:
     """تجميع الأرصدة المفتوحة بالعملة الأجنبية وإنتاج قيد إعادة تقييم غير محقق."""
 
-    REFERENCE_TYPE = 'fx_revaluation'
+    REFERENCE_TYPE = "fx_revaluation"
 
     # ------------------------------------------------------------------
     # الفترة ومرجع القيد
@@ -229,12 +237,12 @@ class FXRevaluationService:
         يُكتشف القيد السابق ولا يُرحَّل قيد ثانٍ.
         """
         moment = _as_of_datetime(as_of) or datetime.now(timezone.utc)
-        return f'{moment.year:04d}-{moment.month:02d}'
+        return f"{moment.year:04d}-{moment.month:02d}"
 
     @staticmethod
     def reference_id_for(period_key):
         """معرّف مرجع القيد = الفترة بصيغة YYYYMM (بحث دقيق عن القيد السابق)."""
-        digits = ''.join(ch for ch in str(period_key or '') if ch.isdigit())
+        digits = "".join(ch for ch in str(period_key or "") if ch.isdigit())
         return int(digits) if digits else 0
 
     @staticmethod
@@ -253,7 +261,7 @@ class FXRevaluationService:
         period = FXRevaluationService.fiscal_period(as_of)
         if period is None:
             return None
-        if getattr(period, 'is_closed', False):
+        if getattr(period, "is_closed", False):
             return None
         return period
 
@@ -279,13 +287,13 @@ class FXRevaluationService:
         else:
             query = query.filter(GLJournalEntry.tenant_id == tenant_id)
         for entry in query.all():
-            if getattr(entry, 'entry_type', '') == 'reversing':
+            if getattr(entry, "entry_type", "") == "reversing":
                 continue
-            if getattr(entry, 'reversed_entry_id', None):
+            if getattr(entry, "reversed_entry_id", None):
                 continue
-            if getattr(entry, 'is_reversed', False):
+            if getattr(entry, "is_reversed", False):
                 continue
-            if not getattr(entry, 'is_posted', True):
+            if not getattr(entry, "is_posted", True):
                 continue
             return entry
         return None
@@ -327,27 +335,30 @@ class FXRevaluationService:
             rate = _dec(sale.exchange_rate)
             if rate <= 0:
                 continue
-            returned_base, _returned_foreign = returns.get(sale.id, (Decimal('0'), Decimal('0')))
+            returned_base, _returned_foreign = returns.get(
+                sale.id, (Decimal("0"), Decimal("0"))
+            )
             carrying = (
-                _dec(sale.amount_base)
-                - _dec(sale.paid_amount_base)
-                - returned_base
+                _dec(sale.amount_base) - _dec(sale.paid_amount_base) - returned_base
             )
             carrying = _clamp_non_negative(carrying)
             if carrying <= 0:
                 continue
             foreign = carrying / rate
-            entry = balances.setdefault(currency, {
-                'foreign': Decimal('0.00'),
-                'foreign_exact': Decimal('0'),
-                'historical_base': Decimal('0.00'),
-                'historical_rates': [],
-            })
-            entry['foreign'] += _q2(foreign)
-            entry['foreign_exact'] += foreign
-            entry['historical_base'] += _q2(carrying)
-            if str(rate) not in entry['historical_rates']:
-                entry['historical_rates'].append(str(rate))
+            entry = balances.setdefault(
+                currency,
+                {
+                    "foreign": Decimal("0.00"),
+                    "foreign_exact": Decimal("0"),
+                    "historical_base": Decimal("0.00"),
+                    "historical_rates": [],
+                },
+            )
+            entry["foreign"] += _q2(foreign)
+            entry["foreign_exact"] += foreign
+            entry["historical_base"] += _q2(carrying)
+            if str(rate) not in entry["historical_rates"]:
+                entry["historical_rates"].append(str(rate))
         return balances
 
     @staticmethod
@@ -385,17 +396,20 @@ class FXRevaluationService:
             if carrying <= 0:
                 continue
             foreign = carrying / rate
-            entry = balances.setdefault(currency, {
-                'foreign': Decimal('0.00'),
-                'foreign_exact': Decimal('0'),
-                'historical_base': Decimal('0.00'),
-                'historical_rates': [],
-            })
-            entry['foreign'] += _q2(foreign)
-            entry['foreign_exact'] += foreign
-            entry['historical_base'] += _q2(carrying)
-            if str(rate) not in entry['historical_rates']:
-                entry['historical_rates'].append(str(rate))
+            entry = balances.setdefault(
+                currency,
+                {
+                    "foreign": Decimal("0.00"),
+                    "foreign_exact": Decimal("0"),
+                    "historical_base": Decimal("0.00"),
+                    "historical_rates": [],
+                },
+            )
+            entry["foreign"] += _q2(foreign)
+            entry["foreign_exact"] += foreign
+            entry["historical_base"] += _q2(carrying)
+            if str(rate) not in entry["historical_rates"]:
+                entry["historical_rates"].append(str(rate))
         return balances
 
     # ------------------------------------------------------------------
@@ -409,14 +423,16 @@ class FXRevaluationService:
         if currency in overrides:
             rate = _dec(overrides[currency])
             if rate <= 0:
-                raise ValueError(f'Invalid override rate for {currency}')
+                raise ValueError(f"Invalid override rate for {currency}")
             return rate
         known = FXRevaluationService.known_currencies(base)
         if known and currency not in known:
-            raise FXRateUnavailable(f'No exchange rate available for {currency} to {base}')
+            raise FXRateUnavailable(
+                f"No exchange rate available for {currency} to {base}"
+            )
         rate = _dec(CurrencyService.get_exchange_rate(currency, base))
         if rate <= 0:
-            raise FXRateUnavailable(f'No usable exchange rate for {currency} to {base}')
+            raise FXRateUnavailable(f"No usable exchange rate for {currency} to {base}")
         return rate
 
     @staticmethod
@@ -428,7 +444,9 @@ class FXRevaluationService:
         تُتخطّى العملة التي لا سعر لها بدل ترحيل قيد خاطئ.
         """
         try:
-            rates = CurrencyService.get_all_rates(base or FXRevaluationService.base_currency())
+            rates = CurrencyService.get_all_rates(
+                base or FXRevaluationService.base_currency()
+            )
         except Exception:
             return set()
         return {str(code).upper() for code in (rates or {})}
@@ -446,10 +464,10 @@ class FXRevaluationService:
         ap_balances = FXRevaluationService.collect_open_ap_balances(as_of=as_of)
         currencies = sorted(set(ar_balances) | set(ap_balances))
 
-        ar_code = _resolve_account('AR_CONTROL', FALLBACK_ACCOUNT_CODES['AR_CONTROL'])
-        ap_code = _resolve_account('AP_CONTROL', FALLBACK_ACCOUNT_CODES['AP_CONTROL'])
-        gain_code = _resolve_account('FX_GAIN', FALLBACK_ACCOUNT_CODES['FX_GAIN'])
-        loss_code = _resolve_account('FX_LOSS', FALLBACK_ACCOUNT_CODES['FX_LOSS'])
+        ar_code = _resolve_account("AR_CONTROL", FALLBACK_ACCOUNT_CODES["AR_CONTROL"])
+        ap_code = _resolve_account("AP_CONTROL", FALLBACK_ACCOUNT_CODES["AP_CONTROL"])
+        gain_code = _resolve_account("FX_GAIN", FALLBACK_ACCOUNT_CODES["FX_GAIN"])
+        loss_code = _resolve_account("FX_LOSS", FALLBACK_ACCOUNT_CODES["FX_LOSS"])
 
         period_key = FXRevaluationService.period_key(as_of)
         fiscal_period = FXRevaluationService.fiscal_period(as_of)
@@ -466,79 +484,106 @@ class FXRevaluationService:
 
             try:
                 current_rate = FXRevaluationService.resolve_rate(
-                    currency, base, overrides)
+                    currency, base, overrides
+                )
             except FXRateUnavailable as exc:
-                skipped.append({'currency': currency, 'reason': str(exc)})
+                skipped.append({"currency": currency, "reason": str(exc)})
                 continue
 
-            hist_ar = _q2(ar.get('historical_base', ZERO))
-            hist_ap = _q2(ap.get('historical_base', ZERO))
-            cur_ar = _q2(_dec(ar.get('foreign_exact', ar.get('foreign', ZERO))) * current_rate)
-            cur_ap = _q2(_dec(ap.get('foreign_exact', ap.get('foreign', ZERO))) * current_rate)
+            hist_ar = _q2(ar.get("historical_base", ZERO))
+            hist_ap = _q2(ap.get("historical_base", ZERO))
+            cur_ar = _q2(
+                _dec(ar.get("foreign_exact", ar.get("foreign", ZERO))) * current_rate
+            )
+            cur_ap = _q2(
+                _dec(ap.get("foreign_exact", ap.get("foreign", ZERO))) * current_rate
+            )
 
-            delta_ar = cur_ar - hist_ar   # زيادة أصل = مكسب
-            delta_ap = cur_ap - hist_ap   # زيادة التزام = خسارة
+            delta_ar = cur_ar - hist_ar  # زيادة أصل = مكسب
+            delta_ap = cur_ap - hist_ap  # زيادة التزام = خسارة
             unrealized = delta_ar - delta_ap
 
-            per_currency.append({
-                'currency': currency,
-                'open_foreign_ar': _q2(ar.get('foreign', ZERO)),
-                'open_foreign_ap': _q2(ap.get('foreign', ZERO)),
-                'historical_base_ar': hist_ar,
-                'historical_base_ap': hist_ap,
-                'current_base_ar': cur_ar,
-                'current_base_ap': cur_ap,
-                'current_rate': current_rate,
-                'historical_rates': sorted(set(
-                    list(ar.get('historical_rates') or []) + list(ap.get('historical_rates') or []))),
-                'historical_base': hist_ar - hist_ap,
-                'current_base': cur_ar - cur_ap,
-                'unrealized_gain_loss': unrealized,
-            })
+            per_currency.append(
+                {
+                    "currency": currency,
+                    "open_foreign_ar": _q2(ar.get("foreign", ZERO)),
+                    "open_foreign_ap": _q2(ap.get("foreign", ZERO)),
+                    "historical_base_ar": hist_ar,
+                    "historical_base_ap": hist_ap,
+                    "current_base_ar": cur_ar,
+                    "current_base_ap": cur_ap,
+                    "current_rate": current_rate,
+                    "historical_rates": sorted(
+                        set(
+                            list(ar.get("historical_rates") or [])
+                            + list(ap.get("historical_rates") or [])
+                        )
+                    ),
+                    "historical_base": hist_ar - hist_ap,
+                    "current_base": cur_ar - cur_ap,
+                    "unrealized_gain_loss": unrealized,
+                }
+            )
             total_unrealized += unrealized
 
-            line_ar = _balance_sheet_line(ar_code, 'AR_CONTROL', delta_ar)
+            line_ar = _balance_sheet_line(ar_code, "AR_CONTROL", delta_ar)
             if line_ar:
-                line_ar['description'] = f'إعادة تقييم ذمم مدينة مفتوحة بعملة {currency}'
+                line_ar["description"] = (
+                    f"إعادة تقييم ذمم مدينة مفتوحة بعملة {currency}"
+                )
                 lines.append(line_ar)
             # الالتزام عكس الأصل: زيادة الذمة الدائنة تُسجل دائنًا
-            line_ap = _balance_sheet_line(ap_code, 'AP_CONTROL', -delta_ap)
+            line_ap = _balance_sheet_line(ap_code, "AP_CONTROL", -delta_ap)
             if line_ap:
-                line_ap['description'] = f'إعادة تقييم ذمم دائنة مفتوحة بعملة {currency}'
+                line_ap["description"] = (
+                    f"إعادة تقييم ذمم دائنة مفتوحة بعملة {currency}"
+                )
                 lines.append(line_ap)
             # سطر ربح/خسارة **لكل عملة**: الربح والخسارة لا يلغيان بعضهما.
             if unrealized > 0:
-                lines.append({'account_code': gain_code, 'account_role': 'FX_GAIN',
-                              'debit': ZERO, 'credit': unrealized,
-                              'description': f'أرباح فرق عملة غير محققة — {currency}'})
+                lines.append(
+                    {
+                        "account_code": gain_code,
+                        "account_role": "FX_GAIN",
+                        "debit": ZERO,
+                        "credit": unrealized,
+                        "description": f"أرباح فرق عملة غير محققة — {currency}",
+                    }
+                )
             elif unrealized < 0:
-                lines.append({'account_code': loss_code, 'account_role': 'FX_LOSS',
-                              'debit': -unrealized, 'credit': ZERO,
-                              'description': f'خسائر فرق عملة غير محققة — {currency}'})
+                lines.append(
+                    {
+                        "account_code": loss_code,
+                        "account_role": "FX_LOSS",
+                        "debit": -unrealized,
+                        "credit": ZERO,
+                        "description": f"خسائر فرق عملة غير محققة — {currency}",
+                    }
+                )
 
-        total_debit = sum((ln['debit'] for ln in lines), ZERO)
-        total_credit = sum((ln['credit'] for ln in lines), ZERO)
+        total_debit = sum((ln["debit"] for ln in lines), ZERO)
+        total_credit = sum((ln["credit"] for ln in lines), ZERO)
 
         return {
-            'base_currency': base,
-            'as_of': as_of,
-            'generated_at': datetime.now(timezone.utc),
-            'dry_run': True,
-            'period_key': period_key,
-            'reference_id': FXRevaluationService.reference_id_for(period_key),
-            'fiscal_period_id': getattr(fiscal_period, 'id', None),
-            'fiscal_period_name': getattr(fiscal_period, 'name', None),
-            'fiscal_period_closed': bool(getattr(fiscal_period, 'is_closed', False)),
-            'already_posted': existing is not None,
-            'existing_entry_id': getattr(existing, 'id', None),
-            'per_currency': per_currency,
-            'skipped_currencies': skipped,
-            'total_unrealized_gain_loss': total_unrealized,
-            'lines': lines,
-            'total_debit': total_debit,
-            'total_credit': total_credit,
-            'balanced': abs(total_debit - total_credit) <= BALANCE_TOLERANCE,
-            'journal_entry_id': None,
+            "base_currency": base,
+            "as_of": as_of,
+            "generated_at": datetime.now(timezone.utc),
+            "dry_run": True,
+            "period_key": period_key,
+            "reference_id": FXRevaluationService.reference_id_for(period_key),
+            "fiscal_period_id": getattr(fiscal_period, "id", None),
+            "fiscal_period_name": getattr(fiscal_period, "name", None),
+            "fiscal_period_closed": bool(getattr(fiscal_period, "is_closed", False)),
+            "already_posted": existing is not None,
+            "existing_entry_id": getattr(existing, "id", None),
+            "per_currency": per_currency,
+            "skipped_currencies": skipped,
+            "total_unrealized_gain_loss": total_unrealized,
+            "lines": lines,
+            "total_debit": total_debit,
+            "total_credit": total_credit,
+            "balanced": abs(total_debit - total_credit) <= BALANCE_TOLERANCE,
+            "journal_entry_id": None,
         }
 
     # ------------------------------------------------------------------
@@ -564,29 +609,31 @@ class FXRevaluationService:
         """
         from services.gl_service import GLService
 
-        if not result.get('lines'):
-            result['dry_run'] = False
-            result['posted'] = False
-            result['skip_reason'] = 'nothing_to_revalue'
+        if not result.get("lines"):
+            result["dry_run"] = False
+            result["posted"] = False
+            result["skip_reason"] = "nothing_to_revalue"
             return result
-        if not result.get('balanced'):
-            raise ValueError('Refusing to post unbalanced FX revaluation entry')
+        if not result.get("balanced"):
+            raise ValueError("Refusing to post unbalanced FX revaluation entry")
 
-        period_key = result.get('period_key') or FXRevaluationService.period_key(
-            result.get('as_of'))
-        reference_id = result.get('reference_id') or \
-            FXRevaluationService.reference_id_for(period_key)
+        period_key = result.get("period_key") or FXRevaluationService.period_key(
+            result.get("as_of")
+        )
+        reference_id = result.get(
+            "reference_id"
+        ) or FXRevaluationService.reference_id_for(period_key)
 
         existing = FXRevaluationService.find_posted_entry(period_key)
         if existing is not None:
-            result['dry_run'] = False
-            result['posted'] = False
-            result['already_posted'] = True
-            result['journal_entry_id'] = existing.id
-            result['skip_reason'] = 'already_posted'
+            result["dry_run"] = False
+            result["posted"] = False
+            result["already_posted"] = True
+            result["journal_entry_id"] = existing.id
+            result["skip_reason"] = "already_posted"
             return result
 
-        as_of = result.get('as_of')
+        as_of = result.get("as_of")
         entry_date = _as_of_datetime(as_of) or datetime.now(timezone.utc)
 
         # حارس الفترة المالية: لا ترحيل إلى فترة مغلقة أو بلا فترة.
@@ -594,35 +641,35 @@ class FXRevaluationService:
 
         assert_period_open(entry_date)
 
-        base = result.get('base_currency') or FXRevaluationService.base_currency()
-        description = 'تسوية أرصدة العملات غير المحققة'
+        base = result.get("base_currency") or FXRevaluationService.base_currency()
+        description = "تسوية أرصدة العملات غير المحققة"
         if as_of is not None:
-            description = f'{description} — {period_key}'
+            description = f"{description} — {period_key}"
 
         entry = GLService.create_manual_entry(
             description=description,
-            lines=result['lines'],
+            lines=result["lines"],
             entry_date=entry_date,
             notes=(
-                f'إعادة تقييم غير محققة — الفترة {period_key} — '
-                f'عملة الأساس {base} — '
-                f'العملات: {", ".join(row["currency"] for row in result.get("per_currency") or [])}'
+                f"إعادة تقييم غير محققة — الفترة {period_key} — "
+                f"عملة الأساس {base} — "
+                f"العملات: {', '.join(row['currency'] for row in result.get('per_currency') or [])}"
             ),
             created_by=created_by,
             reference_type=FXRevaluationService.REFERENCE_TYPE,
             reference_id=reference_id,
             currency=base,
             exchange_rate=1,
-            entry_type='adjustment',
+            entry_type="adjustment",
         )
 
         FXRevaluationService.write_audit_log(entry, result, created_by)
 
-        result['dry_run'] = False
-        result['posted'] = True
-        result['already_posted'] = False
-        result['skip_reason'] = None
-        result['journal_entry_id'] = entry.id
+        result["dry_run"] = False
+        result["posted"] = True
+        result["already_posted"] = False
+        result["skip_reason"] = None
+        result["journal_entry_id"] = entry.id
         return result
 
     @staticmethod
@@ -631,19 +678,23 @@ class FXRevaluationService:
         from utils.helpers import create_audit_log
 
         return create_audit_log(
-            'create', 'gl_journal_entries', entry.id,
+            "create",
+            "gl_journal_entries",
+            entry.id,
             changes={
-                'action': 'fx_revaluation',
-                'entry_number': entry.entry_number,
-                'reference_type': entry.reference_type,
-                'reference_id': entry.reference_id,
-                'period_key': result.get('period_key'),
-                'base_currency': result.get('base_currency'),
-                'total_debit': result.get('total_debit'),
-                'total_credit': result.get('total_credit'),
-                'total_unrealized_gain_loss': result.get('total_unrealized_gain_loss'),
-                'currencies': [row.get('currency') for row in result.get('per_currency') or []],
-                'created_by': created_by,
+                "action": "fx_revaluation",
+                "entry_number": entry.entry_number,
+                "reference_type": entry.reference_type,
+                "reference_id": entry.reference_id,
+                "period_key": result.get("period_key"),
+                "base_currency": result.get("base_currency"),
+                "total_debit": result.get("total_debit"),
+                "total_credit": result.get("total_credit"),
+                "total_unrealized_gain_loss": result.get("total_unrealized_gain_loss"),
+                "currencies": [
+                    row.get("currency") for row in result.get("per_currency") or []
+                ],
+                "created_by": created_by,
             },
             commit=False,
         )
@@ -664,24 +715,30 @@ class FXRevaluationService:
         else:
             entry = entry_or_id
         if entry is None:
-            raise ValueError('FX revaluation entry not found')
-        if getattr(entry, 'reference_type', None) != FXRevaluationService.REFERENCE_TYPE:
-            raise ValueError('Journal entry is not an FX revaluation')
-        if getattr(entry, 'is_reversed', False):
-            raise ValueError('هذا القيد تم عكسه مسبقاً')
+            raise ValueError("FX revaluation entry not found")
+        if (
+            getattr(entry, "reference_type", None)
+            != FXRevaluationService.REFERENCE_TYPE
+        ):
+            raise ValueError("Journal entry is not an FX revaluation")
+        if getattr(entry, "is_reversed", False):
+            raise ValueError("هذا القيد تم عكسه مسبقاً")
 
-        description = reason or f'عكس قيد تسوية فرق العملة {entry.entry_number}'
+        description = reason or f"عكس قيد تسوية فرق العملة {entry.entry_number}"
         reversal = GLService.reverse_entry(
-            entry, description=description, created_by=created_by)
+            entry, description=description, created_by=created_by
+        )
 
         create_audit_log(
-            'reverse', 'gl_journal_entries', entry.id,
+            "reverse",
+            "gl_journal_entries",
+            entry.id,
             changes={
-                'action': 'fx_revaluation_reversal',
-                'entry_number': entry.entry_number,
-                'reversal_entry_number': getattr(reversal, 'entry_number', None),
-                'reference_id': entry.reference_id,
-                'created_by': created_by,
+                "action": "fx_revaluation_reversal",
+                "entry_number": entry.entry_number,
+                "reversal_entry_number": getattr(reversal, "entry_number", None),
+                "reference_id": entry.reference_id,
+                "created_by": created_by,
             },
             commit=False,
         )

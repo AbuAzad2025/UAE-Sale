@@ -15,27 +15,27 @@ def init_socketio(app: Flask):
     socketio = SocketIO(
         app,
         cors_allowed_origins="*",
-        async_mode='threading',
+        async_mode="threading",
         logger=False,
-        engineio_logger=False
+        engineio_logger=False,
     )
 
-    @socketio.on('connect')
+    @socketio.on("connect")
     def handle_connect():
         if current_user.is_authenticated:
-            join_room(f'user_{current_user.id}')
-            emit('connected', {'status': 'connected'})
+            join_room(f"user_{current_user.id}")
+            emit("connected", {"status": "connected"})
             logger.info(f"User {current_user.id} connected via WebSocket")
 
-    @socketio.on('disconnect')
+    @socketio.on("disconnect")
     def handle_disconnect():
         if current_user.is_authenticated:
-            leave_room(f'user_{current_user.id}')
+            leave_room(f"user_{current_user.id}")
             logger.info(f"User {current_user.id} disconnected")
 
-    @socketio.on('ping')
+    @socketio.on("ping")
     def handle_ping(data=None):
-        emit('pong', {'timestamp': datetime.now().isoformat()})
+        emit("pong", {"timestamp": datetime.now().isoformat()})
 
     logger.info("[OK] WebSocket initialized")
     return socketio
@@ -43,30 +43,33 @@ def init_socketio(app: Flask):
 
 def broadcast_sale_created(sale_data):
     if socketio:
-        socketio.emit('sale_created', sale_data)
+        socketio.emit("sale_created", sale_data)
     else:
-        logger.warning('broadcast_sale_created dropped: socketio not initialized')
+        logger.warning("broadcast_sale_created dropped: socketio not initialized")
 
 
 def broadcast_payment_received(payment_data):
     if socketio:
-        socketio.emit('payment_received', payment_data)
+        socketio.emit("payment_received", payment_data)
     else:
-        logger.warning('broadcast_payment_received dropped: socketio not initialized')
+        logger.warning("broadcast_payment_received dropped: socketio not initialized")
 
 
-def notify_user(user_id, message, notification_type='info'):
+def notify_user(user_id, message, notification_type="info"):
     if socketio:
-        socketio.emit('notification', {
-            'message': message,
-            'type': notification_type
-        }, room=f'user_{user_id}')
+        socketio.emit(
+            "notification",
+            {"message": message, "type": notification_type},
+            room=f"user_{user_id}",
+        )
     else:
-        logger.warning('notify_user dropped for user %s: socketio not initialized', user_id)
+        logger.warning(
+            "notify_user dropped for user %s: socketio not initialized", user_id
+        )
 
 
 def broadcast_stock_alert(product_data):
     if socketio:
-        socketio.emit('stock_alert', product_data)
+        socketio.emit("stock_alert", product_data)
     else:
-        logger.warning('broadcast_stock_alert dropped: socketio not initialized')
+        logger.warning("broadcast_stock_alert dropped: socketio not initialized")

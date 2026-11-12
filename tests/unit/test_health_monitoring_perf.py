@@ -30,7 +30,7 @@ def _clean_state(app, db):
 @pytest.fixture
 def app_log(app, monkeypatch, caplog):
     """Make current_app.logger records visible to caplog."""
-    monkeypatch.setattr(app.logger, 'propagate', True)
+    monkeypatch.setattr(app.logger, "propagate", True)
     return caplog
 
 
@@ -47,7 +47,7 @@ class FakeClock:
 
 def fake_time(monkeypatch, module, ticks):
     clock = FakeClock(ticks)
-    monkeypatch.setattr(module, 'time', SimpleNamespace(time=clock))
+    monkeypatch.setattr(module, "time", SimpleNamespace(time=clock))
     return clock
 
 
@@ -65,9 +65,13 @@ def patch_psutil(monkeypatch, cpu=10.0, mem=40.0, disk=30.0, cpu_error=None):
             raise cpu_error
         return cpu
 
-    monkeypatch.setattr(hs.psutil, 'cpu_percent', cpu_percent)
-    monkeypatch.setattr(hs.psutil, 'virtual_memory', lambda: SimpleNamespace(percent=mem))
-    monkeypatch.setattr(hs.psutil, 'disk_usage', lambda path: SimpleNamespace(percent=disk))
+    monkeypatch.setattr(hs.psutil, "cpu_percent", cpu_percent)
+    monkeypatch.setattr(
+        hs.psutil, "virtual_memory", lambda: SimpleNamespace(percent=mem)
+    )
+    monkeypatch.setattr(
+        hs.psutil, "disk_usage", lambda path: SimpleNamespace(percent=disk)
+    )
 
 
 class TestHealthServiceChecks:
@@ -75,77 +79,82 @@ class TestHealthServiceChecks:
         from services.health_service import HealthCheckService
 
         result = HealthCheckService.check_database()
-        assert result == {'status': 'healthy', 'message': 'Database connection OK'}
+        assert result == {"status": "healthy", "message": "Database connection OK"}
 
     def test_database_check_reports_failure_message(self, monkeypatch):
         from services import health_service as hs
 
         class ExplodingSession:
             def execute(self, *args, **kwargs):
-                raise RuntimeError('connection refused')
+                raise RuntimeError("connection refused")
 
         monkeypatch.setattr(
-            hs, 'db', SimpleNamespace(text=ext_db.text, session=ExplodingSession())
+            hs, "db", SimpleNamespace(text=ext_db.text, session=ExplodingSession())
         )
         result = hs.HealthCheckService.check_database()
-        assert result['status'] == 'unhealthy'
-        assert 'connection refused' in result['message']
+        assert result["status"] == "unhealthy"
+        assert "connection refused" in result["message"]
 
     def test_nowpayments_warning_when_vault_not_initialized(self, db):
         from services.health_service import HealthCheckService
 
         result = HealthCheckService.check_nowpayments()
         assert result == {
-            'status': 'warning',
-            'message': 'Payment vault not initialized',
+            "status": "warning",
+            "message": "Payment vault not initialized",
         }
 
     def test_nowpayments_healthy_when_fully_configured(self, db):
         from models import PaymentVault
         from services.health_service import HealthCheckService
 
-        db.session.add(PaymentVault(
-            vault_password_hash='hash-x',
-            nowpayments_api_key='npk-123456',
-            bitcoin_address='bc1q-example-address',
-        ))
+        db.session.add(
+            PaymentVault(
+                vault_password_hash="hash-x",
+                nowpayments_api_key="npk-123456",
+                bitcoin_address="bc1q-example-address",
+            )
+        )
         db.session.commit()
 
         result = HealthCheckService.check_nowpayments()
-        assert result == {'status': 'healthy', 'message': 'NOWPayments configured'}
+        assert result == {"status": "healthy", "message": "NOWPayments configured"}
 
     def test_nowpayments_warning_when_partially_configured(self, db):
         from models import PaymentVault
         from services.health_service import HealthCheckService
 
-        db.session.add(PaymentVault(
-            vault_password_hash='hash-y', nowpayments_api_key='npk-only-key'
-        ))
+        db.session.add(
+            PaymentVault(
+                vault_password_hash="hash-y", nowpayments_api_key="npk-only-key"
+            )
+        )
         db.session.commit()
 
         result = HealthCheckService.check_nowpayments()
         assert result == {
-            'status': 'warning',
-            'message': 'NOWPayments not fully configured',
+            "status": "warning",
+            "message": "NOWPayments not fully configured",
         }
 
     def test_encryption_check_healthy(self, db):
         from services.health_service import HealthCheckService
 
         result = HealthCheckService.check_encryption()
-        assert result == {'status': 'healthy', 'message': 'Encryption system OK'}
+        assert result == {"status": "healthy", "message": "Encryption system OK"}
 
     def test_encryption_check_unhealthy_on_error(self, monkeypatch):
         from services import health_service as hs
 
         def broken_hash(password):
-            raise RuntimeError('no hasher')
+            raise RuntimeError("no hasher")
 
         import werkzeug.security
-        monkeypatch.setattr(werkzeug.security, 'generate_password_hash', broken_hash)
+
+        monkeypatch.setattr(werkzeug.security, "generate_password_hash", broken_hash)
         result = hs.HealthCheckService.check_encryption()
-        assert result['status'] == 'unhealthy'
-        assert 'no hasher' in result['message']
+        assert result["status"] == "unhealthy"
+        assert "no hasher" in result["message"]
 
 
 class TestHealthServiceSystemResources:
@@ -154,69 +163,76 @@ class TestHealthServiceSystemResources:
 
         patch_psutil(monkeypatch, cpu=12.5, mem=41.0, disk=33.0)
         result = HealthCheckService.check_system_resources()
-        assert result['status'] == 'healthy'
-        assert result['cpu_percent'] == 12.5
-        assert result['memory_percent'] == 41.0
-        assert result['disk_percent'] == 33.0
-        assert result['warnings'] is None
+        assert result["status"] == "healthy"
+        assert result["cpu_percent"] == 12.5
+        assert result["memory_percent"] == 41.0
+        assert result["disk_percent"] == 33.0
+        assert result["warnings"] is None
 
     def test_overloaded_resources_raise_warnings(self, db, monkeypatch):
         from services.health_service import HealthCheckService
 
         patch_psutil(monkeypatch, cpu=95.0, mem=97.0, disk=99.0)
         result = HealthCheckService.check_system_resources()
-        assert result['status'] == 'warning'
-        warnings = ' | '.join(result['warnings'])
-        assert 'High CPU usage: 95.0%' in warnings
-        assert 'High memory usage: 97.0%' in warnings
-        assert 'Low disk space: 99.0% used' in warnings
+        assert result["status"] == "warning"
+        warnings = " | ".join(result["warnings"])
+        assert "High CPU usage: 95.0%" in warnings
+        assert "High memory usage: 97.0%" in warnings
+        assert "Low disk space: 99.0% used" in warnings
 
     def test_resource_probe_error_degrades_to_unknown(self, db, monkeypatch):
         from services.health_service import HealthCheckService
 
-        patch_psutil(monkeypatch, cpu_error=OSError('psu unavailable'))
+        patch_psutil(monkeypatch, cpu_error=OSError("psu unavailable"))
         result = HealthCheckService.check_system_resources()
-        assert result['status'] == 'unknown'
-        assert 'psu unavailable' in result['message']
+        assert result["status"] == "unknown"
+        assert "psu unavailable" in result["message"]
 
     def test_get_system_metrics_counts_and_process_info(self, db):
         from models import CardPayment, Donation
         from services.health_service import HealthCheckService
 
-        db.session.add(Donation(amount_usd=Decimal('25.00'), payment_method='crypto'))
-        db.session.add(CardPayment(
-            customer_name='Metric Customer',
-            transaction_type='donation',
-            amount=Decimal('15.50'),
-        ))
+        db.session.add(Donation(amount_usd=Decimal("25.00"), payment_method="crypto"))
+        db.session.add(
+            CardPayment(
+                customer_name="Metric Customer",
+                transaction_type="donation",
+                amount=Decimal("15.50"),
+            )
+        )
         db.session.commit()
 
         metrics = HealthCheckService.get_system_metrics()
-        assert 'error' not in metrics
-        assert metrics['database'] == {
-            'total_donations': 1,
-            'total_purchases': 0,
-            'total_cards': 1,
+        assert "error" not in metrics
+        assert metrics["database"] == {
+            "total_donations": 1,
+            "total_purchases": 0,
+            "total_cards": 1,
         }
-        assert metrics['process']['memory_mb'] > 0
-        assert metrics['process']['threads'] >= 1
-        assert metrics['process']['cpu_percent'] >= 0
-        assert metrics['process']['uptime_seconds'] >= 0
-        assert 'T' in metrics['timestamp']
+        assert metrics["process"]["memory_mb"] > 0
+        assert metrics["process"]["threads"] >= 1
+        assert metrics["process"]["cpu_percent"] >= 0
+        assert metrics["process"]["uptime_seconds"] >= 0
+        assert "T" in metrics["timestamp"]
 
     def test_full_check_aggregates_to_warning(self, db, monkeypatch):
         from services import health_service as hs
         from services.health_service import HealthCheckService
 
         monkeypatch.setattr(
-            hs.HealthCheckService, 'check_system_resources',
-            staticmethod(lambda: {'status': 'healthy'}),
+            hs.HealthCheckService,
+            "check_system_resources",
+            staticmethod(lambda: {"status": "healthy"}),
         )
         result = HealthCheckService.run_full_health_check()
-        assert result['overall_status'] == 'warning'
-        assert result['checks']['nowpayments']['status'] == 'warning'
-        assert set(result['checks']) == {
-            'database', 'nowpayments', 'encryption', 'system', 'ai_engine',
+        assert result["overall_status"] == "warning"
+        assert result["checks"]["nowpayments"]["status"] == "warning"
+        assert set(result["checks"]) == {
+            "database",
+            "nowpayments",
+            "encryption",
+            "system",
+            "ai_engine",
         }
 
     def test_full_check_aggregates_to_unhealthy(self, db, monkeypatch):
@@ -224,19 +240,22 @@ class TestHealthServiceSystemResources:
         from services.health_service import HealthCheckService
 
         monkeypatch.setattr(
-            hs.HealthCheckService, 'check_database',
-            staticmethod(lambda: {'status': 'unhealthy'}),
+            hs.HealthCheckService,
+            "check_database",
+            staticmethod(lambda: {"status": "unhealthy"}),
         )
         monkeypatch.setattr(
-            hs.HealthCheckService, 'check_system_resources',
-            staticmethod(lambda: {'status': 'healthy'}),
+            hs.HealthCheckService,
+            "check_system_resources",
+            staticmethod(lambda: {"status": "healthy"}),
         )
         monkeypatch.setattr(
-            hs.HealthCheckService, 'check_nowpayments',
-            staticmethod(lambda: {'status': 'healthy'}),
+            hs.HealthCheckService,
+            "check_nowpayments",
+            staticmethod(lambda: {"status": "healthy"}),
         )
         result = HealthCheckService.run_full_health_check()
-        assert result['overall_status'] == 'unhealthy'
+        assert result["overall_status"] == "unhealthy"
 
     def test_full_check_healthy_when_everything_ok(self, db, monkeypatch):
         from models import PaymentVault
@@ -244,72 +263,81 @@ class TestHealthServiceSystemResources:
         from services.health_service import HealthCheckService
 
         monkeypatch.setattr(
-            hs.HealthCheckService, 'check_system_resources',
-            staticmethod(lambda: {'status': 'healthy'}),
+            hs.HealthCheckService,
+            "check_system_resources",
+            staticmethod(lambda: {"status": "healthy"}),
         )
-        db.session.add(PaymentVault(
-            vault_password_hash='hash-z',
-            nowpayments_api_key='npk-full',
-            bitcoin_address='bc1q-full-address',
-        ))
+        db.session.add(
+            PaymentVault(
+                vault_password_hash="hash-z",
+                nowpayments_api_key="npk-full",
+                bitcoin_address="bc1q-full-address",
+            )
+        )
         db.session.commit()
 
         result = HealthCheckService.run_full_health_check()
-        assert result['overall_status'] == 'healthy'
+        assert result["overall_status"] == "healthy"
 
 
 class TestMonitoringMetricsCollector:
     def test_record_metric_logs_json_with_tags(self, app, app_log):
         from utils.monitoring import MetricsCollector
 
-        MetricsCollector.record_metric('orders_created', 7, tags={'channel': 'pos'})
+        MetricsCollector.record_metric("orders_created", 7, tags={"channel": "pos"})
 
         metric_records = [
-            r for r in app_log.records if r.getMessage().startswith('METRIC:')
+            r for r in app_log.records if r.getMessage().startswith("METRIC:")
         ]
         assert len(metric_records) == 1
-        payload = json.loads(metric_records[0].getMessage().split('METRIC: ', 1)[1])
-        assert payload['metric'] == 'orders_created'
-        assert payload['value'] == 7
-        assert payload['tags'] == {'channel': 'pos'}
-        assert payload['timestamp']
+        payload = json.loads(metric_records[0].getMessage().split("METRIC: ", 1)[1])
+        assert payload["metric"] == "orders_created"
+        assert payload["value"] == 7
+        assert payload["tags"] == {"channel": "pos"}
+        assert payload["timestamp"]
 
     def test_record_helpers_emit_named_metrics(self, app, app_log):
         from utils.monitoring import MetricsCollector
 
-        MetricsCollector.record_sale(Decimal('120.500'), 'AED')
-        MetricsCollector.record_payment(75, 'cash')
-        MetricsCollector.record_stock_change(42, -3, 'sale')
+        MetricsCollector.record_sale(Decimal("120.500"), "AED")
+        MetricsCollector.record_payment(75, "cash")
+        MetricsCollector.record_stock_change(42, -3, "sale")
 
         messages = [r.getMessage() for r in app_log.records]
-        sale = json.loads([m for m in messages if '"sale_created"' in m][0].split(': ', 1)[1])
-        payment = json.loads([m for m in messages if '"payment_received"' in m][0].split(': ', 1)[1])
-        stock = json.loads([m for m in messages if '"stock_movement"' in m][0].split(': ', 1)[1])
+        sale = json.loads(
+            [m for m in messages if '"sale_created"' in m][0].split(": ", 1)[1]
+        )
+        payment = json.loads(
+            [m for m in messages if '"payment_received"' in m][0].split(": ", 1)[1]
+        )
+        stock = json.loads(
+            [m for m in messages if '"stock_movement"' in m][0].split(": ", 1)[1]
+        )
 
-        assert sale['value'] == '120.500'
-        assert sale['tags'] == {'currency': 'AED'}
-        assert payment['value'] == 75
-        assert payment['tags'] == {'method': 'cash'}
-        assert stock['value'] == -3
-        assert stock['tags'] == {'product_id': 42, 'type': 'sale'}
+        assert sale["value"] == "120.500"
+        assert sale["tags"] == {"currency": "AED"}
+        assert payment["value"] == 75
+        assert payment["tags"] == {"method": "cash"}
+        assert stock["value"] == -3
+        assert stock["tags"] == {"product_id": 42, "type": "sale"}
 
 
 class TestMonitoringDatabaseMonitor:
     def test_slow_query_triggers_warning(self, app, app_log):
         from utils.monitoring import DatabaseMonitor
 
-        DatabaseMonitor.log_query('SELECT * FROM sales JOIN sale_lines', 0.15)
+        DatabaseMonitor.log_query("SELECT * FROM sales JOIN sale_lines", 0.15)
 
-        slow = [r for r in app_log.records if 'SLOW QUERY' in r.getMessage()]
+        slow = [r for r in app_log.records if "SLOW QUERY" in r.getMessage()]
         assert len(slow) == 1
-        assert '150.0ms' in slow[0].getMessage()
-        assert 'SELECT * FROM sales' in slow[0].getMessage()
+        assert "150.0ms" in slow[0].getMessage()
+        assert "SELECT * FROM sales" in slow[0].getMessage()
 
     def test_fast_query_is_silent(self, app, app_log):
         from utils.monitoring import DatabaseMonitor
 
-        DatabaseMonitor.log_query('SELECT 1', 0.02)
-        assert not [r for r in app_log.records if 'SLOW QUERY' in r.getMessage()]
+        DatabaseMonitor.log_query("SELECT 1", 0.02)
+        assert not [r for r in app_log.records if "SLOW QUERY" in r.getMessage()]
 
 
 class TestMonitoringPerformanceMonitor:
@@ -317,9 +345,9 @@ class TestMonitoringPerformanceMonitor:
         from utils.monitoring import PerformanceMonitor
 
         with app.test_request_context(
-            '/sales/report',
-            headers={'X-Request-Id': 'rid-slow', 'User-Agent': 'pytest-agent'},
-            environ_base={'REMOTE_ADDR': '10.1.2.3'},
+            "/sales/report",
+            headers={"X-Request-Id": "rid-slow", "User-Agent": "pytest-agent"},
+            environ_base={"REMOTE_ADDR": "10.1.2.3"},
         ):
             PerformanceMonitor.log_request()
             g.start_time -= 1.2
@@ -327,26 +355,27 @@ class TestMonitoringPerformanceMonitor:
             out = PerformanceMonitor.log_response(response)
 
             assert out is response
-            logged = [r for r in app_log.records if 'SLOW REQUEST' in r.getMessage()]
+            logged = [r for r in app_log.records if "SLOW REQUEST" in r.getMessage()]
             assert len(logged) == 1
-            data = json.loads(logged[0].getMessage().split('SLOW REQUEST: ', 1)[1])
-            assert data['request_id'] == 'rid-slow'
-            assert data['method'] == 'GET'
-            assert data['path'] == '/sales/report'
-            assert data['status'] == 200
-            assert data['user_agent'] == 'pytest-agent'
-            assert data['ip'] == '10.1.2.3'
+            data = json.loads(logged[0].getMessage().split("SLOW REQUEST: ", 1)[1])
+            assert data["request_id"] == "rid-slow"
+            assert data["method"] == "GET"
+            assert data["path"] == "/sales/report"
+            assert data["status"] == 200
+            assert data["user_agent"] == "pytest-agent"
+            assert data["ip"] == "10.1.2.3"
 
     def test_fast_request_stays_quiet(self, app, app_log):
         from utils.monitoring import PerformanceMonitor
 
-        with app.test_request_context('/', headers={'User-Agent': 'pytest'}):
+        with app.test_request_context("/", headers={"User-Agent": "pytest"}):
             PerformanceMonitor.log_request()
             PerformanceMonitor.log_response(FakeResponse(200))
 
             assert not [
-                r for r in app_log.records
-                if 'REQUEST:' in r.getMessage() or 'SLOW REQUEST' in r.getMessage()
+                r
+                for r in app_log.records
+                if "REQUEST:" in r.getMessage() or "SLOW REQUEST" in r.getMessage()
             ]
 
     def test_monitor_endpoint_decorator_success(self, app, app_log, monkeypatch):
@@ -356,27 +385,31 @@ class TestMonitoringPerformanceMonitor:
 
         @mon.PerformanceMonitor.monitor_endpoint
         def sample():
-            return 'payload'
+            return "payload"
 
         with app.app_context():
-            assert sample() == 'payload'
-        logs = [r for r in app_log.records if r.getMessage().startswith('ENDPOINT ')]
-        assert any('sample: 250.0ms' in r.getMessage() for r in logs)
+            assert sample() == "payload"
+        logs = [r for r in app_log.records if r.getMessage().startswith("ENDPOINT ")]
+        assert any("sample: 250.0ms" in r.getMessage() for r in logs)
 
-    def test_monitor_endpoint_decorator_reraises_and_logs(self, app, app_log, monkeypatch):
+    def test_monitor_endpoint_decorator_reraises_and_logs(
+        self, app, app_log, monkeypatch
+    ):
         from utils import monitoring as mon
 
         fake_time(monkeypatch, mon, [200.0, 200.4])
 
         @mon.PerformanceMonitor.monitor_endpoint
         def failing():
-            raise ValueError('kaput')
+            raise ValueError("kaput")
 
-        with app.app_context(), pytest.raises(ValueError, match='kaput'):
+        with app.app_context(), pytest.raises(ValueError, match="kaput"):
             failing()
-        errors = [r for r in app_log.records if 'ENDPOINT ERROR failing' in r.getMessage()]
+        errors = [
+            r for r in app_log.records if "ENDPOINT ERROR failing" in r.getMessage()
+        ]
         assert len(errors) == 1
-        assert 'kaput' in errors[0].getMessage()
+        assert "kaput" in errors[0].getMessage()
 
 
 class TestMonitoringErrorLogger:
@@ -385,104 +418,104 @@ class TestMonitoringErrorLogger:
         from utils.monitoring import ErrorLogger
 
         with app.test_request_context(
-            '/reports/export',
-            headers={'X-Request-Id': 'rid-err'},
-            environ_base={'REMOTE_ADDR': '10.9.9.9'},
+            "/reports/export",
+            headers={"X-Request-Id": "rid-err"},
+            environ_base={"REMOTE_ADDR": "10.9.9.9"},
         ):
-            g.request_id = 'rid-err'
-            ErrorLogger.log_error(ValueError('bad thing'), context={'sale_id': 77})
+            g.request_id = "rid-err"
+            ErrorLogger.log_error(ValueError("bad thing"), context={"sale_id": 77})
 
-        row = AuditLog.query.filter_by(action='error').one()
+        row = AuditLog.query.filter_by(action="error").one()
         payload = json.loads(row.changes)
-        assert payload['error_type'] == 'ValueError'
-        assert payload['error_message'] == 'bad thing'
-        assert payload['context'] == {'sale_id': 77}
-        assert payload['request_id'] == 'rid-err'
-        assert row.ip_address == '10.9.9.9'
+        assert payload["error_type"] == "ValueError"
+        assert payload["error_message"] == "bad thing"
+        assert payload["context"] == {"sale_id": 77}
+        assert payload["request_id"] == "rid-err"
+        assert row.ip_address == "10.9.9.9"
 
 
 class TestMonitoringHealthChecks:
     def test_database_check_healthy(self, db):
         from utils.monitoring import HealthCheck
 
-        assert HealthCheck.check_database()['status'] == 'healthy'
+        assert HealthCheck.check_database()["status"] == "healthy"
 
     def test_disk_space_healthy(self, monkeypatch):
         from utils.monitoring import HealthCheck
 
-        monkeypatch.setattr(shutil, 'disk_usage', lambda path: (1000, 500, 500))
+        monkeypatch.setattr(shutil, "disk_usage", lambda path: (1000, 500, 500))
         result = HealthCheck.check_disk_space()
-        assert result == {'status': 'healthy', 'message': 'Disk 50.0% used'}
+        assert result == {"status": "healthy", "message": "Disk 50.0% used"}
 
     def test_disk_space_full_is_unhealthy(self, monkeypatch):
         from utils.monitoring import HealthCheck
 
-        monkeypatch.setattr(shutil, 'disk_usage', lambda path: (1000, 951, 49))
+        monkeypatch.setattr(shutil, "disk_usage", lambda path: (1000, 951, 49))
         result = HealthCheck.check_disk_space()
-        assert result['status'] == 'unhealthy'
-        assert '95.1% full' in result['message']
+        assert result["status"] == "unhealthy"
+        assert "95.1% full" in result["message"]
 
     def test_disk_space_error_unknown_without_crash(self, monkeypatch):
         from utils.monitoring import HealthCheck
 
         def boom(path):
-            raise OSError('no such volume')
+            raise OSError("no such volume")
 
-        monkeypatch.setattr(shutil, 'disk_usage', boom)
+        monkeypatch.setattr(shutil, "disk_usage", boom)
         result = HealthCheck.check_disk_space()
-        assert result['status'] == 'unknown'
-        assert 'no such volume' in result['message']
+        assert result["status"] == "unknown"
+        assert "no such volume" in result["message"]
 
     def test_redis_check_healthy_via_cache(self, db):
         from utils.monitoring import HealthCheck
 
         result = HealthCheck.check_redis()
-        assert result == {'status': 'healthy', 'message': 'Redis connected'}
+        assert result == {"status": "healthy", "message": "Redis connected"}
 
     def test_redis_failure_reports_unhealthy_not_crash(self, monkeypatch):
         from extensions import cache
         from utils.monitoring import HealthCheck
 
         def broken_set(*args, **kwargs):
-            raise RuntimeError('redis down')
+            raise RuntimeError("redis down")
 
-        monkeypatch.setattr(cache, 'set', broken_set)
+        monkeypatch.setattr(cache, "set", broken_set)
         result = HealthCheck.check_redis()
-        assert result['status'] == 'unhealthy'
-        assert 'redis down' in result['message']
+        assert result["status"] == "unhealthy"
+        assert "redis down" in result["message"]
 
     def test_get_health_status_all_green(self, db, monkeypatch):
         from utils.monitoring import HealthCheck
 
-        monkeypatch.setattr(shutil, 'disk_usage', lambda path: (1000, 300, 700))
+        monkeypatch.setattr(shutil, "disk_usage", lambda path: (1000, 300, 700))
         result = HealthCheck.get_health_status()
-        assert result['status'] == 'healthy'
-        assert {v['status'] for v in result['checks'].values()} == {'healthy'}
-        assert 'T' in result['timestamp']
+        assert result["status"] == "healthy"
+        assert {v["status"] for v in result["checks"].values()} == {"healthy"}
+        assert "T" in result["timestamp"]
 
     def test_get_health_status_any_failure_flips_overall(self, db, monkeypatch):
         from utils.monitoring import HealthCheck
 
-        monkeypatch.setattr(shutil, 'disk_usage', lambda path: (1000, 990, 10))
+        monkeypatch.setattr(shutil, "disk_usage", lambda path: (1000, 990, 10))
         result = HealthCheck.get_health_status()
-        assert result['status'] == 'unhealthy'
-        assert result['checks']['disk']['status'] == 'unhealthy'
+        assert result["status"] == "unhealthy"
+        assert result["checks"]["disk"]["status"] == "unhealthy"
 
 
 class TestSetupAdvancedLogging:
     def test_registers_working_health_route_on_app(self, db, tmp_path, monkeypatch):
         from utils.monitoring import setup_advanced_logging
 
-        monkeypatch.setattr(shutil, 'disk_usage', lambda path: (1000, 400, 600))
-        monitored = Flask('monitored')
+        monkeypatch.setattr(shutil, "disk_usage", lambda path: (1000, 400, 600))
+        monitored = Flask("monitored")
         monitored.root_path = str(tmp_path)
 
         setup_advanced_logging(monitored)
         try:
-            resp = monitored.test_client().get('/health')
+            resp = monitored.test_client().get("/health")
             data = resp.get_json()
-            assert set(data['checks']) == {'database', 'redis', 'disk'}
-            expected_code = 200 if data['status'] == 'healthy' else 503
+            assert set(data["checks"]) == {"database", "redis", "disk"}
+            expected_code = 200 if data["status"] == "healthy" else 503
             assert resp.status_code == expected_code
         finally:
             for handler in monitored.logger.handlers[:]:
@@ -501,7 +534,7 @@ class TestMeasureTimeDecorator:
             return value * 2
 
         assert work(21) == 42
-        assert not [r for r in caplog.records if r.name == 'utils.performance']
+        assert not [r for r in caplog.records if r.name == "utils.performance"]
 
     def test_half_second_function_logs_info(self, caplog, monkeypatch):
         from utils import performance as perf
@@ -510,12 +543,12 @@ class TestMeasureTimeDecorator:
 
         @perf.measure_time
         def medium():
-            return 'done'
+            return "done"
 
         with caplog.at_level(logging.INFO):
-            assert medium() == 'done'
+            assert medium() == "done"
         infos = [r for r in caplog.records if r.levelno == logging.INFO]
-        assert any('medium took 750ms' in r.getMessage() for r in infos)
+        assert any("medium took 750ms" in r.getMessage() for r in infos)
 
     def test_slow_function_warns_over_one_second(self, caplog, monkeypatch):
         from utils import performance as perf
@@ -524,11 +557,11 @@ class TestMeasureTimeDecorator:
 
         @perf.measure_time
         def heavy():
-            return 'result'
+            return "result"
 
-        assert heavy() == 'result'
+        assert heavy() == "result"
         warns = [r for r in caplog.records if r.levelno == logging.WARNING]
-        assert any('Slow function: heavy took 2500ms' in r.getMessage() for r in warns)
+        assert any("Slow function: heavy took 2500ms" in r.getMessage() for r in warns)
 
 
 class TestCacheResultDecorator:
@@ -540,10 +573,10 @@ class TestCacheResultDecorator:
         @cache_result(timeout=60)
         def load(x):
             calls.append(x)
-            return {'x': x}
+            return {"x": x}
 
-        assert load(4) == {'x': 4}
-        assert load(4) == {'x': 4}
+        assert load(4) == {"x": 4}
+        assert load(4) == {"x": 4}
         assert calls == [4]
 
     def test_different_arguments_are_separate_entries(self, db):
@@ -568,8 +601,10 @@ class TestBatchCommit:
 
         items = [
             Customer(
-                name=f'Batch Customer {i}', customer_type='regular',
-                phone=f'+971500000{i:03d}', balance=Decimal('0'),
+                name=f"Batch Customer {i}",
+                customer_type="regular",
+                phone=f"+971500000{i:03d}",
+                balance=Decimal("0"),
             )
             for i in range(5)
         ]
@@ -577,12 +612,14 @@ class TestBatchCommit:
             batch_commit(items, batch_size=2)
 
         assert Customer.query.count() == 5
-        commits = [r for r in caplog.records if 'Batch committed' in r.getMessage()]
+        commits = [r for r in caplog.records if "Batch committed" in r.getMessage()]
         assert len(commits) == 3
 
 
 class TestPerformanceMonitorRequestTiming:
-    def test_end_request_sets_header_and_warns_when_slow(self, app, caplog, monkeypatch):
+    def test_end_request_sets_header_and_warns_when_slow(
+        self, app, caplog, monkeypatch
+    ):
         from utils import performance as perf
 
         fake_time(monkeypatch, perf, [100.0, 103.0])
@@ -592,8 +629,8 @@ class TestPerformanceMonitorRequestTiming:
             out = perf.PerformanceMonitor.end_request(response)
 
             assert out is response
-            assert response.headers['X-Response-Time'] == '3000.00ms'
-        warns = [r for r in caplog.records if 'Slow request' in r.getMessage()]
+            assert response.headers["X-Response-Time"] == "3000.00ms"
+        warns = [r for r in caplog.records if "Slow request" in r.getMessage()]
         assert len(warns) == 1
 
     def test_end_request_fast_sets_header_only(self, app, caplog, monkeypatch):
@@ -605,8 +642,8 @@ class TestPerformanceMonitorRequestTiming:
             response = FakeResponse()
             perf.PerformanceMonitor.end_request(response)
 
-            assert response.headers['X-Response-Time'] == '50.00ms'
-        assert not [r for r in caplog.records if 'Slow request' in r.getMessage()]
+            assert response.headers["X-Response-Time"] == "50.00ms"
+        assert not [r for r in caplog.records if "Slow request" in r.getMessage()]
 
     def test_end_request_without_start_returns_response_untouched(self, app):
         from utils import performance as perf
@@ -615,23 +652,25 @@ class TestPerformanceMonitorRequestTiming:
             response = FakeResponse()
             out = perf.PerformanceMonitor.end_request(response)
             assert out is response
-            assert 'X-Response-Time' not in response.headers
+            assert "X-Response-Time" not in response.headers
 
 
 class TestTrackPerformanceDecorator:
-    def test_below_threshold_records_metric_without_warning(self, app, caplog, monkeypatch):
+    def test_below_threshold_records_metric_without_warning(
+        self, app, caplog, monkeypatch
+    ):
         from utils import performance_tracker as pt
 
         fake_time(monkeypatch, pt, [100.0, 100.05])
 
         @pt.track_performance(threshold_ms=1000)
         def quick():
-            return 'fast'
+            return "fast"
 
         with app.test_request_context():
-            assert quick() == 'fast'
-            assert g.performance_metrics['quick'] == pytest.approx(50.0)
-        assert not [r for r in caplog.records if 'Slow operation' in r.getMessage()]
+            assert quick() == "fast"
+            assert g.performance_metrics["quick"] == pytest.approx(50.0)
+        assert not [r for r in caplog.records if "Slow operation" in r.getMessage()]
 
     def test_above_threshold_warns_with_custom_limit(self, app, caplog, monkeypatch):
         from utils import performance_tracker as pt
@@ -640,13 +679,15 @@ class TestTrackPerformanceDecorator:
 
         @pt.track_performance(threshold_ms=100)
         def sluggish():
-            return 'slow'
+            return "slow"
 
         with app.test_request_context():
-            assert sluggish() == 'slow'
-        warns = [r for r in caplog.records if 'Slow operation: sluggish' in r.getMessage()]
+            assert sluggish() == "slow"
+        warns = [
+            r for r in caplog.records if "Slow operation: sluggish" in r.getMessage()
+        ]
         assert len(warns) == 1
-        assert '(threshold: 100ms)' in warns[0].getMessage()
+        assert "(threshold: 100ms)" in warns[0].getMessage()
 
     def test_existing_metrics_dict_is_preserved(self, app, monkeypatch):
         from utils import performance_tracker as pt
@@ -658,11 +699,11 @@ class TestTrackPerformanceDecorator:
             return 1
 
         with app.test_request_context():
-            g.performance_metrics = {'previous_op': 5.0}
+            g.performance_metrics = {"previous_op": 5.0}
             another()
             assert g.performance_metrics == {
-                'previous_op': 5.0,
-                'another': pytest.approx(200.0),
+                "previous_op": 5.0,
+                "another": pytest.approx(200.0),
             }
 
     def test_exception_propagates_without_recording(self, app, monkeypatch):
@@ -672,12 +713,12 @@ class TestTrackPerformanceDecorator:
 
         @pt.track_performance(threshold_ms=1000)
         def broken():
-            raise KeyError('missing')
+            raise KeyError("missing")
 
         with app.test_request_context():
-            with pytest.raises(KeyError, match='missing'):
+            with pytest.raises(KeyError, match="missing"):
                 broken()
-            assert not hasattr(g, 'performance_metrics')
+            assert not hasattr(g, "performance_metrics")
 
 
 class TestPerformanceContext:
@@ -687,14 +728,16 @@ class TestPerformanceContext:
         fake_time(monkeypatch, pt, [50.0, 50.25])
 
         with caplog.at_level(logging.INFO):
-            with pt.PerformanceContext('invoice_generation'):
+            with pt.PerformanceContext("invoice_generation"):
                 pass
-        infos = [r for r in caplog.records if 'invoice_generation' in r.getMessage()]
-        assert any('took 250.00ms' in r.getMessage() for r in infos)
+        infos = [r for r in caplog.records if "invoice_generation" in r.getMessage()]
+        assert any("took 250.00ms" in r.getMessage() for r in infos)
 
 
 class TestLogSlowQueries:
-    def test_registers_engine_listeners_and_flags_slow_query(self, app, caplog, monkeypatch):
+    def test_registers_engine_listeners_and_flags_slow_query(
+        self, app, caplog, monkeypatch
+    ):
         import sqlalchemy.event as event_module
         from utils import performance_tracker as pt
 
@@ -704,26 +747,28 @@ class TestLogSlowQueries:
             def decorator(fn):
                 registered.append((identifier, fn))
                 return fn
+
             return decorator
 
-        monkeypatch.setattr(event_module, 'listens_for', fake_listens_for)
+        monkeypatch.setattr(event_module, "listens_for", fake_listens_for)
         pt.log_slow_queries(app)
 
         assert [identifier for identifier, _ in registered] == [
-            'before_cursor_execute', 'after_cursor_execute',
+            "before_cursor_execute",
+            "after_cursor_execute",
         ]
 
         conn = SimpleNamespace(info={})
         before_fn = registered[0][1]
         after_fn = registered[1][1]
-        long_statement = 'SELECT ' + 'x' * 300
+        long_statement = "SELECT " + "x" * 300
 
         before_fn(conn, None, long_statement, None, None, False)
-        conn.info['query_start_time'][0] -= 0.5
+        conn.info["query_start_time"][0] -= 0.5
         with caplog.at_level(logging.WARNING):
             after_fn(conn, None, long_statement, None, None, False)
 
-        slow = [r for r in caplog.records if 'Slow query' in r.getMessage()]
+        slow = [r for r in caplog.records if "Slow query" in r.getMessage()]
         assert len(slow) == 1
         assert long_statement[:100] in slow[0].getMessage()
 
@@ -737,20 +782,27 @@ class TestLogSlowQueries:
             def decorator(fn):
                 registered.append(fn)
                 return fn
+
             return decorator
 
-        monkeypatch.setattr(event_module, 'listens_for', fake_listens_for)
+        monkeypatch.setattr(event_module, "listens_for", fake_listens_for)
         pt.log_slow_queries(app)
 
         conn = SimpleNamespace(info={})
-        registered[0](conn, None, 'SELECT 1', None, None, False)
-        registered[1](conn, None, 'SELECT 1', None, None, False)
-        assert not [r for r in caplog.records if 'Slow query' in r.getMessage()]
+        registered[0](conn, None, "SELECT 1", None, None, False)
+        registered[1](conn, None, "SELECT 1", None, None, False)
+        assert not [r for r in caplog.records if "Slow query" in r.getMessage()]
 
 
 def clear_telemetry_env(monkeypatch):
-    for name in ('FORM_SUBMIT_URL', 'FORM_SUBMIT_EMAIL', 'OWNER_EMAIL',
-                 'COMPANY_EMAIL', 'DISABLE_TELEMETRY', 'ENABLE_TELEMETRY'):
+    for name in (
+        "FORM_SUBMIT_URL",
+        "FORM_SUBMIT_EMAIL",
+        "OWNER_EMAIL",
+        "COMPANY_EMAIL",
+        "DISABLE_TELEMETRY",
+        "ENABLE_TELEMETRY",
+    ):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -759,80 +811,83 @@ class TestTelemetryReportingUrl:
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
-        monkeypatch.setenv('FORM_SUBMIT_URL', 'https://hooks.example.test/abc ')
-        assert tel.get_reporting_url() == 'https://hooks.example.test/abc'
+        monkeypatch.setenv("FORM_SUBMIT_URL", "https://hooks.example.test/abc ")
+        assert tel.get_reporting_url() == "https://hooks.example.test/abc"
 
     def test_explicit_email_builds_url(self, monkeypatch):
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
-        assert tel.get_reporting_url('ops@example.io') == 'https://formsubmit.co/ops@example.io'
+        assert (
+            tel.get_reporting_url("ops@example.io")
+            == "https://formsubmit.co/ops@example.io"
+        )
 
     def test_owner_email_env_used_as_fallback(self, monkeypatch):
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
-        monkeypatch.setenv('OWNER_EMAIL', 'boss@example.net')
-        assert tel.get_reporting_url() == 'https://formsubmit.co/boss@example.net'
+        monkeypatch.setenv("OWNER_EMAIL", "boss@example.net")
+        assert tel.get_reporting_url() == "https://formsubmit.co/boss@example.net"
 
     def test_email_without_at_falls_back_to_base_url(self, monkeypatch):
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
-        assert tel.get_reporting_url('not-an-email') == 'https://formsubmit.co'
+        assert tel.get_reporting_url("not-an-email") == "https://formsubmit.co"
 
 
 class TestTelemetrySignatureAndToken:
     def test_signature_combines_host_components(self, monkeypatch):
         from utils import telemetry as tel
 
-        monkeypatch.setattr(tel.socket, 'gethostname', lambda: 'unit-host')
+        monkeypatch.setattr(tel.socket, "gethostname", lambda: "unit-host")
         signature = tel.get_machine_signature()
-        parts = signature.split('|')
-        assert parts[0] == 'unit-host'
+        parts = signature.split("|")
+        assert parts[0] == "unit-host"
         assert len(parts) == 4
 
     def test_signature_failure_returns_sentinel(self, monkeypatch):
         from utils import telemetry as tel
 
         def broken_hostname():
-            raise OSError('no host')
+            raise OSError("no host")
 
-        monkeypatch.setattr(tel.socket, 'gethostname', broken_hostname)
-        assert tel.get_machine_signature() == 'unknown_machine'
+        monkeypatch.setattr(tel.socket, "gethostname", broken_hostname)
+        assert tel.get_machine_signature() == "unknown_machine"
 
     def test_token_file_roundtrip(self, tmp_path, monkeypatch):
         from utils import telemetry as tel
 
-        token_file = tmp_path / 'tok'
-        monkeypatch.setattr(tel, 'TOKEN_FILE', str(token_file))
+        token_file = tmp_path / "tok"
+        monkeypatch.setattr(tel, "TOKEN_FILE", str(token_file))
 
-        assert tel.has_reported_before('mach-1') is False
-        tel.mark_as_reported('mach-1')
-        assert token_file.read_text(encoding='utf-8') == 'mach-1'
-        assert tel.has_reported_before('mach-1') is True
-        assert tel.has_reported_before('mach-2') is False
+        assert tel.has_reported_before("mach-1") is False
+        tel.mark_as_reported("mach-1")
+        assert token_file.read_text(encoding="utf-8") == "mach-1"
+        assert tel.has_reported_before("mach-1") is True
+        assert tel.has_reported_before("mach-2") is False
 
     def test_mark_as_reported_swallows_write_errors(self, tmp_path, monkeypatch):
         from utils import telemetry as tel
 
-        monkeypatch.setattr(tel, 'TOKEN_FILE', str(tmp_path))
-        tel.mark_as_reported('mach-x')
+        monkeypatch.setattr(tel, "TOKEN_FILE", str(tmp_path))
+        tel.mark_as_reported("mach-x")
 
 
 class TestTelemetryLocalLog:
     def test_save_local_log_appends_json_lines(self, tmp_path, monkeypatch):
         from utils import telemetry as tel
 
-        log_file = tmp_path / '.security_audit.log'
-        monkeypatch.setattr(tel, 'HIDDEN_LOG_FILE', str(log_file))
+        log_file = tmp_path / ".security_audit.log"
+        monkeypatch.setattr(tel, "HIDDEN_LOG_FILE", str(log_file))
 
-        tel.save_local_log({'event': 'first'})
-        tel.save_local_log({'event': 'second'})
+        tel.save_local_log({"event": "first"})
+        tel.save_local_log({"event": "second"})
 
-        lines = log_file.read_text(encoding='utf-8').strip().splitlines()
+        lines = log_file.read_text(encoding="utf-8").strip().splitlines()
         assert len(lines) == 2
-        assert [json.loads(line)['event'] for line in lines] == ['first', 'second']
+        assert [json.loads(line)["event"] for line in lines] == ["first", "second"]
 
 
 class TestTelemetryNetwork:
@@ -840,7 +895,7 @@ class TestTelemetryNetwork:
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
-        monkeypatch.setenv('FORM_SUBMIT_URL', 'https://hooks.example.test/pin')
+        monkeypatch.setenv("FORM_SUBMIT_URL", "https://hooks.example.test/pin")
 
         captured = {}
 
@@ -848,25 +903,28 @@ class TestTelemetryNetwork:
             captured.update(url=url, data=data, headers=headers, timeout=timeout)
             return SimpleNamespace(status_code=200)
 
-        monkeypatch.setattr(tel.requests, 'post', fake_post)
+        monkeypatch.setattr(tel.requests, "post", fake_post)
 
-        assert tel.send_formsubmit('Nightly Alert', {'IP Address': '203.0.113.9'}) is True
-        assert captured['url'] == 'https://hooks.example.test/pin'
-        assert captured['timeout'] == 2
-        assert captured['data']['_subject'] == 'Nightly Alert'
-        assert captured['data']['_captcha'] == 'false'
-        assert captured['data']['IP Address'] == '203.0.113.9'
-        assert captured['headers']['Referer'].startswith('http')
+        assert (
+            tel.send_formsubmit("Nightly Alert", {"IP Address": "203.0.113.9"}) is True
+        )
+        assert captured["url"] == "https://hooks.example.test/pin"
+        assert captured["timeout"] == 2
+        assert captured["data"]["_subject"] == "Nightly Alert"
+        assert captured["data"]["_captcha"] == "false"
+        assert captured["data"]["IP Address"] == "203.0.113.9"
+        assert captured["headers"]["Referer"].startswith("http")
 
     def test_send_formsubmit_false_on_non_200(self, monkeypatch):
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
         monkeypatch.setattr(
-            tel, 'requests',
+            tel,
+            "requests",
             SimpleNamespace(post=lambda *a, **k: SimpleNamespace(status_code=500)),
         )
-        assert tel.send_formsubmit('Subject', {}) is False
+        assert tel.send_formsubmit("Subject", {}) is False
 
     def test_send_formsubmit_false_on_network_error(self, monkeypatch):
         from utils import telemetry as tel
@@ -874,25 +932,27 @@ class TestTelemetryNetwork:
         clear_telemetry_env(monkeypatch)
 
         def refused(*args, **kwargs):
-            raise ConnectionError('offline')
+            raise ConnectionError("offline")
 
         monkeypatch.setattr(
-            tel, 'requests', SimpleNamespace(post=refused),
+            tel,
+            "requests",
+            SimpleNamespace(post=refused),
         )
-        assert tel.send_formsubmit('Subject', {}) is False
+        assert tel.send_formsubmit("Subject", {}) is False
 
     def test_collect_system_info_primary_ip_service(self, monkeypatch):
         from utils import telemetry as tel
 
         def fake_get(url, timeout=None):
-            assert 'ipify' in url
-            return SimpleNamespace(json=lambda: {'ip': '203.0.113.7'})
+            assert "ipify" in url
+            return SimpleNamespace(json=lambda: {"ip": "203.0.113.7"})
 
-        monkeypatch.setattr(tel.requests, 'get', fake_get)
+        monkeypatch.setattr(tel.requests, "get", fake_get)
         info = tel.collect_system_info()
-        assert info['public_ip'] == '203.0.113.7'
-        assert info['hostname']
-        assert info['python_version']
+        assert info["public_ip"] == "203.0.113.7"
+        assert info["hostname"]
+        assert info["python_version"]
 
     def test_collect_system_info_falls_back_to_second_service(self, monkeypatch):
         from utils import telemetry as tel
@@ -902,50 +962,50 @@ class TestTelemetryNetwork:
         def fake_get(url, timeout=None):
             attempts.append(url)
             if len(attempts) == 1:
-                raise ConnectionError('primary down')
-            assert 'ifconfig.me' in url
-            return SimpleNamespace(json=lambda: {'ip_addr': '198.51.100.9'})
+                raise ConnectionError("primary down")
+            assert "ifconfig.me" in url
+            return SimpleNamespace(json=lambda: {"ip_addr": "198.51.100.9"})
 
-        monkeypatch.setattr(tel.requests, 'get', fake_get)
+        monkeypatch.setattr(tel.requests, "get", fake_get)
         info = tel.collect_system_info()
-        assert info['public_ip'] == '198.51.100.9'
+        assert info["public_ip"] == "198.51.100.9"
 
     def test_collect_system_info_offline_keeps_unknown_ip(self, monkeypatch):
         from utils import telemetry as tel
 
         def refused(url, timeout=None):
-            raise ConnectionError('fully offline')
+            raise ConnectionError("fully offline")
 
-        monkeypatch.setattr(tel.requests, 'get', refused)
+        monkeypatch.setattr(tel.requests, "get", refused)
         info = tel.collect_system_info()
-        assert info['public_ip'] == 'Unknown'
-        assert info['os']
+        assert info["public_ip"] == "Unknown"
+        assert info["os"]
 
 
 class TestSendHeartbeat:
     def make_info(self):
         return {
-            'timestamp': '2026-08-26T10:00:00',
-            'hostname': 'box-77',
-            'os': 'Windows',
-            'os_release': '11',
-            'machine': 'AMD64',
-            'processor': ' Ryzen 9 ',
-            'python_version': '3.14.6',
-            'public_ip': '203.0.113.5',
+            "timestamp": "2026-08-26T10:00:00",
+            "hostname": "box-77",
+            "os": "Windows",
+            "os_release": "11",
+            "machine": "AMD64",
+            "processor": " Ryzen 9 ",
+            "python_version": "3.14.6",
+            "public_ip": "203.0.113.5",
         }
 
     def test_first_run_sends_marks_token_and_saves_log(self, tmp_path, monkeypatch):
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
-        monkeypatch.setenv('ENABLE_TELEMETRY', '1')
-        token_file = tmp_path / '.machine_token'
-        log_file = tmp_path / '.security_audit.log'
-        monkeypatch.setattr(tel, 'TOKEN_FILE', str(token_file))
-        monkeypatch.setattr(tel, 'HIDDEN_LOG_FILE', str(log_file))
-        monkeypatch.setattr(tel, 'get_machine_signature', lambda: 'sig-first')
-        monkeypatch.setattr(tel, 'collect_system_info', self.make_info)
+        monkeypatch.setenv("ENABLE_TELEMETRY", "1")
+        token_file = tmp_path / ".machine_token"
+        log_file = tmp_path / ".security_audit.log"
+        monkeypatch.setattr(tel, "TOKEN_FILE", str(token_file))
+        monkeypatch.setattr(tel, "HIDDEN_LOG_FILE", str(log_file))
+        monkeypatch.setattr(tel, "get_machine_signature", lambda: "sig-first")
+        monkeypatch.setattr(tel, "collect_system_info", self.make_info)
 
         sent = {}
 
@@ -953,30 +1013,30 @@ class TestSendHeartbeat:
             sent.update(subject=subject, fields=fields)
             return True
 
-        monkeypatch.setattr(tel, 'send_formsubmit', fake_submit)
+        monkeypatch.setattr(tel, "send_formsubmit", fake_submit)
 
         tel.send_heartbeat()
 
-        assert token_file.read_text(encoding='utf-8') == 'sig-first'
-        entries = log_file.read_text(encoding='utf-8').strip().splitlines()
+        assert token_file.read_text(encoding="utf-8") == "sig-first"
+        entries = log_file.read_text(encoding="utf-8").strip().splitlines()
         assert len(entries) == 1
-        assert json.loads(entries[0])['hostname'] == 'box-77'
-        assert sent['fields']['Machine ID'] == 'sig-first'
-        assert sent['fields']['IP Address'] == '203.0.113.5'
-        assert 'box-77' in sent['subject']
-        assert '203.0.113.5' in sent['subject']
+        assert json.loads(entries[0])["hostname"] == "box-77"
+        assert sent["fields"]["Machine ID"] == "sig-first"
+        assert sent["fields"]["IP Address"] == "203.0.113.5"
+        assert "box-77" in sent["subject"]
+        assert "203.0.113.5" in sent["subject"]
 
     def test_repeat_run_skips_sending_to_avoid_spam(self, tmp_path, monkeypatch):
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
-        monkeypatch.setenv('ENABLE_TELEMETRY', '1')
-        token_file = tmp_path / '.machine_token'
-        log_file = tmp_path / '.security_audit.log'
-        token_file.write_text('sig-repeat', encoding='utf-8')
-        monkeypatch.setattr(tel, 'TOKEN_FILE', str(token_file))
-        monkeypatch.setattr(tel, 'HIDDEN_LOG_FILE', str(log_file))
-        monkeypatch.setattr(tel, 'get_machine_signature', lambda: 'sig-repeat')
+        monkeypatch.setenv("ENABLE_TELEMETRY", "1")
+        token_file = tmp_path / ".machine_token"
+        log_file = tmp_path / ".security_audit.log"
+        token_file.write_text("sig-repeat", encoding="utf-8")
+        monkeypatch.setattr(tel, "TOKEN_FILE", str(token_file))
+        monkeypatch.setattr(tel, "HIDDEN_LOG_FILE", str(log_file))
+        monkeypatch.setattr(tel, "get_machine_signature", lambda: "sig-repeat")
 
         calls = []
 
@@ -984,26 +1044,28 @@ class TestSendHeartbeat:
             calls.append(subject)
             return True
 
-        monkeypatch.setattr(tel, 'send_formsubmit', spy_submit)
+        monkeypatch.setattr(tel, "send_formsubmit", spy_submit)
 
         tel.send_heartbeat()
 
         assert calls == []
         assert not log_file.exists()
-        assert token_file.read_text(encoding='utf-8') == 'sig-repeat'
+        assert token_file.read_text(encoding="utf-8") == "sig-repeat"
 
     def test_failed_send_does_not_mark_as_reported(self, tmp_path, monkeypatch):
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
-        monkeypatch.setenv('ENABLE_TELEMETRY', '1')
-        token_file = tmp_path / '.machine_token'
-        log_file = tmp_path / '.security_audit.log'
-        monkeypatch.setattr(tel, 'TOKEN_FILE', str(token_file))
-        monkeypatch.setattr(tel, 'HIDDEN_LOG_FILE', str(log_file))
-        monkeypatch.setattr(tel, 'get_machine_signature', lambda: 'sig-fail')
-        monkeypatch.setattr(tel, 'collect_system_info', self.make_info)
-        monkeypatch.setattr(tel, 'send_formsubmit', lambda s, fields, to_email=None: False)
+        monkeypatch.setenv("ENABLE_TELEMETRY", "1")
+        token_file = tmp_path / ".machine_token"
+        log_file = tmp_path / ".security_audit.log"
+        monkeypatch.setattr(tel, "TOKEN_FILE", str(token_file))
+        monkeypatch.setattr(tel, "HIDDEN_LOG_FILE", str(log_file))
+        monkeypatch.setattr(tel, "get_machine_signature", lambda: "sig-fail")
+        monkeypatch.setattr(tel, "collect_system_info", self.make_info)
+        monkeypatch.setattr(
+            tel, "send_formsubmit", lambda s, fields, to_email=None: False
+        )
 
         tel.send_heartbeat()
 
@@ -1016,15 +1078,15 @@ class TestStartTelemetry:
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
-        monkeypatch.setenv('DISABLE_TELEMETRY', 'true')
+        monkeypatch.setenv("DISABLE_TELEMETRY", "true")
 
         started = []
 
         def fake_thread(target=None, daemon=None):
             started.append(target)
-            raise AssertionError('thread should not be created')
+            raise AssertionError("thread should not be created")
 
-        monkeypatch.setattr(tel, 'Thread', fake_thread)
+        monkeypatch.setattr(tel, "Thread", fake_thread)
         tel.start_telemetry()
         assert started == []
 
@@ -1032,21 +1094,21 @@ class TestStartTelemetry:
         from utils import telemetry as tel
 
         clear_telemetry_env(monkeypatch)
-        monkeypatch.setenv('ENABLE_TELEMETRY', '1')
+        monkeypatch.setenv("ENABLE_TELEMETRY", "1")
 
         started = {}
 
         class FakeThread:
             def __init__(self, target=None):
-                started['target'] = target
+                started["target"] = target
 
             def start(self):
-                started['daemon'] = self.daemon
-                started['launched'] = True
+                started["daemon"] = self.daemon
+                started["launched"] = True
 
-        monkeypatch.setattr(tel, 'Thread', FakeThread)
+        monkeypatch.setattr(tel, "Thread", FakeThread)
         tel.start_telemetry()
 
-        assert started['launched'] is True
-        assert started['daemon'] is True
-        assert started['target'] is tel.send_heartbeat
+        assert started["launched"] is True
+        assert started["daemon"] is True
+        assert started["target"] is tel.send_heartbeat

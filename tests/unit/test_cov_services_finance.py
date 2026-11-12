@@ -1,11 +1,12 @@
 """Coverage tests for finance services (F5/F37/F38/F41 + contracts)."""
+
 from datetime import datetime
 from decimal import Decimal
 
 import pytest
 
 from extensions import db as _db
-from models import GLAccount, GLJournalEntry, GLJournalLine, Purchase, Sale, Supplier
+from models import GLAccount, GLJournalEntry, Purchase, Sale, Supplier
 from services.account_resolution import AccountResolver, AccountRole
 from services.bank_reconciliation_service import BankReconciliationService
 from services.fx_revaluation import FXRevaluationService
@@ -26,12 +27,17 @@ def core(db):
 
     GLService.ensure_core_accounts()
     year = date.today().year
-    if FiscalPeriod.query.filter_by(year=year, period_type='annual').first() is None:
-        db.session.add(FiscalPeriod(
-            name=f'FY {year}', year=year, period_type='annual',
-            start_date=date(year, 1, 1), end_date=date(year, 12, 31),
-            is_closed=False,
-        ))
+    if FiscalPeriod.query.filter_by(year=year, period_type="annual").first() is None:
+        db.session.add(
+            FiscalPeriod(
+                name=f"FY {year}",
+                year=year,
+                period_type="annual",
+                start_date=date(year, 1, 1),
+                end_date=date(year, 12, 31),
+                is_closed=False,
+            )
+        )
         db.session.commit()
     return True
 
@@ -47,7 +53,7 @@ def _post(ref_type, ref_id, amount=Decimal("100.000"), **kwargs):
         reference_id=ref_id,
         currency="ILS",
         exchange_rate=Decimal("1"),
-        **kwargs
+        **kwargs,
     )
 
 
@@ -55,6 +61,7 @@ class TestPurgeByReference:
     def test_purges_draft_entry_and_lines(self, db, core):
         """F1: المسودة تُحذف، أما القيد المرحّل فلا يُحذف أبداً."""
         from models import GLJournalEntry, GLJournalLine
+
         e = _post("COV-PURGE", 91001, is_posted=False)
         eid = e.id
         n = GLService.purge_by_reference("COV-PURGE", 91001)
@@ -71,8 +78,12 @@ class TestPurgeByReference:
         with pytest.raises(ValueError):
             GLService.purge_by_reference("COV-PURGE", 91002)
         db.session.rollback()
-        assert GLJournalEntry.query.filter_by(
-            reference_type="COV-PURGE", reference_id=91002).count() == 1
+        assert (
+            GLJournalEntry.query.filter_by(
+                reference_type="COV-PURGE", reference_id=91002
+            ).count()
+            == 1
+        )
 
     def test_missing_reference_returns_zero(self, db, core):
         assert GLService.purge_by_reference("COV-PURGE", 999999) == 0
@@ -93,7 +104,9 @@ class TestReverseEntryBatchForm:
         assert isinstance(single, GLJournalEntry)
 
     def test_batch_no_entries_returns_empty(self, db, core):
-        assert GLService.reverse_entry(reference_type="COV-REV", reference_id=999999) == []
+        assert (
+            GLService.reverse_entry(reference_type="COV-REV", reference_id=999999) == []
+        )
 
 
 def _ils_sale(db, owner_user, test_customer, number, total, paid):
@@ -159,6 +172,7 @@ class TestUpdatePaymentStatus:
 class TestPostRevaluationGate:
     def test_empty_lines_no_post(self, db, core):
         from models import GLJournalEntry
+
         before = GLJournalEntry.query.count()
         res = {"lines": [], "balanced": True, "dry_run": True}
         out = FXRevaluationService.post_revaluation(res)
@@ -168,7 +182,9 @@ class TestPostRevaluationGate:
 
     def test_unbalanced_refuses(self, db, core):
         res = {
-            "lines": [{"account_code": "1130", "debit": Decimal("5"), "credit": Decimal("0")}],
+            "lines": [
+                {"account_code": "1130", "debit": Decimal("5"), "credit": Decimal("0")}
+            ],
             "balanced": False,
             "dry_run": True,
         }
@@ -178,8 +194,16 @@ class TestPostRevaluationGate:
     def test_balanced_posts_live(self, db, core):
         res = {
             "lines": [
-                {"account_code": "1130", "debit": Decimal("10"), "credit": Decimal("0")},
-                {"account_code": "4100", "debit": Decimal("0"), "credit": Decimal("10")},
+                {
+                    "account_code": "1130",
+                    "debit": Decimal("10"),
+                    "credit": Decimal("0"),
+                },
+                {
+                    "account_code": "4100",
+                    "debit": Decimal("0"),
+                    "credit": Decimal("10"),
+                },
             ],
             "balanced": True,
             "dry_run": True,
@@ -255,8 +279,7 @@ class TestAccountResolverGetAccount:
 
 
 class TestStockAdjustGLFailure:
-    def test_adjust_fails_closed_when_gl_is_down(self, db, test_product,
-                                                monkeypatch):
+    def test_adjust_fails_closed_when_gl_is_down(self, db, test_product, monkeypatch):
         """A stock change without a ledger entry is a silent divergence.
 
         The old behaviour kept the movement and swallowed the GL failure, so
@@ -270,15 +293,18 @@ class TestStockAdjustGLFailure:
 
         monkeypatch.setattr(GLService, "post_entry", staticmethod(_boom))
         with pytest.raises(Exception):
-            StockService.adjust_stock(test_product.id, Decimal("3"),
-                                      notes="cov-gl-down")
+            StockService.adjust_stock(
+                test_product.id, Decimal("3"), notes="cov-gl-down"
+            )
         db.session.rollback()
         db.session.refresh(test_product)
         assert Decimal(str(test_product.current_stock)) == before
 
 
 class TestReceiptAtomicContract:
-    def test_gl_failure_rolls_back_receipt_and_entry(self, db, test_customer, monkeypatch):
+    def test_gl_failure_rolls_back_receipt_and_entry(
+        self, db, test_customer, monkeypatch
+    ):
         """القيد والسند معاً أو لا شيء — لا سند يقف بلا أثر محاسبي."""
         before = GLJournalEntry.query.filter_by(reference_type="Receipt").count()
 
@@ -305,16 +331,32 @@ class TestBankSummaryIsolation:
         GLService.create_manual_entry(
             "cov bank1120",
             [
-                {"account_code": "1120", "debit": Decimal("1000"), "credit": Decimal("0")},
-                {"account_code": "1130", "debit": Decimal("0"), "credit": Decimal("1000")},
+                {
+                    "account_code": "1120",
+                    "debit": Decimal("1000"),
+                    "credit": Decimal("0"),
+                },
+                {
+                    "account_code": "1130",
+                    "debit": Decimal("0"),
+                    "credit": Decimal("1000"),
+                },
             ],
             entry_date=day,
         )
         GLService.create_manual_entry(
             "cov bank1121",
             [
-                {"account_code": "1121", "debit": Decimal("100"), "credit": Decimal("0")},
-                {"account_code": "1130", "debit": Decimal("0"), "credit": Decimal("100")},
+                {
+                    "account_code": "1121",
+                    "debit": Decimal("100"),
+                    "credit": Decimal("0"),
+                },
+                {
+                    "account_code": "1130",
+                    "debit": Decimal("0"),
+                    "credit": Decimal("100"),
+                },
             ],
             entry_date=day,
         )

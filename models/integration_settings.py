@@ -13,7 +13,8 @@ class IntegrationSettings(db.Model):
     إعدادات التكاملات الخارجية - قابلة للتعديل من لوحة المالك
     كل تكامل (service) له سجل منفصل
     """
-    __tablename__ = 'integration_settings'
+
+    __tablename__ = "integration_settings"
 
     id = db.Column(db.Integer, primary_key=True)
 
@@ -33,28 +34,33 @@ class IntegrationSettings(db.Model):
 
     # Meta
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
-                           onupdate=lambda: datetime.now(timezone.utc))
-    updated_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    updated_by = db.Column(db.Integer, db.ForeignKey("users.id"))
 
     # Relationships
-    user = db.relationship('User', foreign_keys=[updated_by])
+    user = db.relationship("User", foreign_keys=[updated_by])
 
     def __repr__(self):
-        return f'<IntegrationSettings {self.service_name} {"✅" if self.enabled else "❌"}>'
+        return f"<IntegrationSettings {self.service_name} {'✅' if self.enabled else '❌'}>"
 
     @staticmethod
     def get_service_config(service_name):
         """
         الحصول على إعدادات خدمة معينة
         """
-        integration = IntegrationSettings.query.filter_by(service_name=service_name).first()
+        integration = IntegrationSettings.query.filter_by(
+            service_name=service_name
+        ).first()
         if not integration:
             # إنشاء سجل جديد بإعدادات افتراضية
             integration = IntegrationSettings(
                 service_name=service_name,
                 enabled=False,
-                config_data=json.dumps({}, ensure_ascii=False)
+                config_data=json.dumps({}, ensure_ascii=False),
             )
             db.session.add(integration)
             db.session.commit()
@@ -94,11 +100,13 @@ class IntegrationSettings(db.Model):
 
     def to_dict(self):
         return {
-            'id': self.id,
-            'service_name': self.service_name,
-            'enabled': self.enabled,
-            'config': self.get_config(),
-            'last_tested_at': self.last_tested_at.isoformat() if self.last_tested_at else None,
-            'last_test_status': self.last_test_status,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            "id": self.id,
+            "service_name": self.service_name,
+            "enabled": self.enabled,
+            "config": self.get_config(),
+            "last_tested_at": self.last_tested_at.isoformat()
+            if self.last_tested_at
+            else None,
+            "last_test_status": self.last_test_status,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

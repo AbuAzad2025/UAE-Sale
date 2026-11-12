@@ -24,9 +24,9 @@ def _report_tx_duration(function_name, duration_ms, outcome):
         from utils.monitoring import MetricsCollector
 
         MetricsCollector.record_metric(
-            'tx_duration_ms',
+            "tx_duration_ms",
             round(duration_ms, 2),
-            {'function': function_name, 'outcome': outcome},
+            {"function": function_name, "outcome": outcome},
         )
         return
     except Exception:
@@ -35,7 +35,9 @@ def _report_tx_duration(function_name, duration_ms, outcome):
     try:
         from flask import current_app
 
-        current_app.logger.info(f'TX {function_name} {outcome} in {round(duration_ms, 2)}ms')
+        current_app.logger.info(
+            f"TX {function_name} {outcome} in {round(duration_ms, 2)}ms"
+        )
     except Exception:
         pass
 
@@ -48,33 +50,38 @@ def tx(f):
     only the outermost owner finalizes, so a late outer failure discards all
     inner work atomically.
     """
+
     @wraps(f)
     def wrapper(*args, **kwargs):
         from extensions import db
 
         session = db.session
-        owns = not session.info.get('_tx_owned')
+        owns = not session.info.get("_tx_owned")
         started = time.perf_counter()
 
         if not owns:
             try:
                 return f(*args, **kwargs)
             finally:
-                _report_tx_duration(f.__name__, (time.perf_counter() - started) * 1000, 'nested')
+                _report_tx_duration(
+                    f.__name__, (time.perf_counter() - started) * 1000, "nested"
+                )
 
-        session.info['_tx_owned'] = True
-        outcome = 'commit'
+        session.info["_tx_owned"] = True
+        outcome = "commit"
         try:
             result = f(*args, **kwargs)
             session.commit()
             return result
         except Exception:
             session.rollback()
-            outcome = 'rollback'
+            outcome = "rollback"
             raise
         finally:
-            session.info.pop('_tx_owned', None)
-            _report_tx_duration(f.__name__, (time.perf_counter() - started) * 1000, outcome)
+            session.info.pop("_tx_owned", None)
+            _report_tx_duration(
+                f.__name__, (time.perf_counter() - started) * 1000, outcome
+            )
 
     return wrapper
 
@@ -84,15 +91,17 @@ def permission_required(permission_code):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if not current_user.is_authenticated:
-                flash('الرجاء تسجيل الدخول أولاً', 'warning')
-                return redirect(url_for('auth.login'))
+                flash("الرجاء تسجيل الدخول أولاً", "warning")
+                return redirect(url_for("auth.login"))
 
             if not current_user.has_permission(permission_code):
-                flash('ليس لديك صلاحية للوصول لهذه الصفحة', 'danger')
+                flash("ليس لديك صلاحية للوصول لهذه الصفحة", "danger")
                 abort(403)
 
             return f(*args, **kwargs)
+
         return decorated_function
+
     return decorator
 
 
@@ -100,14 +109,15 @@ def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
-            flash('الرجاء تسجيل الدخول أولاً', 'warning')
-            return redirect(url_for('auth.login'))
+            flash("الرجاء تسجيل الدخول أولاً", "warning")
+            return redirect(url_for("auth.login"))
 
         if not (current_user.is_owner or current_user.is_super_admin()):
-            flash('هذه الصفحة للإدارة فقط', 'danger')
+            flash("هذه الصفحة للإدارة فقط", "danger")
             abort(403)
 
         return f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -115,8 +125,8 @@ def seller_or_above(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
-            flash('الرجاء تسجيل الدخول أولاً', 'warning')
-            return redirect(url_for('auth.login'))
+            flash("الرجاء تسجيل الدخول أولاً", "warning")
+            return redirect(url_for("auth.login"))
 
         # Owner and super_admin always pass
         if current_user.is_owner or current_user.is_super_admin():
@@ -126,8 +136,9 @@ def seller_or_above(f):
         if current_user.is_manager() or current_user.is_seller():
             return f(*args, **kwargs)
 
-        flash('ليس لديك صلاحية للوصول لهذه الصفحة', 'danger')
+        flash("ليس لديك صلاحية للوصول لهذه الصفحة", "danger")
         abort(403)
+
     return decorated_function
 
 
@@ -135,14 +146,15 @@ def super_admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
-            flash('الرجاء تسجيل الدخول أولاً', 'warning')
-            return redirect(url_for('auth.login'))
+            flash("الرجاء تسجيل الدخول أولاً", "warning")
+            return redirect(url_for("auth.login"))
 
         if not (current_user.is_owner or current_user.is_super_admin()):
-            flash('هذه الصفحة للسوبر أدمن فقط', 'danger')
+            flash("هذه الصفحة للسوبر أدمن فقط", "danger")
             abort(403)
 
         return f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -152,11 +164,21 @@ def owner_required(f):
         if not current_user.is_authenticated:
             abort(404)
 
-        if not (current_user.is_owner or (getattr(current_user, 'role', None) and getattr(current_user.role, 'slug', None) == 'developer')):
-            flash('الصفحة مخصصة لمالكي المنصة فقط. ستتم إعادة التوجيه إلى لوحة التحكم.', 'warning')
-            return redirect(url_for('main.dashboard'))
+        if not (
+            current_user.is_owner
+            or (
+                getattr(current_user, "role", None)
+                and getattr(current_user.role, "slug", None) == "developer"
+            )
+        ):
+            flash(
+                "الصفحة مخصصة لمالكي المنصة فقط. ستتم إعادة التوجيه إلى لوحة التحكم.",
+                "warning",
+            )
+            return redirect(url_for("main.dashboard"))
 
         return f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -177,15 +199,15 @@ def owner_required(f):
 # to ensure an actor can only ever assign / mutate a role at or below their
 # own level.  Owner sits at the top (level 100) by definition.
 _ROLE_LEVELS = {
-    'super_admin': 90,
-    'developer': 95,  # موثوق — فوق سوبر أدمن، دون المالك (100)
-    'manager': 70,
-    'accountant': 50,
-    'seller': 40,
-    'cashier': 40,
-    'hr': 60,
-    'inventory': 30,
-    'viewer': 10,
+    "super_admin": 90,
+    "developer": 95,  # موثوق — فوق سوبر أدمن، دون المالك (100)
+    "manager": 70,
+    "accountant": 50,
+    "seller": 40,
+    "cashier": 40,
+    "hr": 60,
+    "inventory": 30,
+    "viewer": 10,
 }
 
 
@@ -197,7 +219,7 @@ def _role_level(role):
     """
     if role is None:
         return 0
-    slug = getattr(role, 'slug', None)
+    slug = getattr(role, "slug", None)
     if not slug:
         return 0
     return _ROLE_LEVELS.get(slug, 0)
@@ -212,9 +234,9 @@ def _current_user_level():
     """
     if not current_user.is_authenticated:
         return 0
-    if getattr(current_user, 'is_owner', False):
+    if getattr(current_user, "is_owner", False):
         return 100
-    return _role_level(getattr(current_user, 'role', None))
+    return _role_level(getattr(current_user, "role", None))
 
 
 def _enforce_target_role_not_higher(target_role):
@@ -227,7 +249,7 @@ def _enforce_target_role_not_higher(target_role):
     """
     target_level = _role_level(target_role)
     if target_level > _current_user_level():
-        flash('لا يمكنك ترقية مستخدم إلى دور أعلى من صلاحياتك', 'danger')
+        flash("لا يمكنك ترقية مستخدم إلى دور أعلى من صلاحياتك", "danger")
         abort(403)
 
 
@@ -247,24 +269,27 @@ def _enforce_same_tenant(obj):
         # we do not 403 for missing rows because that would leak the
         # existence of cross-tenant IDs.
         return
-    if getattr(current_user, 'is_owner', False):
+    if getattr(current_user, "is_owner", False):
         return
     # Authentication is the route's job (login_required).  In service
     # unit-test contexts current_user is anonymous; we skip tenant
     # enforcement rather than abort so tests can exercise the logic.
-    if not getattr(current_user, 'is_authenticated', False):
+    if not getattr(current_user, "is_authenticated", False):
         return
     # Self-action is always permitted (the route must guard against
     # self-escalation, e.g. role change).
-    obj_user_id = getattr(obj, 'user_id', None) or getattr(obj, 'id', None)
-    actor_id = getattr(current_user, 'id', None)
-    if (obj_user_id is not None and actor_id is not None
-            and obj_user_id == actor_id
-            and User is not None
-            and isinstance(obj, User)):
+    obj_user_id = getattr(obj, "user_id", None) or getattr(obj, "id", None)
+    actor_id = getattr(current_user, "id", None)
+    if (
+        obj_user_id is not None
+        and actor_id is not None
+        and obj_user_id == actor_id
+        and User is not None
+        and isinstance(obj, User)
+    ):
         return
-    actor_tenant = getattr(current_user, 'tenant_id', None)
-    obj_tenant = getattr(obj, 'tenant_id', None)
+    actor_tenant = getattr(current_user, "tenant_id", None)
+    obj_tenant = getattr(obj, "tenant_id", None)
     # If both sides have no tenant (e.g. fixture or pre-tenant data),
     # the row is globally visible — owner/super_admin see it, and
     # regular users with the right permission also see it.  We only
@@ -276,7 +301,10 @@ def _enforce_same_tenant(obj):
     if obj_tenant is None and actor_tenant is not None:
         # Actor is tenant-scoped but the row is not — ambiguous, fail
         # closed except for platform owner/super_admin.
-        if not (getattr(current_user, 'is_owner', False) or getattr(current_user, 'is_super_admin', lambda: False)()):
+        if not (
+            getattr(current_user, "is_owner", False)
+            or getattr(current_user, "is_super_admin", lambda: False)()
+        ):
             abort(403)
         return
     if actor_tenant != obj_tenant:
@@ -297,6 +325,7 @@ def get_owned_or_404(model, pk, *, code=404, message=None):
     they are the platform operator).
     """
     from extensions import db
+
     obj = db.session.get(model, pk)
     if obj is None:
         abort(code)
@@ -313,23 +342,36 @@ def assert_same_tenant(obj, exc_cls=ValueError, message=None):
     cross-tenant access.  Owner / super_admin bypass as usual.
     """
     from flask_login import current_user
-    if not getattr(current_user, 'is_authenticated', False):
+
+    if not getattr(current_user, "is_authenticated", False):
         return
-    actor_tenant = getattr(current_user, 'tenant_id', None)
-    obj_tenant = getattr(obj, 'tenant_id', None)
+    actor_tenant = getattr(current_user, "tenant_id", None)
+    obj_tenant = getattr(obj, "tenant_id", None)
     if obj_tenant is None and actor_tenant is None:
         return
     if obj_tenant is None and actor_tenant is not None:
-        if not (getattr(current_user, 'is_owner', False) or getattr(current_user, 'is_super_admin', lambda: False)()):
-            raise exc_cls(message or 'Cross-tenant access denied')
+        if not (
+            getattr(current_user, "is_owner", False)
+            or getattr(current_user, "is_super_admin", lambda: False)()
+        ):
+            raise exc_cls(message or "Cross-tenant access denied")
         return
     if actor_tenant != obj_tenant:
-        if not (getattr(current_user, 'is_owner', False) or getattr(current_user, 'is_super_admin', lambda: False)()):
-            raise exc_cls(message or 'Cross-tenant access denied')
+        if not (
+            getattr(current_user, "is_owner", False)
+            or getattr(current_user, "is_super_admin", lambda: False)()
+        ):
+            raise exc_cls(message or "Cross-tenant access denied")
 
 
-def get_owned_or_raise(model, pk, exc_cls=ValueError, missing_message=None, tenant_message=None,
-                      for_update=False):
+def get_owned_or_raise(
+    model,
+    pk,
+    exc_cls=ValueError,
+    missing_message=None,
+    tenant_message=None,
+    for_update=False,
+):
     """Service-layer variant of ``get_owned_or_404``.
 
     Returns ``None`` if the row is missing (caller keeps its own
@@ -345,6 +387,7 @@ def get_owned_or_raise(model, pk, exc_cls=ValueError, missing_message=None, tena
     rows (stock, balances, quotation status, partner share).
     """
     from extensions import db
+
     if for_update:
         # Fresh query (not identity-map lookup) so FOR UPDATE actually
         # acquires the row lock on the database.
@@ -354,25 +397,31 @@ def get_owned_or_raise(model, pk, exc_cls=ValueError, missing_message=None, tena
     if obj is None:
         return None
     from flask_login import current_user
-    if not getattr(current_user, 'is_authenticated', False):
+
+    if not getattr(current_user, "is_authenticated", False):
         # Unauthenticated callers get the object — caller must enforce auth
         return obj
-    actor_tenant = getattr(current_user, 'tenant_id', None)
-    obj_tenant = getattr(obj, 'tenant_id', None)
+    actor_tenant = getattr(current_user, "tenant_id", None)
+    obj_tenant = getattr(obj, "tenant_id", None)
 
     # Owner / super_admin bypass all tenant checks
-    if getattr(current_user, 'is_owner', False) or getattr(current_user, 'is_super_admin', lambda: False)():
+    if (
+        getattr(current_user, "is_owner", False)
+        or getattr(current_user, "is_super_admin", lambda: False)()
+    ):
         return obj
 
     # At this point: regular tenant user (not owner/super_admin)
     # Both sides must have a tenant_id and they must match exactly
     if actor_tenant is None:
-        raise exc_cls(tenant_message or 'User has no tenant context')
+        raise exc_cls(tenant_message or "User has no tenant context")
     if obj_tenant is None:
         # Unscoped system objects are NOT accessible to regular tenants
-        raise exc_cls(tenant_message or 'Cross-tenant access denied: object has no tenant')
+        raise exc_cls(
+            tenant_message or "Cross-tenant access denied: object has no tenant"
+        )
     if actor_tenant != obj_tenant:
-        raise exc_cls(tenant_message or 'Cross-tenant access denied')
+        raise exc_cls(tenant_message or "Cross-tenant access denied")
 
     return obj
 
@@ -384,20 +433,25 @@ def require_csrf_for_state_change(view_func):
     protection (financial writes, role changes, etc.).  The route handler
     itself does not need to know about CSRF.
     """
+
     @wraps(view_func)
     def wrapper(*args, **kwargs):
-        if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
             # Flask-WTF's CSRFProtect middleware normally rejects these
             # automatically, but on @csrf.exempt routes (e.g. payment
             # webhooks) we need a manual gate.  ``getattr`` keeps the
             # wrapper safe in the rare case ``flask_wtf`` is not present.
             try:
                 from flask_wtf.csrf import validate_csrf
-                validate_csrf(request.form.get('csrf_token') or
-                              request.headers.get('X-CSRF-Token', ''))
+
+                validate_csrf(
+                    request.form.get("csrf_token")
+                    or request.headers.get("X-CSRF-Token", "")
+                )
             except Exception:
                 abort(400)
         return view_func(*args, **kwargs)
+
     return wrapper
 
 
@@ -419,25 +473,27 @@ def webhook_signature_required(get_secret, get_signature, raw_body=False):
             signature = get_signature()
             if not secret:
                 # Fail closed: do NOT accept webhooks with an empty secret.
-                current_app_logger_abort('webhook secret not configured')
+                current_app_logger_abort("webhook secret not configured")
             if not signature:
-                current_app_logger_abort('webhook signature missing')
+                current_app_logger_abort("webhook signature missing")
             try:
                 if raw_body:
-                    payload = request.get_data() or b''
+                    payload = request.get_data() or b""
                 else:
-                    payload = (request.get_data() or b'').decode('utf-8')
+                    payload = (request.get_data() or b"").decode("utf-8")
                 expected = hmac.new(
-                    secret.encode('utf-8') if isinstance(secret, str) else secret,
-                    payload if isinstance(payload, bytes) else payload.encode('utf-8'),
+                    secret.encode("utf-8") if isinstance(secret, str) else secret,
+                    payload if isinstance(payload, bytes) else payload.encode("utf-8"),
                     hashlib.sha256,
                 ).hexdigest()
                 if not hmac.compare_digest(expected, signature):
-                    current_app_logger_abort('webhook signature mismatch')
+                    current_app_logger_abort("webhook signature mismatch")
             except Exception:
                 abort(400)
             return view_func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -445,7 +501,8 @@ def current_app_logger_abort(reason):
     """Log the rejection reason and abort the webhook request."""
     try:
         from flask import current_app
-        current_app.logger.warning('Webhook rejected: %s', reason)
+
+        current_app.logger.warning("Webhook rejected: %s", reason)
     except Exception:
         pass
     abort(400)

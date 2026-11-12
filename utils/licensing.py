@@ -3,13 +3,21 @@ import hmac
 import os
 from datetime import datetime
 
-# Seed constructed from char codes (obfuscated to avoid casual grep)
-_SEED_PARTS = [65, 122, 97, 100, 64, 49, 57, 56, 51]
-
 
 def get_master_seed():
-    """Daily-key seed: MASTER_KEY_SEED env overrides the built-in default."""
-    return os.environ.get('MASTER_KEY_SEED') or "".join(chr(c) for c in _SEED_PARTS)
+    """Daily-key seed: MASTER_KEY_SEED env is REQUIRED in production.
+
+    No built-in default: a missing/empty seed raises RuntimeError so the
+    platform cannot boot with a known, hardcoded credential.
+    """
+    seed = os.environ.get("MASTER_KEY_SEED", "").strip()
+    if not seed:
+        # Fail-closed: never fall back to a known seed.
+        raise RuntimeError(
+            "MASTER_KEY_SEED environment variable is required and must not be empty. "
+            "Set it before starting the application."
+        )
+    return seed
 
 
 def master_key_for_today():
@@ -30,8 +38,8 @@ def verify_license_signature(input_token):
             return False
         _date_component = datetime.now().strftime("%Y@%m@%d")
         _expected_clear = f"{get_master_seed()}@{_date_component}"
-        _input_hash = hashlib.sha256(input_token.encode('utf-8')).hexdigest()
-        _expected_hash = hashlib.sha256(_expected_clear.encode('utf-8')).hexdigest()
+        _input_hash = hashlib.sha256(input_token.encode("utf-8")).hexdigest()
+        _expected_hash = hashlib.sha256(_expected_clear.encode("utf-8")).hexdigest()
         return hmac.compare_digest(_input_hash, _expected_hash)
     except Exception:
         return False

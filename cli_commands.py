@@ -3,6 +3,7 @@
 Registers ``flask db ...`` and other management commands so that
 the standard Alembic workflow works without manual setup.
 """
+
 import os
 import click
 from flask import Flask
@@ -22,14 +23,15 @@ def register_cli_commands(app: Flask) -> None:
     # ``current`` / ``stamp`` / ``show`` / ``merge`` / ``check``
     # subcommands are all provided by Flask-Migrate out of the box.
     from extensions import db, migrate
+
     # Re-attach the existing Migrate to the CLI so ``flask db`` works.
     migrations_dir = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
-        'migrations',
+        "migrations",
     )
     migrate.init_app(app, db, directory=migrations_dir)
 
-    @app.cli.command('db-status')
+    @app.cli.command("db-status")
     @with_appcontext
     def db_status():
         """Show the current migration head and which revs are applied."""
@@ -37,25 +39,27 @@ def register_cli_commands(app: Flask) -> None:
         from alembic.script import ScriptDirectory
         from sqlalchemy import inspect
 
-        cfg = Config(os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            'migrations', 'alembic.ini'))
+        cfg = Config(
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "migrations", "alembic.ini"
+            )
+        )
         script = ScriptDirectory.from_config(cfg)
         heads = script.get_heads()
-        click.echo(f'Heads: {heads}')
+        click.echo(f"Heads: {heads}")
 
         insp = inspect(db.engine)
-        if 'alembic_version' in insp.get_table_names():
+        if "alembic_version" in insp.get_table_names():
             current = script.get_current_head()
-            click.echo(f'Current: {current}')
+            click.echo(f"Current: {current}")
             if current in heads:
-                click.echo('Status: OK (single head, fully migrated)')
+                click.echo("Status: OK (single head, fully migrated)")
             else:
-                click.echo('Status: OUT OF SYNC')
+                click.echo("Status: OUT OF SYNC")
         else:
-            click.echo('Status: NOT MIGRATED (alembic_version table missing)')
+            click.echo("Status: NOT MIGRATED (alembic_version table missing)")
 
-    @app.cli.command('init-db')
+    @app.cli.command("init-db")
     @with_appcontext
     def init_db():
         """One-shot local-dev bootstrap: create_all() + seed owner/permissions.
@@ -65,23 +69,28 @@ def register_cli_commands(app: Flask) -> None:
         created by alembic migrations under version control.
         """
         from sqlalchemy import inspect
+
         insp = inspect(db.engine)
         if insp.get_table_names():
             click.echo(
                 f"Database already has {len(insp.get_table_names())} tables; "
-                f"refusing to run init-db.  Use 'flask db upgrade' instead.")
+                f"refusing to run init-db.  Use 'flask db upgrade' instead."
+            )
             raise SystemExit(1)
-        click.echo('Creating all tables via db.create_all() ...')
+        click.echo("Creating all tables via db.create_all() ...")
         db.create_all()
-        click.echo('Seeding owner, roles, and permissions ...')
+        click.echo("Seeding owner, roles, and permissions ...")
         from utils.system_init import ensure_system_integrity
-        os.environ.pop('SYSTEM_INTEGRITY_FORCE', None)
-        os.environ['SYSTEM_INTEGRITY_FORCE'] = '1'
-        ensure_system_integrity(app)
-        click.echo('Done.  You can now log in with the OWNER_USERNAME / OWNER_PASSWORD '
-                   'env vars (default: owner / <OWNER_PASSWORD>).')
 
-    @app.cli.command('verify-backup')
+        os.environ.pop("SYSTEM_INTEGRITY_FORCE", None)
+        os.environ["SYSTEM_INTEGRITY_FORCE"] = "1"
+        ensure_system_integrity(app)
+        click.echo(
+            "Done.  You can now log in with the OWNER_USERNAME / OWNER_PASSWORD "
+            "env vars (default: owner / <OWNER_PASSWORD>)."
+        )
+
+    @app.cli.command("verify-backup")
     @with_appcontext
     def verify_backup():
         """Content-level sanity check of the latest backup under instance/backups/.
@@ -93,17 +102,18 @@ def register_cli_commands(app: Flask) -> None:
         from services.backup_verify import verify_latest_backup
 
         row = verify_latest_backup(db)
-        click.echo(f'File:    {row.filename}')
-        click.echo(f'Status:  {row.status}')
-        click.echo(f'Dialect: {row.dialect}')
-        click.echo(f'Size:    {row.size_bytes} bytes')
-        click.echo(f'Tables:  {row.table_count}')
-        click.echo(f'Data:    {row.data_markers} markers')
+        click.echo(f"File:    {row.filename}")
+        click.echo(f"Status:  {row.status}")
+        click.echo(f"Dialect: {row.dialect}")
+        click.echo(f"Size:    {row.size_bytes} bytes")
+        click.echo(f"Tables:  {row.table_count}")
+        click.echo(f"Data:    {row.data_markers} markers")
         if row.checks_json:
             import json as _json
+
             for c in _json.loads(row.checks_json):
-                click.echo(f'  ✓ {c}')
+                click.echo(f"  ✓ {c}")
         if row.error:
-            click.echo(f'Error: {row.error}')
-        if row.status != 'verified':
+            click.echo(f"Error: {row.error}")
+        if row.status != "verified":
             raise SystemExit(1)

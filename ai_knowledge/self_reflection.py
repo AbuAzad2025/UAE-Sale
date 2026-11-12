@@ -49,30 +49,32 @@ class SelfReflectionEngine:
             }
         """
         assessment = {
-            'timestamp': datetime.now().isoformat(),
-            'overall_score': 0,
-            'strengths': [],
-            'weaknesses': [],
-            'improvements_needed': []
+            "timestamp": datetime.now().isoformat(),
+            "overall_score": 0,
+            "strengths": [],
+            "weaknesses": [],
+            "improvements_needed": [],
         }
 
         # تقييم الدقة
         if self.performance_log:
             recent_performance = self.performance_log[-100:]  # آخر 100 عملية
 
-            accuracy_scores = [p.get('accuracy', 0) for p in recent_performance if 'accuracy' in p]
+            accuracy_scores = [
+                p.get("accuracy", 0) for p in recent_performance if "accuracy" in p
+            ]
 
             if accuracy_scores:
                 avg_accuracy = sum(accuracy_scores) / len(accuracy_scores)
-                assessment['overall_score'] = avg_accuracy
+                assessment["overall_score"] = avg_accuracy
 
                 if avg_accuracy > 0.9:
-                    assessment['strengths'].append(f"دقة عالية جداً: {avg_accuracy:.0%}")
+                    assessment["strengths"].append(f"دقة عالية جداً: {avg_accuracy:.0%}")
                 elif avg_accuracy > 0.7:
-                    assessment['strengths'].append(f"دقة جيدة: {avg_accuracy:.0%}")
+                    assessment["strengths"].append(f"دقة جيدة: {avg_accuracy:.0%}")
                 else:
-                    assessment['weaknesses'].append(f"الدقة منخفضة: {avg_accuracy:.0%}")
-                    assessment['improvements_needed'].append("زيادة البيانات التدريبية")
+                    assessment["weaknesses"].append(f"الدقة منخفضة: {avg_accuracy:.0%}")
+                    assessment["improvements_needed"].append("زيادة البيانات التدريبية")
 
         # تحليل الأخطاء
         if self.errors_log:
@@ -81,7 +83,7 @@ class SelfReflectionEngine:
             # تجميع الأخطاء المتشابهة
             error_types = defaultdict(int)
             for error in recent_errors:
-                error_type = error.get('type', 'unknown')
+                error_type = error.get("type", "unknown")
                 error_types[error_type] += 1
 
             # أكثر الأخطاء تكراراً
@@ -89,30 +91,34 @@ class SelfReflectionEngine:
                 most_common = max(error_types, key=error_types.get)
                 count = error_types[most_common]
 
-                assessment['weaknesses'].append(f"خطأ متكرر: {most_common} ({count} مرة)")
-                assessment['improvements_needed'].append(f"إصلاح: {most_common}")
+                assessment["weaknesses"].append(
+                    f"خطأ متكرر: {most_common} ({count} مرة)"
+                )
+                assessment["improvements_needed"].append(f"إصلاح: {most_common}")
 
         # التحسينات السابقة
         if self.improvements_log:
             recent_improvements = self.improvements_log[-10:]
-            assessment['recent_improvements'] = [
-                imp.get('improvement', '') for imp in recent_improvements
+            assessment["recent_improvements"] = [
+                imp.get("improvement", "") for imp in recent_improvements
             ]
 
         # حفظ التقييم
         self.self_assessment = assessment
 
-        logger.info(f"🔮 Self-reflection complete: Overall score {assessment['overall_score']:.0%}")
+        logger.info(
+            f"🔮 Self-reflection complete: Overall score {assessment['overall_score']:.0%}"
+        )
 
         return assessment
 
     def log_performance(self, task: str, accuracy: float, details: dict = None):
         """تسجيل الأداء"""
         entry = {
-            'timestamp': datetime.now().isoformat(),
-            'task': task,
-            'accuracy': accuracy,
-            'details': details or {}
+            "timestamp": datetime.now().isoformat(),
+            "task": task,
+            "accuracy": accuracy,
+            "details": details or {},
         }
 
         self.performance_log.append(entry)
@@ -124,10 +130,10 @@ class SelfReflectionEngine:
     def log_error(self, error_type: str, error_message: str, context: dict = None):
         """تسجيل خطأ للتعلم منه"""
         entry = {
-            'timestamp': datetime.now().isoformat(),
-            'type': error_type,
-            'message': error_message,
-            'context': context or {}
+            "timestamp": datetime.now().isoformat(),
+            "type": error_type,
+            "message": error_message,
+            "context": context or {},
         }
 
         self.errors_log.append(entry)
@@ -151,17 +157,17 @@ class SelfReflectionEngine:
         assessment = self.reflect_on_performance()
 
         # اقتراحات بناءً على نقاط الضعف
-        for weakness in assessment['weaknesses']:
-            if 'دقة منخفضة' in weakness:
+        for weakness in assessment["weaknesses"]:
+            if "دقة منخفضة" in weakness:
                 suggestions.append("💡 زيادة البيانات التدريبية للنماذج")
                 suggestions.append("💡 إعادة تدريب النماذج بشكل دوري")
 
-            if 'خطأ متكرر' in weakness:
+            if "خطأ متكرر" in weakness:
                 suggestions.append("💡 إضافة معالجة أخطاء أفضل")
                 suggestions.append("💡 مراجعة المنطق في الكود")
 
         # اقتراحات عامة
-        if assessment['overall_score'] < 0.8:
+        if assessment["overall_score"] < 0.8:
             suggestions.append("💡 مراجعة شاملة للنظام")
 
         return suggestions
@@ -176,21 +182,23 @@ class SelfReflectionEngine:
         suggestions = self.suggest_improvements()
 
         plan = {
-            'timestamp': datetime.now().isoformat(),
-            'current_performance': self.self_assessment.get('overall_score', 0),
-            'target_performance': 0.95,
-            'improvements': suggestions,
-            'action_items': []
+            "timestamp": datetime.now().isoformat(),
+            "current_performance": self.self_assessment.get("overall_score", 0),
+            "target_performance": 0.95,
+            "improvements": suggestions,
+            "action_items": [],
         }
 
         # تحويل الاقتراحات لإجراءات
         for suggestion in suggestions:
-            plan['action_items'].append({
-                'action': suggestion,
-                'priority': 'high',
-                'estimated_time': '1-2 أيام',
-                'status': 'pending'
-            })
+            plan["action_items"].append(
+                {
+                    "action": suggestion,
+                    "priority": "high",
+                    "estimated_time": "1-2 أيام",
+                    "status": "pending",
+                }
+            )
 
         return plan
 
@@ -201,9 +209,9 @@ class SelfReflectionEngine:
         تعزيز إيجابي للتعلم
         """
         entry = {
-            'timestamp': datetime.now().isoformat(),
-            'achievement': achievement,
-            'type': 'success'
+            "timestamp": datetime.now().isoformat(),
+            "achievement": achievement,
+            "type": "success",
         }
 
         self.improvements_log.append(entry)
@@ -217,10 +225,10 @@ class SelfReflectionEngine:
         "الفشل معلم عظيم"
         """
         entry = {
-            'timestamp': datetime.now().isoformat(),
-            'mistake': mistake,
-            'lesson': lesson,
-            'type': 'learning'
+            "timestamp": datetime.now().isoformat(),
+            "mistake": mistake,
+            "lesson": lesson,
+            "type": "learning",
         }
 
         self.improvements_log.append(entry)

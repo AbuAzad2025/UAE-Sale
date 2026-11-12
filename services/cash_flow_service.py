@@ -25,10 +25,7 @@ from datetime import date, datetime
 from types import SimpleNamespace
 from sqlalchemy import func, and_
 from extensions import db
-from models import (
-    GLAccount, GLJournalEntry, GLJournalLine,
-    Payment, Receipt, Expense
-)
+from models import GLAccount, GLJournalEntry, GLJournalLine, Payment, Receipt, Expense
 
 
 # ---------------------------------------------------------------------------
@@ -47,21 +44,21 @@ from models import (
 # كل هذه الأدوار موجودة في AccountRole (services/account_resolution.py)،
 # فلا يوجد كود بلا دور مقابل.
 CASH_FLOW_ROLE_MAP = {
-    'CASH': 'CASH',
-    'BANK': 'BANK',
-    'SALARY_EXPENSE': 'SALARY_EXPENSE',
-    'CAPITAL': 'CAPITAL',
-    'OWNER_DRAWS': 'OWNER_DRAWS',
-    'LOANS': 'LOANS',
+    "CASH": "CASH",
+    "BANK": "BANK",
+    "SALARY_EXPENSE": "SALARY_EXPENSE",
+    "CAPITAL": "CAPITAL",
+    "OWNER_DRAWS": "OWNER_DRAWS",
+    "LOANS": "LOANS",
 }
 
 # الأدوار التي تمثّل الأصول الثابتة (كانت تُلتقط بالبادئة '12%').
-FIXED_ASSET_ROLES = ('LAND', 'BUILDINGS', 'VEHICLES', 'EQUIPMENT', 'FURNITURE')
+FIXED_ASSET_ROLES = ("LAND", "BUILDINGS", "VEHICLES", "EQUIPMENT", "FURNITURE")
 
 # دقّة النقود المعروضة في القائمة: الموازنة بين رصيد الدفتر والرصيد
 # المحسوب تُحكم على الفرق بعد تقريبه إلى منزلتين — فارق أصغر من نصف
 # قرش فرق عرضٍ لا فرق حقيقي.
-MONEY_PRECISION = Decimal('0.01')
+MONEY_PRECISION = Decimal("0.01")
 
 
 def _parse_date(value):
@@ -76,8 +73,8 @@ def _parse_date(value):
         text = value.strip()
         if not text:
             return None
-        return datetime.strptime(text, '%Y-%m-%d').date()
-    raise ValueError(f'Unsupported date value for the cash flow statement: {value!r}')
+        return datetime.strptime(text, "%Y-%m-%d").date()
+    raise ValueError(f"Unsupported date value for the cash flow statement: {value!r}")
 
 
 def _current_tenant_id():
@@ -107,27 +104,26 @@ def resolve_cash_flow_accounts(tenant_id=None):
         name: codes[AccountRole[role].value]
         for name, role in CASH_FLOW_ROLE_MAP.items()
     }
-    resolved['FIXED_ASSETS'] = [codes[AccountRole[r].value] for r in FIXED_ASSET_ROLES]
+    resolved["FIXED_ASSETS"] = [codes[AccountRole[r].value] for r in FIXED_ASSET_ROLES]
     return resolved
 
 
 class CashFlowService:
-
     # F4: حسابات النقدية (الصندوق + البنك) لا تُثبَّت هنا — تُحلّ عبر
     # AccountResolver في كل استدعاء (see cash_account_codes()).
 
     # تسميات أقسام قائمة التدفقات (تستخدمها الشاشة والتصدير معاً)
     SECTION_LABELS = {
-        'operating': 'تشغيلي',
-        'investing': 'استثماري',
-        'financing': 'تمويلي',
+        "operating": "تشغيلي",
+        "investing": "استثماري",
+        "financing": "تمويلي",
     }
 
     @staticmethod
     def cash_account_codes(tenant_id=None):
         """أكواد حسابات النقدية (الصندوق + البنك) عبر AccountResolver."""
         resolved = resolve_cash_flow_accounts(tenant_id=tenant_id)
-        return (resolved['CASH'], resolved['BANK'])
+        return (resolved["CASH"], resolved["BANK"])
 
     @staticmethod
     def account_code(role_name, tenant_id=None):
@@ -140,7 +136,7 @@ class CashFlowService:
         """تحويل آمن لأي نتيجة تجميع (Decimal/float/None) إلى Decimal —
         SQLite يعيد float من func.sum بينما PostgreSQL يعيد Decimal."""
         if value is None:
-            return Decimal('0')
+            return Decimal("0")
         return value if isinstance(value, Decimal) else Decimal(str(value))
 
     @staticmethod
@@ -155,6 +151,7 @@ class CashFlowService:
             _gl_base_debit_expression,
             _gl_signed_base_expression,
         )
+
         return (
             _gl_base_debit_expression(),
             _gl_base_credit_expression(),
@@ -169,14 +166,14 @@ class CashFlowService:
         تختفي أي حركة من القائمة (بادئة الكود كانت تُسقط أي أصل لا يبدأ
         بـ '1').
         """
-        if account_type in ('revenue', 'expense'):
-            return 'operating'
-        if account_type == 'asset':
-            return 'investing'
-        if account_type in ('liability', 'equity'):
-            return 'financing'
+        if account_type in ("revenue", "expense"):
+            return "operating"
+        if account_type == "asset":
+            return "investing"
+        if account_type in ("liability", "equity"):
+            return "financing"
         # أنواع غير معروفة تُعامل كتشغيلي حتى لا تختفي حركتها
-        return 'operating'
+        return "operating"
 
     @staticmethod
     def _section_amount(account_type, net_base):
@@ -201,9 +198,7 @@ class CashFlowService:
         if not codes:
             return []
         return [
-            acc.id for acc in GLAccount.query.filter(
-                GLAccount.code.in_(codes)
-            ).all()
+            acc.id for acc in GLAccount.query.filter(GLAccount.code.in_(codes)).all()
         ]
 
     @staticmethod
@@ -218,11 +213,11 @@ class CashFlowService:
         computed = CashFlowService._dec(computed_ending)
         difference = gl_balance - computed
         return {
-            'gl_cash_ending': gl_balance,
-            'computed_ending': computed,
-            'difference': difference,
-            'balanced': difference.quantize(
-                MONEY_PRECISION, rounding=ROUND_HALF_UP) == Decimal('0'),
+            "gl_cash_ending": gl_balance,
+            "computed_ending": computed,
+            "difference": difference,
+            "balanced": difference.quantize(MONEY_PRECISION, rounding=ROUND_HALF_UP)
+            == Decimal("0"),
         }
 
     @staticmethod
@@ -242,12 +237,12 @@ class CashFlowService:
             range_valid = period_start <= period_end
 
         period = period_for_date(period_end or period_start)
-        is_closed = bool(getattr(period, 'is_closed', False)) if period else False
+        is_closed = bool(getattr(period, "is_closed", False)) if period else False
         return {
-            'defined': period is not None,
-            'is_open': period is not None and not is_closed,
-            'is_closed': is_closed,
-            'range_valid': range_valid,
+            "defined": period is not None,
+            "is_open": period is not None and not is_closed,
+            "is_closed": is_closed,
+            "range_valid": range_valid,
         }
 
     @staticmethod
@@ -285,10 +280,15 @@ class CashFlowService:
         period_end = _parse_date(period_end)
 
         from datetime import time as _time
-        period_end_dt = (datetime.combine(period_end, _time.max)
-                         if period_end is not None else None)
-        period_start_dt = (datetime.combine(period_start, _time.min)
-                            if period_start is not None else None)
+
+        period_end_dt = (
+            datetime.combine(period_end, _time.max) if period_end is not None else None
+        )
+        period_start_dt = (
+            datetime.combine(period_start, _time.min)
+            if period_start is not None
+            else None
+        )
 
         base_debit, base_credit, signed_base = CashFlowService._gl_base_expressions()
 
@@ -297,14 +297,14 @@ class CashFlowService:
         # الأصلي وحده كان يُظهر القيد العاكس بلا أصله.
         query = (
             db.session.query(
-                GLJournalLine.account_id.label('account_id'),
-                GLAccount.type.label('account_type'),
-                GLAccount.code.label('account_code'),
-                GLAccount.name.label('account_name'),
-                GLAccount.name_ar.label('account_name_ar'),
-                func.sum(signed_base).label('net_base'),
-                func.sum(base_debit).label('debit_base'),
-                func.sum(base_credit).label('credit_base'),
+                GLJournalLine.account_id.label("account_id"),
+                GLAccount.type.label("account_type"),
+                GLAccount.code.label("account_code"),
+                GLAccount.name.label("account_name"),
+                GLAccount.name_ar.label("account_name_ar"),
+                func.sum(signed_base).label("net_base"),
+                func.sum(base_debit).label("debit_base"),
+                func.sum(base_credit).label("credit_base"),
             )
             .select_from(GLJournalLine)
             .join(GLJournalEntry, GLJournalLine.entry_id == GLJournalEntry.id)
@@ -324,7 +324,7 @@ class CashFlowService:
             GLAccount.name_ar,
         ).all()
 
-        sections = {'operating': {}, 'investing': {}, 'financing': {}}
+        sections = {"operating": {}, "investing": {}, "financing": {}}
         export_rows = []
 
         cash_account_ids = CashFlowService._cash_account_ids()
@@ -344,53 +344,60 @@ class CashFlowService:
                 continue
 
             label = f"{row.account_code} - {row.account_name_ar or row.account_name}"
-            sections[section][label] = sections[section].get(label, Decimal('0')) + amount
+            sections[section][label] = (
+                sections[section].get(label, Decimal("0")) + amount
+            )
 
-            export_rows.append({
-                'section': section,
-                'section_label': CashFlowService.SECTION_LABELS[section],
-                'code': row.account_code,
-                'name': row.account_name_ar or row.account_name,
-                'label': label,
-                'debit': CashFlowService._dec(row.debit_base),
-                'credit': CashFlowService._dec(row.credit_base),
-                'net': amount,
-            })
+            export_rows.append(
+                {
+                    "section": section,
+                    "section_label": CashFlowService.SECTION_LABELS[section],
+                    "code": row.account_code,
+                    "name": row.account_name_ar or row.account_name,
+                    "label": label,
+                    "debit": CashFlowService._dec(row.debit_base),
+                    "credit": CashFlowService._dec(row.credit_base),
+                    "net": amount,
+                }
+            )
 
-        operating_total = sum(sections['operating'].values(), Decimal('0'))
-        investing_total = sum(sections['investing'].values(), Decimal('0'))
-        financing_total = sum(sections['financing'].values(), Decimal('0'))
+        operating_total = sum(sections["operating"].values(), Decimal("0"))
+        investing_total = sum(sections["investing"].values(), Decimal("0"))
+        financing_total = sum(sections["financing"].values(), Decimal("0"))
         net_change = operating_total + investing_total + financing_total
 
         cash_account_ids = list(cash_account_ids)
         # رصيد النقدية قبل بداية الفترة (أو قبل أول حركة إن لم تُحدَّد فترة)
         opening_cutoff = period_start_dt or datetime(1900, 1, 1)
         cash_beginning = CashFlowService._gl_cash_balance(
-            cash_account_ids, opening_cutoff, is_beginning=True)
+            cash_account_ids, opening_cutoff, is_beginning=True
+        )
         # رصيد النقدية في نهاية الفترة — حقيقة من دفتر الأستاذ.
         cash_ending = CashFlowService._gl_cash_balance(
-            cash_account_ids, period_end_dt, is_beginning=False)
+            cash_account_ids, period_end_dt, is_beginning=False
+        )
         # الرقم المحسوب (البداية + صافي التغير) — للمطابقة فقط.
         cash_ending_computed = cash_beginning + net_change
         tie_out = CashFlowService._tie_out(cash_ending, cash_ending_computed)
 
         return {
-            'period_start': period_start,
-            'period_end': period_end,
-            'operating_items': sections['operating'],
-            'investing_items': sections['investing'],
-            'financing_items': sections['financing'],
-            'operating_total': operating_total,
-            'investing_total': investing_total,
-            'financing_total': financing_total,
-            'net_change': net_change,
-            'cash_beginning': cash_beginning,
-            'cash_ending': cash_ending,
-            'cash_ending_computed': cash_ending_computed,
-            'tie_out': tie_out,
-            'fiscal_period': CashFlowService._fiscal_period_facts(
-                period_start, period_end),
-            'rows': export_rows,
+            "period_start": period_start,
+            "period_end": period_end,
+            "operating_items": sections["operating"],
+            "investing_items": sections["investing"],
+            "financing_items": sections["financing"],
+            "operating_total": operating_total,
+            "investing_total": investing_total,
+            "financing_total": financing_total,
+            "net_change": net_change,
+            "cash_beginning": cash_beginning,
+            "cash_ending": cash_ending,
+            "cash_ending_computed": cash_ending_computed,
+            "tie_out": tie_out,
+            "fiscal_period": CashFlowService._fiscal_period_facts(
+                period_start, period_end
+            ),
+            "rows": export_rows,
         }
 
     @staticmethod
@@ -400,7 +407,7 @@ class CashFlowService:
         ``target_date`` = None يعني بلا حدّ (كل القيود المرحّلة).
         """
         if not account_ids:
-            return Decimal('0')
+            return Decimal("0")
 
         base_debit, base_credit, _ = CashFlowService._gl_base_expressions()
 
@@ -429,11 +436,13 @@ class CashFlowService:
         دفتر الأستاذ."""
         items = []
         for description, amount in mapping.items():
-            items.append({
-                'description': description,
-                'amount': float(abs(amount)),
-                'type': 'inflow' if amount >= 0 else 'outflow',
-            })
+            items.append(
+                {
+                    "description": description,
+                    "amount": float(abs(amount)),
+                    "type": "inflow" if amount >= 0 else "outflow",
+                }
+            )
         return items
 
     @staticmethod
@@ -455,29 +464,36 @@ class CashFlowService:
                 **{net_key: net_value},
             )
 
-        tie_out = gl_report.get('tie_out') or {}
+        tie_out = gl_report.get("tie_out") or {}
         return SimpleNamespace(
-            period_start=gl_report['period_start'] or today,
-            period_end=gl_report['period_end'] or today,
+            period_start=gl_report["period_start"] or today,
+            period_end=gl_report["period_end"] or today,
             operating_activities=_section(
-                gl_report['operating_items'], 'net_cash_from_operating',
-                float(gl_report['operating_total'])),
+                gl_report["operating_items"],
+                "net_cash_from_operating",
+                float(gl_report["operating_total"]),
+            ),
             investing_activities=_section(
-                gl_report['investing_items'], 'net_cash_from_investing',
-                float(gl_report['investing_total'])),
+                gl_report["investing_items"],
+                "net_cash_from_investing",
+                float(gl_report["investing_total"]),
+            ),
             financing_activities=_section(
-                gl_report['financing_items'], 'net_cash_from_financing',
-                float(gl_report['financing_total'])),
-            net_change_in_cash=float(gl_report['net_change']),
-            cash_beginning=float(gl_report['cash_beginning']),
-            cash_ending=float(gl_report['cash_ending']),
+                gl_report["financing_items"],
+                "net_cash_from_financing",
+                float(gl_report["financing_total"]),
+            ),
+            net_change_in_cash=float(gl_report["net_change"]),
+            cash_beginning=float(gl_report["cash_beginning"]),
+            cash_ending=float(gl_report["cash_ending"]),
             cash_ending_computed=float(
-                gl_report.get('cash_ending_computed', gl_report['cash_ending'])),
+                gl_report.get("cash_ending_computed", gl_report["cash_ending"])
+            ),
             tie_out=SimpleNamespace(
-                gl_cash_ending=float(tie_out.get('gl_cash_ending', 0)),
-                computed_ending=float(tie_out.get('computed_ending', 0)),
-                difference=float(tie_out.get('difference', 0)),
-                balanced=bool(tie_out.get('balanced', False)),
+                gl_cash_ending=float(tie_out.get("gl_cash_ending", 0)),
+                computed_ending=float(tie_out.get("computed_ending", 0)),
+                difference=float(tie_out.get("difference", 0)),
+                balanced=bool(tie_out.get("balanced", False)),
             ),
         )
 
@@ -514,46 +530,53 @@ class CashFlowService:
         # تطبيع الفترة لتغطية كامل يوم النهاية — مقارنة DateTime بتاريخ
         # مجرد تُسقط كل حركات ما بعد منتصف ليل اليوم الأخير.
         from datetime import time as _time
+
         period_end_dt = datetime.combine(period_end, _time.max)
         period_start_dt = datetime.combine(period_start, _time.min)
 
         base_debit, base_credit, _ = CashFlowService._gl_base_expressions()
 
         # 1. الأنشطة التشغيلية (Operating Activities)
-        operating = CashFlowService._get_operating_activities(period_start_dt, period_end_dt)
+        operating = CashFlowService._get_operating_activities(
+            period_start_dt, period_end_dt
+        )
 
         # 2. الأنشطة الاستثمارية (Investing Activities)
-        investing = CashFlowService._get_investing_activities(period_start_dt, period_end_dt)
+        investing = CashFlowService._get_investing_activities(
+            period_start_dt, period_end_dt
+        )
 
         # 3. الأنشطة التمويلية (Financing Activities)
-        financing = CashFlowService._get_financing_activities(period_start_dt, period_end_dt)
+        financing = CashFlowService._get_financing_activities(
+            period_start_dt, period_end_dt
+        )
 
         # 4. حساب النقدية — رصيد الدفتر هو الحقيقة (نفس مصدر النسخة الجديدة)
         gl_report = CashFlowService.generate_gl_cash_flow(period_start, period_end)
 
-        cash_beginning = gl_report['cash_beginning']
+        cash_beginning = gl_report["cash_beginning"]
 
         net_cash_flow = (
-            CashFlowService._dec(operating['net_cash_from_operating']) +
-            CashFlowService._dec(investing['net_cash_from_investing']) +
-            CashFlowService._dec(financing['net_cash_from_financing'])
+            CashFlowService._dec(operating["net_cash_from_operating"])
+            + CashFlowService._dec(investing["net_cash_from_investing"])
+            + CashFlowService._dec(financing["net_cash_from_financing"])
         )
 
-        cash_ending = gl_report['cash_ending']
+        cash_ending = gl_report["cash_ending"]
         cash_ending_computed = cash_beginning + net_cash_flow
         tie_out = CashFlowService._tie_out(cash_ending, cash_ending_computed)
 
         return {
-            'period_start': period_start,
-            'period_end': period_end,
-            'operating_activities': operating,
-            'investing_activities': investing,
-            'financing_activities': financing,
-            'net_change_in_cash': float(net_cash_flow),
-            'cash_beginning': float(cash_beginning),
-            'cash_ending': float(cash_ending),
-            'cash_ending_computed': float(cash_ending_computed),
-            'tie_out': tie_out,
+            "period_start": period_start,
+            "period_end": period_end,
+            "operating_activities": operating,
+            "investing_activities": investing,
+            "financing_activities": financing,
+            "net_change_in_cash": float(net_cash_flow),
+            "cash_beginning": float(cash_beginning),
+            "cash_ending": float(cash_ending),
+            "cash_ending_computed": float(cash_ending_computed),
+            "tie_out": tie_out,
         }
 
     @staticmethod
@@ -561,89 +584,102 @@ class CashFlowService:
         """حساب التدفقات النقدية من الأنشطة التشغيلية"""
 
         # المقبوضات من العملاء
-        receipts = db.session.query(
-            func.sum(Receipt.amount_base)
-        ).filter(
-            and_(
-                Receipt.receipt_date >= period_start,
-                Receipt.receipt_date <= period_end,
-                Receipt.payment_method.in_(['cash', 'bank'])  # نقدي وبنكي فقط
+        receipts = (
+            db.session.query(func.sum(Receipt.amount_base))
+            .filter(
+                and_(
+                    Receipt.receipt_date >= period_start,
+                    Receipt.receipt_date <= period_end,
+                    Receipt.payment_method.in_(["cash", "bank"]),  # نقدي وبنكي فقط
+                )
             )
-        ).scalar()
+            .scalar()
+        )
         receipts = CashFlowService._dec(receipts)
 
         # المدفوعات للموردين
-        supplier_payments = db.session.query(
-            func.sum(Payment.amount_base)
-        ).filter(
-            and_(
-                Payment.payment_date >= period_start,
-                Payment.payment_date <= period_end,
-                Payment.payment_method.in_(['cash', 'bank']),
-                Payment.supplier_id.isnot(None)
+        supplier_payments = (
+            db.session.query(func.sum(Payment.amount_base))
+            .filter(
+                and_(
+                    Payment.payment_date >= period_start,
+                    Payment.payment_date <= period_end,
+                    Payment.payment_method.in_(["cash", "bank"]),
+                    Payment.supplier_id.isnot(None),
+                )
             )
-        ).scalar()
+            .scalar()
+        )
         supplier_payments = CashFlowService._dec(supplier_payments)
 
         # المدفوعات للمصروفات
-        expense_payments = db.session.query(
-            func.sum(Expense.amount_base)
-        ).filter(
-            and_(
-                Expense.expense_date >= period_start,
-                Expense.expense_date <= period_end,
-                Expense.payment_method.in_(['cash', 'bank'])
+        expense_payments = (
+            db.session.query(func.sum(Expense.amount_base))
+            .filter(
+                and_(
+                    Expense.expense_date >= period_start,
+                    Expense.expense_date <= period_end,
+                    Expense.payment_method.in_(["cash", "bank"]),
+                )
             )
-        ).scalar()
+            .scalar()
+        )
         expense_payments = CashFlowService._dec(expense_payments)
 
         # الرواتب (من حساب الرواتب — F4: SALARY_EXPENSE عبر AccountResolver)
         salary_account = GLAccount.query.filter_by(
-            code=CashFlowService.account_code('SALARY_EXPENSE')).first()
-        salaries = Decimal('0')
+            code=CashFlowService.account_code("SALARY_EXPENSE")
+        ).first()
+        salaries = Decimal("0")
         if salary_account:
-            salaries = db.session.query(
-                func.sum(CashFlowService._base_debit())
-            ).select_from(GLJournalLine).join(GLJournalEntry).filter(
-                and_(
-                    GLJournalLine.account_id == salary_account.id,
-                    GLJournalEntry.is_posted.is_(True),
-                    GLJournalEntry.entry_date >= period_start,
-                    GLJournalEntry.entry_date <= period_end
+            salaries = (
+                db.session.query(func.sum(CashFlowService._base_debit()))
+                .select_from(GLJournalLine)
+                .join(GLJournalEntry)
+                .filter(
+                    and_(
+                        GLJournalLine.account_id == salary_account.id,
+                        GLJournalEntry.is_posted.is_(True),
+                        GLJournalEntry.entry_date >= period_start,
+                        GLJournalEntry.entry_date <= period_end,
+                    )
                 )
-            ).scalar()
+                .scalar()
+            )
             salaries = CashFlowService._dec(salaries)
 
-        net_cash_from_operating = receipts - supplier_payments - expense_payments - salaries
+        net_cash_from_operating = (
+            receipts - supplier_payments - expense_payments - salaries
+        )
 
         return {
-            'receipts_from_customers': float(receipts),
-            'payments_to_suppliers': float(supplier_payments),
-            'payments_for_expenses': float(expense_payments),
-            'payments_for_salaries': float(salaries),
-            'net_cash_from_operating': float(net_cash_from_operating),
-            'items': [
+            "receipts_from_customers": float(receipts),
+            "payments_to_suppliers": float(supplier_payments),
+            "payments_for_expenses": float(expense_payments),
+            "payments_for_salaries": float(salaries),
+            "net_cash_from_operating": float(net_cash_from_operating),
+            "items": [
                 {
-                    'description': 'مقبوضات من العملاء',
-                    'amount': float(receipts),
-                    'type': 'inflow'
+                    "description": "مقبوضات من العملاء",
+                    "amount": float(receipts),
+                    "type": "inflow",
                 },
                 {
-                    'description': 'مدفوعات للموردين',
-                    'amount': float(supplier_payments),
-                    'type': 'outflow'
+                    "description": "مدفوعات للموردين",
+                    "amount": float(supplier_payments),
+                    "type": "outflow",
                 },
                 {
-                    'description': 'مدفوعات مصروفات',
-                    'amount': float(expense_payments),
-                    'type': 'outflow'
+                    "description": "مدفوعات مصروفات",
+                    "amount": float(expense_payments),
+                    "type": "outflow",
                 },
                 {
-                    'description': 'رواتب وأجور',
-                    'amount': float(salaries),
-                    'type': 'outflow'
-                }
-            ]
+                    "description": "رواتب وأجور",
+                    "amount": float(salaries),
+                    "type": "outflow",
+                },
+            ],
         }
 
     @staticmethod
@@ -663,12 +699,12 @@ class CashFlowService:
         # شراء أصول ثابتة — F4: الأصول الثابتة عبر أدوارها المحاسبية
         # (LAND/BUILDINGS/VEHICLES/EQUIPMENT/FURNITURE) بدل البادئة '12%'
         # التي تُسقط أي أصل أُعيد ترميزه خارج النطاق 12xx.
-        fixed_assets_codes = resolve_cash_flow_accounts()['FIXED_ASSETS']
+        fixed_assets_codes = resolve_cash_flow_accounts()["FIXED_ASSETS"]
         fixed_assets_account = GLAccount.query.filter(
             GLAccount.code.in_(fixed_assets_codes)
         ).all()
 
-        purchase_of_assets = Decimal('0')
+        purchase_of_assets = Decimal("0")
         for account in fixed_assets_account:
             purchases = db.session.query(
                 func.sum(CashFlowService._base_debit())
@@ -677,13 +713,13 @@ class CashFlowService:
                     GLJournalLine.account_id == account.id,
                     GLJournalEntry.is_posted.is_(True),
                     GLJournalEntry.entry_date >= period_start,
-                    GLJournalEntry.entry_date <= period_end
+                    GLJournalEntry.entry_date <= period_end,
                 )
-            ).scalar() or Decimal('0')
+            ).scalar() or Decimal("0")
             purchase_of_assets += CashFlowService._dec(purchases)
 
         # بيع أصول ثابتة (credits في نفس الحسابات)
-        sale_of_assets = Decimal('0')
+        sale_of_assets = Decimal("0")
         for account in fixed_assets_account:
             sales = db.session.query(
                 func.sum(CashFlowService._base_credit())
@@ -692,29 +728,29 @@ class CashFlowService:
                     GLJournalLine.account_id == account.id,
                     GLJournalEntry.is_posted.is_(True),
                     GLJournalEntry.entry_date >= period_start,
-                    GLJournalEntry.entry_date <= period_end
+                    GLJournalEntry.entry_date <= period_end,
                 )
-            ).scalar() or Decimal('0')
+            ).scalar() or Decimal("0")
             sale_of_assets += CashFlowService._dec(sales)
 
         net_cash_from_investing = sale_of_assets - purchase_of_assets
 
         return {
-            'purchase_of_fixed_assets': float(purchase_of_assets),
-            'sale_of_fixed_assets': float(sale_of_assets),
-            'net_cash_from_investing': float(net_cash_from_investing),
-            'items': [
+            "purchase_of_fixed_assets": float(purchase_of_assets),
+            "sale_of_fixed_assets": float(sale_of_assets),
+            "net_cash_from_investing": float(net_cash_from_investing),
+            "items": [
                 {
-                    'description': 'شراء أصول ثابتة',
-                    'amount': float(purchase_of_assets),
-                    'type': 'outflow'
+                    "description": "شراء أصول ثابتة",
+                    "amount": float(purchase_of_assets),
+                    "type": "outflow",
                 },
                 {
-                    'description': 'بيع أصول ثابتة',
-                    'amount': float(sale_of_assets),
-                    'type': 'inflow'
-                }
-            ]
+                    "description": "بيع أصول ثابتة",
+                    "amount": float(sale_of_assets),
+                    "type": "inflow",
+                },
+            ],
         }
 
     @staticmethod
@@ -723,66 +759,85 @@ class CashFlowService:
 
         # رأس المال — F4: CAPITAL عبر AccountResolver
         capital_account = GLAccount.query.filter_by(
-            code=CashFlowService.account_code('CAPITAL')).first()
-        capital_contributions = Decimal('0')
+            code=CashFlowService.account_code("CAPITAL")
+        ).first()
+        capital_contributions = Decimal("0")
         if capital_account:
-            capital_contributions = db.session.query(
-                func.sum(CashFlowService._base_credit())
-            ).select_from(GLJournalLine).join(GLJournalEntry).filter(
-                and_(
-                    GLJournalLine.account_id == capital_account.id,
-                    GLJournalEntry.is_posted.is_(True),
-                    GLJournalEntry.entry_date >= period_start,
-                    GLJournalEntry.entry_date <= period_end
+            capital_contributions = (
+                db.session.query(func.sum(CashFlowService._base_credit()))
+                .select_from(GLJournalLine)
+                .join(GLJournalEntry)
+                .filter(
+                    and_(
+                        GLJournalLine.account_id == capital_account.id,
+                        GLJournalEntry.is_posted.is_(True),
+                        GLJournalEntry.entry_date >= period_start,
+                        GLJournalEntry.entry_date <= period_end,
+                    )
                 )
-            ).scalar()
+                .scalar()
+            )
             capital_contributions = CashFlowService._dec(capital_contributions)
 
         # سحوبات المالك — F4: OWNER_DRAWS عبر AccountResolver
         owner_draw_account = GLAccount.query.filter_by(
-            code=CashFlowService.account_code('OWNER_DRAWS')).first()
-        owner_withdrawals = Decimal('0')
+            code=CashFlowService.account_code("OWNER_DRAWS")
+        ).first()
+        owner_withdrawals = Decimal("0")
         if owner_draw_account:
-            owner_withdrawals = db.session.query(
-                func.sum(CashFlowService._base_debit())
-            ).select_from(GLJournalLine).join(GLJournalEntry).filter(
-                and_(
-                    GLJournalLine.account_id == owner_draw_account.id,
-                    GLJournalEntry.is_posted.is_(True),
-                    GLJournalEntry.entry_date >= period_start,
-                    GLJournalEntry.entry_date <= period_end
+            owner_withdrawals = (
+                db.session.query(func.sum(CashFlowService._base_debit()))
+                .select_from(GLJournalLine)
+                .join(GLJournalEntry)
+                .filter(
+                    and_(
+                        GLJournalLine.account_id == owner_draw_account.id,
+                        GLJournalEntry.is_posted.is_(True),
+                        GLJournalEntry.entry_date >= period_start,
+                        GLJournalEntry.entry_date <= period_end,
+                    )
                 )
-            ).scalar()
+                .scalar()
+            )
             owner_withdrawals = CashFlowService._dec(owner_withdrawals)
 
         # القروض — F4: LOANS عبر AccountResolver
         loans_account = GLAccount.query.filter_by(
-            code=CashFlowService.account_code('LOANS')).first()
-        loans_received = Decimal('0')
-        loan_repayments = Decimal('0')
+            code=CashFlowService.account_code("LOANS")
+        ).first()
+        loans_received = Decimal("0")
+        loan_repayments = Decimal("0")
         if loans_account:
-            loans_received = db.session.query(
-                func.sum(CashFlowService._base_credit())
-            ).select_from(GLJournalLine).join(GLJournalEntry).filter(
-                and_(
-                    GLJournalLine.account_id == loans_account.id,
-                    GLJournalEntry.is_posted.is_(True),
-                    GLJournalEntry.entry_date >= period_start,
-                    GLJournalEntry.entry_date <= period_end
+            loans_received = (
+                db.session.query(func.sum(CashFlowService._base_credit()))
+                .select_from(GLJournalLine)
+                .join(GLJournalEntry)
+                .filter(
+                    and_(
+                        GLJournalLine.account_id == loans_account.id,
+                        GLJournalEntry.is_posted.is_(True),
+                        GLJournalEntry.entry_date >= period_start,
+                        GLJournalEntry.entry_date <= period_end,
+                    )
                 )
-            ).scalar()
+                .scalar()
+            )
             loans_received = CashFlowService._dec(loans_received)
 
-            loan_repayments = db.session.query(
-                func.sum(CashFlowService._base_debit())
-            ).select_from(GLJournalLine).join(GLJournalEntry).filter(
-                and_(
-                    GLJournalLine.account_id == loans_account.id,
-                    GLJournalEntry.is_posted.is_(True),
-                    GLJournalEntry.entry_date >= period_start,
-                    GLJournalEntry.entry_date <= period_end
+            loan_repayments = (
+                db.session.query(func.sum(CashFlowService._base_debit()))
+                .select_from(GLJournalLine)
+                .join(GLJournalEntry)
+                .filter(
+                    and_(
+                        GLJournalLine.account_id == loans_account.id,
+                        GLJournalEntry.is_posted.is_(True),
+                        GLJournalEntry.entry_date >= period_start,
+                        GLJournalEntry.entry_date <= period_end,
+                    )
                 )
-            ).scalar()
+                .scalar()
+            )
             loan_repayments = CashFlowService._dec(loan_repayments)
 
         net_cash_from_financing = (
@@ -790,31 +845,31 @@ class CashFlowService:
         )
 
         return {
-            'capital_contributions': float(capital_contributions),
-            'owner_withdrawals': float(owner_withdrawals),
-            'loans_received': float(loans_received),
-            'loan_repayments': float(loan_repayments),
-            'net_cash_from_financing': float(net_cash_from_financing),
-            'items': [
+            "capital_contributions": float(capital_contributions),
+            "owner_withdrawals": float(owner_withdrawals),
+            "loans_received": float(loans_received),
+            "loan_repayments": float(loan_repayments),
+            "net_cash_from_financing": float(net_cash_from_financing),
+            "items": [
                 {
-                    'description': 'إضافات رأس المال',
-                    'amount': float(capital_contributions),
-                    'type': 'inflow'
+                    "description": "إضافات رأس المال",
+                    "amount": float(capital_contributions),
+                    "type": "inflow",
                 },
                 {
-                    'description': 'قروض مستلمة',
-                    'amount': float(loans_received),
-                    'type': 'inflow'
+                    "description": "قروض مستلمة",
+                    "amount": float(loans_received),
+                    "type": "inflow",
                 },
                 {
-                    'description': 'سحوبات المالك',
-                    'amount': float(owner_withdrawals),
-                    'type': 'outflow'
+                    "description": "سحوبات المالك",
+                    "amount": float(owner_withdrawals),
+                    "type": "outflow",
                 },
                 {
-                    'description': 'سداد قروض',
-                    'amount': float(loan_repayments),
-                    'type': 'outflow'
-                }
-            ]
+                    "description": "سداد قروض",
+                    "amount": float(loan_repayments),
+                    "type": "outflow",
+                },
+            ],
         }

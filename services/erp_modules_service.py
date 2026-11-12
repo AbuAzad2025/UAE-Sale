@@ -7,9 +7,17 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from extensions import db
 from models.erp_modules import (
-    Quotation, QuotationLine, PurchaseOrder, PurchaseOrderLine,
-    FiscalPeriod, StockTransfer, StockTransferLine,
-    StockTake, StockTakeItem, DunningLetter, RecurringExpense,
+    Quotation,
+    QuotationLine,
+    PurchaseOrder,
+    PurchaseOrderLine,
+    FiscalPeriod,
+    StockTransfer,
+    StockTransferLine,
+    StockTake,
+    StockTakeItem,
+    DunningLetter,
+    RecurringExpense,
     EInvoice,
 )
 from utils.helpers import generate_number
@@ -20,22 +28,32 @@ logger = logging.getLogger(__name__)
 
 
 class QuotationService:
-
     @staticmethod
     def _auto_expire(q):
         """تُغلق عرض السعر تلقائيًا إن انتهت صلاحيته."""
-        if q.is_expired and q.status in ('draft', 'sent'):
-            q.status = 'expired'
+        if q.is_expired and q.status in ("draft", "sent"):
+            q.status = "expired"
             db.session.flush()
         return q
 
     @staticmethod
-    def create_quotation(customer_id, seller_id, lines_data, warehouse_id=None,
-                          currency=None, user_exchange_rate=None,
-                          discount_amount=0, shipping_cost=0, tax_rate=0,
-                          tax_inclusive=None, tax_treatment=None,
-                          valid_days=30, notes=None,
-                          payment_terms=None, terms_and_conditions=None):
+    def create_quotation(
+        customer_id,
+        seller_id,
+        lines_data,
+        warehouse_id=None,
+        currency=None,
+        user_exchange_rate=None,
+        discount_amount=0,
+        shipping_cost=0,
+        tax_rate=0,
+        tax_inclusive=None,
+        tax_treatment=None,
+        valid_days=30,
+        notes=None,
+        payment_terms=None,
+        terms_and_conditions=None,
+    ):
         from models import Customer, User, Product
         from services.currency_service import CurrencyService
         from services.costing_service import CostingService
@@ -47,20 +65,21 @@ class QuotationService:
             try:
                 currency = CurrencyService.get_base_currency()
             except Exception:
-                currency = 'ILS'
+                currency = "ILS"
 
         exchange_rate = CurrencyService.get_exchange_rate(
-            currency, CurrencyService.get_base_currency(), user_rate=user_exchange_rate)
+            currency, CurrencyService.get_base_currency(), user_rate=user_exchange_rate
+        )
 
         today = date.today()
-        treatment = (tax_treatment or 'standard').strip().lower()
-        if treatment not in ('standard', 'zero', 'exempt'):
-            raise ValueError('المعاملة الضريبية غير صالحة')
-        if treatment in ('zero', 'exempt'):
-            tax_rate = Decimal('0')
+        treatment = (tax_treatment or "standard").strip().lower()
+        if treatment not in ("standard", "zero", "exempt"):
+            raise ValueError("المعاملة الضريبية غير صالحة")
+        if treatment in ("zero", "exempt"):
+            tax_rate = Decimal("0")
 
         q = Quotation(
-            quotation_number=generate_number('QT', Quotation, 'quotation_number'),
+            quotation_number=generate_number("QT", Quotation, "quotation_number"),
             customer_id=customer_id,
             seller_id=seller_id,
             warehouse_id=warehouse_id,
@@ -77,27 +96,43 @@ class QuotationService:
             payment_terms=payment_terms,
             terms_and_conditions=terms_and_conditions,
             notes=notes,
-            status='draft',
+            status="draft",
         )
         db.session.add(q)
         db.session.flush()
 
         for ld in lines_data:
-            product = db.session.get(Product, ld['product_id'])
+            product = db.session.get(Product, ld["product_id"])
             if not product:
                 continue
-            qty = Decimal(str(ld['quantity']))
+            qty = Decimal(str(ld["quantity"]))
             if qty <= 0:
                 continue
-            unit_price = Decimal(str(ld.get('unit_price') or product.get_price_for_customer(customer.customer_type)))
-            disc = Decimal(str(ld.get('discount_percent', 0)))
-            line_treatment = (ld.get('tax_treatment') or getattr(product, 'tax_treatment', None) or treatment or 'standard').strip().lower()
-            if line_treatment not in ('standard', 'zero', 'exempt'):
-                line_treatment = 'standard'
+            unit_price = Decimal(
+                str(
+                    ld.get("unit_price")
+                    or product.get_price_for_customer(customer.customer_type)
+                )
+            )
+            disc = Decimal(str(ld.get("discount_percent", 0)))
+            line_treatment = (
+                (
+                    ld.get("tax_treatment")
+                    or getattr(product, "tax_treatment", None)
+                    or treatment
+                    or "standard"
+                )
+                .strip()
+                .lower()
+            )
+            if line_treatment not in ("standard", "zero", "exempt"):
+                line_treatment = "standard"
             try:
                 cost_basis = CostingService.get_cost_basis(product)
             except Exception:
-                cost_basis = getattr(product, 'average_cost', None) or getattr(product, 'cost_price', None)
+                cost_basis = getattr(product, "average_cost", None) or getattr(
+                    product, "cost_price", None
+                )
             line = QuotationLine(
                 quotation_id=q.id,
                 product_id=product.id,
@@ -123,19 +158,20 @@ class QuotationService:
 
         q = get_owned_or_raise(Quotation, quotation_id)
         if q is None:
-            raise ValueError('عرض الأسعار غير موجود')
+            raise ValueError("عرض الأسعار غير موجود")
         # 🔒 Concurrency: lock the quotation row so two concurrent converts
         # cannot both pass the status/converted_sale_id guards.
         q = Quotation.query.filter_by(id=quotation_id).with_for_update().first() or q
         QuotationService._auto_expire(q)
-        if q.status == 'converted' or q.converted_sale_id is not None:
-            raise ValueError('عرض الأسعار هذا مُحَوَّل بالفعل إلى فاتورة')
-        if q.status not in ('accepted', 'sent', 'draft'):
-            raise ValueError('لا يمكن تحويل فاتورة بحالة: ' + q.status_ar)
+        if q.status == "converted" or q.converted_sale_id is not None:
+            raise ValueError("عرض الأسعار هذا مُحَوَّل بالفعل إلى فاتورة")
+        if q.status not in ("accepted", "sent", "draft"):
+            raise ValueError("لا يمكن تحويل فاتورة بحالة: " + q.status_ar)
         if q.is_expired:
-            raise ValueError('عرض الأسعار منتهي الصلاحية')
+            raise ValueError("عرض الأسعار منتهي الصلاحية")
 
         from models import Customer, User
+
         customer = db.session.get(Customer, q.customer_id)
         seller = db.session.get(User, q.seller_id)
         lines_data = []
@@ -147,13 +183,15 @@ class QuotationService:
                 StockService.require_cost_basis(product)
             except Exception:
                 pass
-            lines_data.append({
-                'product': product,
-                'quantity': ln.quantity,
-                'unit_price': ln.unit_price,
-                'discount_percent': ln.discount_percent,
-                'tax_treatment': getattr(ln, 'tax_treatment', None) or 'standard',
-            })
+            lines_data.append(
+                {
+                    "product": product,
+                    "quantity": ln.quantity,
+                    "unit_price": ln.unit_price,
+                    "discount_percent": ln.discount_percent,
+                    "tax_treatment": getattr(ln, "tax_treatment", None) or "standard",
+                }
+            )
 
         sale = SaleService.create_sale(
             customer=customer,
@@ -161,15 +199,21 @@ class QuotationService:
             lines_data=lines_data,
             warehouse_id=q.warehouse_id,
             currency=q.currency,
-            user_exchange_rate=Decimal(str(q.exchange_rate)) if q.exchange_rate else Decimal('1'),
-            discount_amount=Decimal(str(q.discount_amount)) if q.discount_amount else Decimal('0'),
-            shipping_cost=Decimal(str(q.shipping_cost)) if q.shipping_cost else Decimal('0'),
-            tax_rate=Decimal(str(q.tax_rate)) if q.tax_rate else Decimal('0'),
-            tax_inclusive=bool(getattr(q, 'tax_inclusive', False)),
-            tax_treatment=getattr(q, 'tax_treatment', None) or 'standard',
-            notes=f'[محولة من عرض أسعار {q.quotation_number}] {q.notes or ""}',
+            user_exchange_rate=Decimal(str(q.exchange_rate))
+            if q.exchange_rate
+            else Decimal("1"),
+            discount_amount=Decimal(str(q.discount_amount))
+            if q.discount_amount
+            else Decimal("0"),
+            shipping_cost=Decimal(str(q.shipping_cost))
+            if q.shipping_cost
+            else Decimal("0"),
+            tax_rate=Decimal(str(q.tax_rate)) if q.tax_rate else Decimal("0"),
+            tax_inclusive=bool(getattr(q, "tax_inclusive", False)),
+            tax_treatment=getattr(q, "tax_treatment", None) or "standard",
+            notes=f"[محولة من عرض أسعار {q.quotation_number}] {q.notes or ''}",
         )
-        q.status = 'converted'
+        q.status = "converted"
         q.converted_sale_id = sale.id
         q.converted_at = datetime.now(timezone.utc)
         db.session.commit()
@@ -179,11 +223,11 @@ class QuotationService:
     def send_quotation(quotation_id):
         q = get_owned_or_raise(Quotation, quotation_id)
         if q is None:
-            raise ValueError('عرض الأسعار غير موجود')
+            raise ValueError("عرض الأسعار غير موجود")
         QuotationService._auto_expire(q)
-        if q.status not in ('draft', 'sent'):
-            raise ValueError('لا يمكن إرسال عرض بحالة: ' + q.status_ar)
-        q.status = 'sent'
+        if q.status not in ("draft", "sent"):
+            raise ValueError("لا يمكن إرسال عرض بحالة: " + q.status_ar)
+        q.status = "sent"
         db.session.commit()
         return q
 
@@ -191,15 +235,15 @@ class QuotationService:
     def accept_quotation(quotation_id):
         q = get_owned_or_raise(Quotation, quotation_id)
         if q is None:
-            raise ValueError('عرض الأسعار غير موجود')
+            raise ValueError("عرض الأسعار غير موجود")
         QuotationService._auto_expire(q)
-        if q.status == 'converted':
-            raise ValueError('عرض أسعار مُحَوَّل بالفعل')
+        if q.status == "converted":
+            raise ValueError("عرض أسعار مُحَوَّل بالفعل")
         if q.is_expired:
-            raise ValueError('عرض الأسعار منتهي الصلاحية')
-        if q.status not in ('sent', 'draft'):
-            raise ValueError('لا يمكن قبول عرض بحالة: ' + q.status_ar)
-        q.status = 'accepted'
+            raise ValueError("عرض الأسعار منتهي الصلاحية")
+        if q.status not in ("sent", "draft"):
+            raise ValueError("لا يمكن قبول عرض بحالة: " + q.status_ar)
+        q.status = "accepted"
         db.session.commit()
         return q
 
@@ -207,10 +251,10 @@ class QuotationService:
     def reject_quotation(quotation_id):
         q = get_owned_or_raise(Quotation, quotation_id)
         if q is None:
-            raise ValueError('عرض الأسعار غير موجود')
-        if q.status == 'converted':
-            raise ValueError('عرض أسعار مُحَوَّل بالفعل — لا يمكن رفضه')
-        q.status = 'rejected'
+            raise ValueError("عرض الأسعار غير موجود")
+        if q.status == "converted":
+            raise ValueError("عرض أسعار مُحَوَّل بالفعل — لا يمكن رفضه")
+        q.status = "rejected"
         db.session.commit()
         return q
 
@@ -218,9 +262,9 @@ class QuotationService:
     def duplicate_quotation(quotation_id, seller_id=None):
         q = get_owned_or_raise(Quotation, quotation_id)
         if q is None:
-            raise ValueError('عرض الأسعار غير موجود')
+            raise ValueError("عرض الأسعار غير موجود")
         new_q = Quotation(
-            quotation_number=generate_number('QT', Quotation, 'quotation_number'),
+            quotation_number=generate_number("QT", Quotation, "quotation_number"),
             customer_id=q.customer_id,
             seller_id=seller_id or q.seller_id,
             warehouse_id=q.warehouse_id,
@@ -237,11 +281,11 @@ class QuotationService:
             payment_terms=q.payment_terms,
             terms_and_conditions=q.terms_and_conditions,
             notes=q.notes,
-            status='draft',
+            status="draft",
             version=q.version + 1 if q.version else 2,
             parent_quotation_id=q.id,
             is_latest_version=True,
-            version_notes=f'نسخة من {q.quotation_number} (v{q.version or 1})',
+            version_notes=f"نسخة من {q.quotation_number} (v{q.version or 1})",
         )
         # Mark old version as not latest
         q.is_latest_version = False
@@ -269,31 +313,35 @@ class QuotationService:
         """Create a new version of a quotation (revision)."""
         q = get_owned_or_raise(Quotation, quotation_id)
         if q is None:
-            raise ValueError('عرض الأسعار غير موجود')
+            raise ValueError("عرض الأسعار غير موجود")
         new_q = QuotationService.duplicate_quotation(quotation_id, seller_id=seller_id)
         if notes:
             new_q.version_notes = notes
-        new_q.status = 'draft'
+        new_q.status = "draft"
         db.session.commit()
         return new_q
 
     @staticmethod
-    def send_quotation_email(quotation_id, recipient_email=None, subject=None, body=None):
+    def send_quotation_email(
+        quotation_id, recipient_email=None, subject=None, body=None
+    ):
         """Send quotation via email."""
         from flask_mail import Message
         from extensions import mail
+
         q = get_owned_or_raise(Quotation, quotation_id)
         if q is None:
-            raise ValueError('عرض الأسعار غير موجود')
+            raise ValueError("عرض الأسعار غير موجود")
         to_email = recipient_email or (q.customer.email if q.customer else None)
         if not to_email:
-            raise ValueError('لا يوجد بريد إلكتروني للعميل')
+            raise ValueError("لا يوجد بريد إلكتروني للعميل")
         msg = Message(
-            subject=subject or f'عرض سعر رقم {q.quotation_number}',
+            subject=subject or f"عرض سعر رقم {q.quotation_number}",
             recipients=[to_email],
-            body=body or f'تجدون في المرفق عرض السعر رقم {q.quotation_number}.\n'
-                        f'الإجمالي: {q.total_amount} {q.currency}\n'
-                        f'صالح حتى: {q.valid_until}',
+            body=body
+            or f"تجدون في المرفق عرض السعر رقم {q.quotation_number}.\n"
+            f"الإجمالي: {q.total_amount} {q.currency}\n"
+            f"صالح حتى: {q.valid_until}",
         )
         try:
             mail.send(msg)
@@ -302,20 +350,27 @@ class QuotationService:
             db.session.commit()
             return True
         except Exception as e:
-            logger.error('Failed to send quotation email: %s', e)
+            logger.error("Failed to send quotation email: %s", e)
             raise
 
-class PurchaseOrderService:
 
+class PurchaseOrderService:
     @staticmethod
-    def create_po(supplier_id, warehouse_id, lines_data, user_id,
-                  expected_delivery=None, notes=None, tax_rate=0):
+    def create_po(
+        supplier_id,
+        warehouse_id,
+        lines_data,
+        user_id,
+        expected_delivery=None,
+        notes=None,
+        tax_rate=0,
+    ):
         from models import Supplier, Product
 
         _ = db.get_or_404(Supplier, supplier_id)
 
         po = PurchaseOrder(
-            po_number=generate_number('PO', PurchaseOrder, 'po_number'),
+            po_number=generate_number("PO", PurchaseOrder, "po_number"),
             supplier_id=supplier_id,
             warehouse_id=warehouse_id,
             requested_by_id=user_id,
@@ -328,15 +383,15 @@ class PurchaseOrderService:
         db.session.flush()
 
         for ld in lines_data:
-            product = db.session.get(Product, ld['product_id'])
+            product = db.session.get(Product, ld["product_id"])
             if not product:
                 continue
             line = PurchaseOrderLine(
                 order_id=po.id,
                 product_id=product.id,
-                quantity=Decimal(str(ld['quantity'])),
-                unit_cost=Decimal(str(ld['unit_cost'])),
-                discount_percent=Decimal(str(ld.get('discount_percent', 0))),
+                quantity=Decimal(str(ld["quantity"])),
+                unit_cost=Decimal(str(ld["unit_cost"])),
+                discount_percent=Decimal(str(ld.get("discount_percent", 0))),
             )
             line.calculate_line_total()
             db.session.add(line)
@@ -348,9 +403,9 @@ class PurchaseOrderService:
     @staticmethod
     def approve_po(po_id, approver_id):
         po = db.get_or_404(PurchaseOrder, po_id)
-        if po.status != 'submitted':
+        if po.status != "submitted":
             raise ValueError('يمكن اعتماد أمر شراء في حالة "مقدمة" فقط')
-        po.status = 'approved'
+        po.status = "approved"
         po.approved_by_id = approver_id
         po.approved_at = datetime.now(timezone.utc)
         db.session.commit()
@@ -363,29 +418,31 @@ class PurchaseOrderService:
         from decimal import Decimal
 
         po = db.get_or_404(PurchaseOrder, po_id)
-        if po.status not in ('approved', 'partially_received'):
-            raise ValueError('يمكن استلام أمر شراء معتمد فقط')
+        if po.status not in ("approved", "partially_received"):
+            raise ValueError("يمكن استلام أمر شراء معتمد فقط")
 
-        purchase_number = generate_number('P', Purchase, 'purchase_number')
+        purchase_number = generate_number("P", Purchase, "purchase_number")
         purchase = Purchase(
             purchase_number=purchase_number,
             supplier_id=po.supplier_id,
             warehouse_id=po.warehouse_id,
-            supplier_name=po.supplier.name if po.supplier else '',
+            supplier_name=po.supplier.name if po.supplier else "",
             purchase_date=datetime.now(timezone.utc),
             currency=po.currency,
             exchange_rate=po.exchange_rate,
             user_id=user_id,
-            subtotal=Decimal('0'),
-            tax_amount=Decimal('0'),
-            total_amount=Decimal('0'),
-            amount_base=Decimal('0'),
+            subtotal=Decimal("0"),
+            tax_amount=Decimal("0"),
+            total_amount=Decimal("0"),
+            amount_base=Decimal("0"),
         )
         db.session.add(purchase)
         db.session.flush()
 
         for po_line in po.lines:
-            received_qty = po_line.quantity - (po_line.received_quantity or Decimal('0'))
+            received_qty = po_line.quantity - (
+                po_line.received_quantity or Decimal("0")
+            )
             if received_qty <= 0:
                 continue
             line = PurchaseLine(
@@ -397,31 +454,35 @@ class PurchaseOrderService:
             )
             line.calculate_line_total()
             db.session.add(line)
-            po_line.received_quantity = (po_line.received_quantity or Decimal('0')) + received_qty
+            po_line.received_quantity = (
+                po_line.received_quantity or Decimal("0")
+            ) + received_qty
 
         purchase.calculate_totals()
         po.purchase_id = purchase.id
 
         if po.is_fully_received:
-            po.status = 'received'
+            po.status = "received"
         else:
-            po.status = 'partially_received'
+            po.status = "partially_received"
 
         db.session.flush()
 
         # Stock movement + GL — mirror /purchases/create so the received
         # goods actually land in inventory and the ledger.
         from services.stock_service import StockService
+
         StockService.process_purchase_lines(purchase, po.warehouse_id)
 
         from services.purchase_gl import build_purchase_gl_lines
         from services.gl_service import GLService
+
         GLService.ensure_core_accounts()
         gl_lines = build_purchase_gl_lines(purchase)
         GLService.post_entry(
             gl_lines,
-            description=f'Purchase {purchase.purchase_number}',
-            reference_type='Purchase',
+            description=f"Purchase {purchase.purchase_number}",
+            reference_type="Purchase",
             reference_id=purchase.id,
             currency=purchase.currency,
             exchange_rate=purchase.exchange_rate,
@@ -456,11 +517,10 @@ class FiscalPeriodService:
     def _scope_query(query, tenant_id=None):
         """تقييد الاستعلام بفترات المستأجر + الفترات العامة (NULL)."""
         tenant_id = FiscalPeriodService._tenant_id(tenant_id)
-        if tenant_id is None or not hasattr(FiscalPeriod, 'tenant_id'):
+        if tenant_id is None or not hasattr(FiscalPeriod, "tenant_id"):
             return query
         return query.filter(
-            (FiscalPeriod.tenant_id == tenant_id)
-            | (FiscalPeriod.tenant_id.is_(None))
+            (FiscalPeriod.tenant_id == tenant_id) | (FiscalPeriod.tenant_id.is_(None))
         )
 
     @staticmethod
@@ -468,20 +528,20 @@ class FiscalPeriodService:
         """إنشاء فترة سنوية. الفترة تُنشأ للمستأجر الحالي (NULL = عامة)."""
         tenant_id = FiscalPeriodService._tenant_id(tenant_id)
         existing = FiscalPeriodService._scope_query(
-            FiscalPeriod.query.filter_by(year=year, period_type='annual'),
+            FiscalPeriod.query.filter_by(year=year, period_type="annual"),
             tenant_id,
         ).first()
         if existing:
-            raise ValueError(f'الفترة المالية لسنة {year} موجودة بالفعل')
+            raise ValueError(f"الفترة المالية لسنة {year} موجودة بالفعل")
         fp = FiscalPeriod(
-            name=f'السنة المالية {year}',
+            name=f"السنة المالية {year}",
             year=year,
-            period_type='annual',
+            period_type="annual",
             start_date=date(year, 1, 1),
             end_date=date(year, 12, 31),
         )
         # عمود tenant_id قد لا يكون موجوداً في القاعدة قبل الترحيل.
-        if hasattr(FiscalPeriod, 'tenant_id'):
+        if hasattr(FiscalPeriod, "tenant_id"):
             fp.tenant_id = tenant_id
         db.session.add(fp)
         db.session.commit()
@@ -529,19 +589,18 @@ class FiscalPeriodService:
         """
         fp = db.get_or_404(FiscalPeriod, period_id)
         tenant_id = FiscalPeriodService._tenant_id(tenant_id)
-        if tenant_id is not None and hasattr(FiscalPeriod, 'tenant_id'):
-            owner = getattr(fp, 'tenant_id', None)
+        if tenant_id is not None and hasattr(FiscalPeriod, "tenant_id"):
+            owner = getattr(fp, "tenant_id", None)
             if owner is not None and owner != tenant_id:
-                raise ValidationError('لا يمكن تعديل فترة مالية تخص مستأجراً آخر')
+                raise ValidationError("لا يمكن تعديل فترة مالية تخص مستأجراً آخر")
             if owner is None:
                 raise ValidationError(
-                    'الفترة المالية عامة (لكل المستأجرين) — إغلاقها من صلاحية المالك فقط'
+                    "الفترة المالية عامة (لكل المستأجرين) — إغلاقها من صلاحية المالك فقط"
                 )
         return fp
 
 
 class StockTransferService:
-
     @staticmethod
     def _adjust_stock_no_gl(product_id, quantity, notes, warehouse_id):
         """C1: transfers are pure stock relocation — no P&L GL rows.
@@ -555,33 +614,39 @@ class StockTransferService:
 
         try:
             return StockService.adjust_stock(
-                product_id, quantity,
+                product_id,
+                quantity,
                 notes=notes,
                 warehouse_id=warehouse_id,
                 post_gl=False,
             )
         except TypeError:
             logger.warning(
-                'StockService.adjust_stock(post_gl=...) unavailable — '
-                'legacy signature used (GL rows possible) for product %s', product_id)
+                "StockService.adjust_stock(post_gl=...) unavailable — "
+                "legacy signature used (GL rows possible) for product %s",
+                product_id,
+            )
             return StockService.adjust_stock(
-                product_id, quantity,
+                product_id,
+                quantity,
                 notes=notes,
                 warehouse_id=warehouse_id,
             )
 
     @staticmethod
-    def create_transfer(from_warehouse_id, to_warehouse_id, lines_data, user_id, notes=None):
+    def create_transfer(
+        from_warehouse_id, to_warehouse_id, lines_data, user_id, notes=None
+    ):
         from models import Warehouse
 
         if from_warehouse_id == to_warehouse_id:
-            raise ValueError('لا يمكن النقل لنفس المستودع')
+            raise ValueError("لا يمكن النقل لنفس المستودع")
 
         db.get_or_404(Warehouse, from_warehouse_id)
         db.get_or_404(Warehouse, to_warehouse_id)
 
         transfer = StockTransfer(
-            transfer_number=generate_number('TRF', StockTransfer, 'transfer_number'),
+            transfer_number=generate_number("TRF", StockTransfer, "transfer_number"),
             from_warehouse_id=from_warehouse_id,
             to_warehouse_id=to_warehouse_id,
             transfer_date=date.today(),
@@ -594,9 +659,9 @@ class StockTransferService:
         for ld in lines_data:
             line = StockTransferLine(
                 transfer_id=transfer.id,
-                product_id=ld['product_id'],
-                quantity=Decimal(str(ld['quantity'])),
-                notes=ld.get('notes'),
+                product_id=ld["product_id"],
+                quantity=Decimal(str(ld["quantity"])),
+                notes=ld.get("notes"),
             )
             db.session.add(line)
 
@@ -607,24 +672,26 @@ class StockTransferService:
     def receive_transfer(transfer_id, user_id):
         """Receive transfer: deduct from source, add to destination"""
         transfer = db.get_or_404(StockTransfer, transfer_id)
-        if transfer.status != 'in_transit':
+        if transfer.status != "in_transit":
             raise ValueError('يمكن استلام نقل في حالة "في الطريق" فقط')
 
         for line in transfer.lines:
             # Deduct from source
             StockTransferService._adjust_stock_no_gl(
-                line.product_id, -line.quantity,
-                f'Transfer OUT to {transfer.transfer_number}',
+                line.product_id,
+                -line.quantity,
+                f"Transfer OUT to {transfer.transfer_number}",
                 transfer.from_warehouse_id,
             )
             # Add to destination
             StockTransferService._adjust_stock_no_gl(
-                line.product_id, line.quantity,
-                f'Transfer IN from {transfer.transfer_number}',
+                line.product_id,
+                line.quantity,
+                f"Transfer IN from {transfer.transfer_number}",
                 transfer.to_warehouse_id,
             )
 
-        transfer.status = 'received'
+        transfer.status = "received"
         transfer.received_by_id = user_id
         transfer.received_at = datetime.now(timezone.utc)
         db.session.commit()
@@ -632,7 +699,6 @@ class StockTransferService:
 
 
 class StockTakeService:
-
     @staticmethod
     def _warehouse_quantities(warehouse_id):
         """Per-product net stock for one warehouse, derived from StockMovement.
@@ -647,17 +713,14 @@ class StockTakeService:
 
         rows = (
             db.session.query(
-                StockMovement.product_id.label('product_id'),
-                func.sum(StockMovement.quantity).label('net_qty'),
+                StockMovement.product_id.label("product_id"),
+                func.sum(StockMovement.quantity).label("net_qty"),
             )
             .filter(StockMovement.warehouse_id == warehouse_id)
             .group_by(StockMovement.product_id)
             .all()
         )
-        return {
-            r.product_id: Decimal(str(r.net_qty or 0))
-            for r in rows
-        }
+        return {r.product_id: Decimal(str(r.net_qty or 0)) for r in rows}
 
     @staticmethod
     def create_stocktake(warehouse_id, user_id):
@@ -674,7 +737,7 @@ class StockTakeService:
 
         _ = db.get_or_404(Warehouse, warehouse_id)
         st = StockTake(
-            stocktake_number=generate_number('STK', StockTake, 'stocktake_number'),
+            stocktake_number=generate_number("STK", StockTake, "stocktake_number"),
             warehouse_id=warehouse_id,
             stocktake_date=date.today(),
             created_by_id=user_id,
@@ -684,7 +747,8 @@ class StockTakeService:
 
         wh_qty = StockTakeService._warehouse_quantities(warehouse_id)
         moved_anywhere = {
-            pid for (pid,) in db.session.query(StockMovement.product_id).distinct().all()
+            pid
+            for (pid,) in db.session.query(StockMovement.product_id).distinct().all()
         }
 
         products = Product.query.filter_by(is_active=True).all()
@@ -695,7 +759,7 @@ class StockTakeService:
                 # Tracked stock lives in other warehouses only.
                 continue
             else:
-                system_qty = product.current_stock or Decimal('0')
+                system_qty = product.current_stock or Decimal("0")
 
             if system_qty > 0:
                 item = StockTakeItem(
@@ -711,7 +775,7 @@ class StockTakeService:
     @staticmethod
     def complete_stocktake(stocktake_id):
         st = db.get_or_404(StockTake, stocktake_id)
-        st.status = 'completed'
+        st.status = "completed"
         st.completed_at = datetime.now(timezone.utc)
         for item in st.items:
             item.calculate_variance()
@@ -724,40 +788,40 @@ class StockTakeService:
         from services.stock_service import StockService
 
         st = db.get_or_404(StockTake, stocktake_id)
-        if st.status != 'completed':
-            raise ValueError('يجب إكمال الجرد أولاً')
+        if st.status != "completed":
+            raise ValueError("يجب إكمال الجرد أولاً")
 
         for item in st.items:
             if item.variance and item.variance != 0:
                 StockService.adjust_stock(
-                    item.product_id, item.variance,
-                    notes=f'Stock Take Adjustment: {st.stocktake_number}',
-                    warehouse_id=st.warehouse_id
+                    item.product_id,
+                    item.variance,
+                    notes=f"Stock Take Adjustment: {st.stocktake_number}",
+                    warehouse_id=st.warehouse_id,
                 )
 
-        st.status = 'approved'
+        st.status = "approved"
         st.approved_by_id = approver_id
         db.session.commit()
         return st
 
 
 class DunningService:
-
     @staticmethod
     def check_overdue_accounts():
         """Find overdue sales and generate dunning letters"""
         from models import Sale
 
         overdue_sales = Sale.query.filter(
-            Sale.status == 'confirmed',
-            Sale.payment_status.in_(['unpaid', 'partial']),
-            Sale.balance_due > Decimal('0'),
+            Sale.status == "confirmed",
+            Sale.payment_status.in_(["unpaid", "partial"]),
+            Sale.balance_due > Decimal("0"),
         ).all()
 
         letters = []
         for sale in overdue_sales:
             sale_date = sale.sale_date
-            if hasattr(sale_date, 'date') and callable(sale_date.date):
+            if hasattr(sale_date, "date") and callable(sale_date.date):
                 sale_date = sale_date.date()
             days_overdue = (date.today() - sale_date).days if sale_date else 0
             if days_overdue < 15:
@@ -775,13 +839,13 @@ class DunningService:
 
             # Check if letter already sent at this level
             existing = DunningLetter.query.filter_by(
-                sale_id=sale.id, level=level, status='sent'
+                sale_id=sale.id, level=level, status="sent"
             ).first()
             if existing:
                 continue
 
             letter = DunningLetter(
-                letter_number=generate_number('DUN', DunningLetter, 'letter_number'),
+                letter_number=generate_number("DUN", DunningLetter, "letter_number"),
                 customer_id=sale.customer_id,
                 sale_id=sale.id,
                 level=level,
@@ -801,23 +865,26 @@ class DunningService:
         from models import Sale
         from sqlalchemy import func
 
-        result = db.session.query(
-            func.count(Sale.id),
-            func.sum(Sale.balance_due),
-        ).filter(
-            Sale.status == 'confirmed',
-            Sale.payment_status.in_(['unpaid', 'partial']),
-            Sale.balance_due > Decimal('0'),
-        ).first()
+        result = (
+            db.session.query(
+                func.count(Sale.id),
+                func.sum(Sale.balance_due),
+            )
+            .filter(
+                Sale.status == "confirmed",
+                Sale.payment_status.in_(["unpaid", "partial"]),
+                Sale.balance_due > Decimal("0"),
+            )
+            .first()
+        )
 
         return {
-            'count': result[0] or 0,
-            'total_overdue': float(result[1] or 0),
+            "count": result[0] or 0,
+            "total_overdue": float(result[1] or 0),
         }
 
 
 class RecurringExpenseService:
-
     @staticmethod
     def _resolve_actor_id():
         """Created-by resolution for generated expenses.
@@ -830,7 +897,12 @@ class RecurringExpenseService:
         """
         try:
             from flask_login import current_user
-            actor_id = current_user.id if (getattr(current_user, 'is_authenticated', False)) else None
+
+            actor_id = (
+                current_user.id
+                if (getattr(current_user, "is_authenticated", False))
+                else None
+            )
         except Exception:
             actor_id = None
 
@@ -838,12 +910,15 @@ class RecurringExpenseService:
             return actor_id
 
         from models import User
+
         fallback = User.query.filter_by(is_active=True).order_by(User.id.asc()).first()
         if fallback is None:
-            raise ValueError('لا يوجد مستخدم لربط المصروف الدوري المُولّد')
+            raise ValueError("لا يوجد مستخدم لربط المصروف الدوري المُولّد")
         logger.warning(
-            'Recurring expense generation without an authenticated actor — '
-            'attributing to first real user #%s', fallback.id)
+            "Recurring expense generation without an authenticated actor — "
+            "attributing to first real user #%s",
+            fallback.id,
+        )
         return fallback.id
 
     @staticmethod
@@ -861,9 +936,9 @@ class RecurringExpenseService:
         created = []
         for re in due:
             expense = Expense(
-                expense_number=generate_number('EXP', Expense, 'expense_number'),
+                expense_number=generate_number("EXP", Expense, "expense_number"),
                 category_id=re.category_id,
-                description=f'[دوري] {re.name}',
+                description=f"[دوري] {re.name}",
                 amount=re.amount,
                 currency=re.currency,
                 amount_base=re.amount,
@@ -882,7 +957,6 @@ class RecurringExpenseService:
 
 
 class EInvoiceService:
-
     @staticmethod
     def create_einvoice(sale_id):
         from models import Sale, Customer
@@ -891,13 +965,13 @@ class EInvoiceService:
         customer = db.session.get(Customer, sale.customer_id)
 
         einv = EInvoice(
-            invoice_number=f'EI-{sale.sale_number}',
+            invoice_number=f"EI-{sale.sale_number}",
             sale_id=sale_id,
-            uuid=f'{sale.sale_number}-{datetime.now().strftime("%Y%m%d%H%M%S")}',
-            invoice_type='standard',
+            uuid=f"{sale.sale_number}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+            invoice_type="standard",
             invoice_date=datetime.now(timezone.utc),
-            buyer_name=customer.name if customer else '',
-            buyer_trn=customer.tax_number if customer else '',
+            buyer_name=customer.name if customer else "",
+            buyer_trn=customer.tax_number if customer else "",
             total_amount=sale.subtotal,
             tax_amount=sale.tax_amount,
             total_with_tax=sale.total_amount,

@@ -11,7 +11,6 @@ from utils.helpers import generate_number, create_audit_log
 
 
 class ReturnService:
-
     @staticmethod
     def create_return(sale_id, return_lines_data, user_id=None, notes=None):  # noqa: C901
         """
@@ -35,11 +34,11 @@ class ReturnService:
             sale = get_owned_or_raise(Sale, sale_id)
             if not sale:
                 raise ValueError(f"Sale with ID {sale_id} not found.")
-            if sale.status == 'cancelled':
+            if sale.status == "cancelled":
                 raise ValueError("Cannot create return for a cancelled sale.")
 
             # 2. Prepare Return Record
-            return_number = generate_number('R', ProductReturn, 'return_number')
+            return_number = generate_number("R", ProductReturn, "return_number")
 
             product_return = ProductReturn(
                 return_number=return_number,
@@ -49,17 +48,17 @@ class ReturnService:
                 exchange_rate=sale.exchange_rate,
                 notes=notes,
                 processed_by=user_id,
-                status='approved'  # Immediate approval for now
+                status="approved",  # Immediate approval for now
             )
 
-            product_return.total_amount = Decimal('0')
-            product_return.refund_amount = Decimal('0')
-            product_return.amount_base = Decimal('0')
+            product_return.total_amount = Decimal("0")
+            product_return.refund_amount = Decimal("0")
+            product_return.amount_base = Decimal("0")
 
             db.session.add(product_return)
             db.session.flush()  # Get ID
 
-            total_return_amount = Decimal('0')
+            total_return_amount = Decimal("0")
             return_line_specs = []
             gl_lines = []
             # cost_basis_fallback lines that need a human review.
@@ -71,8 +70,8 @@ class ReturnService:
 
             # 3. Process Lines
             for line_data in return_lines_data:
-                sale_line_id = line_data.get('sale_line_id')
-                quantity = Decimal(str(line_data.get('quantity', 0)))
+                sale_line_id = line_data.get("sale_line_id")
+                quantity = Decimal(str(line_data.get("quantity", 0)))
 
                 if quantity <= 0:
                     continue
@@ -86,21 +85,24 @@ class ReturnService:
                 # against the wrong revenue.
                 if sale_line.sale_id != sale.id:
                     raise ValueError(
-                        f"Sale line {sale_line_id} does not belong to "
-                        f"sale {sale.id}.")
+                        f"Sale line {sale_line_id} does not belong to sale {sale.id}."
+                    )
 
                 # Validate Quantity (Cannot return more than sold)
                 # Only APPROVED returns consume the returnable quantity: a
                 # pending or cancelled return must not permanently block the
                 # customer from returning the goods.
-                previous_returned = db.session.query(db.func.sum(ProductReturnLine.quantity))\
-                    .join(ProductReturn)\
-                    .filter(ProductReturnLine.sale_line_id == sale_line.id,
-                            ProductReturn.status == 'approved')\
-                    .scalar() or Decimal('0')
+                previous_returned = db.session.query(
+                    db.func.sum(ProductReturnLine.quantity)
+                ).join(ProductReturn).filter(
+                    ProductReturnLine.sale_line_id == sale_line.id,
+                    ProductReturn.status == "approved",
+                ).scalar() or Decimal("0")
 
                 if (previous_returned + quantity) > sale_line.quantity:
-                    raise ValueError(f"Cannot return {quantity} of {sale_line.product.name}. Already returned: {previous_returned}, Sold: {sale_line.quantity}.")  # noqa: E501
+                    raise ValueError(
+                        f"Cannot return {quantity} of {sale_line.product.name}. Already returned: {previous_returned}, Sold: {sale_line.quantity}."
+                    )  # noqa: E501
 
                 # Calculate refund amount for this line
                 # NET OF THE LINE DISCOUNT: the original revenue was booked
@@ -109,17 +111,21 @@ class ReturnService:
                 # follows the same (discounted) base.
                 unit_price = Decimal(str(sale_line.unit_price or 0))
                 discount_percent = Decimal(str(sale_line.discount_percent or 0))
-                if discount_percent < Decimal('0') or discount_percent > Decimal('100'):
-                    discount_percent = Decimal('0')
-                net_multiplier = (Decimal('100') - discount_percent) / Decimal('100')
+                if discount_percent < Decimal("0") or discount_percent > Decimal("100"):
+                    discount_percent = Decimal("0")
+                net_multiplier = (Decimal("100") - discount_percent) / Decimal("100")
                 line_total = (unit_price * quantity * net_multiplier).quantize(
-                    Decimal('0.001'), rounding=ROUND_HALF_UP)
+                    Decimal("0.001"), rounding=ROUND_HALF_UP
+                )
 
                 total_return_amount += line_total
-                return_line_specs.append({
-                    'line_total': line_total,
-                    'tax_treatment': getattr(sale_line, 'tax_treatment', None) or 'standard',
-                })
+                return_line_specs.append(
+                    {
+                        "line_total": line_total,
+                        "tax_treatment": getattr(sale_line, "tax_treatment", None)
+                        or "standard",
+                    }
+                )
 
                 # Create Return Line
                 return_line = ProductReturnLine(
@@ -129,8 +135,8 @@ class ReturnService:
                     quantity=quantity,
                     unit_price=unit_price,
                     line_total=line_total,
-                    condition=line_data.get('condition'),
-                    notes=line_data.get('notes')
+                    condition=line_data.get("condition"),
+                    notes=line_data.get("notes"),
                 )
                 db.session.add(return_line)
 
@@ -139,11 +145,11 @@ class ReturnService:
                 StockService.create_movement(
                     product_id=sale_line.product_id,
                     quantity=quantity,
-                    movement_type='return',
-                    reference_type='ProductReturn',
+                    movement_type="return",
+                    reference_type="ProductReturn",
                     reference_id=product_return.id,
                     notes=f"Return for Sale {sale.sale_number}",
-                    warehouse_id=sale.warehouse_id  # Return to same warehouse
+                    warehouse_id=sale.warehouse_id,  # Return to same warehouse
                 )
 
                 # Prepare COGS Reversal GL Data (Credit COGS, Debit Inventory)
@@ -157,53 +163,63 @@ class ReturnService:
                 # review.  With no basis at all the return is refused.
                 product = get_owned_or_404(Product, sale_line.product_id)
                 line_cost = sale_line.cost_price
-                reliable = (line_cost is not None
-                            and Decimal(str(line_cost)) > Decimal('0'))
+                reliable = line_cost is not None and Decimal(str(line_cost)) > Decimal(
+                    "0"
+                )
                 if reliable:
                     cost_price = Decimal(str(line_cost))
                 else:
-                    product_cost = (product.cost_price
-                                    if product is not None else None)
-                    if (product_cost is not None
-                            and Decimal(str(product_cost)) > Decimal('0')):
+                    product_cost = product.cost_price if product is not None else None
+                    if product_cost is not None and Decimal(
+                        str(product_cost)
+                    ) > Decimal("0"):
                         cost_price = Decimal(str(product_cost))
-                        cost_basis_source = 'product_current_cost'
+                        cost_basis_source = "product_current_cost"
                         review_flags.append(
-                            f'سطر البيع {sale_line.id}: لا توجد تكلفة موثّقة '
-                            f'(cost_price = {line_cost}) — عُكس القيد بتكلفة '
-                            f'المنتج الحالية {cost_price} وبحاجة إلى مراجعة.')
+                            f"سطر البيع {sale_line.id}: لا توجد تكلفة موثّقة "
+                            f"(cost_price = {line_cost}) — عُكس القيد بتكلفة "
+                            f"المنتج الحالية {cost_price} وبحاجة إلى مراجعة."
+                        )
                         current_app.logger.error(
-                            'Return %s: sale line %s has no reliable cost '
-                            '(cost_price=%s); reversed at the product current '
-                            'cost %s — manual review required.',
-                            product_return.return_number, sale_line.id,
-                            line_cost, cost_price)
+                            "Return %s: sale line %s has no reliable cost "
+                            "(cost_price=%s); reversed at the product current "
+                            "cost %s — manual review required.",
+                            product_return.return_number,
+                            sale_line.id,
+                            line_cost,
+                            cost_price,
+                        )
                     else:
                         raise ValidationError(
-                            f'لا يمكن عكس تكلفة البضاعة للمنتج '
+                            f"لا يمكن عكس تكلفة البضاعة للمنتج "
                             f'"{sale_line.product.name if sale_line.product else sale_line.product_id}": '
-                            f'لا توجد تكلفة على سطر البيع ولا تكلفة حالية للمنتج. '
-                            f'💡 اضبط تكلفة المنتج ثم أعد تنفيذ المرتجع.')
+                            f"لا توجد تكلفة على سطر البيع ولا تكلفة حالية للمنتج. "
+                            f"💡 اضبط تكلفة المنتج ثم أعد تنفيذ المرتجع."
+                        )
 
                 cost_value = (quantity * cost_price).quantize(
-                    Decimal('0.001'), rounding=ROUND_HALF_UP
+                    Decimal("0.001"), rounding=ROUND_HALF_UP
                 )
 
                 if cost_value > 0:
                     # Inventory (Asset) - Debit (Increase)
-                    gl_lines.append({
-                        'account': routing['inventory'],
-                        'debit': cost_value,
-                        'credit': 0,
-                        'description': f'Inventory Restock - {product.name}'
-                    })
+                    gl_lines.append(
+                        {
+                            "account": routing["inventory"],
+                            "debit": cost_value,
+                            "credit": 0,
+                            "description": f"Inventory Restock - {product.name}",
+                        }
+                    )
                     # COGS (Expense) - Credit (Decrease)
-                    gl_lines.append({
-                        'account': routing['cogs'],
-                        'debit': 0,
-                        'credit': cost_value,
-                        'description': f'COGS Reversal - {product.name}'
-                    })
+                    gl_lines.append(
+                        {
+                            "account": routing["cogs"],
+                            "debit": 0,
+                            "credit": cost_value,
+                            "description": f"COGS Reversal - {product.name}",
+                        }
+                    )
 
             product_return.calculate_totals()
 
@@ -211,8 +227,8 @@ class ReturnService:
             # product's CURRENT cost is escalated for review — the marker
             # travels with the document so it cannot be lost.
             if review_flags:
-                marker = '\n[مراجعة مطلوبة] ' + ' | '.join(review_flags)
-                product_return.notes = (product_return.notes or '') + marker
+                marker = "\n[مراجعة مطلوبة] " + " | ".join(review_flags)
+                product_return.notes = (product_return.notes or "") + marker
 
             # 4. Financial GL Entries (Revenue Reversal)
             # Per-line snapshot split of the returned portion; a whole-invoice
@@ -221,63 +237,85 @@ class ReturnService:
             # still sales revenue being reversed); VAT applies only to the
             # standard bucket.
             tax_rate = Decimal(str(sale.tax_rate or 0))
-            invoice_treatment = getattr(sale, 'tax_treatment', 'standard') or 'standard'
+            invoice_treatment = getattr(sale, "tax_treatment", "standard") or "standard"
             shipping = Decimal(str(sale.shipping_cost or 0))
             discount = Decimal(str(sale.discount_amount or 0))
             from services.sale_tax_calculation import return_tax_parts
+
             tax_amount, net_std, net_zero, net_exempt = return_tax_parts(
-                return_line_specs, sale.lines, sale.subtotal,
-                discount, shipping, tax_rate, bool(sale.tax_inclusive),
-                invoice_treatment=invoice_treatment)
+                return_line_specs,
+                sale.lines,
+                sale.subtotal,
+                discount,
+                shipping,
+                tax_rate,
+                bool(sale.tax_inclusive),
+                invoice_treatment=invoice_treatment,
+            )
 
             net_return_amount = (net_std + net_zero + net_exempt).quantize(
-                Decimal('0.001'), rounding=ROUND_HALF_UP)
+                Decimal("0.001"), rounding=ROUND_HALF_UP
+            )
             gross_return_amount = (net_return_amount + tax_amount).quantize(
-                Decimal('0.001'), rounding=ROUND_HALF_UP)
+                Decimal("0.001"), rounding=ROUND_HALF_UP
+            )
 
-            product_return.refund_amount = gross_return_amount  # Default to full refund of value
+            product_return.refund_amount = (
+                gross_return_amount  # Default to full refund of value
+            )
 
             # Debit Sales Returns/Revenue (reducing revenue)
-            gl_lines.append({
-                'account': routing['sales_returns'],
-                'debit': net_return_amount,
-                'credit': 0,
-                'description': f'Sales Return Revenue Reversal {sale.sale_number}'
-            })
+            gl_lines.append(
+                {
+                    "account": routing["sales_returns"],
+                    "debit": net_return_amount,
+                    "credit": 0,
+                    "description": f"Sales Return Revenue Reversal {sale.sale_number}",
+                }
+            )
 
             # Debit Output VAT liability (Reducing liability)
             if tax_amount > 0:
-                gl_lines.append({
-                    'account': routing['output_vat'],
-                    'debit': tax_amount,
-                    'credit': 0,
-                    'description': f'Sales Return Tax Reversal {sale.sale_number}'
-                })
+                gl_lines.append(
+                    {
+                        "account": routing["output_vat"],
+                        "debit": tax_amount,
+                        "credit": 0,
+                        "description": f"Sales Return Tax Reversal {sale.sale_number}",
+                    }
+                )
 
             # Credit Accounts Receivable (Reducing customer debt)
-            _return_party = sale.customer.id if getattr(sale.customer, 'customer_type', None) == 'partner' else None
-            gl_lines.append({
-                'account': GLService.get_customer_credit_account(sale.customer),
-                'debit': 0,
-                'credit': gross_return_amount,
-                'description': f'Credit Customer for Return {sale.sale_number}',
-                **({'party_id': _return_party} if _return_party else {}),
-            })
+            _return_party = (
+                sale.customer.id
+                if getattr(sale.customer, "customer_type", None) == "partner"
+                else None
+            )
+            gl_lines.append(
+                {
+                    "account": GLService.get_customer_credit_account(sale.customer),
+                    "debit": 0,
+                    "credit": gross_return_amount,
+                    "description": f"Credit Customer for Return {sale.sale_number}",
+                    **({"party_id": _return_party} if _return_party else {}),
+                }
+            )
 
             # عكس تناسبي لحصص شركاء المنتج مع الكمية المرتجعة — داخل نفس
             # المعاملة؛ الفشل يُجهض المرتجع كاملًا (الذرّية قبل أي شيء).
             from services.partner_profit import post_partner_shares_for_return
+
             post_partner_shares_for_return(product_return, sale)
 
             # Post GL Entry
             if gl_lines:
                 GLService.post_entry(
                     lines=gl_lines,
-                    description=f'Sales Return {product_return.return_number} for Sale {sale.sale_number}',
-                    reference_type='ProductReturn',
+                    description=f"Sales Return {product_return.return_number} for Sale {sale.sale_number}",
+                    reference_type="ProductReturn",
                     reference_id=product_return.id,
                     currency=sale.currency,
-                    exchange_rate=sale.exchange_rate
+                    exchange_rate=sale.exchange_rate,
                 )
 
             # 5. Settlement (LEAK-GUARD): the lines above always credit AR,
@@ -289,41 +327,66 @@ class ReturnService:
             # paid/balance_due/customer.balance consistent.
             from services.currency_service import CurrencyService
             from models import Payment
+
             _rate = Decimal(str(sale.exchange_rate or 1))
             if _rate <= 0:
-                _rate = Decimal('1')
+                _rate = Decimal("1")
             refund_base = (gross_return_amount * _rate).quantize(
-                Decimal('0.001'), rounding=ROUND_HALF_UP)
+                Decimal("0.001"), rounding=ROUND_HALF_UP
+            )
             paid_base = Decimal(str(sale.paid_amount_base or 0))
             cash_out_base = min(paid_base, refund_base)
             ar_part_base = refund_base - cash_out_base
             if cash_out_base > 0:
                 _ar_acct = GLService.get_customer_credit_account(sale.customer)
-                _cash_acct = GLService.get_payment_debit_account('cash')
-                _refund_party = sale.customer.id if getattr(sale.customer, 'customer_type', None) == 'partner' else None
+                _cash_acct = GLService.get_payment_debit_account("cash")
+                _refund_party = (
+                    sale.customer.id
+                    if getattr(sale.customer, "customer_type", None) == "partner"
+                    else None
+                )
                 GLService.post_entry(
-                    [{'account': _ar_acct, 'debit': cash_out_base,
-                      'description': f'تسوية مرتجع نقدي {product_return.return_number}',
-                      **({'party_id': _refund_party} if _refund_party else {})},
-                     {'account': _cash_acct, 'credit': cash_out_base,
-                      'description': f'صرف مسترد {product_return.return_number}',
-                      **({'party_id': _refund_party} if _refund_party else {})}],
-                    description=f'Cash refund {product_return.return_number} for Sale {sale.sale_number}',
-                    reference_type='ProductReturn',
+                    [
+                        {
+                            "account": _ar_acct,
+                            "debit": cash_out_base,
+                            "description": f"تسوية مرتجع نقدي {product_return.return_number}",
+                            **({"party_id": _refund_party} if _refund_party else {}),
+                        },
+                        {
+                            "account": _cash_acct,
+                            "credit": cash_out_base,
+                            "description": f"صرف مسترد {product_return.return_number}",
+                            **({"party_id": _refund_party} if _refund_party else {}),
+                        },
+                    ],
+                    description=f"Cash refund {product_return.return_number} for Sale {sale.sale_number}",
+                    reference_type="ProductReturn",
                     reference_id=product_return.id,
                     currency=CurrencyService.get_base_currency(),
-                    exchange_rate=1)
+                    exchange_rate=1,
+                )
                 cash_out_txn = (cash_out_base / _rate).quantize(
-                    Decimal('0.001'), rounding=ROUND_HALF_UP)
-                db.session.add(Payment(
-                    payment_number=generate_number('PAY', Payment, 'payment_number'),
-                    payment_type='refund', direction='outgoing',
-                    sale_id=sale.id, customer_id=sale.customer_id,
-                    amount=cash_out_txn, currency=sale.currency,
-                    exchange_rate=_rate, amount_base=cash_out_base,
-                    payment_method='cash',
-                    notes=f'استرداد نقدي للمرتجع {product_return.return_number}',
-                    user_id=user_id))
+                    Decimal("0.001"), rounding=ROUND_HALF_UP
+                )
+                db.session.add(
+                    Payment(
+                        payment_number=generate_number(
+                            "PAY", Payment, "payment_number"
+                        ),
+                        payment_type="refund",
+                        direction="outgoing",
+                        sale_id=sale.id,
+                        customer_id=sale.customer_id,
+                        amount=cash_out_txn,
+                        currency=sale.currency,
+                        exchange_rate=_rate,
+                        amount_base=cash_out_base,
+                        payment_method="cash",
+                        notes=f"استرداد نقدي للمرتجع {product_return.return_number}",
+                        user_id=user_id,
+                    )
+                )
 
             # F3: لا تحرير يدوي لـ paid_amount / balance_due / payment_status.
             # تسوية الفاتورة تُشتق من مستنداتها (سند الاسترداد + المرتجع
@@ -334,6 +397,7 @@ class ReturnService:
             # المرتجع وسند الاسترداد قبل إعادة الاحتساب.
             db.session.flush()
             from models.sale import recompute_sale_settlement
+
             # NOTE: يُمرَّر الاتصال صراحةً — models/sale.py يستورد `db`
             # محلياً بعد السطر 114 في الاستدعاء ( UnboundLocalError
             # عند connection=None ). الملف ليس ضمن نطاق التعديل هنا.
@@ -342,27 +406,33 @@ class ReturnService:
             # F1: رصيد العميل يُشتق من مصدره الواحد بعد أن استقرت تسوية
             # الفاتورة (المستندون الآن في القاعدة).
             from models.customer import recompute_customer_balance
+
             recompute_customer_balance(sale.customer_id)
 
             # F14: a refund is a destructive financial operation — the audit
             # row carries the amounts, the tax base and the cost basis.
-            create_audit_log('create', 'product_returns', product_return.id,
-                             changes={
-                                 'return_number': product_return.return_number,
-                                 'sale_id': sale.id,
-                                 'sale_number': sale.sale_number,
-                                 'customer_id': sale.customer_id,
-                                 'total_amount': str(product_return.total_amount),
-                                 'refund_amount': str(gross_return_amount),
-                                 'net_amount': str(net_return_amount),
-                                 'tax_amount': str(tax_amount),
-                                 'tax_rate': str(tax_rate),
-                                 'cash_refund_base': str(cash_out_base),
-                                 'ar_credit_base': str(ar_part_base),
-                                 'currency': sale.currency,
-                                 'exchange_rate': str(_rate),
-                                 'review_flags': review_flags,
-                             }, commit=False)
+            create_audit_log(
+                "create",
+                "product_returns",
+                product_return.id,
+                changes={
+                    "return_number": product_return.return_number,
+                    "sale_id": sale.id,
+                    "sale_number": sale.sale_number,
+                    "customer_id": sale.customer_id,
+                    "total_amount": str(product_return.total_amount),
+                    "refund_amount": str(gross_return_amount),
+                    "net_amount": str(net_return_amount),
+                    "tax_amount": str(tax_amount),
+                    "tax_rate": str(tax_rate),
+                    "cash_refund_base": str(cash_out_base),
+                    "ar_credit_base": str(ar_part_base),
+                    "currency": sale.currency,
+                    "exchange_rate": str(_rate),
+                    "review_flags": review_flags,
+                },
+                commit=False,
+            )
 
             db.session.commit()
             return product_return

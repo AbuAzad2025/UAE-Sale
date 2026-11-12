@@ -1,5 +1,4 @@
 """Guide endpoint tests — نطاق آمن"""
-import pytest
 
 
 def test_guide_endpoint_requires_login(client):

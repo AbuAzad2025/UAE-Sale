@@ -12,17 +12,22 @@ class Budget(TenantScopedMixin, db.Model):
     """
     الموازنة السنوية/الشهرية
     """
-    __tablename__ = 'budgets'
+
+    __tablename__ = "budgets"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
     budget_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     name_ar = db.Column(db.String(200), nullable=False)
     name_en = db.Column(db.String(200))
 
     # الفترة
     fiscal_year = db.Column(db.Integer, nullable=False, index=True)  # 2025, 2026
-    period_type = db.Column(db.String(20), default='annual')  # annual, quarterly, monthly
+    period_type = db.Column(
+        db.String(20), default="annual"
+    )  # annual, quarterly, monthly
     period_start = db.Column(db.Date, nullable=False)
     period_end = db.Column(db.Date, nullable=False)
 
@@ -33,44 +38,45 @@ class Budget(TenantScopedMixin, db.Model):
     variance_percentage = db.Column(db.Numeric(5, 2), default=0)
 
     # الحالة
-    status = db.Column(db.String(20), default='draft', index=True)  # draft, active, closed
+    status = db.Column(
+        db.String(20), default="draft", index=True
+    )  # draft, active, closed
 
     notes = db.Column(db.Text)
 
     # Meta
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
-                           onupdate=lambda: datetime.now(timezone.utc))
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
+    approved_by = db.Column(db.Integer, db.ForeignKey("users.id"))
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
     approved_at = db.Column(db.DateTime)
 
     # Relationships
-    lines = db.relationship('BudgetLine', back_populates='budget', cascade='all, delete-orphan')
-    creator = db.relationship('User', foreign_keys=[created_by])
-    approver = db.relationship('User', foreign_keys=[approved_by])
+    lines = db.relationship(
+        "BudgetLine", back_populates="budget", cascade="all, delete-orphan"
+    )
+    creator = db.relationship("User", foreign_keys=[created_by])
+    approver = db.relationship("User", foreign_keys=[approved_by])
 
     def __repr__(self):
-        return f'<Budget {self.budget_number} - {self.fiscal_year}>'
+        return f"<Budget {self.budget_number} - {self.fiscal_year}>"
 
     @property
     def status_ar(self):
         """الحالة بالعربي"""
-        statuses = {
-            'draft': 'مسودة',
-            'active': 'نشطة',
-            'closed': 'مغلقة'
-        }
+        statuses = {"draft": "مسودة", "active": "نشطة", "closed": "مغلقة"}
         return statuses.get(self.status, self.status)
 
     @property
     def period_type_ar(self):
         """نوع الفترة بالعربي"""
-        types = {
-            'annual': 'سنوية',
-            'quarterly': 'ربع سنوية',
-            'monthly': 'شهرية'
-        }
+        types = {"annual": "سنوية", "quarterly": "ربع سنوية", "monthly": "شهرية"}
         return types.get(self.period_type, self.period_type)
 
     def update_actuals(self):
@@ -78,25 +84,29 @@ class Budget(TenantScopedMixin, db.Model):
         from sqlalchemy import func
         from models import GLJournalLine, GLJournalEntry
 
-        total_actual = Decimal('0')
-        total_variance = Decimal('0')
+        total_actual = Decimal("0")
+        total_variance = Decimal("0")
 
         for line in self.lines:
             # حساب المبلغ الفعلي
             debit_sum = db.session.query(func.sum(GLJournalLine.debit)).filter(
                 GLJournalLine.account_id == line.account_id
             ).join(GLJournalEntry).filter(
-                func.date(GLJournalEntry.entry_date).between(self.period_start, self.period_end)
-            ).scalar() or Decimal('0')
+                func.date(GLJournalEntry.entry_date).between(
+                    self.period_start, self.period_end
+                )
+            ).scalar() or Decimal("0")
 
             credit_sum = db.session.query(func.sum(GLJournalLine.credit)).filter(
                 GLJournalLine.account_id == line.account_id
             ).join(GLJournalEntry).filter(
-                func.date(GLJournalEntry.entry_date).between(self.period_start, self.period_end)
-            ).scalar() or Decimal('0')
+                func.date(GLJournalEntry.entry_date).between(
+                    self.period_start, self.period_end
+                )
+            ).scalar() or Decimal("0")
 
             # حساب الفعلي حسب نوع الحساب
-            if line.account.type in ['asset', 'expense']:
+            if line.account.type in ["asset", "expense"]:
                 line.actual_amount = debit_sum - credit_sum
             else:  # liability, equity, revenue
                 line.actual_amount = credit_sum - debit_sum
@@ -123,21 +133,21 @@ class Budget(TenantScopedMixin, db.Model):
 
     def activate(self):
         """تفعيل الموازنة"""
-        if self.status != 'draft':
-            raise ValueError('الموازنة نشطة مسبقاً')
+        if self.status != "draft":
+            raise ValueError("الموازنة نشطة مسبقاً")
 
-        self.status = 'active'
+        self.status = "active"
         db.session.commit()
 
     def close(self):
         """إغلاق الموازنة"""
-        if self.status != 'active':
-            raise ValueError('يجب أن تكون الموازنة نشطة لإغلاقها')
+        if self.status != "active":
+            raise ValueError("يجب أن تكون الموازنة نشطة لإغلاقها")
 
         # تحديث الأرقام الفعلية قبل الإغلاق
         self.update_actuals()
 
-        self.status = 'closed'
+        self.status = "closed"
         db.session.commit()
 
 
@@ -145,12 +155,15 @@ class BudgetLine(TenantScopedMixin, db.Model):
     """
     سطور الموازنة - حساب واحد
     """
-    __tablename__ = 'budget_lines'
+
+    __tablename__ = "budget_lines"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
-    budget_id = db.Column(db.Integer, db.ForeignKey('budgets.id'), nullable=False)
-    account_id = db.Column(db.Integer, db.ForeignKey('gl_accounts.id'), nullable=False)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
+    budget_id = db.Column(db.Integer, db.ForeignKey("budgets.id"), nullable=False)
+    account_id = db.Column(db.Integer, db.ForeignKey("gl_accounts.id"), nullable=False)
 
     # المبالغ المخططة
     budgeted_amount = db.Column(db.Numeric(18, 3), nullable=False)
@@ -165,28 +178,24 @@ class BudgetLine(TenantScopedMixin, db.Model):
     notes = db.Column(db.Text)
 
     # Relationships
-    budget = db.relationship('Budget', back_populates='lines')
-    account = db.relationship('GLAccount')
+    budget = db.relationship("Budget", back_populates="lines")
+    account = db.relationship("GLAccount")
 
     def __repr__(self):
-        return f'<BudgetLine {self.account.code} - {self.budgeted_amount}>'
+        return f"<BudgetLine {self.account.code} - {self.budgeted_amount}>"
 
     @property
     def variance_status(self):
         """حالة الانحراف"""
         if abs(self.variance_percentage) < 5:
-            return 'good'  # ضمن الحدود
+            return "good"  # ضمن الحدود
         elif abs(self.variance_percentage) < 15:
-            return 'warning'  # تحذير
+            return "warning"  # تحذير
         else:
-            return 'danger'  # خطر
+            return "danger"  # خطر
 
     @property
     def variance_status_ar(self):
         """حالة الانحراف بالعربي"""
-        statuses = {
-            'good': 'ممتاز',
-            'warning': 'يحتاج متابعة',
-            'danger': 'انحراف كبير'
-        }
-        return statuses.get(self.variance_status, '-')
+        statuses = {"good": "ممتاز", "warning": "يحتاج متابعة", "danger": "انحراف كبير"}
+        return statuses.get(self.variance_status, "-")

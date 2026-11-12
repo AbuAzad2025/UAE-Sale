@@ -28,16 +28,20 @@ def _get_redis():
     _redis_checked = True
     try:
         import redis
-        redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+
+        redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         client = redis.from_url(redis_url, decode_responses=True, socket_timeout=3)
         client.ping()
         _redis_client = client
-        logger.info('Distributed lock: Redis connected')
+        logger.info("Distributed lock: Redis connected")
     except Exception as e:
         _redis_client = None
-        logger.warning(f'Distributed lock: Redis unavailable ({e}), using in-process fallback')
+        logger.warning(
+            f"Distributed lock: Redis unavailable ({e}), using in-process fallback"
+        )
 
     return _redis_client
+
 
 # ── In-process fallback lock ───────────────────────────────────────────
 
@@ -56,7 +60,12 @@ def _get_fallback_lock(name):
 
 def _strict_locks_enabled():
     """STRICT_LOCKS env toggle (default off = present fail-open behavior)."""
-    return os.environ.get('STRICT_LOCKS', '').strip().lower() in ('1', 'true', 'yes', 'on')
+    return os.environ.get("STRICT_LOCKS", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 
 def _emit_lock_metric(name, outcome):
@@ -65,12 +74,13 @@ def _emit_lock_metric(name, outcome):
         from utils.monitoring import MetricsCollector
 
         MetricsCollector.record_metric(
-            'distributed_lock_acquire',
+            "distributed_lock_acquire",
             1,
-            {'name': name, 'outcome': outcome},
+            {"name": name, "outcome": outcome},
         )
     except Exception:
         pass
+
 
 # ── Public API ──────────────────────────────────────────────────────────
 
@@ -100,7 +110,7 @@ def distributed_lock(name, timeout=10, blocking_timeout=5):
 
     if redis is not None:
         lock = redis.lock(
-            name=f'distributed_lock:{name}',
+            name=f"distributed_lock:{name}",
             timeout=timeout,
             blocking_timeout=blocking_timeout,
         )
@@ -108,20 +118,24 @@ def distributed_lock(name, timeout=10, blocking_timeout=5):
         try:
             acquired = lock.acquire(blocking=True)
             if not acquired:
-                _emit_lock_metric(name, 'timeout')
-                logger.warning(f'Distributed lock [{name}]: could not acquire within {blocking_timeout}s — proceeding (fail-open)')
+                _emit_lock_metric(name, "timeout")
+                logger.warning(
+                    f"Distributed lock [{name}]: could not acquire within {blocking_timeout}s — proceeding (fail-open)"
+                )
                 if strict:
                     raise TimeoutError(
                         f"Could not acquire distributed lock '{name}' "
-                        f'within {blocking_timeout}s (STRICT_LOCKS enabled)'
+                        f"within {blocking_timeout}s (STRICT_LOCKS enabled)"
                     )
             else:
-                _emit_lock_metric(name, 'acquired')
+                _emit_lock_metric(name, "acquired")
             yield
         except Exception as e:
             if isinstance(e, TimeoutError) and strict:
                 raise
-            logger.warning(f'Distributed lock [{name}]: Redis error ({e}) — proceeding (fail-open)')
+            logger.warning(
+                f"Distributed lock [{name}]: Redis error ({e}) — proceeding (fail-open)"
+            )
             yield
         finally:
             if acquired:
@@ -133,13 +147,15 @@ def distributed_lock(name, timeout=10, blocking_timeout=5):
         # Fallback: in-process threading lock
         lock = _get_fallback_lock(name)
         acquired = lock.acquire(timeout=blocking_timeout)
-        _emit_lock_metric(name, 'acquired' if acquired else 'timeout')
+        _emit_lock_metric(name, "acquired" if acquired else "timeout")
         if not acquired:
-            logger.warning(f'Distributed lock [{name}]: could not acquire within {blocking_timeout}s — proceeding (fail-open)')
+            logger.warning(
+                f"Distributed lock [{name}]: could not acquire within {blocking_timeout}s — proceeding (fail-open)"
+            )
             if strict:
                 raise TimeoutError(
                     f"Could not acquire distributed lock '{name}' "
-                    f'within {blocking_timeout}s (STRICT_LOCKS enabled)'
+                    f"within {blocking_timeout}s (STRICT_LOCKS enabled)"
                 )
         try:
             yield

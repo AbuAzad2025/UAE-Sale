@@ -8,6 +8,7 @@
 - Database Connection Pooling
 - Response Compression
 """
+
 from functools import wraps
 from flask import g
 import time
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 def measure_time(func):
     """قياس وقت تنفيذ الدالة"""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         start = time.time()
@@ -30,11 +32,13 @@ def measure_time(func):
             logger.info(f"⏱️ {func.__name__} took {duration:.0f}ms")
 
         return result
+
     return wrapper
 
 
 def cache_result(timeout=300):
     """تخزين نتيجة الدالة مؤقتاً"""
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -53,7 +57,9 @@ def cache_result(timeout=300):
             logger.debug(f"💾 Cache SET: {func.__name__}")
 
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -67,7 +73,7 @@ def batch_commit(items, batch_size=100):
     from extensions import db
 
     for i in range(0, len(items), batch_size):
-        batch = items[i:i + batch_size]
+        batch = items[i : i + batch_size]
         db.session.bulk_save_objects(batch)
         db.session.commit()
         logger.info(f"💾 Batch committed: {len(batch)} items")
@@ -84,12 +90,12 @@ class PerformanceMonitor:
     @staticmethod
     def end_request(response):
         """نهاية الطلب"""
-        if hasattr(g, 'start_time'):
+        if hasattr(g, "start_time"):
             duration = (time.time() - g.start_time) * 1000
 
             if duration > 2000:
                 logger.warning(f"🐌 Slow request: {duration:.0f}ms")
 
-            response.headers['X-Response-Time'] = f"{duration:.2f}ms"
+            response.headers["X-Response-Time"] = f"{duration:.2f}ms"
 
         return response

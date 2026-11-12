@@ -382,13 +382,13 @@ MAINTENANCE_SCHEDULE = """
 
 # قاموس شامل
 PARTS_DATABASE = {
-    'categories': AUTO_PARTS_CATEGORIES,
-    'heavy_equipment': HEAVY_EQUIPMENT_PARTS,
-    'quality': PARTS_QUALITY,
-    'brands': BRANDS_GUIDE,
-    'compatibility': COMPATIBILITY_GUIDE,
-    'diagnostic': DIAGNOSTIC_GUIDE,
-    'maintenance': MAINTENANCE_SCHEDULE,
+    "categories": AUTO_PARTS_CATEGORIES,
+    "heavy_equipment": HEAVY_EQUIPMENT_PARTS,
+    "quality": PARTS_QUALITY,
+    "brands": BRANDS_GUIDE,
+    "compatibility": COMPATIBILITY_GUIDE,
+    "diagnostic": DIAGNOSTIC_GUIDE,
+    "maintenance": MAINTENANCE_SCHEDULE,
 }
 
 
@@ -404,10 +404,7 @@ def search_parts(query):
 
     for category, content in PARTS_DATABASE.items():
         if query in content.lower():
-            results.append({
-                'category': category,
-                'excerpt': content[:300] + '...'
-            })
+            results.append({"category": category, "excerpt": content[:300] + "..."})
 
     return results
 

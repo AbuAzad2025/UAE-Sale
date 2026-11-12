@@ -22,21 +22,26 @@ from models.tenant_scope import TenantScopedMixin
 
 class Quotation(TenantScopedMixin, db.Model):
     """Sales quotation / proposal"""
-    __tablename__ = 'quotations'
+
+    __tablename__ = "quotations"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
     quotation_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False, index=True)
-    seller_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'))
+    customer_id = db.Column(
+        db.Integer, db.ForeignKey("customers.id"), nullable=False, index=True
+    )
+    seller_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    warehouse_id = db.Column(db.Integer, db.ForeignKey("warehouses.id"))
 
     quotation_date = db.Column(db.Date, nullable=False, index=True)
     valid_until = db.Column(db.Date, nullable=False)
     # Deprecated duplicate of valid_until. The physical column stays declared
     # (schema frozen, no drop) but is unmapped: instance access aliases
     # valid_until so there is a single source of truth.
-    _expiry_date_column = db.Column('expiry_date', db.Date)
+    _expiry_date_column = db.Column("expiry_date", db.Date)
 
     @property
     def expiry_date(self):
@@ -55,30 +60,42 @@ class Quotation(TenantScopedMixin, db.Model):
     total_amount = db.Column(db.Numeric(15, 3), default=0)
 
     # Phase 1 — ضريبة على مستوى الفاتورة (شاملة/إضافية + معاملة)
-    tax_inclusive = db.Column(db.Boolean, default=False, nullable=False, server_default=db.text('false'))
-    tax_treatment = db.Column(db.String(10), default='standard', nullable=False, server_default='standard')
+    tax_inclusive = db.Column(
+        db.Boolean, default=False, nullable=False, server_default=db.text("false")
+    )
+    tax_treatment = db.Column(
+        db.String(10), default="standard", nullable=False, server_default="standard"
+    )
     # draft, sent, accepted, rejected, expired, converted
 
-    currency = db.Column(db.String(3), default='ILS')
+    currency = db.Column(db.String(3), default="ILS")
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
     amount_base = db.Column(db.Numeric(15, 3), default=0)
 
-    status = db.Column(db.String(20), default='draft', index=True)
+    status = db.Column(db.String(20), default="draft", index=True)
 
-    converted_sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'))
+    converted_sale_id = db.Column(db.Integer, db.ForeignKey("sales.id"))
     converted_at = db.Column(db.DateTime, nullable=True)
     notes = db.Column(db.Text)
 
     # Phase 1 — شروط/صلاحية/نشاط
     payment_terms = db.Column(db.Text, nullable=True)
     terms_and_conditions = db.Column(db.Text, nullable=True)
-    validity_days = db.Column(db.Integer, default=30, nullable=False, server_default='30')
-    is_active = db.Column(db.Boolean, default=True, nullable=False, server_default=db.text('true'))
+    validity_days = db.Column(
+        db.Integer, default=30, nullable=False, server_default="30"
+    )
+    is_active = db.Column(
+        db.Boolean, default=True, nullable=False, server_default=db.text("true")
+    )
 
     # Phase 2 — versioning
-    version = db.Column(db.Integer, default=1, nullable=False, server_default='1')
-    parent_quotation_id = db.Column(db.Integer, db.ForeignKey('quotations.id'), nullable=True)
-    is_latest_version = db.Column(db.Boolean, default=True, nullable=False, server_default=db.text('true'))
+    version = db.Column(db.Integer, default=1, nullable=False, server_default="1")
+    parent_quotation_id = db.Column(
+        db.Integer, db.ForeignKey("quotations.id"), nullable=True
+    )
+    is_latest_version = db.Column(
+        db.Boolean, default=True, nullable=False, server_default=db.text("true")
+    )
     version_notes = db.Column(db.Text, nullable=True)
 
     # Phase 2 — email tracking
@@ -86,58 +103,81 @@ class Quotation(TenantScopedMixin, db.Model):
     email_sent_to = db.Column(db.String(255), nullable=True)
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
-                           onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
-    customer = db.relationship('Customer')
-    seller = db.relationship('User', foreign_keys=[seller_id])
-    lines = db.relationship('QuotationLine', back_populates='quotation', cascade='all, delete-orphan')
-    converted_sale = db.relationship('Sale', foreign_keys=[converted_sale_id])
-    parent_quotation = db.relationship('Quotation', remote_side=[id], foreign_keys=[parent_quotation_id], backref='child_versions')
+    customer = db.relationship("Customer")
+    seller = db.relationship("User", foreign_keys=[seller_id])
+    lines = db.relationship(
+        "QuotationLine", back_populates="quotation", cascade="all, delete-orphan"
+    )
+    converted_sale = db.relationship("Sale", foreign_keys=[converted_sale_id])
+    parent_quotation = db.relationship(
+        "Quotation",
+        remote_side=[id],
+        foreign_keys=[parent_quotation_id],
+        backref="child_versions",
+    )
 
     @property
     def expires_soon(self):
         """True if quotation expires within 3 days."""
-        if not self.valid_until or self.status in ('converted', 'rejected', 'expired'):
+        if not self.valid_until or self.status in ("converted", "rejected", "expired"):
             return False
         from datetime import date, timedelta
-        return date.today() >= (self.valid_until - timedelta(days=3)) and not self.is_expired
+
+        return (
+            date.today() >= (self.valid_until - timedelta(days=3))
+            and not self.is_expired
+        )
 
     @property
     def version_label(self):
-        return f'v{self.version or 1}'
+        return f"v{self.version or 1}"
 
     def calculate_totals(self):
-        self.subtotal = sum((Decimal(str(ln.line_total)) for ln in self.lines), Decimal('0'))
-        disc = Decimal(str(self.discount_amount)) if self.discount_amount else Decimal('0')
-        ship = Decimal(str(self.shipping_cost)) if self.shipping_cost else Decimal('0')
-        rate = Decimal(str(self.tax_rate)) if self.tax_rate else Decimal('0')
+        self.subtotal = sum(
+            (Decimal(str(ln.line_total)) for ln in self.lines), Decimal("0")
+        )
+        disc = (
+            Decimal(str(self.discount_amount)) if self.discount_amount else Decimal("0")
+        )
+        ship = Decimal(str(self.shipping_cost)) if self.shipping_cost else Decimal("0")
+        rate = Decimal(str(self.tax_rate)) if self.tax_rate else Decimal("0")
 
         from services.sale_tax_calculation import sale_tax_totals_mixed
+
         line_specs = [
-            {'line_total': ln.line_total,
-             'tax_treatment': getattr(ln, 'tax_treatment', None) or 'standard'}
+            {
+                "line_total": ln.line_total,
+                "tax_treatment": getattr(ln, "tax_treatment", None) or "standard",
+            }
             for ln in self.lines
         ]
-        inclusive = bool(getattr(self, 'tax_inclusive', False))
-        invoice_treatment = getattr(self, 'tax_treatment', None) or 'standard'
+        inclusive = bool(getattr(self, "tax_inclusive", False))
+        invoice_treatment = getattr(self, "tax_treatment", None) or "standard"
         self.tax_amount, self.total_amount, _ns, _nz, _ne = sale_tax_totals_mixed(
-            line_specs, disc, ship, rate, inclusive,
-            invoice_treatment=invoice_treatment)
-        ex = Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal('1')
-        if (self.currency or 'ILS') == 'ILS':
+            line_specs, disc, ship, rate, inclusive, invoice_treatment=invoice_treatment
+        )
+        ex = Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal("1")
+        if (self.currency or "ILS") == "ILS":
             self.amount_base = self.total_amount
         else:
             try:
                 from services.currency_service import CurrencyService
+
                 _base = CurrencyService.get_base_currency()
             except Exception:
-                _base = 'ILS'
+                _base = "ILS"
             if (self.currency or _base) == _base:
                 self.amount_base = self.total_amount
             else:
                 self.amount_base = (self.total_amount * ex).quantize(
-                    Decimal('0.001'), rounding=ROUND_HALF_UP)
+                    Decimal("0.001"), rounding=ROUND_HALF_UP
+                )
 
     @property
     def is_expired(self):
@@ -145,56 +185,80 @@ class Quotation(TenantScopedMixin, db.Model):
 
     @property
     def status_ar(self):
-        return {'draft': 'مسودة', 'sent': 'مرسلة', 'accepted': 'مقبولة', 'rejected': 'مرفوضة',
-                'expired': 'منتهية', 'converted': 'متحويلة'}.get(self.status, self.status)
+        return {
+            "draft": "مسودة",
+            "sent": "مرسلة",
+            "accepted": "مقبولة",
+            "rejected": "مرفوضة",
+            "expired": "منتهية",
+            "converted": "متحويلة",
+        }.get(self.status, self.status)
 
     def to_dict(self):
         return {
-            'id': self.id, 'quotation_number': self.quotation_number,
-            'customer': self.customer.name if self.customer else None,
-            'total_amount': float(self.total_amount) if self.total_amount else 0,
-            'status': self.status, 'status_ar': self.status_ar,
-            'valid_until': self.valid_until.isoformat() if self.valid_until else None,
+            "id": self.id,
+            "quotation_number": self.quotation_number,
+            "customer": self.customer.name if self.customer else None,
+            "total_amount": float(self.total_amount) if self.total_amount else 0,
+            "status": self.status,
+            "status_ar": self.status_ar,
+            "valid_until": self.valid_until.isoformat() if self.valid_until else None,
         }
 
 
 class QuotationLine(TenantScopedMixin, db.Model):
-    __tablename__ = 'quotation_lines'
+    __tablename__ = "quotation_lines"
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
-    quotation_id = db.Column(db.Integer, db.ForeignKey('quotations.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
+    quotation_id = db.Column(db.Integer, db.ForeignKey("quotations.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
     quantity = db.Column(db.Numeric(15, 3), nullable=False)
     unit_price = db.Column(db.Numeric(15, 3), nullable=False)
     discount_percent = db.Column(db.Numeric(5, 2), default=0)
     line_total = db.Column(db.Numeric(15, 3), nullable=False)
     # Phase 1 — لقطة تكلفة + معاملة ضريبية (مطابقة لـ SaleLine)
     cost_price = db.Column(db.Numeric(15, 3), nullable=True)
-    tax_treatment = db.Column(db.String(10), default='standard', nullable=False, server_default='standard')
+    tax_treatment = db.Column(
+        db.String(10), default="standard", nullable=False, server_default="standard"
+    )
     notes = db.Column(db.String(255))
 
-    quotation = db.relationship('Quotation', back_populates='lines')
-    product = db.relationship('Product')
+    quotation = db.relationship("Quotation", back_populates="lines")
+    product = db.relationship("Product")
 
     def calculate_line_total(self):
-        qty = Decimal(str(self.quantity)) if self.quantity else Decimal('0')
-        price = Decimal(str(self.unit_price)) if self.unit_price else Decimal('0')
-        disc = Decimal(str(self.discount_percent)) if self.discount_percent else Decimal('0')
-        self.line_total = (qty * price * (Decimal('100') - disc) / Decimal('100')).quantize(Decimal('0.001'), ROUND_HALF_UP)
+        qty = Decimal(str(self.quantity)) if self.quantity else Decimal("0")
+        price = Decimal(str(self.unit_price)) if self.unit_price else Decimal("0")
+        disc = (
+            Decimal(str(self.discount_percent))
+            if self.discount_percent
+            else Decimal("0")
+        )
+        self.line_total = (
+            qty * price * (Decimal("100") - disc) / Decimal("100")
+        ).quantize(Decimal("0.001"), ROUND_HALF_UP)
+
 
 # ==================== PURCHASE ORDERS ====================
 
 
 class PurchaseOrder(TenantScopedMixin, db.Model):
     """Purchase Order - formal procurement document"""
-    __tablename__ = 'purchase_orders'
+
+    __tablename__ = "purchase_orders"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
     po_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=False, index=True)
-    warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'))
-    requested_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    supplier_id = db.Column(
+        db.Integer, db.ForeignKey("suppliers.id"), nullable=False, index=True
+    )
+    warehouse_id = db.Column(db.Integer, db.ForeignKey("warehouses.id"))
+    requested_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
 
     po_date = db.Column(db.Date, nullable=False, index=True)
     expected_delivery = db.Column(db.Date)
@@ -203,56 +267,81 @@ class PurchaseOrder(TenantScopedMixin, db.Model):
     tax_rate = db.Column(db.Numeric(5, 2), default=0)
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     total_amount = db.Column(db.Numeric(15, 3), default=0)
-    currency = db.Column(db.String(3), default='ILS')
+    currency = db.Column(db.String(3), default="ILS")
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
 
-    status = db.Column(db.String(20), default='draft', index=True)
+    status = db.Column(db.String(20), default="draft", index=True)
     # draft, submitted, approved, partially_received, received, cancelled
 
     # Link to final purchase invoice
-    purchase_id = db.Column(db.Integer, db.ForeignKey('purchases.id'))
+    purchase_id = db.Column(db.Integer, db.ForeignKey("purchases.id"))
 
     notes = db.Column(db.Text)
-    approved_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    approved_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     approved_at = db.Column(db.DateTime)
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
-                           onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
-    supplier = db.relationship('Supplier')
-    warehouse = db.relationship('Warehouse')
-    requested_by = db.relationship('User', foreign_keys=[requested_by_id])
-    approved_by = db.relationship('User', foreign_keys=[approved_by_id])
-    purchase = db.relationship('Purchase', foreign_keys=[purchase_id])
-    lines = db.relationship('PurchaseOrderLine', back_populates='order', cascade='all, delete-orphan')
+    supplier = db.relationship("Supplier")
+    warehouse = db.relationship("Warehouse")
+    requested_by = db.relationship("User", foreign_keys=[requested_by_id])
+    approved_by = db.relationship("User", foreign_keys=[approved_by_id])
+    purchase = db.relationship("Purchase", foreign_keys=[purchase_id])
+    lines = db.relationship(
+        "PurchaseOrderLine", back_populates="order", cascade="all, delete-orphan"
+    )
 
     def calculate_totals(self):
-        self.subtotal = sum((Decimal(str(ln.line_total)) for ln in self.lines), Decimal('0'))
-        tax_r = Decimal(str(self.tax_rate)) if self.tax_rate else Decimal('0')
-        self.tax_amount = (self.subtotal * (tax_r / Decimal('100'))).quantize(Decimal('0.01'), ROUND_HALF_UP)
-        self.total_amount = (self.subtotal + self.tax_amount).quantize(Decimal('0.001'), ROUND_HALF_UP)
+        self.subtotal = sum(
+            (Decimal(str(ln.line_total)) for ln in self.lines), Decimal("0")
+        )
+        tax_r = Decimal(str(self.tax_rate)) if self.tax_rate else Decimal("0")
+        self.tax_amount = (self.subtotal * (tax_r / Decimal("100"))).quantize(
+            Decimal("0.01"), ROUND_HALF_UP
+        )
+        self.total_amount = (self.subtotal + self.tax_amount).quantize(
+            Decimal("0.001"), ROUND_HALF_UP
+        )
 
     @property
     def total_received(self):
-        return sum((Decimal(str(ln.received_quantity or 0)) for ln in self.lines), Decimal('0'))
+        return sum(
+            (Decimal(str(ln.received_quantity or 0)) for ln in self.lines), Decimal("0")
+        )
 
     @property
     def is_fully_received(self):
-        return all((ln.received_quantity or Decimal('0')) >= ln.quantity for ln in self.lines)
+        return all(
+            (ln.received_quantity or Decimal("0")) >= ln.quantity for ln in self.lines
+        )
 
     @property
     def status_ar(self):
-        return {'draft': 'مسودة', 'submitted': 'مقدمة', 'approved': 'معتمدة',
-                'partially_received': 'استلام جزئي', 'received': 'مستلمة', 'cancelled': 'ملغاة'}.get(self.status, self.status)
+        return {
+            "draft": "مسودة",
+            "submitted": "مقدمة",
+            "approved": "معتمدة",
+            "partially_received": "استلام جزئي",
+            "received": "مستلمة",
+            "cancelled": "ملغاة",
+        }.get(self.status, self.status)
 
 
 class PurchaseOrderLine(TenantScopedMixin, db.Model):
-    __tablename__ = 'purchase_order_lines'
+    __tablename__ = "purchase_order_lines"
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('purchase_orders.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
+    order_id = db.Column(
+        db.Integer, db.ForeignKey("purchase_orders.id"), nullable=False
+    )
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
     quantity = db.Column(db.Numeric(15, 3), nullable=False)
     unit_cost = db.Column(db.Numeric(15, 3), nullable=False)
     discount_percent = db.Column(db.Numeric(5, 2), default=0)
@@ -260,43 +349,55 @@ class PurchaseOrderLine(TenantScopedMixin, db.Model):
     received_quantity = db.Column(db.Numeric(15, 3), default=0)
     notes = db.Column(db.String(255))
 
-    order = db.relationship('PurchaseOrder', back_populates='lines')
-    product = db.relationship('Product')
+    order = db.relationship("PurchaseOrder", back_populates="lines")
+    product = db.relationship("Product")
 
     def calculate_line_total(self):
-        qty = Decimal(str(self.quantity)) if self.quantity else Decimal('0')
-        cost = Decimal(str(self.unit_cost)) if self.unit_cost else Decimal('0')
-        disc = Decimal(str(self.discount_percent)) if self.discount_percent else Decimal('0')
-        self.line_total = (qty * cost * (Decimal('100') - disc) / Decimal('100')).quantize(Decimal('0.001'), ROUND_HALF_UP)
+        qty = Decimal(str(self.quantity)) if self.quantity else Decimal("0")
+        cost = Decimal(str(self.unit_cost)) if self.unit_cost else Decimal("0")
+        disc = (
+            Decimal(str(self.discount_percent))
+            if self.discount_percent
+            else Decimal("0")
+        )
+        self.line_total = (
+            qty * cost * (Decimal("100") - disc) / Decimal("100")
+        ).quantize(Decimal("0.001"), ROUND_HALF_UP)
+
 
 # ==================== FISCAL PERIODS ====================
 
 
 class FiscalPeriod(db.Model):
     """Fiscal period locking to prevent backdating"""
-    __tablename__ = 'fiscal_periods'
+
+    __tablename__ = "fiscal_periods"
 
     id = db.Column(db.Integer, primary_key=True)
     # F10: الفترة المالية قد تكون خاصة بمستأجر واحد أو عامة لكل المستأجرين.
     # NULL = فترة عامة (تغطي الجميع). بدون هذا العمود كان إغلاق سنة من
     # مستأجر يُجمّد كل المستأجرين. (يتطلب ترحيلاً — انظر التقرير)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
     name = db.Column(db.String(100), nullable=False)
     year = db.Column(db.Integer, nullable=False, index=True)
-    period_type = db.Column(db.String(20), default='annual')  # annual, quarterly, monthly
+    period_type = db.Column(
+        db.String(20), default="annual"
+    )  # annual, quarterly, monthly
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False, index=True)
     is_closed = db.Column(db.Boolean, default=False, index=True)
-    closed_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    closed_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     closed_at = db.Column(db.DateTime)
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    closed_by = db.relationship('User', foreign_keys=[closed_by_id])
+    closed_by = db.relationship("User", foreign_keys=[closed_by_id])
 
     def close(self, user_id):
         if self.is_closed:
-            raise ValueError('الفترة المالية مقفلة بالفعل')
+            raise ValueError("الفترة المالية مقفلة بالفعل")
         self.is_closed = True
         self.closed_by_id = user_id
         self.closed_at = datetime.now(timezone.utc)
@@ -312,83 +413,115 @@ class FiscalPeriod(db.Model):
     @property
     def is_global(self):
         """True للفترة العامة (NULL = تغطي كل المستأجرين)."""
-        return getattr(self, 'tenant_id', None) is None
+        return getattr(self, "tenant_id", None) is None
 
     @property
     def status_ar(self):
-        return 'مغلقة' if self.is_closed else 'مفتوحة'
+        return "مغلقة" if self.is_closed else "مفتوحة"
+
 
 # ==================== STOCK TRANSFERS ====================
 
 
 class StockTransfer(TenantScopedMixin, db.Model):
     """Transfer stock between warehouses"""
-    __tablename__ = 'stock_transfers'
+
+    __tablename__ = "stock_transfers"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
     transfer_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    from_warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), nullable=False)
-    to_warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), nullable=False)
+    from_warehouse_id = db.Column(
+        db.Integer, db.ForeignKey("warehouses.id"), nullable=False
+    )
+    to_warehouse_id = db.Column(
+        db.Integer, db.ForeignKey("warehouses.id"), nullable=False
+    )
     transfer_date = db.Column(db.Date, nullable=False, index=True)
-    status = db.Column(db.String(20), default='pending', index=True)  # pending, in_transit, received, cancelled
+    status = db.Column(
+        db.String(20), default="pending", index=True
+    )  # pending, in_transit, received, cancelled
     notes = db.Column(db.Text)
-    requested_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    received_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    requested_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    received_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     received_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    from_warehouse = db.relationship('Warehouse', foreign_keys=[from_warehouse_id])
-    to_warehouse = db.relationship('Warehouse', foreign_keys=[to_warehouse_id])
-    requested_by = db.relationship('User', foreign_keys=[requested_by_id])
-    received_by = db.relationship('User', foreign_keys=[received_by_id])
-    lines = db.relationship('StockTransferLine', back_populates='transfer', cascade='all, delete-orphan')
+    from_warehouse = db.relationship("Warehouse", foreign_keys=[from_warehouse_id])
+    to_warehouse = db.relationship("Warehouse", foreign_keys=[to_warehouse_id])
+    requested_by = db.relationship("User", foreign_keys=[requested_by_id])
+    received_by = db.relationship("User", foreign_keys=[received_by_id])
+    lines = db.relationship(
+        "StockTransferLine", back_populates="transfer", cascade="all, delete-orphan"
+    )
 
     @property
     def status_ar(self):
-        return {'pending': 'قيد الانتظار', 'in_transit': 'في الطريق', 'received': 'تم الاستلام',
-                'cancelled': 'ملغي'}.get(self.status, self.status)
+        return {
+            "pending": "قيد الانتظار",
+            "in_transit": "في الطريق",
+            "received": "تم الاستلام",
+            "cancelled": "ملغي",
+        }.get(self.status, self.status)
 
 
 class StockTransferLine(TenantScopedMixin, db.Model):
-    __tablename__ = 'stock_transfer_lines'
+    __tablename__ = "stock_transfer_lines"
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
-    transfer_id = db.Column(db.Integer, db.ForeignKey('stock_transfers.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
+    transfer_id = db.Column(
+        db.Integer, db.ForeignKey("stock_transfers.id"), nullable=False
+    )
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
     quantity = db.Column(db.Numeric(15, 3), nullable=False)
     notes = db.Column(db.String(255))
 
-    transfer = db.relationship('StockTransfer', back_populates='lines')
-    product = db.relationship('Product')
+    transfer = db.relationship("StockTransfer", back_populates="lines")
+    product = db.relationship("Product")
+
 
 # ==================== STOCK TAKE ====================
 
 
 class StockTake(TenantScopedMixin, db.Model):
     """Physical inventory count"""
-    __tablename__ = 'stock_takes'
+
+    __tablename__ = "stock_takes"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
     stocktake_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), nullable=False)
+    warehouse_id = db.Column(db.Integer, db.ForeignKey("warehouses.id"), nullable=False)
     stocktake_date = db.Column(db.Date, nullable=False, index=True)
-    status = db.Column(db.String(20), default='in_progress', index=True)  # in_progress, completed, approved
+    status = db.Column(
+        db.String(20), default="in_progress", index=True
+    )  # in_progress, completed, approved
     notes = db.Column(db.Text)
-    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    approved_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    approved_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = db.Column(db.DateTime)
 
-    warehouse = db.relationship('Warehouse')
-    created_by = db.relationship('User', foreign_keys=[created_by_id])
-    approved_by = db.relationship('User', foreign_keys=[approved_by_id])
-    items = db.relationship('StockTakeItem', back_populates='stocktake', cascade='all, delete-orphan')
+    warehouse = db.relationship("Warehouse")
+    created_by = db.relationship("User", foreign_keys=[created_by_id])
+    approved_by = db.relationship("User", foreign_keys=[approved_by_id])
+    items = db.relationship(
+        "StockTakeItem", back_populates="stocktake", cascade="all, delete-orphan"
+    )
 
     @property
     def status_ar(self):
-        return {'in_progress': 'جاري الجرد', 'completed': 'مكتمل', 'approved': 'معتمد'}.get(self.status, self.status)
+        return {
+            "in_progress": "جاري الجرد",
+            "completed": "مكتمل",
+            "approved": "معتمد",
+        }.get(self.status, self.status)
 
     @property
     def total_variances(self):
@@ -396,67 +529,88 @@ class StockTake(TenantScopedMixin, db.Model):
 
 
 class StockTakeItem(TenantScopedMixin, db.Model):
-    __tablename__ = 'stock_take_items'
+    __tablename__ = "stock_take_items"
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
-    stocktake_id = db.Column(db.Integer, db.ForeignKey('stock_takes.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
+    stocktake_id = db.Column(
+        db.Integer, db.ForeignKey("stock_takes.id"), nullable=False
+    )
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
     system_quantity = db.Column(db.Numeric(15, 3), nullable=False)
     counted_quantity = db.Column(db.Numeric(15, 3))
     variance = db.Column(db.Numeric(15, 3), default=0)
     notes = db.Column(db.String(255))
 
-    stocktake = db.relationship('StockTake', back_populates='items')
-    product = db.relationship('Product')
+    stocktake = db.relationship("StockTake", back_populates="items")
+    product = db.relationship("Product")
 
     def calculate_variance(self):
         if self.counted_quantity is not None:
             self.variance = self.counted_quantity - self.system_quantity
+
 
 # ==================== DUNNING LETTERS ====================
 
 
 class DunningLetter(TenantScopedMixin, db.Model):
     """Automated collection reminder for overdue receivables"""
-    __tablename__ = 'dunning_letters'
+
+    __tablename__ = "dunning_letters"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
     letter_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False, index=True)
-    sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'))
+    customer_id = db.Column(
+        db.Integer, db.ForeignKey("customers.id"), nullable=False, index=True
+    )
+    sale_id = db.Column(db.Integer, db.ForeignKey("sales.id"))
 
     level = db.Column(db.Integer, default=1)  # 1=friendly, 2=formal, 3=urgent, 4=legal
     amount_due = db.Column(db.Numeric(15, 3), nullable=False)
     days_overdue = db.Column(db.Integer, nullable=False)
     letter_date = db.Column(db.Date, nullable=False)
 
-    status = db.Column(db.String(20), default='draft')  # draft, sent, paid, escalated
+    status = db.Column(db.String(20), default="draft")  # draft, sent, paid, escalated
     sent_at = db.Column(db.DateTime)
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    customer = db.relationship('Customer')
-    sale = db.relationship('Sale')
+    customer = db.relationship("Customer")
+    sale = db.relationship("Sale")
 
     @property
     def level_ar(self):
-        return {1: 'تذكير ودّي', 2: 'تذكير رسمي', 3: 'إنذار عاجل', 4: 'إنذار قانوني'}.get(self.level, str(self.level))
+        return {
+            1: "تذكير ودّي",
+            2: "تذكير رسمي",
+            3: "إنذار عاجل",
+            4: "إنذار قانوني",
+        }.get(self.level, str(self.level))
+
 
 # ==================== RECURRING EXPENSES ====================
 
 
 class RecurringExpense(TenantScopedMixin, db.Model):
     """Template for recurring expenses (rent, salaries, etc.)"""
-    __tablename__ = 'recurring_expenses'
+
+    __tablename__ = "recurring_expenses"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
     name = db.Column(db.String(200), nullable=False)
-    category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'), nullable=False)
+    category_id = db.Column(
+        db.Integer, db.ForeignKey("expense_categories.id"), nullable=False
+    )
     amount = db.Column(db.Numeric(15, 3), nullable=False)
-    currency = db.Column(db.String(3), default='ILS')
-    payment_method = db.Column(db.String(20), default='bank_transfer')
+    currency = db.Column(db.String(3), default="ILS")
+    payment_method = db.Column(db.String(20), default="bank_transfer")
     supplier_name = db.Column(db.String(200))
     description = db.Column(db.Text)
 
@@ -467,48 +621,56 @@ class RecurringExpense(TenantScopedMixin, db.Model):
     is_active = db.Column(db.Boolean, default=True, index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    category = db.relationship('ExpenseCategory')
+    category = db.relationship("ExpenseCategory")
 
     def get_next_due(self):
         """Calculate next due date based on frequency"""
         if not self.next_due_date:
             return None
-        if self.frequency == 'monthly':
+        if self.frequency == "monthly":
             return self.next_due_date + timedelta(days=30)
-        elif self.frequency == 'quarterly':
+        elif self.frequency == "quarterly":
             return self.next_due_date + timedelta(days=90)
-        elif self.frequency == 'annual':
+        elif self.frequency == "annual":
             return self.next_due_date + timedelta(days=365)
         return self.next_due_date
+
 
 # ==================== LOT/SERIAL TRACKING ====================
 
 
 class ProductLot(TenantScopedMixin, db.Model):
     """Lot/batch tracking for products"""
-    __tablename__ = 'product_lots'
+
+    __tablename__ = "product_lots"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
+    product_id = db.Column(
+        db.Integer, db.ForeignKey("products.id"), nullable=False, index=True
+    )
     lot_number = db.Column(db.String(50), nullable=False, index=True)
-    warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), index=True)
+    warehouse_id = db.Column(db.Integer, db.ForeignKey("warehouses.id"), index=True)
 
     quantity = db.Column(db.Numeric(15, 3), nullable=False, default=0)
     cost_price = db.Column(db.Numeric(15, 3), default=0)
     manufacture_date = db.Column(db.Date)
     expiry_date = db.Column(db.Date, index=True)
 
-    purchase_id = db.Column(db.Integer, db.ForeignKey('purchases.id'))
+    purchase_id = db.Column(db.Integer, db.ForeignKey("purchases.id"))
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    product = db.relationship('Product')
-    warehouse = db.relationship('Warehouse')
-    purchase = db.relationship('Purchase')
+    product = db.relationship("Product")
+    warehouse = db.relationship("Warehouse")
+    purchase = db.relationship("Purchase")
 
     __table_args__ = (
-        db.UniqueConstraint('product_id', 'lot_number', 'warehouse_id', name='uq_product_lot_warehouse'),
+        db.UniqueConstraint(
+            "product_id", "lot_number", "warehouse_id", name="uq_product_lot_warehouse"
+        ),
     )
 
     @property
@@ -521,16 +683,22 @@ class ProductLot(TenantScopedMixin, db.Model):
             return None
         return (self.expiry_date - date.today()).days
 
+
 # ==================== BIN/LOCATION TRACKING ====================
 
 
 class WarehouseBin(TenantScopedMixin, db.Model):
     """Physical bin/shelf location within a warehouse"""
-    __tablename__ = 'warehouse_bins'
+
+    __tablename__ = "warehouse_bins"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
-    warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.id'), nullable=False, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
+    warehouse_id = db.Column(
+        db.Integer, db.ForeignKey("warehouses.id"), nullable=False, index=True
+    )
     code = db.Column(db.String(50), nullable=False)
     name = db.Column(db.String(100))
     aisle = db.Column(db.String(20))
@@ -540,59 +708,82 @@ class WarehouseBin(TenantScopedMixin, db.Model):
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    warehouse = db.relationship('Warehouse', backref='bins')
+    warehouse = db.relationship("Warehouse", backref="bins")
 
     __table_args__ = (
-        db.UniqueConstraint('warehouse_id', 'code', name='uq_warehouse_bin_code'),
+        db.UniqueConstraint("warehouse_id", "code", name="uq_warehouse_bin_code"),
     )
 
     @property
     def full_code(self):
-        return f"{self.code}" + (f"-{self.aisle}{self.shelf}{self.position}" if self.aisle else "")
+        return f"{self.code}" + (
+            f"-{self.aisle}{self.shelf}{self.position}" if self.aisle else ""
+        )
 
     @property
     def current_stock(self):
         from sqlalchemy import func
-        result = db.session.query(func.sum(ProductBin.stock_quantity)).filter(
-            ProductBin.bin_id == self.id
-        ).scalar()
+
+        result = (
+            db.session.query(func.sum(ProductBin.stock_quantity))
+            .filter(ProductBin.bin_id == self.id)
+            .scalar()
+        )
         return result or 0
 
 
 class ProductBin(TenantScopedMixin, db.Model):
     """Product-to-bin assignment with stock quantities"""
-    __tablename__ = 'product_bins'
+
+    __tablename__ = "product_bins"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
-    bin_id = db.Column(db.Integer, db.ForeignKey('warehouse_bins.id'), nullable=False, index=True)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
+    bin_id = db.Column(
+        db.Integer, db.ForeignKey("warehouse_bins.id"), nullable=False, index=True
+    )
+    product_id = db.Column(
+        db.Integer, db.ForeignKey("products.id"), nullable=False, index=True
+    )
     stock_quantity = db.Column(db.Numeric(15, 3), default=0)
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
-                           onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
-    bin = db.relationship('WarehouseBin')
-    product = db.relationship('Product')
+    bin = db.relationship("WarehouseBin")
+    product = db.relationship("Product")
 
     __table_args__ = (
-        db.UniqueConstraint('bin_id', 'product_id', name='uq_bin_product'),
+        db.UniqueConstraint("bin_id", "product_id", name="uq_bin_product"),
     )
+
 
 # ==================== E-INVOICING (FATOORA) ====================
 
 
 class EInvoice(TenantScopedMixin, db.Model):
     """UAE FATOORA e-invoice record"""
-    __tablename__ = 'e_invoices'
+
+    __tablename__ = "e_invoices"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
     invoice_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'), nullable=False, index=True)
+    sale_id = db.Column(
+        db.Integer, db.ForeignKey("sales.id"), nullable=False, index=True
+    )
 
     # FATOORA fields
     uuid = db.Column(db.String(100), unique=True)
-    invoice_type = db.Column(db.String(30), default='standard')  # standard, simplified, credit, debit
+    invoice_type = db.Column(
+        db.String(30), default="standard"
+    )  # standard, simplified, credit, debit
     invoice_date = db.Column(db.DateTime, nullable=False)
 
     # Buyer info
@@ -604,10 +795,10 @@ class EInvoice(TenantScopedMixin, db.Model):
     total_amount = db.Column(db.Numeric(15, 3), nullable=False)
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     total_with_tax = db.Column(db.Numeric(15, 3), nullable=False)
-    currency = db.Column(db.String(3), default='ILS')
+    currency = db.Column(db.String(3), default="ILS")
 
     # Status
-    status = db.Column(db.String(20), default='draft', index=True)
+    status = db.Column(db.String(20), default="draft", index=True)
     # draft, submitted, accepted, rejected, cancelled
     submitted_at = db.Column(db.DateTime)
     accepted_at = db.Column(db.DateTime)
@@ -619,52 +810,80 @@ class EInvoice(TenantScopedMixin, db.Model):
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    sale = db.relationship('Sale')
+    sale = db.relationship("Sale")
 
     @property
     def status_ar(self):
-        return {'draft': 'مسودة', 'submitted': 'مقدمة', 'accepted': 'مقبولة',
-                'rejected': 'مرفوضة', 'cancelled': 'ملغاة'}.get(self.status, self.status)
+        return {
+            "draft": "مسودة",
+            "submitted": "مقدمة",
+            "accepted": "مقبولة",
+            "rejected": "مرفوضة",
+            "cancelled": "ملغاة",
+        }.get(self.status, self.status)
 
     def generate_xml(self):
         """Generate FATOORA-compliant XML"""
         from xml.etree.ElementTree import Element, SubElement, tostring
-        root = Element('Invoice')
-        root.set('xmlns', 'urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0')
-        root.set('xmlns:udt', 'urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100')
-        root.set('xmlns:crt', 'urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0')
+
+        root = Element("Invoice")
+        root.set(
+            "xmlns",
+            "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0",
+        )
+        root.set(
+            "xmlns:udt", "urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100"
+        )
+        root.set(
+            "xmlns:crt",
+            "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0",
+        )
 
         # Header
-        h = SubElement(root, 'ExchangedDocumentContext')
-        SubElement(h, 'BusinessProcessSpecifiedDocumentContextParameter', {'ID': 'urn:fdc:peppol.eu:2017:poacc:billing:01:1.0'})
-        SubElement(h, 'GuidelineSpecifiedDocumentContextParameter', {'ID': 'urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0'})
+        h = SubElement(root, "ExchangedDocumentContext")
+        SubElement(
+            h,
+            "BusinessProcessSpecifiedDocumentContextParameter",
+            {"ID": "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0"},
+        )
+        SubElement(
+            h,
+            "GuidelineSpecifiedDocumentContextParameter",
+            {
+                "ID": "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0"
+            },
+        )
 
-        hdr = SubElement(root, 'ExchangedDocument')
-        SubElement(hdr, 'ID').text = self.invoice_number
-        SubElement(hdr, 'IssueDateTime').text = self.invoice_date.strftime('%Y-%m-%dT%H:%M:%S') if self.invoice_date else ''
-        SubElement(hdr, 'TypeCode').text = '380'  # Invoice
+        hdr = SubElement(root, "ExchangedDocument")
+        SubElement(hdr, "ID").text = self.invoice_number
+        SubElement(hdr, "IssueDateTime").text = (
+            self.invoice_date.strftime("%Y-%m-%dT%H:%M:%S") if self.invoice_date else ""
+        )
+        SubElement(hdr, "TypeCode").text = "380"  # Invoice
 
         # SupplyChainTradeTransaction
-        sct = SubElement(root, 'SupplyChainTradeTransaction')
-        ApplicableHeaderTradeAgreement = SubElement(sct, 'ApplicableHeaderTradeAgreement')
+        sct = SubElement(root, "SupplyChainTradeTransaction")
+        ApplicableHeaderTradeAgreement = SubElement(
+            sct, "ApplicableHeaderTradeAgreement"
+        )
 
         # Seller
-        seller = SubElement(ApplicableHeaderTradeAgreement, 'SellerTradeParty')
-        SubElement(seller, 'Name').text = 'Seller'
+        seller = SubElement(ApplicableHeaderTradeAgreement, "SellerTradeParty")
+        SubElement(seller, "Name").text = "Seller"
 
         # Buyer
-        buyer = SubElement(ApplicableHeaderTradeAgreement, 'BuyerTradeParty')
-        SubElement(buyer, 'Name').text = self.buyer_name or ''
+        buyer = SubElement(ApplicableHeaderTradeAgreement, "BuyerTradeParty")
+        SubElement(buyer, "Name").text = self.buyer_name or ""
         if self.buyer_trn:
-            SubElement(buyer, 'ID').text = self.buyer_trn
+            SubElement(buyer, "ID").text = self.buyer_trn
 
         # Delivery
-        SubElement(sct, 'ApplicableHeaderTradeDelivery')
+        SubElement(sct, "ApplicableHeaderTradeDelivery")
 
         # Payment
-        SubElement(sct, 'ApplicableHeaderTradeSettlement')
+        SubElement(sct, "ApplicableHeaderTradeSettlement")
 
-        xml_str = tostring(root, encoding='unicode')
+        xml_str = tostring(root, encoding="unicode")
         self.xml_payload = xml_str
         return xml_str
 
@@ -672,31 +891,36 @@ class EInvoice(TenantScopedMixin, db.Model):
         """Generate FATOORA-compliant JSON"""
         import json
         from models import Sale
+
         sale = db.session.get(Sale, self.sale_id)
         lines_data = []
         if sale:
             for line in sale.lines:
-                lines_data.append({
-                    'item_name': line.product.name if line.product else '',
-                    'quantity': float(line.quantity),
-                    'unit_price': float(line.unit_price),
-                    'total': float(line.line_total),
-                    # Honest naming: this is the per-unit VAT amount (5% of
-                    # unit price), not a rate.
-                    'vat_amount_per_unit': float(line.unit_price * Decimal('0.05')),
-                })
+                lines_data.append(
+                    {
+                        "item_name": line.product.name if line.product else "",
+                        "quantity": float(line.quantity),
+                        "unit_price": float(line.unit_price),
+                        "total": float(line.line_total),
+                        # Honest naming: this is the per-unit VAT amount (5% of
+                        # unit price), not a rate.
+                        "vat_amount_per_unit": float(line.unit_price * Decimal("0.05")),
+                    }
+                )
 
         payload = {
-            'invoice_number': self.invoice_number,
-            'invoice_date': self.invoice_date.strftime('%Y-%m-%d') if self.invoice_date else '',
-            'invoice_type': self.invoice_type,
-            'buyer_name': self.buyer_name or '',
-            'buyer_trn': self.buyer_trn or '',
-            'total_amount': float(self.total_amount),
-            'tax_amount': float(self.tax_amount),
-            'total_with_tax': float(self.total_with_tax),
-            'currency': self.currency,
-            'lines': lines_data,
+            "invoice_number": self.invoice_number,
+            "invoice_date": self.invoice_date.strftime("%Y-%m-%d")
+            if self.invoice_date
+            else "",
+            "invoice_type": self.invoice_type,
+            "buyer_name": self.buyer_name or "",
+            "buyer_trn": self.buyer_trn or "",
+            "total_amount": float(self.total_amount),
+            "tax_amount": float(self.tax_amount),
+            "total_with_tax": float(self.total_with_tax),
+            "currency": self.currency,
+            "lines": lines_data,
         }
         self.json_payload = json.dumps(payload, ensure_ascii=False)
         return payload

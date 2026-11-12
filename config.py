@@ -42,6 +42,12 @@ class Config:
 
     SECRET_KEY = os.environ.get("SECRET_KEY")
     if not SECRET_KEY:
+        # Fail-closed in production: never auto-generate a secret key.
+        _app_env = os.environ.get(
+            "APP_ENV", os.environ.get("FLASK_ENV", "production")
+        ).lower()
+        if _app_env == "production":
+            raise RuntimeError("SECRET_KEY must be set in production!")
         secret_file = os.path.join(instance_dir, "secret_key")
         if os.path.exists(secret_file):
             try:
@@ -56,15 +62,17 @@ class Config:
                     f.write(SECRET_KEY)
             except Exception:
                 pass
-        logging.info("[Dev] SECRET_KEY loaded/generated for development (set SECRET_KEY env in production)")
+        logging.info(
+            "[Dev] SECRET_KEY loaded/generated for development (set SECRET_KEY env in production)"
+        )
 
     HOST = os.environ.get("HOST", "0.0.0.0")  # nosec B104 - bind address is operator-controlled via HOST env; container/reverse-proxy deployment for multi-branch access
     PORT = _int("PORT", 5000)
 
     WTF_CSRF_EXEMPT_LIST = [
-        '/sales/api/calculate-totals',
-        '/purchases/api/calculate-totals',
-        '/ledger/api/calculate-journal-balance'
+        "/sales/api/calculate-totals",
+        "/purchases/api/calculate-totals",
+        "/ledger/api/calculate-journal-balance",
     ]
 
     # All asset links are relative via <base> and window.BASE_URL so the app
@@ -103,7 +111,9 @@ class Config:
             _statement_timeout = str(int(_statement_timeout))
         except ValueError:
             _statement_timeout = "5000"
-        SQLALCHEMY_ENGINE_OPTIONS["connect_args"] = {"options": f"-c statement_timeout={_statement_timeout}"}
+        SQLALCHEMY_ENGINE_OPTIONS["connect_args"] = {
+            "options": f"-c statement_timeout={_statement_timeout}"
+        }
 
     SQLALCHEMY_ECHO = False
 
@@ -111,13 +121,18 @@ class Config:
     JSON_SORT_KEYS = False
 
     COMPRESS_MIMETYPES = [
-        'text/html', 'text/css', 'text/xml', 'text/plain',
-        'application/json', 'application/javascript',
-        'application/xml', 'application/xhtml+xml'
+        "text/html",
+        "text/css",
+        "text/xml",
+        "text/plain",
+        "application/json",
+        "application/javascript",
+        "application/xml",
+        "application/xhtml+xml",
     ]
     COMPRESS_LEVEL = 6
     COMPRESS_MIN_SIZE = 500
-    COMPRESS_ALGORITHM = 'gzip'
+    COMPRESS_ALGORITHM = "gzip"
 
     SESSION_COOKIE_NAME = "garage_session"
     SESSION_COOKIE_HTTPONLY = True
@@ -129,8 +144,8 @@ class Config:
 
     MAX_CONTENT_LENGTH = _int("MAX_CONTENT_LENGTH_MB", 16) * 1024 * 1024
     ALLOWED_UPLOAD_EXTENSIONS = {
-        'images': {'.jpg', '.jpeg', '.png', '.gif', '.webp'},
-        'documents': {'.pdf', '.xlsx', '.xls', '.csv'},
+        "images": {".jpg", ".jpeg", ".png", ".gif", ".webp"},
+        "documents": {".pdf", ".xlsx", ".xls", ".csv"},
     }
 
     MAX_LOGIN_ATTEMPTS = _int("MAX_LOGIN_ATTEMPTS", 5)
@@ -145,11 +160,19 @@ class Config:
 
     # Sentry error tracking (optional). Leave SENTRY_DSN empty to disable.
     SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
-    SENTRY_ENVIRONMENT = os.environ.get("SENTRY_ENVIRONMENT", os.environ.get("APP_ENV", "production"))
-    SENTRY_TRACES_SAMPLE_RATE = float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1"))
-    SENTRY_PROFILES_SAMPLE_RATE = float(os.environ.get("SENTRY_PROFILES_SAMPLE_RATE", "0.1"))
+    SENTRY_ENVIRONMENT = os.environ.get(
+        "SENTRY_ENVIRONMENT", os.environ.get("APP_ENV", "production")
+    )
+    SENTRY_TRACES_SAMPLE_RATE = float(
+        os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1")
+    )
+    SENTRY_PROFILES_SAMPLE_RATE = float(
+        os.environ.get("SENTRY_PROFILES_SAMPLE_RATE", "0.1")
+    )
 
-    CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:5000,http://127.0.0.1:5000").split(",")
+    CORS_ORIGINS = os.environ.get(
+        "CORS_ORIGINS", "http://localhost:5000,http://127.0.0.1:5000"
+    ).split(",")
     CORS_SUPPORTS_CREDENTIALS = True
 
     RATELIMIT_ENABLED = _bool(os.environ.get("RATELIMIT_ENABLED"), True)
@@ -168,8 +191,7 @@ class Config:
     # cache.set raised ConnectionError: the dashboard silently recomputed on
     # every request and the rate limiter never counted anything, so the
     # limiter did not limit. Redis stays available by setting CACHE_TYPE.
-    CACHE_TYPE = os.environ.get(
-        "CACHE_TYPE", "flask_caching.backends.SimpleCache")
+    CACHE_TYPE = os.environ.get("CACHE_TYPE", "flask_caching.backends.SimpleCache")
     CACHE_REDIS_URL = os.environ.get("CACHE_REDIS_URL", REDIS_URL)
     CACHE_DEFAULT_TIMEOUT = _int("CACHE_DEFAULT_TIMEOUT", 300)
     CACHE_KEY_PREFIX = os.environ.get("CACHE_KEY_PREFIX", "azad_erp")
@@ -181,7 +203,9 @@ class Config:
 
     CURRENCY_API_PROVIDER = os.environ.get("CURRENCY_API_PROVIDER", "exchangerate-api")
     CURRENCY_API_KEY = os.environ.get("CURRENCY_API_KEY", "")
-    CURRENCY_API_URL = os.environ.get("CURRENCY_API_URL", "https://v6.exchangerate-api.com/v6/{api_key}/latest/{base}")
+    CURRENCY_API_URL = os.environ.get(
+        "CURRENCY_API_URL", "https://v6.exchangerate-api.com/v6/{api_key}/latest/{base}"
+    )
 
     CURRENCY_API_FALLBACKS = [
         "https://api.exchangerate-api.com/v4/latest/{base}",
@@ -196,7 +220,9 @@ class Config:
 
     COMPANY_NAME = os.environ.get("COMPANY_NAME", "Azad Smart Systems")
     COMPANY_NAME_AR = os.environ.get("COMPANY_NAME_AR", "شركة أزاد للأنظمة الذكية")
-    COMPANY_ADDRESS = os.environ.get("COMPANY_ADDRESS", "فلسطين - رام الله | Palestine - Ramallah")
+    COMPANY_ADDRESS = os.environ.get(
+        "COMPANY_ADDRESS", "فلسطين - رام الله | Palestine - Ramallah"
+    )
     COMPANY_PHONE = os.environ.get("COMPANY_PHONE", "00970598953362")
     COMPANY_PHONE_2 = os.environ.get("COMPANY_PHONE_2", "00970562150193")
     COMPANY_EMAIL = os.environ.get("COMPANY_EMAIL", "")
@@ -205,8 +231,12 @@ class Config:
     COMPANY_TAX_NUMBER = os.environ.get("COMPANY_TAX_NUMBER", "")
     COMPANY_LOGO = os.environ.get("COMPANY_LOGO", "img/azad_logo.png")
 
-    DEVELOPER_NAME = os.environ.get("DEVELOPER_NAME", "م. أحمد غنام | Eng. Ahmad Ghannam")
-    DEVELOPER_CREDIT = "تطوير وبرمجة: م. أحمد غنام | Developed by Eng. Ahmad Ghannam - Azad Systems"
+    DEVELOPER_NAME = os.environ.get(
+        "DEVELOPER_NAME", "م. أحمد غنام | Eng. Ahmad Ghannam"
+    )
+    DEVELOPER_CREDIT = (
+        "تطوير وبرمجة: م. أحمد غنام | Developed by Eng. Ahmad Ghannam - Azad Systems"
+    )
     DEVELOPER_WEBSITE = os.environ.get("DEVELOPER_WEBSITE", "https://azadsystems.com")
     DEVELOPER_PHONE = os.environ.get("DEVELOPER_PHONE", "")
     DEVELOPER_EMAIL = os.environ.get("DEVELOPER_EMAIL", "")
@@ -214,15 +244,13 @@ class Config:
 
     BABEL_DEFAULT_LOCALE = os.environ.get("BABEL_DEFAULT_LOCALE", "ar")
     BABEL_DEFAULT_TIMEZONE = os.environ.get("BABEL_DEFAULT_TIMEZONE", "Asia/Dubai")
-    LANGUAGES = {
-        'ar': 'العربية',
-        'en': 'English'
-    }
+    LANGUAGES = {"ar": "العربية", "en": "English"}
 
     OWNER_USERNAME = os.environ.get("OWNER_USERNAME", "owner")
     OWNER_PASSWORD = os.environ.get("OWNER_PASSWORD")
     if not OWNER_PASSWORD:
         import warnings
+
         warnings.warn(
             "OWNER_PASSWORD environment variable is not set! "
             "The owner account cannot be created without a secure password."
@@ -231,6 +259,11 @@ class Config:
 
     CARD_ENCRYPTION_KEY = os.environ.get("CARD_ENCRYPTION_KEY", "")
     if not CARD_ENCRYPTION_KEY:
+        _app_env = os.environ.get(
+            "APP_ENV", os.environ.get("FLASK_ENV", "production")
+        ).lower()
+        if _app_env == "production":
+            raise RuntimeError("CARD_ENCRYPTION_KEY must be set in production!")
         CARD_ENCRYPTION_KEY = secrets.token_hex(32)
 
     ALLOW_CARD_DECRYPTION = _bool(os.environ.get("ALLOW_CARD_DECRYPTION"), False)
@@ -307,6 +340,12 @@ def assert_production_sanity(cfg=None) -> None:
     if not os.environ.get("CARD_ENCRYPTION_KEY"):
         raise RuntimeError("CARD_ENCRYPTION_KEY must be set in production!")
 
+    if not os.environ.get("OWNER_PASSWORD"):
+        raise RuntimeError("OWNER_PASSWORD must be set in production!")
+
+    if not os.environ.get("MASTER_KEY_SEED"):
+        raise RuntimeError("MASTER_KEY_SEED must be set in production!")
+
     db_uri = cfg.SQLALCHEMY_DATABASE_URI
     if db_uri.startswith("sqlite"):
         raise RuntimeError("SQLite is not allowed in production. Use PostgreSQL/MySQL.")
@@ -316,7 +355,9 @@ def assert_production_sanity(cfg=None) -> None:
 
     base_url = getattr(cfg, "BASE_URL", "")
     if base_url and not base_url.startswith("https://"):
-        logging.warning(f"Production Warning: BASE_URL ({base_url}) should start with https://. Please update your .env file.")
+        logging.warning(
+            f"Production Warning: BASE_URL ({base_url}) should start with https://. Please update your .env file."
+        )
         # We won't raise an error here to prevent deployment crashes, but links might be incorrect.
 
     logging.info("Production configuration check complete")

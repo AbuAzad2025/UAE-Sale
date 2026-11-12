@@ -35,37 +35,44 @@ import tempfile
 import pytest
 from decimal import Decimal
 
-os.environ.setdefault('APP_ENV', 'testing')
-os.environ.setdefault('SECRET_KEY', 'e2e-test-secret-not-production')
-os.environ.setdefault('OWNER_PASSWORD', 'E2eOwner@1234567890123456!')
-os.environ.setdefault('DEBUG', 'false')
-os.environ.setdefault('WTF_CSRF_ENABLED', 'false')
-os.environ.setdefault('RATELIMIT_ENABLED', 'false')
-os.environ.setdefault('RATELIMIT_STORAGE_URI', 'memory://')
-os.environ.setdefault('CACHE_TYPE', 'flask_caching.backends.SimpleCache')
-os.environ.setdefault('DATABASE_URL', 'sqlite:///:memory:')
+os.environ.setdefault("APP_ENV", "testing")
+os.environ.setdefault("SECRET_KEY", "e2e-test-secret-not-production")
+os.environ.setdefault("OWNER_PASSWORD", "E2eOwner@1234567890123456!")
+os.environ.setdefault("DEBUG", "false")
+os.environ.setdefault("WTF_CSRF_ENABLED", "false")
+os.environ.setdefault("RATELIMIT_ENABLED", "false")
+os.environ.setdefault("RATELIMIT_STORAGE_URI", "memory://")
+os.environ.setdefault("CACHE_TYPE", "flask_caching.backends.SimpleCache")
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 from werkzeug.security import generate_password_hash as _gen_hash  # noqa: E402
-from app import create_app                                 # noqa: E402
-from config import Config                                  # noqa: E402
-from extensions import db as _db                           # noqa: E402
-from models import (                                       # noqa: E402
-    User, Role, Permission, Customer, Product, ProductCategory,
-    Supplier, Warehouse, Tenant,
+from app import create_app  # noqa: E402
+from config import Config  # noqa: E402
+from extensions import db as _db  # noqa: E402
+from models import (  # noqa: E402
+    User,
+    Role,
+    Permission,
+    Customer,
+    Product,
+    ProductCategory,
+    Supplier,
+    Warehouse,
+    Tenant,
 )
-from services.gl_service import GLService                   # noqa: E402
-from models.tenant_scope import clear_current_tenant_id     # noqa: E402
-from tests.e2e.harness import ACC                          # noqa: E402
+from services.gl_service import GLService  # noqa: E402
+from models.tenant_scope import clear_current_tenant_id  # noqa: E402
 
-E2E_TMPDIR = tempfile.mkdtemp(prefix='e2e_erp_')
-E2E_DB_PATH = os.path.join(E2E_TMPDIR, 'e2e.db')
+E2E_TMPDIR = tempfile.mkdtemp(prefix="e2e_erp_")
+E2E_DB_PATH = os.path.join(E2E_TMPDIR, "e2e.db")
 
 
 class E2ETestConfig(Config):
     """Config.SQLALCHEMY_DATABASE_URI is frozen at import time (config.py:82),
     so the test database must be supplied by subclassing, not by env."""
-    SQLALCHEMY_DATABASE_URI = f'sqlite:///{E2E_DB_PATH.replace(os.sep, "/")}'
-    SQLALCHEMY_ENGINE_OPTIONS = {'connect_args': {'check_same_thread': False}}
+
+    SQLALCHEMY_DATABASE_URI = f"sqlite:///{E2E_DB_PATH.replace(os.sep, '/')}"
+    SQLALCHEMY_ENGINE_OPTIONS = {"connect_args": {"check_same_thread": False}}
     # config.py:147 reads RATELIMIT_ENABLED from the environment *at import
     # time*, so the os.environ.setdefault above only works while this file is
     # the first thing to import config. Anything that imports config earlier --
@@ -84,24 +91,46 @@ class E2ETestConfig(Config):
 # The five role vectors from the scenario taxonomy, mapped to the permission
 # codes the routes genuinely enforce.
 ROLE_PERMISSIONS = {
-    'owner': [
-        'manage_sales', 'manage_customers', 'manage_products', 'manage_purchases',
-        'manage_suppliers', 'manage_payments', 'manage_expenses', 'manage_warehouse',
-        'manage_ledger', 'view_ledger', 'view_products', 'view_reports',
-        'manage_approvals', 'manage_backups', 'manage_hr', 'manage_settings',
+    "owner": [
+        "manage_sales",
+        "manage_customers",
+        "manage_products",
+        "manage_purchases",
+        "manage_suppliers",
+        "manage_payments",
+        "manage_expenses",
+        "manage_warehouse",
+        "manage_ledger",
+        "view_ledger",
+        "view_products",
+        "view_reports",
+        "manage_approvals",
+        "manage_backups",
+        "manage_hr",
+        "manage_settings",
     ],
-    'branch_manager': [
-        'manage_sales', 'manage_customers', 'manage_products', 'manage_purchases',
-        'manage_suppliers', 'manage_payments', 'view_reports', 'view_products',
+    "branch_manager": [
+        "manage_sales",
+        "manage_customers",
+        "manage_products",
+        "manage_purchases",
+        "manage_suppliers",
+        "manage_payments",
+        "view_reports",
+        "view_products",
     ],
-    'senior_accountant': [
-        'manage_ledger', 'view_ledger', 'view_reports', 'manage_approvals',
+    "senior_accountant": [
+        "manage_ledger",
+        "view_ledger",
+        "view_reports",
+        "manage_approvals",
     ],
-    'pos_cashier': [
-        'manage_sales',
+    "pos_cashier": [
+        "manage_sales",
     ],
-    'warehouse_keeper': [
-        'manage_warehouse', 'view_products',
+    "warehouse_keeper": [
+        "manage_warehouse",
+        "view_products",
     ],
     # The three role vectors below are taken verbatim from the application's
     # own definitions in tests/unit/test_erp_role_isolation.py so the E2E
@@ -109,39 +138,48 @@ ROLE_PERMISSIONS = {
     #   manager   -> "broader permissions but NOT manage_ledger or admin"
     #   accountant-> "ledger + expenses + reports, but NOT sales or POS"
     #   viewer    -> "view_reports ONLY - no write access anywhere"
-    'manager': [
-        'manage_sales', 'manage_customers', 'manage_products', 'manage_purchases',
-        'manage_payments', 'view_reports', 'manage_expenses', 'manage_warehouse',
-        'view_costs',
+    "manager": [
+        "manage_sales",
+        "manage_customers",
+        "manage_products",
+        "manage_purchases",
+        "manage_payments",
+        "view_reports",
+        "manage_expenses",
+        "manage_warehouse",
+        "view_costs",
         # utils/system_init.py gives 'manager' manage_users, which is the only
         # seeded role besides owner that can reach /users/create and
         # /users/<id>/delete.
-        'manage_users',
+        "manage_users",
     ],
-    'accountant': [
-        'view_ledger', 'manage_ledger', 'manage_expenses', 'view_reports',
-        'manage_payments',
+    "accountant": [
+        "view_ledger",
+        "manage_ledger",
+        "manage_expenses",
+        "view_reports",
+        "manage_payments",
     ],
-    'viewer': [
-        'view_reports',
+    "viewer": [
+        "view_reports",
     ],
     # utils/system_init.py:228 defines the 'hr' role with manage_hr as its only
     # permission, which is the sole gate on all 21 /hr/* routes.
-    'hr': [
-        'manage_hr',
+    "hr": [
+        "manage_hr",
     ],
 }
 
 ROLE_PASSWORDS = {
-    'owner': 'OwnerPass123!',
-    'branch_manager': 'ManagerPass123!',
-    'senior_accountant': 'AccountantPass123!',
-    'pos_cashier': 'CashierPass123!',
-    'warehouse_keeper': 'KeeperPass123!',
-    'manager': 'RoleManager123!',
-    'accountant': 'RoleAccountant123!',
-    'viewer': 'RoleViewer123!',
-    'hr': 'RoleHrOfficer123!',
+    "owner": "OwnerPass123!",
+    "branch_manager": "ManagerPass123!",
+    "senior_accountant": "AccountantPass123!",
+    "pos_cashier": "CashierPass123!",
+    "warehouse_keeper": "KeeperPass123!",
+    "manager": "RoleManager123!",
+    "accountant": "RoleAccountant123!",
+    "viewer": "RoleViewer123!",
+    "hr": "RoleHrOfficer123!",
 }
 
 _ALL_TABLES = []
@@ -150,10 +188,10 @@ _ALL_TABLES = []
 # wipe. gl_accounts is the canonical chart of accounts; re-running
 # ensure_core_accounts() after every wipe would cost ~1.2s per test, so the
 # tree is kept intact instead.
-_PRESERVE_TABLES = frozenset({'gl_accounts', 'permissions'})
+_PRESERVE_TABLES = frozenset({"gl_accounts", "permissions"})
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def quiet_e2e_logging():
     """Silence per-request logging for the suite.
 
@@ -163,10 +201,20 @@ def quiet_e2e_logging():
     failures remain diagnosable.
     """
     import logging
-    noisy = ('app', 'models.events', 'services.real_time_listeners',
-             'models.tenant_scope', 'utils.distributed_lock',
-             'services.stock_service', 'app.monitoring', 'app.sale_service',
-             'app.stock_service', 'models.sale', 'models.purchase')
+
+    noisy = (
+        "app",
+        "models.events",
+        "services.real_time_listeners",
+        "models.tenant_scope",
+        "utils.distributed_lock",
+        "services.stock_service",
+        "app.monitoring",
+        "app.sale_service",
+        "app.stock_service",
+        "models.sale",
+        "models.purchase",
+    )
     previous = {}
     for name in noisy:
         log = logging.getLogger(name)
@@ -177,7 +225,7 @@ def quiet_e2e_logging():
         logging.getLogger(name).setLevel(level)
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def fast_password_hashing():
     """Lower the PBKDF2 work factor for the suite.
 
@@ -187,10 +235,11 @@ def fast_password_hashing():
     removes ~0.31s per created user and ~0.33s per login.
     """
     import models.user as user_model
+
     original = user_model.generate_password_hash
 
-    def _fast(password, method='pbkdf2:sha256', salt_length=16):
-        return _gen_hash(password, method='pbkdf2:sha256:1000')
+    def _fast(password, method="pbkdf2:sha256", salt_length=16):
+        return _gen_hash(password, method="pbkdf2:sha256:1000")
 
     user_model.generate_password_hash = _fast
     yield
@@ -206,26 +255,31 @@ def pytest_addoption(parser):
     already-filtered item list, so `-k E2E-CHE- --e2e-shard-id 0/1` splits
     that domain exactly in half with no overlap.
     """
-    group = parser.getgroup('e2e')
-    group.addoption('--e2e-shard-id', type=int, default=0,
-                    help='zero-based shard index')
-    group.addoption('--e2e-num-shards', type=int, default=1,
-                    help='total number of shards')
-    group.addoption('--e2e-route-report', default=None,
-                    help='write the set of URL rules this session actually '
-                         'exercised to this JSON path')
+    group = parser.getgroup("e2e")
+    group.addoption(
+        "--e2e-shard-id", type=int, default=0, help="zero-based shard index"
+    )
+    group.addoption(
+        "--e2e-num-shards", type=int, default=1, help="total number of shards"
+    )
+    group.addoption(
+        "--e2e-route-report",
+        default=None,
+        help="write the set of URL rules this session actually "
+        "exercised to this JSON path",
+    )
 
 
 def pytest_configure(config):
-    target = config.getoption('--e2e-route-report', default=None)
+    target = config.getoption("--e2e-route-report", default=None)
     if target:
-        os.environ['_E2E_ROUTE_REPORT_TARGET'] = target
+        os.environ["_E2E_ROUTE_REPORT_TARGET"] = target
 
 
 _HIT_RULES = set()
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def route_recorder(app):
     """Record every URL rule the suite really exercises.
 
@@ -248,22 +302,23 @@ def route_recorder(app):
 
     yield _HIT_RULES
 
-    target = app.config.get('_E2E_ROUTE_REPORT')
+    target = app.config.get("_E2E_ROUTE_REPORT")
     if target:
         import json
-        with open(target, 'w', encoding='utf-8') as fh:
+
+        with open(target, "w", encoding="utf-8") as fh:
             json.dump(sorted(_HIT_RULES), fh, indent=1)
 
 
 def pytest_collection_modifyitems(config, items):
-    total = config.getoption('--e2e-num-shards', default=1) or 1
+    total = config.getoption("--e2e-num-shards", default=1) or 1
     if total <= 1:
         return
-    shard_id = config.getoption('--e2e-shard-id', default=0)
+    shard_id = config.getoption("--e2e-shard-id", default=0)
     if shard_id >= total:
         raise pytest.UsageError(
-            f'--e2e-shard-id {shard_id} is out of range for '
-            f'--e2e-num-shards {total}')
+            f"--e2e-shard-id {shard_id} is out of range for --e2e-num-shards {total}"
+        )
     kept = [it for idx, it in enumerate(items) if idx % total == shard_id]
     dropped = [it for idx, it in enumerate(items) if idx % total != shard_id]
     if dropped:
@@ -271,23 +326,23 @@ def pytest_collection_modifyitems(config, items):
     items[:] = kept
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def app():
     application = create_app(E2ETestConfig)
     application.config.update(
         TESTING=True,
         WTF_CSRF_ENABLED=False,
-        SERVER_NAME='localhost',
+        SERVER_NAME="localhost",
         RATELIMIT_ENABLED=False,
-        RATELIMIT_DEFAULT='1000000 per day',
+        RATELIMIT_DEFAULT="1000000 per day",
     )
-    route_report = os.environ.get('_E2E_ROUTE_REPORT_TARGET')
+    route_report = os.environ.get("_E2E_ROUTE_REPORT_TARGET")
     if route_report:
-        application.config['_E2E_ROUTE_REPORT'] = route_report
+        application.config["_E2E_ROUTE_REPORT"] = route_report
     return application
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def _schema(app):
     """Create the schema once per session, not once per test."""
     global _ALL_TABLES
@@ -296,6 +351,7 @@ def _schema(app):
         GLService.ensure_core_accounts()
         _db.session.commit()
         from sqlalchemy import inspect as _inspect
+
         _ALL_TABLES = sorted(_inspect(_db.engine).get_table_names())
     yield
     with app.app_context():
@@ -318,17 +374,17 @@ def _wipe_rows(db):
     disabled for the duration so table order does not matter.
     """
     db.session.remove()
-    db.session.execute(db.text('PRAGMA foreign_keys=OFF'))
+    db.session.execute(db.text("PRAGMA foreign_keys=OFF"))
     for table in reversed(_ALL_TABLES):
         if table in _PRESERVE_TABLES:
             continue
         db.session.execute(db.text(f'DELETE FROM "{table}"'))
     db.session.commit()
-    db.session.execute(db.text('PRAGMA foreign_keys=ON'))
+    db.session.execute(db.text("PRAGMA foreign_keys=ON"))
     db.session.commit()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def db(app, _schema):
     """Per-test isolation by wiping rows; schema persists for the session."""
     with app.app_context():
@@ -340,6 +396,7 @@ def db(app, _schema):
         try:
             from datetime import date as _date
             from services.fiscal_period_guard import ensure_periods_for_years
+
             this_year = _date.today().year
             # A WIDE range here, unlike the unit fixtures. The matrix
             # deliberately back-dates entries (the 'time_based' dimension
@@ -362,7 +419,7 @@ def db(app, _schema):
             clear_current_tenant_id()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def client(app, db):
     with app.test_client() as c:
         with app.app_context():
@@ -381,14 +438,17 @@ def _make_user(role_slug: str, tenant_id=None) -> User:
     for code in ROLE_PERMISSIONS[role_slug]:
         perm = Permission.query.filter_by(code=code).first()
         if perm is None:
-            perm = Permission(code=code, name=code.replace('_', ' ').title(),
-                              category=code.split('_')[0])
+            perm = Permission(
+                code=code,
+                name=code.replace("_", " ").title(),
+                category=code.split("_")[0],
+            )
             _db.session.add(perm)
         perms.append(perm)
     _db.session.flush()
 
     role = Role(
-        name=role_slug.replace('_', ' ').title(),
+        name=role_slug.replace("_", " ").title(),
         name_ar=role_slug,
         slug=role_slug,
         permissions=perms,
@@ -397,10 +457,10 @@ def _make_user(role_slug: str, tenant_id=None) -> User:
     _db.session.flush()
 
     user = User(
-        username=f'e2e_{role_slug}',
-        email=f'e2e_{role_slug}@test.local',
-        full_name=f'E2E {role_slug}',
-        is_owner=(role_slug == 'owner'),
+        username=f"e2e_{role_slug}",
+        email=f"e2e_{role_slug}@test.local",
+        full_name=f"E2E {role_slug}",
+        is_owner=(role_slug == "owner"),
         is_active=True,
         role_id=role.id,
         tenant_id=tenant_id,
@@ -411,7 +471,7 @@ def _make_user(role_slug: str, tenant_id=None) -> User:
     return user
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def e2e_tenant(db):
     """The tenant every fixture row and every non-owner user belongs to.
 
@@ -423,17 +483,22 @@ def e2e_tenant(db):
     ceiling is raised here so the quota check stays a separate, deliberate
     test rather than an accidental blocker everywhere else.
     """
-    tenant = Tenant.query.filter_by(slug='e2e-tenant').first()
+    tenant = Tenant.query.filter_by(slug="e2e-tenant").first()
     if tenant is None:
-        tenant = Tenant(name='E2E Tenant', name_ar='مستأجر الاختبار',
-                        slug='e2e-tenant', country='UAE', is_active=True,
-                        max_users=100)
+        tenant = Tenant(
+            name="E2E Tenant",
+            name_ar="مستأجر الاختبار",
+            slug="e2e-tenant",
+            country="UAE",
+            is_active=True,
+            max_users=100,
+        )
         db.session.add(tenant)
         db.session.commit()
     return tenant
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def users(db, e2e_tenant):
     """Every role user, created inside the rolled-back transaction.
 
@@ -451,18 +516,18 @@ def users(db, e2e_tenant):
         # Non-owners get the tenant at construction time; the owner keeps
         # tenant_id None because the platform owner legitimately bypasses the
         # tenant filter (app.py sets tenant None for is_owner).
-        tenant_for_user = None if slug == 'owner' else e2e_tenant.id
+        tenant_for_user = None if slug == "owner" else e2e_tenant.id
         made[slug] = _make_user(slug, tenant_id=tenant_for_user)
     db.session.commit()
     return made
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def owner(db, users):
-    return users['owner']
+    return users["owner"]
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def login_as(client, users):
     """Log in as the scenario's real role. Returns the logged-in User.
 
@@ -479,31 +544,39 @@ def login_as(client, users):
     not sufficient on its own because Flask-Login keeps current_user bound
     for the lifetime of the app context (see test_matrix.py:3495).
     """
+
     def _login(role_slug: str) -> User:
         # Drop any existing session before authenticating.
-        client.get('/auth/logout')
+        client.get("/auth/logout")
         with client.session_transaction() as sess:
             sess.clear()
         user = users[role_slug]
-        resp = client.post('/auth/login', data={
-            'username': user.username,
-            'password': ROLE_PASSWORDS[role_slug],
-        }, follow_redirects=False)
+        resp = client.post(
+            "/auth/login",
+            data={
+                "username": user.username,
+                "password": ROLE_PASSWORDS[role_slug],
+            },
+            follow_redirects=False,
+        )
         assert resp.status_code in (302, 303), (
-            f'login failed for {role_slug}: status {resp.status_code}')
+            f"login failed for {role_slug}: status {resp.status_code}"
+        )
         # Guard against the silent no-op returning: the session must now
         # belong to the role we asked for, not to whoever was logged in
         # before this call.
         with client.session_transaction() as sess:
-            logged_in_as = sess.get('_user_id')
+            logged_in_as = sess.get("_user_id")
         assert str(logged_in_as) == str(user.id), (
-            f'login_as({role_slug!r}) did not switch identity: session holds '
-            f'user {logged_in_as!r}, expected {user.id!r}')
+            f"login_as({role_slug!r}) did not switch identity: session holds "
+            f"user {logged_in_as!r}, expected {user.id!r}"
+        )
         return user
+
     return _login
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def anonymous(client, db):
     """A logged-out client (for unauthenticated-access assertions)."""
     with client.session_transaction() as sess:
@@ -515,13 +588,18 @@ def anonymous(client, db):
 # Master data (created inside the rolled-back transaction)
 # --------------------------------------------------------------------------
 
-@pytest.fixture(scope='function')
+
+@pytest.fixture(scope="function")
 def customer(db, e2e_tenant):
     c = Customer(
-        name='E2E Customer', name_ar='عميل',
-        customer_type='regular', phone='+0000000000',
-        email='e2e_customer@test.local',
-        credit_limit=Decimal('100000'), balance=Decimal('0'), is_active=True,
+        name="E2E Customer",
+        name_ar="عميل",
+        customer_type="regular",
+        phone="+0000000000",
+        email="e2e_customer@test.local",
+        credit_limit=Decimal("100000"),
+        balance=Decimal("0"),
+        is_active=True,
     )
     c.tenant_id = e2e_tenant.id
     db.session.add(c)
@@ -529,21 +607,25 @@ def customer(db, e2e_tenant):
     return c
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def category(db):
-    cat = ProductCategory(name='E2E Parts', name_ar='قطع غيار', is_active=True)
+    cat = ProductCategory(name="E2E Parts", name_ar="قطع غيار", is_active=True)
     db.session.add(cat)
     db.session.commit()
     return cat
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def product(db, category, e2e_tenant):
     p = Product(
-        name='E2E Brake Pad', name_ar=' pads', sku='E2E-SKU-0001',
+        name="E2E Brake Pad",
+        name_ar=" pads",
+        sku="E2E-SKU-0001",
         category_id=category.id,
-        cost_price=Decimal('50.000'), regular_price=Decimal('100.000'),
-        current_stock=Decimal('100'), min_stock_alert=Decimal('10'),
+        cost_price=Decimal("50.000"),
+        regular_price=Decimal("100.000"),
+        current_stock=Decimal("100"),
+        min_stock_alert=Decimal("10"),
         is_active=True,
     )
     p.tenant_id = e2e_tenant.id
@@ -552,11 +634,15 @@ def product(db, category, e2e_tenant):
     return p
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def warehouse(db, e2e_tenant):
     w = Warehouse(
-        name='E2E Main', name_ar='رئيسي', code='E2E-WH-1',
-        location='E2E', is_main=True, is_active=True,
+        name="E2E Main",
+        name_ar="رئيسي",
+        code="E2E-WH-1",
+        location="E2E",
+        is_main=True,
+        is_active=True,
     )
     w.tenant_id = e2e_tenant.id
     db.session.add(w)
@@ -564,11 +650,14 @@ def warehouse(db, e2e_tenant):
     return w
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def supplier(db, e2e_tenant):
     s = Supplier(
-        name='E2E Supplier', name_ar='مورد', phone='+0000000001',
-        email='e2e_supplier@test.local', is_active=True,
+        name="E2E Supplier",
+        name_ar="مورد",
+        phone="+0000000001",
+        email="e2e_supplier@test.local",
+        is_active=True,
     )
     s.tenant_id = e2e_tenant.id
     db.session.add(s)
@@ -576,50 +665,55 @@ def supplier(db, e2e_tenant):
     return s
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def purchase(db, owner, supplier, product, warehouse, e2e_tenant):
     """Seed a purchase directly (as the e2e tenant's own document)."""
     from models.purchase import Purchase, PurchaseLine
+
     pur = Purchase(
-        purchase_number='P-CONF-001',
+        purchase_number="P-CONF-001",
         supplier_id=supplier.id,
         warehouse_id=warehouse.id,
         supplier_name=supplier.name,
-        currency='ILS',
-        exchange_rate=Decimal('1'),
-        subtotal=Decimal('500'),
-        tax_amount=Decimal('0'),
-        total_amount=Decimal('500'),
-        amount_base=Decimal('500'),
-        status='confirmed',
+        currency="ILS",
+        exchange_rate=Decimal("1"),
+        subtotal=Decimal("500"),
+        tax_amount=Decimal("0"),
+        total_amount=Decimal("500"),
+        amount_base=Decimal("500"),
+        status="confirmed",
         user_id=owner.id,
         tenant_id=e2e_tenant.id,
     )
     db.session.add(pur)
     db.session.flush()
-    db.session.add(PurchaseLine(
-        purchase_id=pur.id,
-        product_id=product.id,
-        quantity=Decimal('10'),
-        unit_cost=Decimal('50'),
-        line_total=Decimal('500'),
-    ))
+    db.session.add(
+        PurchaseLine(
+            purchase_id=pur.id,
+            product_id=product.id,
+            quantity=Decimal("10"),
+            unit_cost=Decimal("50"),
+            line_total=Decimal("500"),
+        )
+    )
     db.session.commit()
     return pur
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def sale(db, client, login_as, customer, product, warehouse):
     """Create a sale and return the Sale object."""
     from tests.e2e.harness import sale_form
-    login_as('owner')
+
+    login_as("owner")
     data = sale_form(
         customer,
-        [{'product_id': product.id, 'quantity': 2, 'unit_price': 100}],
+        [{"product_id": product.id, "quantity": 2, "unit_price": 100}],
         warehouse=warehouse,
     )
-    r = client.post('/sales/create', data=data)
+    r = client.post("/sales/create", data=data)
     assert r.status_code in (302, 303)
-    sid = r.headers.get('Location', '').split('/')[-1]
+    sid = r.headers.get("Location", "").split("/")[-1]
     from models.sale import Sale
+
     return Sale.query.get(int(sid))

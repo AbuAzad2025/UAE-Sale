@@ -11,6 +11,7 @@ Environment variables:
     CELERY_BROKER_URL  — Redis URL (default: REDIS_URL or redis://localhost:6379/0)
     CELERY_RESULT_BACKEND — Redis URL for results (default: same as broker)
 """
+
 from services.celery_tasks import celery  # noqa: F401  (single shared instance)
 
-__all__ = ['celery']
+__all__ = ["celery"]

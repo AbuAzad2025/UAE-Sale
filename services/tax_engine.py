@@ -22,27 +22,27 @@ Policy (documented, asserted in tests/unit/test_tax_engine.py):
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from fractions import Fraction
 
-DEFAULT_QUANTUM = Decimal('0.001')
-HUNDRED = Decimal('100')
-ONE = Decimal('1')
+DEFAULT_QUANTUM = Decimal("0.001")
+HUNDRED = Decimal("100")
+ONE = Decimal("1")
 
 # Fallback literal CoA codes (become obsolete once Agent 1's resolver ships;
 # they mirror today's gl_service.ensure_core_accounts() chart).
 _ROLE_FALLBACKS = {
-    'output_vat': 'VAT_OUTPUT',
-    'sales_returns': 'SALES_RETURNS',
-    'sales_revenue': 'SALES_REVENUE',
-    'ar_control': 'AR_CONTROL',
-    'inventory': 'INVENTORY',
-    'cogs': 'COGS',
+    "output_vat": "VAT_OUTPUT",
+    "sales_returns": "SALES_RETURNS",
+    "sales_revenue": "SALES_REVENUE",
+    "ar_control": "AR_CONTROL",
+    "inventory": "INVENTORY",
+    "cogs": "COGS",
 }
 _CODE_FALLBACKS = {
-    'output_vat': '2131',
-    'sales_returns': '4100',
-    'sales_revenue': '4100',
-    'ar_control': '1130',
-    'inventory': '1140',
-    'cogs': '5100',
+    "output_vat": "2131",
+    "sales_returns": "4100",
+    "sales_revenue": "4100",
+    "ar_control": "1130",
+    "inventory": "1140",
+    "cogs": "5100",
 }
 
 
@@ -53,7 +53,7 @@ def to_decimal(value):
     try:
         return Decimal(str(value))
     except (InvalidOperation, ValueError, TypeError) as exc:
-        raise ValueError(f'Cannot interpret {value!r} as a decimal amount') from exc
+        raise ValueError(f"Cannot interpret {value!r} as a decimal amount") from exc
 
 
 def _validated(amount, rate, quantum):
@@ -61,11 +61,11 @@ def _validated(amount, rate, quantum):
     rate_d = to_decimal(rate)
     quantum_d = to_decimal(quantum)
     if amount_d < 0:
-        raise ValueError(f'Tax base must be non-negative, got {amount_d}')
+        raise ValueError(f"Tax base must be non-negative, got {amount_d}")
     if rate_d < 0:
-        raise ValueError(f'Tax rate must be non-negative, got {rate_d}')
+        raise ValueError(f"Tax rate must be non-negative, got {rate_d}")
     if quantum_d <= 0:
-        raise ValueError(f'Rounding quantum must be positive, got {quantum_d}')
+        raise ValueError(f"Rounding quantum must be positive, got {quantum_d}")
     return amount_d, rate_d, quantum_d
 
 
@@ -76,8 +76,14 @@ class TaxEngine:
     # Pure computations
     # ------------------------------------------------------------------ #
     @staticmethod
-    def compute_line_tax(amount, rate, *, price_includes_tax=False,
-                         rounding=ROUND_HALF_UP, quantum=DEFAULT_QUANTUM):
+    def compute_line_tax(
+        amount,
+        rate,
+        *,
+        price_includes_tax=False,
+        rounding=ROUND_HALF_UP,
+        quantum=DEFAULT_QUANTUM,
+    ):
         """Compute {net, tax, gross} for one line.
 
         ``amount`` is the NET figure when ``price_includes_tax=False``
@@ -93,12 +99,12 @@ class TaxEngine:
             net = (amount_d / divisor).quantize(quantum_d, rounding=rounding)
             tax = (amount_d - net).quantize(quantum_d, rounding=rounding)
             gross = net + tax
-            return {'net': net, 'tax': tax, 'gross': gross}
+            return {"net": net, "tax": tax, "gross": gross}
 
         net = amount_d.quantize(quantum_d, rounding=rounding)
         tax = (net * rate_d / HUNDRED).quantize(quantum_d, rounding=rounding)
         gross = net + tax
-        return {'net': net, 'tax': tax, 'gross': gross}
+        return {"net": net, "tax": tax, "gross": gross}
 
     @staticmethod
     def compute_invoice(lines, *, rounding=ROUND_HALF_UP, quantum=DEFAULT_QUANTUM):
@@ -116,28 +122,30 @@ class TaxEngine:
         total by a few quanta; that divergence is intentional and tested.
         """
         per_line = []
-        total_net = Decimal('0')
-        total_tax = Decimal('0')
-        total_gross = Decimal('0')
+        total_net = Decimal("0")
+        total_tax = Decimal("0")
+        total_gross = Decimal("0")
 
         for index, spec in enumerate(lines):
             amount, rate, includes_tax = TaxEngine._normalise_line(spec, index)
             computed = TaxEngine.compute_line_tax(
-                amount, rate,
+                amount,
+                rate,
                 price_includes_tax=includes_tax,
-                rounding=rounding, quantum=quantum,
+                rounding=rounding,
+                quantum=quantum,
             )
             per_line.append(computed)
-            total_net += computed['net']
-            total_tax += computed['tax']
-            total_gross += computed['gross']
+            total_net += computed["net"]
+            total_tax += computed["tax"]
+            total_gross += computed["gross"]
 
         quantum_d = to_decimal(quantum)
         return {
-            'per_line': per_line,
-            'total_net': total_net.quantize(quantum_d, rounding=rounding),
-            'total_tax': total_tax.quantize(quantum_d, rounding=rounding),
-            'total_gross': total_gross.quantize(quantum_d, rounding=rounding),
+            "per_line": per_line,
+            "total_net": total_net.quantize(quantum_d, rounding=rounding),
+            "total_tax": total_tax.quantize(quantum_d, rounding=rounding),
+            "total_gross": total_gross.quantize(quantum_d, rounding=rounding),
         }
 
     @staticmethod
@@ -152,8 +160,10 @@ class TaxEngine:
         scale = Decimal(10) ** int(currency_digits)
         gross_units = int((gross_d * scale).to_integral_value(rounding=ROUND_HALF_UP))
 
-        exact = Fraction(gross_units) * Fraction(str(rate_d)) / (
-            100 + Fraction(str(rate_d))
+        exact = (
+            Fraction(gross_units)
+            * Fraction(str(rate_d))
+            / (100 + Fraction(str(rate_d)))
         )
         numerator, denominator = exact.numerator, exact.denominator
         # Integer half-up division for a non-negative fraction.
@@ -162,9 +172,9 @@ class TaxEngine:
 
         unit = ONE.scaleb(-int(currency_digits))
         return {
-            'net': Decimal(net_units) * unit,
-            'tax': Decimal(tax_units) * unit,
-            'gross': Decimal(gross_units) * unit,
+            "net": Decimal(net_units) * unit,
+            "tax": Decimal(tax_units) * unit,
+            "gross": Decimal(gross_units) * unit,
         }
 
     # ------------------------------------------------------------------ #
@@ -188,6 +198,7 @@ class TaxEngine:
         fallback_code = _CODE_FALLBACKS[fallback_key]
         try:
             from services.account_resolution import AccountRole, AccountResolver
+
             try:
                 role = AccountRole[role_name]
             except KeyError:
@@ -203,17 +214,17 @@ class TaxEngine:
     @staticmethod
     def _normalise_line(spec, index):
         if isinstance(spec, dict):
-            rate = spec.get('rate', 0)
-            if 'amount' in spec:
-                return spec['amount'], rate, bool(spec.get('price_includes_tax', False))
-            if 'gross' in spec:
-                return spec['gross'], rate, True
-            if 'net' in spec:
-                return spec['net'], rate, False
-            raise ValueError(f'Invoice line {index}: missing amount/net/gross')
+            rate = spec.get("rate", 0)
+            if "amount" in spec:
+                return spec["amount"], rate, bool(spec.get("price_includes_tax", False))
+            if "gross" in spec:
+                return spec["gross"], rate, True
+            if "net" in spec:
+                return spec["net"], rate, False
+            raise ValueError(f"Invoice line {index}: missing amount/net/gross")
         if isinstance(spec, (tuple, list)) and len(spec) == 2:
             return spec[0], spec[1], False
-        raise ValueError(f'Invoice line {index}: unsupported specification {spec!r}')
+        raise ValueError(f"Invoice line {index}: unsupported specification {spec!r}")
 
 
 # ---------------------------------------------------------------------------
@@ -222,14 +233,28 @@ class TaxEngine:
 # country presets + inclusive flag + tenant resolution on top only.
 # ---------------------------------------------------------------------------
 COUNTRY_VAT = {
-    'AE': Decimal('5.00'), 'SA': Decimal('15.00'), 'BH': Decimal('10.00'),
-    'OM': Decimal('5.00'), 'KW': Decimal('5.00'), 'EG': Decimal('14.00'),
-    'JO': Decimal('16.00'), 'TR': Decimal('20.00'), 'GB': Decimal('20.00'),
-    'DE': Decimal('19.00'),
+    "AE": Decimal("5.00"),
+    "SA": Decimal("15.00"),
+    "BH": Decimal("10.00"),
+    "OM": Decimal("5.00"),
+    "KW": Decimal("5.00"),
+    "EG": Decimal("14.00"),
+    "JO": Decimal("16.00"),
+    "TR": Decimal("20.00"),
+    "GB": Decimal("20.00"),
+    "DE": Decimal("19.00"),
 }
 COUNTRY_LABEL_AR = {
-    'AE': 'الإمارات', 'SA': 'السعودية', 'BH': 'البحرين', 'OM': 'عمان',
-    'KW': 'الكويت', 'EG': 'مصر', 'JO': 'الأردن', 'TR': 'تركيا', 'GB': 'بريطانيا', 'DE': 'ألمانيا',
+    "AE": "الإمارات",
+    "SA": "السعودية",
+    "BH": "البحرين",
+    "OM": "عمان",
+    "KW": "الكويت",
+    "EG": "مصر",
+    "JO": "الأردن",
+    "TR": "تركيا",
+    "GB": "بريطانيا",
+    "DE": "ألمانيا",
 }
 
 
@@ -241,9 +266,11 @@ def country_rate(country_code, on_date=None):
     try:
         from datetime import date as _date
         from models.tax_ruleset import TaxRuleset, _windowed_pick
+
         on_date = on_date or _date.today()
         rows = TaxRuleset.query.filter_by(
-            country_code=country_code.upper(), tenant_id=None, is_active=True).all()
+            country_code=country_code.upper(), tenant_id=None, is_active=True
+        ).all()
         row = _windowed_pick(rows, on_date)
         if row is not None and row.vat_rate is not None:
             return Decimal(str(row.vat_rate))
@@ -255,25 +282,40 @@ def country_rate(country_code, on_date=None):
 def resolve(tenant, explicit_rate=None, explicit_inclusive=None):
     """(rate, inclusive) for tenant - explicit wins per-invoice."""
     if tenant is None:
-        return (explicit_rate if explicit_rate is not None else Decimal('0'),
-                bool(explicit_inclusive) if explicit_inclusive is not None else False)
-    if not getattr(tenant, 'enable_tax', True):
-        return Decimal('0'), bool(explicit_inclusive) if explicit_inclusive is not None else False
-    rate = explicit_rate if explicit_rate is not None else getattr(tenant, 'default_tax_rate', None)
+        return (
+            explicit_rate if explicit_rate is not None else Decimal("0"),
+            bool(explicit_inclusive) if explicit_inclusive is not None else False,
+        )
+    if not getattr(tenant, "enable_tax", True):
+        return Decimal("0"), bool(
+            explicit_inclusive
+        ) if explicit_inclusive is not None else False
+    rate = (
+        explicit_rate
+        if explicit_rate is not None
+        else getattr(tenant, "default_tax_rate", None)
+    )
     if rate is None:
         # احترم قاعدة الدولة المخزَّنة أولاً؛ ثم الاحتياطي الثابت
         try:
             from models.tax_ruleset import ruleset_for_tenant
+
             ruleset = ruleset_for_tenant(tenant)
             if ruleset is not None and ruleset.vat_rate is not None:
                 rate = ruleset.vat_rate
         except Exception:
             rate = None
     if rate is None:
-        rate = getattr(tenant, 'tax_country_rate', None)
+        rate = getattr(tenant, "tax_country_rate", None)
     if rate is None:
-        rate = country_rate(getattr(tenant, 'tax_country', None) or getattr(tenant, 'country', None)) or Decimal('0')
-    inclusive = explicit_inclusive if explicit_inclusive is not None else bool(getattr(tenant, 'tax_inclusive', False))
+        rate = country_rate(
+            getattr(tenant, "tax_country", None) or getattr(tenant, "country", None)
+        ) or Decimal("0")
+    inclusive = (
+        explicit_inclusive
+        if explicit_inclusive is not None
+        else bool(getattr(tenant, "tax_inclusive", False))
+    )
     return Decimal(str(rate)), bool(inclusive)
 
 
@@ -281,4 +323,4 @@ def calc(net_subtotal, discount, shipping, rate, inclusive):
     """(tax, total) via TaxEngine arithmetic (authority stays there)."""
     net = to_decimal(net_subtotal) - to_decimal(discount) + to_decimal(shipping)
     result = TaxEngine.compute_line_tax(net, rate, price_includes_tax=bool(inclusive))
-    return result['tax'], result['gross']
+    return result["tax"], result["gross"]

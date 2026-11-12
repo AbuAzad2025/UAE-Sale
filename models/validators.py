@@ -27,6 +27,7 @@ def single_parent_validator(*fk_columns):
     columns and rejecting the assignment if any of them is already
     set.
     """
+
     def decorator(method):
         def wrapper(self, key, value):
             if value is None:
@@ -39,9 +40,12 @@ def single_parent_validator(*fk_columns):
                         f"{type(self).__name__}.{key} and "
                         f"{type(self).__name__}.{other} are mutually "
                         f"exclusive parent-document references; at most "
-                        f"one may be set on a single record.")
+                        f"one may be set on a single record."
+                    )
             return value
+
         return wrapper
+
     return decorator
 
 
@@ -55,29 +59,35 @@ def direction_fk_validator(*, for_direction, required_fk, forbidden_fk):
     :param forbidden_fk: the FK column that MUST be NULL when the
         direction matches.
     """
+
     def decorator(method):
         def wrapper(self, key, value):
-            if getattr(self, 'direction', None) != for_direction:
+            if getattr(self, "direction", None) != for_direction:
                 return value
             if key == forbidden_fk and value is not None:
                 raise ValueError(
                     f"{type(self).__name__}.{forbidden_fk} must be NULL "
-                    f"when direction='{for_direction}'.")
+                    f"when direction='{for_direction}'."
+                )
             if key == required_fk and value is None:
                 raise ValueError(
                     f"{type(self).__name__}.{required_fk} must be set "
-                    f"when direction='{for_direction}'.")
+                    f"when direction='{for_direction}'."
+                )
             return value
+
         return wrapper
+
     return decorator
 
 
-def tenant_consistency_validator(parent_fk_attr='id', tenant_fk_attr='tenant_id'):
+def tenant_consistency_validator(parent_fk_attr="id", tenant_fk_attr="tenant_id"):
     """Class decorator factory: ensures a row's tenant_id matches the
     tenant_id of the row referenced by ``parent_fk_attr``.
 
     F-03: the linked parent's tenant must equal the row's tenant.
     """
+
     def decorator(method):
         def wrapper(self, key, value):
             # Triggered on tenant_id change OR on the parent FK change.
@@ -95,7 +105,7 @@ def tenant_consistency_validator(parent_fk_attr='id', tenant_fk_attr='tenant_id'
             # that owns the parent FK must expose a relationship
             # named after ``parent_fk_attr`` for this to work.
             rel = getattr(type(self), parent_fk_attr, None)
-            if rel is None or not hasattr(rel, 'property'):
+            if rel is None or not hasattr(rel, "property"):
                 return value
             mapper_arg = rel.property.mapper.class_
             parent = mapper_arg.query.get(parent_id)
@@ -106,7 +116,10 @@ def tenant_consistency_validator(parent_fk_attr='id', tenant_fk_attr='tenant_id'
                 raise ValueError(
                     f"{type(self).__name__}.tenant_id ({child_tenant}) "
                     f"must match parent.tenant_id ({parent_tenant}); "
-                    f"cross-tenant linkage is not allowed.")
+                    f"cross-tenant linkage is not allowed."
+                )
             return value
+
         return wrapper
+
     return decorator

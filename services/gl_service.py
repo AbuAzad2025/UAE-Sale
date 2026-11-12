@@ -48,6 +48,7 @@ F10 the fiscal period guard (services/fiscal_period_guard) is enforced on
     every posting path: a closed period, or a date covered by NO period,
     rejects the posting.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -77,6 +78,7 @@ _TWO_DP = Decimal("0.01")
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
+
 
 def _to_decimal(value: Any) -> Decimal:
     """Coerce *value* to Decimal without ever going through float."""
@@ -110,6 +112,7 @@ def _current_tenant_id() -> int | None:
     """Tenant id of the currently authenticated user, if any."""
     try:
         from flask_login import current_user
+
         if getattr(current_user, "is_authenticated", False):
             return getattr(current_user, "tenant_id", None)
     except Exception:
@@ -120,6 +123,7 @@ def _current_tenant_id() -> int | None:
 def _current_user_id() -> int | None:
     try:
         from flask_login import current_user
+
         if getattr(current_user, "is_authenticated", False):
             return getattr(current_user, "id", None)
     except Exception:
@@ -184,9 +188,7 @@ def _normalize_lines(
     Returns ``(normalized_lines, total_debit, total_credit)``.
     """
     if not lines:
-        raise ValidationError(
-            'لا يمكن ترحيل قيد بدون سطور — أضف سطراً واحداً على الأقل.'
-        )
+        raise ValidationError("لا يمكن ترحيل قيد بدون سطور — أضف سطراً واحداً على الأقل.")
 
     total_debit = Decimal("0")
     total_credit = Decimal("0")
@@ -208,15 +210,11 @@ def _normalize_lines(
             if account is None:
                 if unknown_account_message is not None:
                     raise ValueError(unknown_account_message(raw))
-                raise ValueError(
-                    f"GL account '{raw}' not found while posting"
-                )
+                raise ValueError(f"GL account '{raw}' not found while posting")
 
         # FIX 6 — block postings to header accounts
         if getattr(account, "is_header", False):
-            raise ValueError(
-                f"لا يمكن القيد على الحساب الرئيسي: {account.full_name}"
-            )
+            raise ValueError(f"لا يمكن القيد على الحساب الرئيسي: {account.full_name}")
         if not getattr(account, "is_active", True):
             raise ValueError(f"GL account {account.code} is inactive")
 
@@ -226,9 +224,7 @@ def _normalize_lines(
         if debit < Decimal("0") or credit < Decimal("0"):
             raise ValueError("GL line: debit/credit must be >= 0")
         if debit > Decimal("0") and credit > Decimal("0"):
-            raise ValueError(
-                "GL line: a line cannot carry both a debit and a credit"
-            )
+            raise ValueError("GL line: a line cannot carry both a debit and a credit")
 
         # F8 — اتجاه الحركة مقابل طبيعة الحساب
         account.check_posting_direction(debit, credit)
@@ -257,11 +253,11 @@ def _audit_payload(entry: GLJournalEntry, normalized: list[_NormalizedLine]) -> 
         entry,
         lines=[
             {
-                'account_code': item.account.code,
-                'debit': item.debit,
-                'credit': item.credit,
-                'amount_base': item.amount_base,
-                'description': item.description,
+                "account_code": item.account.code,
+                "debit": item.debit,
+                "credit": item.credit,
+                "amount_base": item.amount_base,
+                "description": item.description,
             }
             for item in normalized
         ],
@@ -271,6 +267,7 @@ def _audit_payload(entry: GLJournalEntry, normalized: list[_NormalizedLine]) -> 
 # ---------------------------------------------------------------------------
 # service
 # ---------------------------------------------------------------------------
+
 
 class GLService:
     # ------------------------------------------------------------------
@@ -284,12 +281,44 @@ class GLService:
             ("1000", "الأصول", "Assets", "asset", None, True, 0),
             ("1100", "الأصول المتداولة", "Current Assets", "asset", "1000", True, 1),
             ("1110", "الصندوق", "Cash", "asset", "1100", False, 2),
-            ("1120", "البنك - حساب جاري", "Bank - Current Account", "asset", "1100", False, 2),
-            ("1121", "البنك - حساب توفير", "Bank - Savings Account", "asset", "1100", False, 2),
+            (
+                "1120",
+                "البنك - حساب جاري",
+                "Bank - Current Account",
+                "asset",
+                "1100",
+                False,
+                2,
+            ),
+            (
+                "1121",
+                "البنك - حساب توفير",
+                "Bank - Savings Account",
+                "asset",
+                "1100",
+                False,
+                2,
+            ),
             ("1130", "الذمم المدينة", "Accounts Receivable", "asset", "1100", False, 2),
             ("1140", "المخزون", "Inventory", "asset", "1100", False, 2),
-            ("1141", "ضريبة المدخلات (قابلة للاسترداد)", "Input VAT (recoverable)", "asset", "1100", False, 2),
-            ("1150", "شيكات تحت التحصيل", "Cheques Under Collection", "asset", "1100", False, 2),
+            (
+                "1141",
+                "ضريبة المدخلات (قابلة للاسترداد)",
+                "Input VAT (recoverable)",
+                "asset",
+                "1100",
+                False,
+                2,
+            ),
+            (
+                "1150",
+                "شيكات تحت التحصيل",
+                "Cheques Under Collection",
+                "asset",
+                "1100",
+                False,
+                2,
+            ),
             ("1200", "الأصول الثابتة", "Fixed Assets", "asset", "1000", True, 1),
             ("1210", "أراضي", "Land", "asset", "1200", False, 2),
             ("1220", "مباني", "Buildings", "asset", "1200", False, 2),
@@ -297,53 +326,221 @@ class GLService:
             ("1240", "معدات", "Equipment", "asset", "1200", False, 2),
             ("1250", "أثاث", "Furniture", "asset", "1200", False, 2),
             ("2000", "الخصوم", "Liabilities", "liability", None, True, 0),
-            ("2100", "الخصوم المتداولة", "Current Liabilities", "liability", "2000", True, 1),
-            ("2110", "الذمم الدائنة", "Accounts Payable", "liability", "2100", False, 2),
+            (
+                "2100",
+                "الخصوم المتداولة",
+                "Current Liabilities",
+                "liability",
+                "2000",
+                True,
+                1,
+            ),
+            (
+                "2110",
+                "الذمم الدائنة",
+                "Accounts Payable",
+                "liability",
+                "2100",
+                False,
+                2,
+            ),
             ("2115", "ذمم التجار", "Merchants Payable", "liability", "2100", False, 2),
-            ("2120", "شيكات مؤجلة الدفع", "Deferred Cheques Payable", "liability", "2100", False, 2),
+            (
+                "2120",
+                "شيكات مؤجلة الدفع",
+                "Deferred Cheques Payable",
+                "liability",
+                "2100",
+                False,
+                2,
+            ),
             ("2130", "ضرائب مستحقة", "Taxes Payable", "liability", "2100", False, 2),
-            ("2131", "ضريبة القيمة المضافة - مخرجات", "Output VAT Payable", "liability", "2100", False, 2),
-            ("2145", "ضرائب دخل مستحقة", "Corporate Tax Payable", "liability", "2100", False, 2),
+            (
+                "2131",
+                "ضريبة القيمة المضافة - مخرجات",
+                "Output VAT Payable",
+                "liability",
+                "2100",
+                False,
+                2,
+            ),
+            (
+                "2145",
+                "ضرائب دخل مستحقة",
+                "Corporate Tax Payable",
+                "liability",
+                "2100",
+                False,
+                2,
+            ),
             ("2140", "رواتب مستحقة", "Salaries Payable", "liability", "2100", False, 2),
-            ("2200", "الخصوم طويلة الأجل", "Long-term Liabilities", "liability", "2000", True, 1),
+            (
+                "2200",
+                "الخصوم طويلة الأجل",
+                "Long-term Liabilities",
+                "liability",
+                "2000",
+                True,
+                1,
+            ),
             ("2210", "قروض", "Loans", "liability", "2200", False, 2),
             ("3000", "حقوق الملكية", "Equity", "equity", None, True, 0),
             ("3100", "رأس المال", "Capital", "equity", "3000", False, 1),
-            ("3200", "الأرباح المحتجزة", "Retained Earnings", "equity", "3000", False, 1),
+            (
+                "3200",
+                "الأرباح المحتجزة",
+                "Retained Earnings",
+                "equity",
+                "3000",
+                False,
+                1,
+            ),
             ("3300", "جاري المالك", "Owner Draw", "equity", "3000", False, 1),
-            ("3350", "جاري الشركاء", "Partners Current Account", "equity", "3000", False, 1),
-            ("3400", "أرباح السنة الحالية", "Current Year Profit", "equity", "3000", False, 1),
+            (
+                "3350",
+                "جاري الشركاء",
+                "Partners Current Account",
+                "equity",
+                "3000",
+                False,
+                1,
+            ),
+            (
+                "3400",
+                "أرباح السنة الحالية",
+                "Current Year Profit",
+                "equity",
+                "3000",
+                False,
+                1,
+            ),
             ("4000", "الإيرادات", "Revenues", "revenue", None, True, 0),
             ("4100", "إيرادات المبيعات", "Sales Revenue", "revenue", "4000", False, 1),
             ("4200", "إيرادات الخدمات", "Service Revenue", "revenue", "4000", False, 1),
             ("4300", "إيرادات الشحن", "Shipping Revenue", "revenue", "4000", False, 1),
-            ("4400", "أرباح فرق العملة", "Foreign Exchange Gain", "revenue", "4000", False, 1),
+            (
+                "4400",
+                "أرباح فرق العملة",
+                "Foreign Exchange Gain",
+                "revenue",
+                "4000",
+                False,
+                1,
+            ),
             ("4500", "إيرادات أخرى", "Other Revenue", "revenue", "4000", False, 1),
             ("5000", "تكلفة المبيعات", "Cost of Sales", "expense", None, True, 0),
-            ("5100", "تكلفة البضاعة المباعة", "Cost of Goods Sold", "expense", "5000", False, 1),
-            ("5150", "تعديلات المخزون", "Inventory Adjustments", "expense", "5000", False, 1),
-            ("5200", "الخصومات الممنوحة", "Discounts Given", "expense", "5000", False, 1),
+            (
+                "5100",
+                "تكلفة البضاعة المباعة",
+                "Cost of Goods Sold",
+                "expense",
+                "5000",
+                False,
+                1,
+            ),
+            (
+                "5150",
+                "تعديلات المخزون",
+                "Inventory Adjustments",
+                "expense",
+                "5000",
+                False,
+                1,
+            ),
+            (
+                "5200",
+                "الخصومات الممنوحة",
+                "Discounts Given",
+                "expense",
+                "5000",
+                False,
+                1,
+            ),
             ("5300", "مصروفات الشحن", "Shipping Expense", "expense", "5000", False, 1),
-            ("6000", "المصروفات التشغيلية", "Operating Expenses", "expense", None, True, 0),
+            (
+                "6000",
+                "المصروفات التشغيلية",
+                "Operating Expenses",
+                "expense",
+                None,
+                True,
+                0,
+            ),
             ("6100", "رواتب وأجور", "Salaries & Wages", "expense", "6000", False, 1),
             ("6200", "إيجار", "Rent", "expense", "6000", False, 1),
             ("6300", "كهرباء وماء", "Utilities", "expense", "6000", False, 1),
             ("6400", "صيانة", "Maintenance", "expense", "6000", False, 1),
-            ("6500", "تسويق وإعلان", "Marketing & Advertising", "expense", "6000", False, 1),
+            (
+                "6500",
+                "تسويق وإعلان",
+                "Marketing & Advertising",
+                "expense",
+                "6000",
+                False,
+                1,
+            ),
             ("6600", "مواصلات", "Transportation", "expense", "6000", False, 1),
             ("6700", "اتصالات", "Communications", "expense", "6000", False, 1),
             ("6800", "قرطاسية", "Stationery", "expense", "6000", False, 1),
-            ("6900", "خسائر فرق العملة", "Foreign Exchange Loss", "expense", "6000", False, 1),
-            ("6910", "حصص الشركاء في الأرباح", "Partner Profit Share", "expense", "6000", False, 1),
-            ("6920", "مصروف ضريبة الدخل", "Income Tax Expense", "expense", "6000", False, 1),
+            (
+                "6900",
+                "خسائر فرق العملة",
+                "Foreign Exchange Loss",
+                "expense",
+                "6000",
+                False,
+                1,
+            ),
+            (
+                "6910",
+                "حصص الشركاء في الأرباح",
+                "Partner Profit Share",
+                "expense",
+                "6000",
+                False,
+                1,
+            ),
+            (
+                "6920",
+                "مصروف ضريبة الدخل",
+                "Income Tax Expense",
+                "expense",
+                "6000",
+                False,
+                1,
+            ),
             ("6950", "مصروفات بنكية", "Bank Charges", "expense", "6000", False, 1),
             ("6960", "مديونية مشطوبة", "Bad debt expense", "expense", "6000", False, 1),
-            ("6990", "مصروفات متنوعة", "Miscellaneous Expenses", "expense", "6000", False, 1),
+            (
+                "6990",
+                "مصروفات متنوعة",
+                "Miscellaneous Expenses",
+                "expense",
+                "6000",
+                False,
+                1,
+            ),
             ("6401", "مصروف الضمان", "Warranty Expense", "expense", "6400", False, 2),
             # Maintenance module accounts (M2)
             ("1131", "ذمم الصيانة مدينة", "Maintenance AR", "asset", "1130", False, 3),
-            ("2111", "ذمم الصيانة دائنة", "Maintenance AP", "liability", "2110", False, 3),
-            ("4210", "إيرادات الصيانة", "Maintenance Revenue", "revenue", "4200", False, 2),
+            (
+                "2111",
+                "ذمم الصيانة دائنة",
+                "Maintenance AP",
+                "liability",
+                "2110",
+                False,
+                3,
+            ),
+            (
+                "4210",
+                "إيرادات الصيانة",
+                "Maintenance Revenue",
+                "revenue",
+                "4200",
+                False,
+                2,
+            ),
             ("5101", "تكلفة الصيانة", "Maintenance COGS", "expense", "5100", False, 2),
         ]
         created_any = False
@@ -355,7 +552,10 @@ class GLService:
                 continue
             parent_id = None
             if parent_code:
-                parent = cache.get(parent_code) or GLAccount.query.filter_by(code=parent_code).first()
+                parent = (
+                    cache.get(parent_code)
+                    or GLAccount.query.filter_by(code=parent_code).first()
+                )
                 if parent:
                     parent_id = parent.id
             acc = GLAccount(
@@ -367,7 +567,7 @@ class GLService:
                 is_header=is_header,
                 level=level,
                 currency=_base_currency(),
-                is_system=True,   # F8 — حساب مُبذَر: لا يُعدَّل كوده/نوعه ولا يُحذف
+                is_system=True,  # F8 — حساب مُبذَر: لا يُعدَّل كوده/نوعه ولا يُحذف
             )
             db.session.add(acc)
             db.session.flush()
@@ -403,27 +603,28 @@ class GLService:
             return 0
 
         protected = [
-            e for e in entries
-            if getattr(e, 'is_posted', False) or getattr(e, 'is_reversed', False)
+            e
+            for e in entries
+            if getattr(e, "is_posted", False) or getattr(e, "is_reversed", False)
         ]
         if protected:
-            numbers = ', '.join(sorted(str(e.entry_number) for e in protected))
+            numbers = ", ".join(sorted(str(e.entry_number) for e in protected))
             raise ValidationError(
-                f'لا يمكن حذف قيود مرحّلة ({numbers}). '
-                'القيد المرحّل لا يُحذف أبداً — استخدم القيد العكسي (Reverse) '
-                'للإلغاء، فيبقى الأثر المحاسبي وسجل التدقيق كما هما.'
+                f"لا يمكن حذف قيود مرحّلة ({numbers}). "
+                "القيد المرحّل لا يُحذف أبداً — استخدم القيد العكسي (Reverse) "
+                "للإلغاء، فيبقى الأثر المحاسبي وسجل التدقيق كما هما."
             )
 
         ids = [e.id for e in entries]
         # NOTE: JournalEntryAudit rows are deliberately NOT deleted.
         # synchronize_session='fetch' يبقي الجلسة متسقة مع قاعدة البيانات
         # (الكائنات المحذوفة تُزال من cache الهوية).
-        GLJournalLine.query.filter(
-            GLJournalLine.entry_id.in_(ids)
-        ).delete(synchronize_session='fetch')
-        count = GLJournalEntry.query.filter(
-            GLJournalEntry.id.in_(ids)
-        ).delete(synchronize_session='fetch')
+        GLJournalLine.query.filter(GLJournalLine.entry_id.in_(ids)).delete(
+            synchronize_session="fetch"
+        )
+        count = GLJournalEntry.query.filter(GLJournalEntry.id.in_(ids)).delete(
+            synchronize_session="fetch"
+        )
         return count
 
     # ------------------------------------------------------------------
@@ -538,7 +739,7 @@ class GLService:
                         debit=item.debit,
                         credit=item.credit,
                         amount_base=item.amount_base,
-                        party_id=getattr(item, 'party_id', None),
+                        party_id=getattr(item, "party_id", None),
                     )
                 )
             db.session.flush()
@@ -549,7 +750,7 @@ class GLService:
                 action=JournalEntryAudit.ACTION_CREATE,
                 old_values=None,
                 new_values=_audit_payload(entry, normalized),
-                reason=f'ترحيل قيد: {description or entry_number}',
+                reason=f"ترحيل قيد: {description or entry_number}",
                 performed_by=created_by,
                 fallback_entry=entry,
             )
@@ -650,7 +851,7 @@ class GLService:
                 action=JournalEntryAudit.ACTION_CREATE,
                 old_values=None,
                 new_values=_audit_payload(entry, normalized),
-                reason=f'إنشاء قيد: {description or entry_number}',
+                reason=f"إنشاء قيد: {description or entry_number}",
                 performed_by=created_by,
                 fallback_entry=entry,
             )
@@ -718,7 +919,11 @@ class GLService:
                 is_posted=bool(is_posted),
                 created_by=created_by
                 if created_by is not None
-                else (current_user.id if getattr(current_user, "is_authenticated", False) else None),
+                else (
+                    current_user.id
+                    if getattr(current_user, "is_authenticated", False)
+                    else None
+                ),
                 tenant_id=_current_tenant_id(),
             )
             db.session.add(entry)
@@ -733,7 +938,7 @@ class GLService:
                         debit=item.debit,
                         credit=item.credit,
                         amount_base=item.amount_base,
-                        party_id=getattr(item, 'party_id', None),
+                        party_id=getattr(item, "party_id", None),
                     )
                 )
             db.session.flush()
@@ -820,16 +1025,23 @@ class GLService:
 
         # single-entry form
         if entry_or_id is None:
-            raise TypeError("GLService.reverse_entry: first argument or reference_type+reference_id is required")
+            raise TypeError(
+                "GLService.reverse_entry: first argument or reference_type+reference_id is required"
+            )
         if isinstance(entry_or_id, int):
-            entry = get_owned_or_raise(GLJournalEntry, entry_or_id,
-                                       missing_message=f"GL entry id={entry_or_id} not found")
+            entry = get_owned_or_raise(
+                GLJournalEntry,
+                entry_or_id,
+                missing_message=f"GL entry id={entry_or_id} not found",
+            )
             if entry is None:
                 raise ValueError(f"GL entry id={entry_or_id} not found")
         else:
             entry = entry_or_id
         if not isinstance(entry, GLJournalEntry):
-            raise TypeError("GLService.reverse_entry: first argument must be an id or GLJournalEntry")
+            raise TypeError(
+                "GLService.reverse_entry: first argument must be an id or GLJournalEntry"
+            )
         return entry.reverse_entry(
             description=description,
             entry_date=entry_date,
@@ -853,7 +1065,9 @@ class GLService:
         from sqlalchemy import func
 
         account = db.get_or_404(GLAccount, account_id)
-        query = GLJournalLine.query.filter_by(account_id=account_id).join(GLJournalEntry)
+        query = GLJournalLine.query.filter_by(account_id=account_id).join(
+            GLJournalEntry
+        )
         if date_from:
             query = query.filter(func.date(GLJournalEntry.entry_date) >= date_from)
         if date_to:
@@ -871,8 +1085,12 @@ class GLService:
             .join(GLJournalEntry)
         )
         if date_from:
-            opening_debit_q = opening_debit_q.filter(func.date(GLJournalEntry.entry_date) < date_from)
-            opening_credit_q = opening_credit_q.filter(func.date(GLJournalEntry.entry_date) < date_from)
+            opening_debit_q = opening_debit_q.filter(
+                func.date(GLJournalEntry.entry_date) < date_from
+            )
+            opening_credit_q = opening_credit_q.filter(
+                func.date(GLJournalEntry.entry_date) < date_from
+            )
         else:
             opening_debit_q = opening_debit_q.filter(db.false())
             opening_credit_q = opening_credit_q.filter(db.false())

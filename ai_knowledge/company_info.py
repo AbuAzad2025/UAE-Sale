@@ -6,15 +6,15 @@
 import os
 
 COMPANY_INFO = {
-    'name_ar': 'شركة أزاد للأنظمة الذكية',
-    'name_en': 'Azad Smart Systems',
-    'developer': 'م. أحمد غنام',
-    'location': 'رام الله - فلسطين',
-    'website': os.environ.get('COMPANY_WEBSITE', 'https://azadsystems.com'),
-    'phone': '+970-59-000-0000',
-    'whatsapp': '+970-59-000-0000',
-    'email': os.environ.get('COMPANY_EMAIL', 'rafideen.ahmadghannam@gmail.com'),
-    'slogan': 'الذكاء الاصطناعي في خدمة أعمالك'
+    "name_ar": "شركة أزاد للأنظمة الذكية",
+    "name_en": "Azad Smart Systems",
+    "developer": "م. أحمد غنام",
+    "location": "رام الله - فلسطين",
+    "website": os.environ.get("COMPANY_WEBSITE", "https://azadsystems.com"),
+    "phone": "+970-59-000-0000",
+    "whatsapp": "+970-59-000-0000",
+    "email": os.environ.get("COMPANY_EMAIL", "rafideen.ahmadghannam@gmail.com"),
+    "slogan": "الذكاء الاصطناعي في خدمة أعمالك",
 }
 
 

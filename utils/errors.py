@@ -45,4 +45,4 @@ class ValidationError(ValueError):
     """
 
 
-__all__ = ['ValidationError']
+__all__ = ["ValidationError"]

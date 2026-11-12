@@ -5,6 +5,7 @@
 
 المسارات المعلمة (int:id) تُختبر بمعرّف 1 ما لم تبوّب يدويًا.
 """
+
 import pytest
 
 
@@ -14,22 +15,31 @@ def plain_user(db):
     from models import User, Role, Permission
     from extensions import db as _db
 
-    role = Role.query.filter_by(slug='seller').first()
+    role = Role.query.filter_by(slug="seller").first()
     if role is None:
-        role = Role(name='Seller', name_ar='بائع', slug='seller')
-        perm = Permission.query.filter_by(code='manage_sales').first()
+        role = Role(name="Seller", name_ar="بائع", slug="seller")
+        perm = Permission.query.filter_by(code="manage_sales").first()
         if perm is None:
-            perm = Permission(code='manage_sales', name='Manage Sales',
-                              name_ar='إدارة المبيعات', category='sales')
+            perm = Permission(
+                code="manage_sales",
+                name="Manage Sales",
+                name_ar="إدارة المبيعات",
+                category="sales",
+            )
             _db.session.add(perm)
             _db.session.flush()
         role.permissions = [perm]
         _db.session.add(role)
         _db.session.flush()
 
-    user = User(username='plain_sweep', email='plain_sweep@test.com',
-                full_name='Plain', is_active=True, role_id=role.id)
-    user.set_password('Pass123!')
+    user = User(
+        username="plain_sweep",
+        email="plain_sweep@test.com",
+        full_name="Plain",
+        is_active=True,
+        role_id=role.id,
+    )
+    user.set_password("Pass123!")
     _db.session.add(user)
     _db.session.commit()
     return user
@@ -37,20 +47,25 @@ def plain_user(db):
 
 @pytest.fixture
 def logged_client(client, plain_user):
-    client.post('/auth/login', data={
-        'username': plain_user.username, 'password': 'Pass123!',
-    }, follow_redirects=True)
+    client.post(
+        "/auth/login",
+        data={
+            "username": plain_user.username,
+            "password": "Pass123!",
+        },
+        follow_redirects=True,
+    )
     return client
 
 
 def _parametrized_routes(app):
     out = []
     for rule in app.url_map.iter_rules():
-        if rule.endpoint == 'static':
+        if rule.endpoint == "static":
             continue
         if rule.arguments:
             continue
-        if 'GET' not in rule.methods:
+        if "GET" not in rule.methods:
             continue
         out.append(rule.rule)
     return sorted(out)
@@ -65,12 +80,14 @@ def test_all_get_routes_no_500_anonymous(client, app):
             resp = client.get(path)
             if resp.status_code >= 500:
                 # 503 على /payment-vault/health مقصود: البيئة غير مهيأة بالكامل
-                if path == '/payment-vault/health' and resp.status_code == 503:
+                if path == "/payment-vault/health" and resp.status_code == 503:
                     continue
-                failures.append(f'{path} -> {resp.status_code}')
+                failures.append(f"{path} -> {resp.status_code}")
         except Exception as exc:  # noqa: BLE001
-            failures.append(f'{path} -> {type(exc).__name__}: {exc}')
-    assert failures == [], 'Anonymous GET routes returning 500+ : ' + '; '.join(failures)
+            failures.append(f"{path} -> {type(exc).__name__}: {exc}")
+    assert failures == [], "Anonymous GET routes returning 500+ : " + "; ".join(
+        failures
+    )
 
 
 def test_platform_routes_no_200_for_plain_user(logged_client, app):
@@ -82,18 +99,20 @@ def test_platform_routes_no_200_for_plain_user(logged_client, app):
 
     failures = []
     for rule in app.url_map.iter_rules():
-        if rule.endpoint == 'static':
+        if rule.endpoint == "static":
             continue
-        if 'GET' not in rule.methods:
+        if "GET" not in rule.methods:
             continue
         if rule.arguments:
             continue
-        module = getattr(app.view_functions.get(rule.endpoint), '__module__', '')
-        if route_scope.classify(rule.rule, rule.endpoint, module) == 'platform':
+        module = getattr(app.view_functions.get(rule.endpoint), "__module__", "")
+        if route_scope.classify(rule.rule, rule.endpoint, module) == "platform":
             resp = logged_client.get(rule.rule, follow_redirects=False)
             if resp.status_code == 200:
-                failures.append(f'{rule.rule} -> 200 for plain user')
-    assert failures == [], 'Platform routes leaking to plain users: ' + '; '.join(failures)
+                failures.append(f"{rule.rule} -> 200 for plain user")
+    assert failures == [], "Platform routes leaking to plain users: " + "; ".join(
+        failures
+    )
 
 
 def test_tenant_routes_no_500_for_plain_user(logged_client, app):
@@ -102,16 +121,18 @@ def test_tenant_routes_no_500_for_plain_user(logged_client, app):
 
     failures = []
     for rule in app.url_map.iter_rules():
-        if rule.endpoint == 'static':
+        if rule.endpoint == "static":
             continue
-        if 'GET' not in rule.methods:
+        if "GET" not in rule.methods:
             continue
         if rule.arguments:
             continue
-        module = getattr(app.view_functions.get(rule.endpoint), '__module__', '')
-        if route_scope.classify(rule.rule, rule.endpoint, module) != 'tenant':
+        module = getattr(app.view_functions.get(rule.endpoint), "__module__", "")
+        if route_scope.classify(rule.rule, rule.endpoint, module) != "tenant":
             continue
         resp = logged_client.get(rule.rule, follow_redirects=False)
         if resp.status_code >= 500:
-            failures.append(f'{rule.rule} -> {resp.status_code}')
-    assert failures == [], 'Tenant routes returning 500+ to plain user: ' + '; '.join(failures)
+            failures.append(f"{rule.rule} -> {resp.status_code}")
+    assert failures == [], "Tenant routes returning 500+ to plain user: " + "; ".join(
+        failures
+    )

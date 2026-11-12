@@ -16,11 +16,7 @@ class SalesAnalytics:
         Based on: Moving Average + Trend Analysis
         """
         if not historical_data or len(historical_data) < 3:
-            return {
-                'prediction': 0,
-                'confidence': 'low',
-                'method': 'insufficient_data'
-            }
+            return {"prediction": 0, "confidence": "low", "method": "insufficient_data"}
 
         # حساب المتوسط المتحرك للأشهر الثلاثة الأخيرة
         recent_months = historical_data[-3:]
@@ -38,22 +34,24 @@ class SalesAnalytics:
         prediction = moving_average + trend
 
         # مستوى الثقة
-        variance = sum((x - moving_average) ** 2 for x in recent_months) / len(recent_months)
-        std_dev = variance ** 0.5
+        variance = sum((x - moving_average) ** 2 for x in recent_months) / len(
+            recent_months
+        )
+        std_dev = variance**0.5
 
         if std_dev < moving_average * 0.1:
-            confidence = 'high'
+            confidence = "high"
         elif std_dev < moving_average * 0.3:
-            confidence = 'medium'
+            confidence = "medium"
         else:
-            confidence = 'low'
+            confidence = "low"
 
         return {
-            'prediction': float(prediction),
-            'confidence': confidence,
-            'trend': 'up' if trend > 0 else 'down' if trend < 0 else 'stable',
-            'trend_value': float(trend),
-            'method': 'moving_average_with_trend'
+            "prediction": float(prediction),
+            "confidence": confidence,
+            "trend": "up" if trend > 0 else "down" if trend < 0 else "stable",
+            "trend_value": float(trend),
+            "method": "moving_average_with_trend",
         }
 
     @staticmethod
@@ -62,12 +60,12 @@ class SalesAnalytics:
         تحليل نمط المبيعات
         """
         if not sales_data:
-            return {'pattern': 'no_data'}
+            return {"pattern": "no_data"}
 
         # تحليل يومي
         daily = {}
         for sale in sales_data:
-            day = sale.sale_date.strftime('%A')
+            day = sale.sale_date.strftime("%A")
             daily[day] = daily.get(day, 0) + 1
 
         # أكثر يوم مبيعات
@@ -77,9 +75,9 @@ class SalesAnalytics:
         _ = []
 
         return {
-            'peak_day': peak_day,
-            'daily_distribution': daily,
-            'trend': 'growing' if len(sales_data) > 5 else 'stable'
+            "peak_day": peak_day,
+            "daily_distribution": daily,
+            "trend": "growing" if len(sales_data) > 5 else "stable",
         }
 
     @staticmethod
@@ -88,23 +86,21 @@ class SalesAnalytics:
         تقسيم الزبائن (Segmentation)
         """
         segments = {
-            'vip': [],      # أعلى 10%
-            'regular': [],  # 80%
-            'inactive': [],  # لم يشتروا منذ 3 شهور
+            "vip": [],  # أعلى 10%
+            "regular": [],  # 80%
+            "inactive": [],  # لم يشتروا منذ 3 شهور
         }
 
         # ترتيب حسب المشتريات
         sorted_customers = sorted(
-            customers_data,
-            key=lambda c: c.get('total_purchases', 0),
-            reverse=True
+            customers_data, key=lambda c: c.get("total_purchases", 0), reverse=True
         )
 
         total = len(sorted_customers)
         vip_count = max(1, int(total * 0.1))
 
-        segments['vip'] = sorted_customers[:vip_count]
-        segments['regular'] = sorted_customers[vip_count:]
+        segments["vip"] = sorted_customers[:vip_count]
+        segments["regular"] = sorted_customers[vip_count:]
 
         # تحديد غير النشطين
         _ = datetime.now() - timedelta(days=90)
@@ -121,31 +117,29 @@ class SalesAnalytics:
         C: 50% من المنتجات = 5% من الإيرادات
         """
         if not products_data:
-            return {'A': [], 'B': [], 'C': []}
+            return {"A": [], "B": [], "C": []}
 
         # ترتيب حسب الإيرادات
         sorted_products = sorted(
-            products_data,
-            key=lambda p: p.get('revenue', 0),
-            reverse=True
+            products_data, key=lambda p: p.get("revenue", 0), reverse=True
         )
 
-        total_revenue = sum(p.get('revenue', 0) for p in sorted_products)
+        total_revenue = sum(p.get("revenue", 0) for p in sorted_products)
 
         cumulative = 0
-        categories = {'A': [], 'B': [], 'C': []}
+        categories = {"A": [], "B": [], "C": []}
 
         for product in sorted_products:
-            revenue = product.get('revenue', 0)
+            revenue = product.get("revenue", 0)
             cumulative += revenue
             percentage = (cumulative / total_revenue) * 100 if total_revenue else 0
 
             if percentage <= 80:
-                categories['A'].append(product)
+                categories["A"].append(product)
             elif percentage <= 95:
-                categories['B'].append(product)
+                categories["B"].append(product)
             else:
-                categories['C'].append(product)
+                categories["C"].append(product)
 
         return categories
 
@@ -159,16 +153,18 @@ class InventoryAnalytics:
         حساب نقطة إعادة الطلب
         Reorder Point = (Average Daily Usage × Lead Time) + Safety Stock
         """
-        avg_daily_sales = product_data.get('avg_daily_sales', 0)
-        lead_time_days = product_data.get('lead_time_days', 7)  # افتراضي 7 أيام
-        safety_stock = product_data.get('safety_stock', 0)
+        avg_daily_sales = product_data.get("avg_daily_sales", 0)
+        lead_time_days = product_data.get("lead_time_days", 7)  # افتراضي 7 أيام
+        safety_stock = product_data.get("safety_stock", 0)
 
         reorder_point = (avg_daily_sales * lead_time_days) + safety_stock
 
         return {
-            'reorder_point': round(reorder_point, 2),
-            'current_stock': product_data.get('current_stock', 0),
-            'status': 'order_now' if product_data.get('current_stock', 0) <= reorder_point else 'ok'
+            "reorder_point": round(reorder_point, 2),
+            "current_stock": product_data.get("current_stock", 0),
+            "status": "order_now"
+            if product_data.get("current_stock", 0) <= reorder_point
+            else "ok",
         }
 
     @staticmethod
@@ -180,13 +176,13 @@ class InventoryAnalytics:
         S = Ordering Cost
         H = Holding Cost per unit per year
         """
-        annual_demand = product_data.get('annual_sales', 0)
-        ordering_cost = product_data.get('ordering_cost', 100)  # تكلفة الطلب
-        holding_cost = product_data.get('holding_cost_percent', 0.2)  # 20% من السعر
-        unit_cost = product_data.get('cost_price', 1)
+        annual_demand = product_data.get("annual_sales", 0)
+        ordering_cost = product_data.get("ordering_cost", 100)  # تكلفة الطلب
+        holding_cost = product_data.get("holding_cost_percent", 0.2)  # 20% من السعر
+        unit_cost = product_data.get("cost_price", 1)
 
         if annual_demand == 0 or unit_cost == 0:
-            return {'eoq': 0, 'orders_per_year': 0}
+            return {"eoq": 0, "orders_per_year": 0}
 
         H = unit_cost * holding_cost
 
@@ -194,9 +190,11 @@ class InventoryAnalytics:
         orders_per_year = annual_demand / eoq if eoq > 0 else 0
 
         return {
-            'eoq': round(eoq, 0),
-            'orders_per_year': round(orders_per_year, 1),
-            'order_frequency_days': round(365 / orders_per_year, 0) if orders_per_year > 0 else 0
+            "eoq": round(eoq, 0),
+            "orders_per_year": round(orders_per_year, 1),
+            "order_frequency_days": round(365 / orders_per_year, 0)
+            if orders_per_year > 0
+            else 0,
         }
 
     @staticmethod
@@ -205,28 +203,28 @@ class InventoryAnalytics:
         معدل دوران المخزون
         Turnover = Cost of Goods Sold / Average Inventory
         """
-        cogs = product_data.get('cogs_annual', 0)  # تكلفة البضاعة المباعة سنوياً
-        avg_inventory = product_data.get('avg_inventory_value', 1)
+        cogs = product_data.get("cogs_annual", 0)  # تكلفة البضاعة المباعة سنوياً
+        avg_inventory = product_data.get("avg_inventory_value", 1)
 
         if avg_inventory == 0:
-            return {'turnover': 0, 'status': 'no_inventory'}
+            return {"turnover": 0, "status": "no_inventory"}
 
         turnover = cogs / avg_inventory
 
         # التقييم
         if turnover >= 8:
-            status = 'excellent'  # ممتاز
+            status = "excellent"  # ممتاز
         elif turnover >= 5:
-            status = 'good'       # جيد
+            status = "good"  # جيد
         elif turnover >= 3:
-            status = 'average'    # متوسط
+            status = "average"  # متوسط
         else:
-            status = 'slow'       # بطيء
+            status = "slow"  # بطيء
 
         return {
-            'turnover': round(turnover, 2),
-            'status': status,
-            'days_in_inventory': round(365 / turnover, 0) if turnover > 0 else 999
+            "turnover": round(turnover, 2),
+            "status": status,
+            "days_in_inventory": round(365 / turnover, 0) if turnover > 0 else 999,
         }
 
 
@@ -269,18 +267,18 @@ class ProfitAnalytics:
 
         if contribution_margin <= 0:
             return {
-                'break_even_units': 'infinite',
-                'break_even_revenue': 'infinite',
-                'warning': 'سعر البيع أقل من أو يساوي التكلفة المتغيرة!'
+                "break_even_units": "infinite",
+                "break_even_revenue": "infinite",
+                "warning": "سعر البيع أقل من أو يساوي التكلفة المتغيرة!",
             }
 
         bep_units = fixed_costs / contribution_margin
         bep_revenue = bep_units * price_per_unit
 
         return {
-            'break_even_units': round(bep_units, 0),
-            'break_even_revenue': round(bep_revenue, 2),
-            'contribution_margin': round(contribution_margin, 2)
+            "break_even_units": round(bep_units, 0),
+            "break_even_revenue": round(bep_revenue, 2),
+            "contribution_margin": round(contribution_margin, 2),
         }
 
 
@@ -292,17 +290,17 @@ class CashFlowAnalytics:
         """
         توقع التدفق النقدي
         """
-        total_in = sum(c.get('amount', 0) for c in collections)
-        total_out = sum(p.get('amount', 0) for p in payments)
+        total_in = sum(c.get("amount", 0) for c in collections)
+        total_out = sum(p.get("amount", 0) for p in payments)
 
         net_flow = total_in - total_out
 
         return {
-            'cash_in': round(total_in, 2),
-            'cash_out': round(total_out, 2),
-            'net_cash_flow': round(net_flow, 2),
-            'status': 'positive' if net_flow > 0 else 'negative',
-            'forecast_period_days': days
+            "cash_in": round(total_in, 2),
+            "cash_out": round(total_out, 2),
+            "net_cash_flow": round(net_flow, 2),
+            "status": "positive" if net_flow > 0 else "negative",
+            "forecast_period_days": days,
         }
 
     @staticmethod
@@ -311,32 +309,32 @@ class CashFlowAnalytics:
         نسبة رأس المال العامل
         """
         if current_liabilities == 0:
-            return {'ratio': 'infinite', 'status': 'excellent'}
+            return {"ratio": "infinite", "status": "excellent"}
 
         ratio = current_assets / current_liabilities
 
         if ratio >= 2:
-            status = 'excellent'
+            status = "excellent"
         elif ratio >= 1.5:
-            status = 'good'
+            status = "good"
         elif ratio >= 1:
-            status = 'acceptable'
+            status = "acceptable"
         else:
-            status = 'critical'
+            status = "critical"
 
         return {
-            'ratio': round(ratio, 2),
-            'status': status,
-            'working_capital': round(current_assets - current_liabilities, 2)
+            "ratio": round(ratio, 2),
+            "status": status,
+            "working_capital": round(current_assets - current_liabilities, 2),
         }
 
 
 # مكتبة شاملة للتحليلات
 ANALYTICS_LIBRARY = {
-    'sales': SalesAnalytics,
-    'inventory': InventoryAnalytics,
-    'profit': ProfitAnalytics,
-    'cashflow': CashFlowAnalytics,
+    "sales": SalesAnalytics,
+    "inventory": InventoryAnalytics,
+    "profit": ProfitAnalytics,
+    "cashflow": CashFlowAnalytics,
 }
 
 

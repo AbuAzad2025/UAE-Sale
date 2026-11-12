@@ -7,7 +7,7 @@ from models.tenant_scope import TenantScopedMixin
 
 
 class ExpenseCategory(db.Model):
-    __tablename__ = 'expense_categories'
+    __tablename__ = "expense_categories"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
@@ -16,42 +16,57 @@ class ExpenseCategory(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    expenses = db.relationship('Expense', back_populates='category', lazy='dynamic')
+    expenses = db.relationship("Expense", back_populates="category", lazy="dynamic")
 
     def __repr__(self):
-        return f'<ExpenseCategory {self.name}>'
+        return f"<ExpenseCategory {self.name}>"
 
 
 class Expense(TenantScopedMixin, db.Model):
-    __tablename__ = 'expenses'
+    __tablename__ = "expenses"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
     expense_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
 
-    category_id = db.Column(db.Integer, db.ForeignKey('expense_categories.id'), nullable=False, index=True)
+    category_id = db.Column(
+        db.Integer, db.ForeignKey("expense_categories.id"), nullable=False, index=True
+    )
 
     description = db.Column(db.String(255), nullable=False)
     description_ar = db.Column(db.String(255))
 
     amount = db.Column(db.Numeric(15, 3), nullable=False)
-    currency = db.Column(db.String(3), default='ILS', nullable=False)
+    currency = db.Column(db.String(3), default="ILS", nullable=False)
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
     amount_base = db.Column(db.Numeric(15, 3), nullable=False)
-    tax_treatment = db.Column(db.String(10), nullable=False, default='standard',
-                              server_default='standard')
-    tax_rate = db.Column(db.Numeric(5, 2), nullable=False, default=0,
-                         server_default='0')
-    tax_inclusive = db.Column(db.Boolean, nullable=False, default=False,
-                              server_default=sa.false())
-    vat_recoverable = db.Column(db.Boolean, nullable=False, default=True,
-                                server_default=sa.true())
-    reverse_charge = db.Column(db.Boolean, nullable=False, default=False,
-                               server_default=sa.false())
-    tax_amount = db.Column(db.Numeric(15, 3), nullable=False, default=0,
-                           server_default='0')
+    tax_treatment = db.Column(
+        db.String(10), nullable=False, default="standard", server_default="standard"
+    )
+    tax_rate = db.Column(
+        db.Numeric(5, 2), nullable=False, default=0, server_default="0"
+    )
+    tax_inclusive = db.Column(
+        db.Boolean, nullable=False, default=False, server_default=sa.false()
+    )
+    vat_recoverable = db.Column(
+        db.Boolean, nullable=False, default=True, server_default=sa.true()
+    )
+    reverse_charge = db.Column(
+        db.Boolean, nullable=False, default=False, server_default=sa.false()
+    )
+    tax_amount = db.Column(
+        db.Numeric(15, 3), nullable=False, default=0, server_default="0"
+    )
 
-    expense_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+    expense_date = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
 
     payment_method = db.Column(db.String(20), nullable=False)
     reference_number = db.Column(db.String(100))
@@ -64,33 +79,35 @@ class Expense(TenantScopedMixin, db.Model):
 
     notes = db.Column(db.Text)
 
-    status = db.Column(db.String(20), default='confirmed', index=True)
+    status = db.Column(db.String(20), default="confirmed", index=True)
     is_active = db.Column(db.Boolean, default=True, index=True)
 
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
 
-    category = db.relationship('ExpenseCategory', back_populates='expenses')
-    user = db.relationship('User', foreign_keys=[user_id])
+    category = db.relationship("ExpenseCategory", back_populates="expenses")
+    user = db.relationship("User", foreign_keys=[user_id])
 
     def __repr__(self):
-        return f'<Expense {self.expense_number}>'
+        return f"<Expense {self.expense_number}>"
 
     def to_dict(self):
         return {
-            'id': self.id,
-            'expense_number': self.expense_number,
-            'category': self.category.name if self.category else None,
-            'description': self.description,
-            'amount': float(self.amount),
-            'currency': self.currency,
-            'amount_base': float(self.amount_base),
-            'tax_rate': float(self.tax_rate or 0),
-            'tax_treatment': self.tax_treatment or 'standard',
-            'vat_recoverable': bool(self.vat_recoverable),
-            'reverse_charge': bool(self.reverse_charge),
-            'tax_amount': float(self.tax_amount or 0),
-            'expense_date': self.expense_date.isoformat(),
-            'payment_method': self.payment_method,
-            'status': self.status,
+            "id": self.id,
+            "expense_number": self.expense_number,
+            "category": self.category.name if self.category else None,
+            "description": self.description,
+            "amount": float(self.amount),
+            "currency": self.currency,
+            "amount_base": float(self.amount_base),
+            "tax_rate": float(self.tax_rate or 0),
+            "tax_treatment": self.tax_treatment or "standard",
+            "vat_recoverable": bool(self.vat_recoverable),
+            "reverse_charge": bool(self.reverse_charge),
+            "tax_amount": float(self.tax_amount or 0),
+            "expense_date": self.expense_date.isoformat(),
+            "payment_method": self.payment_method,
+            "status": self.status,
         }

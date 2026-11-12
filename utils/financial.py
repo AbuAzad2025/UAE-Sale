@@ -48,4 +48,3 @@ def safe_decimal(raw, default=None, quantize="0.001"):
         return parse_decimal(raw, quantize=quantize, allow_none=(default is None))
     except ValidationError:
         return default
-PYEOF

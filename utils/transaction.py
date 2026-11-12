@@ -58,4 +58,3 @@ def atomic(func):
             return func(*args, **kwargs)
 
     return wrapper
-PYEOF

@@ -216,7 +216,9 @@ class TestGroqCache:
     def test_cache_disabled_in_testing_env(self, monkeypatch):
         from services import ai_cache
 
-        assert ai_cache.enabled() is False  # APP_ENV=testing in test runs
+        # Ensure APP_ENV=testing so the cache is disabled (CI may use development)
+        monkeypatch.setenv("APP_ENV", "testing")
+        assert ai_cache.enabled() is False
         monkeypatch.setenv("APP_ENV", "production")
         monkeypatch.delenv("AI_CACHE_ENABLED", raising=False)
         assert ai_cache.enabled() is True

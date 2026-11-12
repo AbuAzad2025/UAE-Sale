@@ -3429,54 +3429,160 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
                 'error': 'لم أستطع فهم هيكل الملف. تأكد من وجود أعمدة: الاسم، رقم القطعة، السعر'
             }
 
-        warehouse = get_owned_or_404(Warehouse, warehouse_id, code=404)
-        if not warehouse.is_active:
-            return {'success': False, 'error': f'المستودع #{warehouse_id} غير نشط'}
+        if not warehouse_id:
+            warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
+            if not warehouse:
+                warehouse = Warehouse.query.filter_by(is_active=True).first()
+            if not warehouse:
+                warehouse = Warehouse(name='Main Warehouse', name_ar='المستودع الرئيسي',
+                                     is_active=True, is_main=True)
+                db.session.add(warehouse)
+                db.session.flush()
+            warehouse_id = warehouse.id
+        else:
+            warehouse = get_owned_or_404(Warehouse, warehouse_id, code=404)
+            if not warehouse.is_active:
+                return {'success': False, 'error': f'المستودع #{warehouse_id} غير نشط'}
 
         products_created = 0
         products_updated = 0
         errors = []
         no_cost_warning = False
 
+        def _cell(key, default=None):
+            col = column_mapping.get(key)
+            if col is None or col not in row:
+                return default
+            val = row[col]
+            if pd.isna(val):
+                return default
+            if isinstance(val, str):
+                val = val.strip()
+                if val == '' or val.lower() == 'nan':
+                    return default
+            return val
+
+        def _flt(val, default=0.0):
+            if val is None:
+                return default
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+
+        def _int(val, default=0):
+            if val is None:
+                return default
+            try:
+                return int(float(val))
+            except (ValueError, TypeError):
+                return default
+
         for index, row in df.iterrows():
             try:
-                name = str(row[column_mapping['name']]).strip()
-                part_number = str(row[column_mapping['part_number']]).strip()
-                price = float(row[column_mapping['price']])
-
-                if 'quantity' in column_mapping and column_mapping['quantity'] in row:
-                    quantity_val = row[column_mapping['quantity']]
-                    if pd.isna(quantity_val) or quantity_val == '':
-                        quantity = 0
-                    else:
-                        quantity = int(float(quantity_val))
-                else:
-                    quantity = 0
-
-                if not name or name == 'nan' or part_number == 'nan':
+                name = str(_cell('name', '') or '').strip()
+                part_number_raw = _cell('part_number', None)
+                part_number = str(part_number_raw).strip() if part_number_raw is not None else ''
+                if not name or name.lower() == 'nan' or name.lower() == 'none':
                     continue
+                # Skip note/header-like rows (no valid part number and name looks like a note)
+                if not part_number or part_number.lower() in ('nan', 'none', ''):
+                    # Allow products without part_number only if name doesn't look like a note
+                    if name[:2].rstrip('.').isdigit() or 'ملاحظ' in name or 'note' in name.lower():
+                        continue
+                    part_number = None
 
-                existing_product = Product.query.filter_by(part_number=part_number).first()
+                price = _flt(_cell('price'), 0.0)
+                cost_price = _flt(_cell('cost_price'), None)
+                if cost_price is None:
+                    cost_price = 0.0
+                quantity = _int(_cell('quantity'), 0)
+                min_stock_alert = _flt(_cell('min_stock_alert'), 0.0)
+                name_ar = _cell('name_ar')
+                barcode = _cell('barcode')
+                unit = _cell('unit')
+                location = _cell('location')
+                description = _cell('description')
+                tax_treatment = _cell('tax_treatment')
+                if tax_treatment is not None:
+                    tax_treatment = str(tax_treatment).strip().lower()
+                    if tax_treatment not in ('standard', 'zero', 'exempt'):
+                        tax_treatment = 'standard'
+                else:
+                    tax_treatment = 'standard'
+                merchant_price = _flt(_cell('merchant_price'), None)
+                partner_price = _flt(_cell('partner_price'), None)
+
+                category_name = _cell('category')
+                category_id = None
+                if category_name:
+                    category_name = str(category_name).strip()
+                    from models import ProductCategory
+                    cat = ProductCategory.query.filter(
+                        db.func.lower(ProductCategory.name) == category_name.lower()
+                    ).first()
+                    if cat is None:
+                        cat = ProductCategory(name=category_name, name_ar=category_name, is_active=True)
+                        db.session.add(cat)
+                        db.session.flush()
+                    category_id = cat.id
+
+                existing_product = None
+                if part_number:
+                    existing_product = Product.query.filter_by(part_number=part_number).first()
+                if existing_product is None and barcode:
+                    existing_product = Product.query.filter_by(barcode=barcode).first()
 
                 if existing_product:
                     existing_product.regular_price = price
+                    if cost_price and cost_price > 0:
+                        existing_product.cost_price = cost_price
+                    if name_ar:
+                        existing_product.name_ar = name_ar
+                    if barcode:
+                        existing_product.barcode = barcode
+                    if unit:
+                        existing_product.unit = str(unit).strip()
+                    if location:
+                        existing_product.location = str(location).strip()
+                    if description:
+                        existing_product.description = str(description).strip()
+                    if tax_treatment:
+                        existing_product.tax_treatment = tax_treatment
+                    if min_stock_alert is not None:
+                        existing_product.min_stock_alert = min_stock_alert
+                    if merchant_price is not None:
+                        existing_product.merchant_price = merchant_price
+                    if partner_price is not None:
+                        existing_product.partner_price = partner_price
+                    if category_id is not None:
+                        existing_product.category_id = category_id
                     products_updated += 1
                     product = existing_product
                 else:
                     product = Product(
                         name=name,
+                        name_ar=name_ar,
                         part_number=part_number,
+                        barcode=barcode or None,
                         regular_price=price,
-                        cost_price=0,
+                        cost_price=cost_price,
                         current_stock=0,
-                        is_active=True
+                        min_stock_alert=min_stock_alert,
+                        unit=str(unit).strip() if unit else None,
+                        location=str(location).strip() if location else None,
+                        description=str(description).strip() if description else None,
+                        tax_treatment=tax_treatment,
+                        merchant_price=merchant_price,
+                        partner_price=partner_price,
+                        category_id=category_id,
+                        is_active=True,
                     )
                     db.session.add(product)
                     db.session.flush()
                     products_created += 1
 
                 # Stock movement so average_cost and warehouse stay consistent
-                # with the manual create flow (StockService.create_movement).
                 if quantity and quantity > 0:
                     try:
                         StockService.create_movement(
@@ -3487,11 +3593,11 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
                             reference_id=product.id,
                             notes=f'استيراد Excel — {name}',
                             warehouse_id=warehouse_id,
+                            unit_cost_base=cost_price if cost_price and cost_price > 0 else None,
                         )
                     except Exception as _mv_err:
                         current_app.logger.warning(
                             f'Excel import stock movement failed for {name}: {_mv_err}')
-                        # Fallback: at least keep current_stock in sync
                         product.current_stock = (product.current_stock or 0) + quantity
 
                 if not product.cost_price:
@@ -3546,26 +3652,62 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
 
 
 def _intelligent_column_detector(df):
-    """كاشف ذكي لأعمدة Excel - يفهم أي تسمية"""
+    """كاشف ذكي لأعمدة Excel - يفهم أي تسمية (عربي/إنجليزي)"""
     column_mapping = {}
 
+    # More specific keywords first to avoid collisions (e.g. cost vs price)
+    name_ar_keywords = ['اسم_ar', 'name_ar', 'arabic', 'عربي', 'اسم عربي']
     name_keywords = ['اسم', 'name', 'product', 'منتج', 'item', 'description', 'وصف']
-    part_keywords = ['رقم', 'part', 'code', 'كود', 'sku', 'id', 'reference', 'مرجع']
-    price_keywords = ['سعر', 'price', 'cost', 'تكلفة', 'value', 'قيمة', 'amount', 'مبلغ']
+    part_keywords = ['رقم', 'part', 'code', 'كود', 'sku', 'reference', 'مرجع']
+    barcode_keywords = ['باركود', 'barcode', 'bar_code']
+    price_keywords = ['سعر', 'price', 'value', 'قيمة', 'amount', 'مبلغ']
+    cost_keywords = ['تكلفة', 'cost', 'cost_price']
+    merchant_price_keywords = ['تاجر', 'merchant', 'merchant_price', 'سعر تاجر', 'سعر التاجر']
+    partner_price_keywords = ['شريك', 'partner', 'partner_price', 'سعر شريك', 'سعر الشريك']
     quantity_keywords = ['كمية', 'qty', 'quantity', 'stock', 'مخزون', 'عدد', 'count']
+    min_stock_keywords = ['حد أدنى', 'min_stock', 'alert', 'تنبيه', 'أدنى', 'minimum', 'min_']
+    unit_keywords = ['وحدة', 'unit']
+    category_keywords = ['تصنيف', 'category', 'فئة', 'class']
+    tax_keywords = ['ضريبة', 'tax', 'treatment', 'معاملة']
+    location_keywords = ['موقع', 'location', 'مكان', 'مستودع']
+    description_keywords = ['وصف', 'description', 'notes', 'ملاحظات', 'note']
 
-    columns_lower = [str(col).lower() for col in df.columns]
+    columns_lower = [str(col).lower().strip() for col in df.columns]
 
     for idx, col in enumerate(columns_lower):
-        if any(keyword in col for keyword in name_keywords):
+        # Specific first
+        if any(k in col for k in name_ar_keywords):
+            column_mapping['name_ar'] = df.columns[idx]
+        elif any(k in col for k in barcode_keywords):
+            column_mapping['barcode'] = df.columns[idx]
+        elif any(k in col for k in cost_keywords):
+            column_mapping['cost_price'] = df.columns[idx]
+        elif any(k in col for k in merchant_price_keywords):
+            column_mapping['merchant_price'] = df.columns[idx]
+        elif any(k in col for k in partner_price_keywords):
+            column_mapping['partner_price'] = df.columns[idx]
+        elif any(k in col for k in tax_keywords):
+            column_mapping['tax_treatment'] = df.columns[idx]
+        elif any(k in col for k in location_keywords):
+            column_mapping['location'] = df.columns[idx]
+        elif any(k in col for k in unit_keywords):
+            column_mapping['unit'] = df.columns[idx]
+        elif any(k in col for k in min_stock_keywords):
+            column_mapping['min_stock_alert'] = df.columns[idx]
+        elif any(k in col for k in category_keywords):
+            column_mapping['category'] = df.columns[idx]
+        elif any(k in col for k in description_keywords):
+            column_mapping['description'] = df.columns[idx]
+        elif any(k in col for k in name_keywords):
             column_mapping['name'] = df.columns[idx]
-        elif any(keyword in col for keyword in part_keywords):
+        elif any(k in col for k in part_keywords):
             column_mapping['part_number'] = df.columns[idx]
-        elif any(keyword in col for keyword in price_keywords):
+        elif any(k in col for k in price_keywords):
             column_mapping['price'] = df.columns[idx]
-        elif any(keyword in col for keyword in quantity_keywords):
+        elif any(k in col for k in quantity_keywords):
             column_mapping['quantity'] = df.columns[idx]
 
+    # Fallbacks for required columns
     if 'name' not in column_mapping and len(df.columns) > 0:
         column_mapping['name'] = df.columns[0]
     if 'part_number' not in column_mapping and len(df.columns) > 1:
@@ -3575,7 +3717,11 @@ def _intelligent_column_detector(df):
     if 'quantity' not in column_mapping and len(df.columns) > 3:
         column_mapping['quantity'] = df.columns[3]
 
-    return column_mapping if len(column_mapping) >= 3 else None
+    # Need at least name + part_number + price
+    required = {'name', 'part_number', 'price'}
+    if not required.issubset(column_mapping.keys()):
+        return None
+    return column_mapping
 
 
 def _train_ai_from_excel(df, created, updated, user_id):

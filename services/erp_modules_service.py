@@ -407,6 +407,26 @@ class PurchaseOrderService:
         else:
             po.status = 'partially_received'
 
+        db.session.flush()
+
+        # Stock movement + GL — mirror /purchases/create so the received
+        # goods actually land in inventory and the ledger.
+        from services.stock_service import StockService
+        StockService.process_purchase_lines(purchase, po.warehouse_id)
+
+        from services.purchase_gl import build_purchase_gl_lines
+        from services.gl_service import GLService
+        GLService.ensure_core_accounts()
+        gl_lines = build_purchase_gl_lines(purchase)
+        GLService.post_entry(
+            gl_lines,
+            description=f'Purchase {purchase.purchase_number}',
+            reference_type='Purchase',
+            reference_id=purchase.id,
+            currency=purchase.currency,
+            exchange_rate=purchase.exchange_rate,
+        )
+
         db.session.commit()
         return purchase
 

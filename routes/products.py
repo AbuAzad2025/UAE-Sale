@@ -14,6 +14,7 @@ from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Product, ProductCategory, Customer, ProductPartner
 from utils.decorators import permission_required, get_owned_or_404
+from utils.errors import ValidationError
 
 from utils.helpers import (
     create_audit_log,
@@ -218,13 +219,15 @@ def create():  # noqa: C901
                     sku = generate_sku()
 
                 # تحويل الأسعار إلى float مع التعامل مع القيم الفارغة
+                from utils.financial import parse_decimal as _pd
+
                 def safe_float(value, default=0.0):
-                    if not value or value.strip() == "":
+                    if not value or (isinstance(value, str) and value.strip() == ""):
                         return default
                     try:
-                        return float(value)
-                    except (ValueError, TypeError):
-                        return default
+                        return float(_pd(value, quantize="0.001"))
+                    except Exception:
+                        raise ValidationError("قيمة غير صالحة")
 
                 warehouse_id = request.form.get("warehouse_id", type=int)
                 current_stock = safe_float(request.form.get("current_stock"))

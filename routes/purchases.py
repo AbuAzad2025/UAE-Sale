@@ -181,7 +181,11 @@ def create():  # noqa: C901
                 explicit=request.form.get("due_date"),
             )
 
-            line_count = int(request.form.get("line_count", 0))
+            try:
+                line_count = int(request.form.get("line_count", 0))
+            except (ValueError, TypeError):
+                flash("⚠️ عدد الأسطر غير صالح.", "danger")
+                return redirect(url_for("purchases.create"))
             current_app.logger.info(f"Processing {line_count} lines")
 
             # طباعة جميع البيانات المرسلة

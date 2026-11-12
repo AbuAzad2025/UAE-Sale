@@ -2,6 +2,7 @@
 Health Check Service - خدمة فحص صحة النظام
 مراقبة صحة النظام والخدمات المختلفة
 """
+
 from datetime import datetime, timezone
 from extensions import db
 from models import PaymentVault
@@ -26,40 +27,26 @@ class HealthCheckService:
         """فحص محرك الذكاء الاصطناعي"""
         try:
             from services.ai_service import AIService
+
             # مجرد فحص أن المحرك يمكن تهيئته
             neural = AIService.get_neural_engine()
             # فحص بسيط أن المحرك يستجيب
-            if hasattr(neural, 'predict_cash_flow'):
-                return {
-                    'status': 'healthy',
-                    'message': 'AI engine initialized'
-                }
-            return {
-                'status': 'warning',
-                'message': 'AI engine partially initialized'
-            }
+            if hasattr(neural, "predict_cash_flow"):
+                return {"status": "healthy", "message": "AI engine initialized"}
+            return {"status": "warning", "message": "AI engine partially initialized"}
         except Exception as e:
-            logger.error(f'AI engine health check failed: {str(e)}')
-            return {
-                'status': 'unhealthy',
-                'message': f'AI engine error: {str(e)}'
-            }
+            logger.error(f"AI engine health check failed: {str(e)}")
+            return {"status": "unhealthy", "message": f"AI engine error: {str(e)}"}
 
     @staticmethod
     def check_database():
         """فحص الاتصال بقاعدة البيانات"""
         try:
-            db.session.execute(db.text('SELECT 1'))
-            return {
-                'status': 'healthy',
-                'message': 'Database connection OK'
-            }
+            db.session.execute(db.text("SELECT 1"))
+            return {"status": "healthy", "message": "Database connection OK"}
         except Exception as e:
-            logger.error(f'Database health check failed: {str(e)}')
-            return {
-                'status': 'unhealthy',
-                'message': f'Database error: {str(e)}'
-            }
+            logger.error(f"Database health check failed: {str(e)}")
+            return {"status": "unhealthy", "message": f"Database error: {str(e)}"}
 
     @staticmethod
     def check_nowpayments():
@@ -67,27 +54,18 @@ class HealthCheckService:
         try:
             vault = PaymentVault.query.first()
             if not vault:
-                return {
-                    'status': 'warning',
-                    'message': 'Payment vault not initialized'
-                }
+                return {"status": "warning", "message": "Payment vault not initialized"}
 
             if vault.nowpayments_api_key and vault.bitcoin_address:
-                return {
-                    'status': 'healthy',
-                    'message': 'NOWPayments configured'
-                }
+                return {"status": "healthy", "message": "NOWPayments configured"}
             else:
                 return {
-                    'status': 'warning',
-                    'message': 'NOWPayments not fully configured'
+                    "status": "warning",
+                    "message": "NOWPayments not fully configured",
                 }
         except Exception as e:
-            logger.error(f'NOWPayments health check failed: {str(e)}')
-            return {
-                'status': 'unhealthy',
-                'message': f'Error: {str(e)}'
-            }
+            logger.error(f"NOWPayments health check failed: {str(e)}")
+            return {"status": "unhealthy", "message": f"Error: {str(e)}"}
 
     @staticmethod
     def check_encryption():
@@ -95,24 +73,16 @@ class HealthCheckService:
         try:
             # التحقق من إمكانية التشفير
             from werkzeug.security import generate_password_hash
-            test_hash = generate_password_hash('test')
+
+            test_hash = generate_password_hash("test")
 
             if test_hash:
-                return {
-                    'status': 'healthy',
-                    'message': 'Encryption system OK'
-                }
+                return {"status": "healthy", "message": "Encryption system OK"}
             else:
-                return {
-                    'status': 'unhealthy',
-                    'message': 'Encryption test failed'
-                }
+                return {"status": "unhealthy", "message": "Encryption test failed"}
         except Exception as e:
-            logger.error(f'Encryption health check failed: {str(e)}')
-            return {
-                'status': 'unhealthy',
-                'message': f'Error: {str(e)}'
-            }
+            logger.error(f"Encryption health check failed: {str(e)}")
+            return {"status": "unhealthy", "message": f"Error: {str(e)}"}
 
     @staticmethod
     def check_system_resources():
@@ -121,7 +91,7 @@ class HealthCheckService:
             cpu_percent = psutil.cpu_percent(interval=1)
             memory = psutil.virtual_memory()
 
-            status = 'healthy'
+            status = "healthy"
             warnings = []
 
             # Cross-platform disk probe: never raises — degrades to unknown.
@@ -130,37 +100,34 @@ class HealthCheckService:
                 disk = psutil.disk_usage(_disk_root())
                 disk_percent = disk.percent
             except Exception as disk_exc:
-                logger.warning(f'Disk usage check failed on {_disk_root()}: {disk_exc}')
+                logger.warning(f"Disk usage check failed on {_disk_root()}: {disk_exc}")
 
             if cpu_percent > 90:
-                status = 'warning'
-                warnings.append(f'High CPU usage: {cpu_percent}%')
+                status = "warning"
+                warnings.append(f"High CPU usage: {cpu_percent}%")
 
             if memory.percent > 90:
-                status = 'warning'
-                warnings.append(f'High memory usage: {memory.percent}%')
+                status = "warning"
+                warnings.append(f"High memory usage: {memory.percent}%")
 
             if disk_percent is None:
-                if status == 'healthy':
-                    status = 'unknown'
-                warnings.append('Disk usage unavailable')
+                if status == "healthy":
+                    status = "unknown"
+                warnings.append("Disk usage unavailable")
             elif disk_percent > 90:
-                status = 'warning'
-                warnings.append(f'Low disk space: {disk_percent}% used')
+                status = "warning"
+                warnings.append(f"Low disk space: {disk_percent}% used")
 
             return {
-                'status': status,
-                'cpu_percent': cpu_percent,
-                'memory_percent': memory.percent,
-                'disk_percent': disk_percent,
-                'warnings': warnings if warnings else None
+                "status": status,
+                "cpu_percent": cpu_percent,
+                "memory_percent": memory.percent,
+                "disk_percent": disk_percent,
+                "warnings": warnings if warnings else None,
             }
         except Exception as e:
-            logger.error(f'System resources check failed: {str(e)}')
-            return {
-                'status': 'unknown',
-                'message': f'Error: {str(e)}'
-            }
+            logger.error(f"System resources check failed: {str(e)}")
+            return {"status": "unknown", "message": f"Error: {str(e)}"}
 
     @staticmethod
     def get_system_metrics():
@@ -178,47 +145,52 @@ class HealthCheckService:
             memory_info = process.memory_info()
 
             return {
-                'database': {
-                    'total_donations': total_donations,
-                    'total_purchases': total_purchases,
-                    'total_cards': total_cards
+                "database": {
+                    "total_donations": total_donations,
+                    "total_purchases": total_purchases,
+                    "total_cards": total_cards,
                 },
-                'process': {
-                    'memory_mb': round(memory_info.rss / 1024 / 1024, 2),
-                    'cpu_percent': process.cpu_percent(interval=0.1),
-                    'threads': process.num_threads(),
-                    'uptime_seconds': int((datetime.now() - datetime.fromtimestamp(process.create_time())).total_seconds())
+                "process": {
+                    "memory_mb": round(memory_info.rss / 1024 / 1024, 2),
+                    "cpu_percent": process.cpu_percent(interval=0.1),
+                    "threads": process.num_threads(),
+                    "uptime_seconds": int(
+                        (
+                            datetime.now()
+                            - datetime.fromtimestamp(process.create_time())
+                        ).total_seconds()
+                    ),
                 },
-                'timestamp': datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         except Exception as e:
-            logger.error(f'Failed to get system metrics: {str(e)}')
-            return {'error': str(e)}
+            logger.error(f"Failed to get system metrics: {str(e)}")
+            return {"error": str(e)}
 
     @staticmethod
     def run_full_health_check():
         """تشغيل فحص صحة شامل"""
         checks = {
-            'database': HealthCheckService.check_database(),
-            'nowpayments': HealthCheckService.check_nowpayments(),
-            'encryption': HealthCheckService.check_encryption(),
-            'system': HealthCheckService.check_system_resources(),
-            'ai_engine': HealthCheckService.check_ai_engine()
+            "database": HealthCheckService.check_database(),
+            "nowpayments": HealthCheckService.check_nowpayments(),
+            "encryption": HealthCheckService.check_encryption(),
+            "system": HealthCheckService.check_system_resources(),
+            "ai_engine": HealthCheckService.check_ai_engine(),
         }
 
         # تحديد الحالة العامة — 'unknown' is never healthy: a probe that
         # could not determine health degrades the overall status to warning.
-        statuses = [check['status'] for check in checks.values()]
+        statuses = [check["status"] for check in checks.values()]
 
-        if 'unhealthy' in statuses:
-            overall_status = 'unhealthy'
-        elif 'warning' in statuses or 'unknown' in statuses:
-            overall_status = 'warning'
+        if "unhealthy" in statuses:
+            overall_status = "unhealthy"
+        elif "warning" in statuses or "unknown" in statuses:
+            overall_status = "warning"
         else:
-            overall_status = 'healthy'
+            overall_status = "healthy"
 
         return {
-            'overall_status': overall_status,
-            'checks': checks,
-            'timestamp': datetime.now(timezone.utc).isoformat()
+            "overall_status": overall_status,
+            "checks": checks,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }

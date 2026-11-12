@@ -1,16 +1,32 @@
 from decimal import Decimal, ROUND_HALF_UP
 from io import BytesIO
-from flask import Blueprint, render_template, request, jsonify, make_response, abort, current_app
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    jsonify,
+    make_response,
+    abort,
+    current_app,
+)
 from flask_login import login_required, current_user
 from werkzeug.exceptions import HTTPException
 from sqlalchemy import func
 from extensions import db
-from models import Sale, SaleLine, Purchase, Product, Customer, ProductPartner, StockMovement
+from models import (
+    Sale,
+    SaleLine,
+    Purchase,
+    Product,
+    Customer,
+    ProductPartner,
+    StockMovement,
+)
 from utils.decorators import permission_required, get_owned_or_404
 from utils.helpers import create_audit_log
 from services.costing_service import CostingService
 
-reports_bp = Blueprint('reports', __name__, url_prefix='/reports')
+reports_bp = Blueprint("reports", __name__, url_prefix="/reports")
 
 # ═══════════════════════════════════════════════════════════════════════════
 # مساعدات مشتركة مع دفتر الأستاذ (نفس مصدر البيانات ⇒ نفس الأرقام)
@@ -28,58 +44,110 @@ from routes.ledger import (  # noqa: E402  (استيراد بعد تعريف Blu
 # نموذج. أي عمود غير مذكور هنا لا يُعرض أبداً — حتى لو أُضيف عمود جديد
 # إلى النموذج لاحقاً، فلا يظهر قبل مراجعته هنا.
 _REPORT_FIELD_ALLOWLIST = {
-    'sales': (
-        'sale_number', 'sale_date', 'customer_id', 'seller_id', 'warehouse_id',
-        'subtotal', 'discount_amount', 'shipping_cost', 'tax_rate', 'tax_amount',
-        'total_amount', 'paid_amount', 'balance_due', 'currency', 'exchange_rate',
-        'amount_base', 'paid_amount_base', 'payment_status', 'status',
+    "sales": (
+        "sale_number",
+        "sale_date",
+        "customer_id",
+        "seller_id",
+        "warehouse_id",
+        "subtotal",
+        "discount_amount",
+        "shipping_cost",
+        "tax_rate",
+        "tax_amount",
+        "total_amount",
+        "paid_amount",
+        "balance_due",
+        "currency",
+        "exchange_rate",
+        "amount_base",
+        "paid_amount_base",
+        "payment_status",
+        "status",
     ),
-    'purchases': (
-        'purchase_number', 'purchase_date', 'supplier_id', 'warehouse_id',
-        'supplier_name', 'supplier_phone', 'supplier_email', 'subtotal',
-        'discount_amount', 'tax_rate', 'tax_amount', 'total_amount',
-        'paid_amount', 'currency', 'exchange_rate', 'amount_base',
-        'payment_status', 'status',
+    "purchases": (
+        "purchase_number",
+        "purchase_date",
+        "supplier_id",
+        "warehouse_id",
+        "supplier_name",
+        "supplier_phone",
+        "supplier_email",
+        "subtotal",
+        "discount_amount",
+        "tax_rate",
+        "tax_amount",
+        "total_amount",
+        "paid_amount",
+        "currency",
+        "exchange_rate",
+        "amount_base",
+        "payment_status",
+        "status",
     ),
-    'products': (
-        'name', 'name_ar', 'description', 'sku', 'part_number', 'barcode',
-        'country_of_origin', 'category_id', 'merchant_customer_id',
-        'regular_price', 'merchant_price', 'merchant_share', 'partner_price',
-        'current_stock', 'min_stock_alert', 'unit', 'location', 'is_active',
+    "products": (
+        "name",
+        "name_ar",
+        "description",
+        "sku",
+        "part_number",
+        "barcode",
+        "country_of_origin",
+        "category_id",
+        "merchant_customer_id",
+        "regular_price",
+        "merchant_price",
+        "merchant_share",
+        "partner_price",
+        "current_stock",
+        "min_stock_alert",
+        "unit",
+        "location",
+        "is_active",
     ),
-    'customers': (
-        'name', 'name_ar', 'commercial_name', 'customer_type',
-        'customer_classification', 'phone', 'email', 'address', 'tax_number',
-        'preferred_currency', 'credit_limit', 'total_purchases', 'balance',
-        'is_active',
+    "customers": (
+        "name",
+        "name_ar",
+        "commercial_name",
+        "customer_type",
+        "customer_classification",
+        "phone",
+        "email",
+        "address",
+        "tax_number",
+        "preferred_currency",
+        "credit_limit",
+        "total_purchases",
+        "balance",
+        "is_active",
     ),
 }
 
 # أعمدة التكلفة — تُضاف فقط لمن يملك صلاحية view_costs
 _REPORT_COST_FIELDS = {
-    'products': ('cost_price', 'average_cost'),
+    "products": ("cost_price", "average_cost"),
 }
 
 
-@reports_bp.route('/')
+@reports_bp.route("/")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def index():
-    return render_template('reports/index.html')
+    return render_template("reports/index.html")
 
 
-@reports_bp.route('/quotation-pipeline')
+@reports_bp.route("/quotation-pipeline")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def quotation_pipeline():
     """تقرير خط أنابيب عروض الأسعار — Quotation Pipeline / Funnel."""
-    from models.erp_modules import Quotation, QuotationLine
+    from models.erp_modules import Quotation
     from models import Customer
     from sqlalchemy import func
-    from datetime import date, timedelta
+    from datetime import timedelta
 
-    date_from = request.args.get('date_from', '', type=str)
-    date_to = request.args.get('date_to', '', type=str)
+    date_from = request.args.get("date_from", "", type=str)
+    date_to = request.args.get("date_to", "", type=str)
 
     base = Quotation.query.filter_by(is_active=True)
     if date_from:
@@ -90,8 +158,8 @@ def quotation_pipeline():
     # Status counts + values
     status_rows = db.session.query(
         Quotation.status,
-        func.count(Quotation.id).label('cnt'),
-        func.coalesce(func.sum(Quotation.total_amount), 0).label('value'),
+        func.count(Quotation.id).label("cnt"),
+        func.coalesce(func.sum(Quotation.total_amount), 0).label("value"),
     ).filter(Quotation.is_active.is_(True))
     if date_from:
         status_rows = status_rows.filter(Quotation.quotation_date >= date_from)
@@ -99,42 +167,64 @@ def quotation_pipeline():
         status_rows = status_rows.filter(Quotation.quotation_date <= date_to)
     status_rows = status_rows.group_by(Quotation.status).all()
 
-    status_map = {r.status: {'count': r.cnt, 'value': float(r.value or 0)} for r in status_rows}
-    statuses = ['draft', 'sent', 'accepted', 'rejected', 'expired', 'converted']
-    status_labels = {'draft': 'مسودة', 'sent': 'مرسلة', 'accepted': 'مقبولة',
-                     'rejected': 'مرفوضة', 'expired': 'منتهية', 'converted': 'محولة'}
+    status_map = {
+        r.status: {"count": r.cnt, "value": float(r.value or 0)} for r in status_rows
+    }
+    statuses = ["draft", "sent", "accepted", "rejected", "expired", "converted"]
+    status_labels = {
+        "draft": "مسودة",
+        "sent": "مرسلة",
+        "accepted": "مقبولة",
+        "rejected": "مرفوضة",
+        "expired": "منتهية",
+        "converted": "محولة",
+    }
     pipeline = []
     total_count = 0
     total_value = 0.0
     for s in statuses:
-        info = status_map.get(s, {'count': 0, 'value': 0.0})
-        pipeline.append({'status': s, 'label': status_labels.get(s, s),
-                         'count': info['count'], 'value': info['value']})
-        total_count += info['count']
-        total_value += info['value']
+        info = status_map.get(s, {"count": 0, "value": 0.0})
+        pipeline.append(
+            {
+                "status": s,
+                "label": status_labels.get(s, s),
+                "count": info["count"],
+                "value": info["value"],
+            }
+        )
+        total_count += info["count"]
+        total_value += info["value"]
 
     # Conversion rate
-    accepted = status_map.get('accepted', {}).get('count', 0) + status_map.get('converted', {}).get('count', 0)
+    accepted = status_map.get("accepted", {}).get("count", 0) + status_map.get(
+        "converted", {}
+    ).get("count", 0)
     conversion_rate = (accepted / total_count * 100) if total_count else 0.0
 
     # Top customers by quotation value
-    top_customers = db.session.query(
-        Customer.name,
-        func.count(Quotation.id).label('cnt'),
-        func.coalesce(func.sum(Quotation.total_amount), 0).label('value'),
-    ).join(Quotation, Quotation.customer_id == Customer.id).filter(
-        Quotation.is_active.is_(True)
+    top_customers = (
+        db.session.query(
+            Customer.name,
+            func.count(Quotation.id).label("cnt"),
+            func.coalesce(func.sum(Quotation.total_amount), 0).label("value"),
+        )
+        .join(Quotation, Quotation.customer_id == Customer.id)
+        .filter(Quotation.is_active.is_(True))
     )
     if date_from:
         top_customers = top_customers.filter(Quotation.quotation_date >= date_from)
     if date_to:
         top_customers = top_customers.filter(Quotation.quotation_date <= date_to)
-    top_customers = top_customers.group_by(Customer.id, Customer.name).order_by(
-        func.sum(Quotation.total_amount).desc()
-    ).limit(10).all()
+    top_customers = (
+        top_customers.group_by(Customer.id, Customer.name)
+        .order_by(func.sum(Quotation.total_amount).desc())
+        .limit(10)
+        .all()
+    )
 
     # Monthly trend (last 6 months)
     from datetime import date as _d
+
     today = _d.today()
     monthly = []
     for m in range(5, -1, -1):
@@ -154,179 +244,246 @@ def quotation_pipeline():
             Quotation.quotation_date >= month_start,
             Quotation.quotation_date < month_end,
         ).count()
-        val = db.session.query(func.coalesce(func.sum(Quotation.total_amount), 0)).filter(
-            Quotation.is_active.is_(True),
-            Quotation.quotation_date >= month_start,
-            Quotation.quotation_date < month_end,
-        ).scalar() or 0
-        monthly.append({'label': month_start.strftime('%Y-%m'), 'count': cnt, 'value': float(val)})
+        val = (
+            db.session.query(func.coalesce(func.sum(Quotation.total_amount), 0))
+            .filter(
+                Quotation.is_active.is_(True),
+                Quotation.quotation_date >= month_start,
+                Quotation.quotation_date < month_end,
+            )
+            .scalar()
+            or 0
+        )
+        monthly.append(
+            {"label": month_start.strftime("%Y-%m"), "count": cnt, "value": float(val)}
+        )
 
     # Expiring soon (within 7 days, not converted/rejected)
-    expiring = Quotation.query.filter(
-        Quotation.is_active.is_(True),
-        Quotation.status.in_(['draft', 'sent']),
-        Quotation.valid_until >= today,
-        Quotation.valid_until <= today + timedelta(days=7),
-    ).order_by(Quotation.valid_until.asc()).limit(20).all()
+    expiring = (
+        Quotation.query.filter(
+            Quotation.is_active.is_(True),
+            Quotation.status.in_(["draft", "sent"]),
+            Quotation.valid_until >= today,
+            Quotation.valid_until <= today + timedelta(days=7),
+        )
+        .order_by(Quotation.valid_until.asc())
+        .limit(20)
+        .all()
+    )
 
-    return render_template('reports/quotation_pipeline.html',
-                           pipeline=pipeline,
-                           total_count=total_count,
-                           total_value=total_value,
-                           conversion_rate=conversion_rate,
-                           top_customers=top_customers,
-                           monthly=monthly,
-                           expiring=expiring,
-                           date_from=date_from,
-                           date_to=date_to)
+    return render_template(
+        "reports/quotation_pipeline.html",
+        pipeline=pipeline,
+        total_count=total_count,
+        total_value=total_value,
+        conversion_rate=conversion_rate,
+        top_customers=top_customers,
+        monthly=monthly,
+        expiring=expiring,
+        date_from=date_from,
+        date_to=date_to,
+    )
 
 
-@reports_bp.route('/partners')
+@reports_bp.route("/partners")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def partners():  # noqa: C901
     """تقرير الشركاء والمنتجات التابعة للتجار"""
     from models import Payment, Receipt, Supplier
 
-    date_from = request.args.get('date_from', '', type=str)
-    date_to = request.args.get('date_to', '', type=str)
+    date_from = request.args.get("date_from", "", type=str)
+    date_to = request.args.get("date_to", "", type=str)
 
     # --- 1. PRODUCT SHARES CALCULATION (aggregated at DB level) ---
     # Aggregate sales per product in a single query
-    partner_sales_agg = db.session.query(
-        SaleLine.product_id,
-        func.sum(SaleLine.line_total).label('total_revenue'),
-        func.sum(SaleLine.quantity).label('total_qty')
-    ).join(Sale).filter(
-        Sale.status == 'confirmed'
+    partner_sales_agg = (
+        db.session.query(
+            SaleLine.product_id,
+            func.sum(SaleLine.line_total).label("total_revenue"),
+            func.sum(SaleLine.quantity).label("total_qty"),
+        )
+        .join(Sale)
+        .filter(Sale.status == "confirmed")
     )
     if date_from:
-        partner_sales_agg = partner_sales_agg.filter(func.date(Sale.sale_date) >= date_from)
+        partner_sales_agg = partner_sales_agg.filter(
+            func.date(Sale.sale_date) >= date_from
+        )
     if date_to:
-        partner_sales_agg = partner_sales_agg.filter(func.date(Sale.sale_date) <= date_to)
+        partner_sales_agg = partner_sales_agg.filter(
+            func.date(Sale.sale_date) <= date_to
+        )
     partner_sales_agg = partner_sales_agg.group_by(SaleLine.product_id).all()
-    agg_dict = {r.product_id: (r.total_revenue or Decimal('0'), r.total_qty or 0) for r in partner_sales_agg}
+    agg_dict = {
+        r.product_id: (r.total_revenue or Decimal("0"), r.total_qty or 0)
+        for r in partner_sales_agg
+    }
 
-    partner_products = Product.query.join(ProductPartner).filter(Product.is_active == True).distinct().all()
+    partner_products = (
+        Product.query.join(ProductPartner)
+        .filter(Product.is_active == True)
+        .distinct()
+        .all()
+    )
     partners_data = []
     partner_share_totals = {}
 
     for product in partner_products:
-        total_revenue, total_qty = agg_dict.get(product.id, (Decimal('0'), 0))
+        total_revenue, total_qty = agg_dict.get(product.id, (Decimal("0"), 0))
         avg_unit_price = total_revenue / total_qty if total_qty > 0 else 0
         if total_revenue > 0:
             for share in product.partner_shares:
                 percentage = Decimal(str(share.percentage))
-                partner_amount = total_revenue * (percentage / Decimal('100'))
-                partners_data.append({
-                    'product_name': product.name,
-                    'partner_name': share.partner_customer.name,
-                    'percentage': share.percentage,
-                    'avg_unit_price': avg_unit_price,
-                    'total_qty': total_qty,
-                    'total_revenue': total_revenue,
-                    'partner_share_amount': partner_amount
-                })
+                partner_amount = total_revenue * (percentage / Decimal("100"))
+                partners_data.append(
+                    {
+                        "product_name": product.name,
+                        "partner_name": share.partner_customer.name,
+                        "percentage": share.percentage,
+                        "avg_unit_price": avg_unit_price,
+                        "total_qty": total_qty,
+                        "total_revenue": total_revenue,
+                        "partner_share_amount": partner_amount,
+                    }
+                )
                 p_id = share.partner_customer.id
-                partner_share_totals[p_id] = partner_share_totals.get(p_id, Decimal('0')) + partner_amount
+                partner_share_totals[p_id] = (
+                    partner_share_totals.get(p_id, Decimal("0")) + partner_amount
+                )
 
     # Find products linked to a merchant
     # Aggregate merchant sales at DB level
-    merchant_sales_agg = db.session.query(
-        SaleLine.product_id,
-        func.sum(SaleLine.line_total).label('total_revenue'),
-        func.sum(SaleLine.quantity).label('total_qty')
-    ).join(Sale).filter(
-        Sale.status == 'confirmed'
+    merchant_sales_agg = (
+        db.session.query(
+            SaleLine.product_id,
+            func.sum(SaleLine.line_total).label("total_revenue"),
+            func.sum(SaleLine.quantity).label("total_qty"),
+        )
+        .join(Sale)
+        .filter(Sale.status == "confirmed")
     )
     if date_from:
-        merchant_sales_agg = merchant_sales_agg.filter(func.date(Sale.sale_date) >= date_from)
+        merchant_sales_agg = merchant_sales_agg.filter(
+            func.date(Sale.sale_date) >= date_from
+        )
     if date_to:
-        merchant_sales_agg = merchant_sales_agg.filter(func.date(Sale.sale_date) <= date_to)
+        merchant_sales_agg = merchant_sales_agg.filter(
+            func.date(Sale.sale_date) <= date_to
+        )
     merchant_sales_agg = merchant_sales_agg.group_by(SaleLine.product_id).all()
-    merchant_agg_dict = {r.product_id: (r.total_revenue or Decimal('0'), r.total_qty or 0) for r in merchant_sales_agg}
+    merchant_agg_dict = {
+        r.product_id: (r.total_revenue or Decimal("0"), r.total_qty or 0)
+        for r in merchant_sales_agg
+    }
 
     merchant_products = Product.query.filter(
-        Product.merchant_customer_id.isnot(None),
-        Product.is_active.is_(True)
+        Product.merchant_customer_id.isnot(None), Product.is_active.is_(True)
     ).all()
 
     merchants_data = []
     merchant_share_totals = {}
 
     for product in merchant_products:
-        total_revenue, total_qty = merchant_agg_dict.get(product.id, (Decimal('0'), 0))
+        total_revenue, total_qty = merchant_agg_dict.get(product.id, (Decimal("0"), 0))
         avg_unit_price = total_revenue / total_qty if total_qty > 0 else 0
         if total_revenue > 0:
             merchant_percentage = float(product.merchant_share or 100)
             merchant_amount = total_revenue * (Decimal(merchant_percentage) / 100)
-            merchants_data.append({
-                'product_name': product.name,
-                'merchant_name': product.merchant_customer.name,
-                'percentage': merchant_percentage,
-                'avg_unit_price': avg_unit_price,
-                'total_qty': total_qty,
-                'total_revenue': total_revenue,
-                'merchant_share_amount': merchant_amount
-            })
+            merchants_data.append(
+                {
+                    "product_name": product.name,
+                    "merchant_name": product.merchant_customer.name,
+                    "percentage": merchant_percentage,
+                    "avg_unit_price": avg_unit_price,
+                    "total_qty": total_qty,
+                    "total_revenue": total_revenue,
+                    "merchant_share_amount": merchant_amount,
+                }
+            )
             m_id = product.merchant_customer.id
-            merchant_share_totals[m_id] = merchant_share_totals.get(m_id, Decimal('0')) + merchant_amount
+            merchant_share_totals[m_id] = (
+                merchant_share_totals.get(m_id, Decimal("0")) + merchant_amount
+            )
 
     # --- 2. FINANCIAL SUMMARIES (Partners & Merchants) ---
     # Helper to get payments/receipts
     def get_financials(customer_type, share_totals_dict):
         customers = Customer.query.filter_by(customer_type=customer_type).all()
         # Aggregate payments and receipts per customer at DB level
-        paid_agg = db.session.query(
-            Payment.customer_id,
-            func.sum(Payment.amount_base).label('paid')
-        ).filter(
-            Payment.direction == 'outgoing',
-            Payment.customer_id.in_([c.id for c in customers])
-        ).group_by(Payment.customer_id)
-        receipts_agg = db.session.query(
-            Receipt.customer_id,
-            func.sum(Receipt.amount_base).label('received')
-        ).filter(Receipt.customer_id.in_([c.id for c in customers])).group_by(Receipt.customer_id)
-        payment_in_agg = db.session.query(
-            Payment.customer_id,
-            func.sum(Payment.amount_base).label('received')
-        ).filter(
-            Payment.direction == 'incoming',
-            Payment.customer_id.in_([c.id for c in customers])
-        ).group_by(Payment.customer_id)
+        paid_agg = (
+            db.session.query(
+                Payment.customer_id, func.sum(Payment.amount_base).label("paid")
+            )
+            .filter(
+                Payment.direction == "outgoing",
+                Payment.customer_id.in_([c.id for c in customers]),
+            )
+            .group_by(Payment.customer_id)
+        )
+        receipts_agg = (
+            db.session.query(
+                Receipt.customer_id, func.sum(Receipt.amount_base).label("received")
+            )
+            .filter(Receipt.customer_id.in_([c.id for c in customers]))
+            .group_by(Receipt.customer_id)
+        )
+        payment_in_agg = (
+            db.session.query(
+                Payment.customer_id, func.sum(Payment.amount_base).label("received")
+            )
+            .filter(
+                Payment.direction == "incoming",
+                Payment.customer_id.in_([c.id for c in customers]),
+            )
+            .group_by(Payment.customer_id)
+        )
         if date_from:
             paid_agg = paid_agg.filter(func.date(Payment.payment_date) >= date_from)
-            receipts_agg = receipts_agg.filter(func.date(Receipt.receipt_date) >= date_from)
-            payment_in_agg = payment_in_agg.filter(func.date(Payment.payment_date) >= date_from)
+            receipts_agg = receipts_agg.filter(
+                func.date(Receipt.receipt_date) >= date_from
+            )
+            payment_in_agg = payment_in_agg.filter(
+                func.date(Payment.payment_date) >= date_from
+            )
         if date_to:
             paid_agg = paid_agg.filter(func.date(Payment.payment_date) <= date_to)
-            receipts_agg = receipts_agg.filter(func.date(Receipt.receipt_date) <= date_to)
-            payment_in_agg = payment_in_agg.filter(func.date(Payment.payment_date) <= date_to)
-        paid_dict = {r.customer_id: (r.paid or Decimal('0')) for r in paid_agg.all()}
-        receipts_dict = {r.customer_id: (r.received or Decimal('0')) for r in receipts_agg.all()}
-        payment_in_dict = {r.customer_id: (r.received or Decimal('0')) for r in payment_in_agg.all()}
+            receipts_agg = receipts_agg.filter(
+                func.date(Receipt.receipt_date) <= date_to
+            )
+            payment_in_agg = payment_in_agg.filter(
+                func.date(Payment.payment_date) <= date_to
+            )
+        paid_dict = {r.customer_id: (r.paid or Decimal("0")) for r in paid_agg.all()}
+        receipts_dict = {
+            r.customer_id: (r.received or Decimal("0")) for r in receipts_agg.all()
+        }
+        payment_in_dict = {
+            r.customer_id: (r.received or Decimal("0")) for r in payment_in_agg.all()
+        }
 
         summary_list = []
         for cust in customers:
-            total_paid_to = paid_dict.get(cust.id, Decimal('0'))
-            total_receipts = receipts_dict.get(cust.id, Decimal('0'))
-            total_payment_in = payment_in_dict.get(cust.id, Decimal('0'))
+            total_paid_to = paid_dict.get(cust.id, Decimal("0"))
+            total_receipts = receipts_dict.get(cust.id, Decimal("0"))
+            total_payment_in = payment_in_dict.get(cust.id, Decimal("0"))
             total_received_from = total_receipts + total_payment_in
-            total_share = share_totals_dict.get(cust.id, Decimal('0'))
+            total_share = share_totals_dict.get(cust.id, Decimal("0"))
             net_balance = (total_share + total_received_from) - total_paid_to
             if total_share > 0 or total_paid_to > 0 or total_received_from > 0:
-                summary_list.append({
-                    'name': cust.name,
-                    'total_share': total_share,
-                    'paid_to': total_paid_to,
-                    'received_from': total_received_from,
-                    'net_balance': net_balance
-                })
+                summary_list.append(
+                    {
+                        "name": cust.name,
+                        "total_share": total_share,
+                        "paid_to": total_paid_to,
+                        "received_from": total_received_from,
+                        "net_balance": net_balance,
+                    }
+                )
         return summary_list
 
-    partners_summary = get_financials('partner', partner_share_totals)
-    merchants_summary = get_financials('merchant', merchant_share_totals)
+    partners_summary = get_financials("partner", partner_share_totals)
+    merchants_summary = get_financials("merchant", merchant_share_totals)
 
     # --- 3. SUPPLIERS SUMMARY (aggregated at DB level) ---
     suppliers = Supplier.query.filter_by(is_active=True).all()
@@ -334,73 +491,78 @@ def partners():  # noqa: C901
 
     # Aggregate purchases per supplier once
     purchase_agg = db.session.query(
-        Purchase.supplier_id,
-        func.sum(Purchase.amount_base).label('total_purchases')
-    ).filter(Purchase.status == 'confirmed')
+        Purchase.supplier_id, func.sum(Purchase.amount_base).label("total_purchases")
+    ).filter(Purchase.status == "confirmed")
     if date_from:
-        purchase_agg = purchase_agg.filter(func.date(Purchase.purchase_date) >= date_from)
+        purchase_agg = purchase_agg.filter(
+            func.date(Purchase.purchase_date) >= date_from
+        )
     if date_to:
         purchase_agg = purchase_agg.filter(func.date(Purchase.purchase_date) <= date_to)
     purchase_agg = purchase_agg.group_by(Purchase.supplier_id).all()
-    purchase_dict = {r.supplier_id: (r.total_purchases or Decimal('0')) for r in purchase_agg}
+    purchase_dict = {
+        r.supplier_id: (r.total_purchases or Decimal("0")) for r in purchase_agg
+    }
 
     # Aggregate payments per supplier once
     payment_agg = db.session.query(
-        Payment.supplier_id,
-        func.sum(Payment.amount_base).label('total_paid')
-    ).filter(Payment.direction == 'outgoing')
+        Payment.supplier_id, func.sum(Payment.amount_base).label("total_paid")
+    ).filter(Payment.direction == "outgoing")
     if date_from:
         payment_agg = payment_agg.filter(func.date(Payment.payment_date) >= date_from)
     if date_to:
         payment_agg = payment_agg.filter(func.date(Payment.payment_date) <= date_to)
     payment_agg = payment_agg.group_by(Payment.supplier_id).all()
-    paid_dict = {r.supplier_id: (r.total_paid or Decimal('0')) for r in payment_agg}
+    paid_dict = {r.supplier_id: (r.total_paid or Decimal("0")) for r in payment_agg}
 
     # Aggregate refunds per supplier once
     refund_agg = db.session.query(
-        Payment.supplier_id,
-        func.sum(Payment.amount_base).label('total_refunds')
-    ).filter(Payment.direction == 'incoming', Payment.supplier_id.isnot(None))
+        Payment.supplier_id, func.sum(Payment.amount_base).label("total_refunds")
+    ).filter(Payment.direction == "incoming", Payment.supplier_id.isnot(None))
     if date_from:
         refund_agg = refund_agg.filter(func.date(Payment.payment_date) >= date_from)
     if date_to:
         refund_agg = refund_agg.filter(func.date(Payment.payment_date) <= date_to)
     refund_agg = refund_agg.group_by(Payment.supplier_id).all()
-    refund_dict = {r.supplier_id: (r.total_refunds or Decimal('0')) for r in refund_agg}
+    refund_dict = {r.supplier_id: (r.total_refunds or Decimal("0")) for r in refund_agg}
 
     for sup in suppliers:
-        total_purchases = purchase_dict.get(sup.id, Decimal('0'))
-        total_paid_to = paid_dict.get(sup.id, Decimal('0'))
-        total_refunds = refund_dict.get(sup.id, Decimal('0'))
+        total_purchases = purchase_dict.get(sup.id, Decimal("0"))
+        total_paid_to = paid_dict.get(sup.id, Decimal("0"))
+        total_refunds = refund_dict.get(sup.id, Decimal("0"))
         net_paid = total_paid_to - total_refunds
         balance_due = total_purchases - net_paid
         if total_purchases > 0 or total_paid_to > 0 or total_refunds > 0:
-            suppliers_summary.append({
-                'name': sup.name,
-                'total_purchases': total_purchases,
-                'paid_to': total_paid_to,
-                'received_from': total_refunds,
-                'balance_due': balance_due
-            })
+            suppliers_summary.append(
+                {
+                    "name": sup.name,
+                    "total_purchases": total_purchases,
+                    "paid_to": total_paid_to,
+                    "received_from": total_refunds,
+                    "balance_due": balance_due,
+                }
+            )
 
-    return render_template('reports/partners.html',
-                           partners_data=partners_data,
-                           merchants_data=merchants_data,
-                           partners_summary=partners_summary,
-                           merchants_summary=merchants_summary,
-                           suppliers_summary=suppliers_summary)
+    return render_template(
+        "reports/partners.html",
+        partners_data=partners_data,
+        merchants_data=merchants_data,
+        partners_summary=partners_summary,
+        merchants_summary=merchants_summary,
+        suppliers_summary=suppliers_summary,
+    )
 
 
-@reports_bp.route('/sales')
+@reports_bp.route("/sales")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def sales():
-    date_from = request.args.get('date_from', '', type=str)
-    date_to = request.args.get('date_to', '', type=str)
-    customer_id = request.args.get('customer', type=int)
-    seller_id = request.args.get('seller', type=int)
+    date_from = request.args.get("date_from", "", type=str)
+    date_to = request.args.get("date_to", "", type=str)
+    customer_id = request.args.get("customer", type=int)
+    seller_id = request.args.get("seller", type=int)
 
-    query = Sale.query.filter_by(status='confirmed')
+    query = Sale.query.filter_by(status="confirmed")
 
     if date_from:
         query = query.filter(func.date(Sale.sale_date) >= date_from)
@@ -418,50 +580,50 @@ def sales():
 
     sales_list = query.order_by(Sale.sale_date.desc()).all()
 
-    total_sales = Decimal('0')
-    total_paid = Decimal('0')
-    total_due = Decimal('0')
+    total_sales = Decimal("0")
+    total_paid = Decimal("0")
+    total_due = Decimal("0")
 
     for sale in sales_list:
-        total_sales += (sale.amount_base or Decimal('0'))
-        total_paid += (sale.paid_amount_base or Decimal('0'))
-        total_due += ((sale.amount_base or Decimal('0')) - (sale.paid_amount_base or Decimal('0')))
+        total_sales += sale.amount_base or Decimal("0")
+        total_paid += sale.paid_amount_base or Decimal("0")
+        total_due += (sale.amount_base or Decimal("0")) - (
+            sale.paid_amount_base or Decimal("0")
+        )
 
-    total_profit = Decimal('0')
+    total_profit = Decimal("0")
     if current_user.can_see_costs():
         for sale in sales_list:
-            total_profit += (sale.get_profit() or Decimal('0'))
+            total_profit += sale.get_profit() or Decimal("0")
 
     summary = {
-        'sales_count': len(sales_list),
-        'total_sales_aed': float(total_sales),
-        'total_paid_aed': float(total_paid),
-        'total_pending_aed': float(total_due),
-        'total_profit': float(total_profit) if current_user.can_see_costs() else None
+        "sales_count": len(sales_list),
+        "total_sales_aed": float(total_sales),
+        "total_paid_aed": float(total_paid),
+        "total_pending_aed": float(total_due),
+        "total_profit": float(total_profit) if current_user.can_see_costs() else None,
     }
 
-    return render_template('reports/sales.html',
-                           sales=sales_list,
-                           summary=summary)
+    return render_template("reports/sales.html", sales=sales_list, summary=summary)
 
 
-@reports_bp.route('/purchases')
+@reports_bp.route("/purchases")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def purchases():  # noqa: C901
     if current_user.is_seller():
-        return render_template('errors/403.html'), 403
+        return render_template("errors/403.html"), 403
 
-    date_from = request.args.get('start_date', '', type=str)
-    date_to = request.args.get('end_date', '', type=str)
-    supplier_id = request.args.get('supplier_id', type=int)
+    date_from = request.args.get("start_date", "", type=str)
+    date_to = request.args.get("end_date", "", type=str)
+    supplier_id = request.args.get("supplier_id", type=int)
 
-    query = Purchase.query.filter_by(status='confirmed')
+    query = Purchase.query.filter_by(status="confirmed")
 
     # F3: الأرشفة تكتب صفاً في archived_records ولا تقلب is_active ولا
     # status — فالمشتريات المؤرشفة تبقى 'confirmed' وتُحتسب في التقرير.
     # لذلك الاستبعاد يجب أن يكون صريحاً (نفس فلتر routes/ledger.py).
-    query = query.filter(~Purchase.id.in_(_archived_record_ids('purchases')))
+    query = query.filter(~Purchase.id.in_(_archived_record_ids("purchases")))
 
     if date_from:
         query = query.filter(func.date(Purchase.purchase_date) >= date_from)
@@ -474,66 +636,74 @@ def purchases():  # noqa: C901
 
     purchases_list = query.order_by(Purchase.purchase_date.desc()).all()
 
-    total_amount = Decimal('0')
+    total_amount = Decimal("0")
 
     # Calculate total purchases amount
     for p in purchases_list:
-        amount = p.amount_base or Decimal('0')
+        amount = p.amount_base or Decimal("0")
         total_amount += amount
         # Add dummy attributes for template compatibility if not present
-        if not hasattr(p, 'paid_amount'):
-            p.paid_amount = Decimal('0')
-        if not hasattr(p, 'balance_due'):
+        if not hasattr(p, "paid_amount"):
+            p.paid_amount = Decimal("0")
+        if not hasattr(p, "balance_due"):
             p.balance_due = amount
 
     # Calculate total paid from Payments table
     from models import Payment
+
     payment_query = Payment.query.filter(
-        Payment.direction == 'outgoing',
-        Payment.supplier_id.isnot(None)
+        Payment.direction == "outgoing", Payment.supplier_id.isnot(None)
     )
 
     # F3: السندات المؤرشفة لا تُحتسب ضمن المدفوع (نفس منطق الاستبعادات).
     payment_query = payment_query.filter(
-        ~Payment.id.in_(_archived_record_ids('payments')))
+        ~Payment.id.in_(_archived_record_ids("payments"))
+    )
 
     if date_from:
-        payment_query = payment_query.filter(func.date(Payment.payment_date) >= date_from)
+        payment_query = payment_query.filter(
+            func.date(Payment.payment_date) >= date_from
+        )
     if date_to:
         payment_query = payment_query.filter(func.date(Payment.payment_date) <= date_to)
     if supplier_id:
         payment_query = payment_query.filter_by(supplier_id=supplier_id)
 
     payments_list = payment_query.all()
-    total_paid = sum((p.amount_base or Decimal('0') for p in payments_list), Decimal('0'))
+    total_paid = sum(
+        (p.amount_base or Decimal("0") for p in payments_list), Decimal("0")
+    )
 
     # Total due is rough estimate: Purchases - Payments
     # Note: This doesn't account for opening balance
     total_due = total_amount - total_paid
 
     stats = {
-        'total_purchases': len(purchases_list),
-        'total_amount': float(total_amount),
-        'total_paid': float(total_paid),
-        'total_due': float(total_due)
+        "total_purchases": len(purchases_list),
+        "total_amount": float(total_amount),
+        "total_paid": float(total_paid),
+        "total_due": float(total_due),
     }
 
     # Get suppliers for filter
     from models import Supplier
+
     suppliers = Supplier.query.filter_by(is_active=True).all()
 
-    return render_template('reports/purchases.html',
-                           purchases=purchases_list,
-                           stats=stats,
-                           suppliers=suppliers,
-                           start_date=date_from,
-                           end_date=date_to,
-                           supplier_id=supplier_id)
+    return render_template(
+        "reports/purchases.html",
+        purchases=purchases_list,
+        stats=stats,
+        suppliers=suppliers,
+        start_date=date_from,
+        end_date=date_to,
+        supplier_id=supplier_id,
+    )
 
 
-@reports_bp.route('/receivables')
+@reports_bp.route("/receivables")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def receivables():
     """تقرير الذمم المدينة.
 
@@ -541,42 +711,42 @@ def receivables():
     (/ledger/aging-analysis): عملة الأساس، نفس الفلاتر (مبيعات مؤكدة نشطة
     غير مؤرشفة)، ونفس حدود الشرائح (0-30 / 31-60 / 61-90 / 91-120 / +120).
     """
-    as_of_date = request.args.get('as_of_date', type=str) or None
+    as_of_date = request.args.get("as_of_date", type=str) or None
 
     aging = _receivables_aging(as_of_date)
 
     # مفاتيح القالب القديمة (current / days_30 / ...) مع حدود الشرائح
     # الدقيقة الموثّقة في routes/ledger.py.
     aging_data = {
-        _REPORT_BUCKET_KEYS[bucket]: {'sales': [], 'total': Decimal('0')}
-        for bucket in ('0-30', '31-60', '61-90', '91-120', 'over_120')
+        _REPORT_BUCKET_KEYS[bucket]: {"sales": [], "total": Decimal("0")}
+        for bucket in ("0-30", "31-60", "61-90", "91-120", "over_120")
     }
-    for sale in aging['invoices']:
+    for sale in aging["invoices"]:
         key = _REPORT_BUCKET_KEYS[sale.aging_bucket]
-        aging_data[key]['sales'].append(sale)
-        aging_data[key]['total'] += sale.calculated_balance
+        aging_data[key]["sales"].append(sale)
+        aging_data[key]["total"] += sale.calculated_balance
 
-    total_receivables = aging['total']
+    total_receivables = aging["total"]
 
     summary = {
-        'total_receivables': float(total_receivables),
-        'current': float(aging['buckets']['0-30']),
-        'days_30': float(aging['buckets']['31-60']),
-        'days_60': float(aging['buckets']['61-90']),
-        'days_90': float(aging['buckets']['91-120']),
-        'over_90': float(aging['buckets']['over_120']),
+        "total_receivables": float(total_receivables),
+        "current": float(aging["buckets"]["0-30"]),
+        "days_30": float(aging["buckets"]["31-60"]),
+        "days_60": float(aging["buckets"]["61-90"]),
+        "days_90": float(aging["buckets"]["91-120"]),
+        "over_90": float(aging["buckets"]["over_120"]),
     }
 
-    return render_template('reports/receivables.html',
-                           aging_data=aging_data,
-                           summary=summary)
+    return render_template(
+        "reports/receivables.html", aging_data=aging_data, summary=summary
+    )
 
 
-@reports_bp.route('/inventory')
+@reports_bp.route("/inventory")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def inventory():
-    category_id = request.args.get('category', type=int)
+    category_id = request.args.get("category", type=int)
 
     query = Product.query.filter_by(is_active=True)
 
@@ -585,31 +755,33 @@ def inventory():
 
     products = query.order_by(Product.name).all()
 
-    total_value = Decimal('0')
-    total_items = Decimal('0')
+    total_value = Decimal("0")
+    total_items = Decimal("0")
 
     for p in products:
-        total_items += (p.current_stock or Decimal('0'))
+        total_items += p.current_stock or Decimal("0")
         if current_user.can_see_costs():
             # القيمة الدفترية على أساس المتوسط المتحرك — لا سعر آخر شراء.
             total_value += CostingService.stock_value(p)
 
     summary = {
-        'products_count': len(products),
-        'total_items': float(total_items),
-        'total_value': float(total_value) if current_user.can_see_costs() else None
+        "products_count": len(products),
+        "total_items": float(total_items),
+        "total_value": float(total_value) if current_user.can_see_costs() else None,
     }
 
     # SECURITY: cost columns in the template are gated on can_see_costs()
-    return render_template('reports/inventory.html',
-                           products=products,
-                           summary=summary,
-                           can_see_costs=current_user.can_see_costs())
+    return render_template(
+        "reports/inventory.html",
+        products=products,
+        summary=summary,
+        can_see_costs=current_user.can_see_costs(),
+    )
 
 
-@reports_bp.route('/api/model_fields')
+@reports_bp.route("/api/model_fields")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def api_model_fields():
     """حقول التقارير المتاحة لنموذج معيّن.
 
@@ -624,29 +796,31 @@ def api_model_fields():
     from models import Purchase as _Purchase
     from models import Sale as _Sale
 
-    model_name = (request.args.get('model') or '').strip().lower()
+    model_name = (request.args.get("model") or "").strip().lower()
 
     models = {
-        'sales': (_Sale, 'sales'),
-        'sale': (_Sale, 'sales'),
-        'purchases': (_Purchase, 'purchases'),
-        'purchase': (_Purchase, 'purchases'),
-        'products': (Product, 'products'),
-        'product': (Product, 'products'),
-        'customers': (Customer, 'customers'),
-        'customer': (Customer, 'customers'),
+        "sales": (_Sale, "sales"),
+        "sale": (_Sale, "sales"),
+        "purchases": (_Purchase, "purchases"),
+        "purchase": (_Purchase, "purchases"),
+        "products": (Product, "products"),
+        "product": (Product, "products"),
+        "customers": (Customer, "customers"),
+        "customer": (Customer, "customers"),
     }
 
     entry = models.get(model_name)
     if entry is None:
-        return jsonify({
-            'success': False,
-            'error': 'نموذج غير معروف',
-            'allowed': sorted(set(models)),
-            'columns': [],
-            'date_fields': [],
-            'all_fields': [],
-        }), 400
+        return jsonify(
+            {
+                "success": False,
+                "error": "نموذج غير معروف",
+                "allowed": sorted(set(models)),
+                "columns": [],
+                "date_fields": [],
+                "all_fields": [],
+            }
+        ), 400
 
     model, allowlist_key = entry
 
@@ -661,165 +835,184 @@ def api_model_fields():
         name = col.name
         if name not in allowed:
             continue
-        if isinstance(col.type, db.DateTime) or name.endswith('_date') \
-                or name.endswith('_at'):
+        if (
+            isinstance(col.type, db.DateTime)
+            or name.endswith("_date")
+            or name.endswith("_at")
+        ):
             date_fields.append(name)
         columns.append(name)
 
     # كل الحقول (بما فيها التاريخية) هي الخيارات الكاملة.
     all_fields = list(columns)
     # تاريخية أولاً في القائمة الكاملة لأنها الأكثر استخداماً.
-    all_fields = [f for f in date_fields if f in all_fields] + \
-                 [f for f in columns if f not in date_fields]
+    all_fields = [f for f in date_fields if f in all_fields] + [
+        f for f in columns if f not in date_fields
+    ]
 
-    return jsonify({
-        'success': True,
-        'model': model_name,
-        'columns': columns,
-        'date_fields': date_fields,
-        'all_fields': all_fields,
-    })
+    return jsonify(
+        {
+            "success": True,
+            "model": model_name,
+            "columns": columns,
+            "date_fields": date_fields,
+            "all_fields": all_fields,
+        }
+    )
 
 
-@reports_bp.route('/api/entity-search')
+@reports_bp.route("/api/entity-search")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def api_entity_search():
     from models import Supplier
-    query = request.args.get('q', '').strip()
-    entity_type = request.args.get('type', 'supplier')
+
+    query = request.args.get("q", "").strip()
+    entity_type = request.args.get("type", "supplier")
 
     results = []
 
-    if entity_type == 'supplier':
-        suppliers = Supplier.query.filter(
-            db.or_(
-                Supplier.name.ilike(f'%{query}%'),
-                Supplier.phone.ilike(f'%{query}%')
+    if entity_type == "supplier":
+        suppliers = (
+            Supplier.query.filter(
+                db.or_(
+                    Supplier.name.ilike(f"%{query}%"),
+                    Supplier.phone.ilike(f"%{query}%"),
+                )
             )
-        ).limit(10).all()
+            .limit(10)
+            .all()
+        )
         for s in suppliers:
-            results.append({
-                'id': s.id,
-                'name': s.name,
-                'phone': s.phone,
-                'type': 'supplier'
-            })
+            results.append(
+                {"id": s.id, "name": s.name, "phone": s.phone, "type": "supplier"}
+            )
 
     else:  # customer, partner, merchant
         q_filter = Customer.query.filter(
             db.or_(
-                Customer.name.ilike(f'%{query}%'),
-                Customer.phone.ilike(f'%{query}%')
+                Customer.name.ilike(f"%{query}%"), Customer.phone.ilike(f"%{query}%")
             )
         )
 
-        if entity_type == 'partner':
-            q_filter = q_filter.filter_by(customer_type='partner')
-        elif entity_type == 'merchant':
-            q_filter = q_filter.filter_by(customer_type='merchant')
+        if entity_type == "partner":
+            q_filter = q_filter.filter_by(customer_type="partner")
+        elif entity_type == "merchant":
+            q_filter = q_filter.filter_by(customer_type="merchant")
         # If 'customer', we search all or just regular? Let's search all if type is generic, or filter if specific.
         # User dropdown will likely send specific types.
 
         customers = q_filter.limit(10).all()
         for c in customers:
-            results.append({
-                'id': c.id,
-                'name': c.name,
-                'phone': c.phone,
-                'type': c.customer_type
-            })
+            results.append(
+                {"id": c.id, "name": c.name, "phone": c.phone, "type": c.customer_type}
+            )
 
     return jsonify(results)
 
 
-@reports_bp.route('/entity_report_fragment/<type>/<id>')
+@reports_bp.route("/entity_report_fragment/<type>/<id>")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def entity_report_fragment(type, id):  # noqa: C901
     try:
         from models import Receipt, Payment, PurchaseLine, Supplier
 
         context = {
-            'entity': None,
-            'type_label': '',
-            'balance': 0,
-            'balance_label': '',
-            'products': [],
-            'invoices': [],
-            'transactions': []
+            "entity": None,
+            "type_label": "",
+            "balance": 0,
+            "balance_label": "",
+            "products": [],
+            "invoices": [],
+            "transactions": [],
         }
 
-        if type == 'supplier':
+        if type == "supplier":
             entity = get_owned_or_404(Supplier, id)
-            context['entity'] = entity
-            context['type_label'] = 'مورد'
+            context["entity"] = entity
+            context["type_label"] = "مورد"
 
             # Balance
-            context['balance'] = entity.get_balance_aed()
-            context['balance_label'] = 'مستحق للمورد'
+            context["balance"] = entity.get_balance_aed()
+            context["balance_label"] = "مستحق للمورد"
 
             # Products (Purchased)
-            p_lines = db.session.query(
-                Product.name,
-                func.sum(PurchaseLine.quantity).label('qty'),
-                func.sum(PurchaseLine.line_total).label('total'),
-                func.max(Purchase.purchase_date).label('last_date')
-            ).join(Purchase).join(Product).filter(
-                Purchase.supplier_id == id,
-                Purchase.status == 'confirmed'
-            ).group_by(Product.name).all()
+            p_lines = (
+                db.session.query(
+                    Product.name,
+                    func.sum(PurchaseLine.quantity).label("qty"),
+                    func.sum(PurchaseLine.line_total).label("total"),
+                    func.max(Purchase.purchase_date).label("last_date"),
+                )
+                .join(Purchase)
+                .join(Product)
+                .filter(Purchase.supplier_id == id, Purchase.status == "confirmed")
+                .group_by(Product.name)
+                .all()
+            )
 
-            context['products'] = [{
-                'name': p.name,
-                'quantity': p.qty,
-                'total': p.total,
-                'last_date': p.last_date.strftime('%Y-%m-%d') if p.last_date else '-'
-            } for p in p_lines]
+            context["products"] = [
+                {
+                    "name": p.name,
+                    "quantity": p.qty,
+                    "total": p.total,
+                    "last_date": p.last_date.strftime("%Y-%m-%d")
+                    if p.last_date
+                    else "-",
+                }
+                for p in p_lines
+            ]
 
             # Invoices (Purchases)
             # F3: استبعاد المشتريات المؤرشفة (الأرشفة لا تقلب is_active).
             purchases = (
-                Purchase.query
-                .filter_by(supplier_id=id)
-                .filter(~Purchase.id.in_(_archived_record_ids('purchases')))
-                .order_by(Purchase.purchase_date.desc()).all()
+                Purchase.query.filter_by(supplier_id=id)
+                .filter(~Purchase.id.in_(_archived_record_ids("purchases")))
+                .order_by(Purchase.purchase_date.desc())
+                .all()
             )
-            context['invoices'] = [{
-                'number': p.purchase_number,
-                'date': p.purchase_date.strftime('%Y-%m-%d'),
-                'status': p.status,
-                'amount': p.amount_base or 0,
-                'paid': p.get_paid_amount(),
-                'balance': (p.amount_base or 0) - p.get_paid_amount()
-            } for p in purchases]
+            context["invoices"] = [
+                {
+                    "number": p.purchase_number,
+                    "date": p.purchase_date.strftime("%Y-%m-%d"),
+                    "status": p.status,
+                    "amount": p.amount_base or 0,
+                    "paid": p.get_paid_amount(),
+                    "balance": (p.amount_base or 0) - p.get_paid_amount(),
+                }
+                for p in purchases
+            ]
 
             # Transactions (Payments TO Supplier)
             # F3: استبعاد السندات المؤرشفة.
             payments = (
-                Payment.query
-                .filter_by(supplier_id=id)
-                .filter(~Payment.id.in_(_archived_record_ids('payments')))
-                .order_by(Payment.payment_date.desc()).all()
+                Payment.query.filter_by(supplier_id=id)
+                .filter(~Payment.id.in_(_archived_record_ids("payments")))
+                .order_by(Payment.payment_date.desc())
+                .all()
             )
-            context['transactions'] = [{
-                'number': p.payment_number,
-                'type': 'out',  # Payment out
-                'date': p.payment_date.strftime('%Y-%m-%d'),
-                'amount': p.amount_base,
-                'method': p.payment_method,
-                'notes': p.notes or '-'
-            } for p in payments]
+            context["transactions"] = [
+                {
+                    "number": p.payment_number,
+                    "type": "out",  # Payment out
+                    "date": p.payment_date.strftime("%Y-%m-%d"),
+                    "amount": p.amount_base,
+                    "method": p.payment_method,
+                    "notes": p.notes or "-",
+                }
+                for p in payments
+            ]
 
         else:  # Customer/Partner/Merchant
             entity = get_owned_or_404(Customer, id)
-            context['entity'] = entity
-            context['type_label'] = {
-                'partner': 'شريك',
-                'merchant': 'تاجر',
-                'regular': 'زبون',
-                'vip': 'VIP'
-            }.get(entity.customer_type, 'زبون')
+            context["entity"] = entity
+            context["type_label"] = {
+                "partner": "شريك",
+                "merchant": "تاجر",
+                "regular": "زبون",
+                "vip": "VIP",
+            }.get(entity.customer_type, "زبون")
 
             # Balance calculation (Receivables/Payables)
             # Sales (He took goods) + Payments Out (He took money) - Receipts (He gave money)
@@ -828,183 +1021,219 @@ def entity_report_fragment(type, id):  # noqa: C901
             # الحساب. الاستبعاد هنا صريح (نفس فلتر routes/ledger.py).
             total_sales = (
                 db.session.query(func.sum(Sale.amount_base))
-                .filter(Sale.customer_id == id, Sale.status == 'confirmed')
-                .filter(~Sale.id.in_(_archived_record_ids('sales')))
-                .scalar() or 0
+                .filter(Sale.customer_id == id, Sale.status == "confirmed")
+                .filter(~Sale.id.in_(_archived_record_ids("sales")))
+                .scalar()
+                or 0
             )
             total_receipts = (
                 db.session.query(func.sum(Receipt.amount_base))
                 .filter(Receipt.customer_id == id)
-                .filter(~Receipt.id.in_(_archived_record_ids('receipts')))
-                .scalar() or 0
+                .filter(~Receipt.id.in_(_archived_record_ids("receipts")))
+                .scalar()
+                or 0
             )
             # Payments made TO customer (e.g. returns/share/drawings)
             total_payments_to = (
                 db.session.query(func.sum(Payment.amount_base))
-                .filter(Payment.customer_id == id, Payment.direction == 'outgoing')
-                .filter(~Payment.id.in_(_archived_record_ids('payments')))
-                .scalar() or 0
+                .filter(Payment.customer_id == id, Payment.direction == "outgoing")
+                .filter(~Payment.id.in_(_archived_record_ids("payments")))
+                .scalar()
+                or 0
             )
 
-            context['balance'] = (total_sales + total_payments_to) - total_receipts  # Positive means they owe us
-            context['balance_label'] = 'مستحق لنا'
-            if context['balance'] < 0:
-                context['balance'] = abs(context['balance'])
-                context['balance_label'] = 'مستحق للعميل'
+            context["balance"] = (
+                total_sales + total_payments_to
+            ) - total_receipts  # Positive means they owe us
+            context["balance_label"] = "مستحق لنا"
+            if context["balance"] < 0:
+                context["balance"] = abs(context["balance"])
+                context["balance_label"] = "مستحق للعميل"
 
             # Products (Sold) - Products the customer BOUGHT
-            s_lines = db.session.query(
-                Product.name,
-                func.sum(SaleLine.quantity).label('qty'),
-                func.sum(SaleLine.line_total).label('total'),
-                func.max(Sale.sale_date).label('last_date')
-            ).join(Sale).join(Product).filter(
-                Sale.customer_id == id,
-                Sale.status == 'confirmed'
-            ).group_by(Product.name).all()
+            s_lines = (
+                db.session.query(
+                    Product.name,
+                    func.sum(SaleLine.quantity).label("qty"),
+                    func.sum(SaleLine.line_total).label("total"),
+                    func.max(Sale.sale_date).label("last_date"),
+                )
+                .join(Sale)
+                .join(Product)
+                .filter(Sale.customer_id == id, Sale.status == "confirmed")
+                .group_by(Product.name)
+                .all()
+            )
 
-            context['products'] = [{
-                'name': p.name,
-                'quantity': p.qty,
-                'total': p.total,
-                'last_date': p.last_date.strftime('%Y-%m-%d') if p.last_date else '-'
-            } for p in s_lines]
+            context["products"] = [
+                {
+                    "name": p.name,
+                    "quantity": p.qty,
+                    "total": p.total,
+                    "last_date": p.last_date.strftime("%Y-%m-%d")
+                    if p.last_date
+                    else "-",
+                }
+                for p in s_lines
+            ]
 
             # IF PARTNER: Fetch products they have a share in (Products they EARN from)
-            if entity.customer_type == 'partner':
-                shared_products_query = db.session.query(
-                    Product.name,
-                    ProductPartner.percentage,
-                    func.sum(SaleLine.quantity).label('qty'),
-                    func.sum(SaleLine.line_total).label('total_sales'),
-                    func.max(Sale.sale_date).label('last_date')
-                ).join(ProductPartner, Product.id == ProductPartner.product_id)\
-                 .join(SaleLine, SaleLine.product_id == Product.id)\
-                 .join(Sale, Sale.id == SaleLine.sale_id)\
-                 .filter(
-                     ProductPartner.partner_customer_id == id,
-                     Sale.status == 'confirmed'
-                ).group_by(Product.name, ProductPartner.percentage).all()
+            if entity.customer_type == "partner":
+                shared_products_query = (
+                    db.session.query(
+                        Product.name,
+                        ProductPartner.percentage,
+                        func.sum(SaleLine.quantity).label("qty"),
+                        func.sum(SaleLine.line_total).label("total_sales"),
+                        func.max(Sale.sale_date).label("last_date"),
+                    )
+                    .join(ProductPartner, Product.id == ProductPartner.product_id)
+                    .join(SaleLine, SaleLine.product_id == Product.id)
+                    .join(Sale, Sale.id == SaleLine.sale_id)
+                    .filter(
+                        ProductPartner.partner_customer_id == id,
+                        Sale.status == "confirmed",
+                    )
+                    .group_by(Product.name, ProductPartner.percentage)
+                    .all()
+                )
 
                 for sp in shared_products_query:
                     share_amount = sp.total_sales * (sp.percentage / 100)
-                    context['products'].append({
-                        'name': f"{sp.name} (Share: {sp.percentage}%)",
-                        'quantity': sp.qty,
-                        'total': share_amount,
-                        'last_date': sp.last_date.strftime('%Y-%m-%d') if sp.last_date else '-'
-                    })
+                    context["products"].append(
+                        {
+                            "name": f"{sp.name} (Share: {sp.percentage}%)",
+                            "quantity": sp.qty,
+                            "total": share_amount,
+                            "last_date": sp.last_date.strftime("%Y-%m-%d")
+                            if sp.last_date
+                            else "-",
+                        }
+                    )
 
             # IF MERCHANT: Fetch products they own (Products they EARN from)
-            if entity.customer_type == 'merchant':
-                merchant_products_query = db.session.query(
-                    Product.name,
-                    Product.merchant_share,
-                    func.sum(SaleLine.quantity).label('qty'),
-                    func.sum(SaleLine.line_total).label('total_sales'),
-                    func.max(Sale.sale_date).label('last_date')
-                ).join(SaleLine, SaleLine.product_id == Product.id)\
-                 .join(Sale, Sale.id == SaleLine.sale_id)\
-                 .filter(
-                     Product.merchant_customer_id == id,
-                     Sale.status == 'confirmed'
-                ).group_by(Product.name, Product.merchant_share).all()
+            if entity.customer_type == "merchant":
+                merchant_products_query = (
+                    db.session.query(
+                        Product.name,
+                        Product.merchant_share,
+                        func.sum(SaleLine.quantity).label("qty"),
+                        func.sum(SaleLine.line_total).label("total_sales"),
+                        func.max(Sale.sale_date).label("last_date"),
+                    )
+                    .join(SaleLine, SaleLine.product_id == Product.id)
+                    .join(Sale, Sale.id == SaleLine.sale_id)
+                    .filter(
+                        Product.merchant_customer_id == id, Sale.status == "confirmed"
+                    )
+                    .group_by(Product.name, Product.merchant_share)
+                    .all()
+                )
 
                 for mp in merchant_products_query:
                     share_pct = mp.merchant_share or 100
                     share_amount = mp.total_sales * (share_pct / 100)
-                    context['products'].append({
-                        'name': f"{mp.name} (Merchant: {share_pct}%)",
-                        'quantity': mp.qty,
-                        'total': share_amount,
-                        'last_date': mp.last_date.strftime('%Y-%m-%d') if mp.last_date else '-'
-                    })
+                    context["products"].append(
+                        {
+                            "name": f"{mp.name} (Merchant: {share_pct}%)",
+                            "quantity": mp.qty,
+                            "total": share_amount,
+                            "last_date": mp.last_date.strftime("%Y-%m-%d")
+                            if mp.last_date
+                            else "-",
+                        }
+                    )
 
             # Invoices (Sales) — F3: بلا المستندات المؤرشفة
             sales = (
-                Sale.query
-                .filter_by(customer_id=id)
-                .filter(~Sale.id.in_(_archived_record_ids('sales')))
-                .order_by(Sale.sale_date.desc()).all()
+                Sale.query.filter_by(customer_id=id)
+                .filter(~Sale.id.in_(_archived_record_ids("sales")))
+                .order_by(Sale.sale_date.desc())
+                .all()
             )
-            context['invoices'] = [{
-                'number': s.sale_number,
-                'date': s.sale_date.strftime('%Y-%m-%d'),
-                'status': s.status,
-                'amount': s.amount_base or 0,
-                'paid': s.paid_amount_base or 0,
-                'balance': (s.amount_base or 0) - (s.paid_amount_base or 0)
-            } for s in sales]
+            context["invoices"] = [
+                {
+                    "number": s.sale_number,
+                    "date": s.sale_date.strftime("%Y-%m-%d"),
+                    "status": s.status,
+                    "amount": s.amount_base or 0,
+                    "paid": s.paid_amount_base or 0,
+                    "balance": (s.amount_base or 0) - (s.paid_amount_base or 0),
+                }
+                for s in sales
+            ]
 
             # Transactions (Receipts + Payments) — F3: بلا السندات المؤرشفة
             receipts = (
-                Receipt.query
-                .filter_by(customer_id=id)
-                .filter(~Receipt.id.in_(_archived_record_ids('receipts')))
+                Receipt.query.filter_by(customer_id=id)
+                .filter(~Receipt.id.in_(_archived_record_ids("receipts")))
                 .all()
             )
             payments_out = (
-                Payment.query
-                .filter_by(customer_id=id, direction='outgoing')
-                .filter(~Payment.id.in_(_archived_record_ids('payments')))
+                Payment.query.filter_by(customer_id=id, direction="outgoing")
+                .filter(~Payment.id.in_(_archived_record_ids("payments")))
                 .all()
             )
 
             all_trans = []
             for r in receipts:
-                all_trans.append({
-                    'number': r.receipt_number,
-                    'type': 'in',  # Money In
-                    'date': r.receipt_date,
-                    'amount': r.amount_base,
-                    'method': r.payment_method,
-                    'notes': 'قبض'
-                })
+                all_trans.append(
+                    {
+                        "number": r.receipt_number,
+                        "type": "in",  # Money In
+                        "date": r.receipt_date,
+                        "amount": r.amount_base,
+                        "method": r.payment_method,
+                        "notes": "قبض",
+                    }
+                )
             for p in payments_out:
-                all_trans.append({
-                    'number': p.payment_number,
-                    'type': 'out',  # Money Out
-                    'date': p.payment_date,
-                    'amount': p.amount_base,
-                    'method': p.payment_method,
-                    'notes': p.notes or 'دفع'
-                })
+                all_trans.append(
+                    {
+                        "number": p.payment_number,
+                        "type": "out",  # Money Out
+                        "date": p.payment_date,
+                        "amount": p.amount_base,
+                        "method": p.payment_method,
+                        "notes": p.notes or "دفع",
+                    }
+                )
 
-            all_trans.sort(key=lambda x: x['date'], reverse=True)
+            all_trans.sort(key=lambda x: x["date"], reverse=True)
             for t in all_trans:
-                t['date'] = t['date'].strftime('%Y-%m-%d')
+                t["date"] = t["date"].strftime("%Y-%m-%d")
 
-            context['transactions'] = all_trans
+            context["transactions"] = all_trans
 
-        return render_template('reports/partials/entity_report.html', **context)
+        return render_template("reports/partials/entity_report.html", **context)
 
     except HTTPException:
         raise
     except Exception as e:
-        current_app.logger.error(f'Entity report fragment error: {e}', exc_info=True)
-        return render_template('reports/partials/entity_report.html',
-                               error='حدث خطأ أثناء تحميل التقرير.'), 500
+        current_app.logger.error(f"Entity report fragment error: {e}", exc_info=True)
+        return render_template(
+            "reports/partials/entity_report.html", error="حدث خطأ أثناء تحميل التقرير."
+        ), 500
 
 
-@reports_bp.route('/top-selling')
+@reports_bp.route("/top-selling")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def top_selling():
-    date_from = request.args.get('date_from', '', type=str)
-    date_to = request.args.get('date_to', '', type=str)
-    limit = request.args.get('limit', 20, type=int)
+    date_from = request.args.get("date_from", "", type=str)
+    date_to = request.args.get("date_to", "", type=str)
+    limit = request.args.get("limit", 20, type=int)
 
-    query = db.session.query(
-        Product.id,
-        Product.name,
-        func.sum(SaleLine.quantity).label('total_quantity'),
-        func.sum(SaleLine.line_total).label('total_sales')
-    ).join(
-        SaleLine, Product.id == SaleLine.product_id
-    ).join(
-        Sale, SaleLine.sale_id == Sale.id
-    ).filter(
-        Sale.status == 'confirmed'
+    query = (
+        db.session.query(
+            Product.id,
+            Product.name,
+            func.sum(SaleLine.quantity).label("total_quantity"),
+            func.sum(SaleLine.line_total).label("total_sales"),
+        )
+        .join(SaleLine, Product.id == SaleLine.product_id)
+        .join(Sale, SaleLine.sale_id == Sale.id)
+        .filter(Sale.status == "confirmed")
     )
 
     if date_from:
@@ -1013,22 +1242,24 @@ def top_selling():
     if date_to:
         query = query.filter(func.date(Sale.sale_date) <= date_to)
 
-    products = query.group_by(
-        Product.id, Product.name
-    ).order_by(
-        func.sum(SaleLine.quantity).desc()
-    ).limit(limit).all()
+    products = (
+        query.group_by(Product.id, Product.name)
+        .order_by(func.sum(SaleLine.quantity).desc())
+        .limit(limit)
+        .all()
+    )
 
-    return render_template('reports/top_selling.html', products=products)
+    return render_template("reports/top_selling.html", products=products)
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PHASE 2: NEW REPORTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-@reports_bp.route('/inventory-valuation')
+@reports_bp.route("/inventory-valuation")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def inventory_valuation():
     """
     تقرير تقييم المخزون — Inventory Valuation
@@ -1041,8 +1272,8 @@ def inventory_valuation():
         abort(403)
     from models import Warehouse, ProductCategory
 
-    warehouse_id = request.args.get('warehouse_id', type=int)
-    category_id = request.args.get('category_id', type=int)
+    warehouse_id = request.args.get("warehouse_id", type=int)
+    category_id = request.args.get("category_id", type=int)
 
     # Schema reality: Product carries one global current_stock column with no
     # per-product warehouse link; per-warehouse quantities live in StockMovement
@@ -1051,15 +1282,17 @@ def inventory_valuation():
     # using the global stock figure.
     qty_by_product = {}
     if warehouse_id:
-        movement_rows = db.session.query(
-            StockMovement.product_id.label('product_id'),
-            func.sum(StockMovement.quantity).label('net_qty'),
-        ).filter(
-            StockMovement.warehouse_id == warehouse_id
-        ).group_by(StockMovement.product_id).all()
+        movement_rows = (
+            db.session.query(
+                StockMovement.product_id.label("product_id"),
+                func.sum(StockMovement.quantity).label("net_qty"),
+            )
+            .filter(StockMovement.warehouse_id == warehouse_id)
+            .group_by(StockMovement.product_id)
+            .all()
+        )
         qty_by_product = {
-            row.product_id: (row.net_qty or Decimal('0'))
-            for row in movement_rows
+            row.product_id: (row.net_qty or Decimal("0")) for row in movement_rows
         }
 
     products_query = Product.query.filter(Product.is_active.is_(True))
@@ -1077,14 +1310,14 @@ def inventory_valuation():
 
     # Group by category
     categories_data = {}
-    total_value = Decimal('0')
-    total_qty = Decimal('0')
+    total_value = Decimal("0")
+    total_qty = Decimal("0")
 
     for product in products:
         if warehouse_id:
-            qty = qty_by_product.get(product.id) or Decimal('0')
+            qty = qty_by_product.get(product.id) or Decimal("0")
         else:
-            qty = product.current_stock or Decimal('0')
+            qty = product.current_stock or Decimal("0")
         # أساس التقييم: المتوسط المتحرك لتكلفة الوحدة (average_cost) —
         # وهو نفس الأساس الذي يحمله حساب المخزون في الأستاذ العام
         # (المبلغ المدفوع فعلياً)، فالتقرير يلتقي بالميزانية.
@@ -1095,30 +1328,36 @@ def inventory_valuation():
         total_value += value
         total_qty += qty
 
-        cat_name = product.category.name if product.category else 'بدون فئة'
-        cat_name_ar = product.category.name_ar if product.category and product.category.name_ar else cat_name
+        cat_name = product.category.name if product.category else "بدون فئة"
+        cat_name_ar = (
+            product.category.name_ar
+            if product.category and product.category.name_ar
+            else cat_name
+        )
 
         if cat_name not in categories_data:
             categories_data[cat_name] = {
-                'name': cat_name,
-                'name_ar': cat_name_ar,
-                'products': [],
-                'total_qty': Decimal('0'),
-                'total_value': Decimal('0'),
-                'product_count': 0,
+                "name": cat_name,
+                "name_ar": cat_name_ar,
+                "products": [],
+                "total_qty": Decimal("0"),
+                "total_value": Decimal("0"),
+                "product_count": 0,
             }
 
-        categories_data[cat_name]['products'].append({
-            'product': product,
-            'qty': qty,
-            'cost': cost,
-            'average_cost': cost,
-            'reference_cost': Decimal(str(product.cost_price or 0)),
-            'value': value,
-        })
-        categories_data[cat_name]['total_qty'] += qty
-        categories_data[cat_name]['total_value'] += value
-        categories_data[cat_name]['product_count'] += 1
+        categories_data[cat_name]["products"].append(
+            {
+                "product": product,
+                "qty": qty,
+                "cost": cost,
+                "average_cost": cost,
+                "reference_cost": Decimal(str(product.cost_price or 0)),
+                "value": value,
+            }
+        )
+        categories_data[cat_name]["total_qty"] += qty
+        categories_data[cat_name]["total_value"] += value
+        categories_data[cat_name]["product_count"] += 1
 
     warehouses = Warehouse.query.filter_by(is_active=True).all()
     categories = ProductCategory.query.filter_by(is_active=True).all()
@@ -1134,16 +1373,18 @@ def inventory_valuation():
     # عبر /reports/inventory-valuation/reconciliation.
     inventory_reconciliation = _inventory_reconciliation_summary()
 
-    return render_template('reports/inventory_valuation.html',
-                           categories_data=categories_data,
-                           warehouses=warehouses,
-                           categories_list=categories,
-                           total_value=total_value,
-                           total_qty=total_qty,
-                           total_products=len(products),
-                           inventory_reconciliation=inventory_reconciliation,
-                           selected_warehouse=warehouse_id,
-                           selected_category=category_id)
+    return render_template(
+        "reports/inventory_valuation.html",
+        categories_data=categories_data,
+        warehouses=warehouses,
+        categories_list=categories,
+        total_value=total_value,
+        total_qty=total_qty,
+        total_products=len(products),
+        inventory_reconciliation=inventory_reconciliation,
+        selected_warehouse=warehouse_id,
+        selected_category=category_id,
+    )
 
 
 def _inventory_reconciliation_summary():
@@ -1156,6 +1397,7 @@ def _inventory_reconciliation_summary():
     أساس التقييم هو **المتوسط المتحرك** (qty × average_cost) — نفس أساس
     قيد حساب المخزون في الأستاذ، فالفرق المقاس هو فرق حقيقي.
     """
+
     def _f(value):
         try:
             return float(value) if value is not None else None
@@ -1163,52 +1405,60 @@ def _inventory_reconciliation_summary():
             return None
 
     def _row(row):
-        return {key: (_f(value) if isinstance(value, Decimal) else value)
-                for key, value in row.items()}
+        return {
+            key: (_f(value) if isinstance(value, Decimal) else value)
+            for key, value in row.items()
+        }
 
     summary = {
-        'available': False,
-        'valuation_basis': 'qty × average_cost (متوسط التكلفة المتحرك)',
-        'control_accounts': [],
-        'control_balance': None,
-        'valuation_at_cost_price': None,
-        'valuation_at_average_cost': None,
-        'gl_difference': None,
-        'stock_vs_movements_difference': None,
-        'break_count': 0,
-        'balanced': None,
+        "available": False,
+        "valuation_basis": "qty × average_cost (متوسط التكلفة المتحرك)",
+        "control_accounts": [],
+        "control_balance": None,
+        "valuation_at_cost_price": None,
+        "valuation_at_average_cost": None,
+        "gl_difference": None,
+        "stock_vs_movements_difference": None,
+        "break_count": 0,
+        "balanced": None,
     }
     try:
         from services.inventory_reconciliation import reconcile_inventory
 
         report = reconcile_inventory(include_inactive=False)
     except Exception as exc:  # pragma: no cover - measurement must not break the page
-        current_app.logger.warning(f'inventory reconciliation unavailable: {exc}')
-        summary['error'] = str(exc)
+        current_app.logger.warning(f"inventory reconciliation unavailable: {exc}")
+        summary["error"] = str(exc)
         return summary
 
-    summary.update({
-        'available': True,
-        'control_accounts': report.get('control_accounts', []),
-        'control_balance': _f(report.get('control_balance')),
-        'valuation_at_cost_price': _f(report.get('total_valuation_at_cost_price')),
-        'valuation_at_average_cost': _f(report.get('total_valuation_at_average_cost')),
-        'gl_difference': _f(report.get('gl_difference')),
-        'unattributed_gl_balance': _f(report.get('unattributed_gl_balance')),
-        'stock_vs_movements_difference': _f(report.get('difference')),
-        'total_quantity_from_movements': _f(report.get('total_quantity_from_movements')),
-        'total_current_stock': _f(report.get('total_current_stock')),
-        'break_count': len(report.get('breaks', [])),
-        'balanced': report.get('balanced'),
-        'products': [_row(row) for row in report.get('products', [])],
-        'breaks': [_row(row) for row in report.get('breaks', [])],
-    })
+    summary.update(
+        {
+            "available": True,
+            "control_accounts": report.get("control_accounts", []),
+            "control_balance": _f(report.get("control_balance")),
+            "valuation_at_cost_price": _f(report.get("total_valuation_at_cost_price")),
+            "valuation_at_average_cost": _f(
+                report.get("total_valuation_at_average_cost")
+            ),
+            "gl_difference": _f(report.get("gl_difference")),
+            "unattributed_gl_balance": _f(report.get("unattributed_gl_balance")),
+            "stock_vs_movements_difference": _f(report.get("difference")),
+            "total_quantity_from_movements": _f(
+                report.get("total_quantity_from_movements")
+            ),
+            "total_current_stock": _f(report.get("total_current_stock")),
+            "break_count": len(report.get("breaks", [])),
+            "balanced": report.get("balanced"),
+            "products": [_row(row) for row in report.get("products", [])],
+            "breaks": [_row(row) for row in report.get("breaks", [])],
+        }
+    )
     return summary
 
 
-@reports_bp.route('/inventory-valuation/reconciliation')
+@reports_bp.route("/inventory-valuation/reconciliation")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def inventory_valuation_reconciliation():
     """F7: قياس فرق تقييم المخزون عن الأستاذ العام (JSON).
 
@@ -1220,9 +1470,9 @@ def inventory_valuation_reconciliation():
     return jsonify(_inventory_reconciliation_summary())
 
 
-@reports_bp.route('/ap-aging')
+@reports_bp.route("/ap-aging")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def ap_aging():
     """
     تقرير أعمار الذمم الدائنة — Accounts Payable Aging
@@ -1234,53 +1484,67 @@ def ap_aging():
 
     try:
         report = AgingAnalysisService.get_payables_aging()
-        current_app.logger.info(f"DEBUG AP Aging: {len(report.get('suppliers', []))} suppliers")
-        for s in report.get('suppliers', []):
-            current_app.logger.info(f"  {s['supplier'].name}: total={s.get('total')}, overdue={s.get('overdue_total')}")
+        current_app.logger.info(
+            f"DEBUG AP Aging: {len(report.get('suppliers', []))} suppliers"
+        )
+        for s in report.get("suppliers", []):
+            current_app.logger.info(
+                f"  {s['supplier'].name}: total={s.get('total')}, overdue={s.get('overdue_total')}"
+            )
 
         # تحويل التقرير إلى التنسيق المتوقع من القالب
         supplier_aging = []
-        for supplier_data in report.get('suppliers', []):
-            sup = supplier_data['supplier']
+        for supplier_data in report.get("suppliers", []):
+            sup = supplier_data["supplier"]
             # تحديد السلة بناءً على المتأخرات (overdue) للعرض
-            overdue = supplier_data.get('overdue_total', 0)
+            overdue = supplier_data.get("overdue_total", 0)
             # للتوافق مع القالب الحالي نحسب days_old بناءً على أقدم فاتورة
             # لكن السلة الحقيقية هي overdue_buckets
-            supplier_aging.append({
-                'supplier': sup,
-                'total_purchases': supplier_data.get('total', 0) + supplier_data.get('overdue_total', 0),
-                'total_paid': supplier_data.get('total', 0) + supplier_data.get('overdue_total', 0) - supplier_data.get('total', 0),
-                'balance': supplier_data.get('total', 0),
-                'days_old': 0,  # غير مستخدم للعرض الجديد
-                'bucket': 'current' if supplier_data.get('overdue_total', 0) == 0 else 'over_90',
-                'payment_terms': sup.payment_terms_days or 0,
-                'overdue_buckets': supplier_data.get('overdue_buckets', {}),
-                'overdue_total': supplier_data.get('overdue_total', 0),
-            })
+            supplier_aging.append(
+                {
+                    "supplier": sup,
+                    "total_purchases": supplier_data.get("total", 0)
+                    + supplier_data.get("overdue_total", 0),
+                    "total_paid": supplier_data.get("total", 0)
+                    + supplier_data.get("overdue_total", 0)
+                    - supplier_data.get("total", 0),
+                    "balance": supplier_data.get("total", 0),
+                    "days_old": 0,  # غير مستخدم للعرض الجديد
+                    "bucket": "current"
+                    if supplier_data.get("overdue_total", 0) == 0
+                    else "over_90",
+                    "payment_terms": sup.payment_terms_days or 0,
+                    "overdue_buckets": supplier_data.get("overdue_buckets", {}),
+                    "overdue_total": supplier_data.get("overdue_total", 0),
+                }
+            )
 
         aging_buckets = {
-            'current': report['totals'].get('0-30', 0),
-            'days_31_60': report['totals'].get('31-60', 0),
-            'days_61_90': report['totals'].get('61-90', 0),
-            'over_90': report['totals'].get('91-120', 0) + report['totals'].get('over_120', 0),
+            "current": report["totals"].get("0-30", 0),
+            "days_31_60": report["totals"].get("31-60", 0),
+            "days_61_90": report["totals"].get("61-90", 0),
+            "over_90": report["totals"].get("91-120", 0)
+            + report["totals"].get("over_120", 0),
         }
-        total_payable = report['totals'].get('total', 0)
+        total_payable = report["totals"].get("total", 0)
 
-        return render_template('reports/ap_aging.html',
-                               supplier_aging=supplier_aging,
-                               aging_buckets=aging_buckets,
-                               total_payable=total_payable,
-                               overdue_buckets=report['overdue_buckets'],
-                               overdue_total=report['overdue_total'],
-                               report=report)
+        return render_template(
+            "reports/ap_aging.html",
+            supplier_aging=supplier_aging,
+            aging_buckets=aging_buckets,
+            total_payable=total_payable,
+            overdue_buckets=report["overdue_buckets"],
+            overdue_total=report["overdue_total"],
+            report=report,
+        )
     except Exception as e:
         current_app.logger.exception(f"Error in ap_aging route: {e}")
         raise
 
 
-@reports_bp.route('/cash-flow')
+@reports_bp.route("/cash-flow")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def cash_flow():
     """
     قائمة التدفقات النقدية — Cash Flow Statement
@@ -1291,26 +1555,28 @@ def cash_flow():
     """
     from services.cash_flow_service import CashFlowService
 
-    date_from = request.args.get('date_from', '', type=str)
-    date_to = request.args.get('date_to', '', type=str)
+    date_from = request.args.get("date_from", "", type=str)
+    date_to = request.args.get("date_to", "", type=str)
 
     report = CashFlowService.generate_gl_cash_flow(date_from, date_to)
 
-    return render_template('reports/cash_flow.html',
-                           report=report,
-                           operating_items=report['operating_items'],
-                           investing_items=report['investing_items'],
-                           financing_items=report['financing_items'],
-                           operating_total=report['operating_total'],
-                           investing_total=report['investing_total'],
-                           financing_total=report['financing_total'],
-                           net_change=report['net_change'],
-                           cash_beginning=report['cash_beginning'],
-                           cash_ending=report['cash_ending'],
-                           cash_ending_computed=report['cash_ending_computed'],
-                           tie_out=report['tie_out'],
-                           date_from=date_from,
-                           date_to=date_to)
+    return render_template(
+        "reports/cash_flow.html",
+        report=report,
+        operating_items=report["operating_items"],
+        investing_items=report["investing_items"],
+        financing_items=report["financing_items"],
+        operating_total=report["operating_total"],
+        investing_total=report["investing_total"],
+        financing_total=report["financing_total"],
+        net_change=report["net_change"],
+        cash_beginning=report["cash_beginning"],
+        cash_ending=report["cash_ending"],
+        cash_ending_computed=report["cash_ending_computed"],
+        tie_out=report["tie_out"],
+        date_from=date_from,
+        date_to=date_to,
+    )
 
 
 def _current_tenant_display_name():
@@ -1319,6 +1585,7 @@ def _current_tenant_display_name():
         from models.tenant_scope import get_current_tenant_id
         from models.tenant import Tenant
         from extensions import db
+
         tid = get_current_tenant_id()
         tenant = db.session.get(Tenant, tid) if tid else None
         return (tenant.name_ar or tenant.name) if tenant else None
@@ -1334,15 +1601,16 @@ def _vat_base_amounts(document):
     المستند نفسه، ثم يُشتق الأساس الخاضع (بدون ضريبة) من الإجمالي:
         base_net = amount_base − (tax_amount × exchange_rate)
     """
-    gross_base = document.amount_base or Decimal('0')
-    tax_rate = document.tax_rate or Decimal('0')
-    tax_txn = document.tax_amount or Decimal('0')
-    exchange_rate = document.exchange_rate or Decimal('1')
+    gross_base = document.amount_base or Decimal("0")
+    tax_rate = document.tax_rate or Decimal("0")
+    tax_txn = document.tax_amount or Decimal("0")
+    exchange_rate = document.exchange_rate or Decimal("1")
     if exchange_rate <= 0:
-        exchange_rate = Decimal('1')
+        exchange_rate = Decimal("1")
 
     tax_base = (Decimal(str(tax_txn)) * Decimal(str(exchange_rate))).quantize(
-        Decimal('0.001'), rounding=ROUND_HALF_UP)
+        Decimal("0.001"), rounding=ROUND_HALF_UP
+    )
     net_base = gross_base - tax_base
     return net_base, tax_base, tax_rate
 
@@ -1357,36 +1625,45 @@ def _return_vat_amounts(product_return):
     from services.sale_tax_calculation import return_tax_parts
 
     sale = product_return.sale
-    tax_rate = Decimal(str(sale.tax_rate or 0)) if sale else Decimal('0')
-    invoice_treatment = getattr(sale, 'tax_treatment', None) or 'standard'
-    exchange_rate = product_return.exchange_rate or Decimal('1')
+    tax_rate = Decimal(str(sale.tax_rate or 0)) if sale else Decimal("0")
+    invoice_treatment = getattr(sale, "tax_treatment", None) or "standard"
+    exchange_rate = product_return.exchange_rate or Decimal("1")
     if exchange_rate <= 0:
-        exchange_rate = Decimal('1')
+        exchange_rate = Decimal("1")
 
     returned = []
-    for line in ProductReturnLine.query.filter_by(
-            return_id=product_return.id).all():
-        sale_line = getattr(line, 'sale_line', None)
-        returned.append({
-            'line_total': Decimal(str(line.line_total)),
-            'tax_treatment': getattr(sale_line, 'tax_treatment', None) or 'standard',
-        })
+    for line in ProductReturnLine.query.filter_by(return_id=product_return.id).all():
+        sale_line = getattr(line, "sale_line", None)
+        returned.append(
+            {
+                "line_total": Decimal(str(line.line_total)),
+                "tax_treatment": getattr(sale_line, "tax_treatment", None)
+                or "standard",
+            }
+        )
 
     tax_amount, net_std, net_zero, net_exempt = return_tax_parts(
-        returned, sale.lines if sale else [], sale.subtotal if sale else Decimal('0'),
-        Decimal(str(getattr(sale, 'discount_amount', 0) or 0)),
-        Decimal(str(getattr(sale, 'shipping_cost', 0) or 0)),
-        tax_rate, bool(getattr(sale, 'tax_inclusive', False)),
-        invoice_treatment=invoice_treatment)
+        returned,
+        sale.lines if sale else [],
+        sale.subtotal if sale else Decimal("0"),
+        Decimal(str(getattr(sale, "discount_amount", 0) or 0)),
+        Decimal(str(getattr(sale, "shipping_cost", 0) or 0)),
+        tax_rate,
+        bool(getattr(sale, "tax_inclusive", False)),
+        invoice_treatment=invoice_treatment,
+    )
 
     fx = Decimal(str(exchange_rate))
     net_base = (net_std + net_zero + net_exempt).quantize(
-        Decimal('0.001'), rounding=ROUND_HALF_UP)
+        Decimal("0.001"), rounding=ROUND_HALF_UP
+    )
     return (
-        (net_base * fx).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP),
-        (tax_amount * fx).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP),
+        (net_base * fx).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP),
+        (tax_amount * fx).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP),
         tax_rate,
-        net_std * fx, net_zero * fx, net_exempt * fx,
+        net_std * fx,
+        net_zero * fx,
+        net_exempt * fx,
     )
 
 
@@ -1406,24 +1683,24 @@ def _vat_report_data(date_from=None, date_to=None):
 
     # --- المبيعات الخاضعة للضريبة (ضريبة مخرجات) ---
     sales_query = Sale.query.filter(
-        Sale.status == 'confirmed',
+        Sale.status == "confirmed",
         Sale.is_active.is_(True),
     )
     if date_from:
         sales_query = sales_query.filter(func.date(Sale.sale_date) >= date_from)
     if date_to:
         sales_query = sales_query.filter(func.date(Sale.sale_date) <= date_to)
-    sales_query = sales_query.filter(~Sale.id.in_(_archived_record_ids('sales')))
+    sales_query = sales_query.filter(~Sale.id.in_(_archived_record_ids("sales")))
 
     taxable_sales = []
     zero_rated_sales = []
     exempt_sales = []
     unclassified_sales = []
-    total_taxable_sales = Decimal('0')
-    total_zero_rated_sales = Decimal('0')
-    total_output_vat = Decimal('0')
-    total_exempt_sales = Decimal('0')
-    total_unclassified_sales = Decimal('0')
+    total_taxable_sales = Decimal("0")
+    total_zero_rated_sales = Decimal("0")
+    total_output_vat = Decimal("0")
+    total_exempt_sales = Decimal("0")
+    total_unclassified_sales = Decimal("0")
 
     def _sale_tax_rows(sale):
         """صفوف الفاتورة موزعة على المعاملات الضريبية للأسطر.
@@ -1435,73 +1712,96 @@ def _vat_report_data(date_from=None, date_to=None):
 
         fx = Decimal(str(sale.exchange_rate or 1))
         if fx <= 0:
-            fx = Decimal('1')
+            fx = Decimal("1")
         rate = Decimal(str(sale.tax_rate or 0))
-        invoice_treatment = getattr(sale, 'tax_treatment', None) or 'standard'
+        invoice_treatment = getattr(sale, "tax_treatment", None) or "standard"
         lines = list(sale.lines or [])
         if not lines:
             # فاتورة بلا سطور — ائتلاف كامل على أساس الفاتورة نفسها.
-            gross_base = sale.amount_base or Decimal('0')
+            gross_base = sale.amount_base or Decimal("0")
             tax_base = Decimal(str(sale.tax_amount or 0)) * fx
             net_all = gross_base - tax_base
-            if invoice_treatment == 'zero':
-                return [('zero', net_all, Decimal('0'))]
-            if invoice_treatment == 'exempt':
-                return [('exempt', net_all, Decimal('0'))]
+            if invoice_treatment == "zero":
+                return [("zero", net_all, Decimal("0"))]
+            if invoice_treatment == "exempt":
+                return [("exempt", net_all, Decimal("0"))]
             if rate > 0:
-                return [('standard', net_all, tax_base.quantize(
-                    Decimal('0.001'), rounding=ROUND_HALF_UP))]
+                return [
+                    (
+                        "standard",
+                        net_all,
+                        tax_base.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP),
+                    )
+                ]
             return []
-        specs = [{'line_total': line.line_total,
-                  'tax_treatment': getattr(line, 'tax_treatment', None) or 'standard'}
-                 for line in lines]
+        specs = [
+            {
+                "line_total": line.line_total,
+                "tax_treatment": getattr(line, "tax_treatment", None) or "standard",
+            }
+            for line in lines
+        ]
         tax, total, net_std, net_zero, net_exempt = sale_tax_totals_mixed(
-            specs, sale.discount_amount, sale.shipping_cost, rate,
-            bool(sale.tax_inclusive), invoice_treatment=invoice_treatment)
-        q = lambda v: (Decimal(str(v)) * fx).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
-        return [(bucket, q(net), q(tax) if bucket == 'standard' else Decimal('0'))
-                for bucket, net in (('standard', net_std),
-                                    ('zero', net_zero),
-                                    ('exempt', net_exempt)) if net > 0]
+            specs,
+            sale.discount_amount,
+            sale.shipping_cost,
+            rate,
+            bool(sale.tax_inclusive),
+            invoice_treatment=invoice_treatment,
+        )
+        q = lambda v: (Decimal(str(v)) * fx).quantize(
+            Decimal("0.001"), rounding=ROUND_HALF_UP
+        )
+        return [
+            (bucket, q(net), q(tax) if bucket == "standard" else Decimal("0"))
+            for bucket, net in (
+                ("standard", net_std),
+                ("zero", net_zero),
+                ("exempt", net_exempt),
+            )
+            if net > 0
+        ]
 
     for sale in sales_query.order_by(Sale.sale_date).all():
         net_base, tax_base, tax_rate = _vat_base_amounts(sale)
         row_buckets = _sale_tax_rows(sale)
-        invoice_treatment = getattr(sale, 'tax_treatment', None) or 'standard'
+        invoice_treatment = getattr(sale, "tax_treatment", None) or "standard"
         base_row = {
-            'number': sale.sale_number,
-            'date': sale.sale_date,
-            'party': sale.customer.name if sale.customer else 'عميل نقدي',
-            'gross_amount': sale.amount_base or Decimal('0'),
+            "number": sale.sale_number,
+            "date": sale.sale_date,
+            "party": sale.customer.name if sale.customer else "عميل نقدي",
+            "gross_amount": sale.amount_base or Decimal("0"),
         }
-        if tax_rate == 0 and invoice_treatment == 'standard':
+        if tax_rate == 0 and invoice_treatment == "standard":
             # فواتير بنسبة صفر بلا تصنيف — لا تُصنّف آلياً.
-            unclassified_sales.append({
-                **base_row,
-                'net_amount': net_base,
-                'tax_rate': tax_rate,
-                'tax_amount': tax_base,
-                'treatment': 'standard',
-                'zero_amount': Decimal('0'),
-                'exempt_amount': Decimal('0'),
-            })
+            unclassified_sales.append(
+                {
+                    **base_row,
+                    "net_amount": net_base,
+                    "tax_rate": tax_rate,
+                    "tax_amount": tax_base,
+                    "treatment": "standard",
+                    "zero_amount": Decimal("0"),
+                    "exempt_amount": Decimal("0"),
+                }
+            )
             total_unclassified_sales += net_base
             continue
         for bucket, net, _tax in row_buckets:
             row = {
                 **base_row,
-                'net_amount': net,
-                'tax_rate': tax_rate if bucket == 'standard' else Decimal('0'),
-                'tax_amount': _tax,
-                'treatment': bucket,
-                'zero_amount': net if bucket == 'zero' else Decimal('0'),
-                'exempt_amount': net if bucket == 'exempt' else Decimal('0'),
+                "net_amount": net,
+                "tax_rate": tax_rate if bucket == "standard" else Decimal("0"),
+                "tax_amount": _tax,
+                "treatment": bucket,
+                "zero_amount": net if bucket == "zero" else Decimal("0"),
+                "exempt_amount": net if bucket == "exempt" else Decimal("0"),
             }
-            if bucket == 'standard':
+            if bucket == "standard":
                 taxable_sales.append(row)
                 total_taxable_sales += net
                 total_output_vat += _tax
-            elif bucket == 'zero':
+            elif bucket == "zero":
                 zero_rated_sales.append(row)
                 total_zero_rated_sales += net
             else:
@@ -1514,9 +1814,10 @@ def _vat_report_data(date_from=None, date_to=None):
     # ProductReturn is not tenant-scoped itself. Join the owning sale and
     # apply the active scope explicitly, including tenant-less accounts.
     from models.tenant_scope import get_current_tenant_id, TENANT_LESS_SCOPE
-    returns_query = ProductReturn.query.join(Sale, ProductReturn.sale_id == Sale.id).filter(
-        ProductReturn.status == 'approved'
-    )
+
+    returns_query = ProductReturn.query.join(
+        Sale, ProductReturn.sale_id == Sale.id
+    ).filter(ProductReturn.status == "approved")
     _tenant_id = get_current_tenant_id()
     if _tenant_id == TENANT_LESS_SCOPE:
         returns_query = returns_query.filter(Sale.tenant_id.is_(None))
@@ -1524,51 +1825,64 @@ def _vat_report_data(date_from=None, date_to=None):
         returns_query = returns_query.filter(Sale.tenant_id == _tenant_id)
     if date_from:
         returns_query = returns_query.filter(
-            func.date(ProductReturn.return_date) >= date_from)
+            func.date(ProductReturn.return_date) >= date_from
+        )
     if date_to:
         returns_query = returns_query.filter(
-            func.date(ProductReturn.return_date) <= date_to)
+            func.date(ProductReturn.return_date) <= date_to
+        )
 
     credit_notes = []
-    total_credit_notes_net = Decimal('0')
-    total_credit_notes_vat = Decimal('0')
-    credit_net_by_treatment = {'standard': Decimal('0'), 'zero': Decimal('0'),
-                               'exempt': Decimal('0'), 'unclassified': Decimal('0')}
+    total_credit_notes_net = Decimal("0")
+    total_credit_notes_vat = Decimal("0")
+    credit_net_by_treatment = {
+        "standard": Decimal("0"),
+        "zero": Decimal("0"),
+        "exempt": Decimal("0"),
+        "unclassified": Decimal("0"),
+    }
 
     for product_return in returns_query.order_by(ProductReturn.return_date).all():
-        net_base, tax_base, tax_rate, r_std, r_zero, r_exempt = _return_vat_amounts(product_return)
+        net_base, tax_base, tax_rate, r_std, r_zero, r_exempt = _return_vat_amounts(
+            product_return
+        )
         customer = product_return.customer
-        credit_notes.append({
-            'number': product_return.return_number,
-            'date': product_return.return_date,
-            'party': customer.name if customer else 'عميل نقدي',
-            'net_amount': -net_base,
-            'gross_amount': -(product_return.amount_base or Decimal('0')),
-            'tax_rate': tax_rate,
-            'tax_amount': -tax_base,
-        })
+        credit_notes.append(
+            {
+                "number": product_return.return_number,
+                "date": product_return.return_date,
+                "party": customer.name if customer else "عميل نقدي",
+                "net_amount": -net_base,
+                "gross_amount": -(product_return.amount_base or Decimal("0")),
+                "tax_rate": tax_rate,
+                "tax_amount": -tax_base,
+            }
+        )
         total_credit_notes_net += net_base
         total_credit_notes_vat += tax_base
         sale = product_return.sale
-        invoice_treatment = getattr(sale, 'tax_treatment', None) or 'standard'
-        if tax_rate == 0 and invoice_treatment == 'standard':
+        invoice_treatment = getattr(sale, "tax_treatment", None) or "standard"
+        if tax_rate == 0 and invoice_treatment == "standard":
             # المستند كله غامض — تُخصم كامل قيمة المرتجع من سلة غير المصنّف.
-            credit_net_by_treatment['unclassified'] += net_base
+            credit_net_by_treatment["unclassified"] += net_base
         else:
-            credit_net_by_treatment['standard'] += r_std
-            credit_net_by_treatment['zero'] += r_zero
-            credit_net_by_treatment['exempt'] += r_exempt
+            credit_net_by_treatment["standard"] += r_std
+            credit_net_by_treatment["zero"] += r_zero
+            credit_net_by_treatment["exempt"] += r_exempt
 
     # --- المشتريات الخاضعة للضريبة (ضريبة مدخلات) ---
-    purchases_query = Purchase.query.filter(Purchase.status == 'confirmed')
+    purchases_query = Purchase.query.filter(Purchase.status == "confirmed")
     if date_from:
         purchases_query = purchases_query.filter(
-            func.date(Purchase.purchase_date) >= date_from)
+            func.date(Purchase.purchase_date) >= date_from
+        )
     if date_to:
         purchases_query = purchases_query.filter(
-            func.date(Purchase.purchase_date) <= date_to)
+            func.date(Purchase.purchase_date) <= date_to
+        )
     purchases_query = purchases_query.filter(
-        ~Purchase.id.in_(_archived_record_ids('purchases')))
+        ~Purchase.id.in_(_archived_record_ids("purchases"))
+    )
 
     def _purchase_tax_rows(purchase):
         """Rows for the VAT report — mirror of `_sale_tax_rows` for purchases.
@@ -1581,34 +1895,54 @@ def _vat_report_data(date_from=None, date_to=None):
 
         fx = Decimal(str(purchase.exchange_rate or 1))
         if fx <= 0:
-            fx = Decimal('1')
+            fx = Decimal("1")
         rate = Decimal(str(purchase.tax_rate or 0))
-        invoice_treatment = getattr(purchase, 'tax_treatment', None) or 'standard'
+        invoice_treatment = getattr(purchase, "tax_treatment", None) or "standard"
         lines = list(purchase.lines or [])
         if not lines:
-            gross_base = purchase.amount_base or Decimal('0')
+            gross_base = purchase.amount_base or Decimal("0")
             tax_base = Decimal(str(purchase.tax_amount or 0)) * fx
             net_all = gross_base - tax_base
-            if invoice_treatment == 'zero':
-                return [('zero', net_all, Decimal('0'))]
-            if invoice_treatment == 'exempt':
-                return [('exempt', net_all, Decimal('0'))]
+            if invoice_treatment == "zero":
+                return [("zero", net_all, Decimal("0"))]
+            if invoice_treatment == "exempt":
+                return [("exempt", net_all, Decimal("0"))]
             if rate > 0:
-                return [('standard', net_all, tax_base.quantize(
-                    Decimal('0.001'), rounding=ROUND_HALF_UP))]
+                return [
+                    (
+                        "standard",
+                        net_all,
+                        tax_base.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP),
+                    )
+                ]
             return []
-        specs = [{'line_total': line.line_total,
-                  'tax_treatment': getattr(line, 'tax_treatment', None) or 'standard'}
-                 for line in lines]
+        specs = [
+            {
+                "line_total": line.line_total,
+                "tax_treatment": getattr(line, "tax_treatment", None) or "standard",
+            }
+            for line in lines
+        ]
         tax, total, net_std, net_zero, net_exempt = sale_tax_totals_mixed(
-            specs, purchase.discount_amount, Decimal('0'), rate,
-            bool(purchase.tax_inclusive), invoice_treatment=invoice_treatment)
+            specs,
+            purchase.discount_amount,
+            Decimal("0"),
+            rate,
+            bool(purchase.tax_inclusive),
+            invoice_treatment=invoice_treatment,
+        )
         q = lambda v: (Decimal(str(v)) * fx).quantize(
-            Decimal('0.001'), rounding=ROUND_HALF_UP)
-        return [(bucket, q(net), q(tax) if bucket == 'standard' else Decimal('0'))
-                for bucket, net in (('standard', net_std),
-                                    ('zero', net_zero),
-                                    ('exempt', net_exempt)) if net > 0]
+            Decimal("0.001"), rounding=ROUND_HALF_UP
+        )
+        return [
+            (bucket, q(net), q(tax) if bucket == "standard" else Decimal("0"))
+            for bucket, net in (
+                ("standard", net_std),
+                ("zero", net_zero),
+                ("exempt", net_exempt),
+            )
+            if net > 0
+        ]
 
     taxable_purchases = []
     zero_rated_purchases = []
@@ -1616,49 +1950,52 @@ def _vat_report_data(date_from=None, date_to=None):
     unclassified_purchases = []
     non_recoverable_purchases = []
     reverse_charge_purchases = []
-    total_taxable_purchases = Decimal('0')
-    total_zero_rated_purchases = Decimal('0')
-    total_input_vat = Decimal('0')
-    total_exempt_purchases = Decimal('0')
-    total_unclassified_purchases = Decimal('0')
-    total_non_recoverable_vat = Decimal('0')
-    total_non_recoverable_base = Decimal('0')
-    total_reverse_charge_vat = Decimal('0')
-    total_reverse_charge_base = Decimal('0')
+    total_taxable_purchases = Decimal("0")
+    total_zero_rated_purchases = Decimal("0")
+    total_input_vat = Decimal("0")
+    total_exempt_purchases = Decimal("0")
+    total_unclassified_purchases = Decimal("0")
+    total_non_recoverable_vat = Decimal("0")
+    total_non_recoverable_base = Decimal("0")
+    total_reverse_charge_vat = Decimal("0")
+    total_reverse_charge_base = Decimal("0")
 
     for purchase in purchases_query.order_by(Purchase.purchase_date).all():
         net_base, tax_base, tax_rate = _vat_base_amounts(purchase)
-        treatment = getattr(purchase, 'tax_treatment', None) or 'standard'
-        recoverable = bool(getattr(purchase, 'vat_recoverable', True))
-        reverse_charge = bool(getattr(purchase, 'reverse_charge', False))
+        treatment = getattr(purchase, "tax_treatment", None) or "standard"
+        recoverable = bool(getattr(purchase, "vat_recoverable", True))
+        reverse_charge = bool(getattr(purchase, "reverse_charge", False))
         base_row = {
-            'number': purchase.purchase_number,
-            'date': purchase.purchase_date,
-            'party': (purchase.supplier.name if purchase.supplier
-                      else purchase.supplier_name),
-            'gross_amount': purchase.amount_base or Decimal('0'),
-            'recoverable': recoverable,
-            'reverse_charge': reverse_charge,
+            "number": purchase.purchase_number,
+            "date": purchase.purchase_date,
+            "party": (
+                purchase.supplier.name if purchase.supplier else purchase.supplier_name
+            ),
+            "gross_amount": purchase.amount_base or Decimal("0"),
+            "recoverable": recoverable,
+            "reverse_charge": reverse_charge,
         }
-        if tax_rate == 0 and treatment == 'standard':
-            unclassified_purchases.append({
-                **base_row,
-                'net_amount': net_base,
-                'tax_rate': tax_rate,
-                'tax_amount': tax_base,
-                'treatment': 'standard',
-            })
+        if tax_rate == 0 and treatment == "standard":
+            unclassified_purchases.append(
+                {
+                    **base_row,
+                    "net_amount": net_base,
+                    "tax_rate": tax_rate,
+                    "tax_amount": tax_base,
+                    "treatment": "standard",
+                }
+            )
             total_unclassified_purchases += net_base
             continue
         for bucket, net, _tax in _purchase_tax_rows(purchase):
             row = {
                 **base_row,
-                'net_amount': net,
-                'tax_rate': tax_rate if bucket == 'standard' else Decimal('0'),
-                'tax_amount': _tax,
-                'treatment': bucket,
+                "net_amount": net,
+                "tax_rate": tax_rate if bucket == "standard" else Decimal("0"),
+                "tax_amount": _tax,
+                "treatment": bucket,
             }
-            if bucket == 'standard':
+            if bucket == "standard":
                 if reverse_charge:
                     reverse_charge_purchases.append(row)
                     total_reverse_charge_vat += _tax
@@ -1671,7 +2008,7 @@ def _vat_report_data(date_from=None, date_to=None):
                     non_recoverable_purchases.append(row)
                     total_non_recoverable_vat += _tax
                     total_non_recoverable_base += net
-            elif bucket == 'zero':
+            elif bucket == "zero":
                 zero_rated_purchases.append(row)
                 total_zero_rated_purchases += net
             else:
@@ -1685,29 +2022,34 @@ def _vat_report_data(date_from=None, date_to=None):
     rate_map = {}
 
     def _accrue(rate, side, net, tax):
-        r = (Decimal(str(rate or 0))).quantize(Decimal('0.01'))
-        entry = rate_map.setdefault(str(r), {
-            'rate': r,
-            'sales_net': Decimal('0'), 'sales_vat': Decimal('0'),
-            'purchases_net': Decimal('0'), 'purchases_vat': Decimal('0'),
-            'reverse_charge_vat': Decimal('0'),
-        })
-        if side == 'sales':
-            entry['sales_net'] += net
-            entry['sales_vat'] += tax
+        r = (Decimal(str(rate or 0))).quantize(Decimal("0.01"))
+        entry = rate_map.setdefault(
+            str(r),
+            {
+                "rate": r,
+                "sales_net": Decimal("0"),
+                "sales_vat": Decimal("0"),
+                "purchases_net": Decimal("0"),
+                "purchases_vat": Decimal("0"),
+                "reverse_charge_vat": Decimal("0"),
+            },
+        )
+        if side == "sales":
+            entry["sales_net"] += net
+            entry["sales_vat"] += tax
         else:
-            entry['purchases_net'] += net
-            entry['purchases_vat'] += tax
+            entry["purchases_net"] += net
+            entry["purchases_vat"] += tax
 
     for r in taxable_sales:
-        _accrue(r['tax_rate'], 'sales', r['net_amount'], r['tax_amount'])
+        _accrue(r["tax_rate"], "sales", r["net_amount"], r["tax_amount"])
     for r in taxable_purchases:
-        _accrue(r['tax_rate'], 'purchases', r['net_amount'], r['tax_amount'])
+        _accrue(r["tax_rate"], "purchases", r["net_amount"], r["tax_amount"])
     for r in reverse_charge_purchases:
-        key = str((Decimal(str(r['tax_rate'] or 0))).quantize(Decimal('0.01')))
+        key = str((Decimal(str(r["tax_rate"] or 0))).quantize(Decimal("0.01")))
         entry = rate_map.get(key)
         if entry:
-            entry['reverse_charge_vat'] += r['tax_amount']
+            entry["reverse_charge_vat"] += r["tax_amount"]
     by_rate = [rate_map[k] for k in sorted(rate_map, key=lambda k: Decimal(k))]
 
     # --- المصروفات (سندات الصرف / مصروف) — نفس منطق المعالجة ---
@@ -1717,48 +2059,57 @@ def _vat_report_data(date_from=None, date_to=None):
     expense_taxable = []
     expense_non_recoverable = []
     expense_reverse_charge = []
-    total_expense_input_vat = Decimal('0')
-    total_expense_non_recoverable_vat = Decimal('0')
-    total_expense_reverse_charge_vat = Decimal('0')
+    total_expense_input_vat = Decimal("0")
+    total_expense_non_recoverable_vat = Decimal("0")
+    total_expense_reverse_charge_vat = Decimal("0")
 
-    expenses_query = Expense.query.filter(Expense.status == 'confirmed',
-                                          Expense.is_active.is_(True))
+    expenses_query = Expense.query.filter(
+        Expense.status == "confirmed", Expense.is_active.is_(True)
+    )
     if date_from:
         expenses_query = expenses_query.filter(
-            func.date(Expense.expense_date) >= date_from)
+            func.date(Expense.expense_date) >= date_from
+        )
     if date_to:
         expenses_query = expenses_query.filter(
-            func.date(Expense.expense_date) <= date_to)
+            func.date(Expense.expense_date) <= date_to
+        )
     expenses_query = expenses_query.filter(
-        ~Expense.id.in_(_archived_record_ids('expenses')))
+        ~Expense.id.in_(_archived_record_ids("expenses"))
+    )
 
     for e in expenses_query.order_by(Expense.expense_date).all():
-        recoverable = bool(getattr(e, 'vat_recoverable', True))
-        reverse_charge = bool(getattr(e, 'reverse_charge', False))
-        rate = Decimal(str(getattr(e, 'tax_rate', 0) or 0))
-        treatment = getattr(e, 'tax_treatment', 'standard') or 'standard'
+        recoverable = bool(getattr(e, "vat_recoverable", True))
+        reverse_charge = bool(getattr(e, "reverse_charge", False))
+        rate = Decimal(str(getattr(e, "tax_rate", 0) or 0))
+        treatment = getattr(e, "tax_treatment", "standard") or "standard"
         fx = Decimal(str(e.exchange_rate or 1))
         if fx <= 0:
-            fx = Decimal('1')
-        net, tax, total = compute_expense_tax(e.amount, rate,
-                                              bool(e.tax_inclusive), treatment)
+            fx = Decimal("1")
+        net, tax, total = compute_expense_tax(
+            e.amount, rate, bool(e.tax_inclusive), treatment
+        )
         net_l = (Decimal(str(net)) * fx).quantize(
-            Decimal('0.001'), rounding=ROUND_HALF_UP)
-        tax_l = (Decimal(str(tax)) * fx).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
+            Decimal("0.001"), rounding=ROUND_HALF_UP
+        )
+        tax_l = (Decimal(str(tax)) * fx).quantize(
+            Decimal("0.001"), rounding=ROUND_HALF_UP
+        )
         row = {
-            'number': e.expense_number,
-            'date': e.expense_date,
-            'party': e.supplier_name or e.description,
-            'net_amount': net_l,
-            'gross_amount': (Decimal(str(total)) * fx).quantize(
-                Decimal('0.001'), rounding=ROUND_HALF_UP),
-            'tax_rate': rate,
-            'tax_amount': tax_l,
-            'treatment': treatment,
-            'recoverable': recoverable,
-            'reverse_charge': reverse_charge,
+            "number": e.expense_number,
+            "date": e.expense_date,
+            "party": e.supplier_name or e.description,
+            "net_amount": net_l,
+            "gross_amount": (Decimal(str(total)) * fx).quantize(
+                Decimal("0.001"), rounding=ROUND_HALF_UP
+            ),
+            "tax_rate": rate,
+            "tax_amount": tax_l,
+            "treatment": treatment,
+            "recoverable": recoverable,
+            "reverse_charge": reverse_charge,
         }
-        if treatment in ('zero', 'exempt') or tax == 0:
+        if treatment in ("zero", "exempt") or tax == 0:
             continue
         if reverse_charge:
             expense_reverse_charge.append(row)
@@ -1773,67 +2124,67 @@ def _vat_report_data(date_from=None, date_to=None):
     total_input_vat += total_expense_input_vat
     total_output_vat += total_expense_reverse_charge_vat
     for r in expense_taxable:
-        _accrue(r['tax_rate'], 'purchases', r['net_amount'], r['tax_amount'])
+        _accrue(r["tax_rate"], "purchases", r["net_amount"], r["tax_amount"])
     for r in expense_reverse_charge:
-        key = str((Decimal(str(r['tax_rate'] or 0))).quantize(Decimal('0.01')))
+        key = str((Decimal(str(r["tax_rate"] or 0))).quantize(Decimal("0.01")))
         entry = rate_map.get(key)
         if entry:
-            entry['reverse_charge_vat'] += r['tax_amount']
+            entry["reverse_charge_vat"] += r["tax_amount"]
     by_rate = [rate_map[k] for k in sorted(rate_map, key=lambda k: Decimal(k))]
 
     # المرتجعات تخصم من المبيعات الخاضعة ومن ضريبة المخرجات
-    total_taxable_sales -= credit_net_by_treatment['standard']
-    total_zero_rated_sales -= credit_net_by_treatment['zero']
-    total_exempt_sales -= credit_net_by_treatment['exempt']
-    total_unclassified_sales -= credit_net_by_treatment['unclassified']
+    total_taxable_sales -= credit_net_by_treatment["standard"]
+    total_zero_rated_sales -= credit_net_by_treatment["zero"]
+    total_exempt_sales -= credit_net_by_treatment["exempt"]
+    total_unclassified_sales -= credit_net_by_treatment["unclassified"]
     total_output_vat -= total_credit_notes_vat
 
     net_vat = total_output_vat - total_input_vat
 
     summary = {
-        'total_taxable_sales': total_taxable_sales,
-        'total_output_vat': total_output_vat,
-        'total_zero_rated_sales': total_zero_rated_sales,
-        'total_unclassified_sales': total_unclassified_sales,
-        'total_exempt_sales': total_exempt_sales,
-        'total_credit_notes_net': total_credit_notes_net,
-        'total_credit_notes_vat': total_credit_notes_vat,
-        'total_taxable_purchases': total_taxable_purchases,
-        'total_input_vat': total_input_vat,
-        'total_zero_rated_purchases': total_zero_rated_purchases,
-        'total_unclassified_purchases': total_unclassified_purchases,
-        'total_exempt_purchases': total_exempt_purchases,
-        'total_non_recoverable_vat': total_non_recoverable_vat,
-        'total_non_recoverable_base': total_non_recoverable_base,
-        'total_reverse_charge_vat': total_reverse_charge_vat,
-        'total_reverse_charge_base': total_reverse_charge_base,
-        'total_expense_input_vat': total_expense_input_vat,
-        'total_expense_non_recoverable_vat': total_expense_non_recoverable_vat,
-        'total_expense_reverse_charge_vat': total_expense_reverse_charge_vat,
-        'net_vat': net_vat,
-        'vat_payable': net_vat if net_vat > 0 else Decimal('0'),
-        'vat_refund': abs(net_vat) if net_vat < 0 else Decimal('0'),
+        "total_taxable_sales": total_taxable_sales,
+        "total_output_vat": total_output_vat,
+        "total_zero_rated_sales": total_zero_rated_sales,
+        "total_unclassified_sales": total_unclassified_sales,
+        "total_exempt_sales": total_exempt_sales,
+        "total_credit_notes_net": total_credit_notes_net,
+        "total_credit_notes_vat": total_credit_notes_vat,
+        "total_taxable_purchases": total_taxable_purchases,
+        "total_input_vat": total_input_vat,
+        "total_zero_rated_purchases": total_zero_rated_purchases,
+        "total_unclassified_purchases": total_unclassified_purchases,
+        "total_exempt_purchases": total_exempt_purchases,
+        "total_non_recoverable_vat": total_non_recoverable_vat,
+        "total_non_recoverable_base": total_non_recoverable_base,
+        "total_reverse_charge_vat": total_reverse_charge_vat,
+        "total_reverse_charge_base": total_reverse_charge_base,
+        "total_expense_input_vat": total_expense_input_vat,
+        "total_expense_non_recoverable_vat": total_expense_non_recoverable_vat,
+        "total_expense_reverse_charge_vat": total_expense_reverse_charge_vat,
+        "net_vat": net_vat,
+        "vat_payable": net_vat if net_vat > 0 else Decimal("0"),
+        "vat_refund": abs(net_vat) if net_vat < 0 else Decimal("0"),
     }
 
     return {
-        'taxable_sales': taxable_sales,
-        'zero_rated_sales': zero_rated_sales,
-        'exempt_sales': exempt_sales,
-        'unclassified_sales': unclassified_sales,
-        'credit_notes': credit_notes,
-        'taxable_purchases': taxable_purchases,
-        'zero_rated_purchases': zero_rated_purchases,
-        'unclassified_purchases': unclassified_purchases,
-        'exempt_purchases': exempt_purchases,
-        'non_recoverable_purchases': non_recoverable_purchases,
-        'reverse_charge_purchases': reverse_charge_purchases,
-        'expense_taxable': expense_taxable,
-        'expense_non_recoverable': expense_non_recoverable,
-        'expense_reverse_charge': expense_reverse_charge,
-        'by_rate': by_rate,
-        'summary': summary,
-        'date_from': date_from or '',
-        'date_to': date_to or '',
+        "taxable_sales": taxable_sales,
+        "zero_rated_sales": zero_rated_sales,
+        "exempt_sales": exempt_sales,
+        "unclassified_sales": unclassified_sales,
+        "credit_notes": credit_notes,
+        "taxable_purchases": taxable_purchases,
+        "zero_rated_purchases": zero_rated_purchases,
+        "unclassified_purchases": unclassified_purchases,
+        "exempt_purchases": exempt_purchases,
+        "non_recoverable_purchases": non_recoverable_purchases,
+        "reverse_charge_purchases": reverse_charge_purchases,
+        "expense_taxable": expense_taxable,
+        "expense_non_recoverable": expense_non_recoverable,
+        "expense_reverse_charge": expense_reverse_charge,
+        "by_rate": by_rate,
+        "summary": summary,
+        "date_from": date_from or "",
+        "date_to": date_to or "",
     }
 
 
@@ -1843,51 +2194,57 @@ def _tenant_vat_label():
         from models import Tenant
         from models.tax_ruleset import ruleset_for_tenant
         from models.tenant_scope import get_current_tenant_id
+
         tid = get_current_tenant_id()
         tenant = db.session.get(Tenant, tid) if tid else None
         ruleset = ruleset_for_tenant(tenant)
         if ruleset is not None:
-            country = (ruleset.country_code or 'XX').upper()
-            rate = format(ruleset.vat_rate, 'g') if ruleset.vat_rate is not None else '—'
-            return f'{country} {rate}%'
+            country = (ruleset.country_code or "XX").upper()
+            rate = (
+                format(ruleset.vat_rate, "g") if ruleset.vat_rate is not None else "—"
+            )
+            return f"{country} {rate}%"
     except Exception:
         pass
-    return 'VAT'
+    return "VAT"
 
 
-@reports_bp.route('/vat-report')
+@reports_bp.route("/vat-report")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def vat_report():
     """
     تقرير ضريبة القيمة المضافة — VAT Report
     Taxable sales/purchases, output/input VAT, net payable.
     """
-    date_from = request.args.get('date_from', '', type=str)
-    date_to = request.args.get('date_to', '', type=str)
+    date_from = request.args.get("date_from", "", type=str)
+    date_to = request.args.get("date_to", "", type=str)
 
     data = _vat_report_data(date_from, date_to)
 
-    return render_template('reports/vat_report.html',
-                           taxable_sales=data['taxable_sales'],
-                           zero_rated_sales=data['zero_rated_sales'],
-                           exempt_sales=data['exempt_sales'],
-                           unclassified_sales=data['unclassified_sales'],
-                           credit_notes=data['credit_notes'],
-                           taxable_purchases=data['taxable_purchases'],
-                           zero_rated_purchases=data['zero_rated_purchases'],
-                           unclassified_purchases=data['unclassified_purchases'],
-                           exempt_purchases=data['exempt_purchases'],
-                           non_recoverable_purchases=data['non_recoverable_purchases'],
-                           reverse_charge_purchases=data['reverse_charge_purchases'],
-                           expense_taxable=data['expense_taxable'],
-                           expense_non_recoverable=data['expense_non_recoverable'],
-                           expense_reverse_charge=data['expense_reverse_charge'],
-                           by_rate=data['by_rate'],
-                           summary=data['summary'],
-                           vat_label=_tenant_vat_label(),
-                           date_from=data['date_from'],
-                           date_to=data['date_to'])
+    return render_template(
+        "reports/vat_report.html",
+        taxable_sales=data["taxable_sales"],
+        zero_rated_sales=data["zero_rated_sales"],
+        exempt_sales=data["exempt_sales"],
+        unclassified_sales=data["unclassified_sales"],
+        credit_notes=data["credit_notes"],
+        taxable_purchases=data["taxable_purchases"],
+        zero_rated_purchases=data["zero_rated_purchases"],
+        unclassified_purchases=data["unclassified_purchases"],
+        exempt_purchases=data["exempt_purchases"],
+        non_recoverable_purchases=data["non_recoverable_purchases"],
+        reverse_charge_purchases=data["reverse_charge_purchases"],
+        expense_taxable=data["expense_taxable"],
+        expense_non_recoverable=data["expense_non_recoverable"],
+        expense_reverse_charge=data["expense_reverse_charge"],
+        by_rate=data["by_rate"],
+        summary=data["summary"],
+        vat_label=_tenant_vat_label(),
+        date_from=data["date_from"],
+        date_to=data["date_to"],
+    )
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PHASE 3: EXPORT ENDPOINTS
@@ -1898,17 +2255,17 @@ def _send_export(export_func, filename, format_type):
     """Helper: generate export and return as downloadable file."""
     output = export_func()
     mime = {
-        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'pdf': 'application/pdf',
-        'csv': 'text/csv; charset=utf-8',
-    }.get(format_type, 'application/octet-stream')
+        "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "pdf": "application/pdf",
+        "csv": "text/csv; charset=utf-8",
+    }.get(format_type, "application/octet-stream")
     response = make_response(output.getvalue())
-    response.headers['Content-Type'] = mime
-    response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response.headers["Content-Type"] = mime
+    response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 
 
-def _audit_export(report_name, fmt, filters=None, result='granted', reason=None):
+def _audit_export(report_name, fmt, filters=None, result="granted", reason=None):
     """F4: تدقيق كل عملية تصدير.
 
     ``models/audit.py`` يعرض الإجراء 'export' (و'print') في واجهة سجل
@@ -1917,233 +2274,369 @@ def _audit_export(report_name, fmt, filters=None, result='granted', reason=None)
     أيضاً حتى لا يختفي من السجل.
     """
     changes = {
-        'report': report_name,
-        'format': fmt,
-        'filters': filters or {},
-        'result': result,
+        "report": report_name,
+        "format": fmt,
+        "filters": filters or {},
+        "result": result,
     }
     if reason:
-        changes['reason'] = reason
-    return create_audit_log('export', 'reports', None, changes=changes)
+        changes["reason"] = reason
+    return create_audit_log("export", "reports", None, changes=changes)
 
 
-@reports_bp.route('/inventory-valuation/export')
+@reports_bp.route("/inventory-valuation/export")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def export_inventory_valuation():
     from services.export_service import ExportService
-    fmt = request.args.get('format', 'xlsx')
+
+    fmt = request.args.get("format", "xlsx")
     # SECURITY: export carries the same cost columns as the valuation page.
     if not current_user.can_see_costs():
         # F4: الرفض يُدقَّق أيضاً (لا يُخفى تصدير مرفوض).
-        _audit_export('inventory_valuation', fmt, result='denied',
-                      reason='missing view_costs permission')
+        _audit_export(
+            "inventory_valuation",
+            fmt,
+            result="denied",
+            reason="missing view_costs permission",
+        )
         abort(403)
 
-    _audit_export('inventory_valuation', fmt, filters={'scope': 'active_products_with_stock'})
+    _audit_export(
+        "inventory_valuation", fmt, filters={"scope": "active_products_with_stock"}
+    )
 
-    products = Product.query.filter(Product.is_active == True, Product.current_stock > 0).order_by(Product.name).all()  # noqa: E712
-    headers = ['المنتج', 'الكود', 'الفئة', 'الكمية', 'متوسط التكلفة', 'القيمة']
+    products = (
+        Product.query.filter(Product.is_active == True, Product.current_stock > 0)
+        .order_by(Product.name)
+        .all()
+    )  # noqa: E712
+    headers = ["المنتج", "الكود", "الفئة", "الكمية", "متوسط التكلفة", "القيمة"]
     rows = []
-    total_value = Decimal('0')
-    total_qty = Decimal('0')
+    total_value = Decimal("0")
+    total_qty = Decimal("0")
     for p in products:
-        qty = p.current_stock or Decimal('0')
+        qty = p.current_stock or Decimal("0")
         cost = Decimal(str(p.average_cost or 0))
         if cost <= 0:
             cost = CostingService.current_unit_cost(p)
         val = qty * cost
         total_value += val
         total_qty += qty
-        rows.append([p.name, p.sku or p.part_number or '',
-                     p.category.name if p.category else '',
-                     float(qty), float(cost), float(val)])
-    summary = {'إجمالي الكمية': float(total_qty), 'إجمالي القيمة': float(total_value)}
+        rows.append(
+            [
+                p.name,
+                p.sku or p.part_number or "",
+                p.category.name if p.category else "",
+                float(qty),
+                float(cost),
+                float(val),
+            ]
+        )
+    summary = {"إجمالي الكمية": float(total_qty), "إجمالي القيمة": float(total_value)}
 
     # F7: لا يُخفى فرق التقييم عن الأستاذ — يُذكر في الملف المُصدَّر.
     reconciliation = _inventory_reconciliation_summary()
-    if reconciliation.get('available'):
-        summary['رصيد المخزون في الأستاذ العام'] = reconciliation.get('control_balance')
-        summary['قيمة التقييم (كمية × متوسط التكلفة)'] = reconciliation.get('valuation_at_average_cost')
-        summary['الفرق بين الأستاذ والتقييم'] = reconciliation.get('gl_difference')
+    if reconciliation.get("available"):
+        summary["رصيد المخزون في الأستاذ العام"] = reconciliation.get("control_balance")
+        summary["قيمة التقييم (كمية × متوسط التكلفة)"] = reconciliation.get(
+            "valuation_at_average_cost"
+        )
+        summary["الفرق بين الأستاذ والتقييم"] = reconciliation.get("gl_difference")
 
     def build():
-        if fmt == 'pdf':
-            return ExportService.export_to_pdf('تقييم المخزون — Inventory Valuation',
-                                               headers, rows, summary=summary,
-                                               subtitle=_current_tenant_display_name())
-        elif fmt == 'csv':
-            all_rows = rows + [['', '', 'المجموع', float(total_qty), '', float(total_value)]]
-            if reconciliation.get('available'):
-                all_rows.append(['', '', 'رصيد المخزون في الأستاذ العام', '',
-                                 '', reconciliation.get('control_balance')])
-                all_rows.append(['', '', 'الفرق بين الأستاذ والتقييم', '',
-                                 '', reconciliation.get('gl_difference')])
-            return ExportService.export_to_csv(all_rows, headers, 'inventory_valuation.csv')
-        return ExportService.export_to_excel('تقييم المخزون — Inventory Valuation',
-                                             headers, rows, summary=summary,
-                                             subtitle=_current_tenant_display_name())
+        if fmt == "pdf":
+            return ExportService.export_to_pdf(
+                "تقييم المخزون — Inventory Valuation",
+                headers,
+                rows,
+                summary=summary,
+                subtitle=_current_tenant_display_name(),
+            )
+        elif fmt == "csv":
+            all_rows = rows + [
+                ["", "", "المجموع", float(total_qty), "", float(total_value)]
+            ]
+            if reconciliation.get("available"):
+                all_rows.append(
+                    [
+                        "",
+                        "",
+                        "رصيد المخزون في الأستاذ العام",
+                        "",
+                        "",
+                        reconciliation.get("control_balance"),
+                    ]
+                )
+                all_rows.append(
+                    [
+                        "",
+                        "",
+                        "الفرق بين الأستاذ والتقييم",
+                        "",
+                        "",
+                        reconciliation.get("gl_difference"),
+                    ]
+                )
+            return ExportService.export_to_csv(
+                all_rows, headers, "inventory_valuation.csv"
+            )
+        return ExportService.export_to_excel(
+            "تقييم المخزون — Inventory Valuation",
+            headers,
+            rows,
+            summary=summary,
+            subtitle=_current_tenant_display_name(),
+        )
 
-    ext = {'xlsx': 'xlsx', 'pdf': 'pdf', 'csv': 'csv'}.get(fmt, 'xlsx')
-    return _send_export(build, f'inventory_valuation.{ext}', ext)
+    ext = {"xlsx": "xlsx", "pdf": "pdf", "csv": "csv"}.get(fmt, "xlsx")
+    return _send_export(build, f"inventory_valuation.{ext}", ext)
 
 
-@reports_bp.route('/ap-aging/export')
+@reports_bp.route("/ap-aging/export")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def export_ap_aging():
     from services.aging_analysis_service import AgingAnalysisService
     from services.export_service import ExportService
-    fmt = request.args.get('format', 'xlsx')
+
+    fmt = request.args.get("format", "xlsx")
 
     report = AgingAnalysisService.get_payables_aging()
-    _audit_export('ap_aging', fmt, filters={'scope': 'active_suppliers'})
+    _audit_export("ap_aging", fmt, filters={"scope": "active_suppliers"})
 
-    headers = ['المورد', 'إجمالي المشتريات', 'المدفوع', 'الرصيد المستحق', 'المتأخر', 'شروط الدفع']
+    headers = [
+        "المورد",
+        "إجمالي المشتريات",
+        "المدفوع",
+        "الرصيد المستحق",
+        "المتأخر",
+        "شروط الدفع",
+    ]
     rows = []
-    total_payable = Decimal('0')
-    for supplier_data in report.get('suppliers', []):
-        sup = supplier_data['supplier']
-        balance = Decimal(str(supplier_data.get('total', 0)))
+    total_payable = Decimal("0")
+    for supplier_data in report.get("suppliers", []):
+        sup = supplier_data["supplier"]
+        balance = Decimal(str(supplier_data.get("total", 0)))
         if balance <= 0:
             continue
         total_payable += balance
-        overdue = Decimal(str(supplier_data.get('overdue_total', 0)))
-        rows.append([sup.name, float(Decimal(str(supplier_data.get('total', 0))) + overdue),
-                     float(overdue), float(balance), float(supplier_data.get('overdue_total', 0)),
-                     sup.payment_terms_days or 0])
+        overdue = Decimal(str(supplier_data.get("overdue_total", 0)))
+        rows.append(
+            [
+                sup.name,
+                float(Decimal(str(supplier_data.get("total", 0))) + overdue),
+                float(overdue),
+                float(balance),
+                float(supplier_data.get("overdue_total", 0)),
+                sup.payment_terms_days or 0,
+            ]
+        )
 
-    summary = {'إجمالي الذمم الدائنة': float(total_payable)}
+    summary = {"إجمالي الذمم الدائنة": float(total_payable)}
 
     def build():
-        if fmt == 'pdf':
-            return ExportService.export_to_pdf('أعمار الذمم الدائنة — AP Aging',
-                                               headers, rows, summary=summary,
-                                               subtitle=_current_tenant_display_name())
-        elif fmt == 'csv':
-            return ExportService.export_to_csv(rows, ['المورد', 'إجمالي المشتريات', 'المدفوع', 'الرصيد المستحق', 'المتأخر', 'شروط الدفع'], 'ap_aging.csv')
-        return ExportService.export_to_excel('أعمار الذمم الدائنة — AP Aging',
-                                             headers, rows, summary=summary,
-                                             subtitle=_current_tenant_display_name())
+        if fmt == "pdf":
+            return ExportService.export_to_pdf(
+                "أعمار الذمم الدائنة — AP Aging",
+                headers,
+                rows,
+                summary=summary,
+                subtitle=_current_tenant_display_name(),
+            )
+        elif fmt == "csv":
+            return ExportService.export_to_csv(
+                rows,
+                [
+                    "المورد",
+                    "إجمالي المشتريات",
+                    "المدفوع",
+                    "الرصيد المستحق",
+                    "المتأخر",
+                    "شروط الدفع",
+                ],
+                "ap_aging.csv",
+            )
+        return ExportService.export_to_excel(
+            "أعمار الذمم الدائنة — AP Aging",
+            headers,
+            rows,
+            summary=summary,
+            subtitle=_current_tenant_display_name(),
+        )
 
-    ext = {'xlsx': 'xlsx', 'pdf': 'pdf', 'csv': 'csv'}.get(fmt, 'xlsx')
-    return _send_export(build, f'ap_aging.{ext}', ext)
+    ext = {"xlsx": "xlsx", "pdf": "pdf", "csv": "csv"}.get(fmt, "xlsx")
+    return _send_export(build, f"ap_aging.{ext}", ext)
 
 
-@reports_bp.route('/cash-flow/export')
+@reports_bp.route("/cash-flow/export")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def export_cash_flow():
     """تصدير قائمة التدفقات النقدية — نفس بيانات الشاشة تماماً."""
     from services.export_service import ExportService
     from services.cash_flow_service import CashFlowService
-    fmt = request.args.get('format', 'xlsx')
-    date_from = request.args.get('date_from', '', type=str)
-    date_to = request.args.get('date_to', '', type=str)
 
-    _audit_export('cash_flow', fmt, filters={'date_from': date_from, 'date_to': date_to})
+    fmt = request.args.get("format", "xlsx")
+    date_from = request.args.get("date_from", "", type=str)
+    date_to = request.args.get("date_to", "", type=str)
+
+    _audit_export(
+        "cash_flow", fmt, filters={"date_from": date_from, "date_to": date_to}
+    )
 
     # نفس المصدر الواحد المستخدم في الشاشة — نفس الصفوف ونفس الإجماليات.
     report = CashFlowService.generate_gl_cash_flow(date_from, date_to)
 
-    headers = ['القسم', 'الحساب', 'المدين', 'الدائن', 'صافي']
+    headers = ["القسم", "الحساب", "المدين", "الدائن", "صافي"]
     rows = []
-    for row in report['rows']:
-        rows.append([
-            row['section_label'],
-            row['label'],
-            float(row['debit']),
-            float(row['credit']),
-            float(row['net']),
-        ])
+    for row in report["rows"]:
+        rows.append(
+            [
+                row["section_label"],
+                row["label"],
+                float(row["debit"]),
+                float(row["credit"]),
+                float(row["net"]),
+            ]
+        )
 
     summary = {
-        CashFlowService.SECTION_LABELS['operating']: float(report['operating_total']),
-        CashFlowService.SECTION_LABELS['investing']: float(report['investing_total']),
-        CashFlowService.SECTION_LABELS['financing']: float(report['financing_total']),
-        'الصافي': float(report['net_change']),
+        CashFlowService.SECTION_LABELS["operating"]: float(report["operating_total"]),
+        CashFlowService.SECTION_LABELS["investing"]: float(report["investing_total"]),
+        CashFlowService.SECTION_LABELS["financing"]: float(report["financing_total"]),
+        "الصافي": float(report["net_change"]),
     }
 
     def build():
-        if fmt == 'pdf':
-            return ExportService.export_to_pdf('قائمة التدفقات النقدية — Cash Flow',
-                                               headers, rows, summary=summary,
-                                               subtitle=_current_tenant_display_name())
-        elif fmt == 'csv':
-            return ExportService.export_to_csv(rows, headers, 'cash_flow.csv')
-        return ExportService.export_to_excel('قائمة التدفقات النقدية — Cash Flow',
-                                              headers, rows, summary=summary,
-                                              subtitle=_current_tenant_display_name())
+        if fmt == "pdf":
+            return ExportService.export_to_pdf(
+                "قائمة التدفقات النقدية — Cash Flow",
+                headers,
+                rows,
+                summary=summary,
+                subtitle=_current_tenant_display_name(),
+            )
+        elif fmt == "csv":
+            return ExportService.export_to_csv(rows, headers, "cash_flow.csv")
+        return ExportService.export_to_excel(
+            "قائمة التدفقات النقدية — Cash Flow",
+            headers,
+            rows,
+            summary=summary,
+            subtitle=_current_tenant_display_name(),
+        )
 
-    ext = {'xlsx': 'xlsx', 'pdf': 'pdf', 'csv': 'csv'}.get(fmt, 'xlsx')
-    return _send_export(build, f'cash_flow.{ext}', ext)
+    ext = {"xlsx": "xlsx", "pdf": "pdf", "csv": "csv"}.get(fmt, "xlsx")
+    return _send_export(build, f"cash_flow.{ext}", ext)
 
 
-@reports_bp.route('/vat-report/export')
+@reports_bp.route("/vat-report/export")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def export_vat_report():  # noqa: C901
     """تصدير تقرير ضريبة القيمة المضافة — نفس أرقام الشاشة تماماً."""
     from services.export_service import ExportService
-    fmt = request.args.get('format', 'xlsx')
-    date_from = request.args.get('date_from', '', type=str)
-    date_to = request.args.get('date_to', '', type=str)
 
-    _audit_export('vat_report', fmt, filters={'date_from': date_from, 'date_to': date_to})
+    fmt = request.args.get("format", "xlsx")
+    date_from = request.args.get("date_from", "", type=str)
+    date_to = request.args.get("date_to", "", type=str)
+
+    _audit_export(
+        "vat_report", fmt, filters={"date_from": date_from, "date_to": date_to}
+    )
 
     # نفس المصدر الواحد المستخدم في الشاشة ⇒ نفس الصفوف ونفس الإجماليات.
     data = _vat_report_data(date_from, date_to)
-    summary = data['summary']
+    summary = data["summary"]
 
-    sales_headers = ['رقم الفاتورة', 'التاريخ', 'العميل', 'الأساس الخاضع',
-                      'نسبة الضريبة', 'الضريبة']
-    purchase_headers = ['رقم الفاتورة', 'التاريخ', 'المورد', 'الأساس الخاضع',
-                        'نسبة الضريبة', 'الضريبة']
-    credit_note_headers = ['رقم الإشعار', 'التاريخ', 'العميل', 'الأساس الخاضع',
-                           'نسبة الضريبة', 'الضريبة']
+    sales_headers = [
+        "رقم الفاتورة",
+        "التاريخ",
+        "العميل",
+        "الأساس الخاضع",
+        "نسبة الضريبة",
+        "الضريبة",
+    ]
+    purchase_headers = [
+        "رقم الفاتورة",
+        "التاريخ",
+        "المورد",
+        "الأساس الخاضع",
+        "نسبة الضريبة",
+        "الضريبة",
+    ]
+    credit_note_headers = [
+        "رقم الإشعار",
+        "التاريخ",
+        "العميل",
+        "الأساس الخاضع",
+        "نسبة الضريبة",
+        "الضريبة",
+    ]
 
     _report_subtitle = _current_tenant_display_name()
 
     def _sale_row(row):
-        return [row['number'],
-                row['date'].strftime('%Y-%m-%d') if row['date'] else '',
-                row['party'], float(row['net_amount']), f"{row['tax_rate']}%",
-                float(row['tax_amount'])]
+        return [
+            row["number"],
+            row["date"].strftime("%Y-%m-%d") if row["date"] else "",
+            row["party"],
+            float(row["net_amount"]),
+            f"{row['tax_rate']}%",
+            float(row["tax_amount"]),
+        ]
 
     def _purchase_row(row):
-        return [row['number'],
-                row['date'].strftime('%Y-%m-%d') if row['date'] else '',
-                row['party'], float(row['net_amount']), f"{row['tax_rate']}%",
-                float(row['tax_amount'])]
+        return [
+            row["number"],
+            row["date"].strftime("%Y-%m-%d") if row["date"] else "",
+            row["party"],
+            float(row["net_amount"]),
+            f"{row['tax_rate']}%",
+            float(row["tax_amount"]),
+        ]
 
-    sales_rows = [_sale_row(r) for r in data['taxable_sales']]
-    zero_rated_rows = [_sale_row(r) for r in data['zero_rated_sales']]
-    exempt_sales_rows = [_sale_row(r) for r in data['exempt_sales']]
-    unclassified_sales_rows = [_sale_row(r) for r in data['unclassified_sales']]
-    credit_note_rows = [_sale_row(r) for r in data['credit_notes']]
-    purchase_rows = [_purchase_row(r) for r in data['taxable_purchases']]
-    zero_rated_purchase_rows = [_purchase_row(r) for r in data['zero_rated_purchases']]
-    unclassified_purchase_rows = [_purchase_row(r) for r in data['unclassified_purchases']]
-    exempt_purchase_rows = [_purchase_row(r) for r in data['exempt_purchases']]
-    by_rate_rows = [[f"{r['rate']}%", float(r['sales_net']), float(r['sales_vat']),
-                     float(r['purchases_net']), float(r['purchases_vat']),
-                     float(r['reverse_charge_vat'])] for r in data['by_rate']]
+    sales_rows = [_sale_row(r) for r in data["taxable_sales"]]
+    zero_rated_rows = [_sale_row(r) for r in data["zero_rated_sales"]]
+    exempt_sales_rows = [_sale_row(r) for r in data["exempt_sales"]]
+    unclassified_sales_rows = [_sale_row(r) for r in data["unclassified_sales"]]
+    credit_note_rows = [_sale_row(r) for r in data["credit_notes"]]
+    purchase_rows = [_purchase_row(r) for r in data["taxable_purchases"]]
+    zero_rated_purchase_rows = [_purchase_row(r) for r in data["zero_rated_purchases"]]
+    unclassified_purchase_rows = [
+        _purchase_row(r) for r in data["unclassified_purchases"]
+    ]
+    exempt_purchase_rows = [_purchase_row(r) for r in data["exempt_purchases"]]
+    by_rate_rows = [
+        [
+            f"{r['rate']}%",
+            float(r["sales_net"]),
+            float(r["sales_vat"]),
+            float(r["purchases_net"]),
+            float(r["purchases_vat"]),
+            float(r["reverse_charge_vat"]),
+        ]
+        for r in data["by_rate"]
+    ]
 
-    total_output = summary['total_output_vat']
-    total_input = summary['total_input_vat']
-    net_vat = summary['net_vat']
+    total_output = summary["total_output_vat"]
+    total_input = summary["total_input_vat"]
+    net_vat = summary["net_vat"]
 
     def build_xlsx():
         from openpyxl import Workbook
         from openpyxl.styles import Font, PatternFill
+
         wb = Workbook()
 
         def _sheet(title, headers, rows, fill_color, total_row=None):
             ws = wb.create_sheet(title)
             ws.sheet_view.rightToLeft = True
-            hf = Font(bold=True, color='FFFFFF', size=11)
-            hfill = PatternFill(start_color=fill_color, end_color=fill_color,
-                                fill_type='solid')
+            hf = Font(bold=True, color="FFFFFF", size=11)
+            hfill = PatternFill(
+                start_color=fill_color, end_color=fill_color, fill_type="solid"
+            )
             for ci, h in enumerate(headers, 1):
                 c = ws.cell(row=1, column=ci, value=h)
                 c.font = hf
@@ -2159,90 +2652,212 @@ def export_vat_report():  # noqa: C901
                 ws.cell(row=r, column=6, value=float(tax_value)).font = Font(bold=True)
             return ws
 
-        _sheet('المبيعات الخاضعة', sales_headers, sales_rows, 'C0392B',
-               ('المجموع', summary['total_taxable_sales'], total_output))
-        _sheet('المبيعات الصفرية', sales_headers, zero_rated_rows, '2980B9',
-               ('المجموع', summary['total_zero_rated_sales'], 0))
-        _sheet('المبيعات المعفاة', sales_headers, exempt_sales_rows, '7F8C8D',
-               ('المجموع', summary['total_exempt_sales'], 0))
-        _sheet('فواتير صفر بلا تصنيف', sales_headers, unclassified_sales_rows, 'D35400',
-               ('المجموع', summary['total_unclassified_sales'], 0))
-        _sheet('إشعارات الدائنة', credit_note_headers, credit_note_rows, '8E44AD',
-               ('المجموع', -summary['total_credit_notes_net'],
-                -summary['total_credit_notes_vat']))
-        _sheet('المشتريات الصفرية', purchase_headers, zero_rated_purchase_rows, '2980B9',
-               ('المجموع', summary['total_zero_rated_purchases'], 0))
-        _sheet('مشتريات صفر بلا تصنيف', purchase_headers, unclassified_purchase_rows, 'D35400',
-               ('المجموع', summary['total_unclassified_purchases'], 0))
-        _sheet('المشتريات الخاضعة', purchase_headers, purchase_rows, '27AE60',
-               ('المجموع', summary['total_taxable_purchases'], total_input))
-        _sheet('المشتريات المعفاة', purchase_headers, exempt_purchase_rows,
-               '7F8C8D', ('المجموع', summary['total_exempt_purchases'], 0))
-        non_recoverable_rows = [_purchase_row(r) for r in data['non_recoverable_purchases']]
-        reverse_charge_rows = [_purchase_row(r) for r in data['reverse_charge_purchases']]
-        _sheet('غير قابلة للاسترداد', purchase_headers, non_recoverable_rows,
-               '34495E', ('المجموع', summary['total_non_recoverable_base'],
-                           summary['total_non_recoverable_vat']))
-        _sheet('عكس الضريبة (RC)', purchase_headers, reverse_charge_rows,
-               '16A085', ('المجموع', summary['total_reverse_charge_base'],
-                           summary['total_reverse_charge_vat']))
-        expense_rows = [_purchase_row(r) for r in data['expense_taxable']]
-        _sheet('المصروفات الخاضعة', purchase_headers, expense_rows, '27AE60',
-               ('المجموع', sum(r['net_amount'] for r in data['expense_taxable']),
-                summary['total_expense_input_vat']))
-        expense_nr_rows = [_purchase_row(r) for r in data['expense_non_recoverable']]
-        _sheet('مصروفات غير قابلة للاسترداد', purchase_headers, expense_nr_rows,
-               '34495E', ('المجموع', sum(r['net_amount'] for r in data['expense_non_recoverable']),
-                           summary['total_expense_non_recoverable_vat']))
-        expense_rc_rows = [_purchase_row(r) for r in data['expense_reverse_charge']]
-        _sheet('مصروفات RC', purchase_headers, expense_rc_rows, '16A085',
-               ('المجموع', sum(r['net_amount'] for r in data['expense_reverse_charge']),
-                           summary['total_expense_reverse_charge_vat']))
-        by_rate_headers = ['النسبة', 'مبيعات خاضعة (أساس)', 'ضريبة مبيعات',
-                           'مشتريات خاضعة (أساس)', 'ضريبة مشتريات',
-                           'Reverse Charge VAT']
-        by_rate_rows = [[f"{r['rate']}%", float(r['sales_net']), float(r['sales_vat']),
-                         float(r['purchases_net']), float(r['purchases_vat']),
-                         float(r['reverse_charge_vat'])] for r in data['by_rate']]
-        _sheet('التجميع حسب النسبة', by_rate_headers, by_rate_rows, '1ABC9C')
+        _sheet(
+            "المبيعات الخاضعة",
+            sales_headers,
+            sales_rows,
+            "C0392B",
+            ("المجموع", summary["total_taxable_sales"], total_output),
+        )
+        _sheet(
+            "المبيعات الصفرية",
+            sales_headers,
+            zero_rated_rows,
+            "2980B9",
+            ("المجموع", summary["total_zero_rated_sales"], 0),
+        )
+        _sheet(
+            "المبيعات المعفاة",
+            sales_headers,
+            exempt_sales_rows,
+            "7F8C8D",
+            ("المجموع", summary["total_exempt_sales"], 0),
+        )
+        _sheet(
+            "فواتير صفر بلا تصنيف",
+            sales_headers,
+            unclassified_sales_rows,
+            "D35400",
+            ("المجموع", summary["total_unclassified_sales"], 0),
+        )
+        _sheet(
+            "إشعارات الدائنة",
+            credit_note_headers,
+            credit_note_rows,
+            "8E44AD",
+            (
+                "المجموع",
+                -summary["total_credit_notes_net"],
+                -summary["total_credit_notes_vat"],
+            ),
+        )
+        _sheet(
+            "المشتريات الصفرية",
+            purchase_headers,
+            zero_rated_purchase_rows,
+            "2980B9",
+            ("المجموع", summary["total_zero_rated_purchases"], 0),
+        )
+        _sheet(
+            "مشتريات صفر بلا تصنيف",
+            purchase_headers,
+            unclassified_purchase_rows,
+            "D35400",
+            ("المجموع", summary["total_unclassified_purchases"], 0),
+        )
+        _sheet(
+            "المشتريات الخاضعة",
+            purchase_headers,
+            purchase_rows,
+            "27AE60",
+            ("المجموع", summary["total_taxable_purchases"], total_input),
+        )
+        _sheet(
+            "المشتريات المعفاة",
+            purchase_headers,
+            exempt_purchase_rows,
+            "7F8C8D",
+            ("المجموع", summary["total_exempt_purchases"], 0),
+        )
+        non_recoverable_rows = [
+            _purchase_row(r) for r in data["non_recoverable_purchases"]
+        ]
+        reverse_charge_rows = [
+            _purchase_row(r) for r in data["reverse_charge_purchases"]
+        ]
+        _sheet(
+            "غير قابلة للاسترداد",
+            purchase_headers,
+            non_recoverable_rows,
+            "34495E",
+            (
+                "المجموع",
+                summary["total_non_recoverable_base"],
+                summary["total_non_recoverable_vat"],
+            ),
+        )
+        _sheet(
+            "عكس الضريبة (RC)",
+            purchase_headers,
+            reverse_charge_rows,
+            "16A085",
+            (
+                "المجموع",
+                summary["total_reverse_charge_base"],
+                summary["total_reverse_charge_vat"],
+            ),
+        )
+        expense_rows = [_purchase_row(r) for r in data["expense_taxable"]]
+        _sheet(
+            "المصروفات الخاضعة",
+            purchase_headers,
+            expense_rows,
+            "27AE60",
+            (
+                "المجموع",
+                sum(r["net_amount"] for r in data["expense_taxable"]),
+                summary["total_expense_input_vat"],
+            ),
+        )
+        expense_nr_rows = [_purchase_row(r) for r in data["expense_non_recoverable"]]
+        _sheet(
+            "مصروفات غير قابلة للاسترداد",
+            purchase_headers,
+            expense_nr_rows,
+            "34495E",
+            (
+                "المجموع",
+                sum(r["net_amount"] for r in data["expense_non_recoverable"]),
+                summary["total_expense_non_recoverable_vat"],
+            ),
+        )
+        expense_rc_rows = [_purchase_row(r) for r in data["expense_reverse_charge"]]
+        _sheet(
+            "مصروفات RC",
+            purchase_headers,
+            expense_rc_rows,
+            "16A085",
+            (
+                "المجموع",
+                sum(r["net_amount"] for r in data["expense_reverse_charge"]),
+                summary["total_expense_reverse_charge_vat"],
+            ),
+        )
+        by_rate_headers = [
+            "النسبة",
+            "مبيعات خاضعة (أساس)",
+            "ضريبة مبيعات",
+            "مشتريات خاضعة (أساس)",
+            "ضريبة مشتريات",
+            "Reverse Charge VAT",
+        ]
+        by_rate_rows = [
+            [
+                f"{r['rate']}%",
+                float(r["sales_net"]),
+                float(r["sales_vat"]),
+                float(r["purchases_net"]),
+                float(r["purchases_vat"]),
+                float(r["reverse_charge_vat"]),
+            ]
+            for r in data["by_rate"]
+        ]
+        _sheet("التجميع حسب النسبة", by_rate_headers, by_rate_rows, "1ABC9C")
 
-        ws3 = wb.create_sheet('الملخص')
+        ws3 = wb.create_sheet("الملخص")
         ws3.sheet_view.rightToLeft = True
         summary_rows = [
-            ('الأساس الخاضع للمبيعات', float(summary['total_taxable_sales'])),
-            ('ضريبة المبيعات (Output VAT)', float(total_output)),
-            ('إجمالي المبيعات الصفرية', float(summary['total_zero_rated_sales'])),
-            ('فواتير صفر بلا تصنيف', float(summary['total_unclassified_sales'])),
-            ('إجمالي المبيعات المعفاة', float(summary['total_exempt_sales'])),
-            ('إشعارات الدائنة (أساس)', float(-summary['total_credit_notes_net'])),
-            ('ضريبة إشعارات الدائنة', float(-summary['total_credit_notes_vat'])),
-            ('الأساس الخاضع للمشتريات', float(summary['total_taxable_purchases'])),
-            ('ضريبة المشتريات (Input VAT)', float(total_input)),
-            ('إجمالي المشتريات المعفاة', float(summary['total_exempt_purchases'])),
-            ('إجمالي المشتريات الصفرية', float(summary['total_zero_rated_purchases'])),
-            ('مشتريات صفر بلا تصنيف', float(summary['total_unclassified_purchases'])),
-            ('مشتريات غير قابلة للاسترداد (أساس)', float(summary['total_non_recoverable_base'])),
-            ('ضريبة غير قابلة للاسترداد', float(summary['total_non_recoverable_vat'])),
-            ('Reverse Charge — ضريبة ذاتية (أساس)', float(summary['total_reverse_charge_base'])),
-            ('Reverse Charge — ضريبة ذاتية التقييم', float(summary['total_reverse_charge_vat'])),
-            ('مصروفات خاضعة للضريبة (مدخل)', float(summary['total_expense_input_vat'])),
-            ('مصروفات غير قابلة للاسترداد (ضريبة)', float(summary['total_expense_non_recoverable_vat'])),
-            ('مصروفات Reverse Charge — ضريبة ذاتية التقييم', float(summary['total_expense_reverse_charge_vat'])),
-            ('الرصيد النهائي', float(net_vat)),
+            ("الأساس الخاضع للمبيعات", float(summary["total_taxable_sales"])),
+            ("ضريبة المبيعات (Output VAT)", float(total_output)),
+            ("إجمالي المبيعات الصفرية", float(summary["total_zero_rated_sales"])),
+            ("فواتير صفر بلا تصنيف", float(summary["total_unclassified_sales"])),
+            ("إجمالي المبيعات المعفاة", float(summary["total_exempt_sales"])),
+            ("إشعارات الدائنة (أساس)", float(-summary["total_credit_notes_net"])),
+            ("ضريبة إشعارات الدائنة", float(-summary["total_credit_notes_vat"])),
+            ("الأساس الخاضع للمشتريات", float(summary["total_taxable_purchases"])),
+            ("ضريبة المشتريات (Input VAT)", float(total_input)),
+            ("إجمالي المشتريات المعفاة", float(summary["total_exempt_purchases"])),
+            ("إجمالي المشتريات الصفرية", float(summary["total_zero_rated_purchases"])),
+            ("مشتريات صفر بلا تصنيف", float(summary["total_unclassified_purchases"])),
+            (
+                "مشتريات غير قابلة للاسترداد (أساس)",
+                float(summary["total_non_recoverable_base"]),
+            ),
+            ("ضريبة غير قابلة للاسترداد", float(summary["total_non_recoverable_vat"])),
+            (
+                "Reverse Charge — ضريبة ذاتية (أساس)",
+                float(summary["total_reverse_charge_base"]),
+            ),
+            (
+                "Reverse Charge — ضريبة ذاتية التقييم",
+                float(summary["total_reverse_charge_vat"]),
+            ),
+            ("مصروفات خاضعة للضريبة (مدخل)", float(summary["total_expense_input_vat"])),
+            (
+                "مصروفات غير قابلة للاسترداد (ضريبة)",
+                float(summary["total_expense_non_recoverable_vat"]),
+            ),
+            (
+                "مصروفات Reverse Charge — ضريبة ذاتية التقييم",
+                float(summary["total_expense_reverse_charge_vat"]),
+            ),
+            ("الرصيد النهائي", float(net_vat)),
         ]
         for ri, (label, value) in enumerate(summary_rows, 1):
             ws3.cell(row=ri, column=1, value=label).font = Font(
-                bold=True, size=12 if label == 'الرصيد النهائي' else 11)
+                bold=True, size=12 if label == "الرصيد النهائي" else 11
+            )
             ws3.cell(row=ri, column=2, value=value).font = Font(
-                bold=True, size=12 if label == 'الرصيد النهائي' else 11)
+                bold=True, size=12 if label == "الرصيد النهائي" else 11
+            )
 
         if _report_subtitle:
             last_row = len(summary_rows) + 1
-            ws3.cell(row=last_row, column=1, value='الشركة').font = Font(italic=True)
+            ws3.cell(row=last_row, column=1, value="الشركة").font = Font(italic=True)
             ws3.cell(row=last_row, column=2, value=_report_subtitle)
 
         # الورقة الأولى يجب أن تكون قابلة للعرض (Excel لا يقبل ورقة بلا عنوان)
-        default_sheet = wb['Sheet']
+        default_sheet = wb["Sheet"]
         wb.remove(default_sheet)
         wb.active = 0
 
@@ -2252,88 +2867,224 @@ def export_vat_report():  # noqa: C901
         return output
 
     def build():
-        if fmt == 'pdf':
+        if fmt == "pdf":
             # كل قسم بعناوينه الخاصة — لا تختلط صفوف المبيعات والمشتريات
             all_rows = (
-                [['── المبيعات الخاضعة للضريبة ──'] + [''] * 5] + [sales_headers] + sales_rows +
-                [['── المبيعات الصفرية (0%) ──'] + [''] * 5] + [sales_headers] + zero_rated_rows +
-                [['── المبيعات المعفاة ──'] + [''] * 5] + [sales_headers] + exempt_sales_rows +
-                [['── فواتير صفر بلا تصنيف (تحتاج مراجعة) ──'] + [''] * 5] + [sales_headers] + unclassified_sales_rows +
-                [['── إشعارات الدائنة (المرتجعات) ──'] + [''] * 5] + [credit_note_headers] + credit_note_rows +
-                [['── المشتريات الخاضعة للضريبة ──'] + [''] * 5] + [purchase_headers] + purchase_rows +
-                [['── المشتريات الصفرية (0%) ──'] + [''] * 5] + [purchase_headers] + zero_rated_purchase_rows +
-                [['── مشتريات صفر بلا تصنيف (تحتاج مراجعة) ──'] + [''] * 5] + [purchase_headers] + unclassified_purchase_rows +
-                [['── المشتريات المعفاة ──'] + [''] * 5] + [purchase_headers] + exempt_purchase_rows +
-                [['── مشتريات غير قابلة للاسترداد (تكلفة) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['non_recoverable_purchases']] +
-                [['── عكس الضريبة (Reverse Charge) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['reverse_charge_purchases']] +
-                [['── مصروفات خاضعة للضريبة ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['expense_taxable']] +
-                [['── مصروفات غير قابلة للاسترداد (تكلفة) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['expense_non_recoverable']] +
-                [['── مصروفات Reverse Charge ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['expense_reverse_charge']] +
-                [['── التجميع حسب النسبة ──'] + [''] * 5] + [['النسبة', 'مبيعات خاضعة', 'ضريبة مبيعات', 'مشتريات خاضعة', 'ضريبة مشتريات', 'Reverse Charge VAT']] + by_rate_rows
+                [["── المبيعات الخاضعة للضريبة ──"] + [""] * 5]
+                + [sales_headers]
+                + sales_rows
+                + [["── المبيعات الصفرية (0%) ──"] + [""] * 5]
+                + [sales_headers]
+                + zero_rated_rows
+                + [["── المبيعات المعفاة ──"] + [""] * 5]
+                + [sales_headers]
+                + exempt_sales_rows
+                + [["── فواتير صفر بلا تصنيف (تحتاج مراجعة) ──"] + [""] * 5]
+                + [sales_headers]
+                + unclassified_sales_rows
+                + [["── إشعارات الدائنة (المرتجعات) ──"] + [""] * 5]
+                + [credit_note_headers]
+                + credit_note_rows
+                + [["── المشتريات الخاضعة للضريبة ──"] + [""] * 5]
+                + [purchase_headers]
+                + purchase_rows
+                + [["── المشتريات الصفرية (0%) ──"] + [""] * 5]
+                + [purchase_headers]
+                + zero_rated_purchase_rows
+                + [["── مشتريات صفر بلا تصنيف (تحتاج مراجعة) ──"] + [""] * 5]
+                + [purchase_headers]
+                + unclassified_purchase_rows
+                + [["── المشتريات المعفاة ──"] + [""] * 5]
+                + [purchase_headers]
+                + exempt_purchase_rows
+                + [["── مشتريات غير قابلة للاسترداد (تكلفة) ──"] + [""] * 5]
+                + [purchase_headers]
+                + [_purchase_row(r) for r in data["non_recoverable_purchases"]]
+                + [["── عكس الضريبة (Reverse Charge) ──"] + [""] * 5]
+                + [purchase_headers]
+                + [_purchase_row(r) for r in data["reverse_charge_purchases"]]
+                + [["── مصروفات خاضعة للضريبة ──"] + [""] * 5]
+                + [purchase_headers]
+                + [_purchase_row(r) for r in data["expense_taxable"]]
+                + [["── مصروفات غير قابلة للاسترداد (تكلفة) ──"] + [""] * 5]
+                + [purchase_headers]
+                + [_purchase_row(r) for r in data["expense_non_recoverable"]]
+                + [["── مصروفات Reverse Charge ──"] + [""] * 5]
+                + [purchase_headers]
+                + [_purchase_row(r) for r in data["expense_reverse_charge"]]
+                + [["── التجميع حسب النسبة ──"] + [""] * 5]
+                + [
+                    [
+                        "النسبة",
+                        "مبيعات خاضعة",
+                        "ضريبة مبيعات",
+                        "مشتريات خاضعة",
+                        "ضريبة مشتريات",
+                        "Reverse Charge VAT",
+                    ]
+                ]
+                + by_rate_rows
             )
             summary_pdf = {
-                'Output VAT': float(total_output),
-                'Input VAT': float(total_input),
-                'Credit Notes VAT': float(-summary['total_credit_notes_vat']),
-                'Zero Rated Sales': float(summary['total_zero_rated_sales']),
-                'Unclassified 0% Sales': float(summary['total_unclassified_sales']),
-                'Zero Rated Purchases': float(summary['total_zero_rated_purchases']),
-                'Unclassified 0% Purchases': float(summary['total_unclassified_purchases']),
-                'Exempt Sales': float(summary['total_exempt_sales']),
-                'Exempt Purchases': float(summary['total_exempt_purchases']),
-                'Non-recoverable VAT': float(summary['total_non_recoverable_vat']),
-                'Reverse Charge VAT': float(summary['total_reverse_charge_vat']),
-                'Expense Input VAT': float(summary['total_expense_input_vat']),
-                'Expense Non-recoverable VAT': float(summary['total_expense_non_recoverable_vat']),
-                'Expense Reverse Charge VAT': float(summary['total_expense_reverse_charge_vat']),
-                'Net VAT': float(net_vat),
+                "Output VAT": float(total_output),
+                "Input VAT": float(total_input),
+                "Credit Notes VAT": float(-summary["total_credit_notes_vat"]),
+                "Zero Rated Sales": float(summary["total_zero_rated_sales"]),
+                "Unclassified 0% Sales": float(summary["total_unclassified_sales"]),
+                "Zero Rated Purchases": float(summary["total_zero_rated_purchases"]),
+                "Unclassified 0% Purchases": float(
+                    summary["total_unclassified_purchases"]
+                ),
+                "Exempt Sales": float(summary["total_exempt_sales"]),
+                "Exempt Purchases": float(summary["total_exempt_purchases"]),
+                "Non-recoverable VAT": float(summary["total_non_recoverable_vat"]),
+                "Reverse Charge VAT": float(summary["total_reverse_charge_vat"]),
+                "Expense Input VAT": float(summary["total_expense_input_vat"]),
+                "Expense Non-recoverable VAT": float(
+                    summary["total_expense_non_recoverable_vat"]
+                ),
+                "Expense Reverse Charge VAT": float(
+                    summary["total_expense_reverse_charge_vat"]
+                ),
+                "Net VAT": float(net_vat),
             }
-            return ExportService.export_to_pdf(f'تقرير الضريبة المضافة (VAT) — {_tenant_vat_label()}',
-                                               sales_headers, all_rows,
-                                               summary=summary_pdf,
-                                               subtitle=_report_subtitle)
-        elif fmt == 'csv':
+            return ExportService.export_to_pdf(
+                f"تقرير الضريبة المضافة (VAT) — {_tenant_vat_label()}",
+                sales_headers,
+                all_rows,
+                summary=summary_pdf,
+                subtitle=_report_subtitle,
+            )
+        elif fmt == "csv":
             # كل قسم بعناوينه الخاصة — لا تُدمج المشتريات تحت عناوين المبيعات
             combined = (
-                [['── المبيعات الخاضعة للضريبة ──'] + [''] * 5] + [sales_headers] + sales_rows +
-                [['── المبيعات الصفرية (0%) ──'] + [''] * 5] + [sales_headers] + zero_rated_rows +
-                [['── المبيعات المعفاة ──'] + [''] * 5] + [sales_headers] + exempt_sales_rows +
-                [['── فواتير صفر بلا تصنيف (تحتاج مراجعة) ──'] + [''] * 5] + [sales_headers] + unclassified_sales_rows +
-                [['── إشعارات الدائنة (المرتجعات) ──'] + [''] * 5] + [credit_note_headers] + credit_note_rows +
-                [['── المشتريات الخاضعة للضريبة ──'] + [''] * 5] + [purchase_headers] + purchase_rows +
-                [['── المشتريات الصفرية (0%) ──'] + [''] * 5] + [purchase_headers] + zero_rated_purchase_rows +
-                [['── مشتريات صفر بلا تصنيف (تحتاج مراجعة) ──'] + [''] * 5] + [purchase_headers] + unclassified_purchase_rows +
-                [['── المشتريات المعفاة ──'] + [''] * 5] + [purchase_headers] + exempt_purchase_rows +
-                [['── مشتريات غير قابلة للاسترداد (تكلفة) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['non_recoverable_purchases']] +
-                [['── عكس الضريبة (Reverse Charge) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['reverse_charge_purchases']] +
-                [['── مصروفات خاضعة للضريبة ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['expense_taxable']] +
-                [['── مصروفات غير قابلة للاسترداد (تكلفة) ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['expense_non_recoverable']] +
-                [['── مصروفات Reverse Charge ──'] + [''] * 5] + [purchase_headers] + [_purchase_row(r) for r in data['expense_reverse_charge']] +
-                [['── التجميع حسب النسبة ──'] + [''] * 5] + [['النسبة', 'مبيعات خاضعة', 'ضريبة مبيعات', 'مشتريات خاضعة', 'ضريبة مشتريات', 'Reverse Charge VAT']] + by_rate_rows +
-                [['── الملخص ──'] + [''] * 5,
-                 ['الأساس الخاضع للمبيعات', float(summary['total_taxable_sales'])],
-                 ['ضريبة المبيعات (Output VAT)', float(total_output)],
-                 ['إجمالي المبيعات الصفرية', float(summary['total_zero_rated_sales'])],
-                 ['فواتير صفر بلا تصنيف', float(summary['total_unclassified_sales'])],
-                 ['إجمالي المبيعات المعفاة', float(summary['total_exempt_sales'])],
-                 ['إشعارات الدائنة (أساس)', float(-summary['total_credit_notes_net'])],
-                 ['ضريبة إشعارات الدائنة', float(-summary['total_credit_notes_vat'])],
-                 ['الأساس الخاضع للمشتريات', float(summary['total_taxable_purchases'])],
-                 ['ضريبة المشتريات (Input VAT)', float(total_input)],
-                 ['إجمالي المشتريات المعفاة', float(summary['total_exempt_purchases'])],
-                 ['إجمالي المشتريات الصفرية', float(summary['total_zero_rated_purchases'])],
-                 ['مشتريات صفر بلا تصنيف', float(summary['total_unclassified_purchases'])],
-                 ['مشتريات غير قابلة للاسترداد (أساس)', float(summary['total_non_recoverable_base'])],
-                 ['ضريبة غير قابلة للاسترداد', float(summary['total_non_recoverable_vat'])],
-                 ['Reverse Charge — ضريبة ذاتية (أساس)', float(summary['total_reverse_charge_base'])],
-                 ['Reverse Charge — ضريبة ذاتية التقييم', float(summary['total_reverse_charge_vat'])],
-                 ['مصروفات خاضعة للضريبة (مدخل)', float(summary['total_expense_input_vat'])],
-                 ['مصروفات غير قابلة للاسترداد (ضريبة)', float(summary['total_expense_non_recoverable_vat'])],
-                 ['مصروفات Reverse Charge — ضريبة ذاتية التقييم', float(summary['total_expense_reverse_charge_vat'])],
-                 ['الرصيد النهائي', float(net_vat)]]
+                [["── المبيعات الخاضعة للضريبة ──"] + [""] * 5]
+                + [sales_headers]
+                + sales_rows
+                + [["── المبيعات الصفرية (0%) ──"] + [""] * 5]
+                + [sales_headers]
+                + zero_rated_rows
+                + [["── المبيعات المعفاة ──"] + [""] * 5]
+                + [sales_headers]
+                + exempt_sales_rows
+                + [["── فواتير صفر بلا تصنيف (تحتاج مراجعة) ──"] + [""] * 5]
+                + [sales_headers]
+                + unclassified_sales_rows
+                + [["── إشعارات الدائنة (المرتجعات) ──"] + [""] * 5]
+                + [credit_note_headers]
+                + credit_note_rows
+                + [["── المشتريات الخاضعة للضريبة ──"] + [""] * 5]
+                + [purchase_headers]
+                + purchase_rows
+                + [["── المشتريات الصفرية (0%) ──"] + [""] * 5]
+                + [purchase_headers]
+                + zero_rated_purchase_rows
+                + [["── مشتريات صفر بلا تصنيف (تحتاج مراجعة) ──"] + [""] * 5]
+                + [purchase_headers]
+                + unclassified_purchase_rows
+                + [["── المشتريات المعفاة ──"] + [""] * 5]
+                + [purchase_headers]
+                + exempt_purchase_rows
+                + [["── مشتريات غير قابلة للاسترداد (تكلفة) ──"] + [""] * 5]
+                + [purchase_headers]
+                + [_purchase_row(r) for r in data["non_recoverable_purchases"]]
+                + [["── عكس الضريبة (Reverse Charge) ──"] + [""] * 5]
+                + [purchase_headers]
+                + [_purchase_row(r) for r in data["reverse_charge_purchases"]]
+                + [["── مصروفات خاضعة للضريبة ──"] + [""] * 5]
+                + [purchase_headers]
+                + [_purchase_row(r) for r in data["expense_taxable"]]
+                + [["── مصروفات غير قابلة للاسترداد (تكلفة) ──"] + [""] * 5]
+                + [purchase_headers]
+                + [_purchase_row(r) for r in data["expense_non_recoverable"]]
+                + [["── مصروفات Reverse Charge ──"] + [""] * 5]
+                + [purchase_headers]
+                + [_purchase_row(r) for r in data["expense_reverse_charge"]]
+                + [["── التجميع حسب النسبة ──"] + [""] * 5]
+                + [
+                    [
+                        "النسبة",
+                        "مبيعات خاضعة",
+                        "ضريبة مبيعات",
+                        "مشتريات خاضعة",
+                        "ضريبة مشتريات",
+                        "Reverse Charge VAT",
+                    ]
+                ]
+                + by_rate_rows
+                + [
+                    ["── الملخص ──"] + [""] * 5,
+                    ["الأساس الخاضع للمبيعات", float(summary["total_taxable_sales"])],
+                    ["ضريبة المبيعات (Output VAT)", float(total_output)],
+                    [
+                        "إجمالي المبيعات الصفرية",
+                        float(summary["total_zero_rated_sales"]),
+                    ],
+                    [
+                        "فواتير صفر بلا تصنيف",
+                        float(summary["total_unclassified_sales"]),
+                    ],
+                    ["إجمالي المبيعات المعفاة", float(summary["total_exempt_sales"])],
+                    [
+                        "إشعارات الدائنة (أساس)",
+                        float(-summary["total_credit_notes_net"]),
+                    ],
+                    [
+                        "ضريبة إشعارات الدائنة",
+                        float(-summary["total_credit_notes_vat"]),
+                    ],
+                    [
+                        "الأساس الخاضع للمشتريات",
+                        float(summary["total_taxable_purchases"]),
+                    ],
+                    ["ضريبة المشتريات (Input VAT)", float(total_input)],
+                    [
+                        "إجمالي المشتريات المعفاة",
+                        float(summary["total_exempt_purchases"]),
+                    ],
+                    [
+                        "إجمالي المشتريات الصفرية",
+                        float(summary["total_zero_rated_purchases"]),
+                    ],
+                    [
+                        "مشتريات صفر بلا تصنيف",
+                        float(summary["total_unclassified_purchases"]),
+                    ],
+                    [
+                        "مشتريات غير قابلة للاسترداد (أساس)",
+                        float(summary["total_non_recoverable_base"]),
+                    ],
+                    [
+                        "ضريبة غير قابلة للاسترداد",
+                        float(summary["total_non_recoverable_vat"]),
+                    ],
+                    [
+                        "Reverse Charge — ضريبة ذاتية (أساس)",
+                        float(summary["total_reverse_charge_base"]),
+                    ],
+                    [
+                        "Reverse Charge — ضريبة ذاتية التقييم",
+                        float(summary["total_reverse_charge_vat"]),
+                    ],
+                    [
+                        "مصروفات خاضعة للضريبة (مدخل)",
+                        float(summary["total_expense_input_vat"]),
+                    ],
+                    [
+                        "مصروفات غير قابلة للاسترداد (ضريبة)",
+                        float(summary["total_expense_non_recoverable_vat"]),
+                    ],
+                    [
+                        "مصروفات Reverse Charge — ضريبة ذاتية التقييم",
+                        float(summary["total_expense_reverse_charge_vat"]),
+                    ],
+                    ["الرصيد النهائي", float(net_vat)],
+                ]
             )
-            return ExportService.export_to_csv(combined, sales_headers, 'vat_report.csv')
+            return ExportService.export_to_csv(
+                combined, sales_headers, "vat_report.csv"
+            )
         return build_xlsx()
 
-    ext = {'xlsx': 'xlsx', 'pdf': 'pdf', 'csv': 'csv'}.get(fmt, 'xlsx')
-    return _send_export(build, f'vat_report.{ext}', ext)
+    ext = {"xlsx": "xlsx", "pdf": "pdf", "csv": "csv"}.get(fmt, "xlsx")
+    return _send_export(build, f"vat_report.{ext}", ext)

@@ -35,18 +35,18 @@ class CodeGenerator:
     def _load_templates(self):
         """تحميل قوالب الأكواد"""
         return {
-            'sql_select': "SELECT {columns} FROM {table} WHERE {conditions}",
-            'sql_insert': "INSERT INTO {table} ({columns}) VALUES ({values})",
-            'sql_update': "UPDATE {table} SET {updates} WHERE {conditions}",
-            'python_function': """def {function_name}({params}):
+            "sql_select": "SELECT {columns} FROM {table} WHERE {conditions}",
+            "sql_insert": "INSERT INTO {table} ({columns}) VALUES ({values})",
+            "sql_update": "UPDATE {table} SET {updates} WHERE {conditions}",
+            "python_function": """def {function_name}({params}):
     \"\"\"{docstring}\"\"\"
     {body}
     return {return_value}""",
-            'api_endpoint': """@{blueprint}_bp.route('/{path}', methods=['{method}'])
+            "api_endpoint": """@{blueprint}_bp.route('/{path}', methods=['{method}'])
 @login_required
 def {function_name}():
     \"\"\"{docstring}\"\"\"
-    {body}"""
+    {body}""",
         }
 
     def generate_sql_query(self, intent: str, table: str, filters: dict = None) -> str:
@@ -68,29 +68,65 @@ def {function_name}():
             def _esc(value):
                 return value.replace("'", "''") if isinstance(value, str) else value
 
-            if intent == 'select':
-                columns = filters.get('columns', '*') if filters else '*'
-                conditions = ' AND '.join([f"{k} = '{_esc(v)}'" for k, v in filters.get('where', {}).items()]) if filters and 'where' in filters else '1=1'
+            if intent == "select":
+                columns = filters.get("columns", "*") if filters else "*"
+                conditions = (
+                    " AND ".join(
+                        [
+                            f"{k} = '{_esc(v)}'"
+                            for k, v in filters.get("where", {}).items()
+                        ]
+                    )
+                    if filters and "where" in filters
+                    else "1=1"
+                )
 
                 query = f"SELECT {columns} FROM {table} WHERE {conditions}"  # nosec B608 - output text only, never executed
 
-                if filters and 'order_by' in filters:
+                if filters and "order_by" in filters:
                     query += f" ORDER BY {filters['order_by']}"
 
-                if filters and 'limit' in filters:
+                if filters and "limit" in filters:
                     query += f" LIMIT {filters['limit']}"
 
                 return query
 
-            elif intent == 'insert':
-                columns = ', '.join(filters.get('columns', [])) if filters else ''
-                values = ', '.join([f"'{_esc(v)}'" if isinstance(v, str) else str(v) for v in filters.get('values', [])]) if filters else ''
+            elif intent == "insert":
+                columns = ", ".join(filters.get("columns", [])) if filters else ""
+                values = (
+                    ", ".join(
+                        [
+                            f"'{_esc(v)}'" if isinstance(v, str) else str(v)
+                            for v in filters.get("values", [])
+                        ]
+                    )
+                    if filters
+                    else ""
+                )
 
                 return f"INSERT INTO {table} ({columns}) VALUES ({values})"  # nosec B608 - output text only, never executed
 
-            elif intent == 'update':
-                updates = ', '.join([f"{k} = '{_esc(v)}'" for k, v in filters.get('set', {}).items()]) if filters else ''
-                conditions = ' AND '.join([f"{k} = '{_esc(v)}'" for k, v in filters.get('where', {}).items()]) if filters else '1=1'
+            elif intent == "update":
+                updates = (
+                    ", ".join(
+                        [
+                            f"{k} = '{_esc(v)}'"
+                            for k, v in filters.get("set", {}).items()
+                        ]
+                    )
+                    if filters
+                    else ""
+                )
+                conditions = (
+                    " AND ".join(
+                        [
+                            f"{k} = '{_esc(v)}'"
+                            for k, v in filters.get("where", {}).items()
+                        ]
+                    )
+                    if filters
+                    else "1=1"
+                )
 
                 return f"UPDATE {table} SET {updates} WHERE {conditions}"  # nosec B608 - output text only, never executed
 
@@ -101,7 +137,9 @@ def {function_name}():
             logger.error(f"SQL generation failed: {e}")
             return f"-- Error: {e}"
 
-    def generate_python_function(self, function_name: str, purpose: str, params: List[str] = None) -> str:
+    def generate_python_function(
+        self, function_name: str, purpose: str, params: List[str] = None
+    ) -> str:
         """
         توليد دالة Python
 
@@ -114,22 +152,22 @@ def {function_name}():
             كود Python جاهز
         """
         try:
-            params_str = ', '.join(params) if params else ''
+            params_str = ", ".join(params) if params else ""
 
             # توليد الجسم حسب الغرض
-            if 'حساب' in purpose or 'calculate' in purpose.lower():
+            if "حساب" in purpose or "calculate" in purpose.lower():
                 body = """    # حسابات
     result = 0
     # أضف المنطق هنا
     return result"""
 
-            elif 'توقع' in purpose or 'predict' in purpose.lower():
+            elif "توقع" in purpose or "predict" in purpose.lower():
                 body = """    # توقعات
     from services.ai_service import AIService
     prediction = AIService.predict_sales_trend()
     return prediction"""
 
-            elif 'بحث' in purpose or 'search' in purpose.lower():
+            elif "بحث" in purpose or "search" in purpose.lower():
                 body = """    # بحث
     from models import Product
     results = Product.query.filter_by(name=query).all()
@@ -145,7 +183,7 @@ def {function_name}():
     {purpose}
 
     Args:
-        {', '.join(params) if params else 'None'}
+        {", ".join(params) if params else "None"}
 
     Returns:
         result
@@ -173,10 +211,12 @@ def {function_name}():
         try:
             # NOTE: Generated SQL is returned as an informational string only;
             # it is NEVER executed by this module (AI snippet generator).
-            if report_type == 'sales':
+            if report_type == "sales":
                 if not date_range:
                     return "-- Missing date range"
-                safe_range = {k: str(v).replace("'", "''") for k, v in date_range.items()}
+                safe_range = {
+                    k: str(v).replace("'", "''") for k, v in date_range.items()
+                }
                 return """
 SELECT
     DATE(sale_date) as date,
@@ -190,7 +230,7 @@ GROUP BY DATE(sale_date)
 ORDER BY date DESC
 """.format(**safe_range)  # nosec B608 - output text only, never executed
 
-            elif report_type == 'inventory':
+            elif report_type == "inventory":
                 return """
 SELECT
     p.name,
@@ -204,7 +244,7 @@ WHERE p.is_active = TRUE
 ORDER BY stock_value DESC
 """
 
-            elif report_type == 'customers':
+            elif report_type == "customers":
                 return """
 SELECT
     c.name,
@@ -253,42 +293,43 @@ ORDER BY total_purchases DESC
 
         # 2. إصلاح المسافات البادئة
         if "IndentationError" in error_message:
-            lines = fixed_code.split('\n')
+            lines = fixed_code.split("\n")
             fixed_lines = []
             for line in lines:
                 # إزالة المسافات الزائدة
                 stripped = line.lstrip()
                 # إضافة مسافات صحيحة (4 spaces)
-                if stripped.startswith('def ') or stripped.startswith('class '):
+                if stripped.startswith("def ") or stripped.startswith("class "):
                     fixed_lines.append(stripped)
                 elif stripped:
-                    fixed_lines.append('    ' + stripped)
+                    fixed_lines.append("    " + stripped)
                 else:
-                    fixed_lines.append('')
+                    fixed_lines.append("")
 
-            fixed_code = '\n'.join(fixed_lines)
+            fixed_code = "\n".join(fixed_lines)
             changes.append("تم تصحيح المسافات البادئة")
 
         # 3. إصلاح الاستيرادات المفقودة
         if "NameError" in error_message or "not defined" in error_message:
             # استخراج الاسم المفقود
             import re
+
             match = re.search(r"name '(\w+)' is not defined", error_message)
             if match:
                 missing_name = match.group(1)
 
                 # إضافة import محتمل
-                if missing_name in ['db', 'func']:
+                if missing_name in ["db", "func"]:
                     fixed_code = f"from extensions import {missing_name}\n" + fixed_code
                     changes.append(f"أضفت استيراد: {missing_name}")
 
-        explanation = "تم تحليل الخطأ وإصلاحه:\n" + '\n'.join(f"- {c}" for c in changes)
+        explanation = "تم تحليل الخطأ وإصلاحه:\n" + "\n".join(f"- {c}" for c in changes)
 
         return {
-            'fixed_code': fixed_code,
-            'explanation': explanation,
-            'changes': changes,
-            'confidence': 0.7 if changes else 0.3
+            "fixed_code": fixed_code,
+            "explanation": explanation,
+            "changes": changes,
+            "confidence": 0.7 if changes else 0.3,
         }
 
     def optimize_code(self, code: str) -> dict:
@@ -306,24 +347,24 @@ ORDER BY total_purchases DESC
         optimized = code
 
         # 1. استخدام list comprehension بدلاً من loops
-        if 'for ' in code and 'append(' in code:
+        if "for " in code and "append(" in code:
             improvements.append("يمكن استخدام list comprehension للسرعة")
 
         # 2. استخدام bulk operations في DB
-        if code.count('db.session.add(') > 5:
+        if code.count("db.session.add(") > 5:
             improvements.append("استخدم db.session.bulk_insert_mappings للسرعة")
 
         # 3. استخدام query optimization
-        if '.all()' in code and 'filter' in code:
+        if ".all()" in code and "filter" in code:
             improvements.append("استخدم .limit() لتقليل البيانات المسترجعة")
 
         performance_gain = len(improvements) * 15  # تقدير تقريبي
 
         return {
-            'optimized_code': optimized,
-            'improvements': improvements,
-            'performance_gain_percent': min(performance_gain, 80),
-            'confidence': 0.8
+            "optimized_code": optimized,
+            "improvements": improvements,
+            "performance_gain_percent": min(performance_gain, 80),
+            "confidence": 0.8,
         }
 
 

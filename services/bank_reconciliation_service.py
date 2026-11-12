@@ -1,21 +1,22 @@
-﻿"""
+"""
 خدمة مطابقة البنك - Bank Reconciliation Service
 """
 
 from decimal import Decimal
 from extensions import db
-from models import (
-    BankReconciliation, BankReconciliationItem,
-    GLAccount, Cheque
-)
+from models import BankReconciliation, BankReconciliationItem, GLAccount, Cheque
 from utils.helpers import generate_number
 
 
 class BankReconciliationService:
-
     @staticmethod
-    def create_reconciliation(bank_account_id, period_start, period_end,
-                              closing_balance_per_bank, created_by=None):
+    def create_reconciliation(
+        bank_account_id,
+        period_start,
+        period_end,
+        closing_balance_per_bank,
+        created_by=None,
+    ):
         """
         إنشاء مطابقة بنك جديدة
         """
@@ -25,17 +26,18 @@ class BankReconciliationService:
 
         # حساب رصيد الدفاتر
         from services.gl_service import GLService
+
         statement = GLService.get_account_statement(
-            bank_account_id,
-            date_from=None,
-            date_to=period_end
+            bank_account_id, date_from=None, date_to=period_end
         )
 
-        closing_balance_per_books = Decimal(str(statement['closing_balance']))
-        opening_balance = Decimal(str(statement['opening_balance']))
+        closing_balance_per_books = Decimal(str(statement["closing_balance"]))
+        opening_balance = Decimal(str(statement["opening_balance"]))
 
         # إنشاء المطابقة
-        reconciliation_number = generate_number('BR', BankReconciliation, 'reconciliation_number')
+        reconciliation_number = generate_number(
+            "BR", BankReconciliation, "reconciliation_number"
+        )
 
         reconciliation = BankReconciliation(
             reconciliation_number=reconciliation_number,
@@ -45,7 +47,12 @@ class BankReconciliationService:
             opening_balance_per_books=opening_balance,
             closing_balance_per_books=closing_balance_per_books,
             closing_balance_per_bank=Decimal(str(closing_balance_per_bank)),
-            created_by=created_by or (current_user.id if (getattr(current_user, 'is_authenticated', False)) else None)
+            created_by=created_by
+            or (
+                current_user.id
+                if (getattr(current_user, "is_authenticated", False))
+                else None
+            ),
         )
 
         db.session.add(reconciliation)
@@ -67,40 +74,40 @@ class BankReconciliationService:
         """
         # 1. الشيكات الواردة المعلقة (pending, deposited)
         outstanding_cheques_in = Cheque.query.filter(
-            Cheque.cheque_type == 'incoming',
-            Cheque.status.in_(['pending', 'deposited']),
+            Cheque.cheque_type == "incoming",
+            Cheque.status.in_(["pending", "deposited"]),
             Cheque.is_active.is_(True),
-            Cheque.due_date <= reconciliation.period_end
+            Cheque.due_date <= reconciliation.period_end,
         ).all()
 
         for cheque in outstanding_cheques_in:
             item = BankReconciliationItem(
                 reconciliation_id=reconciliation.id,
-                item_type='outstanding_deposit',
+                item_type="outstanding_deposit",
                 transaction_date=cheque.issue_date,
-                description=f'شيك وارد رقم {cheque.cheque_bank_number} - {cheque.drawer_name or ""}',
+                description=f"شيك وارد رقم {cheque.cheque_bank_number} - {cheque.drawer_name or ''}",
                 amount=cheque.amount_base,
-                cheque_id=cheque.id
+                cheque_id=cheque.id,
             )
             db.session.add(item)
             reconciliation.outstanding_deposits += cheque.amount_base
 
         # 2. الشيكات الصادرة المعلقة
         outstanding_cheques_out = Cheque.query.filter(
-            Cheque.cheque_type == 'outgoing',
-            Cheque.status.in_(['pending', 'deposited']),
+            Cheque.cheque_type == "outgoing",
+            Cheque.status.in_(["pending", "deposited"]),
             Cheque.is_active.is_(True),
-            Cheque.due_date <= reconciliation.period_end
+            Cheque.due_date <= reconciliation.period_end,
         ).all()
 
         for cheque in outstanding_cheques_out:
             item = BankReconciliationItem(
                 reconciliation_id=reconciliation.id,
-                item_type='outstanding_withdrawal',
+                item_type="outstanding_withdrawal",
                 transaction_date=cheque.issue_date,
-                description=f'شيك صادر رقم {cheque.cheque_bank_number} - {cheque.payee_name or ""}',
+                description=f"شيك صادر رقم {cheque.cheque_bank_number} - {cheque.payee_name or ''}",
                 amount=cheque.amount_base,
-                cheque_id=cheque.id
+                cheque_id=cheque.id,
             )
             db.session.add(item)
             reconciliation.outstanding_withdrawals += cheque.amount_base
@@ -112,15 +119,15 @@ class BankReconciliationService:
         """
         reconciliation = db.get_or_404(BankReconciliation, reconciliation_id)
 
-        if reconciliation.status != 'draft':
-            raise ValueError('لا يمكن تعديل مطابقة معتمدة')
+        if reconciliation.status != "draft":
+            raise ValueError("لا يمكن تعديل مطابقة معتمدة")
 
         item = BankReconciliationItem(
             reconciliation_id=reconciliation_id,
-            item_type='bank_charge',
+            item_type="bank_charge",
             transaction_date=transaction_date or reconciliation.period_end,
             description=description,
-            amount=abs(Decimal(str(amount)))
+            amount=abs(Decimal(str(amount))),
         )
         db.session.add(item)
 
@@ -131,21 +138,23 @@ class BankReconciliationService:
         return item
 
     @staticmethod
-    def add_bank_interest(reconciliation_id, amount, description, transaction_date=None):
+    def add_bank_interest(
+        reconciliation_id, amount, description, transaction_date=None
+    ):
         """
         إضافة فائدة بنكية
         """
         reconciliation = db.get_or_404(BankReconciliation, reconciliation_id)
 
-        if reconciliation.status != 'draft':
-            raise ValueError('لا يمكن تعديل مطابقة معتمدة')
+        if reconciliation.status != "draft":
+            raise ValueError("لا يمكن تعديل مطابقة معتمدة")
 
         item = BankReconciliationItem(
             reconciliation_id=reconciliation_id,
-            item_type='bank_interest',
+            item_type="bank_interest",
             transaction_date=transaction_date or reconciliation.period_end,
             description=description,
-            amount=abs(Decimal(str(amount)))
+            amount=abs(Decimal(str(amount))),
         )
         db.session.add(item)
 
@@ -162,14 +171,14 @@ class BankReconciliationService:
         """
         reconciliation = db.get_or_404(BankReconciliation, reconciliation_id)
 
-        if reconciliation.status != 'draft':
-            raise ValueError('المطابقة معتمدة مسبقاً')
+        if reconciliation.status != "draft":
+            raise ValueError("المطابقة معتمدة مسبقاً")
 
         # التحقق من التوازن
         result = reconciliation.calculate_reconciliation()
 
-        if not result['is_balanced']:
-            raise ValueError(f'المطابقة غير متوازنة - الفرق: {result["difference"]}')
+        if not result["is_balanced"]:
+            raise ValueError(f"المطابقة غير متوازنة - الفرق: {result['difference']}")
 
         # إنشاء قيود التسوية
         from services.gl_service import GLService
@@ -178,44 +187,52 @@ class BankReconciliationService:
 
         # مصاريف بنكية
         if reconciliation.bank_charges > 0:
-            lines.append({
-                'account': '6950',  # مصاريف بنكية
-                'debit': reconciliation.bank_charges,
-                'credit': 0,
-                'description': 'مصاريف بنكية'
-            })
-            lines.append({
-                'account': str(reconciliation.bank_account.code),  # البنك
-                'debit': 0,
-                'credit': reconciliation.bank_charges,
-                'description': 'مصاريف بنكية'
-            })
+            lines.append(
+                {
+                    "account": "6950",  # مصاريف بنكية
+                    "debit": reconciliation.bank_charges,
+                    "credit": 0,
+                    "description": "مصاريف بنكية",
+                }
+            )
+            lines.append(
+                {
+                    "account": str(reconciliation.bank_account.code),  # البنك
+                    "debit": 0,
+                    "credit": reconciliation.bank_charges,
+                    "description": "مصاريف بنكية",
+                }
+            )
 
         # فوائد بنكية
         if reconciliation.bank_interest > 0:
-            lines.append({
-                'account': str(reconciliation.bank_account.code),  # البنك
-                'debit': reconciliation.bank_interest,
-                'credit': 0,
-                'description': 'فوائد بنكية'
-            })
-            lines.append({
-                'account': '4500',  # إيرادات أخرى
-                'debit': 0,
-                'credit': reconciliation.bank_interest,
-                'description': 'فوائد بنكية'
-            })
+            lines.append(
+                {
+                    "account": str(reconciliation.bank_account.code),  # البنك
+                    "debit": reconciliation.bank_interest,
+                    "credit": 0,
+                    "description": "فوائد بنكية",
+                }
+            )
+            lines.append(
+                {
+                    "account": "4500",  # إيرادات أخرى
+                    "debit": 0,
+                    "credit": reconciliation.bank_interest,
+                    "description": "فوائد بنكية",
+                }
+            )
 
         if lines:
             GLService.post_entry(
                 lines=lines,
-                description=f'قيد تسوية بنك - {reconciliation.reconciliation_number}',
-                reference_type='bank_reconciliation',
-                reference_id=reconciliation.id
+                description=f"قيد تسوية بنك - {reconciliation.reconciliation_number}",
+                reference_type="bank_reconciliation",
+                reference_id=reconciliation.id,
             )
 
         # تحديث الحالة
-        reconciliation.status = 'completed'
+        reconciliation.status = "completed"
 
         db.session.commit()
         return reconciliation
@@ -228,35 +245,33 @@ class BankReconciliationService:
         from services.gl_service import GLService
 
         statement = GLService.get_account_statement(
-            bank_account_id,
-            date_from=period_start,
-            date_to=period_end
+            bank_account_id, date_from=period_start, date_to=period_end
         )
 
         # الشيكات المعلقة
         outstanding_cheques_in = Cheque.query.filter(
-            Cheque.cheque_type == 'incoming',
-            Cheque.status.in_(['pending', 'deposited']),
+            Cheque.cheque_type == "incoming",
+            Cheque.status.in_(["pending", "deposited"]),
             Cheque.is_active.is_(True),
-            Cheque.due_date.between(period_start, period_end)
+            Cheque.due_date.between(period_start, period_end),
         ).all()
 
         outstanding_cheques_out = Cheque.query.filter(
-            Cheque.cheque_type == 'outgoing',
-            Cheque.status.in_(['pending', 'deposited']),
+            Cheque.cheque_type == "outgoing",
+            Cheque.status.in_(["pending", "deposited"]),
             Cheque.is_active.is_(True),
-            Cheque.due_date.between(period_start, period_end)
+            Cheque.due_date.between(period_start, period_end),
         ).all()
 
         outstanding_deposits = sum(c.amount_base for c in outstanding_cheques_in)
         outstanding_withdrawals = sum(c.amount_base for c in outstanding_cheques_out)
 
         return {
-            'closing_balance_per_books': statement['closing_balance'],
-            'outstanding_deposits_count': len(outstanding_cheques_in),
-            'outstanding_deposits_amount': float(outstanding_deposits),
-            'outstanding_withdrawals_count': len(outstanding_cheques_out),
-            'outstanding_withdrawals_amount': float(outstanding_withdrawals),
-            'outstanding_cheques_in': outstanding_cheques_in,
-            'outstanding_cheques_out': outstanding_cheques_out
+            "closing_balance_per_books": statement["closing_balance"],
+            "outstanding_deposits_count": len(outstanding_cheques_in),
+            "outstanding_deposits_amount": float(outstanding_deposits),
+            "outstanding_withdrawals_count": len(outstanding_cheques_out),
+            "outstanding_withdrawals_amount": float(outstanding_withdrawals),
+            "outstanding_cheques_in": outstanding_cheques_in,
+            "outstanding_cheques_out": outstanding_cheques_out,
         }

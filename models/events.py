@@ -51,18 +51,24 @@ def register_all_listeners():
     # مستمعات المساعد الذكي (AI) — تُفعّل في بيئة التطوير فقط
     # في الإنتاج، تسبب هذه المستمعات بطء شديد عند كل عملية قاعدة بيانات
     import os
-    app_env = os.environ.get('APP_ENV', 'production').lower()
-    if app_env in ('development', 'testing'):
+
+    app_env = os.environ.get("APP_ENV", "production").lower()
+    if app_env in ("development", "testing"):
         register_ai_listeners()
         register_neural_training_listeners()
         logger.info("[OK] AI + Neural listeners ENABLED (non-production environment)")
     else:
-        logger.info("[OK] AI + Neural listeners DISABLED (production environment — use services/ for AI)")
+        logger.info(
+            "[OK] AI + Neural listeners DISABLED (production environment — use services/ for AI)"
+        )
 
     # مستمعات القيود المحاسبية التلقائية
     register_automatic_gl_listeners()
 
-    logger.info("[OK] All event listeners registered successfully - Full coverage + AI + Neural Networks + Auto GL enabled")
+    logger.info(
+        "[OK] All event listeners registered successfully - Full coverage + AI + Neural Networks + Auto GL enabled"
+    )
+
 
 # ============================================================================
 # Sale Listeners - مستمعات الفواتير
@@ -73,8 +79,8 @@ def register_sale_listeners():  # noqa: C901
     """تسجيل مستمعات الفواتير"""
     from models import Sale
 
-    @event.listens_for(Sale, 'after_insert')
-    @event.listens_for(Sale, 'after_update')
+    @event.listens_for(Sale, "after_insert")
+    @event.listens_for(Sale, "after_update")
     def auto_update_customer_on_sale_change(mapper, connection, target):
         """
         تحديث تلقائي لبيانات العميل عند تغيير الفاتورة
@@ -89,21 +95,29 @@ def register_sale_listeners():  # noqa: C901
         فكل مسارات الكتابة تنتج نفس القيمة.
         """
         # لا نفعل شيء إذا كانت الفاتورة ملغية أو محذوفة
-        if not target.is_active or target.status == 'cancelled':
+        if not target.is_active or target.status == "cancelled":
             return
 
         # تحديث رصيد العميل تلقائياً
         try:
             from models.customer import recompute_customer_balance
 
-            new_balance = recompute_customer_balance(target.customer_id, connection=connection)
+            new_balance = recompute_customer_balance(
+                target.customer_id, connection=connection
+            )
 
-            logger.info(f"✅ Auto-updated customer {target.customer_id} balance to {new_balance} AED after sale {target.sale_number}")
+            logger.info(
+                f"✅ Auto-updated customer {target.customer_id} balance to {new_balance} AED after sale {target.sale_number}"
+            )
 
             try:
                 from services.monitoring_service import MonitoringService
-                MonitoringService.log_performance_metric('customer_balance_update', float(new_balance),
-                                                         {'customer_id': target.customer_id})
+
+                MonitoringService.log_performance_metric(
+                    "customer_balance_update",
+                    float(new_balance),
+                    {"customer_id": target.customer_id},
+                )
             except Exception:
                 pass  # monitoring is non-critical
 
@@ -111,18 +125,23 @@ def register_sale_listeners():  # noqa: C901
             logger.error(f"❌ Failed to auto-update customer balance: {e}")
             try:
                 from services.monitoring_service import MonitoringService
-                MonitoringService.log_performance_metric('customer_balance_error', 1,
-                                                         {'error': str(e)})
+
+                MonitoringService.log_performance_metric(
+                    "customer_balance_error", 1, {"error": str(e)}
+                )
             except Exception:
                 pass  # monitoring is non-critical
 
-    @event.listens_for(Sale, 'after_delete')
+    @event.listens_for(Sale, "after_delete")
     def auto_update_customer_on_sale_delete(mapper, connection, target):
         """تحديث تلقائي عند حذف فاتورة"""
         try:
-            logger.info(f"Sale {target.sale_number} deleted - customer balance will auto-recalculate")
+            logger.info(
+                f"Sale {target.sale_number} deleted - customer balance will auto-recalculate"
+            )
         except Exception as e:
             logger.warning(f"Failed to log sale deletion: {e}")
+
 
 # ============================================================================
 # Receipt Listeners - مستمعات سندات القبض
@@ -133,7 +152,7 @@ def register_receipt_listeners():
     """تسجيل مستمعات سندات القبض"""
     from models import Receipt
 
-    @event.listens_for(Receipt, 'after_insert')
+    @event.listens_for(Receipt, "after_insert")
     def auto_update_customer_on_receipt(mapper, connection, target):
         """
         تحديث تلقائي لرصيد العميل عند إنشاء سند قبض
@@ -143,23 +162,32 @@ def register_receipt_listeners():
         so the next receipt silently destroyed the returns credit.
         """
         try:
-            logger.info(f"📝 Receipt {target.receipt_number} created - amount: {target.amount_base} AED for customer {target.customer_id}")
+            logger.info(
+                f"📝 Receipt {target.receipt_number} created - amount: {target.amount_base} AED for customer {target.customer_id}"
+            )
 
             from models.customer import recompute_customer_balance
 
-            new_balance = recompute_customer_balance(target.customer_id, connection=connection)
+            new_balance = recompute_customer_balance(
+                target.customer_id, connection=connection
+            )
 
-            logger.info(f"✅ Auto-updated customer {target.customer_id} balance to {new_balance} AED after receipt")
+            logger.info(
+                f"✅ Auto-updated customer {target.customer_id} balance to {new_balance} AED after receipt"
+            )
 
         except Exception as e:
             logger.error(f"❌ Failed to auto-update customer on receipt: {e}")
 
-    @event.listens_for(Receipt, 'before_delete')
+    @event.listens_for(Receipt, "before_delete")
     def prevent_receipt_deletion(mapper, connection, target):
         """منع حذف سندات القبض (يجب الإلغاء فقط)"""
-        logger.warning(f"Attempted to delete receipt {target.receipt_number} - use cancellation instead")
+        logger.warning(
+            f"Attempted to delete receipt {target.receipt_number} - use cancellation instead"
+        )
         # يمكن رفع استثناء هنا لمنع الحذف:
         # raise ValueError("لا يمكن حذف سندات القبض، يجب إلغاؤها بدلاً من ذلك")
+
 
 # ============================================================================
 # Purchase Listeners - مستمعات المشتريات
@@ -170,8 +198,8 @@ def register_purchase_listeners():
     """تسجيل مستمعات فواتير المشتريات"""
     from models import Purchase
 
-    @event.listens_for(Purchase, 'after_insert')
-    @event.listens_for(Purchase, 'after_update')
+    @event.listens_for(Purchase, "after_insert")
+    @event.listens_for(Purchase, "after_update")
     def auto_update_supplier_on_purchase_change(mapper, connection, target):
         """تحديث تلقائي لبيانات المورد عند تغيير فاتورة الشراء
 
@@ -181,19 +209,23 @@ def register_purchase_listeners():
         was NULL, the other did not) so the supplier's AP balance flipped
         depending on which listener ran last.
         """
-        if target.status == 'cancelled':
+        if target.status == "cancelled":
             return
 
         try:
             from models.supplier import recompute_supplier_totals
 
             total_purchases, total_paid = recompute_supplier_totals(
-                target.supplier_id, connection=connection)
+                target.supplier_id, connection=connection
+            )
 
-            logger.info(f"✅ Auto-updated supplier {target.supplier_id} totals: purchases={total_purchases} AED, paid={total_paid} AED")
+            logger.info(
+                f"✅ Auto-updated supplier {target.supplier_id} totals: purchases={total_purchases} AED, paid={total_paid} AED"
+            )
 
         except Exception as e:
             logger.error(f"❌ Failed to auto-update supplier totals: {e}")
+
 
 # ============================================================================
 # Payment Listeners - مستمعات سندات الصرف
@@ -204,8 +236,8 @@ def register_payment_listeners():
     """تسجيل مستمعات سندات الصرف"""
     from models import Payment
 
-    @event.listens_for(Payment, 'after_insert')
-    @event.listens_for(Payment, 'after_update')
+    @event.listens_for(Payment, "after_insert")
+    @event.listens_for(Payment, "after_update")
     def auto_update_supplier_on_payment(mapper, connection, target):
         """تحديث تلقائي لرصيد المورد عند إنشاء سند صرف
 
@@ -217,12 +249,17 @@ def register_payment_listeners():
         try:
             # ---- المورد (F6) -------------------------------------------
             if target.supplier_id is not None:
-                logger.info(f"💰 Payment created - amount: {target.amount_base} AED to supplier {target.supplier_id}")
+                logger.info(
+                    f"💰 Payment created - amount: {target.amount_base} AED to supplier {target.supplier_id}"
+                )
 
                 try:
                     from models.supplier import recompute_supplier_totals
+
                     recompute_supplier_totals(target.supplier_id, connection=connection)
-                    logger.info(f"✅ Auto-updated supplier {target.supplier_id} after payment")
+                    logger.info(
+                        f"✅ Auto-updated supplier {target.supplier_id} after payment"
+                    )
                 except Exception as e:
                     logger.error(f"❌ Failed to auto-update supplier on payment: {e}")
 
@@ -230,34 +267,38 @@ def register_payment_listeners():
             if target.purchase_id is not None:
                 try:
                     from models.purchase import Purchase as _Purchase
+
                     purchase = connection.execute(
                         _Purchase.__table__.select().where(
-                            _Purchase.__table__.c.id == target.purchase_id)
+                            _Purchase.__table__.c.id == target.purchase_id
+                        )
                     ).first()
                     if purchase is not None:
                         paid = _purchase_paid_base(target.purchase_id, connection)
                         amount_base = Decimal(str(purchase.amount_base or 0))
-                        if paid <= Decimal('0'):
-                            status = 'unpaid'
-                        elif paid + Decimal('0.01') >= amount_base:
-                            status = 'paid'
+                        if paid <= Decimal("0"):
+                            status = "unpaid"
+                        elif paid + Decimal("0.01") >= amount_base:
+                            status = "paid"
                         else:
-                            status = 'partial'
+                            status = "partial"
                         connection.execute(
-                            _Purchase.__table__.update().where(
-                                _Purchase.__table__.c.id == target.purchase_id
-                            ).values(paid_amount=paid, payment_status=status)
+                            _Purchase.__table__.update()
+                            .where(_Purchase.__table__.c.id == target.purchase_id)
+                            .values(paid_amount=paid, payment_status=status)
                         )
                         # مزامنة ذاكرة هوية الجلسة
                         try:
                             from sqlalchemy.orm.attributes import set_committed_value
                             from sqlalchemy.orm.util import identity_key
                             from extensions import db
+
                             instance = db.session().identity_map.get(
-                                identity_key(_Purchase, target.purchase_id))
+                                identity_key(_Purchase, target.purchase_id)
+                            )
                             if instance is not None:
-                                set_committed_value(instance, 'paid_amount', paid)
-                                set_committed_value(instance, 'payment_status', status)
+                                set_committed_value(instance, "paid_amount", paid)
+                                set_committed_value(instance, "payment_status", status)
                         except Exception:
                             pass
                 except Exception as e:
@@ -267,18 +308,23 @@ def register_payment_listeners():
             if target.sale_id is not None:
                 try:
                     from models.sale import recompute_sale_settlement
+
                     recompute_sale_settlement(target.sale_id, connection=connection)
 
                     # F1: رصيد العميل يُشتق من مصدره الواحد (الكتابة عبر Core
                     # لا تُطلق مستمع التحديث → نعيد الاحتساب صراحةً).
                     from models.customer import recompute_customer_balance
                     from models.sale import Sale as _Sale
+
                     sale_row = connection.execute(
                         _Sale.__table__.select().where(
-                            _Sale.__table__.c.id == target.sale_id)
+                            _Sale.__table__.c.id == target.sale_id
+                        )
                     ).first()
                     if sale_row is not None and sale_row.customer_id is not None:
-                        recompute_customer_balance(sale_row.customer_id, connection=connection)
+                        recompute_customer_balance(
+                            sale_row.customer_id, connection=connection
+                        )
                 except Exception as e:
                     logger.error(f"❌ Failed to update sale settlement: {e}")
 
@@ -288,8 +334,13 @@ def register_payment_listeners():
             if target.customer_id is not None and target.sale_id is None:
                 try:
                     from models.customer import recompute_customer_balance
-                    balance = recompute_customer_balance(target.customer_id, connection=connection)
-                    logger.info(f"✅ Auto-updated customer {target.customer_id} balance to {balance} after payment")
+
+                    balance = recompute_customer_balance(
+                        target.customer_id, connection=connection
+                    )
+                    logger.info(
+                        f"✅ Auto-updated customer {target.customer_id} balance to {balance} after payment"
+                    )
                 except Exception as e:
                     logger.error(f"❌ Failed to auto-update customer on payment: {e}")
 
@@ -310,12 +361,13 @@ def _purchase_paid_base(purchase_id, connection):
         ).where(Payment.__table__.c.purchase_id == purchase_id)
     ).fetchall()
 
-    total = Decimal('0')
+    total = Decimal("0")
     for row in rows:
         if row.payment_confirmed is False:
             continue
         total += Decimal(str(row.amount_base or 0))
-    return total.quantize(Decimal('0.001'))
+    return total.quantize(Decimal("0.001"))
+
 
 # ============================================================================
 # Utility Functions - دوال مساعدة
@@ -384,21 +436,22 @@ def ensure_balance_consistency(connection, model, record_id):
             # F1/F12: نفس المصدر الواحد لرصيد العميل
             from models.customer import derive_customer_balance
 
-            calculated_balance = derive_customer_balance(record_id, connection=connection)
+            calculated_balance = derive_customer_balance(
+                record_id, connection=connection
+            )
 
             # الحصول على الرصيد المخزن
             customer = connection.execute(
-                Customer.__table__.select().where(
-                    Customer.id == record_id
-                )
+                Customer.__table__.select().where(Customer.id == record_id)
             ).first()
 
-            stored_balance = customer.balance if customer else Decimal('0')
+            stored_balance = customer.balance if customer else Decimal("0")
 
             return {
-                'stored': stored_balance,
-                'calculated': calculated_balance,
-                'consistent': abs(stored_balance - calculated_balance) < Decimal('0.01')
+                "stored": stored_balance,
+                "calculated": calculated_balance,
+                "consistent": abs(stored_balance - calculated_balance)
+                < Decimal("0.01"),
             }
 
         if model == Supplier:
@@ -406,29 +459,31 @@ def ensure_balance_consistency(connection, model, record_id):
             from models.supplier import derive_supplier_totals
 
             total_purchases, total_paid = derive_supplier_totals(
-                record_id, connection=connection)
+                record_id, connection=connection
+            )
 
             supplier = connection.execute(
-                Supplier.__table__.select().where(
-                    Supplier.id == record_id
-                )
+                Supplier.__table__.select().where(Supplier.id == record_id)
             ).first()
 
-            stored_purchases = supplier.total_purchases_aed if supplier else Decimal('0')
-            stored_paid = supplier.total_paid_aed if supplier else Decimal('0')
+            stored_purchases = (
+                supplier.total_purchases_aed if supplier else Decimal("0")
+            )
+            stored_paid = supplier.total_paid_aed if supplier else Decimal("0")
 
             return {
-                'stored': stored_purchases,
-                'calculated': total_purchases,
-                'consistent': abs(stored_purchases - total_purchases) < Decimal('0.01'),
-                'stored_paid': stored_paid,
-                'calculated_paid': total_paid,
-                'paid_consistent': abs(stored_paid - total_paid) < Decimal('0.01'),
+                "stored": stored_purchases,
+                "calculated": total_purchases,
+                "consistent": abs(stored_purchases - total_purchases) < Decimal("0.01"),
+                "stored_paid": stored_paid,
+                "calculated_paid": total_paid,
+                "paid_consistent": abs(stored_paid - total_paid) < Decimal("0.01"),
             }
 
     except Exception as e:
         logger.error(f"Failed to check balance consistency: {e}")
-        return {'stored': None, 'calculated': None, 'consistent': None}
+        return {"stored": None, "calculated": None, "consistent": None}
+
 
 # ============================================================================
 # Example: Advanced Listener with Transaction Handling
@@ -449,8 +504,8 @@ def register_advanced_sale_listener():
     """
     from models import Sale
 
-    @event.listens_for(Sale, 'after_insert')
-    @event.listens_for(Sale, 'after_update')
+    @event.listens_for(Sale, "after_insert")
+    @event.listens_for(Sale, "after_update")
     def advanced_auto_update_customer_balance(mapper, connection, target):
         """
         تحديث متقدم للرصيد مع معالجة المعاملات
@@ -458,7 +513,7 @@ def register_advanced_sale_listener():
         ⚠️ تحذير: هذا قد يؤدي إلى مشاكل أداء في الأنظمة الكبيرة
         استخدمه بحذر!
         """
-        if not target.is_active or target.status == 'cancelled':
+        if not target.is_active or target.status == "cancelled":
             return
 
         try:
@@ -466,13 +521,17 @@ def register_advanced_sale_listener():
             from models.customer import recompute_customer_balance
 
             new_balance = recompute_customer_balance(
-                target.customer_id, connection=connection)
+                target.customer_id, connection=connection
+            )
 
-            logger.info(f"Auto-updated customer {target.customer_id} balance to {new_balance} AED")
+            logger.info(
+                f"Auto-updated customer {target.customer_id} balance to {new_balance} AED"
+            )
 
         except Exception as e:
             logger.error(f"Failed to auto-update customer balance: {e}")
             # لا نرفع الاستثناء لتجنب إيقاف العملية الأساسية
+
 
 # ============================================================================
 # Example: Validation Listener
@@ -488,7 +547,7 @@ def register_stock_movement_listeners():
     """تسجيل مستمعات حركات المخزون"""
     from models import StockMovement
 
-    @event.listens_for(StockMovement, 'after_insert')
+    @event.listens_for(StockMovement, "after_insert")
     def log_stock_movement(mapper, connection, target):
         """
         تسجيل حركات المخزون للمراقبة
@@ -498,22 +557,25 @@ def register_stock_movement_listeners():
         """
         try:
             movement_type_ar = {
-                'sale': 'بيع (خروج)',
-                'purchase': 'شراء (دخول)',
-                'adjustment': 'تعديل',
-                'return': 'إرجاع',
-                'transfer': 'نقل'
+                "sale": "بيع (خروج)",
+                "purchase": "شراء (دخول)",
+                "adjustment": "تعديل",
+                "return": "إرجاع",
+                "transfer": "نقل",
             }.get(target.movement_type, target.movement_type)
 
-            quantity_change = target.quantity or Decimal('0')
+            quantity_change = target.quantity or Decimal("0")
             direction = "➕" if quantity_change > 0 else "➖"
 
-            logger.info(f"📦 Stock Movement: {direction} {movement_type_ar} | "
-                        f"Product #{target.product_id} | Qty: {abs(quantity_change)} | "
-                        f"Ref: {target.reference_type}-{target.reference_id}")
+            logger.info(
+                f"📦 Stock Movement: {direction} {movement_type_ar} | "
+                f"Product #{target.product_id} | Qty: {abs(quantity_change)} | "
+                f"Ref: {target.reference_type}-{target.reference_id}"
+            )
 
         except Exception as e:
             logger.error(f"❌ Failed to log stock movement: {e}")
+
 
 # ============================================================================
 # Cheque Listeners - مستمعات الشيكات
@@ -525,13 +587,13 @@ def register_cheque_listeners():  # noqa: C901
     from models import Cheque
     from datetime import date
 
-    @event.listens_for(Cheque, 'before_insert')
-    @event.listens_for(Cheque, 'before_update')
+    @event.listens_for(Cheque, "before_insert")
+    @event.listens_for(Cheque, "before_update")
     def auto_update_cheque_status(mapper, connection, target):
         """تحديث تلقائي لحالة الشيك حسب التاريخ"""
         try:
             # إذا كان الشيك pending وتجاوز تاريخ الاستحقاق
-            if target.status == 'pending' and target.due_date:
+            if target.status == "pending" and target.due_date:
                 if isinstance(target.due_date, datetime):
                     due = target.due_date.date()
                 else:
@@ -543,22 +605,27 @@ def register_cheque_listeners():  # noqa: C901
                 days_overdue = (today - due).days
 
                 if days_overdue > 7:
-                    logger.warning(f"⚠️ Cheque {target.cheque_number} overdue by {days_overdue} days")
+                    logger.warning(
+                        f"⚠️ Cheque {target.cheque_number} overdue by {days_overdue} days"
+                    )
 
         except Exception as e:
             logger.error(f"❌ Failed to check cheque status: {e}")
 
-    @event.listens_for(Cheque, 'after_update')
+    @event.listens_for(Cheque, "after_update")
     def auto_log_cheque_status_change(mapper, connection, target):
         """تسجيل تغييرات حالة الشيك"""
         try:
             # تسجيل تغيير الحالة
-            if target.status in ['cleared', 'bounced']:
-                status_ar = 'تم الصرف' if target.status == 'cleared' else 'مرتد'
-                logger.info(f"💳 Cheque {target.cheque_number} status changed to: {status_ar}")
+            if target.status in ["cleared", "bounced"]:
+                status_ar = "تم الصرف" if target.status == "cleared" else "مرتد"
+                logger.info(
+                    f"💳 Cheque {target.cheque_number} status changed to: {status_ar}"
+                )
 
         except Exception as e:
             logger.error(f"❌ Failed to log cheque status change: {e}")
+
 
 # ============================================================================
 # Product Return Listeners - مستمعات الإرجاعات
@@ -569,22 +636,26 @@ def register_product_return_listeners():
     """تسجيل مستمعات إرجاعات المنتجات"""
     from models import ProductReturn
 
-    @event.listens_for(ProductReturn, 'after_insert')
+    @event.listens_for(ProductReturn, "after_insert")
     def auto_update_stock_on_return(mapper, connection, target):
         """تحديث المخزون تلقائياً عند الإرجاع"""
         try:
-            if target.status == 'approved':
-                logger.info(f"📦 Product return {target.return_number} approved - stock will be updated via StockMovement")
+            if target.status == "approved":
+                logger.info(
+                    f"📦 Product return {target.return_number} approved - stock will be updated via StockMovement"
+                )
 
             # F1/F3: المرتجع المعتمد يُلغي قيمة الفاتورة فينقص رصيد
             # العميل — والاشتقاق هو المصدر الوحيد للرصيد
             # (models/customer.recompute_customer_balance).
-            if target.status == 'approved' and target.customer_id:
+            if target.status == "approved" and target.customer_id:
                 from models.customer import recompute_customer_balance
+
                 recompute_customer_balance(target.customer_id, connection=connection)
 
         except Exception as e:
             logger.error(f"❌ Failed to process product return: {e}")
+
 
 # ============================================================================
 # Expense Listeners - مستمعات المصروفات
@@ -595,16 +666,19 @@ def register_expense_listeners():
     """تسجيل مستمعات المصروفات"""
     from models import Expense
 
-    @event.listens_for(Expense, 'after_insert')
-    @event.listens_for(Expense, 'after_update')
+    @event.listens_for(Expense, "after_insert")
+    @event.listens_for(Expense, "after_update")
     def auto_log_expense(mapper, connection, target):
         """تسجيل المصروفات"""
         try:
             if target.is_active:
-                logger.info(f"💸 Expense recorded: {target.amount_base} AED - Category: {target.category_id}")
+                logger.info(
+                    f"💸 Expense recorded: {target.amount_base} AED - Category: {target.category_id}"
+                )
 
         except Exception as e:
             logger.error(f"❌ Failed to log expense: {e}")
+
 
 # ============================================================================
 # GL (General Ledger) Listeners - مستمعات دفتر الأستاذ
@@ -620,8 +694,8 @@ def _journal_line_totals(target, connection):
     """
     from models.gl import GLJournalLine
 
-    debit = Decimal('0')
-    credit = Decimal('0')
+    debit = Decimal("0")
+    credit = Decimal("0")
     has_lines = False
 
     # 1) سطور مُعلّقة في الجلسة مرتبطة بهذا القيد
@@ -640,7 +714,7 @@ def _journal_line_totals(target, connection):
         return debit, credit, True
 
     # 2) سطور محفوظة (تحديث قيد قائم)
-    if getattr(target, 'id', None) is not None:
+    if getattr(target, "id", None) is not None:
         from sqlalchemy import select
 
         rows = connection.execute(
@@ -661,8 +735,8 @@ def register_gl_listeners():
     """تسجيل مستمعات دفتر الأستاذ"""
     from models import GLJournalEntry
 
-    @event.listens_for(GLJournalEntry, 'before_insert')
-    @event.listens_for(GLJournalEntry, 'before_update')
+    @event.listens_for(GLJournalEntry, "before_insert")
+    @event.listens_for(GLJournalEntry, "before_update")
     def validate_journal_entry_balance(mapper, connection, target):
         """يرفض القيد غير المتوازن — آخر خط دفاع (F7).
 
@@ -683,23 +757,27 @@ def register_gl_listeners():
 
         if not has_lines:
             # لا سطور مرئية بعد → قارن إجماليات الرأس (خط دفاع أخير).
-            debit = target.total_debit or Decimal('0')
-            credit = target.total_credit or Decimal('0')
-            source = 'إجماليات الرأس'
+            debit = target.total_debit or Decimal("0")
+            credit = target.total_credit or Decimal("0")
+            source = "إجماليات الرأس"
         else:
-            source = 'مجموع سطور القيد'
+            source = "مجموع سطور القيد"
 
-        if abs(Decimal(str(debit)) - Decimal(str(credit))) > Decimal('0.01'):
+        if abs(Decimal(str(debit)) - Decimal(str(credit))) > Decimal("0.01"):
             logger.error(
                 f"❌ Journal entry {target.entry_number} is UNBALANCED! "
-                f"Debit: {debit}, Credit: {credit} ({source})")
+                f"Debit: {debit}, Credit: {credit} ({source})"
+            )
             raise ValidationError(
-                f'القيد {target.entry_number or ""} غير متوازن! '
-                f'المدين: {debit} | الدائن: {credit} ({source}). '
-                f'لا يُرحَّل قيد غير متوازن.'
+                f"القيد {target.entry_number or ''} غير متوازن! "
+                f"المدين: {debit} | الدائن: {credit} ({source}). "
+                f"لا يُرحَّل قيد غير متوازن."
             )
 
-        logger.info(f"✅ Journal entry {target.entry_number} is balanced: {debit} = {credit}")
+        logger.info(
+            f"✅ Journal entry {target.entry_number} is balanced: {debit} = {credit}"
+        )
+
 
 # ============================================================================
 # Validation Listeners - مستمعات التحقق من البيانات
@@ -710,8 +788,8 @@ def register_validation_listeners():  # noqa: C901
     """تسجيل مستمعات التحقق من البيانات"""
     from models import Sale, Purchase, Receipt, Payment, Product
 
-    @event.listens_for(Sale, 'before_insert')
-    @event.listens_for(Sale, 'before_update')
+    @event.listens_for(Sale, "before_insert")
+    @event.listens_for(Sale, "before_update")
     def validate_sale_amounts(mapper, connection, target):
         """التحقق من صحة مبالغ الفاتورة"""
         try:
@@ -725,34 +803,42 @@ def register_validation_listeners():  # noqa: C901
                 expected_balance = target.amount_base - target.paid_amount_base
                 try:
                     from models.sale import compute_sale_returns_base
+
                     if target.id:
                         expected_balance -= compute_sale_returns_base(
-                            target.id, connection=connection)
+                            target.id, connection=connection
+                        )
                 except Exception:
                     pass
                 # لا يمكن أن يكون الرصيد سالباً (قيد ck_sale_balance_non_negative)
-                if expected_balance < Decimal('0'):
-                    expected_balance = Decimal('0')
-                if target.balance_due and abs(target.balance_due - expected_balance) > Decimal('0.01'):
+                if expected_balance < Decimal("0"):
+                    expected_balance = Decimal("0")
+                if target.balance_due and abs(
+                    target.balance_due - expected_balance
+                ) > Decimal("0.01"):
                     # تصحيح تلقائي
                     target.balance_due = expected_balance
-                    logger.warning(f"⚠️ Sale {target.sale_number}: Balance auto-corrected to {expected_balance}")
+                    logger.warning(
+                        f"⚠️ Sale {target.sale_number}: Balance auto-corrected to {expected_balance}"
+                    )
 
         except Exception as e:
             logger.error(f"❌ Failed to validate sale: {e}")
 
-    @event.listens_for(Purchase, 'before_insert')
-    @event.listens_for(Purchase, 'before_update')
+    @event.listens_for(Purchase, "before_insert")
+    @event.listens_for(Purchase, "before_update")
     def validate_purchase_amounts(mapper, connection, target):
         """التحقق من صحة مبالغ فاتورة الشراء"""
         try:
             if target.amount_base and target.amount_base < 0:
-                logger.error(f"❌ Purchase {target.purchase_number}: Negative amount detected!")
+                logger.error(
+                    f"❌ Purchase {target.purchase_number}: Negative amount detected!"
+                )
 
         except Exception as e:
             logger.error(f"❌ Failed to validate purchase: {e}")
 
-    @event.listens_for(Receipt, 'before_insert')
+    @event.listens_for(Receipt, "before_insert")
     def validate_receipt_amount(mapper, connection, target):
         """التحقق من صحة مبلغ سند القبض"""
         try:
@@ -762,7 +848,7 @@ def register_validation_listeners():  # noqa: C901
         except Exception as e:
             logger.error(f"❌ Failed to validate receipt: {e}")
 
-    @event.listens_for(Payment, 'before_insert')
+    @event.listens_for(Payment, "before_insert")
     def validate_payment_amount(mapper, connection, target):
         """التحقق من صحة مبلغ سند الصرف"""
         try:
@@ -772,8 +858,8 @@ def register_validation_listeners():  # noqa: C901
         except Exception as e:
             logger.error(f"❌ Failed to validate payment: {e}")
 
-    @event.listens_for(Product, 'before_insert')
-    @event.listens_for(Product, 'before_update')
+    @event.listens_for(Product, "before_insert")
+    @event.listens_for(Product, "before_update")
     def validate_product_stock(mapper, connection, target):
         """يرفض المخزون السالب — لا يقصّه إلى صفر (F6).
 
@@ -794,10 +880,11 @@ def register_validation_listeners():  # noqa: C901
         if Decimal(str(target.current_stock)) < 0:
             raise ValidationError(
                 f'❌ المخزون السالب غير مسموح للمنتج "{target.name}" '
-                f'(الرصيد: {target.current_stock}).\n'
-                f'💡 صحّح الكمية أو عوّض المخزون قبل الحفظ — لا يُقصّ '
-                f'العجز إلى صفر لأن الفاتورة تبقى قائمة على مخزون غير موجود.'
+                f"(الرصيد: {target.current_stock}).\n"
+                f"💡 صحّح الكمية أو عوّض المخزون قبل الحفظ — لا يُقصّ "
+                f"العجز إلى صفر لأن الفاتورة تبقى قائمة على مخزون غير موجود."
             )
+
 
 # ============================================================================
 # Audit Listeners - مستمعات التدقيق
@@ -808,25 +895,32 @@ def register_audit_listeners():
     """تسجيل مستمعات التدقيق للعمليات الحساسة"""
     from models import Sale, Purchase, Receipt, Payment
 
-    @event.listens_for(Sale, 'after_delete')
+    @event.listens_for(Sale, "after_delete")
     def log_sale_deletion(mapper, connection, target):
         """تسجيل حذف الفواتير"""
-        logger.warning(f"🗑️ DELETED: Sale {target.sale_number} - Amount: {target.amount_base} AED")
+        logger.warning(
+            f"🗑️ DELETED: Sale {target.sale_number} - Amount: {target.amount_base} AED"
+        )
 
-    @event.listens_for(Purchase, 'after_delete')
+    @event.listens_for(Purchase, "after_delete")
     def log_purchase_deletion(mapper, connection, target):
         """تسجيل حذف فواتير الشراء"""
-        logger.warning(f"🗑️ DELETED: Purchase {target.purchase_number} - Amount: {target.amount_base} AED")
+        logger.warning(
+            f"🗑️ DELETED: Purchase {target.purchase_number} - Amount: {target.amount_base} AED"
+        )
 
-    @event.listens_for(Receipt, 'after_delete')
+    @event.listens_for(Receipt, "after_delete")
     def log_receipt_deletion(mapper, connection, target):
         """تسجيل حذف سندات القبض"""
-        logger.warning(f"🗑️ DELETED: Receipt {target.receipt_number} - Amount: {target.amount_base} AED")
+        logger.warning(
+            f"🗑️ DELETED: Receipt {target.receipt_number} - Amount: {target.amount_base} AED"
+        )
 
-    @event.listens_for(Payment, 'after_delete')
+    @event.listens_for(Payment, "after_delete")
     def log_payment_deletion(mapper, connection, target):
         """تسجيل حذف سندات الصرف"""
         logger.warning(f"🗑️ DELETED: Payment - Amount: {target.amount_base} AED")
+
 
 # ============================================================================
 # AI (Artificial Intelligence) Listeners - مستمعات الذكاء الاصطناعي
@@ -842,6 +936,7 @@ def register_ai_listeners():
     register_ai_predictive_listeners()
     register_intelligent_assistant_listeners()  # 🧠 المساعد الذكي الحقيقي
 
+
 # ============================================================================
 # AI Learning Listeners - مستمعات التعلم الذكي
 # ============================================================================
@@ -851,7 +946,7 @@ def register_ai_learning_listeners():  # noqa: C901
     """مستمعات التعلم الذكي - متكاملة مع LearningSystem"""
     from models import Sale, Customer, Product
 
-    @event.listens_for(Sale, 'after_insert')
+    @event.listens_for(Sale, "after_insert")
     def ai_learn_sale_patterns(mapper, connection, target):
         """
         التعلم العميق من أنماط المبيعات
@@ -861,24 +956,30 @@ def register_ai_learning_listeners():  # noqa: C901
             from ai_knowledge.learning_system import AzadLearningSystem
 
             # بيانات التعلم
-            day_of_week = target.sale_date.strftime('%A') if target.sale_date else 'Unknown'
+            day_of_week = (
+                target.sale_date.strftime("%A") if target.sale_date else "Unknown"
+            )
             hour = target.sale_date.hour if target.sale_date else 0
             month = target.sale_date.month if target.sale_date else 0
 
             # البيانات التجارية
             learning_data = {
-                'sale_id': target.id,
-                'customer_id': target.customer_id,
-                'amount': float(target.amount_base),
-                'items_count': len(target.lines) if target.lines else 0,
-                'discount_percent': float(target.discount_amount / target.subtotal * 100) if target.subtotal > 0 else 0,
-                'payment_status': target.payment_status,
-                'time_pattern': {
-                    'day_of_week': day_of_week,
-                    'hour': hour,
-                    'month': month,
-                    'is_weekend': day_of_week in ['Friday', 'Saturday']
-                }
+                "sale_id": target.id,
+                "customer_id": target.customer_id,
+                "amount": float(target.amount_base),
+                "items_count": len(target.lines) if target.lines else 0,
+                "discount_percent": float(
+                    target.discount_amount / target.subtotal * 100
+                )
+                if target.subtotal > 0
+                else 0,
+                "payment_status": target.payment_status,
+                "time_pattern": {
+                    "day_of_week": day_of_week,
+                    "hour": hour,
+                    "month": month,
+                    "is_weekend": day_of_week in ["Friday", "Saturday"],
+                },
             }
 
             # استخدام نظام التعلم الموجود
@@ -889,16 +990,18 @@ def register_ai_learning_listeners():  # noqa: C901
                 question="Sale pattern analysis",
                 response=json.dumps(learning_data),
                 user_feedback=5,  # افتراض نجاح العملية
-                context={'type': 'sale_pattern', 'data': learning_data}
+                context={"type": "sale_pattern", "data": learning_data},
             )
 
-            logger.info(f"🤖 AI Learned: Sale {target.sale_number} | "
-                        f"{day_of_week} {hour}:00 | {target.amount_base} AED")
+            logger.info(
+                f"🤖 AI Learned: Sale {target.sale_number} | "
+                f"{day_of_week} {hour}:00 | {target.amount_base} AED"
+            )
 
         except Exception as e:
             logger.error(f"❌ AI learning failed: {e}")
 
-    @event.listens_for(Customer, 'after_update')
+    @event.listens_for(Customer, "after_update")
     def ai_deep_customer_analysis(mapper, connection, target):
         """
         تحليل عميق لسلوك العملاء
@@ -909,39 +1012,50 @@ def register_ai_learning_listeners():  # noqa: C901
 
             # تحليل متعدد الأبعاد
             customer_insights = {
-                'customer_id': target.id,
-                'balance': float(target.balance or 0),
-                'total_purchases': float(target.total_purchases or 0),
-                'classification': target.customer_classification,
-                'credit_limit': float(target.credit_limit or 0)
+                "customer_id": target.id,
+                "balance": float(target.balance or 0),
+                "total_purchases": float(target.total_purchases or 0),
+                "classification": target.customer_classification,
+                "credit_limit": float(target.credit_limit or 0),
             }
 
             # التنبيهات الذكية
             alerts = []
 
             # 1. رصيد عالي
-            if target.balance and target.balance > Decimal('10000'):
-                alerts.append('high_balance')
-                logger.info(f"🤖 AI Priority: Customer {target.id} - High balance: {target.balance} AED")
+            if target.balance and target.balance > Decimal("10000"):
+                alerts.append("high_balance")
+                logger.info(
+                    f"🤖 AI Priority: Customer {target.id} - High balance: {target.balance} AED"
+                )
 
             # 2. تجاوز حد الائتمان
             if target.balance > target.credit_limit and target.credit_limit > 0:
-                alerts.append('credit_limit_exceeded')
-                logger.warning(f"🤖 AI Alert: Customer {target.id} exceeded credit limit!")
+                alerts.append("credit_limit_exceeded")
+                logger.warning(
+                    f"🤖 AI Alert: Customer {target.id} exceeded credit limit!"
+                )
 
             # 3. ترقية التصنيف
-            if target.total_purchases > 100000 and target.customer_classification != 'vip':
-                alerts.append('vip_candidate')
-                logger.info(f"🤖 AI Insight: Customer {target.id} qualifies for VIP upgrade!")
+            if (
+                target.total_purchases > 100000
+                and target.customer_classification != "vip"
+            ):
+                alerts.append("vip_candidate")
+                logger.info(
+                    f"🤖 AI Insight: Customer {target.id} qualifies for VIP upgrade!"
+                )
 
             # التعلم من السلوك
             try:
                 learning_system = AzadLearningSystem()
                 learning_system.learn_from_interaction(
                     question=f"Customer behavior analysis - {target.id}",
-                    response=json.dumps({'insights': customer_insights, 'alerts': alerts}),
+                    response=json.dumps(
+                        {"insights": customer_insights, "alerts": alerts}
+                    ),
                     user_feedback=5,
-                    context={'type': 'customer_behavior', 'customer_id': target.id}
+                    context={"type": "customer_behavior", "customer_id": target.id},
                 )
             except Exception:
                 pass
@@ -949,7 +1063,7 @@ def register_ai_learning_listeners():  # noqa: C901
         except Exception as e:
             logger.error(f"❌ AI customer analysis failed: {e}")
 
-    @event.listens_for(Product, 'after_update')
+    @event.listens_for(Product, "after_update")
     def ai_learn_product_performance(mapper, connection, target):
         """
         التعلم من أداء المنتجات
@@ -960,13 +1074,17 @@ def register_ai_learning_listeners():  # noqa: C901
 
             # بيانات المنتج
             product_data = {
-                'product_id': target.id,
-                'name': target.name,
-                'current_stock': float(target.current_stock or 0),
-                'min_stock': float(target.min_stock_alert or 0),
-                'cost_price': float(target.cost_price or 0),
-                'sell_price': float(target.regular_price or 0),
-                'margin': float((target.regular_price - target.cost_price) if target.regular_price and target.cost_price else 0)
+                "product_id": target.id,
+                "name": target.name,
+                "current_stock": float(target.current_stock or 0),
+                "min_stock": float(target.min_stock_alert or 0),
+                "cost_price": float(target.cost_price or 0),
+                "sell_price": float(target.regular_price or 0),
+                "margin": float(
+                    (target.regular_price - target.cost_price)
+                    if target.regular_price and target.cost_price
+                    else 0
+                ),
             }
 
             # التعلم من أداء المنتج
@@ -975,17 +1093,19 @@ def register_ai_learning_listeners():  # noqa: C901
                 question=f"Product performance - {target.name}",
                 response=json.dumps(product_data),
                 user_feedback=5,
-                context={'type': 'product_performance', 'product_id': target.id}
+                context={"type": "product_performance", "product_id": target.id},
             )
 
             # تحذيرات ذكية
             if target.current_stock < target.min_stock_alert:
-                logger.warning(f"🤖 AI Reorder Alert: Product {target.name} - Stock: {target.current_stock}")
+                logger.warning(
+                    f"🤖 AI Reorder Alert: Product {target.name} - Stock: {target.current_stock}"
+                )
 
         except Exception as e:
             logger.error(f"❌ AI product learning failed: {e}")
 
-    @event.listens_for(Product, 'before_update')
+    @event.listens_for(Product, "before_update")
     def ai_detect_stock_anomaly(mapper, connection, target):
         """
         كشف الشذوذ في المخزون
@@ -998,16 +1118,20 @@ def register_ai_learning_listeners():  # noqa: C901
         try:
             # مخزون منخفض جداً
             if target.current_stock and target.current_stock < target.min_stock_alert:
-                logger.warning(f"🤖 AI Alert: Product {target.id} ({target.name}) - Low stock: {target.current_stock}")
+                logger.warning(
+                    f"🤖 AI Alert: Product {target.id} ({target.name}) - Low stock: {target.current_stock}"
+                )
 
             # مخزون راكد (عالي جداً)
             if target.current_stock and target.current_stock > 1000:
-                logger.warning(f"🤖 AI Alert: Product {target.id} ({target.name}) - High stock: {target.current_stock} - Possible slow-moving item")
+                logger.warning(
+                    f"🤖 AI Alert: Product {target.id} ({target.name}) - High stock: {target.current_stock} - Possible slow-moving item"
+                )
 
         except Exception as e:
             logger.error(f"❌ AI stock anomaly detection failed: {e}")
 
-    @event.listens_for(Sale, 'after_insert')
+    @event.listens_for(Sale, "after_insert")
     def ai_comprehensive_sale_analysis(mapper, connection, target):
         """
         تحليل شامل للمبيعات - كشف شذوذ + تعلم
@@ -1020,42 +1144,55 @@ def register_ai_learning_listeners():  # noqa: C901
             insights = []
 
             # 1. كشف المبالغ الكبيرة
-            if target.amount_base and target.amount_base > Decimal('50000'):
-                anomalies.append('large_amount')
-                logger.warning(f"🤖 AI Anomaly: Large sale! {target.sale_number} - {target.amount_base} AED")
+            if target.amount_base and target.amount_base > Decimal("50000"):
+                anomalies.append("large_amount")
+                logger.warning(
+                    f"🤖 AI Anomaly: Large sale! {target.sale_number} - {target.amount_base} AED"
+                )
 
             # 2. كشف الخصومات الكبيرة
             if target.discount_amount and target.subtotal:
                 discount_percent = (target.discount_amount / target.subtotal) * 100
-                if discount_percent > Decimal('50'):
-                    anomalies.append('large_discount')
-                    logger.warning(f"🤖 AI Anomaly: Large discount! {target.sale_number} - {discount_percent:.1f}%")
+                if discount_percent > Decimal("50"):
+                    anomalies.append("large_discount")
+                    logger.warning(
+                        f"🤖 AI Anomaly: Large discount! {target.sale_number} - {discount_percent:.1f}%"
+                    )
 
             # 3. تحليل الربحية
             if target.lines:
-                total_cost = sum(line.cost_price * line.quantity for line in target.lines if line.cost_price)
+                total_cost = sum(
+                    line.cost_price * line.quantity
+                    for line in target.lines
+                    if line.cost_price
+                )
                 if total_cost > 0:
                     profit = target.amount_base - total_cost
                     margin_percent = (profit / total_cost) * 100
 
                     if margin_percent < 10:
-                        insights.append('low_margin')
-                        logger.warning(f"🤖 AI Insight: Low profit margin! {target.sale_number} - {margin_percent:.1f}%")
+                        insights.append("low_margin")
+                        logger.warning(
+                            f"🤖 AI Insight: Low profit margin! {target.sale_number} - {margin_percent:.1f}%"
+                        )
                     elif margin_percent > 100:
-                        insights.append('high_margin')
-                        logger.info(f"🤖 AI Insight: Excellent profit! {target.sale_number} - {margin_percent:.1f}%")
+                        insights.append("high_margin")
+                        logger.info(
+                            f"🤖 AI Insight: Excellent profit! {target.sale_number} - {margin_percent:.1f}%"
+                        )
 
             # التعلم من التحليل
             learning_system = AzadLearningSystem()
             learning_system.learn_from_interaction(
                 question=f"Sale analysis - {target.sale_number}",
-                response=json.dumps({'anomalies': anomalies, 'insights': insights}),
+                response=json.dumps({"anomalies": anomalies, "insights": insights}),
                 user_feedback=5 if not anomalies else 3,
-                context={'type': 'sale_analysis', 'sale_id': target.id}
+                context={"type": "sale_analysis", "sale_id": target.id},
             )
 
         except Exception as e:
             logger.error(f"❌ AI sale analysis failed: {e}")
+
 
 # ============================================================================
 # AI Linguistic Listeners - مستمعات التعلم اللغوي
@@ -1069,7 +1206,7 @@ def register_ai_linguistic_listeners():
     """
     from models import Product, Customer
 
-    @event.listens_for(Product, 'after_insert')
+    @event.listens_for(Product, "after_insert")
     def ai_learn_product_terminology(mapper, connection, target):
         """التعلم من مصطلحات المنتجات"""
         try:
@@ -1077,11 +1214,11 @@ def register_ai_linguistic_listeners():
 
             # تعلم المصطلحات التقنية
             terminology = {
-                'arabic': target.name_ar or target.name,
-                'english': target.name,
-                'commercial_name': target.commercial_name,
-                'part_number': target.part_number,
-                'category': target.category.name if target.category else None
+                "arabic": target.name_ar or target.name,
+                "english": target.name,
+                "commercial_name": target.commercial_name,
+                "part_number": target.part_number,
+                "category": target.category.name if target.category else None,
             }
 
             learning_system = AzadLearningSystem()
@@ -1089,15 +1226,17 @@ def register_ai_linguistic_listeners():
                 question=f"Product terminology: {target.name}",
                 response=json.dumps(terminology, ensure_ascii=False),
                 user_feedback=5,
-                context={'type': 'linguistic_learning', 'subtype': 'product_terms'}
+                context={"type": "linguistic_learning", "subtype": "product_terms"},
             )
 
-            logger.info(f"🤖 AI Linguistic: Learned product terminology - {target.name}")
+            logger.info(
+                f"🤖 AI Linguistic: Learned product terminology - {target.name}"
+            )
 
         except Exception as e:
             logger.error(f"❌ AI linguistic learning failed: {e}")
 
-    @event.listens_for(Customer, 'after_insert')
+    @event.listens_for(Customer, "after_insert")
     def ai_learn_customer_names(mapper, connection, target):
         """التعلم من أسماء العملاء والشركات"""
         try:
@@ -1105,11 +1244,11 @@ def register_ai_linguistic_listeners():
 
             # تعلم الأسماء باللغتين
             names_data = {
-                'arabic_name': target.name,
-                'english_name': target.name_ar,
-                'customer_type': target.customer_type,
-                'phone': target.phone,
-                'email': target.email
+                "arabic_name": target.name,
+                "english_name": target.name_ar,
+                "customer_type": target.customer_type,
+                "phone": target.phone,
+                "email": target.email,
             }
 
             learning_system = AzadLearningSystem()
@@ -1117,13 +1256,14 @@ def register_ai_linguistic_listeners():
                 question=f"Customer names: {target.name}",
                 response=json.dumps(names_data, ensure_ascii=False),
                 user_feedback=5,
-                context={'type': 'linguistic_learning', 'subtype': 'customer_names'}
+                context={"type": "linguistic_learning", "subtype": "customer_names"},
             )
 
             logger.info(f"🤖 AI Linguistic: Learned customer name - {target.name}")
 
         except Exception as e:
             logger.error(f"❌ AI name learning failed: {e}")
+
 
 # ============================================================================
 # AI Professional Listeners - مستمعات التعلم المهني
@@ -1137,7 +1277,7 @@ def register_ai_professional_listeners():
     """
     from models import Sale, Purchase, Expense
 
-    @event.listens_for(Sale, 'after_insert')
+    @event.listens_for(Sale, "after_insert")
     def ai_learn_sales_practices(mapper, connection, target):
         """التعلم من الممارسات التجارية في المبيعات"""
         try:
@@ -1145,17 +1285,27 @@ def register_ai_professional_listeners():
 
             # تحليل الممارسة التجارية
             practice_data = {
-                'sale_number': target.sale_number,
-                'payment_terms': {
-                    'cash_percentage': float(target.paid_amount_base / target.amount_base * 100) if target.amount_base > 0 else 0,
-                    'credit_given': target.payment_status in ['unpaid', 'partial']
+                "sale_number": target.sale_number,
+                "payment_terms": {
+                    "cash_percentage": float(
+                        target.paid_amount_base / target.amount_base * 100
+                    )
+                    if target.amount_base > 0
+                    else 0,
+                    "credit_given": target.payment_status in ["unpaid", "partial"],
                 },
-                'discount_strategy': {
-                    'discount_amount': float(target.discount_amount or 0),
-                    'discount_percent': float(target.discount_amount / target.subtotal * 100) if target.subtotal > 0 else 0
+                "discount_strategy": {
+                    "discount_amount": float(target.discount_amount or 0),
+                    "discount_percent": float(
+                        target.discount_amount / target.subtotal * 100
+                    )
+                    if target.subtotal > 0
+                    else 0,
                 },
-                'shipping_included': target.shipping_cost > 0 if target.shipping_cost else False,
-                'tax_applied': target.tax_amount > 0 if target.tax_amount else False
+                "shipping_included": target.shipping_cost > 0
+                if target.shipping_cost
+                else False,
+                "tax_applied": target.tax_amount > 0 if target.tax_amount else False,
             }
 
             # التعلم من الممارسة
@@ -1164,15 +1314,17 @@ def register_ai_professional_listeners():
                 question="Sales practice analysis",
                 response=json.dumps(practice_data, ensure_ascii=False),
                 user_feedback=5,
-                context={'type': 'professional_learning', 'subtype': 'sales_practice'}
+                context={"type": "professional_learning", "subtype": "sales_practice"},
             )
 
-            logger.info(f"🤖 AI Professional: Learned sales practice from {target.sale_number}")
+            logger.info(
+                f"🤖 AI Professional: Learned sales practice from {target.sale_number}"
+            )
 
         except Exception as e:
             logger.error(f"❌ AI professional learning failed: {e}")
 
-    @event.listens_for(Purchase, 'after_insert')
+    @event.listens_for(Purchase, "after_insert")
     def ai_learn_procurement_strategy(mapper, connection, target):
         """التعلم من استراتيجيات الشراء"""
         try:
@@ -1180,10 +1332,10 @@ def register_ai_professional_listeners():
 
             # تحليل استراتيجية الشراء
             procurement_data = {
-                'supplier_id': target.supplier_id,
-                'amount': float(target.amount_base),
-                'payment_method': getattr(target, 'payment_method', None),
-                'credit_terms': target.status != 'paid_in_full'
+                "supplier_id": target.supplier_id,
+                "amount": float(target.amount_base),
+                "payment_method": getattr(target, "payment_method", None),
+                "credit_terms": target.status != "paid_in_full",
             }
 
             learning_system = AzadLearningSystem()
@@ -1191,15 +1343,17 @@ def register_ai_professional_listeners():
                 question="Procurement strategy analysis",
                 response=json.dumps(procurement_data),
                 user_feedback=5,
-                context={'type': 'professional_learning', 'subtype': 'procurement'}
+                context={"type": "professional_learning", "subtype": "procurement"},
             )
 
-            logger.info(f"🤖 AI Professional: Learned procurement from {target.purchase_number}")
+            logger.info(
+                f"🤖 AI Professional: Learned procurement from {target.purchase_number}"
+            )
 
         except Exception as e:
             logger.error(f"❌ AI procurement learning failed: {e}")
 
-    @event.listens_for(Expense, 'after_insert')
+    @event.listens_for(Expense, "after_insert")
     def ai_learn_expense_patterns(mapper, connection, target):
         """التعلم من أنماط المصروفات"""
         try:
@@ -1207,10 +1361,12 @@ def register_ai_professional_listeners():
 
             # تحليل نمط المصروف
             expense_data = {
-                'category_id': target.category_id,
-                'amount': float(target.amount_base),
-                'payment_method': target.payment_method,
-                'is_recurring': target.is_recurring if hasattr(target, 'is_recurring') else False
+                "category_id": target.category_id,
+                "amount": float(target.amount_base),
+                "payment_method": target.payment_method,
+                "is_recurring": target.is_recurring
+                if hasattr(target, "is_recurring")
+                else False,
             }
 
             learning_system = AzadLearningSystem()
@@ -1218,13 +1374,19 @@ def register_ai_professional_listeners():
                 question="Expense pattern analysis",
                 response=json.dumps(expense_data),
                 user_feedback=5,
-                context={'type': 'professional_learning', 'subtype': 'expense_management'}
+                context={
+                    "type": "professional_learning",
+                    "subtype": "expense_management",
+                },
             )
 
-            logger.info(f"🤖 AI Professional: Learned expense pattern - {target.amount_base} AED")
+            logger.info(
+                f"🤖 AI Professional: Learned expense pattern - {target.amount_base} AED"
+            )
 
         except Exception as e:
             logger.error(f"❌ AI expense learning failed: {e}")
+
 
 # ============================================================================
 # AI Accounting Listeners - مستمعات التعلم المحاسبي
@@ -1238,7 +1400,7 @@ def register_ai_accounting_listeners():  # noqa: C901
     """
     from models import GLJournalEntry, Sale, Purchase
 
-    @event.listens_for(GLJournalEntry, 'after_insert')
+    @event.listens_for(GLJournalEntry, "after_insert")
     def ai_learn_accounting_entries(mapper, connection, target):
         """التعلم من القيود المحاسبية"""
         try:
@@ -1248,18 +1410,20 @@ def register_ai_accounting_listeners():  # noqa: C901
             # التحقق الآمن من السطور لتجنب تعارض الجلسة
             lines_count = 0
             ins = inspect(target)
-            if 'lines' not in ins.unloaded:
+            if "lines" not in ins.unloaded:
                 lines_count = len(target.lines)
 
             # تحليل القيد المحاسبي
             entry_data = {
-                'entry_number': target.entry_number,
-                'total_debit': float(target.total_debit or 0),
-                'total_credit': float(target.total_credit or 0),
-                'is_balanced': target.is_balanced() if hasattr(target, 'is_balanced') else True,
-                'reference_type': target.reference_type,
-                'reference_id': target.reference_id,
-                'lines_count': lines_count
+                "entry_number": target.entry_number,
+                "total_debit": float(target.total_debit or 0),
+                "total_credit": float(target.total_credit or 0),
+                "is_balanced": target.is_balanced()
+                if hasattr(target, "is_balanced")
+                else True,
+                "reference_type": target.reference_type,
+                "reference_id": target.reference_id,
+                "lines_count": lines_count,
             }
 
             # التعلم المحاسبي (بدون فلاش إضافي)
@@ -1268,19 +1432,21 @@ def register_ai_accounting_listeners():  # noqa: C901
                 learning_system.learn_from_interaction(
                     question=f"Accounting entry analysis - {target.entry_number}",
                     response=json.dumps(entry_data),
-                    user_feedback=5 if entry_data['is_balanced'] else 1,
-                    context={'type': 'accounting_learning', 'subtype': 'journal_entry'}
+                    user_feedback=5 if entry_data["is_balanced"] else 1,
+                    context={"type": "accounting_learning", "subtype": "journal_entry"},
                 )
 
-                logger.info(f"🤖 AI Accounting: Learned entry {target.entry_number} - "
-                            f"{'Balanced' if entry_data['is_balanced'] else 'Unbalanced'}")
+                logger.info(
+                    f"🤖 AI Accounting: Learned entry {target.entry_number} - "
+                    f"{'Balanced' if entry_data['is_balanced'] else 'Unbalanced'}"
+                )
             except Exception:
                 pass
 
         except Exception as e:
             logger.error(f"❌ AI accounting learning failed: {e}")
 
-    @event.listens_for(Sale, 'after_insert')
+    @event.listens_for(Sale, "after_insert")
     def ai_learn_revenue_recognition(mapper, connection, target):
         """التعلم من مبادئ الاعتراف بالإيراد"""
         try:
@@ -1288,12 +1454,14 @@ def register_ai_accounting_listeners():  # noqa: C901
 
             # مبدأ الاعتراف بالإيراد
             revenue_data = {
-                'sale_number': target.sale_number,
-                'total_revenue': float(target.amount_base),
-                'revenue_recognized': target.status == 'confirmed',
-                'cash_received': float(target.paid_amount_base or 0),
-                'accounts_receivable': float(target.balance_due or 0),
-                'recognition_principle': 'accrual' if target.status == 'confirmed' else 'cash'
+                "sale_number": target.sale_number,
+                "total_revenue": float(target.amount_base),
+                "revenue_recognized": target.status == "confirmed",
+                "cash_received": float(target.paid_amount_base or 0),
+                "accounts_receivable": float(target.balance_due or 0),
+                "recognition_principle": "accrual"
+                if target.status == "confirmed"
+                else "cash",
             }
 
             learning_system = AzadLearningSystem()
@@ -1301,7 +1469,10 @@ def register_ai_accounting_listeners():  # noqa: C901
                 question="Revenue recognition principle",
                 response=json.dumps(revenue_data),
                 user_feedback=5,
-                context={'type': 'accounting_learning', 'subtype': 'revenue_recognition'}
+                context={
+                    "type": "accounting_learning",
+                    "subtype": "revenue_recognition",
+                },
             )
 
             logger.info(f"🤖 AI Accounting: Revenue recognized - {target.sale_number}")
@@ -1309,7 +1480,7 @@ def register_ai_accounting_listeners():  # noqa: C901
         except Exception as e:
             logger.error(f"❌ AI revenue learning failed: {e}")
 
-    @event.listens_for(Purchase, 'after_insert')
+    @event.listens_for(Purchase, "after_insert")
     def ai_learn_expense_recognition(mapper, connection, target):
         """التعلم من مبادئ الاعتراف بالمصروف"""
         try:
@@ -1317,11 +1488,18 @@ def register_ai_accounting_listeners():  # noqa: C901
 
             # مبدأ المقابلة المحاسبية
             matching_data = {
-                'purchase_number': target.purchase_number,
-                'total_cost': float(target.amount_base),
-                'recognized_as_expense': target.status == 'confirmed',
-                'cash_paid': float(getattr(target, 'paid_amount_base', 0) or 0),
-                'accounts_payable': float(((target.amount_base or 0) - (getattr(target, 'paid_amount_base', 0) or 0)) if target.amount_base else 0)
+                "purchase_number": target.purchase_number,
+                "total_cost": float(target.amount_base),
+                "recognized_as_expense": target.status == "confirmed",
+                "cash_paid": float(getattr(target, "paid_amount_base", 0) or 0),
+                "accounts_payable": float(
+                    (
+                        (target.amount_base or 0)
+                        - (getattr(target, "paid_amount_base", 0) or 0)
+                    )
+                    if target.amount_base
+                    else 0
+                ),
             }
 
             learning_system = AzadLearningSystem()
@@ -1329,13 +1507,19 @@ def register_ai_accounting_listeners():  # noqa: C901
                 question="Expense recognition and matching principle",
                 response=json.dumps(matching_data),
                 user_feedback=5,
-                context={'type': 'accounting_learning', 'subtype': 'expense_recognition'}
+                context={
+                    "type": "accounting_learning",
+                    "subtype": "expense_recognition",
+                },
             )
 
-            logger.info(f"🤖 AI Accounting: Expense recognized - {target.purchase_number}")
+            logger.info(
+                f"🤖 AI Accounting: Expense recognized - {target.purchase_number}"
+            )
 
         except Exception as e:
             logger.error(f"❌ AI expense recognition learning failed: {e}")
+
 
 # ============================================================================
 # AI Predictive Listeners - مستمعات التوقعات الذكية
@@ -1349,7 +1533,7 @@ def register_ai_predictive_listeners():  # noqa: C901
     """
     from models import Sale, Product, Customer
 
-    @event.listens_for(Sale, 'after_insert')
+    @event.listens_for(Sale, "after_insert")
     def ai_predict_future_sales(mapper, connection, target):
         """توقع المبيعات المستقبلية"""
         try:
@@ -1361,25 +1545,28 @@ def register_ai_predictive_listeners():  # noqa: C901
 
             recent_sales = connection.execute(
                 Sale.__table__.select().where(
-                    Sale.sale_date >= thirty_days_ago,
-                    Sale.status == 'confirmed'
+                    Sale.sale_date >= thirty_days_ago, Sale.status == "confirmed"
                 )
             ).fetchall()
 
             if len(recent_sales) > 10:  # نحتاج بيانات كافية
-                total_recent = sum(sale.amount_base or Decimal('0') for sale in recent_sales)
+                total_recent = sum(
+                    sale.amount_base or Decimal("0") for sale in recent_sales
+                )
                 avg_daily = total_recent / 30
 
                 # التوقع البسيط
                 predicted_month = avg_daily * 30
 
-                logger.info(f"🤖 AI Prediction: Monthly sales forecast: {predicted_month:.2f} AED "
-                            f"(based on {len(recent_sales)} sales)")
+                logger.info(
+                    f"🤖 AI Prediction: Monthly sales forecast: {predicted_month:.2f} AED "
+                    f"(based on {len(recent_sales)} sales)"
+                )
 
         except Exception as e:
             logger.error(f"❌ AI prediction failed: {e}")
 
-    @event.listens_for(Product, 'before_update')
+    @event.listens_for(Product, "before_update")
     def ai_predict_stockout(mapper, connection, target):
         """توقع نفاذ المخزون"""
         try:
@@ -1390,13 +1577,15 @@ def register_ai_predictive_listeners():  # noqa: C901
                 movements = connection.execute(
                     StockMovement.__table__.select().where(
                         StockMovement.product_id == target.id,
-                        StockMovement.movement_type == 'sale',
-                        StockMovement.created_at >= thirty_days_ago
+                        StockMovement.movement_type == "sale",
+                        StockMovement.created_at >= thirty_days_ago,
                     )
                 ).fetchall()
 
                 if movements:
-                    total_sold = sum(abs(mov.quantity or Decimal('0')) for mov in movements)
+                    total_sold = sum(
+                        abs(mov.quantity or Decimal("0")) for mov in movements
+                    )
                     daily_rate = total_sold / 30
 
                     # توقع أيام حتى النفاذ
@@ -1404,15 +1593,19 @@ def register_ai_predictive_listeners():  # noqa: C901
                         days_until_stockout = target.current_stock / daily_rate
 
                         if days_until_stockout < 7:
-                            logger.warning(f"🤖 AI Prediction: Product {target.name} will run out in {days_until_stockout:.0f} days! "
-                                           f"(Selling {daily_rate:.1f} units/day)")
+                            logger.warning(
+                                f"🤖 AI Prediction: Product {target.name} will run out in {days_until_stockout:.0f} days! "
+                                f"(Selling {daily_rate:.1f} units/day)"
+                            )
                         else:
-                            logger.info(f"🤖 AI Prediction: Product {target.name} stock will last {days_until_stockout:.0f} days")
+                            logger.info(
+                                f"🤖 AI Prediction: Product {target.name} stock will last {days_until_stockout:.0f} days"
+                            )
 
         except Exception as e:
             logger.error(f"❌ AI stockout prediction failed: {e}")
 
-    @event.listens_for(Customer, 'after_update')
+    @event.listens_for(Customer, "after_update")
     def ai_predict_customer_churn(mapper, connection, target):
         """توقع خسارة العملاء (Churn Prediction)"""
         try:
@@ -1420,10 +1613,10 @@ def register_ai_predictive_listeners():  # noqa: C901
 
             # آخر عملية شراء
             last_sale = connection.execute(
-                Sale.__table__.select().where(
-                    Sale.customer_id == target.id,
-                    Sale.status == 'confirmed'
-                ).order_by(Sale.sale_date.desc()).limit(1)
+                Sale.__table__.select()
+                .where(Sale.customer_id == target.id, Sale.status == "confirmed")
+                .order_by(Sale.sale_date.desc())
+                .limit(1)
             ).first()
 
             if last_sale:
@@ -1431,31 +1624,43 @@ def register_ai_predictive_listeners():  # noqa: C901
                 sale_date = last_sale.sale_date
                 if sale_date.tzinfo is None:
                     from datetime import timezone as tz
+
                     sale_date = sale_date.replace(tzinfo=tz.utc)
                 days_since_purchase = (datetime.now(timezone.utc) - sale_date).days
 
                 # توقع خطر الخسارة
                 if days_since_purchase > 90:
-                    churn_risk = 'high'
-                    logger.warning(f"🤖 AI Churn Risk: Customer {target.id} - {days_since_purchase} days inactive - HIGH RISK!")
+                    churn_risk = "high"
+                    logger.warning(
+                        f"🤖 AI Churn Risk: Customer {target.id} - {days_since_purchase} days inactive - HIGH RISK!"
+                    )
                 elif days_since_purchase > 60:
-                    churn_risk = 'medium'
-                    logger.info(f"🤖 AI Churn Risk: Customer {target.id} - {days_since_purchase} days inactive - Medium risk")
+                    churn_risk = "medium"
+                    logger.info(
+                        f"🤖 AI Churn Risk: Customer {target.id} - {days_since_purchase} days inactive - Medium risk"
+                    )
                 else:
-                    churn_risk = 'low'
+                    churn_risk = "low"
 
                 # حفظ التوقع للتعلم
                 from ai_knowledge.learning_system import AzadLearningSystem
+
                 learning_system = AzadLearningSystem()
                 learning_system.learn_from_interaction(
                     question=f"Customer churn prediction - {target.id}",
-                    response=json.dumps({'days_inactive': days_since_purchase, 'risk': churn_risk}),
+                    response=json.dumps(
+                        {"days_inactive": days_since_purchase, "risk": churn_risk}
+                    ),
                     user_feedback=5,
-                    context={'type': 'predictive_learning', 'subtype': 'churn_prediction'}
+                    context={
+                        "type": "predictive_learning",
+                        "subtype": "churn_prediction",
+                    },
                 )
 
         except Exception as e:
             logger.error(f"❌ AI churn prediction failed: {e}")
+
 
 # ============================================================================
 # Neural Training Listeners - مستمعات التدريب العصبي التلقائي
@@ -1465,21 +1670,21 @@ def register_ai_predictive_listeners():  # noqa: C901
 def register_neural_training_listeners():  # noqa: C901
     from models import Sale, Customer, Product
 
-    @event.listens_for(Sale, 'after_insert')
+    @event.listens_for(Sale, "after_insert")
     def neural_auto_retrain_on_milestones(mapper, connection, target):
         try:
             from ai_knowledge.auto_retraining import AutoRetrainingScheduler
 
             total_sales = connection.execute(
-                Sale.__table__.select().where(
-                    Sale.status == 'confirmed'
-                )
+                Sale.__table__.select().where(Sale.status == "confirmed")
             ).fetchall()
 
             sales_count = len(total_sales)
 
             if sales_count % 100 == 0:
-                logger.info(f"🧠 Neural Milestone: {sales_count} sales - Checking auto-retraining...")
+                logger.info(
+                    f"🧠 Neural Milestone: {sales_count} sales - Checking auto-retraining..."
+                )
                 try:
                     import threading
                     from models.tenant_scope import run_in_platform_context
@@ -1490,7 +1695,8 @@ def register_neural_training_listeners():  # noqa: C901
                         # Stated explicitly because a bare thread would run
                         # with no tenant context at all.
                         run_in_platform_context(
-                            AutoRetrainingScheduler.check_and_train_if_needed)
+                            AutoRetrainingScheduler.check_and_train_if_needed
+                        )
 
                     thread = threading.Thread(target=_retrain)
                     thread.daemon = True
@@ -1501,7 +1707,7 @@ def register_neural_training_listeners():  # noqa: C901
         except Exception as e:
             logger.error(f"❌ Neural auto-retrain failed: {e}")
 
-    @event.listens_for(Customer, 'after_insert')
+    @event.listens_for(Customer, "after_insert")
     def neural_customer_data_accumulation(mapper, connection, target):
         """
         تجميع بيانات العملاء للتدريب
@@ -1509,35 +1715,40 @@ def register_neural_training_listeners():  # noqa: C901
         try:
             # حساب إجمالي العملاء
             total_customers = connection.execute(
-                Customer.__table__.select().where(
-                    Customer.is_active.is_(True)
-                )
+                Customer.__table__.select().where(Customer.is_active.is_(True))
             ).fetchall()
 
             customers_count = len(total_customers)
 
             # إعادة تدريب مصنف العملاء كل 50 عميل
             if customers_count % 50 == 0:
-                logger.info(f"🧠 Neural: {customers_count} customers - Retraining customer classifier...")
+                logger.info(
+                    f"🧠 Neural: {customers_count} customers - Retraining customer classifier..."
+                )
 
         except Exception as e:
             logger.error(f"❌ Neural customer accumulation failed: {e}")
 
-    @event.listens_for(Product, 'after_update')
+    @event.listens_for(Product, "after_update")
     def neural_inventory_learning(mapper, connection, target):
         """
         التعلم من تحديثات المخزون
         """
         try:
             # إذا تغير المخزون بشكل كبير
-            if hasattr(target, 'current_stock'):
+            if hasattr(target, "current_stock"):
                 if target.current_stock == 0:
-                    logger.warning(f"🧠 Neural Alert: Product {target.id} out of stock - Learning from stockout event")
+                    logger.warning(
+                        f"🧠 Neural Alert: Product {target.id} out of stock - Learning from stockout event"
+                    )
                 elif target.current_stock < target.min_stock_alert:
-                    logger.info(f"🧠 Neural: Product {target.id} low stock - Updating demand predictions")
+                    logger.info(
+                        f"🧠 Neural: Product {target.id} low stock - Updating demand predictions"
+                    )
 
         except Exception as e:
             logger.error(f"❌ Neural inventory learning failed: {e}")
+
 
 # ============================================================================
 # Intelligent Assistant Listeners - مستمعات المساعد الذكي الحقيقي
@@ -1551,7 +1762,7 @@ def register_intelligent_assistant_listeners():  # noqa: C901
     """
     from models import Sale, Customer, Product
 
-    @event.listens_for(Sale, 'after_insert')
+    @event.listens_for(Sale, "after_insert")
     def intelligent_sale_analysis(mapper, connection, target):
         """
         تحليل ذكي للفاتورة الجديدة
@@ -1559,55 +1770,70 @@ def register_intelligent_assistant_listeners():  # noqa: C901
         """
         try:
             from flask import current_app
-            if current_app and current_app.config.get('TESTING'):
+
+            if current_app and current_app.config.get("TESTING"):
                 return
             # تحليل ذكي فقط للفواتير المؤكدة
-            if target.status != 'confirmed' or not target.is_active:
+            if target.status != "confirmed" or not target.is_active:
                 return
 
             # تحليل باستخدام Data Analyzer
 
             # معلومات البيع
             sale_context = {
-                'amount': float(target.amount_base),
-                'items_count': len(target.lines) if target.lines else 0,
-                'customer_type': target.customer.customer_type if target.customer else None,
-                'payment_status': target.payment_status,
-                'profit_margin': (
+                "amount": float(target.amount_base),
+                "items_count": len(target.lines) if target.lines else 0,
+                "customer_type": target.customer.customer_type
+                if target.customer
+                else None,
+                "payment_status": target.payment_status,
+                "profit_margin": (
                     float(
                         (
-                            (target.amount_base or Decimal('0')) -
-                            sum((line.cost_price or Decimal('0')) * (line.quantity or 0) for line in (target.lines or []))
-                        ) / (target.amount_base or Decimal('1'))
+                            (target.amount_base or Decimal("0"))
+                            - sum(
+                                (line.cost_price or Decimal("0")) * (line.quantity or 0)
+                                for line in (target.lines or [])
+                            )
+                        )
+                        / (target.amount_base or Decimal("1"))
                     )
                     * 100
-                ) if (target.amount_base and target.amount_base > 0) else 0
+                )
+                if (target.amount_base and target.amount_base > 0)
+                else 0,
             }
 
             # رؤى ذكية
             insights = []
 
             # رؤية 1: هامش الربح
-            if sale_context['profit_margin'] < 10:
-                insights.append(f"⚠️ هامش ربح منخفض ({sale_context['profit_margin']:.1f}%) - راجع التسعير")
-            elif sale_context['profit_margin'] > 40:
-                insights.append(f"✅ هامش ربح ممتاز ({sale_context['profit_margin']:.1f}%)")
+            if sale_context["profit_margin"] < 10:
+                insights.append(
+                    f"⚠️ هامش ربح منخفض ({sale_context['profit_margin']:.1f}%) - راجع التسعير"
+                )
+            elif sale_context["profit_margin"] > 40:
+                insights.append(
+                    f"✅ هامش ربح ممتاز ({sale_context['profit_margin']:.1f}%)"
+                )
 
             # رؤية 2: حجم الفاتورة
-            if sale_context['amount'] > 10000:
+            if sale_context["amount"] > 10000:
                 insights.append(f"🎉 فاتورة كبيرة! {sale_context['amount']:,.0f} درهم")
 
             # رؤية 3: عدد الأصناف
-            if sale_context['items_count'] > 10:
+            if sale_context["items_count"] > 10:
                 insights.append(f"📦 طلبية كبيرة: {sale_context['items_count']} صنف")
 
             if insights:
-                logger.info(f"🧠 Intelligent Insights for Sale {target.sale_number}: {' | '.join(insights)}")
+                logger.info(
+                    f"🧠 Intelligent Insights for Sale {target.sale_number}: {' | '.join(insights)}"
+                )
 
         except Exception as e:
             logger.error(f"❌ Intelligent sale analysis failed: {e}")
 
-    @event.listens_for(Customer, 'after_update')
+    @event.listens_for(Customer, "after_update")
     def intelligent_customer_monitoring(mapper, connection, target):
         """
         مراقبة ذكية للعملاء
@@ -1615,26 +1841,32 @@ def register_intelligent_assistant_listeners():  # noqa: C901
         """
         try:
             from flask import current_app
-            if current_app and current_app.config.get('TESTING'):
+
+            if current_app and current_app.config.get("TESTING"):
                 return
             # تحليل الرصيد باستخدام Data Analyzer
             from ai_knowledge.data_analyzer import data_analyzer
+
             debt_analysis = data_analyzer.analyze_customer_debt(target.id)
 
-            if debt_analysis['success']:
-                debt_info = debt_analysis['debt_analysis']
+            if debt_analysis["success"]:
+                debt_info = debt_analysis["debt_analysis"]
 
                 # إنذارات ذكية
-                if debt_info['total_debt'] > 10000:
-                    logger.warning(f"🚨 High debt alert: Customer {target.id} owes {debt_info['total_debt']:,.0f} AED")
+                if debt_info["total_debt"] > 10000:
+                    logger.warning(
+                        f"🚨 High debt alert: Customer {target.id} owes {debt_info['total_debt']:,.0f} AED"
+                    )
 
-                if debt_info['overdue_count'] > 3:
-                    logger.warning(f"⏰ Payment issue: Customer {target.id} has {debt_info['overdue_count']} overdue invoices")
+                if debt_info["overdue_count"] > 3:
+                    logger.warning(
+                        f"⏰ Payment issue: Customer {target.id} has {debt_info['overdue_count']} overdue invoices"
+                    )
 
         except Exception as e:
             logger.error(f"❌ Intelligent customer monitoring failed: {e}")
 
-    @event.listens_for(Product, 'after_update')
+    @event.listens_for(Product, "after_update")
     def intelligent_inventory_alert(mapper, connection, target):
         """
         تنبيه ذكي للمخزون
@@ -1649,14 +1881,21 @@ def register_intelligent_assistant_listeners():  # noqa: C901
                 days_until_stockout = 0
                 if target.current_stock > 0:
                     # تقدير بسيط: افترض استهلاك 10% يومياً
-                    days_until_stockout = target.current_stock / (target.min_stock_alert * 0.1)
+                    days_until_stockout = target.current_stock / (
+                        target.min_stock_alert * 0.1
+                    )
 
                 if days_until_stockout < 7:
-                    logger.warning(f"📊 Intelligent Alert: Product {target.id} ({target.name}) will run out in ~{days_until_stockout:.0f} days!")
-                    logger.info(f"💡 Recommendation: Order at least {target.min_stock_alert * 2:.0f} units")
+                    logger.warning(
+                        f"📊 Intelligent Alert: Product {target.id} ({target.name}) will run out in ~{days_until_stockout:.0f} days!"
+                    )
+                    logger.info(
+                        f"💡 Recommendation: Order at least {target.min_stock_alert * 2:.0f} units"
+                    )
 
         except Exception as e:
             logger.error(f"❌ Intelligent inventory alert failed: {e}")
+
 
 # ============================================================================
 # Initialization
@@ -1702,4 +1941,6 @@ def register_automatic_gl_listeners():
 
     هذا يمنع تكرار القيود ويضمن استخدام شجرة الحسابات الصحيحة.
     """
-    logger.info("ℹ️ Automatic GL listeners skipped - relying on Service layer for accurate GL entries")
+    logger.info(
+        "ℹ️ Automatic GL listeners skipped - relying on Service layer for accurate GL entries"
+    )

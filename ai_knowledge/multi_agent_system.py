@@ -62,39 +62,48 @@ class SalesAgent(BaseAgent):
     def __init__(self):
         super().__init__(
             name="Sales Agent",
-            expertise=['بيع', 'sale', 'سعر', 'price', 'فاتورة', 'invoice', 'عرض', 'discount']
+            expertise=[
+                "بيع",
+                "sale",
+                "سعر",
+                "price",
+                "فاتورة",
+                "invoice",
+                "عرض",
+                "discount",
+            ],
         )
 
     def execute(self, task: str, context: dict) -> dict:
         """تنفيذ مهمة متعلقة بالمبيعات"""
         try:
-            if 'سعر' in task.lower() or 'price' in task.lower():
+            if "سعر" in task.lower() or "price" in task.lower():
                 # استخدام Neural Network للتسعير
                 from services.ai_service import AIService
 
-                product_id = context.get('product_id')
-                customer_id = context.get('customer_id')
+                product_id = context.get("product_id")
+                customer_id = context.get("customer_id")
 
                 result = AIService.predict_price_with_neural(product_id, customer_id)
 
                 return {
-                    'result': result,
-                    'confidence': result.get('confidence', 0.9),
-                    'explanation': f"السعر المقترح بناءً على التحليل العصبي: {result.get('predicted_price', 0)} AED",
-                    'agent': self.name
+                    "result": result,
+                    "confidence": result.get("confidence", 0.9),
+                    "explanation": f"السعر المقترح بناءً على التحليل العصبي: {result.get('predicted_price', 0)} AED",
+                    "agent": self.name,
                 }
 
             else:
                 return {
-                    'result': None,
-                    'confidence': 0.5,
-                    'explanation': 'مهمة غير محددة بدقة',
-                    'agent': self.name
+                    "result": None,
+                    "confidence": 0.5,
+                    "explanation": "مهمة غير محددة بدقة",
+                    "agent": self.name,
                 }
 
         except Exception as e:
             logger.error(f"Sales agent execution failed: {e}")
-            return {'result': None, 'confidence': 0, 'error': str(e)}
+            return {"result": None, "confidence": 0, "error": str(e)}
 
 
 class AccountingAgent(BaseAgent):
@@ -103,17 +112,26 @@ class AccountingAgent(BaseAgent):
     def __init__(self):
         super().__init__(
             name="Accounting Agent",
-            expertise=['قيد', 'journal', 'محاسبة', 'accounting', 'ميزانية', 'balance', 'مدين', 'دائن']
+            expertise=[
+                "قيد",
+                "journal",
+                "محاسبة",
+                "accounting",
+                "ميزانية",
+                "balance",
+                "مدين",
+                "دائن",
+            ],
         )
         self.confidence_level = 0.95  # ثقة عالية في المحاسبة
 
     def execute(self, task: str, context: dict) -> dict:
         """تنفيذ مهمة محاسبية"""
         try:
-            if 'قيد' in task.lower():
+            if "قيد" in task.lower():
                 # التحقق من القيد
-                debit = context.get('debit', 0)
-                credit = context.get('credit', 0)
+                debit = context.get("debit", 0)
+                credit = context.get("credit", 0)
 
                 is_balanced = abs(debit - credit) < 0.01
 
@@ -129,21 +147,21 @@ class AccountingAgent(BaseAgent):
 """
 
                 return {
-                    'result': {
-                        'is_balanced': is_balanced,
-                        'debit': debit,
-                        'credit': credit,
-                        'difference': abs(debit - credit)
+                    "result": {
+                        "is_balanced": is_balanced,
+                        "debit": debit,
+                        "credit": credit,
+                        "difference": abs(debit - credit),
                     },
-                    'confidence': 1.0 if is_balanced else 0.2,
-                    'explanation': explanation,
-                    'agent': self.name
+                    "confidence": 1.0 if is_balanced else 0.2,
+                    "explanation": explanation,
+                    "agent": self.name,
                 }
 
-            return {'result': None, 'confidence': 0.5, 'agent': self.name}
+            return {"result": None, "confidence": 0.5, "agent": self.name}
 
         except Exception as e:
-            return {'result': None, 'confidence': 0, 'error': str(e)}
+            return {"result": None, "confidence": 0, "error": str(e)}
 
 
 class InventoryAgent(BaseAgent):
@@ -152,30 +170,30 @@ class InventoryAgent(BaseAgent):
     def __init__(self):
         super().__init__(
             name="Inventory Agent",
-            expertise=['مخزون', 'inventory', 'stock', 'warehouse', 'مستودع']
+            expertise=["مخزون", "inventory", "stock", "warehouse", "مستودع"],
         )
 
     def execute(self, task: str, context: dict) -> dict:
         """تنفيذ مهمة متعلقة بالمخزون"""
         try:
-            if 'مخزون' in task.lower() or 'stock' in task.lower():
+            if "مخزون" in task.lower() or "stock" in task.lower():
                 from services.ai_service import AIService
 
-                product_id = context.get('product_id')
+                product_id = context.get("product_id")
 
                 optimization = AIService.optimize_inventory_neural(product_id)
 
                 return {
-                    'result': optimization,
-                    'confidence': 0.9,
-                    'explanation': f"تحليل المخزون: {optimization.get('recommendation', '')}",
-                    'agent': self.name
+                    "result": optimization,
+                    "confidence": 0.9,
+                    "explanation": f"تحليل المخزون: {optimization.get('recommendation', '')}",
+                    "agent": self.name,
                 }
 
-            return {'result': None, 'confidence': 0.5, 'agent': self.name}
+            return {"result": None, "confidence": 0.5, "agent": self.name}
 
         except Exception as e:
-            return {'result': None, 'confidence': 0, 'error': str(e)}
+            return {"result": None, "confidence": 0, "error": str(e)}
 
 
 class MaintenanceAgent(BaseAgent):
@@ -184,13 +202,13 @@ class MaintenanceAgent(BaseAgent):
     def __init__(self):
         super().__init__(
             name="Maintenance Agent",
-            expertise=['صيانة', 'maintenance', 'إصلاح', 'repair', 'عطل', 'fault']
+            expertise=["صيانة", "maintenance", "إصلاح", "repair", "عطل", "fault"],
         )
 
     def execute(self, task: str, context: dict) -> dict:
         """تنفيذ مهمة صيانة"""
         try:
-            if 'صيانة' in task.lower():
+            if "صيانة" in task.lower():
                 from ai_knowledge.reasoning_engine import get_reasoning_engine
 
                 # استخدام محرك التفكير التقني
@@ -198,16 +216,16 @@ class MaintenanceAgent(BaseAgent):
                 diagnosis = reasoning.technical_reasoning(task)
 
                 return {
-                    'result': diagnosis,
-                    'confidence': 0.85,
-                    'explanation': f"تشخيص: {', '.join(diagnosis['possible_causes'][:2])}",
-                    'agent': self.name
+                    "result": diagnosis,
+                    "confidence": 0.85,
+                    "explanation": f"تشخيص: {', '.join(diagnosis['possible_causes'][:2])}",
+                    "agent": self.name,
                 }
 
-            return {'result': None, 'confidence': 0.5, 'agent': self.name}
+            return {"result": None, "confidence": 0.5, "agent": self.name}
 
         except Exception as e:
-            return {'result': None, 'confidence': 0, 'error': str(e)}
+            return {"result": None, "confidence": 0, "error": str(e)}
 
 
 class MultiAgentCoordinator:
@@ -220,10 +238,10 @@ class MultiAgentCoordinator:
     def __init__(self):
         # تهيئة جميع الوكلاء
         self.agents = {
-            'sales': SalesAgent(),
-            'accounting': AccountingAgent(),
-            'inventory': InventoryAgent(),
-            'maintenance': MaintenanceAgent()
+            "sales": SalesAgent(),
+            "accounting": AccountingAgent(),
+            "inventory": InventoryAgent(),
+            "maintenance": MaintenanceAgent(),
         }
 
         self.task_history = []
@@ -259,10 +277,10 @@ class MultiAgentCoordinator:
         if best_score < 0.3:
             # لا وكيل مناسب - استخدام وكيل عام
             return {
-                'result': None,
-                'assigned_agent': 'General Agent',
-                'confidence': 0.3,
-                'explanation': 'لا يوجد وكيل متخصص لهذه المهمة'
+                "result": None,
+                "assigned_agent": "General Agent",
+                "confidence": 0.3,
+                "explanation": "لا يوجد وكيل متخصص لهذه المهمة",
             }
 
         # تنفيذ المهمة
@@ -270,22 +288,24 @@ class MultiAgentCoordinator:
         result = best_agent.execute(task, context)
 
         # حفظ في التاريخ
-        self.task_history.append({
-            'timestamp': datetime.now().isoformat(),
-            'task': task,
-            'assigned_agent': best_agent_name,
-            'confidence': best_score,
-            'result': result
-        })
+        self.task_history.append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "task": task,
+                "assigned_agent": best_agent_name,
+                "confidence": best_score,
+                "result": result,
+            }
+        )
 
         logger.info(f"👥 Task delegated to {best_agent_name}: {task[:50]}")
 
         return {
-            'result': result.get('result'),
-            'assigned_agent': best_agent_name,
-            'confidence': best_score,
-            'explanation': result.get('explanation', ''),
-            'all_scores': agent_scores
+            "result": result.get("result"),
+            "assigned_agent": best_agent_name,
+            "confidence": best_score,
+            "explanation": result.get("explanation", ""),
+            "all_scores": agent_scores,
         }
 
     def collaborative_solve(self, complex_task: str, context: dict = None) -> dict:
@@ -308,10 +328,13 @@ class MultiAgentCoordinator:
 
         # دمج النتائج
         combined = {
-            'task': complex_task,
-            'agents_involved': list(results.keys()),
-            'individual_results': results,
-            'confidence': sum(r.get('confidence', 0) for r in results.values()) / len(results) if results else 0
+            "task": complex_task,
+            "agents_involved": list(results.keys()),
+            "individual_results": results,
+            "confidence": sum(r.get("confidence", 0) for r in results.values())
+            / len(results)
+            if results
+            else 0,
         }
 
         return combined

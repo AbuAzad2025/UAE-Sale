@@ -9,32 +9,41 @@ Making it a plain Integer (no FK) matches the intended loose coupling
 Revision ID: 10_remove_depr_fk
 Revises: 9_audit_cascade
 """
+
 from alembic import op
 import sqlalchemy as sa
 
-revision = '10_remove_depr_fk'
-down_revision = '9_audit_cascade'
+revision = "10_remove_depr_fk"
+down_revision = "9_audit_cascade"
 branch_labels = None
 depends_on = None
 
 
 def upgrade():
     bind = op.get_bind()
-    if bind.dialect.name == 'postgresql':
-        op.execute(sa.text(
-            'ALTER TABLE depreciation_schedules '
-            'DROP CONSTRAINT IF EXISTS depreciation_schedules_journal_entry_id_fkey'))
+    if bind.dialect.name == "postgresql":
+        op.execute(
+            sa.text(
+                "ALTER TABLE depreciation_schedules "
+                "DROP CONSTRAINT IF EXISTS depreciation_schedules_journal_entry_id_fkey"
+            )
+        )
         # column stays Integer, no new FK
 
 
 def downgrade():
     bind = op.get_bind()
-    if bind.dialect.name == 'postgresql':
-        op.execute(sa.text(
-            'ALTER TABLE depreciation_schedules DROP CONSTRAINT IF EXISTS '
-            'depreciation_schedules_journal_entry_id_fkey'))
+    if bind.dialect.name == "postgresql":
+        op.execute(
+            sa.text(
+                "ALTER TABLE depreciation_schedules DROP CONSTRAINT IF EXISTS "
+                "depreciation_schedules_journal_entry_id_fkey"
+            )
+        )
         op.create_foreign_key(
-            'depreciation_schedules_journal_entry_id_fkey',
-            'depreciation_schedules', 'gl_journal_entries',
-            ['journal_entry_id'], ['id'],
+            "depreciation_schedules_journal_entry_id_fkey",
+            "depreciation_schedules",
+            "gl_journal_entries",
+            ["journal_entry_id"],
+            ["id"],
         )

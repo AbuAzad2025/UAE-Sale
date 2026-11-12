@@ -18,6 +18,7 @@ Guide Loader — مصدر واحد للحقيقة لدليل المستخدم
 - يُقرأ عند الحاجة ويُخزَّن في الذاكرة
 - يُحقق من mtime في كل استدعاء — أي تحديث للإصدار يلتقط فوراً
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,14 +46,20 @@ def _parse_markdown_sections(text: str) -> list[GuideSection]:
         m = re.match(r"^(#{1,3})\s+(.+)", line)
         if m:
             if buf:
-                sections.append(GuideSection(title=title, level=level, content="\n".join(buf).strip()))
+                sections.append(
+                    GuideSection(
+                        title=title, level=level, content="\n".join(buf).strip()
+                    )
+                )
             title = m.group(2).strip()
             level = len(m.group(1))
             buf = []
         else:
             buf.append(line)
     if buf:
-        sections.append(GuideSection(title=title, level=level, content="\n".join(buf).strip()))
+        sections.append(
+            GuideSection(title=title, level=level, content="\n".join(buf).strip())
+        )
     return sections
 
 
@@ -71,7 +78,9 @@ class GuideLoader:
     def __init__(self, base_dir: str | Path | None = None):
         if getattr(self, "_loaded", False):
             return
-        self._base_dir = Path(base_dir) if base_dir else Path(__file__).resolve().parents[1]
+        self._base_dir = (
+            Path(base_dir) if base_dir else Path(__file__).resolve().parents[1]
+        )
         self._public_path = self._base_dir / "FULL_USER_GUIDE.md"
         self._owner_path = self._base_dir / "OWNER_USER_GUIDE.md"
         self._cache: dict[str, tuple[float, list[GuideSection]]] = {}
@@ -136,12 +145,21 @@ class GuideLoader:
     def search(self, query: str, is_owner: bool, top_k: int = 3) -> list[dict]:
         sections = self.visible_sections(is_owner)
         if not query or not query.strip():
-            return [{"title": s.title, "content": s.content[:600], "level": s.level} for s in sections[:top_k]]
+            return [
+                {"title": s.title, "content": s.content[:600], "level": s.level}
+                for s in sections[:top_k]
+            ]
         ranked = sorted(sections, key=lambda s: self._score(s, query), reverse=True)
         hits = [s for s in ranked if self._score(s, query) > 0][: int(top_k or 3)]
         if hits:
-            return [{"title": s.title, "content": s.content[:1200], "level": s.level} for s in hits]
-        return [{"title": s.title, "content": s.content[:600], "level": s.level} for s in sections[:top_k]]
+            return [
+                {"title": s.title, "content": s.content[:1200], "level": s.level}
+                for s in hits
+            ]
+        return [
+            {"title": s.title, "content": s.content[:600], "level": s.level}
+            for s in sections[:top_k]
+        ]
 
     def get_context(self, query: str, is_owner: bool, max_chars: int = 6000) -> str:
         """سياق مختصر للـ LLM — مقسّم حسب النطاق، بدون بيانات حساسة."""
@@ -162,7 +180,11 @@ class GuideLoader:
 
     def list_titles(self, is_owner: bool) -> list[dict]:
         return [
-            {"title": s.title, "level": s.level, "scope": "owner" if s in self.owner_sections() else "public"}
+            {
+                "title": s.title,
+                "level": s.level,
+                "scope": "owner" if s in self.owner_sections() else "public",
+            }
             for s in self.visible_sections(is_owner)
         ]
 

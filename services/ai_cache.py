@@ -4,6 +4,7 @@
 - Thread-safe, zero-dependency, graceful degradation.
 - Records hit/miss into AIMetricsCollector when available.
 """
+
 import hashlib
 import threading
 import time
@@ -24,12 +25,14 @@ def enabled() -> bool:
     Production behaviour is unchanged (enabled by default).
     """
     import os
+
     if os.environ.get("AI_CACHE_ENABLED", "").lower() in ("0", "false", "no", "off"):
         return False
     if os.environ.get("APP_ENV", "").lower() == "testing":
         return False
     try:
         from flask import current_app, has_app_context
+
         if has_app_context() and current_app.config.get("TESTING"):
             return False
     except Exception:
@@ -43,7 +46,9 @@ def _normalize(text: str) -> str:
     return " ".join(str(text).strip().lower().split())
 
 
-def make_key(provider: str, model: str, message: str, knowledge_context: str = "") -> str:
+def make_key(
+    provider: str, model: str, message: str, knowledge_context: str = ""
+) -> str:
     raw = f"{provider}|{model}|{_normalize(message)}|{_normalize(knowledge_context)[:2000]}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
@@ -65,7 +70,9 @@ def get(provider: str, model: str, message: str, knowledge_context: str = ""):
         return value
 
 
-def set_value(provider: str, model: str, message: str, knowledge_context: str, value: str):
+def set_value(
+    provider: str, model: str, message: str, knowledge_context: str, value: str
+):
     key = make_key(provider, model, message, knowledge_context)
     with _lock:
         if len(_store) >= _MAX_ENTRIES:
@@ -93,6 +100,7 @@ def stats():
 def _record_hit():
     try:
         from utils.monitoring import AIMetricsCollector
+
         AIMetricsCollector.record_cache_hit()
     except Exception:
         pass
@@ -101,6 +109,7 @@ def _record_hit():
 def _record_miss():
     try:
         from utils.monitoring import AIMetricsCollector
+
         AIMetricsCollector.record_cache_miss()
     except Exception:
         pass

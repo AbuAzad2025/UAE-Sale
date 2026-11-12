@@ -12,7 +12,7 @@ services:
     plan: starter
     region: frankfurt
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "PORT=8001 APP_ENV=development SYSTEM_INTEGRITY_FORCE=1 python app.py"
+    startCommand: "PORT=8001 APP_ENV=production python app.py"
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
@@ -25,7 +25,7 @@ services:
       - key: OWNER_PASSWORD
         generateValue: true
       - key: APP_ENV
-        value: development
+        value: production
       - key: PORT
         value: "8001"
       - key: HOST

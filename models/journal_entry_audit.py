@@ -20,6 +20,7 @@ P0 (ledger integrity) additions
   entry header PLUS the account codes and amounts of every line, which is
   what an auditor actually needs to reconstruct the posting.
 """
+
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -30,11 +31,11 @@ from models.tenant_scope import TenantScopedMixin
 def _fmt_money(value) -> str:
     """Format a money value as a plain string (never a float repr)."""
     if value is None:
-        return '0'
+        return "0"
     if isinstance(value, Decimal):
-        return f'{value:.3f}'
+        return f"{value:.3f}"
     try:
-        return f'{Decimal(str(value)):.3f}'
+        return f"{Decimal(str(value)):.3f}"
     except Exception:
         return str(value)
 
@@ -42,18 +43,20 @@ def _fmt_money(value) -> str:
 class JournalEntryAudit(TenantScopedMixin, db.Model):
     """Immutable audit trail for mutations on GL journal entries."""
 
-    __tablename__ = 'journal_entry_audits'
+    __tablename__ = "journal_entry_audits"
 
     # ---- actions ----------------------------------------------------------
-    ACTION_CREATE = 'create'
-    ACTION_UPDATE = 'update'
-    ACTION_DELETE = 'delete'
-    ACTION_APPROVE = 'approve'
-    ACTION_REVERSE = 'reverse'
-    ACTION_POST = 'post'
+    ACTION_CREATE = "create"
+    ACTION_UPDATE = "update"
+    ACTION_DELETE = "delete"
+    ACTION_APPROVE = "approve"
+    ACTION_REVERSE = "reverse"
+    ACTION_POST = "post"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
 
     journal_entry_id = db.Column(
         db.Integer,
@@ -74,7 +77,7 @@ class JournalEntryAudit(TenantScopedMixin, db.Model):
 
     performed_by = db.Column(
         db.Integer,
-        db.ForeignKey('users.id'),
+        db.ForeignKey("users.id"),
         nullable=False,
     )
 
@@ -88,21 +91,21 @@ class JournalEntryAudit(TenantScopedMixin, db.Model):
     user_agent = db.Column(db.Text)
 
     journal_entry = db.relationship(
-        'GLJournalEntry',
+        "GLJournalEntry",
         # No database FK backs this link (see journal_entry_id above), so
         # the join and the delete behavior must be spelled out explicitly:
         # passive_deletes stops session.delete(entry) from nulling/touching
         # dependent audit rows (their NOT NULL historical reference stays
         # intact); the database enforces nothing.
-        primaryjoin='JournalEntryAudit.journal_entry_id == GLJournalEntry.id',
+        primaryjoin="JournalEntryAudit.journal_entry_id == GLJournalEntry.id",
         foreign_keys=[journal_entry_id],
-        backref=db.backref('audits', passive_deletes=True),
-        lazy='joined',
+        backref=db.backref("audits", passive_deletes=True),
+        lazy="joined",
     )
-    performer = db.relationship('User', foreign_keys=[performed_by])
+    performer = db.relationship("User", foreign_keys=[performed_by])
 
     def __repr__(self):
-        return f'<JournalEntryAudit #{self.id} on entry {self.journal_entry_id} by user {self.performed_by}>'
+        return f"<JournalEntryAudit #{self.id} on entry {self.journal_entry_id} by user {self.performed_by}>"
 
     # ------------------------------------------------------------------
     # helpers
@@ -133,14 +136,14 @@ class JournalEntryAudit(TenantScopedMixin, db.Model):
         try:
             from flask_login import current_user
 
-            if getattr(current_user, 'is_authenticated', False):
-                uid = getattr(current_user, 'id', None)
+            if getattr(current_user, "is_authenticated", False):
+                uid = getattr(current_user, "id", None)
                 if uid:
                     return int(uid)
         except Exception:
             pass
 
-        creator = getattr(fallback_entry, 'created_by', None)
+        creator = getattr(fallback_entry, "created_by", None)
         if creator:
             try:
                 return int(creator)
@@ -169,8 +172,16 @@ class JournalEntryAudit(TenantScopedMixin, db.Model):
         return None
 
     @classmethod
-    def record(cls, journal_entry_id, action, old_values=None, new_values=None,
-               reason=None, performed_by=None, fallback_entry=None):
+    def record(
+        cls,
+        journal_entry_id,
+        action,
+        old_values=None,
+        new_values=None,
+        reason=None,
+        performed_by=None,
+        fallback_entry=None,
+    ):
         """Write one audit row and return it (``None`` when no actor exists).
 
         The row is added to the session but NOT committed: it shares the
@@ -184,8 +195,9 @@ class JournalEntryAudit(TenantScopedMixin, db.Model):
             import logging
 
             logging.getLogger(__name__).warning(
-                'JournalEntryAudit skipped: no actor resolvable for entry %s (%s)',
-                journal_entry_id, action,
+                "JournalEntryAudit skipped: no actor resolvable for entry %s (%s)",
+                journal_entry_id,
+                action,
             )
             return None
 
@@ -210,22 +222,23 @@ class JournalEntryAudit(TenantScopedMixin, db.Model):
         something was posted.
         """
         payload = {
-            'id': getattr(entry, 'id', None),
-            'entry_number': getattr(entry, 'entry_number', None),
-            'entry_date': (
+            "id": getattr(entry, "id", None),
+            "entry_number": getattr(entry, "entry_number", None),
+            "entry_date": (
                 entry.entry_date.isoformat()
-                if getattr(entry, 'entry_date', None) is not None else None
+                if getattr(entry, "entry_date", None) is not None
+                else None
             ),
-            'description': getattr(entry, 'description', None),
-            'entry_type': getattr(entry, 'entry_type', None),
-            'reference_type': getattr(entry, 'reference_type', None),
-            'reference_id': getattr(entry, 'reference_id', None),
-            'currency': getattr(entry, 'currency', None),
-            'exchange_rate': _fmt_money(getattr(entry, 'exchange_rate', None)),
-            'total_debit': _fmt_money(getattr(entry, 'total_debit', None)),
-            'total_credit': _fmt_money(getattr(entry, 'total_credit', None)),
-            'is_posted': bool(getattr(entry, 'is_posted', False)),
-            'is_reversed': bool(getattr(entry, 'is_reversed', False)),
+            "description": getattr(entry, "description", None),
+            "entry_type": getattr(entry, "entry_type", None),
+            "reference_type": getattr(entry, "reference_type", None),
+            "reference_id": getattr(entry, "reference_id", None),
+            "currency": getattr(entry, "currency", None),
+            "exchange_rate": _fmt_money(getattr(entry, "exchange_rate", None)),
+            "total_debit": _fmt_money(getattr(entry, "total_debit", None)),
+            "total_credit": _fmt_money(getattr(entry, "total_credit", None)),
+            "is_posted": bool(getattr(entry, "is_posted", False)),
+            "is_reversed": bool(getattr(entry, "is_reversed", False)),
         }
 
         line_payloads = []
@@ -236,26 +249,28 @@ class JournalEntryAudit(TenantScopedMixin, db.Model):
                 lines = []
         for line in lines:
             if isinstance(line, dict):
-                code = line.get('account_code') or line.get('code')
-                debit = line.get('debit')
-                credit = line.get('credit')
-                amount_base = line.get('amount_base')
-                description = line.get('description')
+                code = line.get("account_code") or line.get("code")
+                debit = line.get("debit")
+                credit = line.get("credit")
+                amount_base = line.get("amount_base")
+                description = line.get("description")
             else:
                 code = None
-                account = getattr(line, 'account', None)
+                account = getattr(line, "account", None)
                 if account is not None:
-                    code = getattr(account, 'code', None)
-                debit = getattr(line, 'debit', None)
-                credit = getattr(line, 'credit', None)
-                amount_base = getattr(line, 'amount_base', None)
-                description = getattr(line, 'description', None)
-            line_payloads.append({
-                'account_code': code,
-                'debit': _fmt_money(debit),
-                'credit': _fmt_money(credit),
-                'amount_base': _fmt_money(amount_base),
-                'description': description,
-            })
-        payload['lines'] = line_payloads
+                    code = getattr(account, "code", None)
+                debit = getattr(line, "debit", None)
+                credit = getattr(line, "credit", None)
+                amount_base = getattr(line, "amount_base", None)
+                description = getattr(line, "description", None)
+            line_payloads.append(
+                {
+                    "account_code": code,
+                    "debit": _fmt_money(debit),
+                    "credit": _fmt_money(credit),
+                    "amount_base": _fmt_money(amount_base),
+                    "description": description,
+                }
+            )
+        payload["lines"] = line_payloads
         return payload

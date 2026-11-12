@@ -6,6 +6,7 @@ import hashlib
 
 try:
     from cryptography.fernet import Fernet
+
     HAS_CRYPTO = True
 except ImportError:
     HAS_CRYPTO = False
@@ -13,11 +14,13 @@ except ImportError:
 
 
 class CardVault(db.Model):
-    __tablename__ = 'card_vault'
+    __tablename__ = "card_vault"
 
     id = db.Column(db.Integer, primary_key=True)
 
-    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False, index=True)
+    customer_id = db.Column(
+        db.Integer, db.ForeignKey("customers.id"), nullable=False, index=True
+    )
 
     card_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
 
@@ -37,22 +40,27 @@ class CardVault(db.Model):
     usage_count = db.Column(db.Integer, default=0)
     last_used = db.Column(db.DateTime)
 
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
-    customer = db.relationship('Customer', backref='cards')
+    customer = db.relationship("Customer", backref="cards")
 
     def __repr__(self):
-        return f'<CardVault ****{self.last_four}>'
+        return f"<CardVault ****{self.last_four}>"
 
     @staticmethod
     def _get_cipher():
         if not HAS_CRYPTO:
-            raise RuntimeError('cryptography module not installed')
+            raise RuntimeError("cryptography module not installed")
 
-        key = current_app.config.get('CARD_ENCRYPTION_KEY')
+        key = current_app.config.get("CARD_ENCRYPTION_KEY")
         if not key:
-            raise ValueError('CARD_ENCRYPTION_KEY not configured')
+            raise ValueError("CARD_ENCRYPTION_KEY not configured")
 
         key_bytes = key.encode() if isinstance(key, str) else key
         key_bytes = base64.urlsafe_b64encode(hashlib.sha256(key_bytes).digest())
@@ -85,28 +93,35 @@ class CardVault(db.Model):
         hashes; they rotate lazily — the next set_card_data() write for a card
         replaces the legacy hash with the peppered one.
         """
-        secret_key = current_app.config.get('SECRET_KEY') or 'qmr-pepper'
-        pepper = hashlib.sha256(str(secret_key).encode('utf-8')).hexdigest()[:32]
+        secret_key = current_app.config.get("SECRET_KEY") or "qmr-pepper"
+        pepper = hashlib.sha256(str(secret_key).encode("utf-8")).hexdigest()[:32]
         card_str = str(card_number)
-        return hashlib.sha256((card_str + pepper).encode('utf-8')).hexdigest()
+        return hashlib.sha256((card_str + pepper).encode("utf-8")).hexdigest()
 
     @staticmethod
     def _detect_card_type(card_number):
-        card_str = str(card_number).replace(' ', '').replace('-', '')
+        card_str = str(card_number).replace(" ", "").replace("-", "")
 
-        if card_str.startswith('4'):
-            return 'visa'
-        elif card_str.startswith(('51', '52', '53', '54', '55')):
-            return 'mastercard'
-        elif card_str.startswith(('34', '37')):
-            return 'amex'
-        elif card_str.startswith('6'):
-            return 'discover'
+        if card_str.startswith("4"):
+            return "visa"
+        elif card_str.startswith(("51", "52", "53", "54", "55")):
+            return "mastercard"
+        elif card_str.startswith(("34", "37")):
+            return "amex"
+        elif card_str.startswith("6"):
+            return "discover"
 
-        return 'unknown'
+        return "unknown"
 
-    def set_card_data(self, card_number, cardholder_name, expiry_month=None, expiry_year=None, cvv=None):
-        card_clean = str(card_number).replace(' ', '').replace('-', '')
+    def set_card_data(
+        self,
+        card_number,
+        cardholder_name,
+        expiry_month=None,
+        expiry_year=None,
+        cvv=None,
+    ):
+        card_clean = str(card_number).replace(" ", "").replace("-", "")
 
         self.card_number_encrypted = self._encrypt(card_clean)
         self.cardholder_name_encrypted = self._encrypt(cardholder_name)
@@ -125,48 +140,58 @@ class CardVault(db.Model):
         self.card_type = self._detect_card_type(card_clean)
 
     def get_card_number(self):
-        if not current_app.config.get('ALLOW_CARD_DECRYPTION'):
-            return f'****-****-****-{self.last_four}'
+        if not current_app.config.get("ALLOW_CARD_DECRYPTION"):
+            return f"****-****-****-{self.last_four}"
 
         from flask_login import current_user
+
         if not current_user.is_owner:
-            return f'****-****-****-{self.last_four}'
+            return f"****-****-****-{self.last_four}"
 
         decrypted = self._decrypt(self.card_number_encrypted)
-        return f'{decrypted[:4]}-{decrypted[4:8]}-{decrypted[8:12]}-{decrypted[12:]}'
+        return f"{decrypted[:4]}-{decrypted[4:8]}-{decrypted[8:12]}-{decrypted[12:]}"
 
     def get_cardholder_name(self):
         from flask_login import current_user
+
         try:
             # Owner gate (mirrors get_card_number/get_cvv): an authenticated
             # non-owner session only ever sees a mask. Anonymous/system
             # context (background jobs, CLI) keeps legacy fail-open read so
             # automated flows don't break; to_dict() default no longer emits
             # this field at all (see below).
-            if getattr(current_user, 'is_authenticated', False) and not current_user.is_owner:
-                return '***'
+            if (
+                getattr(current_user, "is_authenticated", False)
+                and not current_user.is_owner
+            ):
+                return "***"
         except Exception:
             pass
         return self._decrypt(self.cardholder_name_encrypted)
 
     def get_expiry(self):
         from flask_login import current_user
+
         try:
             # Same owner gate as get_card_number/get_cvv (see note above).
-            if getattr(current_user, 'is_authenticated', False) and not current_user.is_owner:
-                return '**/**'
+            if (
+                getattr(current_user, "is_authenticated", False)
+                and not current_user.is_owner
+            ):
+                return "**/**"
         except Exception:
             pass
         if self.expiry_month_encrypted and self.expiry_year_encrypted:
             month = self._decrypt(self.expiry_month_encrypted)
             year = self._decrypt(self.expiry_year_encrypted)
-            return f'{month}/{year}'
+            return f"{month}/{year}"
         return None
 
     def get_cvv(self):
         from flask_login import current_user
+
         if not current_user.is_owner:
-            return '***'
+            return "***"
 
         if self.cvv_encrypted:
             return self._decrypt(self.cvv_encrypted)
@@ -178,23 +203,24 @@ class CardVault(db.Model):
 
     def to_dict(self, include_sensitive=False):
         data = {
-            'id': self.id,
-            'customer_id': self.customer_id,
-            'card_type': self.card_type,
-            'last_four': self.last_four,
-            'is_default': self.is_default,
-            'usage_count': self.usage_count,
-            'last_used': self.last_used.isoformat() if self.last_used else None,
+            "id": self.id,
+            "customer_id": self.customer_id,
+            "card_type": self.card_type,
+            "last_four": self.last_four,
+            "is_default": self.is_default,
+            "usage_count": self.usage_count,
+            "last_used": self.last_used.isoformat() if self.last_used else None,
         }
 
         if include_sensitive:
             # Holder name + expiry are PII: only emitted on explicit opt-in
             # (each getter still applies its own owner gate).
-            data['cardholder_name'] = self.get_cardholder_name()
-            data['expiry'] = self.get_expiry()
+            data["cardholder_name"] = self.get_cardholder_name()
+            data["expiry"] = self.get_expiry()
             from flask_login import current_user
+
             if current_user.is_owner:
-                data['card_number'] = self.get_card_number()
-                data['cvv'] = self.get_cvv()
+                data["card_number"] = self.get_card_number()
+                data["cvv"] = self.get_cvv()
 
         return data

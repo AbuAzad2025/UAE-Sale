@@ -15,18 +15,19 @@ no stated terms is treated as due immediately. That is the conservative
 reading: it never hides an overdue balance, whereas defaulting to a
 30-day term would have hidden real arrears.
 """
+
 import sqlalchemy as sa
 from alembic import op
 
-revision = 'b1_due_dates'
-down_revision = 'b0_p0_isolation_integrity'
+revision = "b1_due_dates"
+down_revision = "b0_p0_isolation_integrity"
 branch_labels = None
 depends_on = None
 
 
 def _has_column(conn, table, column):
     cols = sa.inspect(conn).get_columns(table)
-    return bool(cols) and any(c['name'] == column for c in cols)
+    return bool(cols) and any(c["name"] == column for c in cols)
 
 
 def _has_table(conn, table):
@@ -38,45 +39,55 @@ def upgrade():
     conn = bind
 
     # sales.due_date - nullable, no backfill needed (handled below)
-    if not _has_column(conn, 'sales', 'due_date'):
-        op.add_column('sales', sa.Column('due_date', sa.Date(), nullable=True))
+    if not _has_column(conn, "sales", "due_date"):
+        op.add_column("sales", sa.Column("due_date", sa.Date(), nullable=True))
 
     # purchases.due_date - nullable
-    if not _has_column(conn, 'purchases', 'due_date'):
-        op.add_column('purchases', sa.Column('due_date', sa.Date(), nullable=True))
+    if not _has_column(conn, "purchases", "due_date"):
+        op.add_column("purchases", sa.Column("due_date", sa.Date(), nullable=True))
 
     # customers.payment_terms_days - must be added nullable first, then backfilled, then NOT NULL
-    if not _has_column(conn, 'customers', 'payment_terms_days'):
-        op.add_column('customers', sa.Column('payment_terms_days', sa.Integer(), nullable=True))
+    if not _has_column(conn, "customers", "payment_terms_days"):
+        op.add_column(
+            "customers", sa.Column("payment_terms_days", sa.Integer(), nullable=True)
+        )
         # Backfill existing rows to 0 (due immediately = conservative)
-        op.execute('UPDATE customers SET payment_terms_days = 0 WHERE payment_terms_days IS NULL')
+        op.execute(
+            "UPDATE customers SET payment_terms_days = 0 WHERE payment_terms_days IS NULL"
+        )
         # Now make it NOT NULL
-        op.alter_column('customers', 'payment_terms_days', nullable=False)
+        op.alter_column("customers", "payment_terms_days", nullable=False)
 
     # Backfill: an invoice with no stated terms is due on its own date.
-    if _has_table(conn, 'sales') and _has_column(conn, 'sales', 'due_date'):
+    if _has_table(conn, "sales") and _has_column(conn, "sales", "due_date"):
         op.execute(
-            'UPDATE sales SET due_date = CAST(sale_date AS DATE) '
-            'WHERE due_date IS NULL')
-    if _has_table(conn, 'purchases') and \
-            _has_column(conn, 'purchases', 'due_date'):
+            "UPDATE sales SET due_date = CAST(sale_date AS DATE) WHERE due_date IS NULL"
+        )
+    if _has_table(conn, "purchases") and _has_column(conn, "purchases", "due_date"):
         op.execute(
-            'UPDATE purchases SET due_date = CAST(purchase_date AS DATE) '
-            'WHERE due_date IS NULL')
+            "UPDATE purchases SET due_date = CAST(purchase_date AS DATE) "
+            "WHERE due_date IS NULL"
+        )
 
     # The terms are a number of days, never negative.
-    if _has_table(conn, 'customers'):
+    if _has_table(conn, "customers"):
         op.execute(
-            'UPDATE customers SET payment_terms_days = 0 '
-            'WHERE payment_terms_days < 0')
+            "UPDATE customers SET payment_terms_days = 0 WHERE payment_terms_days < 0"
+        )
         op.create_check_constraint(
-            'ck_customer_payment_terms_non_negative', 'customers',
-            'payment_terms_days >= 0')
+            "ck_customer_payment_terms_non_negative",
+            "customers",
+            "payment_terms_days >= 0",
+        )
 
 
 def downgrade():
     bind = op.get_bind()
     conn = bind
-    for table, column in [('sales', 'due_date'), ('purchases', 'due_date'), ('customers', 'payment_terms_days')]:
+    for table, column in [
+        ("sales", "due_date"),
+        ("purchases", "due_date"),
+        ("customers", "payment_terms_days"),
+    ]:
         if _has_column(conn, table, column):
             op.drop_column(table, column)

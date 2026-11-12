@@ -30,8 +30,10 @@ import pytest
 from decimal import Decimal
 
 SCRIPT_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', '..', 'scripts',
-                 'qa_master_reconciliation.py'))
+    os.path.join(
+        os.path.dirname(__file__), "..", "..", "scripts", "qa_master_reconciliation.py"
+    )
+)
 SCRIPTS_DIR = os.path.dirname(SCRIPT_PATH)
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
@@ -39,31 +41,33 @@ if SCRIPTS_DIR not in sys.path:
 import qa_master_reconciliation as qmr  # noqa: E402
 
 pytestmark = [
-    pytest.mark.filterwarnings('ignore::pytest.PytestUnraisableExceptionWarning'),
-    pytest.mark.filterwarnings('ignore::ResourceWarning'),
+    pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning"),
+    pytest.mark.filterwarnings("ignore::ResourceWarning"),
 ]
 
 
 def _run_script(tmp_path):
-    json_path = os.path.join(str(tmp_path), 'recon.json')
+    json_path = os.path.join(str(tmp_path), "recon.json")
     env = dict(os.environ)
-    env.setdefault('PYTHONIOENCODING', 'utf-8')
-    env['PYTHONUTF8'] = '1'
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    env["PYTHONUTF8"] = "1"
     proc = subprocess.run(
-        [sys.executable, SCRIPT_PATH, '--json', json_path],
-        capture_output=True, timeout=900, env=env,
+        [sys.executable, SCRIPT_PATH, "--json", json_path],
+        capture_output=True,
+        timeout=900,
+        env=env,
     )
-    proc.stdout = (proc.stdout or b'').decode('utf-8', errors='replace')
-    proc.stderr = (proc.stderr or b'').decode('utf-8', errors='replace')
+    proc.stdout = (proc.stdout or b"").decode("utf-8", errors="replace")
+    proc.stderr = (proc.stderr or b"").decode("utf-8", errors="replace")
     payload = None
     if os.path.exists(json_path):
-        with open(json_path, encoding='utf-8') as fh:
+        with open(json_path, encoding="utf-8") as fh:
             payload = json.load(fh)
     return proc, payload
 
 
 def _section(payload, prefix):
-    matches = [s for s in payload['sections'] if s['name'].startswith(prefix)]
+    matches = [s for s in payload["sections"] if s["name"].startswith(prefix)]
     assert len(matches) == 1, f"expected one section matching {prefix!r}"
     return matches[0]
 
@@ -78,48 +82,48 @@ def _d(value):
 def test_script_run_exits_zero_with_all_sections_pass(tmp_path):
     proc, payload = _run_script(tmp_path)
     assert proc.returncode == 0, proc.stdout[-2000:] + proc.stderr[-2000:]
-    assert 'ALL SECTIONS PASS' in proc.stdout
-    assert payload is not None and payload['passed'] is True
-    names = {s['name'] for s in payload['sections']}
+    assert "ALL SECTIONS PASS" in proc.stdout
+    assert payload is not None and payload["passed"] is True
+    names = {s["name"] for s in payload["sections"]}
     assert len(names) == 4
-    assert any(n.startswith('Trial Balance') for n in names)
-    assert any(n.startswith('Cash/Bank') for n in names)
-    assert any(n.startswith('AR control') for n in names)
-    assert any(n.startswith('Inventory') for n in names)
+    assert any(n.startswith("Trial Balance") for n in names)
+    assert any(n.startswith("Cash/Bank") for n in names)
+    assert any(n.startswith("AR control") for n in names)
+    assert any(n.startswith("Inventory") for n in names)
 
 
 def test_subprocess_section_values_match_seeded_economics(tmp_path):
     _proc, payload = _run_script(tmp_path)
-    tb = _section(payload, 'Trial Balance')
-    assert _d(tb['difference']) <= Decimal('0.0001')
-    assert tb['expected'] == tb['actual']
-    assert 'unbalanced entries: 0' in '\n'.join(tb['details'])
+    tb = _section(payload, "Trial Balance")
+    assert _d(tb["difference"]) <= Decimal("0.0001")
+    assert tb["expected"] == tb["actual"]
+    assert "unbalanced entries: 0" in "\n".join(tb["details"])
 
-    cash = _section(payload, 'Cash/Bank')
-    assert _d(cash['difference']) <= Decimal('0.0001')
-    assert _d(cash['expected']).quantize(Decimal('0.001')) == Decimal('300.000')
+    cash = _section(payload, "Cash/Bank")
+    assert _d(cash["difference"]) <= Decimal("0.0001")
+    assert _d(cash["expected"]).quantize(Decimal("0.001")) == Decimal("300.000")
 
-    ar = _section(payload, 'AR control')
-    assert _d(ar['difference']) <= Decimal('0.0001')
-    assert _d(ar['expected']).quantize(Decimal('0.001')) == Decimal('200.000')
+    ar = _section(payload, "AR control")
+    assert _d(ar["difference"]) <= Decimal("0.0001")
+    assert _d(ar["expected"]).quantize(Decimal("0.001")) == Decimal("200.000")
 
-    inv = _section(payload, 'Inventory')
-    assert _d(inv['difference']) <= Decimal('0.0001')
-    # Inventory expected value changed with moving average costing; 
+    inv = _section(payload, "Inventory")
+    assert _d(inv["difference"]) <= Decimal("0.0001")
+    # Inventory expected value changed with moving average costing;
     # the key assertion is that reconciliation balances (difference ≈ 0)
 
 
 def test_subprocess_scenario_shape_is_deterministic(tmp_path):
     _proc, payload = _run_script(tmp_path)
-    sc = payload['scenario']
-    assert sc['customers'] == 2
-    assert sc['suppliers'] == 1
-    assert len(sc['sales']) == 3
-    methods = sorted(s['method'] for s in sc['sales'])
-    assert methods == ['cash/full', 'cash/partial', 'cheque/confirmed']
-    assert str(sc['purchase']['number']).startswith('PUR-')
-    assert len(sc['expenses']) == 1
-    assert len(sc['manual_entries']) >= 2
+    sc = payload["scenario"]
+    assert sc["customers"] == 2
+    assert sc["suppliers"] == 1
+    assert len(sc["sales"]) == 3
+    methods = sorted(s["method"] for s in sc["sales"])
+    assert methods == ["cash/full", "cash/partial", "cheque/confirmed"]
+    assert str(sc["purchase"]["number"]).startswith("PUR-")
+    assert len(sc["expenses"]) == 1
+    assert len(sc["manual_entries"]) >= 2
 
 
 def test_main_check_only_contract():
@@ -134,31 +138,34 @@ def test_main_check_only_contract():
     """
     repo_root = os.path.dirname(SCRIPTS_DIR)
     env = dict(os.environ)
-    env.setdefault('PYTHONIOENCODING', 'utf-8')
-    env['PYTHONUTF8'] = '1'
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    env["PYTHONUTF8"] = "1"
     code = (
-        'import json, sys\n'
+        "import json, sys\n"
         'sys.path.insert(0, r"%s")\n'
-        'import qa_master_reconciliation as qmr\n'
-        'r = qmr.main(check_only=True, quiet=True)\n'
-        'assert isinstance(r, dict)\n'
+        "import qa_master_reconciliation as qmr\n"
+        "r = qmr.main(check_only=True, quiet=True)\n"
+        "assert isinstance(r, dict)\n"
         'print("QMR_RESULT:" + json.dumps({\n'
         '    "passed": bool(r["passed"]),\n'
         '    "n_sections": len(r["sections"]),\n'
         '    "all_green": all(s["passed"] for s in r["sections"]),\n'
-        '}))\n' % SCRIPTS_DIR.replace('\\', '\\\\')
+        "}))\n" % SCRIPTS_DIR.replace("\\", "\\\\")
     )
     proc = subprocess.run(
-        [sys.executable, '-c', code],
-        capture_output=True, timeout=900, env=env, cwd=repo_root,
+        [sys.executable, "-c", code],
+        capture_output=True,
+        timeout=900,
+        env=env,
+        cwd=repo_root,
     )
-    out = (proc.stdout or b'').decode('utf-8', errors='replace')
-    assert proc.returncode == 0, out + (proc.stderr or b'').decode('utf-8', 'replace')
-    line = next(ln for ln in out.splitlines() if ln.startswith('QMR_RESULT:'))
-    summary = json.loads(line[len('QMR_RESULT:'):])
-    assert summary['passed'] is True
-    assert summary['n_sections'] == 4
-    assert summary['all_green'] is True
+    out = (proc.stdout or b"").decode("utf-8", errors="replace")
+    assert proc.returncode == 0, out + (proc.stderr or b"").decode("utf-8", "replace")
+    line = next(ln for ln in out.splitlines() if ln.startswith("QMR_RESULT:"))
+    summary = json.loads(line[len("QMR_RESULT:") :])
+    assert summary["passed"] is True
+    assert summary["n_sections"] == 4
+    assert summary["all_green"] is True
 
 
 # ─────────────────── layer 2: in-process logic via conftest app ───────────────────
@@ -168,21 +175,21 @@ def test_in_process_sections_against_conftest_app(app, db):
     """Seed + reconcile inside the shared conftest app (single-app pattern)."""
     db.create_all()
     scenario = qmr.seed_scenario()
-    sections, ok = qmr.collect_sections(scenario['period'])
+    sections, ok = qmr.collect_sections(scenario["period"])
 
     assert ok is True
-    by_prefix = {s['name'].split(' (')[0].split(' vs')[0]: s for s in sections}
-    assert by_prefix['Trial Balance']['passed'] is True
-    assert by_prefix['Cash/Bank movement == receipts - expenses']['passed'] is True
-    assert by_prefix['AR control']['passed'] is True
-    assert by_prefix['Inventory']['passed'] is True
+    by_prefix = {s["name"].split(" (")[0].split(" vs")[0]: s for s in sections}
+    assert by_prefix["Trial Balance"]["passed"] is True
+    assert by_prefix["Cash/Bank movement == receipts - expenses"]["passed"] is True
+    assert by_prefix["AR control"]["passed"] is True
+    assert by_prefix["Inventory"]["passed"] is True
 
-    cash = by_prefix['Cash/Bank movement == receipts - expenses']
-    assert cash['expected'].quantize(Decimal('0.001')) == Decimal('300.000')
-    ar = by_prefix['AR control']
-    assert ar['expected'].quantize(Decimal('0.001')) == Decimal('200.000')
-    inv = by_prefix['Inventory']
-    assert inv['difference'].quantize(Decimal('0.001')) == Decimal('0')
+    cash = by_prefix["Cash/Bank movement == receipts - expenses"]
+    assert cash["expected"].quantize(Decimal("0.001")) == Decimal("300.000")
+    ar = by_prefix["AR control"]
+    assert ar["expected"].quantize(Decimal("0.001")) == Decimal("200.000")
+    inv = by_prefix["Inventory"]
+    assert inv["difference"].quantize(Decimal("0.001")) == Decimal("0")
     # Inventory expected value changed with moving average costing;
     # the key assertion is that reconciliation balances (difference ≈ 0)
 
@@ -216,45 +223,54 @@ def test_chaos_raw_unbalanced_entry_is_now_refused(app, db):
     chaos = None
     try:
         chaos = GLJournalEntry(
-            entry_number='JE-QACHAOS-9001',
-            description='CHAOS unbalanced raw write',
-            currency='ILS',
-            total_debit=Decimal('777.000'),
-            total_credit=Decimal('0'),
+            entry_number="JE-QACHAOS-9001",
+            description="CHAOS unbalanced raw write",
+            currency="ILS",
+            total_debit=Decimal("777.000"),
+            total_credit=Decimal("0"),
         )
         db.session.add(chaos)
         db.session.flush()
 
-        cash = GLAccount.query.filter_by(code='1110').first()
-        db.session.add(GLJournalLine(
-            entry_id=chaos.id, account_id=cash.id,
-            debit=Decimal('777.000'), credit=Decimal('0'),
-            amount_base=Decimal('777.000'),
-        ))
+        cash = GLAccount.query.filter_by(code="1110").first()
+        db.session.add(
+            GLJournalLine(
+                entry_id=chaos.id,
+                account_id=cash.id,
+                debit=Decimal("777.000"),
+                credit=Decimal("0"),
+                amount_base=Decimal("777.000"),
+            )
+        )
         db.session.commit()
     except Exception as exc:
         raised = exc
         db.session.rollback()
 
     assert raised is not None, (
-        'an unbalanced journal entry was accepted again; the blocking '
-        'contract must hold')
-    persisted = db.session.query(GLJournalLine).join(
-        GLJournalEntry,
-        GLJournalLine.entry_id == GLJournalEntry.id,
-    ).filter(GLJournalEntry.entry_number == 'JE-QACHAOS-9001').count()
-    assert persisted == 0, 'the unbalanced line survived the refusal'
-    assert GLJournalEntry.query.filter_by(
-        entry_number='JE-QACHAOS-9001').count() == 0
+        "an unbalanced journal entry was accepted again; the blocking "
+        "contract must hold"
+    )
+    persisted = (
+        db.session.query(GLJournalLine)
+        .join(
+            GLJournalEntry,
+            GLJournalLine.entry_id == GLJournalEntry.id,
+        )
+        .filter(GLJournalEntry.entry_number == "JE-QACHAOS-9001")
+        .count()
+    )
+    assert persisted == 0, "the unbalanced line survived the refusal"
+    assert GLJournalEntry.query.filter_by(entry_number="JE-QACHAOS-9001").count() == 0
 
     # The books are still whole: the audit passes, because nothing corrupt
     # was ever written.
-    sections, ok = qmr.collect_sections(scenario['period'])
-    assert ok is True, 'the audit failed on a clean ledger'
-    tb = next(s for s in sections if s['name'].startswith('Trial Balance'))
-    assert tb['passed'] is True
-    assert tb['difference'] == Decimal('0.000')
-    assert not any('JE-QACHAOS-9001' in d for d in tb['details'])
+    sections, ok = qmr.collect_sections(scenario["period"])
+    assert ok is True, "the audit failed on a clean ledger"
+    tb = next(s for s in sections if s["name"].startswith("Trial Balance"))
+    assert tb["passed"] is True
+    assert tb["difference"] == Decimal("0.000")
+    assert not any("JE-QACHAOS-9001" in d for d in tb["details"])
 
 
 def test_service_layer_rejects_unbalanced_manual_entry(app, db):
@@ -265,25 +281,28 @@ def test_service_layer_rejects_unbalanced_manual_entry(app, db):
     from services.gl_service import GLService
 
     db.create_all()
-    role = Role(name='QA Chaos Owner', slug='qa-chaos-owner')
+    role = Role(name="QA Chaos Owner", slug="qa-chaos-owner")
     db.session.add(role)
     db.session.flush()
     owner = User(
         username=f"qa_chaos_{datetime.now(timezone.utc).timestamp():.0f}",
-        email='qa_chaos@example.com', full_name='QA Chaos',
-        is_owner=True, is_active=True, role_id=role.id,
+        email="qa_chaos@example.com",
+        full_name="QA Chaos",
+        is_owner=True,
+        is_active=True,
+        role_id=role.id,
     )
-    owner.set_password('QaChaosPass123!')
+    owner.set_password("QaChaosPass123!")
     db.session.add(owner)
     db.session.flush()
 
     entries_before = GLJournalEntry.query.count()
     with pytest.raises(ValueError):
         GLService.create_manual_entry(
-            description='CHAOS via public API (must be rejected)',
+            description="CHAOS via public API (must be rejected)",
             lines=[
-                {'account_code': '6600', 'debit': Decimal('100.000')},
-                {'account_code': '2110', 'credit': Decimal('90.000')},
+                {"account_code": "6600", "debit": Decimal("100.000")},
+                {"account_code": "2110", "credit": Decimal("90.000")},
             ],
             created_by=owner.id,
         )

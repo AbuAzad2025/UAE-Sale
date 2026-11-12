@@ -31,7 +31,7 @@ from services.cash_flow_service import CashFlowService
 from services.gl_service import GLService
 
 
-BASE_CURRENCY = 'ILS'
+BASE_CURRENCY = "ILS"
 
 
 @pytest.fixture
@@ -39,12 +39,12 @@ def chart_of_accounts(db):
     """شجرة الحسابات الأساسية + فترة مالية مفتوحة (تُنشأ مرة لكل اختبار)."""
     from models.erp_modules import FiscalPeriod
 
-    period = FiscalPeriod.query.filter_by(name='P0 Test Period').first()
+    period = FiscalPeriod.query.filter_by(name="P0 Test Period").first()
     if period is None:
         period = FiscalPeriod(
-            name='P0 Test Period',
+            name="P0 Test Period",
             year=date.today().year,
-            period_type='annual',
+            period_type="annual",
             start_date=date(date.today().year - 2, 1, 1),
             end_date=date(date.today().year + 2, 12, 31),
             is_closed=False,
@@ -55,9 +55,15 @@ def chart_of_accounts(db):
     return {acc.code: acc for acc in GLAccount.query.all()}
 
 
-def _post_entry(lines, currency=BASE_CURRENCY, exchange_rate=Decimal('1'),
-                description='p0-test', entry_date=None, reference_type=None,
-                reference_id=None):
+def _post_entry(
+    lines,
+    currency=BASE_CURRENCY,
+    exchange_rate=Decimal("1"),
+    description="p0-test",
+    entry_date=None,
+    reference_type=None,
+    reference_id=None,
+):
     entry = GLService.post_entry(
         lines,
         description=description,
@@ -71,226 +77,256 @@ def _post_entry(lines, currency=BASE_CURRENCY, exchange_rate=Decimal('1'),
 
 
 def _formatted(value):
-    return '{:,.2f}'.format(float(value))
+    return "{:,.2f}".format(float(value))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # F1 — العملة: القوائم المالية بعملة الأساس
 # ═══════════════════════════════════════════════════════════════════════════
 
-class TestBaseCurrencyStatements:
 
+class TestBaseCurrencyStatements:
     def test_balance_sheet_shows_base_amount_not_transaction_amount(
-            self, client, db, owner_user, login_owner, chart_of_accounts):
+        self, client, db, owner_user, login_owner, chart_of_accounts
+    ):
         """فاتورة USD تُظهر المبلغ بعملة الأساس في الميزانية العمومية."""
         _post_entry(
             lines=[
-                {'account': '1130', 'debit': Decimal('1000'), 'credit': Decimal('0')},
-                {'account': '4100', 'debit': Decimal('0'), 'credit': Decimal('1000')},
+                {"account": "1130", "debit": Decimal("1000"), "credit": Decimal("0")},
+                {"account": "4100", "debit": Decimal("0"), "credit": Decimal("1000")},
             ],
-            currency='USD',
-            exchange_rate=Decimal('3.67'),
-            description='USD sale',
+            currency="USD",
+            exchange_rate=Decimal("3.67"),
+            description="USD sale",
         )
         db.session.commit()
 
-        resp = client.get('/ledger/balance-sheet')
+        resp = client.get("/ledger/balance-sheet")
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
 
         # 1000 USD × 3.67 = 3670 بعملة الأساس
-        assert _formatted(Decimal('3670')) in html
+        assert _formatted(Decimal("3670")) in html
         # مبلغ المعاملة (1000) لا يجوز أن يظهر كمبلغ معروض
-        assert _formatted(Decimal('1000')) not in html
+        assert _formatted(Decimal("1000")) not in html
 
     def test_trial_balance_sums_base_currency(
-            self, client, db, owner_user, login_owner, chart_of_accounts):
+        self, client, db, owner_user, login_owner, chart_of_accounts
+    ):
         """ميزان المراجعة يجمع الحركات بعملة الأساس."""
         _post_entry(
             lines=[
-                {'account': '1130', 'debit': Decimal('1000'), 'credit': Decimal('0')},
-                {'account': '4100', 'debit': Decimal('0'), 'credit': Decimal('1000')},
+                {"account": "1130", "debit": Decimal("1000"), "credit": Decimal("0")},
+                {"account": "4100", "debit": Decimal("0"), "credit": Decimal("1000")},
             ],
-            currency='USD',
-            exchange_rate=Decimal('3.67'),
-            description='USD sale',
+            currency="USD",
+            exchange_rate=Decimal("3.67"),
+            description="USD sale",
         )
         db.session.commit()
 
-        resp = client.get('/ledger/trial-balance')
+        resp = client.get("/ledger/trial-balance")
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
-        assert _formatted(Decimal('3670')) in html
-        assert _formatted(Decimal('1000')) not in html
+        assert _formatted(Decimal("3670")) in html
+        assert _formatted(Decimal("1000")) not in html
 
     def test_income_statement_is_base_currency(
-            self, client, db, owner_user, login_owner, chart_of_accounts):
+        self, client, db, owner_user, login_owner, chart_of_accounts
+    ):
         """قائمة الدخل تعرض الإيراد بعملة الأساس."""
         _post_entry(
             lines=[
-                {'account': '1130', 'debit': Decimal('1000'), 'credit': Decimal('0')},
-                {'account': '4100', 'debit': Decimal('0'), 'credit': Decimal('1000')},
+                {"account": "1130", "debit": Decimal("1000"), "credit": Decimal("0")},
+                {"account": "4100", "debit": Decimal("0"), "credit": Decimal("1000")},
             ],
-            currency='USD',
-            exchange_rate=Decimal('3.67'),
-            description='USD sale',
+            currency="USD",
+            exchange_rate=Decimal("3.67"),
+            description="USD sale",
         )
         db.session.commit()
 
-        resp = client.get('/ledger/income-statement')
+        resp = client.get("/ledger/income-statement")
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
-        assert _formatted(Decimal('3670')) in html
-        assert _formatted(Decimal('1000')) not in html
+        assert _formatted(Decimal("3670")) in html
+        assert _formatted(Decimal("1000")) not in html
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # F2 — المعادلة المحاسبية
 # ═══════════════════════════════════════════════════════════════════════════
 
-class TestBalanceSheetEquation:
 
+class TestBalanceSheetEquation:
     def test_balance_sheet_reports_non_zero_delta(
-            self, client, db, owner_user, login_owner, chart_of_accounts):
+        self, client, db, owner_user, login_owner, chart_of_accounts
+    ):
         """قيد غير متوازن يُظهر تنبيهاً أحمر بالفرق في الميزانية."""
-        cash = GLAccount.query.filter_by(code='1110').first()
+        cash = GLAccount.query.filter_by(code="1110").first()
         entry = GLJournalEntry(
-            entry_number='JE-P0-UNBALANCED',
-            description='قيد غير متوازن عمداً',
-            entry_type='manual',
+            entry_number="JE-P0-UNBALANCED",
+            description="قيد غير متوازن عمداً",
+            entry_type="manual",
             is_posted=True,
             is_reversed=False,
             created_by=owner_user.id,
         )
         db.session.add(entry)
         db.session.flush()
-        db.session.add(GLJournalLine(
-            entry_id=entry.id,
-            account_id=cash.id,
-            debit=Decimal('500'),
-            credit=Decimal('0'),
-            amount_base=Decimal('500'),
-        ))
-        db.session.commit()
-
-        resp = client.get('/ledger/balance-sheet')
-        assert resp.status_code == 200
-        html = resp.get_data(as_text=True)
-
-        assert 'الميزانية غير متوازنة' in html
-        assert _formatted(Decimal('500')) in html
-
-    def test_balance_sheet_is_balanced_for_balanced_ledger(
-            self, client, db, owner_user, login_owner, chart_of_accounts):
-        """دفتر متوازن ⇒ لا تنبيه imbalances."""
-        _post_entry(
-            lines=[
-                {'account': '1110', 'debit': Decimal('1000'), 'credit': Decimal('0')},
-                {'account': '4100', 'debit': Decimal('0'), 'credit': Decimal('1000')},
-            ],
-            description='balanced sale',
+        db.session.add(
+            GLJournalLine(
+                entry_id=entry.id,
+                account_id=cash.id,
+                debit=Decimal("500"),
+                credit=Decimal("0"),
+                amount_base=Decimal("500"),
+            )
         )
         db.session.commit()
 
-        resp = client.get('/ledger/balance-sheet')
+        resp = client.get("/ledger/balance-sheet")
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
-        assert 'الميزانية غير متوازنة' not in html
-        assert 'الميزانية متوازنة' in html
+
+        assert "الميزانية غير متوازنة" in html
+        assert _formatted(Decimal("500")) in html
+
+    def test_balance_sheet_is_balanced_for_balanced_ledger(
+        self, client, db, owner_user, login_owner, chart_of_accounts
+    ):
+        """دفتر متوازن ⇒ لا تنبيه imbalances."""
+        _post_entry(
+            lines=[
+                {"account": "1110", "debit": Decimal("1000"), "credit": Decimal("0")},
+                {"account": "4100", "debit": Decimal("0"), "credit": Decimal("1000")},
+            ],
+            description="balanced sale",
+        )
+        db.session.commit()
+
+        resp = client.get("/ledger/balance-sheet")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        assert "الميزانية غير متوازنة" not in html
+        assert "الميزانية متوازنة" in html
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # F3/F5 — قائمة التدفقات النقدية
 # ═══════════════════════════════════════════════════════════════════════════
 
-class TestCashFlowStatement:
 
+class TestCashFlowStatement:
     def test_reversed_entry_does_not_distort_cash_flow(
-            self, client, db, owner_user, login_owner, chart_of_accounts):
+        self, client, db, owner_user, login_owner, chart_of_accounts
+    ):
         """القيد المعكوس وأصله يلغيان أثرهما — لا يظهر القيد العاكس وحده."""
         entry = _post_entry(
             lines=[
-                {'account': '1110', 'debit': Decimal('1000'), 'credit': Decimal('0')},
-                {'account': '4100', 'debit': Decimal('0'), 'credit': Decimal('1000')},
+                {"account": "1110", "debit": Decimal("1000"), "credit": Decimal("0")},
+                {"account": "4100", "debit": Decimal("0"), "credit": Decimal("1000")},
             ],
-            description='sale to be reversed',
+            description="sale to be reversed",
         )
         db.session.commit()
 
-        entry.reverse_entry(description='reversal')
+        entry.reverse_entry(description="reversal")
         db.session.commit()
 
         report = CashFlowService.generate_gl_cash_flow(
-            date.today() - timedelta(days=2), date.today() + timedelta(days=2))
+            date.today() - timedelta(days=2), date.today() + timedelta(days=2)
+        )
 
-        assert report['operating_total'] == Decimal('0')
-        assert report['net_change'] == Decimal('0')
+        assert report["operating_total"] == Decimal("0")
+        assert report["net_change"] == Decimal("0")
         # لا يبقى أي بند بقيمة 1000 في القائمة
-        assert all(value == Decimal('0') for value in report['operating_items'].values())
+        assert all(
+            value == Decimal("0") for value in report["operating_items"].values()
+        )
 
-        resp = client.get('/reports/cash-flow')
+        resp = client.get("/reports/cash-flow")
         assert resp.status_code == 200
 
     def test_cash_flow_screen_and_export_agree(
-            self, client, db, owner_user, login_owner, chart_of_accounts):
+        self, client, db, owner_user, login_owner, chart_of_accounts
+    ):
         """صفحة التدفقات النقدية والتصدير يعرضان نفس الأرقام."""
         _post_entry(
             lines=[
-                {'account': '1110', 'debit': Decimal('1000'), 'credit': Decimal('0')},
-                {'account': '4100', 'debit': Decimal('0'), 'credit': Decimal('1000')},
+                {"account": "1110", "debit": Decimal("1000"), "credit": Decimal("0")},
+                {"account": "4100", "debit": Decimal("0"), "credit": Decimal("1000")},
             ],
-            description='sale',
+            description="sale",
         )
         db.session.commit()
 
         report = CashFlowService.generate_gl_cash_flow(
-            date.today() - timedelta(days=2), date.today() + timedelta(days=2))
-        assert report['operating_total'] == Decimal('1000')
+            date.today() - timedelta(days=2), date.today() + timedelta(days=2)
+        )
+        assert report["operating_total"] == Decimal("1000")
 
-        page = client.get('/reports/cash-flow')
+        page = client.get("/reports/cash-flow")
         assert page.status_code == 200
         page_html = page.get_data(as_text=True)
-        assert _formatted(report['operating_total']) in page_html
+        assert _formatted(report["operating_total"]) in page_html
 
-        export = client.get('/reports/cash-flow/export?format=csv')
+        export = client.get("/reports/cash-flow/export?format=csv")
         assert export.status_code == 200
-        body = export.get_data(as_text=False).decode('utf-8-sig')
+        body = export.get_data(as_text=False).decode("utf-8-sig")
         rows = list(csv.reader(io.StringIO(body)))
         # كل صف يعرض القسم والحساب والصافي
-        assert any('تشغيلي' in (row[0] or '') for row in rows if row), body
-        assert any(str(float(report['operating_total'])) in (row[-1] or '')
-                   for row in rows if row), body
+        assert any("تشغيلي" in (row[0] or "") for row in rows if row), body
+        assert any(
+            str(float(report["operating_total"])) in (row[-1] or "")
+            for row in rows
+            if row
+        ), body
 
     def test_ledger_cash_flow_uses_same_source(
-            self, client, db, owner_user, login_owner, chart_of_accounts):
+        self, client, db, owner_user, login_owner, chart_of_accounts
+    ):
         """صفحة دفتر الأستاذ تعرض نفس أرقام صفحة التقارير."""
         _post_entry(
             lines=[
-                {'account': '1110', 'debit': Decimal('750'), 'credit': Decimal('0')},
-                {'account': '4100', 'debit': Decimal('0'), 'credit': Decimal('750')},
+                {"account": "1110", "debit": Decimal("750"), "credit": Decimal("0")},
+                {"account": "4100", "debit": Decimal("0"), "credit": Decimal("750")},
             ],
-            description='sale',
+            description="sale",
         )
         db.session.commit()
 
-        params = (f'date_from={(date.today() - timedelta(days=2)).isoformat()}'
-                  f'&date_to={(date.today() + timedelta(days=2)).isoformat()}')
+        params = (
+            f"date_from={(date.today() - timedelta(days=2)).isoformat()}"
+            f"&date_to={(date.today() + timedelta(days=2)).isoformat()}"
+        )
 
-        ledger_page = client.get(f'/ledger/cash-flow?{params}')
+        ledger_page = client.get(f"/ledger/cash-flow?{params}")
         assert ledger_page.status_code == 200
         ledger_html = ledger_page.get_data(as_text=True)
 
         report = CashFlowService.generate_gl_cash_flow(
-            date.today() - timedelta(days=2), date.today() + timedelta(days=2))
-        assert _formatted(report['operating_total']) in ledger_html
+            date.today() - timedelta(days=2), date.today() + timedelta(days=2)
+        )
+        assert _formatted(report["operating_total"]) in ledger_html
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # F4 — تقرير ضريبة القيمة المضافة
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _make_sale(db, customer, seller_id, number, net, tax_rate, tax_amount,
-               currency=BASE_CURRENCY, exchange_rate=Decimal('1')):
+
+def _make_sale(
+    db,
+    customer,
+    seller_id,
+    number,
+    net,
+    tax_rate,
+    tax_amount,
+    currency=BASE_CURRENCY,
+    exchange_rate=Decimal("1"),
+):
     gross = net + tax_amount
     sale = Sale(
         sale_number=number,
@@ -302,12 +338,12 @@ def _make_sale(db, customer, seller_id, number, net, tax_rate, tax_amount,
         total_amount=gross,
         currency=currency,
         exchange_rate=exchange_rate,
-        amount_base=(gross * exchange_rate).quantize(Decimal('0.001')),
-        paid_amount=Decimal('0'),
-        paid_amount_base=Decimal('0'),
+        amount_base=(gross * exchange_rate).quantize(Decimal("0.001")),
+        paid_amount=Decimal("0"),
+        paid_amount_base=Decimal("0"),
         balance_due=gross,
-        payment_status='unpaid',
-        status='confirmed',
+        payment_status="unpaid",
+        status="confirmed",
         is_active=True,
         sale_date=datetime.now(),
     )
@@ -316,11 +352,11 @@ def _make_sale(db, customer, seller_id, number, net, tax_rate, tax_amount,
     return sale
 
 
-def _make_credit_note(db, sale, customer, product, number, net,
-                      tax_rate=Decimal('5')):
+def _make_credit_note(db, sale, customer, product, number, net, tax_rate=Decimal("5")):
     """إشعار دائن (مرتجع) على مستوى سطر واحد."""
-    tax = (Decimal(str(net)) * Decimal(str(tax_rate)) / Decimal('100')).quantize(
-        Decimal('0.001'))
+    tax = (Decimal(str(net)) * Decimal(str(tax_rate)) / Decimal("100")).quantize(
+        Decimal("0.001")
+    )
     credit_note = ProductReturn(
         return_number=number,
         sale_id=sale.id,
@@ -330,289 +366,405 @@ def _make_credit_note(db, sale, customer, product, number, net,
         currency=sale.currency,
         exchange_rate=sale.exchange_rate,
         amount_base=net,
-        status='approved',
+        status="approved",
         return_date=datetime.now(),
     )
     db.session.add(credit_note)
     db.session.flush()
-    db.session.add(ProductReturnLine(
-        return_id=credit_note.id,
-        product_id=product.id,
-        quantity=Decimal('1'),
-        unit_price=net,
-        line_total=net,
-    ))
+    db.session.add(
+        ProductReturnLine(
+            return_id=credit_note.id,
+            product_id=product.id,
+            quantity=Decimal("1"),
+            unit_price=net,
+            line_total=net,
+        )
+    )
     db.session.commit()
     return credit_note
 
 
 class TestVatReport:
-
     def test_credit_notes_are_limited_to_owning_sale_tenant(
-            self, client, db, owner_user, login_owner, test_customer, test_product):
+        self, client, db, owner_user, login_owner, test_customer, test_product
+    ):
         from models.tenant import Tenant
-        from models.tenant_scope import (get_current_tenant_id,
-                                         set_current_tenant_id)
+        from models.tenant_scope import get_current_tenant_id, set_current_tenant_id
         from routes.reports import _vat_report_data
 
-        a = Tenant(name='VAT scope A', name_ar='شركة أ', slug='vat-scope-a')
-        b = Tenant(name='VAT scope B', name_ar='شركة ب', slug='vat-scope-b')
+        a = Tenant(name="VAT scope A", name_ar="شركة أ", slug="vat-scope-a")
+        b = Tenant(name="VAT scope B", name_ar="شركة ب", slug="vat-scope-b")
         db.session.add_all([a, b])
         db.session.commit()
-        sale_a = _make_sale(db, test_customer, owner_user.id, 'S-SCOPE-A',
-                            Decimal('100'), Decimal('5'), Decimal('5'))
-        sale_b = _make_sale(db, test_customer, owner_user.id, 'S-SCOPE-B',
-                            Decimal('100'), Decimal('5'), Decimal('5'))
+        sale_a = _make_sale(
+            db,
+            test_customer,
+            owner_user.id,
+            "S-SCOPE-A",
+            Decimal("100"),
+            Decimal("5"),
+            Decimal("5"),
+        )
+        sale_b = _make_sale(
+            db,
+            test_customer,
+            owner_user.id,
+            "S-SCOPE-B",
+            Decimal("100"),
+            Decimal("5"),
+            Decimal("5"),
+        )
         sale_a.tenant_id, sale_b.tenant_id = a.id, b.id
         db.session.commit()
-        _make_credit_note(db, sale_a, test_customer, test_product, 'R-SCOPE-A', Decimal('10'))
-        _make_credit_note(db, sale_b, test_customer, test_product, 'R-SCOPE-B', Decimal('20'))
+        _make_credit_note(
+            db, sale_a, test_customer, test_product, "R-SCOPE-A", Decimal("10")
+        )
+        _make_credit_note(
+            db, sale_b, test_customer, test_product, "R-SCOPE-B", Decimal("20")
+        )
         previous = get_current_tenant_id()
         try:
             set_current_tenant_id(a.id)
-            rows = _vat_report_data()['credit_notes']
-            assert [row['number'] for row in rows] == ['R-SCOPE-A']
+            rows = _vat_report_data()["credit_notes"]
+            assert [row["number"] for row in rows] == ["R-SCOPE-A"]
         finally:
             set_current_tenant_id(previous)
 
     def test_zero_and_exempt_returns_reduce_their_own_buckets(
-            self, client, db, owner_user, login_owner, test_customer, test_product):
+        self, client, db, owner_user, login_owner, test_customer, test_product
+    ):
         from routes.reports import _vat_report_data
 
-        zero = _make_sale(db, test_customer, owner_user.id, 'S-ZERO-BUCKET',
-                          Decimal('100'), Decimal('0'), Decimal('0'))
-        exempt = _make_sale(db, test_customer, owner_user.id, 'S-EXEMPT-BUCKET',
-                            Decimal('80'), Decimal('0'), Decimal('0'))
-        zero.tax_treatment = 'zero'
-        exempt.tax_treatment = 'exempt'
+        zero = _make_sale(
+            db,
+            test_customer,
+            owner_user.id,
+            "S-ZERO-BUCKET",
+            Decimal("100"),
+            Decimal("0"),
+            Decimal("0"),
+        )
+        exempt = _make_sale(
+            db,
+            test_customer,
+            owner_user.id,
+            "S-EXEMPT-BUCKET",
+            Decimal("80"),
+            Decimal("0"),
+            Decimal("0"),
+        )
+        zero.tax_treatment = "zero"
+        exempt.tax_treatment = "exempt"
         db.session.commit()
-        _make_credit_note(db, zero, test_customer, test_product, 'R-ZERO-BUCKET',
-                          Decimal('20'), Decimal('0'))
-        _make_credit_note(db, exempt, test_customer, test_product, 'R-EXEMPT-BUCKET',
-                          Decimal('30'), Decimal('0'))
-        summary = _vat_report_data()['summary']
-        assert summary['total_zero_rated_sales'] == Decimal('80')
-        assert summary['total_exempt_sales'] == Decimal('50')
-        assert summary['total_taxable_sales'] == Decimal('0')
+        _make_credit_note(
+            db,
+            zero,
+            test_customer,
+            test_product,
+            "R-ZERO-BUCKET",
+            Decimal("20"),
+            Decimal("0"),
+        )
+        _make_credit_note(
+            db,
+            exempt,
+            test_customer,
+            test_product,
+            "R-EXEMPT-BUCKET",
+            Decimal("30"),
+            Decimal("0"),
+        )
+        summary = _vat_report_data()["summary"]
+        assert summary["total_zero_rated_sales"] == Decimal("80")
+        assert summary["total_exempt_sales"] == Decimal("50")
+        assert summary["total_taxable_sales"] == Decimal("0")
 
     def test_zero_and_exempt_purchases_reduce_into_own_buckets(
-            self, client, db, owner_user, login_owner, test_customer):
+        self, client, db, owner_user, login_owner, test_customer
+    ):
         from routes.reports import _vat_report_data
 
-        supplier = Supplier(name='VAT Supplier 2', is_active=True)
+        supplier = Supplier(name="VAT Supplier 2", is_active=True)
         db.session.add(supplier)
         db.session.commit()
 
         def _purchase(number, net, rate, treatment):
-            tax = (net * rate / Decimal('100')).quantize(Decimal('0.001'))
+            tax = (net * rate / Decimal("100")).quantize(Decimal("0.001"))
             purchase = Purchase(
-                purchase_number=number, supplier_id=supplier.id,
-                supplier_name=supplier.name, subtotal=net,
-                tax_rate=rate, tax_amount=tax,
-                total_amount=net + tax, currency=BASE_CURRENCY,
-                exchange_rate=Decimal('1'), amount_base=net + tax,
-                status='confirmed', user_id=owner_user.id,
-                purchase_date=datetime.now(), tax_treatment=treatment,
+                purchase_number=number,
+                supplier_id=supplier.id,
+                supplier_name=supplier.name,
+                subtotal=net,
+                tax_rate=rate,
+                tax_amount=tax,
+                total_amount=net + tax,
+                currency=BASE_CURRENCY,
+                exchange_rate=Decimal("1"),
+                amount_base=net + tax,
+                status="confirmed",
+                user_id=owner_user.id,
+                purchase_date=datetime.now(),
+                tax_treatment=treatment,
             )
             db.session.add(purchase)
             db.session.commit()
             return purchase
 
-        _purchase('P-ZERO-BUCKET', Decimal('120'), Decimal('0'), 'zero')
-        _purchase('P-EXEMPT-BUCKET', Decimal('80'), Decimal('0'), 'exempt')
-        _purchase('P-AMBIG-BUCKET', Decimal('30'), Decimal('0'), 'standard')
-        _purchase('P-TAX-BUCKET', Decimal('200'), Decimal('5'), 'standard')
+        _purchase("P-ZERO-BUCKET", Decimal("120"), Decimal("0"), "zero")
+        _purchase("P-EXEMPT-BUCKET", Decimal("80"), Decimal("0"), "exempt")
+        _purchase("P-AMBIG-BUCKET", Decimal("30"), Decimal("0"), "standard")
+        _purchase("P-TAX-BUCKET", Decimal("200"), Decimal("5"), "standard")
 
-        summary = _vat_report_data()['summary']
-        assert summary['total_zero_rated_purchases'] == Decimal('120')
-        assert summary['total_exempt_purchases'] == Decimal('80')
-        assert summary['total_unclassified_purchases'] == Decimal('30')
-        assert summary['total_taxable_purchases'] == Decimal('200')
-        assert summary['total_input_vat'] == Decimal('10.000')
+        summary = _vat_report_data()["summary"]
+        assert summary["total_zero_rated_purchases"] == Decimal("120")
+        assert summary["total_exempt_purchases"] == Decimal("80")
+        assert summary["total_unclassified_purchases"] == Decimal("30")
+        assert summary["total_taxable_purchases"] == Decimal("200")
+        assert summary["total_input_vat"] == Decimal("10.000")
 
     def test_vat_report_uses_net_taxable_base_and_credit_note_reversal(
-            self, client, db, owner_user, login_owner, test_customer,
-            test_product):
+        self, client, db, owner_user, login_owner, test_customer, test_product
+    ):
         """الأساس الخاضع بدون ضريبة، والمرتجع يعكس ضريبة المخرجات."""
         from routes.reports import _vat_report_data
 
-        sale = _make_sale(db, test_customer, owner_user.id, 'S-VAT-P0-1',
-                          Decimal('500'), Decimal('5'), Decimal('25'))
-        _make_credit_note(db, sale, test_customer, test_product, 'R-VAT-P0-1',
-                          Decimal('100'), Decimal('5'))
+        sale = _make_sale(
+            db,
+            test_customer,
+            owner_user.id,
+            "S-VAT-P0-1",
+            Decimal("500"),
+            Decimal("5"),
+            Decimal("25"),
+        )
+        _make_credit_note(
+            db,
+            sale,
+            test_customer,
+            test_product,
+            "R-VAT-P0-1",
+            Decimal("100"),
+            Decimal("5"),
+        )
 
         data = _vat_report_data()
-        summary = data['summary']
+        summary = data["summary"]
 
         # المبيعات الخاضعة: 525 إجمالية − 25 ضريبة = 500 أساس خاضع
         # (قبل خصم المرتجع)
-        assert summary['total_credit_notes_net'] == Decimal('100')
-        assert summary['total_credit_notes_vat'] == Decimal('5')
+        assert summary["total_credit_notes_net"] == Decimal("100")
+        assert summary["total_credit_notes_vat"] == Decimal("5")
         # بعد خصم المرتجع (100 أساس + 5 ضريبة) من المبيعات وضريبة المخرجات
-        assert summary['total_taxable_sales'] == Decimal('400')
-        assert summary['total_output_vat'] == Decimal('20')
+        assert summary["total_taxable_sales"] == Decimal("400")
+        assert summary["total_output_vat"] == Decimal("20")
 
         # المرتجع لا يظهر ضمن قائمة المبيعات الخاضعة
-        taxable_numbers = [row['number'] for row in data['taxable_sales']]
-        assert 'R-VAT-P0-1' not in taxable_numbers
-        assert 'S-VAT-P0-1' in taxable_numbers
+        taxable_numbers = [row["number"] for row in data["taxable_sales"]]
+        assert "R-VAT-P0-1" not in taxable_numbers
+        assert "S-VAT-P0-1" in taxable_numbers
         # لكنه يظهر في قسم إشعارات الدائنة
-        assert [row['number'] for row in data['credit_notes']] == ['R-VAT-P0-1']
+        assert [row["number"] for row in data["credit_notes"]] == ["R-VAT-P0-1"]
 
-        resp = client.get('/reports/vat-report')
+        resp = client.get("/reports/vat-report")
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
-        assert _formatted(Decimal('20')) in html   # ضريبة المخرجات بعد العكس
-        assert _formatted(Decimal('400')) in html  # الأساس الخاضع بعد خصم المرتجع
-        assert 'R-VAT-P0-1' in html
+        assert _formatted(Decimal("20")) in html  # ضريبة المخرجات بعد العكس
+        assert _formatted(Decimal("400")) in html  # الأساس الخاضع بعد خصم المرتجع
+        assert "R-VAT-P0-1" in html
 
     def test_vat_report_excludes_archived_documents(
-            self, client, db, owner_user, login_owner, test_customer):
+        self, client, db, owner_user, login_owner, test_customer
+    ):
         """المستند المؤرشف (حالةه بقيت confirmed) لا يُحتسب في التقرير."""
         from models import ArchivedRecord
         from routes.reports import _vat_report_data
 
-        sale = _make_sale(db, test_customer, owner_user.id, 'S-VAT-ARCH',
-                          Decimal('500'), Decimal('5'), Decimal('25'))
-        db.session.add(ArchivedRecord(
-            table_name='sales',
-            record_id=sale.id,
-            data={'sale_number': sale.sale_number},
-            reason='test archive',
-        ))
+        sale = _make_sale(
+            db,
+            test_customer,
+            owner_user.id,
+            "S-VAT-ARCH",
+            Decimal("500"),
+            Decimal("5"),
+            Decimal("25"),
+        )
+        db.session.add(
+            ArchivedRecord(
+                table_name="sales",
+                record_id=sale.id,
+                data={"sale_number": sale.sale_number},
+                reason="test archive",
+            )
+        )
         db.session.commit()
 
         data = _vat_report_data()
-        assert data['summary']['total_output_vat'] == Decimal('0')
-        assert data['taxable_sales'] == []
+        assert data["summary"]["total_output_vat"] == Decimal("0")
+        assert data["taxable_sales"] == []
 
     def test_vat_export_totals_equal_screen_totals(
-            self, client, db, owner_user, login_owner, test_customer,
-            test_product):
+        self, client, db, owner_user, login_owner, test_customer, test_product
+    ):
         """تصدير CSV يعطي نفس الإجماليات المعروضة على الشاشة."""
         from routes.reports import _vat_report_data
 
-        sale = _make_sale(db, test_customer, owner_user.id, 'S-VAT-EXP',
-                          Decimal('500'), Decimal('5'), Decimal('25'))
-        _make_credit_note(db, sale, test_customer, test_product, 'R-VAT-EXP',
-                          Decimal('100'), Decimal('5'))
+        sale = _make_sale(
+            db,
+            test_customer,
+            owner_user.id,
+            "S-VAT-EXP",
+            Decimal("500"),
+            Decimal("5"),
+            Decimal("25"),
+        )
+        _make_credit_note(
+            db,
+            sale,
+            test_customer,
+            test_product,
+            "R-VAT-EXP",
+            Decimal("100"),
+            Decimal("5"),
+        )
 
-        supplier = Supplier(name='VAT Supplier', is_active=True)
+        supplier = Supplier(name="VAT Supplier", is_active=True)
         db.session.add(supplier)
         db.session.commit()
         purchase = Purchase(
-            purchase_number='P-VAT-EXP',
+            purchase_number="P-VAT-EXP",
             supplier_id=supplier.id,
             supplier_name=supplier.name,
-            subtotal=Decimal('200'),
-            tax_rate=Decimal('5'),
-            tax_amount=Decimal('10'),
-            total_amount=Decimal('210'),
+            subtotal=Decimal("200"),
+            tax_rate=Decimal("5"),
+            tax_amount=Decimal("10"),
+            total_amount=Decimal("210"),
             currency=BASE_CURRENCY,
-            exchange_rate=Decimal('1'),
-            amount_base=Decimal('210'),
-            status='confirmed',
+            exchange_rate=Decimal("1"),
+            amount_base=Decimal("210"),
+            status="confirmed",
             user_id=owner_user.id,
             purchase_date=datetime.now(),
         )
         db.session.add(purchase)
         db.session.commit()
 
-        summary = _vat_report_data()['summary']
+        summary = _vat_report_data()["summary"]
 
         # الشاشة
-        page = client.get('/reports/vat-report')
+        page = client.get("/reports/vat-report")
         assert page.status_code == 200
         html = page.get_data(as_text=True)
-        assert _formatted(summary['total_output_vat']) in html
-        assert _formatted(summary['total_input_vat']) in html
-        assert _formatted(summary['net_vat']) in html
-        assert _formatted(summary['total_exempt_sales']) in html
+        assert _formatted(summary["total_output_vat"]) in html
+        assert _formatted(summary["total_input_vat"]) in html
+        assert _formatted(summary["net_vat"]) in html
+        assert _formatted(summary["total_exempt_sales"]) in html
 
         # التصدير CSV
-        export = client.get('/reports/vat-report/export?format=csv')
+        export = client.get("/reports/vat-report/export?format=csv")
         assert export.status_code == 200
-        body = export.get_data(as_text=False).decode('utf-8-sig')
+        body = export.get_data(as_text=False).decode("utf-8-sig")
         rows = list(csv.reader(io.StringIO(body)))
         # Optional extra lines: zero-rated and unclassified must export too
-        assert 'إجمالي المبيعات الصفرية' in body
-        assert 'مشتريات صفر بلا تصنيف' in body
+        assert "إجمالي المبيعات الصفرية" in body
+        assert "مشتريات صفر بلا تصنيف" in body
 
         exported = {row[0]: row[1] for row in rows if len(row) >= 2 and row[0]}
 
-        assert float(exported['ضريبة المبيعات (Output VAT)']) == float(
-            summary['total_output_vat'])
-        assert float(exported['ضريبة المشتريات (Input VAT)']) == float(
-            summary['total_input_vat'])
-        assert float(exported['الرصيد النهائي']) == float(summary['net_vat'])
-        assert float(exported['إجمالي المبيعات المعفاة']) == float(
-            summary['total_exempt_sales'])
-        assert float(exported['إجمالي المشتريات المعفاة']) == float(
-            summary['total_exempt_purchases'])
+        assert float(exported["ضريبة المبيعات (Output VAT)"]) == float(
+            summary["total_output_vat"]
+        )
+        assert float(exported["ضريبة المشتريات (Input VAT)"]) == float(
+            summary["total_input_vat"]
+        )
+        assert float(exported["الرصيد النهائي"]) == float(summary["net_vat"])
+        assert float(exported["إجمالي المبيعات المعفاة"]) == float(
+            summary["total_exempt_sales"]
+        )
+        assert float(exported["إجمالي المشتريات المعفاة"]) == float(
+            summary["total_exempt_purchases"]
+        )
 
         # صفوف المشتريات لا تُدمج تحت عناوين المبيعات
-        headers = [row for row in rows if row and row[0] == 'رقم الفاتورة']
+        headers = [row for row in rows if row and row[0] == "رقم الفاتورة"]
         assert len(headers) >= 2  # عنوان المبيعات وعنوان المشتريات
 
     def test_vat_export_xlsx_totals_equal_screen_totals(
-            self, client, db, owner_user, login_owner, test_customer):
+        self, client, db, owner_user, login_owner, test_customer
+    ):
         """تصدير Excel يعطي نفس الإجماليات المعروضة على الشاشة."""
         from openpyxl import load_workbook
         from routes.reports import _vat_report_data
 
-        _make_sale(db, test_customer, owner_user.id, 'S-VAT-XLSX',
-                   Decimal('500'), Decimal('5'), Decimal('25'))
+        _make_sale(
+            db,
+            test_customer,
+            owner_user.id,
+            "S-VAT-XLSX",
+            Decimal("500"),
+            Decimal("5"),
+            Decimal("25"),
+        )
 
-        summary = _vat_report_data()['summary']
+        summary = _vat_report_data()["summary"]
 
-        export = client.get('/reports/vat-report/export?format=xlsx')
+        export = client.get("/reports/vat-report/export?format=xlsx")
         assert export.status_code == 200
         workbook = load_workbook(io.BytesIO(export.data))
-        sheet = workbook['الملخص']
+        sheet = workbook["الملخص"]
         exported = {row[0].value: row[1].value for row in sheet.iter_rows()}
 
-        assert float(exported['ضريبة المبيعات (Output VAT)']) == float(
-            summary['total_output_vat'])
-        assert float(exported['الرصيد النهائي']) == float(summary['net_vat'])
+        assert float(exported["ضريبة المبيعات (Output VAT)"]) == float(
+            summary["total_output_vat"]
+        )
+        assert float(exported["الرصيد النهائي"]) == float(summary["net_vat"])
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # F7 — ميزان المراجعة: المسودات والسطور اليتيمة
 # ═══════════════════════════════════════════════════════════════════════════
 
-class TestTrialBalanceScope:
 
+class TestTrialBalanceScope:
     def test_trial_balance_excludes_drafts_and_orphan_lines(
-            self, client, db, owner_user, login_owner, chart_of_accounts):
+        self, client, db, owner_user, login_owner, chart_of_accounts
+    ):
         """النسخة بلا فلتر تاريخ تُطابق النسخة المفلترة (بلا مسودات/يتيم)."""
-        cash = GLAccount.query.filter_by(code='1110').first()
+        cash = GLAccount.query.filter_by(code="1110").first()
 
         draft = GLJournalEntry(
-            entry_number='JE-P0-DRAFT',
-            description='مسودة',
-            entry_type='manual',
+            entry_number="JE-P0-DRAFT",
+            description="مسودة",
+            entry_type="manual",
             is_posted=False,
             is_reversed=False,
             created_by=owner_user.id,
         )
         db.session.add(draft)
         db.session.flush()
-        db.session.add(GLJournalLine(
-            entry_id=draft.id, account_id=cash.id,
-            debit=Decimal('999'), credit=Decimal('0'),
-            amount_base=Decimal('999')))
+        db.session.add(
+            GLJournalLine(
+                entry_id=draft.id,
+                account_id=cash.id,
+                debit=Decimal("999"),
+                credit=Decimal("0"),
+                amount_base=Decimal("999"),
+            )
+        )
         db.session.commit()
 
         # سطر يتيم: قيد حُذف بالقوة من قاعدة البيانات
         orphan = GLJournalLine(
-            entry_id=987654, account_id=cash.id,
-            debit=Decimal('777'), credit=Decimal('0'),
-            amount_base=Decimal('777'))
+            entry_id=987654,
+            account_id=cash.id,
+            debit=Decimal("777"),
+            credit=Decimal("0"),
+            amount_base=Decimal("777"),
+        )
         db.session.add(orphan)
         db.session.commit()
 
-        resp = client.get('/ledger/trial-balance')
+        resp = client.get("/ledger/trial-balance")
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
-        assert _formatted(Decimal('999')) not in html
-        assert _formatted(Decimal('777')) not in html
+        assert _formatted(Decimal("999")) not in html
+        assert _formatted(Decimal("777")) not in html

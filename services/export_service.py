@@ -3,6 +3,7 @@ Export Service — خدمة التصدير
 Export reports to Excel (.xlsx), PDF, and CSV.
 Reuses openpyxl + weasyprint already in requirements.txt.
 """
+
 from datetime import datetime, timezone
 from io import BytesIO, StringIO
 import csv
@@ -17,7 +18,7 @@ class ExportService:
     # ── CSV ──────────────────────────────────────────────────────────────
 
     @staticmethod
-    def export_to_csv(data, headers, filename='export.csv'):
+    def export_to_csv(data, headers, filename="export.csv"):
         """Export rows to a CSV file with UTF-8 BOM for Excel compat."""
         str_output = StringIO()
         writer = csv.writer(str_output)
@@ -26,16 +27,23 @@ class ExportService:
             writer.writerow(row)
 
         output = BytesIO()
-        output.write(b'\xef\xbb\xbf')
-        output.write(str_output.getvalue().encode('utf-8'))
+        output.write(b"\xef\xbb\xbf")
+        output.write(str_output.getvalue().encode("utf-8"))
         output.seek(0)
         return output
 
     # ── Excel (.xlsx) ────────────────────────────────────────────────────
 
     @staticmethod
-    def export_to_excel(title, headers, rows, filename='report.xlsx',  # noqa: C901
-                        summary=None, right_to_left=True, subtitle=None):
+    def export_to_excel(
+        title,
+        headers,
+        rows,
+        filename="report.xlsx",  # noqa: C901
+        summary=None,
+        right_to_left=True,
+        subtitle=None,
+    ):
         """
         Export data to a styled .xlsx workbook.
 
@@ -62,33 +70,38 @@ class ExportService:
             ws.sheet_view.rightToLeft = True
 
         # Styles
-        header_font = Font(bold=True, color='FFFFFF', size=11)
-        header_fill = PatternFill(start_color='4472C4', end_color='4472C4',
-                                  fill_type='solid')
-        header_align = Alignment(horizontal='center', vertical='center',
-                                 wrap_text=True)
-        thin_border = Border(
-            left=Side(style='thin'), right=Side(style='thin'),
-            top=Side(style='thin'), bottom=Side(style='thin')
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        header_fill = PatternFill(
+            start_color="4472C4", end_color="4472C4", fill_type="solid"
         )
-        money_fmt = '#,##0.000'
+        header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        thin_border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
+        )
+        money_fmt = "#,##0.000"
 
         # Title row
-        ws.merge_cells(start_row=1, start_column=1, end_row=1,
-                       end_column=len(headers))
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
         title_cell = ws.cell(row=1, column=1, value=title)
-        title_cell.font = Font(bold=True, size=14, color='4472C4')
-        title_cell.alignment = Alignment(horizontal='center')
+        title_cell.font = Font(bold=True, size=14, color="4472C4")
+        title_cell.alignment = Alignment(horizontal="center")
 
         # Timestamp
         ts_row = 2
-        ws.merge_cells(start_row=ts_row, start_column=1, end_row=ts_row,
-                       end_column=len(headers))
-        ts_cell = ws.cell(row=ts_row, column=1,
-                          value=(f"{subtitle} | " if subtitle else '') +
-                                f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}")
-        ts_cell.alignment = Alignment(horizontal='center')
-        ts_cell.font = Font(italic=True, color='888888')
+        ws.merge_cells(
+            start_row=ts_row, start_column=1, end_row=ts_row, end_column=len(headers)
+        )
+        ts_cell = ws.cell(
+            row=ts_row,
+            column=1,
+            value=(f"{subtitle} | " if subtitle else "")
+            + f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
+        )
+        ts_cell.alignment = Alignment(horizontal="center")
+        ts_cell.font = Font(italic=True, color="888888")
 
         # Headers
         header_row = 4
@@ -104,20 +117,24 @@ class ExportService:
             for col_idx, value in enumerate(row_data, 1):
                 cell = ws.cell(row=row_idx, column=col_idx, value=value)
                 cell.border = thin_border
-                cell.alignment = Alignment(vertical='center')
+                cell.alignment = Alignment(vertical="center")
                 # Auto-format numbers
                 if isinstance(value, (int, float)):
                     cell.number_format = money_fmt
-                    cell.alignment = Alignment(horizontal='right',
-                                               vertical='center')
+                    cell.alignment = Alignment(horizontal="right", vertical="center")
 
         # Summary section
         if summary:
             summary_row = header_row + len(rows) + 2
-            ws.merge_cells(start_row=summary_row, start_column=1,
-                           end_row=summary_row, end_column=len(headers))
-            ws.cell(row=summary_row, column=1,
-                    value='Summary / الإجماليات').font = Font(bold=True, size=12)
+            ws.merge_cells(
+                start_row=summary_row,
+                start_column=1,
+                end_row=summary_row,
+                end_column=len(headers),
+            )
+            ws.cell(
+                row=summary_row, column=1, value="Summary / الإجماليات"
+            ).font = Font(bold=True, size=12)
 
             for i, (label, value) in enumerate(summary.items()):
                 r = summary_row + 1 + i
@@ -130,13 +147,11 @@ class ExportService:
         max_rows_to_scan = min(len(rows), 100)
         for col_idx in range(1, len(headers) + 1):
             max_len = max(len(str(headers[col_idx - 1])), 12)
-            for row_idx in range(header_row + 1,
-                                 header_row + max_rows_to_scan + 1):
+            for row_idx in range(header_row + 1, header_row + max_rows_to_scan + 1):
                 val = ws.cell(row=row_idx, column=col_idx).value
                 if val:
                     max_len = max(max_len, min(len(str(val)), 40))
-            ws.column_dimensions[get_column_letter(col_idx)].width = (
-                max_len + 2)
+            ws.column_dimensions[get_column_letter(col_idx)].width = max_len + 2
 
         # Save
         output = BytesIO()
@@ -147,8 +162,15 @@ class ExportService:
     # ── PDF (via weasyprint) ─────────────────────────────────────────────
 
     @staticmethod
-    def export_to_pdf(title, headers, rows, filename='report.pdf',
-                      summary=None, right_to_left=True, subtitle=None):
+    def export_to_pdf(
+        title,
+        headers,
+        rows,
+        filename="report.pdf",
+        summary=None,
+        right_to_left=True,
+        subtitle=None,
+    ):
         """
         Render data as a styled PDF via weasyprint.
 
@@ -166,33 +188,33 @@ class ExportService:
         from weasyprint import HTML
         from html import escape
 
-        dir_attr = 'dir="rtl"' if right_to_left else ''
-        align = 'right' if right_to_left else 'left'
-        direction_css = 'direction:rtl;' if right_to_left else ''
+        dir_attr = 'dir="rtl"' if right_to_left else ""
+        align = "right" if right_to_left else "left"
+        direction_css = "direction:rtl;" if right_to_left else ""
         esc = escape
-        header_cells = ''.join(f'<th>{esc(str(h))}</th>' for h in headers)
-        generated_ts = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
-        meta_line = f'{subtitle} | ' if subtitle else ''
+        header_cells = "".join(f"<th>{esc(str(h))}</th>" for h in headers)
+        generated_ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+        meta_line = f"{subtitle} | " if subtitle else ""
 
-        rows_html = ''
+        rows_html = ""
         for row in rows:
-            cells = ''.join(
+            cells = "".join(
                 f'<td style="text-align:{align};padding:6px 8px;border:1px solid #ddd">{esc(str(cell))}</td>'
                 for cell in row
             )
-            rows_html += f'<tr>{cells}</tr>'
+            rows_html += f"<tr>{cells}</tr>"
 
-        summary_html = ''
+        summary_html = ""
         if summary:
-            rows_s = ''.join(
+            rows_s = "".join(
                 f'<tr><td style="font-weight:bold;padding:4px 8px">{esc(str(k))}</td>'
                 f'<td style="text-align:right;padding:4px 8px">{esc(str(v))}</td></tr>'
                 for k, v in summary.items()
             )
-            summary_html = f'''
+            summary_html = f"""
             <h3 style="margin-top:20px;color:#4472C4">Summary / الإجماليات</h3>
             <table style="border-collapse:collapse;width:50%">{rows_s}</table>
-            '''
+            """
 
         html_content = """<!DOCTYPE html>
 <html {dir_attr} lang="ar">
@@ -219,11 +241,15 @@ class ExportService:
   <div class="footer">Azad Systems — UAE-Sale ERP</div>
 </body>
 </html>""".format(
-            dir_attr=dir_attr, direction_css=direction_css,
-            title=esc(str(title)), generated_ts=generated_ts,
-            meta_line=esc(str(meta_line)) if meta_line else '',
-            header_cells=header_cells, rows_html=rows_html,
-            summary_html=summary_html)
+            dir_attr=dir_attr,
+            direction_css=direction_css,
+            title=esc(str(title)),
+            generated_ts=generated_ts,
+            meta_line=esc(str(meta_line)) if meta_line else "",
+            header_cells=header_cells,
+            rows_html=rows_html,
+            summary_html=summary_html,
+        )
 
         pdf_bytes = HTML(string=html_content).write_pdf()
         output = BytesIO(pdf_bytes)
@@ -235,72 +261,102 @@ class ExportService:
     @staticmethod
     def dicts_to_rows(items, keys):
         """Convert a list of dicts to a list of lists using `keys` order."""
-        return [[item.get(k, '') for k in keys] for item in items]
+        return [[item.get(k, "") for k in keys] for item in items]
 
     # ── Legacy CSV helpers (kept for backward compat) ────────────────────
 
     @staticmethod
     def export_purchases_to_csv(purchases):
-        headers = ['الرقم', 'الباقة', 'العميل', 'البريد الإلكتروني',
-                   'المبلغ', 'طريقة الدفع', 'الحالة', 'التاريخ']
+        headers = [
+            "الرقم",
+            "الباقة",
+            "العميل",
+            "البريد الإلكتروني",
+            "المبلغ",
+            "طريقة الدفع",
+            "الحالة",
+            "التاريخ",
+        ]
         data = []
         for p in purchases:
-            data.append([
-                p.id,
-                p.package.name_ar if p.package else 'N/A',
-                p.customer_name,
-                p.customer_email,
-                f'${p.amount_paid}',
-                p.payment_method,
-                p.payment_status,
-                p.created_at.strftime('%Y-%m-%d %H:%M') if p.created_at else 'N/A'
-            ])
-        return ExportService.export_to_csv(data, headers, 'purchases.csv')
+            data.append(
+                [
+                    p.id,
+                    p.package.name_ar if p.package else "N/A",
+                    p.customer_name,
+                    p.customer_email,
+                    f"${p.amount_paid}",
+                    p.payment_method,
+                    p.payment_status,
+                    p.created_at.strftime("%Y-%m-%d %H:%M") if p.created_at else "N/A",
+                ]
+            )
+        return ExportService.export_to_csv(data, headers, "purchases.csv")
 
     @staticmethod
     def export_donations_to_csv(donations):
-        headers = ['الرقم', 'المتبرع', 'البريد الإلكتروني', 'المبلغ',
-                   'طريقة الدفع', 'الحالة', 'التاريخ']
+        headers = [
+            "الرقم",
+            "المتبرع",
+            "البريد الإلكتروني",
+            "المبلغ",
+            "طريقة الدفع",
+            "الحالة",
+            "التاريخ",
+        ]
         data = []
         for d in donations:
-            data.append([
-                d.id,
-                d.donor_name or 'مجهول',
-                d.donor_email or 'N/A',
-                f'${d.amount_usd}',
-                d.payment_method,
-                d.status,
-                d.created_at.strftime('%Y-%m-%d %H:%M') if d.created_at else 'N/A'
-            ])
-        return ExportService.export_to_csv(data, headers, 'donations.csv')
+            data.append(
+                [
+                    d.id,
+                    d.donor_name or "مجهول",
+                    d.donor_email or "N/A",
+                    f"${d.amount_usd}",
+                    d.payment_method,
+                    d.status,
+                    d.created_at.strftime("%Y-%m-%d %H:%M") if d.created_at else "N/A",
+                ]
+            )
+        return ExportService.export_to_csv(data, headers, "donations.csv")
 
     @staticmethod
     def export_cards_to_csv(cards):
-        headers = ['الرقم', 'العميل', 'البريد الإلكتروني', 'البطاقة',
-                   'النوع', 'المبلغ', 'الحالة', 'التاريخ']
+        headers = [
+            "الرقم",
+            "العميل",
+            "البريد الإلكتروني",
+            "البطاقة",
+            "النوع",
+            "المبلغ",
+            "الحالة",
+            "التاريخ",
+        ]
         data = []
         for c in cards:
-            data.append([
-                c.id,
-                c.customer_name,
-                c.customer_email,
-                c.get_card_display() if hasattr(c, 'get_card_display') else 'N/A',
-                c.card_type or 'Unknown',
-                f'${c.amount}' if c.amount else 'N/A',
-                c.status,
-                c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else 'N/A'
-            ])
-        return ExportService.export_to_csv(data, headers, 'cards.csv')
+            data.append(
+                [
+                    c.id,
+                    c.customer_name,
+                    c.customer_email,
+                    c.get_card_display() if hasattr(c, "get_card_display") else "N/A",
+                    c.card_type or "Unknown",
+                    f"${c.amount}" if c.amount else "N/A",
+                    c.status,
+                    c.created_at.strftime("%Y-%m-%d %H:%M") if c.created_at else "N/A",
+                ]
+            )
+        return ExportService.export_to_csv(data, headers, "cards.csv")
 
     # ── Legacy PDF (HTML string) ─────────────────────────────────────────
 
     @staticmethod
-    def generate_pdf_report(title, data, filename='report.pdf'):
+    def generate_pdf_report(title, data, filename="report.pdf"):
         """Legacy: returns an HTML string for browser printing."""
-        generated_ts = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
-        stats_html = ExportService._generate_stats_html(data.get('stats', {}))
+        generated_ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+        stats_html = ExportService._generate_stats_html(data.get("stats", {}))
         table_html = ExportService._generate_table_html(
-            data.get('table_data', []), data.get('table_headers', []))
+            data.get("table_data", []), data.get("table_headers", [])
+        )
         html = """<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
@@ -323,13 +379,17 @@ tr:nth-child(even) {{ background-color: #f8f9fa; }}
 <p><strong>تاريخ التقرير:</strong> {generated_ts}</p>
 <div class="stats">{stats_html}</div>
 {table_html}
-</body></html>""".format(title=title, generated_ts=generated_ts,
-                         stats_html=stats_html, table_html=table_html)
+</body></html>""".format(
+            title=title,
+            generated_ts=generated_ts,
+            stats_html=stats_html,
+            table_html=table_html,
+        )
         return html
 
     @staticmethod
     def _generate_stats_html(stats):
-        return ''.join(
+        return "".join(
             f'<div class="stat-box"><div class="stat-number">{v}</div>'
             f'<div class="stat-label">{k}</div></div>'
             for k, v in stats.items()
@@ -338,9 +398,13 @@ tr:nth-child(even) {{ background-color: #f8f9fa; }}
     @staticmethod
     def _generate_table_html(data, headers):
         if not data or not headers:
-            return ''
-        html = '<table><thead><tr>' + ''.join(f'<th>{h}</th>' for h in headers) + '</tr></thead><tbody>'
+            return ""
+        html = (
+            "<table><thead><tr>"
+            + "".join(f"<th>{h}</th>" for h in headers)
+            + "</tr></thead><tbody>"
+        )
         for row in data:
-            html += '<tr>' + ''.join(f'<td>{c}</td>' for c in row) + '</tr>'
-        html += '</tbody></table>'
+            html += "<tr>" + "".join(f"<td>{c}</td>" for c in row) + "</tr>"
+        html += "</tbody></table>"
         return html

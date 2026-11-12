@@ -1,4 +1,5 @@
 """GuideLoader tests — نطاق آمن: Owner فقط، بدون تسريب"""
+
 from ai_knowledge.guide_loader import GuideLoader
 
 
@@ -14,7 +15,9 @@ def test_public_sections_loaded():
     pub = loader.public_sections()
     assert len(pub) > 20
     titles = [s.title for s in pub]
-    assert any("المبيعات" in t or "البدء" in t or "نظرة" in t or "Sales" in t for t in titles)
+    assert any(
+        "المبيعات" in t or "البدء" in t or "نظرة" in t or "Sales" in t for t in titles
+    )
 
 
 def test_owner_sections_loaded():
@@ -23,7 +26,10 @@ def test_owner_sections_loaded():
     own = loader.owner_sections()
     assert len(own) > 5
     titles = [s.title for s in own]
-    assert any("Dashboard" in t or "لوحة" in t or "Tenants" in t or "التينانت" in t for t in titles)
+    assert any(
+        "Dashboard" in t or "لوحة" in t or "Tenants" in t or "التينانت" in t
+        for t in titles
+    )
 
 
 def test_scoping_no_leak():
@@ -35,7 +41,10 @@ def test_scoping_no_leak():
     # Non-owner must not contain owner guide titles
     owner_titles = {s.title for s in loader.owner_sections()}
     non_owner_titles = {s.title for s in non_owner}
-    assert not (owner_titles & non_owner_titles) or len(non_owner_titles & owner_titles) == 0
+    assert (
+        not (owner_titles & non_owner_titles)
+        or len(non_owner_titles & owner_titles) == 0
+    )
 
 
 def test_search_respects_owner():
@@ -45,7 +54,11 @@ def test_search_respects_owner():
     hits_owner = loader.search("Tenants", is_owner=False, top_k=3)
     # Public search should return something (may be empty if no token match, but must not expose owner)
     for h in hits_public:
-        assert h["title"] not in [s.title for s in loader.owner_sections()] if loader.owner_sections() else True
+        assert (
+            h["title"] not in [s.title for s in loader.owner_sections()]
+            if loader.owner_sections()
+            else True
+        )
     # Search for owner-only term with is_owner=False should not return owner section
     owner_titles = {s.title for s in loader.owner_sections()}
     for h in hits_owner:

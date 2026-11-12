@@ -179,7 +179,7 @@ class DocumentGenerator:
             from models import Sale, Customer, Product
 
             # إنشاء البيانات حسب نوع البيانات
-            if data_type == 'sales':
+            if data_type == "sales":
                 sales = Sale.query.all()
                 if start_date:
                     sales = [s for s in sales if s.created_at.date() >= start_date]
@@ -187,53 +187,93 @@ class DocumentGenerator:
                     sales = [s for s in sales if s.created_at.date() <= end_date]
 
                 data = []
-                headers = ['رقم الفاتورة', 'العميل', 'التاريخ', 'المجموع', 'المدفوع', 'المتبقي', 'الحالة']
+                headers = [
+                    "رقم الفاتورة",
+                    "العميل",
+                    "التاريخ",
+                    "المجموع",
+                    "المدفوع",
+                    "المتبقي",
+                    "الحالة",
+                ]
                 for sale in sales:
-                    data.append([
-                        sale.id,
-                        sale.customer.name if sale.customer else 'غير محدد',
-                        sale.created_at.strftime('%Y-%m-%d'),
-                        float(sale.total_amount),
-                        float(sale.paid_amount),
-                        float(sale.balance_due),
-                        'مدفوع' if sale.balance_due == 0 else 'جزئي' if sale.paid_amount > 0 else 'غير مدفوع'
-                    ])
+                    data.append(
+                        [
+                            sale.id,
+                            sale.customer.name if sale.customer else "غير محدد",
+                            sale.created_at.strftime("%Y-%m-%d"),
+                            float(sale.total_amount),
+                            float(sale.paid_amount),
+                            float(sale.balance_due),
+                            "مدفوع"
+                            if sale.balance_due == 0
+                            else "جزئي"
+                            if sale.paid_amount > 0
+                            else "غير مدفوع",
+                        ]
+                    )
 
-                filename = f"sales_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                filename = (
+                    f"sales_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                )
 
-            elif data_type == 'customers':
+            elif data_type == "customers":
                 customers = Customer.query.all()
-                headers = ['المعرف', 'الاسم', 'النوع', 'الهاتف', 'الإيميل', 'الرصيد', 'تاريخ الإضافة']
+                headers = [
+                    "المعرف",
+                    "الاسم",
+                    "النوع",
+                    "الهاتف",
+                    "الإيميل",
+                    "الرصيد",
+                    "تاريخ الإضافة",
+                ]
                 data = []
                 for customer in customers:
-                    data.append([
-                        customer.id,
-                        customer.name,
-                        customer.customer_type,
-                        customer.phone or '',
-                        customer.email or '',
-                        float(customer.get_balance_aed()),
-                        customer.created_at.strftime('%Y-%m-%d')
-                    ])
+                    data.append(
+                        [
+                            customer.id,
+                            customer.name,
+                            customer.customer_type,
+                            customer.phone or "",
+                            customer.email or "",
+                            float(customer.get_balance_aed()),
+                            customer.created_at.strftime("%Y-%m-%d"),
+                        ]
+                    )
 
-                filename = f"customers_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                filename = (
+                    f"customers_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                )
 
-            elif data_type == 'products':
+            elif data_type == "products":
                 products = Product.query.all()
-                headers = ['المعرف', 'الاسم', 'SKU', 'المخزون', 'السعر', 'الفئة', 'حد التنبيه']
+                headers = [
+                    "المعرف",
+                    "الاسم",
+                    "SKU",
+                    "المخزون",
+                    "السعر",
+                    "الفئة",
+                    "حد التنبيه",
+                ]
                 data = []
                 for product in products:
-                    data.append([
-                        product.id,
-                        product.name,
-                        product.sku,
-                        product.current_stock,
-                        float(product.unit_price),
-                        product.category.name if product.category else 'غير محدد',
-                        product.min_stock_alert
-                    ])
+                    data.append(
+                        [
+                            product.id,
+                            product.name,
+                            product.sku,
+                            product.current_stock,
+                            float(product.unit_price),
+                            product.category.name if product.category else "غير محدد",
+                            product.min_stock_alert,
+                        ]
+                    )
 
-                filename = f"products_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                filename = (
+                    f"products_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                )
 
             else:
                 return None, "نوع البيانات غير صحيح"
@@ -246,7 +286,9 @@ class DocumentGenerator:
 
             # تحويل إلى BytesIO
             output_bytes = io.BytesIO()
-            output_bytes.write(output.getvalue().encode('utf-8-sig'))  # UTF-8 with BOM for Excel
+            output_bytes.write(
+                output.getvalue().encode("utf-8-sig")
+            )  # UTF-8 with BOM for Excel
             output_bytes.seek(0)
 
             return output_bytes, filename
@@ -288,7 +330,7 @@ class DocumentGenerator:
             ╠══════════════════════════════════════════════════════════════╣
             """
 
-            balance = Decimal('0')
+            balance = Decimal("0")
             for sale in sales:
                 balance += sale.total_amount
                 statement_content += """

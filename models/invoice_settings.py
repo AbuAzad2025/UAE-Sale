@@ -12,13 +12,14 @@ class InvoiceSettings(db.Model):
     """
     إعدادات ترويسات الفواتير وسندات القبض
     """
-    __tablename__ = 'invoice_settings'
+
+    __tablename__ = "invoice_settings"
 
     id = db.Column(db.Integer, primary_key=True)
 
     # Company Info - معلومات الشركة
-    company_name_ar = db.Column(db.String(200), nullable=False, default='شركة أزاد')
-    company_name_en = db.Column(db.String(200), nullable=False, default='Azad Company')
+    company_name_ar = db.Column(db.String(200), nullable=False, default="شركة أزاد")
+    company_name_en = db.Column(db.String(200), nullable=False, default="Azad Company")
 
     # Logos - الشعارات
     logo_url = db.Column(db.String(500))  # Main logo (URL)
@@ -46,14 +47,14 @@ class InvoiceSettings(db.Model):
     swift_code = db.Column(db.String(50))
 
     # Invoice Design - تصميم الفاتورة
-    header_color = db.Column(db.String(20), default='#667eea')  # لون الترويسة
-    accent_color = db.Column(db.String(20), default='#764ba2')  # اللون الثانوي
-    text_color = db.Column(db.String(20), default='#333333')
+    header_color = db.Column(db.String(20), default="#667eea")  # لون الترويسة
+    accent_color = db.Column(db.String(20), default="#764ba2")  # اللون الثانوي
+    text_color = db.Column(db.String(20), default="#333333")
 
     # Header Layout - تخطيط الترويسة
     show_logo = db.Column(db.Boolean, default=True)
-    logo_position = db.Column(db.String(20), default='left')  # left, center, right
-    logo_size = db.Column(db.String(20), default='medium')  # small, medium, large
+    logo_position = db.Column(db.String(20), default="left")  # left, center, right
+    logo_size = db.Column(db.String(20), default="medium")  # small, medium, large
 
     # Footer - الذيل
     footer_text_ar = db.Column(db.Text)
@@ -65,8 +66,8 @@ class InvoiceSettings(db.Model):
     terms_conditions_en = db.Column(db.Text)
 
     # Payment Terms - شروط الدفع
-    payment_terms_ar = db.Column(db.Text, default='الدفع نقداً أو بالتحويل البنكي')
-    payment_terms_en = db.Column(db.Text, default='Payment by cash or bank transfer')
+    payment_terms_ar = db.Column(db.Text, default="الدفع نقداً أو بالتحويل البنكي")
+    payment_terms_en = db.Column(db.Text, default="Payment by cash or bank transfer")
 
     # Notes - ملاحظات
     default_invoice_note_ar = db.Column(db.Text)
@@ -76,20 +77,20 @@ class InvoiceSettings(db.Model):
 
     # QR Code - رمز الاستجابة السريعة
     enable_qr_code = db.Column(db.Boolean, default=True)
-    qr_position = db.Column(db.String(20), default='bottom-right')
+    qr_position = db.Column(db.String(20), default="bottom-right")
 
     # Watermark - العلامة المائية
     enable_watermark = db.Column(db.Boolean, default=False)
     watermark_text = db.Column(db.String(200))
     watermark_image_path = db.Column(db.String(500))  # Watermark image path
-    watermark_opacity = db.Column(db.Numeric(3, 2), default=Decimal('0.10'))
+    watermark_opacity = db.Column(db.Numeric(3, 2), default=Decimal("0.10"))
 
     # Print Settings - إعدادات الطباعة
-    paper_size = db.Column(db.String(20), default='A4')  # A4, A5, Letter
-    orientation = db.Column(db.String(20), default='portrait')  # portrait, landscape
+    paper_size = db.Column(db.String(20), default="A4")  # A4, A5, Letter
+    orientation = db.Column(db.String(20), default="portrait")  # portrait, landscape
 
     # Language - اللغة
-    default_language = db.Column(db.String(10), default='ar')  # ar, en, both
+    default_language = db.Column(db.String(10), default="ar")  # ar, en, both
 
     # Additional Fields - حقول إضافية
     show_barcode = db.Column(db.Boolean, default=True)
@@ -102,20 +103,25 @@ class InvoiceSettings(db.Model):
     whatsapp_number = db.Column(db.String(50))
 
     # Active Template - القالب النشط
-    active_template = db.Column(db.String(50), default='modern')  # modern, classic, minimal
+    active_template = db.Column(
+        db.String(50), default="modern"
+    )  # modern, classic, minimal
 
     # Meta
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
-                           onupdate=lambda: datetime.now(timezone.utc))
-    updated_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    updated_by = db.Column(db.Integer, db.ForeignKey("users.id"))
 
     # Relationships
-    user = db.relationship('User', foreign_keys=[updated_by])
+    user = db.relationship("User", foreign_keys=[updated_by])
 
     def __repr__(self):
-        return f'<InvoiceSettings {self.company_name_ar}>'
+        return f"<InvoiceSettings {self.company_name_ar}>"
 
     @staticmethod
     def get_active():
@@ -130,22 +136,22 @@ class InvoiceSettings(db.Model):
     def to_dict(self):
         """Convert to dictionary"""
         return {
-            'id': self.id,
-            'company_name_ar': self.company_name_ar,
-            'company_name_en': self.company_name_en,
-            'logo_url': self.logo_url,
-            'address_ar': self.address_ar,
-            'address_en': self.address_en,
-            'phone_1': self.phone_1,
-            'phone_2': self.phone_2,
-            'email': self.email,
-            'website': self.website,
-            'tax_number': self.tax_number,
-            'header_color': self.header_color,
-            'accent_color': self.accent_color,
-            'active_template': self.active_template,
-            'default_language': self.default_language,
-            'enable_qr_code': self.enable_qr_code,
-            'show_logo': self.show_logo,
-            'show_barcode': self.show_barcode,
+            "id": self.id,
+            "company_name_ar": self.company_name_ar,
+            "company_name_en": self.company_name_en,
+            "logo_url": self.logo_url,
+            "address_ar": self.address_ar,
+            "address_en": self.address_en,
+            "phone_1": self.phone_1,
+            "phone_2": self.phone_2,
+            "email": self.email,
+            "website": self.website,
+            "tax_number": self.tax_number,
+            "header_color": self.header_color,
+            "accent_color": self.accent_color,
+            "active_template": self.active_template,
+            "default_language": self.default_language,
+            "enable_qr_code": self.enable_qr_code,
+            "show_logo": self.show_logo,
+            "show_barcode": self.show_barcode,
         }

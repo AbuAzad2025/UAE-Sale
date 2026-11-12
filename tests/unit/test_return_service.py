@@ -1,4 +1,5 @@
 """Unit tests for ReturnService — مرتجعات المبيعات."""
+
 from decimal import Decimal
 
 import pytest
@@ -12,13 +13,24 @@ def _get_sale_line(sale):
 
 
 class TestCreateReturn:
-    @pytest.mark.parametrize('inclusive,rate,discount,expected_refund', [
-        (True, Decimal('5'), Decimal('0'), Decimal('50.000')),
-        (False, Decimal('5'), Decimal('10'), Decimal('47.250')),
-    ])
+    @pytest.mark.parametrize(
+        "inclusive,rate,discount,expected_refund",
+        [
+            (True, Decimal("5"), Decimal("0"), Decimal("50.000")),
+            (False, Decimal("5"), Decimal("10"), Decimal("47.250")),
+        ],
+    )
     def test_inclusive_and_discounted_invoices_can_be_returned(
-            self, db, owner_user, test_customer, test_sale, inclusive,
-            rate, discount, expected_refund):
+        self,
+        db,
+        owner_user,
+        test_customer,
+        test_sale,
+        inclusive,
+        rate,
+        discount,
+        expected_refund,
+    ):
         """مرتجعات الفواتير الشاملة وذات الخصم تُرحيل بصورة محاسبية منطقية."""
         test_sale.tax_inclusive = inclusive
         test_sale.tax_rate = rate
@@ -27,62 +39,68 @@ class TestCreateReturn:
         line = _get_sale_line(test_sale)
         ret = ReturnService.create_return(
             test_sale.id,
-            [{'sale_line_id': line.id, 'quantity': Decimal('1')}],
+            [{"sale_line_id": line.id, "quantity": Decimal("1")}],
             user_id=owner_user.id,
         )
         assert ret.refund_amount == expected_refund
-        assert ret.status == 'approved'
+        assert ret.status == "approved"
         from models.gl import GLJournalEntry
+
         entries = GLJournalEntry.query.filter_by(
-            reference_type='ProductReturn', reference_id=ret.id).all()
+            reference_type="ProductReturn", reference_id=ret.id
+        ).all()
         assert entries
         assert all(e.is_posted and e.total_debit == e.total_credit for e in entries)
 
-    def test_successful_partial_return(self, db, owner_user, test_customer, test_product, test_sale):
+    def test_successful_partial_return(
+        self, db, owner_user, test_customer, test_product, test_sale
+    ):
         line = _get_sale_line(test_sale)
         stock_before = test_product.current_stock
 
         ret = ReturnService.create_return(
             sale_id=test_sale.id,
-            return_lines_data=[{'sale_line_id': line.id, 'quantity': 1, 'condition': 'good'}],
+            return_lines_data=[
+                {"sale_line_id": line.id, "quantity": 1, "condition": "good"}
+            ],
             user_id=owner_user.id,
-            notes='عميل أعاد قطعة',
+            notes="عميل أعاد قطعة",
         )
 
         assert ret.id is not None
-        assert ret.return_number.startswith('R')
-        assert ret.status == 'approved'
+        assert ret.return_number.startswith("R")
+        assert ret.status == "approved"
         assert ret.sale_id == test_sale.id
-        assert ret.total_amount == Decimal('50.000')
-        assert ret.refund_amount == Decimal('50.000')
+        assert ret.total_amount == Decimal("50.000")
+        assert ret.refund_amount == Decimal("50.000")
 
         db.session.refresh(test_product)
         assert test_product.current_stock == stock_before + 1
 
     def test_return_nonexistent_sale_raises(self, db, owner_user):
-        with pytest.raises(ValueError, match='not found'):
+        with pytest.raises(ValueError, match="not found"):
             ReturnService.create_return(999999, [], user_id=owner_user.id)
 
     def test_return_cancelled_sale_raises(self, db, owner_user, test_sale):
-        test_sale.status = 'cancelled'
+        test_sale.status = "cancelled"
         db.session.commit()
-        with pytest.raises(ValueError, match='cancelled'):
+        with pytest.raises(ValueError, match="cancelled"):
             ReturnService.create_return(test_sale.id, [], user_id=owner_user.id)
 
     def test_return_more_than_sold_raises(self, db, owner_user, test_sale):
         line = _get_sale_line(test_sale)
-        with pytest.raises(ValueError, match='Cannot return'):
+        with pytest.raises(ValueError, match="Cannot return"):
             ReturnService.create_return(
                 test_sale.id,
-                [{'sale_line_id': line.id, 'quantity': 5}],
+                [{"sale_line_id": line.id, "quantity": 5}],
                 user_id=owner_user.id,
             )
 
     def test_return_missing_line_raises(self, db, owner_user, test_sale):
-        with pytest.raises(ValueError, match='Sale line'):
+        with pytest.raises(ValueError, match="Sale line"):
             ReturnService.create_return(
                 test_sale.id,
-                [{'sale_line_id': 999999, 'quantity': 1}],
+                [{"sale_line_id": 999999, "quantity": 1}],
                 user_id=owner_user.id,
             )
 
@@ -91,37 +109,41 @@ class TestCreateReturn:
         ret = ReturnService.create_return(
             test_sale.id,
             [
-                {'sale_line_id': line.id, 'quantity': 0},
-                {'sale_line_id': line.id, 'quantity': 2},
+                {"sale_line_id": line.id, "quantity": 0},
+                {"sale_line_id": line.id, "quantity": 2},
             ],
             user_id=owner_user.id,
         )
-        assert len(ret.lines.all() if hasattr(ret.lines, 'all') else ret.lines) == 1
+        assert len(ret.lines.all() if hasattr(ret.lines, "all") else ret.lines) == 1
         db.session.refresh(ret)
-        assert ret.total_amount == Decimal('100.000')
+        assert ret.total_amount == Decimal("100.000")
 
-    def test_cumulative_returns_capped_at_sold_quantity(self, db, owner_user, test_sale):
+    def test_cumulative_returns_capped_at_sold_quantity(
+        self, db, owner_user, test_sale
+    ):
         line = _get_sale_line(test_sale)
         ReturnService.create_return(
             test_sale.id,
-            [{'sale_line_id': line.id, 'quantity': 1}],
+            [{"sale_line_id": line.id, "quantity": 1}],
             user_id=owner_user.id,
         )
-        with pytest.raises(ValueError, match='Already returned'):
+        with pytest.raises(ValueError, match="Already returned"):
             ReturnService.create_return(
                 test_sale.id,
-                [{'sale_line_id': line.id, 'quantity': 2}],
+                [{"sale_line_id": line.id, "quantity": 2}],
                 user_id=owner_user.id,
             )
 
-    def test_return_with_tax_includes_tax_in_refund(self, db, owner_user, test_customer, test_sale):
+    def test_return_with_tax_includes_tax_in_refund(
+        self, db, owner_user, test_customer, test_sale
+    ):
         line = _get_sale_line(test_sale)
-        test_sale.tax_rate = Decimal('5')
+        test_sale.tax_rate = Decimal("5")
         db.session.commit()
 
         ret = ReturnService.create_return(
             test_sale.id,
-            [{'sale_line_id': line.id, 'quantity': 2}],
+            [{"sale_line_id": line.id, "quantity": 2}],
             user_id=owner_user.id,
         )
-        assert ret.refund_amount == Decimal('105.000')
+        assert ret.refund_amount == Decimal("105.000")

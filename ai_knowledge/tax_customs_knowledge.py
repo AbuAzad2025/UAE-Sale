@@ -225,12 +225,12 @@ EXPORT_PROCEDURES = """
 
 # دليل شامل
 TAX_CUSTOMS_GUIDE = {
-    'uae_vat': UAE_TAX_SYSTEM,
-    'uae_customs': CUSTOMS_UAE,
-    'saudi_tax': SAUDI_TAX,
-    'palestine_tax': PALESTINE_TAX,
-    'import': IMPORT_PROCEDURES,
-    'export': EXPORT_PROCEDURES,
+    "uae_vat": UAE_TAX_SYSTEM,
+    "uae_customs": CUSTOMS_UAE,
+    "saudi_tax": SAUDI_TAX,
+    "palestine_tax": PALESTINE_TAX,
+    "import": IMPORT_PROCEDURES,
+    "export": EXPORT_PROCEDURES,
 }
 
 

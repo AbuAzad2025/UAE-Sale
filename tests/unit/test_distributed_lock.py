@@ -14,20 +14,23 @@ def _ensure_sale_deps(db, tag):
 
     suffix = uuid.uuid4().hex[:8]
     c = Customer(
-        name=f'DlkCust-{tag}-{suffix}', customer_type='regular',
+        name=f"DlkCust-{tag}-{suffix}",
+        customer_type="regular",
         is_active=True,
     )
     db.session.add(c)
     db.session.flush()
-    role = Role(name=f'DlkRole-{tag}-{suffix}', slug=f'dlk-role-{tag}-{suffix}')
+    role = Role(name=f"DlkRole-{tag}-{suffix}", slug=f"dlk-role-{tag}-{suffix}")
     db.session.add(role)
     db.session.flush()
     u = User(
-        username=f'dlkuser-{tag}-{suffix}',
-        email=f'dlkuser-{tag}-{suffix}@t.t',
-        full_name='X', role_id=role.id, is_active=True,
+        username=f"dlkuser-{tag}-{suffix}",
+        email=f"dlkuser-{tag}-{suffix}@t.t",
+        full_name="X",
+        role_id=role.id,
+        is_active=True,
     )
-    u.set_password('Xy123456!')
+    u.set_password("Xy123456!")
     db.session.add(u)
     db.session.flush()
     db.session.commit()
@@ -41,14 +44,14 @@ class TestDistributedLockBasic:
         """Lock can be acquired and released cleanly."""
         from utils.distributed_lock import distributed_lock
 
-        with distributed_lock('test-basic-lock', timeout=5, blocking_timeout=2):
+        with distributed_lock("test-basic-lock", timeout=5, blocking_timeout=2):
             assert True
 
     def test_fallback_lock_works_without_redis(self, app):
         """In-process fallback lock works when Redis is unavailable."""
         from utils.distributed_lock import _get_fallback_lock
 
-        lock = _get_fallback_lock('test-fallback')
+        lock = _get_fallback_lock("test-fallback")
         acquired = lock.acquire(timeout=1)
         assert acquired
         lock.release()
@@ -62,24 +65,24 @@ class TestGenerateNumberConcurrency:
         from models import Sale
         from utils.helpers import generate_number
 
-        cust_id, seller_id = _ensure_sale_deps(db, 'single')
+        cust_id, seller_id = _ensure_sale_deps(db, "single")
         numbers = set()
         for _ in range(10):
-            num = generate_number('S', Sale, 'sale_number')
-            assert num not in numbers, f'Duplicate number: {num}'
+            num = generate_number("S", Sale, "sale_number")
+            assert num not in numbers, f"Duplicate number: {num}"
             numbers.add(num)
             sale = Sale(
                 sale_number=num,
                 customer_id=cust_id,
                 seller_id=seller_id,
-                total_amount=Decimal('0'),
-                amount_base=Decimal('0'),
-                paid_amount_base=Decimal('0'),
-                balance_due=Decimal('0'),
-                currency='AED',
-                exchange_rate=Decimal('1'),
-                payment_status='unpaid',
-                status='confirmed',
+                total_amount=Decimal("0"),
+                amount_base=Decimal("0"),
+                paid_amount_base=Decimal("0"),
+                balance_due=Decimal("0"),
+                currency="AED",
+                exchange_rate=Decimal("1"),
+                payment_status="unpaid",
+                status="confirmed",
                 is_active=True,
             )
             db.session.add(sale)
@@ -96,7 +99,7 @@ class TestGenerateNumberConcurrency:
         from models import Sale
         from utils.helpers import generate_number
 
-        cust_id, seller_id = _ensure_sale_deps(db, 'multi')
+        cust_id, seller_id = _ensure_sale_deps(db, "multi")
         generated = []
         errors = []
         lock = threading.Lock()
@@ -105,20 +108,21 @@ class TestGenerateNumberConcurrency:
             try:
                 with app.app_context():
                     from extensions import db as _db
+
                     _db.session.rollback()  # clean slate
-                    num = generate_number('S', Sale, 'sale_number')
+                    num = generate_number("S", Sale, "sale_number")
                     sale = Sale(
                         sale_number=num,
                         customer_id=cust_id,
                         seller_id=seller_id,
-                        total_amount=Decimal('0'),
-                        amount_base=Decimal('0'),
-                        paid_amount_base=Decimal('0'),
-                        balance_due=Decimal('0'),
-                        currency='AED',
-                        exchange_rate=Decimal('1'),
-                        payment_status='unpaid',
-                        status='confirmed',
+                        total_amount=Decimal("0"),
+                        amount_base=Decimal("0"),
+                        paid_amount_base=Decimal("0"),
+                        balance_due=Decimal("0"),
+                        currency="AED",
+                        exchange_rate=Decimal("1"),
+                        payment_status="unpaid",
+                        status="confirmed",
                         is_active=True,
                     )
                     _db.session.add(sale)
@@ -136,19 +140,21 @@ class TestGenerateNumberConcurrency:
             t.join(timeout=30)
 
         # At least some threads should succeed
-        assert len(generated) >= 1, f'No numbers generated; errors: {errors}'
+        assert len(generated) >= 1, f"No numbers generated; errors: {errors}"
 
         # On SQLite, concurrent transactions may read the same max number
         # before either commits, so in-memory duplicates are expected.
         # The critical assertion is that NO TWO ROWS in the database
         # share the same sale_number.
         from sqlalchemy import text
+
         result = db.session.execute(
-            text("SELECT sale_number, COUNT(*) as cnt FROM sales "
-                 "GROUP BY sale_number HAVING COUNT(*) > 1")
+            text(
+                "SELECT sale_number, COUNT(*) as cnt FROM sales "
+                "GROUP BY sale_number HAVING COUNT(*) > 1"
+            )
         ).fetchall()
-        assert len(result) == 0, \
-            f'Duplicate sale_numbers in database: {result}'
+        assert len(result) == 0, f"Duplicate sale_numbers in database: {result}"
 
 
 class TestBalanceRepairLock:
@@ -157,5 +163,6 @@ class TestBalanceRepairLock:
     def test_repair_runs_without_redis(self, app, db):
         """Repair works even when Redis is unavailable (fail-open)."""
         from utils.balance_checker import repair_customer_balance
+
         result = repair_customer_balance()
         assert isinstance(result, int)

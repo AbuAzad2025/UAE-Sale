@@ -4,6 +4,7 @@
 supplier/purchase/cheque/inventory/ledger/user). الموزّع هنا يختار
 المعالج حسب `intent` ثم يفوّض إلى `services.ai_executor`.
 """
+
 from services.ai_handlers import (
     balance,
     cheque,
@@ -21,25 +22,25 @@ from services.ai_handlers import (
 from services.ai_executor import execute_plan
 
 _HANDLERS = {
-    'balance': balance.try_handle,
-    'customer': customer.try_handle,
-    'product': product.try_handle,
-    'sale': sale.try_handle,
-    'receive': payment.try_handle,
-    'give': payment.try_handle,
-    'expense': expense.try_handle,
-    'supplier': supplier.try_handle,
-    'purchase': purchase.try_handle,
-    'cheque': cheque.try_handle,
-    'warehouse': inventory.try_handle,
-    'ledger': ledger.try_handle,
-    'user': user.try_handle,
+    "balance": balance.try_handle,
+    "customer": customer.try_handle,
+    "product": product.try_handle,
+    "sale": sale.try_handle,
+    "receive": payment.try_handle,
+    "give": payment.try_handle,
+    "expense": expense.try_handle,
+    "supplier": supplier.try_handle,
+    "purchase": purchase.try_handle,
+    "cheque": cheque.try_handle,
+    "warehouse": inventory.try_handle,
+    "ledger": ledger.try_handle,
+    "user": user.try_handle,
 }
 
 
 def dispatch(plan, user, confirmed=False) -> dict:
     """الموزّع حسب intent — يختار معالج الكيان المناسب."""
-    handler = _HANDLERS.get((plan.intent or '').strip())
+    handler = _HANDLERS.get((plan.intent or "").strip())
     if handler is None:
         return execute_plan(plan, user, confirmed=confirmed)
     result = handler(plan, user, confirmed=confirmed)
@@ -59,21 +60,35 @@ def dispatch_for_action(message: str, user, confirmed=False):
     if not message or not str(message).strip():
         return None
     text = str(message).strip()
-    if text in ('1', '2', '3', '4', 'عودة', 'رجوع', 'إلغاء', 'نعم', 'لا', 'yes', 'no', 'ok'):
+    if text in (
+        "1",
+        "2",
+        "3",
+        "4",
+        "عودة",
+        "رجوع",
+        "إلغاء",
+        "نعم",
+        "لا",
+        "yes",
+        "no",
+        "ok",
+    ):
         return None
     # رفض سريع: «بدون بيانات» (قائمة) تُترك للمستوى القديم
-    if ':' not in text and not any(ch.isdigit() for ch in text):
+    if ":" not in text and not any(ch.isdigit() for ch in text):
         return None
     try:
         from services.ai_planner import plan as _plan
+
         _p = _plan(text, user)
-        if _p is None or not getattr(_p, 'tool', None):
+        if _p is None or not getattr(_p, "tool", None):
             return None
         # confirmed للتأكيد عبر رسالة «نعم» الصريحة فقط
-        _conf = bool(confirmed) or ('نعم' in text and (_p.needs_confirm or False))
+        _conf = bool(confirmed) or ("نعم" in text and (_p.needs_confirm or False))
         _res = dispatch(_p, user, confirmed=_conf)
-        if _res and (_res.get('executed') or _res.get('needs_clarification')):
-            return str(_res.get('response', ''))
+        if _res and (_res.get("executed") or _res.get("needs_clarification")):
+            return str(_res.get("response", ""))
     except Exception:
         return None
     return None

@@ -2,6 +2,7 @@
 Webhook Service - خدمة Webhooks
 معالجة webhooks من بوابات الدفع
 """
+
 from datetime import datetime, timezone
 from extensions import db
 from models import Donation, PackagePurchase
@@ -38,12 +39,12 @@ class WebhookService:
             return False
         try:
             if isinstance(raw_body, (bytes, bytearray)):
-                payload = json.loads(raw_body.decode('utf-8'))
+                payload = json.loads(raw_body.decode("utf-8"))
             else:
                 payload = raw_body
-            canonical = json.dumps(payload, sort_keys=True).encode('utf-8')
+            canonical = json.dumps(payload, sort_keys=True).encode("utf-8")
             expected_signature = hmac.new(
-                secret.encode('utf-8'),
+                secret.encode("utf-8"),
                 canonical,
                 hashlib.sha256,
             ).hexdigest()
@@ -65,23 +66,21 @@ class WebhookService:
             bool: صحة التوقيع
         """
         if not ipn_secret or payload is None:
-            logger.warning('NOWPayments IPN secret not configured')
+            logger.warning("NOWPayments IPN secret not configured")
             return False
 
         # Fail closed on None/non-str signatures: compare_digest would raise
         # TypeError, so reject early instead of propagating.
         if not isinstance(signature, str) or not signature:
-            logger.warning('NOWPayments signature missing or not a string')
+            logger.warning("NOWPayments signature missing or not a string")
             return False
 
         try:
             if isinstance(payload, str):
-                payload = payload.encode('utf-8')
+                payload = payload.encode("utf-8")
             # حساب التوقيع المتوقع
             expected_signature = hmac.new(
-                ipn_secret.encode('utf-8'),
-                payload,
-                hashlib.sha512
+                ipn_secret.encode("utf-8"), payload, hashlib.sha512
             ).hexdigest()
         except Exception:
             return False
@@ -92,8 +91,9 @@ class WebhookService:
             return False
 
     @staticmethod
-    def process_nowpayments_webhook(data, raw_body=None, received_sig=None,
-                                    ipn_secret=None):  # noqa: C901
+    def process_nowpayments_webhook(
+        data, raw_body=None, received_sig=None, ipn_secret=None
+    ):  # noqa: C901
         """
         معالجة webhook من NOWPayments
 
@@ -117,114 +117,125 @@ class WebhookService:
                 body_bytes = raw_body
                 if body_bytes is None:
                     try:
-                        body_bytes = json.dumps(data).encode('utf-8')
+                        body_bytes = json.dumps(data).encode("utf-8")
                     except Exception:
-                        body_bytes = b''
+                        body_bytes = b""
 
                 canonical_ok = WebhookService.verify_ipn_signature(
                     raw_body if raw_body is not None else data,
-                    received_sig, ipn_secret,
+                    received_sig,
+                    ipn_secret,
                 )
                 legacy_ok = WebhookService.verify_nowpayments_signature(
-                    body_bytes, str(received_sig), ipn_secret,
+                    body_bytes,
+                    str(received_sig),
+                    ipn_secret,
                 )
 
                 if canonical_ok:
-                    logger.info('NOWPayments webhook signature verified via canonical SHA256-sorted-JSON scheme')
+                    logger.info(
+                        "NOWPayments webhook signature verified via canonical SHA256-sorted-JSON scheme"
+                    )
                 elif legacy_ok:
-                    logger.info('NOWPayments webhook signature verified via legacy SHA512(body) scheme')
+                    logger.info(
+                        "NOWPayments webhook signature verified via legacy SHA512(body) scheme"
+                    )
                 else:
-                    logger.warning('NOWPayments webhook signature invalid under all known schemes')
-                    return {'success': False, 'error': 'Invalid signature'}
+                    logger.warning(
+                        "NOWPayments webhook signature invalid under all known schemes"
+                    )
+                    return {"success": False, "error": "Invalid signature"}
 
-            payment_id = data.get('payment_id')
-            payment_status = data.get('payment_status')
-            order_id = data.get('order_id', '')
+            payment_id = data.get("payment_id")
+            payment_status = data.get("payment_status")
+            order_id = data.get("order_id", "")
 
-            logger.info(f'📨 NOWPayments webhook received: {payment_id} - {payment_status}')
+            logger.info(
+                f"📨 NOWPayments webhook received: {payment_id} - {payment_status}"
+            )
 
             # تحديد نوع العملية (شراء أو تبرع)
-            if order_id.startswith('PURCHASE_'):
+            if order_id.startswith("PURCHASE_"):
                 return WebhookService._process_purchase_webhook(data)
-            elif order_id.startswith('DONATION_'):
+            elif order_id.startswith("DONATION_"):
                 return WebhookService._process_donation_webhook(data)
             else:
-                logger.warning(f'Unknown order type: {order_id}')
-                return {'success': False, 'error': 'Unknown order type'}
+                logger.warning(f"Unknown order type: {order_id}")
+                return {"success": False, "error": "Unknown order type"}
 
         except Exception as e:
-            logger.error(f'❌ Webhook processing error: {str(e)}')
-            return {'success': False, 'error': str(e)}
+            logger.error(f"❌ Webhook processing error: {str(e)}")
+            return {"success": False, "error": str(e)}
 
     @staticmethod
     def _process_purchase_webhook(data):
         """معالجة webhook للمشتريات"""
-        payment_status = data.get('payment_status')
-        payment_id = data.get('payment_id')
+        payment_status = data.get("payment_status")
+        payment_id = data.get("payment_id")
 
         # البحث عن الشراء
         purchase = PackagePurchase.query.filter_by(transaction_id=payment_id).first()
 
         if not purchase:
-            logger.warning(f'Purchase not found for payment_id: {payment_id}')
-            return {'success': False, 'error': 'Purchase not found'}
+            logger.warning(f"Purchase not found for payment_id: {payment_id}")
+            return {"success": False, "error": "Purchase not found"}
 
         # تحديث الحالة
-        if payment_status == 'finished':
-            purchase.payment_status = 'completed'
-            purchase.activation_status = 'activated'
+        if payment_status == "finished":
+            purchase.payment_status = "completed"
+            purchase.activation_status = "activated"
             purchase.activation_date = datetime.now(timezone.utc)
 
             # إرسال إشعار
             NotificationService.notify_purchase_activated(
-                purchase.package.name_ar if purchase.package else 'N/A',
-                purchase.customer_name
+                purchase.package.name_ar if purchase.package else "N/A",
+                purchase.customer_name,
             )
 
-            logger.info(f'✅ Purchase {purchase.id} completed and activated')
+            logger.info(f"✅ Purchase {purchase.id} completed and activated")
 
-        elif payment_status == 'failed' or payment_status == 'expired':
-            purchase.payment_status = 'failed'
-            logger.warning(f'❌ Purchase {purchase.id} failed')
+        elif payment_status == "failed" or payment_status == "expired":
+            purchase.payment_status = "failed"
+            logger.warning(f"❌ Purchase {purchase.id} failed")
 
         db.session.commit()
 
-        return {'success': True, 'message': f'Purchase updated to {payment_status}'}
+        return {"success": True, "message": f"Purchase updated to {payment_status}"}
 
     @staticmethod
     def _process_donation_webhook(data):
         """معالجة webhook للتبرعات"""
-        payment_status = data.get('payment_status')
-        payment_id = data.get('payment_id')
+        payment_status = data.get("payment_status")
+        payment_id = data.get("payment_id")
 
         # البحث عن التبرع
         donation = Donation.query.filter_by(transaction_hash=payment_id).first()
 
         if not donation:
-            logger.warning(f'Donation not found for payment_id: {payment_id}')
-            return {'success': False, 'error': 'Donation not found'}
+            logger.warning(f"Donation not found for payment_id: {payment_id}")
+            return {"success": False, "error": "Donation not found"}
 
         # تحديث الحالة
-        if payment_status == 'finished':
-            donation.status = 'completed'
+        if payment_status == "finished":
+            donation.status = "completed"
             donation.completed_at = datetime.now(timezone.utc)
 
             # إرسال إشعار
             NotificationService.notify_payment_received(
                 float(donation.amount_usd),
-                donation.donor_name or 'مجهول',
-                donation.payment_method
+                donation.donor_name or "مجهول",
+                donation.payment_method,
             )
 
-            logger.info(f'✅ Donation {donation.id} completed')
+            logger.info(f"✅ Donation {donation.id} completed")
 
-        elif payment_status == 'failed' or payment_status == 'expired':
-            donation.status = 'failed'
-            logger.warning(f'❌ Donation {donation.id} failed')
+        elif payment_status == "failed" or payment_status == "expired":
+            donation.status = "failed"
+            logger.warning(f"❌ Donation {donation.id} failed")
 
         db.session.commit()
 
-        return {'success': True, 'message': f'Donation updated to {payment_status}'}
+        return {"success": True, "message": f"Donation updated to {payment_status}"}
 
     @staticmethod
     def verify_stripe_signature(payload, signature, webhook_secret):
@@ -240,19 +251,18 @@ class WebhookService:
             bool: صحة التوقيع
         """
         if not webhook_secret:
-            logger.warning('Stripe webhook secret not configured')
+            logger.warning("Stripe webhook secret not configured")
             return False
 
         # استخدام مكتبة Stripe للتحقق
         # (يتطلب تثبيت stripe: pip install stripe)
         try:
             import stripe
-            stripe.Webhook.construct_event(
-                payload, signature, webhook_secret
-            )
+
+            stripe.Webhook.construct_event(payload, signature, webhook_secret)
             return True
         except Exception as e:
-            logger.error(f'Stripe signature verification failed: {str(e)}')
+            logger.error(f"Stripe signature verification failed: {str(e)}")
             return False
 
     @staticmethod
@@ -267,53 +277,54 @@ class WebhookService:
             dict: نتيجة المعالجة
         """
         try:
-            event_type = data.get('type')
-            event_data = data.get('data', {}).get('object', {})
+            event_type = data.get("type")
+            event_data = data.get("data", {}).get("object", {})
 
-            logger.info(f'📨 Stripe webhook received: {event_type}')
+            logger.info(f"📨 Stripe webhook received: {event_type}")
 
-            if event_type == 'payment_intent.succeeded':
+            if event_type == "payment_intent.succeeded":
                 return WebhookService._process_stripe_payment_success(event_data)
-            elif event_type == 'payment_intent.payment_failed':
+            elif event_type == "payment_intent.payment_failed":
                 return WebhookService._process_stripe_payment_failed(event_data)
             else:
-                logger.info(f'Unhandled Stripe event: {event_type}')
-                return {'success': True, 'message': 'Event acknowledged'}
+                logger.info(f"Unhandled Stripe event: {event_type}")
+                return {"success": True, "message": "Event acknowledged"}
 
         except Exception as e:
-            logger.error(f'❌ Stripe webhook processing error: {str(e)}')
-            return {'success': False, 'error': str(e)}
+            logger.error(f"❌ Stripe webhook processing error: {str(e)}")
+            return {"success": False, "error": str(e)}
 
     @staticmethod
     def _process_stripe_payment_success(payment_intent):
         """معالجة دفعة ناجحة من Stripe"""
         # استخراج البيانات
-        amount = payment_intent.get('amount') / 100  # من cents إلى dollars
-        customer_email = payment_intent.get('receipt_email')
+        amount = payment_intent.get("amount") / 100  # من cents إلى dollars
+        customer_email = payment_intent.get("receipt_email")
 
-        logger.info(f'✅ Stripe payment succeeded: ${amount} from {customer_email}')
+        logger.info(f"✅ Stripe payment succeeded: ${amount} from {customer_email}")
 
         # إرسال إشعار
         NotificationService.notify_payment_received(
-            amount,
-            customer_email or 'Unknown',
-            'Stripe'
+            amount, customer_email or "Unknown", "Stripe"
         )
 
-        return {'success': True, 'message': 'Payment processed'}
+        return {"success": True, "message": "Payment processed"}
 
     @staticmethod
     def _process_stripe_payment_failed(payment_intent):
         """معالجة دفعة فاشلة من Stripe"""
-        customer_email = payment_intent.get('receipt_email')
-        error_message = payment_intent.get('last_payment_error', {}).get('message', 'Unknown error')
+        customer_email = payment_intent.get("receipt_email")
+        error_message = payment_intent.get("last_payment_error", {}).get(
+            "message", "Unknown error"
+        )
 
-        logger.warning(f'❌ Stripe payment failed for {customer_email}: {error_message}')
+        logger.warning(
+            f"❌ Stripe payment failed for {customer_email}: {error_message}"
+        )
 
         # إرسال تنبيه
         NotificationService.notify_security_alert(
-            'فشل دفعة Stripe',
-            f'فشلت دفعة من {customer_email}: {error_message}'
+            "فشل دفعة Stripe", f"فشلت دفعة من {customer_email}: {error_message}"
         )
 
-        return {'success': True, 'message': 'Payment failure processed'}
+        return {"success": True, "message": "Payment failure processed"}

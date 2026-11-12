@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 
 #: حساب مراقبة المخزون في دليل الحسابات (services/gl_service.py::
 #: ensure_core_accounts يبذّره بالرمز '1140').
-DEFAULT_INVENTORY_CONTROL_CODES = ['1140']
+DEFAULT_INVENTORY_CONTROL_CODES = ["1140"]
 
 try:  # pragma: no cover - the resolver ships with the GL rollout
     from services.account_resolution import AccountResolver, AccountRole
@@ -62,12 +62,12 @@ except ImportError:  # pragma: no cover
 
 def _q2(value):
     """تقريب النقود المعروضة إلى منزلتين."""
-    return Decimal(value).quantize(Decimal('0.01'))
+    return Decimal(value).quantize(Decimal("0.01"))
 
 
 def _q3(value):
     """تقريب المبالغ الداخلية إلى ثلاث منازل (دقة أعمدة Numeric(15,3))."""
-    return Decimal(value).quantize(Decimal('0.001'))
+    return Decimal(value).quantize(Decimal("0.001"))
 
 
 def inventory_control_codes():
@@ -79,8 +79,9 @@ def inventory_control_codes():
             resolved = AccountResolver.resolve(AccountRole.INVENTORY)
         except Exception as exc:  # pragma: no cover - defensive
             logger.warning(
-                f'AccountResolver failed for INVENTORY ({exc}) — '
-                f'using the literal fallback')
+                f"AccountResolver failed for INVENTORY ({exc}) — "
+                f"using the literal fallback"
+            )
     for code in ([resolved] if resolved else []) + DEFAULT_INVENTORY_CONTROL_CODES:
         if code and str(code) not in codes:
             codes.append(str(code))
@@ -101,10 +102,7 @@ def _movement_quantities(tenant_id=None, product_ids=None):
     if product_ids:
         query = query.filter(StockMovement.product_id.in_(list(product_ids)))
 
-    return {
-        row[0]: to_decimal(row[1])
-        for row in query.all()
-    }
+    return {row[0]: to_decimal(row[1]) for row in query.all()}
 
 
 def _document_weights():
@@ -113,32 +111,52 @@ def _document_weights():
     ``weight`` هو أساس تكلفة المنتج داخل المستند (الكمية × التكلفة)،
     ومجموع الأوزان يساوي مبلغ سطر المخزون في القيد.
     """
-    from models import (Product, ProductReturnLine, PurchaseLine, Sale,
-                        SaleLine, StockMovement)
+    from models import (
+        Product,
+        ProductReturnLine,
+        PurchaseLine,
+        Sale,
+        SaleLine,
+        StockMovement,
+    )
 
     weights = {}
 
     # ---- فواتير البيع: قيد تكلفة المبيعات (مدين COGS / دائن المخزون) ----
-    sales = db.session.query(
-        Sale.id,
-        SaleLine.product_id,
-        db.func.coalesce(db.func.sum(
-            db.func.coalesce(SaleLine.cost_price, 0) * SaleLine.quantity), 0),
-    ).join(SaleLine, SaleLine.sale_id == Sale.id).group_by(
-        Sale.id, SaleLine.product_id).all()
+    sales = (
+        db.session.query(
+            Sale.id,
+            SaleLine.product_id,
+            db.func.coalesce(
+                db.func.sum(
+                    db.func.coalesce(SaleLine.cost_price, 0) * SaleLine.quantity
+                ),
+                0,
+            ),
+        )
+        .join(SaleLine, SaleLine.sale_id == Sale.id)
+        .group_by(Sale.id, SaleLine.product_id)
+        .all()
+    )
     for sale_id, product_id, weight in sales:
-        weights.setdefault(('Sale', sale_id), []).append(
-            (product_id, to_decimal(weight)))
+        weights.setdefault(("Sale", sale_id), []).append(
+            (product_id, to_decimal(weight))
+        )
 
     # ---- المشتريات: قيد المخزون (مدين 1140) ----
-    purchases = db.session.query(
-        PurchaseLine.purchase_id,
-        PurchaseLine.product_id,
-        db.func.coalesce(db.func.sum(PurchaseLine.line_total), 0),
-    ).group_by(PurchaseLine.purchase_id, PurchaseLine.product_id).all()
+    purchases = (
+        db.session.query(
+            PurchaseLine.purchase_id,
+            PurchaseLine.product_id,
+            db.func.coalesce(db.func.sum(PurchaseLine.line_total), 0),
+        )
+        .group_by(PurchaseLine.purchase_id, PurchaseLine.product_id)
+        .all()
+    )
     for purchase_id, product_id, weight in purchases:
-        weights.setdefault(('Purchase', purchase_id), []).append(
-            (product_id, to_decimal(weight)))
+        weights.setdefault(("Purchase", purchase_id), []).append(
+            (product_id, to_decimal(weight))
+        )
 
     # ---- المرتجعات: قيد إعادة المخزون (مدين 1140) ----
     # أساس التكلفة: تكلفة سطر البيع (أساس تاريخي) وإلا متوسط التكلفة
@@ -147,38 +165,48 @@ def _document_weights():
         pid: CostingService.current_unit_cost(product)
         for pid, product in db.session.query(Product.id, Product).all()
     }
-    returns = db.session.query(
-        ProductReturnLine.return_id,
-        ProductReturnLine.product_id,
-        db.func.coalesce(db.func.sum(
-            db.func.coalesce(ProductReturnLine.quantity, 0)), 0),
-    ).group_by(
-        ProductReturnLine.return_id, ProductReturnLine.product_id).all()
-    return_costs = db.session.query(
-        ProductReturnLine.return_id,
-        ProductReturnLine.product_id,
-        db.func.coalesce(db.func.sum(
-            db.func.coalesce(SaleLine.cost_price, 0) * ProductReturnLine.quantity), 0),
-    ).join(
-        SaleLine, SaleLine.id == ProductReturnLine.sale_line_id
-    ).group_by(
-        ProductReturnLine.return_id, ProductReturnLine.product_id).all()
-    cost_by_return = {
-        (rid, pid): to_decimal(cost) for rid, pid, cost in return_costs
-    }
+    returns = (
+        db.session.query(
+            ProductReturnLine.return_id,
+            ProductReturnLine.product_id,
+            db.func.coalesce(
+                db.func.sum(db.func.coalesce(ProductReturnLine.quantity, 0)), 0
+            ),
+        )
+        .group_by(ProductReturnLine.return_id, ProductReturnLine.product_id)
+        .all()
+    )
+    return_costs = (
+        db.session.query(
+            ProductReturnLine.return_id,
+            ProductReturnLine.product_id,
+            db.func.coalesce(
+                db.func.sum(
+                    db.func.coalesce(SaleLine.cost_price, 0)
+                    * ProductReturnLine.quantity
+                ),
+                0,
+            ),
+        )
+        .join(SaleLine, SaleLine.id == ProductReturnLine.sale_line_id)
+        .group_by(ProductReturnLine.return_id, ProductReturnLine.product_id)
+        .all()
+    )
+    cost_by_return = {(rid, pid): to_decimal(cost) for rid, pid, cost in return_costs}
     for return_id, product_id, qty in returns:
         cost = cost_by_return.get((return_id, product_id))
         if not cost:
-            cost = product_costs.get(product_id, Decimal('0')) * to_decimal(qty)
-        weights.setdefault(('ProductReturn', return_id), []).append(
-            (product_id, to_decimal(cost)))
+            cost = product_costs.get(product_id, Decimal("0")) * to_decimal(qty)
+        weights.setdefault(("ProductReturn", return_id), []).append(
+            (product_id, to_decimal(cost))
+        )
 
     # ---- تسويات المخزون: مرجعه حركة المخزون نفسها ----
-    movements = db.session.query(
-        StockMovement.id, StockMovement.product_id).all()
+    movements = db.session.query(StockMovement.id, StockMovement.product_id).all()
     for movement_id, product_id in movements:
-        weights.setdefault(('stock_adjustment', movement_id), []).append(
-            (product_id, Decimal('1')))
+        weights.setdefault(("stock_adjustment", movement_id), []).append(
+            (product_id, Decimal("1"))
+        )
 
     return weights
 
@@ -211,24 +239,25 @@ def _gl_inventory_lines(codes, tenant_id=None, as_of=None):
 
 def _allocate(amount, allocation):
     """توزيع مبلغ على [(product_id, weight)] بالتناسب مع الأوزان."""
-    total_weight = sum((w for _, w in allocation), Decimal('0'))
+    total_weight = sum((w for _, w in allocation), Decimal("0"))
     if total_weight <= 0:
         return {}
     result = {}
-    allocated = Decimal('0')
+    allocated = Decimal("0")
     items = list(allocation)
     for index, (product_id, weight) in enumerate(items):
         if index == len(items) - 1:
             share = amount - allocated
         else:
-            share = (amount * weight / total_weight)
+            share = amount * weight / total_weight
             allocated += share
-        result[product_id] = result.get(product_id, Decimal('0')) + share
+        result[product_id] = result.get(product_id, Decimal("0")) + share
     return result
 
 
-def reconcile_inventory(tenant_id=None, product_ids=None, as_of=None,
-                        include_inactive=True):
+def reconcile_inventory(
+    tenant_id=None, product_ids=None, as_of=None, include_inactive=True
+):
     """مطابقة المخزون: الحركات مقابل العمود مقابل الأستاذ العام.
 
     Returns a dict::
@@ -276,8 +305,7 @@ def reconcile_inventory(tenant_id=None, product_ids=None, as_of=None,
 
     products = product_query.order_by(Product.id).all()
 
-    movement_totals = _movement_quantities(
-        tenant_id=tenant_id, product_ids=product_ids)
+    movement_totals = _movement_quantities(tenant_id=tenant_id, product_ids=product_ids)
 
     # ---- رصيد المخزون في الأستاذ العام ----
     control_balance = get_control_account_balance(codes)
@@ -285,26 +313,28 @@ def reconcile_inventory(tenant_id=None, product_ids=None, as_of=None,
     # ---- توزيع سطور الأستاذ على المنتجات ----
     weights = _document_weights()
     gl_by_product = {}
-    unattributed = Decimal('0')
-    for _line_id, amount_base, reference_type, reference_id in \
-            _gl_inventory_lines(codes, tenant_id=tenant_id, as_of=as_of):
+    unattributed = Decimal("0")
+    for _line_id, amount_base, reference_type, reference_id in _gl_inventory_lines(
+        codes, tenant_id=tenant_id, as_of=as_of
+    ):
         amount = to_decimal(amount_base)
         allocation = weights.get((reference_type, reference_id))
         if not allocation:
             unattributed += amount
             continue
         for product_id, share in _allocate(amount, allocation).items():
-            gl_by_product[product_id] = gl_by_product.get(
-                product_id, Decimal('0')) + share
+            gl_by_product[product_id] = (
+                gl_by_product.get(product_id, Decimal("0")) + share
+            )
 
     rows = []
     breaks = []
-    total_qty = Decimal('0')
-    total_stock = Decimal('0')
-    total_valuation = Decimal('0')
+    total_qty = Decimal("0")
+    total_stock = Decimal("0")
+    total_valuation = Decimal("0")
 
     for product in products:
-        qty = movement_totals.get(product.id, Decimal('0'))
+        qty = movement_totals.get(product.id, Decimal("0"))
         stock = to_decimal(product.current_stock)
         difference = stock - qty
         # أساس التقييم = المتوسط المتحرك (average_cost) — نفس أساس
@@ -312,7 +342,7 @@ def reconcile_inventory(tenant_id=None, product_ids=None, as_of=None,
         # مرجعاً يُعرض للمقارنة فقط.
         cost = CostingService.current_unit_cost(product)
         valuation = _q3(qty * cost)
-        gl_amount = _q3(gl_by_product.get(product.id, Decimal('0')))
+        gl_amount = _q3(gl_by_product.get(product.id, Decimal("0")))
         gl_difference = _q3(gl_amount - valuation)
 
         total_qty += qty
@@ -320,57 +350,63 @@ def reconcile_inventory(tenant_id=None, product_ids=None, as_of=None,
         total_valuation += valuation
 
         row = {
-            'product_id': product.id,
-            'sku': product.sku,
-            'name': product.name,
-            'quantity_from_movements': _q3(qty),
-            'current_stock': _q3(stock),
-            'difference': _q3(difference),
-            'average_cost': _q2(cost),
-            'cost_price': _q2(to_decimal(product.cost_price)),
-            'valuation_at_average_cost': _q2(valuation),
+            "product_id": product.id,
+            "sku": product.sku,
+            "name": product.name,
+            "quantity_from_movements": _q3(qty),
+            "current_stock": _q3(stock),
+            "difference": _q3(difference),
+            "average_cost": _q2(cost),
+            "cost_price": _q2(to_decimal(product.cost_price)),
+            "valuation_at_average_cost": _q2(valuation),
             # اسم قديم محفوظ للتوافق (القيمة نفسها الآن: qty × المتوسط)
-            'valuation_at_cost_price': _q2(valuation),
-            'gl_control_balance': _q2(gl_amount),
-            'gl_difference': _q2(gl_difference),
+            "valuation_at_cost_price": _q2(valuation),
+            "gl_control_balance": _q2(gl_amount),
+            "gl_difference": _q2(gl_difference),
         }
         rows.append(row)
 
         if abs(difference) > TOLERANCE or abs(gl_difference) > TOLERANCE:
-            breaks.append({
-                'product_id': product.id,
-                'sku': product.sku,
-                'name': product.name,
-                'quantity_difference': _q2(difference),
-                'gl_difference': _q2(gl_difference),
-            })
+            breaks.append(
+                {
+                    "product_id": product.id,
+                    "sku": product.sku,
+                    "name": product.name,
+                    "quantity_difference": _q2(difference),
+                    "gl_difference": _q2(gl_difference),
+                }
+            )
             logger.warning(
-                'Inventory break: product#%s (%s) movement-vs-stock=%s '
-                'gl-vs-valuation=%s', product.id, product.sku,
-                _q2(difference), _q2(gl_difference))
+                "Inventory break: product#%s (%s) movement-vs-stock=%s "
+                "gl-vs-valuation=%s",
+                product.id,
+                product.sku,
+                _q2(difference),
+                _q2(gl_difference),
+            )
 
     total_difference = total_stock - total_qty
     gl_difference = control_balance - total_valuation
 
     return {
-        'section': 'INVENTORY',
-        'control_accounts': codes,
-        'control_balance': _q2(control_balance),
-        'total_quantity_from_movements': _q3(total_qty),
-        'total_current_stock': _q3(total_stock),
-        'total_valuation_at_average_cost': _q2(total_valuation),
+        "section": "INVENTORY",
+        "control_accounts": codes,
+        "control_balance": _q2(control_balance),
+        "total_quantity_from_movements": _q3(total_qty),
+        "total_current_stock": _q3(total_stock),
+        "total_valuation_at_average_cost": _q2(total_valuation),
         # اسم قديم محفوظ للتوافق (القيمة نفسها الآن: qty × المتوسط)
-        'total_valuation_at_cost_price': _q2(total_valuation),
-        'difference': _q3(total_difference),
-        'gl_difference': _q2(gl_difference),
-        'unattributed_gl_balance': _q2(unattributed),
-        'balanced': (
+        "total_valuation_at_cost_price": _q2(total_valuation),
+        "difference": _q3(total_difference),
+        "gl_difference": _q2(gl_difference),
+        "unattributed_gl_balance": _q2(unattributed),
+        "balanced": (
             not breaks
             and abs(total_difference) <= TOLERANCE
             and abs(gl_difference) <= TOLERANCE
         ),
-        'products': rows,
-        'breaks': breaks,
+        "products": rows,
+        "breaks": breaks,
     }
 
 
@@ -378,8 +414,9 @@ class InventoryReconciliation:
     """واجهة صفّية مطابقة services/subledger_reconciliation.py."""
 
     @staticmethod
-    def reconcile_inventory(tenant_id=None, product_ids=None, as_of=None,
-                            include_inactive=True):
+    def reconcile_inventory(
+        tenant_id=None, product_ids=None, as_of=None, include_inactive=True
+    ):
         return reconcile_inventory(
             tenant_id=tenant_id,
             product_ids=product_ids,

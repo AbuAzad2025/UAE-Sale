@@ -1,4 +1,13 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, abort
+from flask import (
+    Blueprint,
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    request,
+    current_app,
+    abort,
+)
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Purchase, PurchaseLine, Product, Supplier, Warehouse
@@ -13,116 +22,128 @@ from routes.ledger import reverse_or_purge_gl_entries
 from utils.helpers import create_audit_log, generate_number
 from decimal import Decimal, ROUND_HALF_UP
 
-purchases_bp = Blueprint('purchases', __name__, url_prefix='/purchases')
+purchases_bp = Blueprint("purchases", __name__, url_prefix="/purchases")
 
 
-@purchases_bp.route('/')
+@purchases_bp.route("/")
 @login_required
-@permission_required('manage_purchases')
+@permission_required("manage_purchases")
 def index():
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    search = request.args.get('search', '', type=str)
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+    search = request.args.get("search", "", type=str)
 
     query = Purchase.query
 
     if search:
-        search_filter = f'%{search}%'
+        search_filter = f"%{search}%"
         query = query.filter(
             db.or_(
                 Purchase.purchase_number.ilike(search_filter),
-                Purchase.supplier_name.ilike(search_filter)
+                Purchase.supplier_name.ilike(search_filter),
             )
         )
 
-    query = query.filter_by(status='confirmed')
+    query = query.filter_by(status="confirmed")
 
     pagination = query.order_by(Purchase.purchase_date.desc()).paginate(
-        page=page,
-        per_page=per_page,
-        error_out=False
+        page=page, per_page=per_page, error_out=False
     )
 
-    return render_template('purchases/index.html',
-                           purchases=pagination.items,
-                           pagination=pagination)
+    return render_template(
+        "purchases/index.html", purchases=pagination.items, pagination=pagination
+    )
 
 
-@purchases_bp.route('/create', methods=['GET', 'POST'])
+@purchases_bp.route("/create", methods=["GET", "POST"])
 @login_required
-@permission_required('manage_purchases')
-@limiter.limit("10 per minute", methods=['POST'])
+@permission_required("manage_purchases")
+@limiter.limit("10 per minute", methods=["POST"])
 def create():  # noqa: C901
-    warehouse_id_val = request.form.get('warehouse_id', type=int) if request.method == 'POST' else None
+    warehouse_id_val = (
+        request.form.get("warehouse_id", type=int) if request.method == "POST" else None
+    )
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             current_app.logger.info("POST request received for purchase creation")
             current_app.logger.info(f"Form data keys: {list(request.form.keys())}")
-            current_app.logger.info(f"Line count from form: {request.form.get('line_count')}")
+            current_app.logger.info(
+                f"Line count from form: {request.form.get('line_count')}"
+            )
 
-            purchase_number = generate_number('P', Purchase, 'purchase_number')
+            purchase_number = generate_number("P", Purchase, "purchase_number")
 
             # الحصول على معلومات المورد
-            supplier_id = request.form.get('supplier_id', type=int)
+            supplier_id = request.form.get("supplier_id", type=int)
             supplier = None
-            supplier_name = request.form.get('supplier_name', '')
-            supplier_phone = request.form.get('supplier_phone', '')
-            supplier_email = request.form.get('supplier_email', '')
+            supplier_name = request.form.get("supplier_name", "")
+            supplier_phone = request.form.get("supplier_phone", "")
+            supplier_email = request.form.get("supplier_email", "")
             if not warehouse_id_val:
-                flash('⚠️ يجب اختيار المستودع الذي ستُضاف إليه البضاعة.', 'danger')
-                return redirect(url_for('purchases.create'))
+                flash("⚠️ يجب اختيار المستودع الذي ستُضاف إليه البضاعة.", "danger")
+                return redirect(url_for("purchases.create"))
 
             # إذا تم اختيار مورد من القائمة
             if supplier_id:
                 supplier = get_owned_or_404(Supplier, supplier_id)
                 if supplier:
                     supplier_name = supplier.name
-                    supplier_phone = supplier.phone or ''
-                    supplier_email = supplier.email or ''
+                    supplier_phone = supplier.phone or ""
+                    supplier_email = supplier.email or ""
 
             # التحقق من وجود اسم المورد
             if not supplier_name:
-                flash('⚠️ يجب إدخال اسم المورد.\n💡 اكتب اسم المورد أو اختر من القائمة.', 'danger')
-                return redirect(url_for('purchases.create'))
+                flash(
+                    "⚠️ يجب إدخال اسم المورد.\n💡 اكتب اسم المورد أو اختر من القائمة.",
+                    "danger",
+                )
+                return redirect(url_for("purchases.create"))
 
-            _purchase_treatment = (request.form.get('tax_treatment') or 'standard').strip().lower()
-            if _purchase_treatment not in ('standard', 'zero', 'exempt'):
-                flash('المعاملة الضريبية غير صالحة — اختر قياسية أو صفرية أو معفاة.', 'danger')
-                return redirect(url_for('purchases.create'))
-            _purchase_tax_rate = request.form.get('tax_rate', type=float, default=0)
+            _purchase_treatment = (
+                (request.form.get("tax_treatment") or "standard").strip().lower()
+            )
+            if _purchase_treatment not in ("standard", "zero", "exempt"):
+                flash(
+                    "المعاملة الضريبية غير صالحة — اختر قياسية أو صفرية أو معفاة.",
+                    "danger",
+                )
+                return redirect(url_for("purchases.create"))
+            _purchase_tax_rate = request.form.get("tax_rate", type=float, default=0)
             try:
                 from models.tenant_scope import get_current_tenant_id
                 from models import Tenant
                 from extensions import db as _db
+
                 _tid = get_current_tenant_id()
                 _tenant = _db.session.get(Tenant, _tid) if _tid else None
-                if _tenant is not None and not bool(getattr(_tenant, 'enable_tax', True)):
+                if _tenant is not None and not bool(
+                    getattr(_tenant, "enable_tax", True)
+                ):
                     _purchase_tax_rate = 0
             except Exception:
                 pass
 
-            currency_value = request.form.get('currency')
+            currency_value = request.form.get("currency")
             try:
                 _base_purch = CurrencyService.get_base_currency()
             except Exception:
-                _base_purch = 'ILS'
+                _base_purch = "ILS"
             currency = currency_value if currency_value else _base_purch
-            user_exchange_rate = request.form.get('exchange_rate', type=float)
+            user_exchange_rate = request.form.get("exchange_rate", type=float)
 
             exchange_rate = CurrencyService.get_exchange_rate(
-                currency,
-                _base_purch,
-                user_rate=user_exchange_rate
+                currency, _base_purch, user_rate=user_exchange_rate
             )
 
             # checkbox gone from checked state sends nothing — distinguish
             # 'form without the flag at all' (legacy payloads / test suites
             # that never render the page) from 'user unchecked it':
-            _vals = request.form.getlist('vat_recoverable')
-            vat_recoverable = (('on' in _vals or '1' in _vals or 'true' in _vals)
-                               if _vals else True)
-            reverse_charge = request.form.get('reverse_charge') in ('on', '1', 'true')
+            _vals = request.form.getlist("vat_recoverable")
+            vat_recoverable = (
+                ("on" in _vals or "1" in _vals or "true" in _vals) if _vals else True
+            )
+            reverse_charge = request.form.get("reverse_charge") in ("on", "1", "true")
 
             purchase = Purchase(
                 purchase_number=purchase_number,
@@ -133,18 +154,20 @@ def create():  # noqa: C901
                 supplier_email=supplier_email,
                 currency=currency,
                 exchange_rate=exchange_rate,
-                discount_amount=request.form.get('discount_amount', type=float, default=0),
+                discount_amount=request.form.get(
+                    "discount_amount", type=float, default=0
+                ),
                 tax_rate=_purchase_tax_rate,
-                tax_inclusive=request.form.get('tax_inclusive') in ('on', '1', 'true'),
+                tax_inclusive=request.form.get("tax_inclusive") in ("on", "1", "true"),
                 tax_treatment=_purchase_treatment,
                 vat_recoverable=vat_recoverable,
                 reverse_charge=reverse_charge,
-                notes=request.form.get('notes'),
+                notes=request.form.get("notes"),
                 user_id=current_user.id,
                 subtotal=0,
                 tax_amount=0,
                 total_amount=0,
-                amount_base=0
+                amount_base=0,
             )
 
             db.session.add(purchase)
@@ -155,29 +178,37 @@ def create():  # noqa: C901
             purchase.due_date = due_date_service.due_date_for_purchase(
                 purchase.purchase_date,
                 supplier=supplier,
-                explicit=request.form.get('due_date'),
+                explicit=request.form.get("due_date"),
             )
 
-            line_count = int(request.form.get('line_count', 0))
+            line_count = int(request.form.get("line_count", 0))
             current_app.logger.info(f"Processing {line_count} lines")
 
             # طباعة جميع البيانات المرسلة
             for key, value in request.form.items():
-                if key.startswith('lines['):
+                if key.startswith("lines["):
                     current_app.logger.info(f"Line data: {key} = {value}")
 
             current_app.logger.info("Starting to process lines...")
             lines_added = 0
             for i in range(line_count):
-                product_id = request.form.get(f'lines[{i}][product_id]', type=int)
-                quantity = request.form.get(f'lines[{i}][quantity]', type=float)
-                unit_cost = request.form.get(f'lines[{i}][unit_cost]', type=float)
-                discount_percent = request.form.get(f'lines[{i}][discount_percent]', type=float, default=0)
-                _line_treatment = (request.form.get(f'lines[{i}][tax_treatment]') or 'standard').strip().lower()
-                if _line_treatment not in ('standard', 'zero', 'exempt'):
-                    _line_treatment = 'standard'
+                product_id = request.form.get(f"lines[{i}][product_id]", type=int)
+                quantity = request.form.get(f"lines[{i}][quantity]", type=float)
+                unit_cost = request.form.get(f"lines[{i}][unit_cost]", type=float)
+                discount_percent = request.form.get(
+                    f"lines[{i}][discount_percent]", type=float, default=0
+                )
+                _line_treatment = (
+                    (request.form.get(f"lines[{i}][tax_treatment]") or "standard")
+                    .strip()
+                    .lower()
+                )
+                if _line_treatment not in ("standard", "zero", "exempt"):
+                    _line_treatment = "standard"
 
-                current_app.logger.info(f"Processing line {i}: product_id={product_id}, qty={quantity}, cost={unit_cost}")
+                current_app.logger.info(
+                    f"Processing line {i}: product_id={product_id}, qty={quantity}, cost={unit_cost}"
+                )
 
                 if product_id and quantity and quantity > 0 and unit_cost:
                     product = get_owned_or_404(Product, product_id)
@@ -195,15 +226,20 @@ def create():  # noqa: C901
                         line.calculate_line_total()
                         db.session.add(line)
                         lines_added += 1
-                        current_app.logger.info(f"Line added: {product.name} x {quantity} @ {unit_cost}")
+                        current_app.logger.info(
+                            f"Line added: {product.name} x {quantity} @ {unit_cost}"
+                        )
 
             current_app.logger.info(f"Lines added: {lines_added}")
 
             if lines_added == 0:
                 current_app.logger.warning("No lines added - rolling back")
                 db.session.rollback()
-                flash('⚠️ يجب إضافة منتج واحد على الأقل للفاتورة.\n💡 اضغط زر "➕ إضافة صف" واختر منتجاً.', 'danger')
-                return redirect(url_for('purchases.create'))
+                flash(
+                    '⚠️ يجب إضافة منتج واحد على الأقل للفاتورة.\n💡 اضغط زر "➕ إضافة صف" واختر منتجاً.',
+                    "danger",
+                )
+                return redirect(url_for("purchases.create"))
 
             # F13: الحساب يتم في النموذج (Purchase.calculate_totals) — كان
             # المسار يحسب يدوياً (بلا quantize، وتجاهل خصم المستند، وبلا
@@ -211,7 +247,9 @@ def create():  # noqa: C901
             # في النموذج.
             purchase.calculate_totals()
 
-            current_app.logger.info(f"Final totals: subtotal={purchase.subtotal}, tax={purchase.tax_amount}, total={purchase.total_amount}, aed={purchase.amount_base}")  # noqa: E501
+            current_app.logger.info(
+                f"Final totals: subtotal={purchase.subtotal}, tax={purchase.tax_amount}, total={purchase.total_amount}, aed={purchase.amount_base}"
+            )  # noqa: E501
 
             db.session.flush()
 
@@ -233,15 +271,16 @@ def create():  # noqa: C901
             # (Reverse Charge للخدمات من موردين أجانب: تُسجّل ضريبة مدخلات ومخرجات
             # متوازنة بالطرفين، والمورد يُسجَّل بالمبلغ الصافي فقط).
             from services.purchase_gl import build_purchase_gl_lines
+
             lines = build_purchase_gl_lines(purchase)
 
             GLService.post_entry(
                 lines,
-                description=f'Purchase {purchase.purchase_number}',
-                reference_type='Purchase',
+                description=f"Purchase {purchase.purchase_number}",
+                reference_type="Purchase",
                 reference_id=purchase.id,
                 currency=purchase.currency,
-                exchange_rate=purchase.exchange_rate
+                exchange_rate=purchase.exchange_rate,
             )
 
             # تحديث إحصائيات المورد
@@ -249,73 +288,89 @@ def create():  # noqa: C901
                 try:
                     supplier.update_statistics()
                 except Exception as e:
-                    current_app.logger.warning(f'Supplier stats update failed: {e}')
-                    flash('⚠️ تم حفظ الفاتورة لكن تعذر تحديث إحصائيات المورد.', 'warning')
+                    current_app.logger.warning(f"Supplier stats update failed: {e}")
+                    flash(
+                        "⚠️ تم حفظ الفاتورة لكن تعذر تحديث إحصائيات المورد.", "warning"
+                    )
 
             current_app.logger.info("About to commit to database...")
-            current_app.logger.info(f"Final values: subtotal={purchase.subtotal}, tax_amount={purchase.tax_amount}, total_amount={purchase.total_amount}, amount_base={purchase.amount_base}")  # noqa: E501
+            current_app.logger.info(
+                f"Final values: subtotal={purchase.subtotal}, tax_amount={purchase.tax_amount}, total_amount={purchase.total_amount}, amount_base={purchase.amount_base}"
+            )  # noqa: E501
             db.session.commit()
             current_app.logger.info("Database commit successful!")
 
-            create_audit_log('create', 'purchases', purchase.id)
+            create_audit_log("create", "purchases", purchase.id)
 
-            flash('✅ تم إنشاء فاتورة الشراء بنجاح!', 'success')
-            return redirect(url_for('purchases.view', id=purchase.id))
+            flash("✅ تم إنشاء فاتورة الشراء بنجاح!", "success")
+            return redirect(url_for("purchases.view", id=purchase.id))
 
         except Exception as e:
             current_app.logger.error(f"Error in purchase creation: {str(e)}")
             current_app.logger.error(f"Error type: {type(e)}")
             import traceback
+
             current_app.logger.error(f"Traceback: {traceback.format_exc()}")
             db.session.rollback()
-            current_app.logger.exception('handler failed')
-            flash(f'❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.', 'danger')
+            current_app.logger.exception("handler failed")
+            flash(
+                f"❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.",
+                "danger",
+            )
 
     exchange_rates = CurrencyService.get_all_rates(CurrencyService.get_base_currency())
-    warehouses = Warehouse.query.filter_by(is_active=True).order_by(
-        Warehouse.is_main.desc(), Warehouse.name
-    ).all()
+    warehouses = (
+        Warehouse.query.filter_by(is_active=True)
+        .order_by(Warehouse.is_main.desc(), Warehouse.name)
+        .all()
+    )
 
-    return render_template('purchases/create.html', exchange_rates=exchange_rates, warehouses=warehouses)
+    return render_template(
+        "purchases/create.html", exchange_rates=exchange_rates, warehouses=warehouses
+    )
 
 
-@purchases_bp.route('/<int:id>')
+@purchases_bp.route("/<int:id>")
 @login_required
-@permission_required('manage_purchases')
+@permission_required("manage_purchases")
 def view(id):
     purchase = get_owned_or_404(Purchase, id)
-    return render_template('purchases/view.html', purchase=purchase)
+    return render_template("purchases/view.html", purchase=purchase)
 
 
-@purchases_bp.route('/<int:id>/print')
+@purchases_bp.route("/<int:id>/print")
 @login_required
-@permission_required('manage_purchases')
+@permission_required("manage_purchases")
 def print_purchase(id):
     purchase = get_owned_or_404(Purchase, id)
     from utils.invoice_header import document_tenant, with_tenant_header
+
     try:
-        settings = with_tenant_header(InvoiceSettings.get_active(), document_tenant(purchase))
+        settings = with_tenant_header(
+            InvoiceSettings.get_active(), document_tenant(purchase)
+        )
     except ValueError:
-        abort(409, description='لا يمكن الطباعة: الشركة المالكة للمستند غير محددة')
-    
+        abort(409, description="لا يمكن الطباعة: الشركة المالكة للمستند غير محددة")
+
     # Template selection (purchases use simple template for now, can add more later)
-    template = request.args.get('template', 'simple')
-    _ALLOWED_TEMPLATES = ('simple',)
+    template = request.args.get("template", "simple")
+    _ALLOWED_TEMPLATES = ("simple",)
     if template not in _ALLOWED_TEMPLATES:
-        template = 'simple'
-    
-    template_labels = {'simple': 'مبسط'}
+        template = "simple"
+
+    template_labels = {"simple": "مبسط"}
     available_templates = [(k, v) for k, v in template_labels.items()]
 
     from utils.amount_in_words import amount_in_words
-    amount_words_ar = amount_in_words(purchase.total_amount, purchase.currency, 'ar')
-    amount_words_en = amount_in_words(purchase.total_amount, purchase.currency, 'en')
+
+    amount_words_ar = amount_in_words(purchase.total_amount, purchase.currency, "ar")
+    amount_words_en = amount_in_words(purchase.total_amount, purchase.currency, "en")
 
     return render_template(
-        'purchases/print.html',
+        "purchases/print.html",
         purchase=purchase,
         settings=settings,
-        document_type='purchase',
+        document_type="purchase",
         document_id=purchase.id,
         available_templates=available_templates,
         current_template=template,
@@ -324,49 +379,52 @@ def print_purchase(id):
     )
 
 
-@purchases_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@purchases_bp.route("/<int:id>/edit", methods=["GET", "POST"])
 @login_required
-@permission_required('manage_purchases')
+@permission_required("manage_purchases")
 def edit(id):
     """تعديل فاتورة شراء - الملاحظات والخصم فقط"""
     purchase = get_owned_or_404(Purchase, id)
 
     # منع التعديل للفواتير المدفوعة
     if purchase.get_paid_amount() > 0:
-        flash('⚠️ لا يمكن تعديل فاتورة شراء تم الدفع عليها.\n💡 للحفاظ على السجلات المحاسبية.', 'danger')
-        return redirect(url_for('purchases.view', id=id))
+        flash(
+            "⚠️ لا يمكن تعديل فاتورة شراء تم الدفع عليها.\n💡 للحفاظ على السجلات المحاسبية.",
+            "danger",
+        )
+        return redirect(url_for("purchases.view", id=id))
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             # تعديل الملاحظات فقط
-            purchase.notes = request.form.get('notes', '')
+            purchase.notes = request.form.get("notes", "")
 
             # تاريخ الاستحقاق: تاريخ صريح من النموذج، وإلا يُشتق من تاريخ
             # الفاتورة + شروط دفع المورد (services/due_date_service.py).
-            if 'due_date' in request.form:
+            if "due_date" in request.form:
                 purchase.due_date = due_date_service.due_date_for_purchase(
                     purchase.purchase_date,
                     supplier=purchase.supplier,
-                    explicit=request.form.get('due_date'),
+                    explicit=request.form.get("due_date"),
                 )
 
             db.session.commit()
-            create_audit_log('update', 'purchases', id)
+            create_audit_log("update", "purchases", id)
 
-            flash('✅ تم تحديث فاتورة الشراء بنجاح!', 'success')
-            return redirect(url_for('purchases.view', id=id))
+            flash("✅ تم تحديث فاتورة الشراء بنجاح!", "success")
+            return redirect(url_for("purchases.view", id=id))
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
-            flash(f'❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات.', 'danger')
+            current_app.logger.exception("handler failed")
+            flash(f"❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات.", "danger")
 
-    return render_template('purchases/edit.html', purchase=purchase)
+    return render_template("purchases/edit.html", purchase=purchase)
 
 
-@purchases_bp.route('/<int:id>/delete', methods=['POST'])
+@purchases_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
-@permission_required('manage_purchases')
+@permission_required("manage_purchases")
 def delete(id):
     """حذف (أرشفة) فاتورة شراء"""
     from services.archive_service import ArchiveService
@@ -394,81 +452,98 @@ def delete(id):
             # أرشفة (Soft Delete)
             # عكس القيد المحاسبي إجباري (F2): فشله يُعلن ولا تُؤرشف
             # الفاتورة (الصمت كان يخفي أن دفتر الأستاذ لم يُعكس).
-            if purchase.status != 'cancelled':
+            if purchase.status != "cancelled":
                 try:
                     reverse_or_purge_gl_entries(
-                        'Purchase',
+                        "Purchase",
                         purchase.id,
-                        description=f'عكس فاتورة شراء {purchase.purchase_number} (أرشفة)',
+                        description=f"عكس فاتورة شراء {purchase.purchase_number} (أرشفة)",
                     )
                 except Exception as e:
                     db.session.rollback()
                     current_app.logger.error(
-                        f'Failed to reverse GL entries for archived purchase {purchase.id}: {e}')
+                        f"Failed to reverse GL entries for archived purchase {purchase.id}: {e}"
+                    )
                     flash(
-                        f'❌ تعذّر عكس القيود المحاسبية لفاتورة الشراء '
+                        f"❌ تعذّر عكس القيود المحاسبية لفاتورة الشراء "
                         f'"{purchase.purchase_number}" — لم تُؤرشف.\n💡 {e}',
-                        'danger')
-                    return redirect(url_for('purchases.view', id=id))
+                        "danger",
+                    )
+                    return redirect(url_for("purchases.view", id=id))
 
             archive_service = ArchiveService()
-            archive_service.archive_record('purchases', purchase, reason='تم أرشفة الفاتورة لوجود مدفوعات أو شيكات', commit=False)
+            archive_service.archive_record(
+                "purchases",
+                purchase,
+                reason="تم أرشفة الفاتورة لوجود مدفوعات أو شيكات",
+                commit=False,
+            )
 
-            create_audit_log('archive', 'purchases', id)
+            create_audit_log("archive", "purchases", id)
             db.session.commit()
-            flash(f'✅ تم أرشفة فاتورة الشراء "{purchase.purchase_number}" (لوجود ارتباطات مالية)', 'warning')
+            flash(
+                f'✅ تم أرشفة فاتورة الشراء "{purchase.purchase_number}" (لوجود ارتباطات مالية)',
+                "warning",
+            )
         else:
             # حذف نهائي (Hard Delete)
             # 1. القيود المحاسبية: المرحَّلة تُعكس (لا تُحذف أبداً — القيد
             #    المحاسبي أثر دائم) والمسودات فقط تُحذف.
             try:
                 gl_result = reverse_or_purge_gl_entries(
-                    'Purchase',
+                    "Purchase",
                     purchase.id,
-                    description=f'عكس فاتورة شراء {purchase.purchase_number} (حذف نهائي)',
+                    description=f"عكس فاتورة شراء {purchase.purchase_number} (حذف نهائي)",
                 )
             except Exception as e:
                 db.session.rollback()
                 current_app.logger.error(
-                    f'Failed to reverse GL entries for deleted purchase {purchase.id}: {e}')
+                    f"Failed to reverse GL entries for deleted purchase {purchase.id}: {e}"
+                )
                 flash(
-                    f'❌ تعذّر عكس القيود المحاسبية لفاتورة الشراء '
+                    f"❌ تعذّر عكس القيود المحاسبية لفاتورة الشراء "
                     f'"{purchase.purchase_number}" — لم تُحذف.\n💡 {e}',
-                    'danger')
-                return redirect(url_for('purchases.view', id=id))
+                    "danger",
+                )
+                return redirect(url_for("purchases.view", id=id))
 
             # 2. حذف البنود (PurchaseLines)
             PurchaseLine.query.filter_by(purchase_id=purchase.id).delete()
 
             # 3. حذف الفاتورة
             db.session.delete(purchase)
-            create_audit_log('delete', 'purchases', id)
+            create_audit_log("delete", "purchases", id)
             db.session.commit()
-            if gl_result['reversed']:
+            if gl_result["reversed"]:
                 flash(
                     f'✅ تم حذف فاتورة الشراء "{purchase.purchase_number}" نهائياً — '
-                    f'وعُكست قيودها المحاسبية ({gl_result["reversed"]} قيد) '
-                    f'بدل حذفها حفاظاً على الأثر المحاسبي.',
-                    'success')
+                    f"وعُكست قيودها المحاسبية ({gl_result['reversed']} قيد) "
+                    f"بدل حذفها حفاظاً على الأثر المحاسبي.",
+                    "success",
+                )
             else:
-                flash(f'✅ تم حذف فاتورة الشراء "{purchase.purchase_number}" نهائياً', 'success')
+                flash(
+                    f'✅ تم حذف فاتورة الشراء "{purchase.purchase_number}" نهائياً',
+                    "success",
+                )
 
-        return redirect(url_for('purchases.index'))
+        return redirect(url_for("purchases.index"))
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f'Purchase delete error: {e}')
-        flash(f'❌ حدث خطأ: حدث خطأ غير متوقع', 'danger')
-        return redirect(url_for('purchases.view', id=id))
+        current_app.logger.error(f"Purchase delete error: {e}")
+        flash(f"❌ حدث خطأ: حدث خطأ غير متوقع", "danger")
+        return redirect(url_for("purchases.view", id=id))
+
 
 # =====================================
 # API Endpoints - Backend Calculations
 # =====================================
 
 
-@purchases_bp.route('/api/calculate-totals', methods=['POST'])
+@purchases_bp.route("/api/calculate-totals", methods=["POST"])
 @login_required
-@permission_required('manage_purchases')
+@permission_required("manage_purchases")
 def api_calculate_purchase_totals():
     """API لحساب إجماليات فاتورة المشتريات - Backend Calculation"""
     try:
@@ -476,67 +551,82 @@ def api_calculate_purchase_totals():
 
         data = request.get_json(force=True)
         if not data:
-            return jsonify({'success': False, 'error': 'No data provided'}), 400
+            return jsonify({"success": False, "error": "No data provided"}), 400
 
-        lines = data.get('lines', [])
-        tax_rate = Decimal(str(data.get('tax_rate', 0)))
-        treatment = (data.get('tax_treatment') or 'standard').strip().lower()
-        if treatment not in ('standard', 'zero', 'exempt'):
-            return jsonify({'success': False, 'error': 'معاملة ضريبية غير صالحة'}), 400
-        inclusive = bool(data.get('tax_inclusive', False))
-        discount_amount = Decimal(str(data.get('discount_amount', 0)))
+        lines = data.get("lines", [])
+        tax_rate = Decimal(str(data.get("tax_rate", 0)))
+        treatment = (data.get("tax_treatment") or "standard").strip().lower()
+        if treatment not in ("standard", "zero", "exempt"):
+            return jsonify({"success": False, "error": "معاملة ضريبية غير صالحة"}), 400
+        inclusive = bool(data.get("tax_inclusive", False))
+        discount_amount = Decimal(str(data.get("discount_amount", 0)))
         try:
             from models.tenant_scope import get_current_tenant_id
             from models import Tenant
             from extensions import db as _db
+
             _tid = get_current_tenant_id()
             _tenant = _db.session.get(Tenant, _tid) if _tid else None
-            if _tenant is not None and not bool(getattr(_tenant, 'enable_tax', True)):
-                tax_rate = Decimal('0')
-                treatment = 'standard'
+            if _tenant is not None and not bool(getattr(_tenant, "enable_tax", True)):
+                tax_rate = Decimal("0")
+                treatment = "standard"
         except Exception:
             pass
-        if treatment != 'standard':
-            tax_rate = Decimal('0')
+        if treatment != "standard":
+            tax_rate = Decimal("0")
 
         # حساب المجموع الفرعي
-        subtotal = Decimal('0')
+        subtotal = Decimal("0")
         line_specs = []
         for line in lines:
             try:
-                qty = Decimal(str(line.get('quantity', 0)))
-                cost = Decimal(str(line.get('unit_cost', 0)))
-                discount_percent = Decimal(str(line.get('discount_percent', 0)))
+                qty = Decimal(str(line.get("quantity", 0)))
+                cost = Decimal(str(line.get("unit_cost", 0)))
+                discount_percent = Decimal(str(line.get("discount_percent", 0)))
 
                 if qty > 0 and cost > 0:
                     line_subtotal = qty * cost
-                    line_discount = line_subtotal * (discount_percent / Decimal('100'))
+                    line_discount = line_subtotal * (discount_percent / Decimal("100"))
                     line_total = (line_subtotal - line_discount).quantize(
-                        Decimal('0.001'), rounding=ROUND_HALF_UP)
-                    _line_treat = (line.get('tax_treatment') or 'standard').strip().lower()
-                    if _line_treat not in ('standard', 'zero', 'exempt'):
-                        _line_treat = 'standard'
+                        Decimal("0.001"), rounding=ROUND_HALF_UP
+                    )
+                    _line_treat = (
+                        (line.get("tax_treatment") or "standard").strip().lower()
+                    )
+                    if _line_treat not in ("standard", "zero", "exempt"):
+                        _line_treat = "standard"
                     subtotal += line_total
-                    line_specs.append({'line_total': line_total,
-                                       'tax_treatment': _line_treat})
+                    line_specs.append(
+                        {"line_total": line_total, "tax_treatment": _line_treat}
+                    )
             except (ValueError, TypeError, KeyError):
                 continue
 
         # حساب الضريبة والإجمالي — نفس محرك الفاتورة تماماً
         from services.sale_tax_calculation import sale_tax_totals_mixed
-        tax_amount, total, _ns, _nz, _ne = sale_tax_totals_mixed(
-            line_specs, discount_amount, Decimal('0'), tax_rate, inclusive,
-            invoice_treatment=treatment)
 
-        return jsonify({
-            'success': True,
-            'subtotal': float(subtotal),
-            'tax_rate': float(tax_rate),
-            'tax_amount': float(tax_amount),
-            'total': float(total),
-            'line_count': len([ln for ln in lines if Decimal(str(ln.get('quantity', 0))) > 0])
-        }), 200
+        tax_amount, total, _ns, _nz, _ne = sale_tax_totals_mixed(
+            line_specs,
+            discount_amount,
+            Decimal("0"),
+            tax_rate,
+            inclusive,
+            invoice_treatment=treatment,
+        )
+
+        return jsonify(
+            {
+                "success": True,
+                "subtotal": float(subtotal),
+                "tax_rate": float(tax_rate),
+                "tax_amount": float(tax_amount),
+                "total": float(total),
+                "line_count": len(
+                    [ln for ln in lines if Decimal(str(ln.get("quantity", 0))) > 0]
+                ),
+            }
+        ), 200
 
     except Exception as e:
-        current_app.logger.error(f'Error in calculate_purchase_totals: {str(e)}')
-        return jsonify({'success': False, 'error': 'حدث خطأ غير متوقع'}), 500
+        current_app.logger.error(f"Error in calculate_purchase_totals: {str(e)}")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500

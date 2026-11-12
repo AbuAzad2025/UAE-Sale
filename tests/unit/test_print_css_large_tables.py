@@ -5,6 +5,7 @@ Verifies:
 - static/css/reports-print.css contains required rules
 - Large invoice (500 lines) renders without error and preserves pagination hooks
 """
+
 import pathlib
 import re
 from decimal import Decimal
@@ -54,30 +55,41 @@ class TestPrintCssLargeTables:
     def test_print_css_has_invoice_overflow_fix(self):
         css = _read_css(PRINT_CSS)
         # Invoice templates use fixed mm heights; print.css must reset them
-        assert ".invoice" in css, "print.css should target .invoice for large-doc pagination"
-        assert "height: auto" in css.lower(), "print.css should reset height for large tables"
+        assert ".invoice" in css, (
+            "print.css should target .invoice for large-doc pagination"
+        )
+        assert "height: auto" in css.lower(), (
+            "print.css should reset height for large tables"
+        )
 
     def test_print_css_table_break_rules(self):
         css = _read_css(PRINT_CSS)
         # Ensure table allows breaks but rows do not split
-        assert re.search(r"table\s*\{[^}]*page-break-inside\s*:\s*auto", css, re.I | re.S), \
-            "table {page-break-inside:auto} not found in print.css"
-        assert re.search(r"tr\s*\{[^}]*page-break-inside\s*:\s*avoid", css, re.I | re.S), \
-            "tr {page-break-inside:avoid} not found in print.css"
+        assert re.search(
+            r"table\s*\{[^}]*page-break-inside\s*:\s*auto", css, re.I | re.S
+        ), "table {page-break-inside:auto} not found in print.css"
+        assert re.search(
+            r"tr\s*\{[^}]*page-break-inside\s*:\s*avoid", css, re.I | re.S
+        ), "tr {page-break-inside:avoid} not found in print.css"
 
     def test_print_css_thead_tfoot_repeating(self):
         css = _read_css(PRINT_CSS)
-        assert re.search(r"thead\s*\{[^}]*display\s*:\s*table-header-group", css, re.I | re.S), \
-            "thead repeating rule missing"
-        assert re.search(r"tfoot\s*\{[^}]*display\s*:\s*table-footer-group", css, re.I | re.S), \
-            "tfoot repeating rule missing"
+        assert re.search(
+            r"thead\s*\{[^}]*display\s*:\s*table-header-group", css, re.I | re.S
+        ), "thead repeating rule missing"
+        assert re.search(
+            r"tfoot\s*\{[^}]*display\s*:\s*table-footer-group", css, re.I | re.S
+        ), "tfoot repeating rule missing"
 
     def test_print_css_no_clipping(self):
         css = _read_css(PRINT_CSS)
         # Must allow visible overflow and word-break to avoid clipped long strings
-        assert "overflow: visible" in css.lower(), "overflow:visible required for large docs"
-        assert "word-break" in css.lower() or "overflow-wrap" in css.lower(), \
+        assert "overflow: visible" in css.lower(), (
+            "overflow:visible required for large docs"
+        )
+        assert "word-break" in css.lower() or "overflow-wrap" in css.lower(), (
             "word-break / overflow-wrap required"
+        )
 
     def test_reports_print_css_has_required_rules(self):
         css = _read_css(REPORTS_CSS)
@@ -87,7 +99,9 @@ class TestPrintCssLargeTables:
 
     def test_reports_print_thead_tbody_rules(self):
         css = _read_css(REPORTS_CSS)
-        assert re.search(r"thead\s*\{|#report-table thead", css, re.I), "reports thead rule missing"
+        assert re.search(r"thead\s*\{|#report-table thead", css, re.I), (
+            "reports thead rule missing"
+        )
         assert "table-header-group" in css.lower()
         assert "table-footer-group" in css.lower()
 
@@ -97,12 +111,15 @@ class TestLargeInvoiceRendering:
 
     def _make_mock_sale(self, n=500):
         """Build a lightweight mock sale with n lines."""
+
         class _Obj:
             pass
 
         def _mk_product(idx):
             p = _Obj()
-            p.name = f"Product {idx} with a very long description that must wrap correctly "
+            p.name = (
+                f"Product {idx} with a very long description that must wrap correctly "
+            )
             p.name += "and not be clipped in print pagination overflow visible handling"
             return p
 
@@ -168,11 +185,13 @@ class TestLargeInvoiceRendering:
             license_number = None
             default_invoice_note_ar = None
             payment_terms_ar = None
+
         return _S()
 
     def _get_isolated_app(self):
         """Create a minimal Flask app for template rendering without full create_app."""
         from flask import Flask
+
         root = pathlib.Path(__file__).parents[2]
         app = Flask(
             __name__,
@@ -195,6 +214,7 @@ class TestLargeInvoiceRendering:
                 base_currency="AED",
                 t=lambda x, **kw: x,
             )
+
         return app
 
     def test_render_modern_invoice_with_500_rows(self):
@@ -206,11 +226,16 @@ class TestLargeInvoiceRendering:
         isolated = self._get_isolated_app()
         with isolated.test_request_context("/"):
             html = render_template(
-                "invoices/modern.html", sale=sale, settings=settings, config=isolated.config
+                "invoices/modern.html",
+                sale=sale,
+                settings=settings,
+                config=isolated.config,
             )
         assert "<thead>" in html.lower(), "thead missing in rendered invoice"
         assert "<tbody>" in html.lower(), "tbody missing"
-        assert html.count("Product ") >= 500, f"Expected 500 rows, got {html.count('Product ')}"
+        assert html.count("Product ") >= 500, (
+            f"Expected 500 rows, got {html.count('Product ')}"
+        )
         assert "LARGE-500-001" in html
 
     def test_render_simple_invoice_with_500_rows_mock(self):
@@ -223,7 +248,10 @@ class TestLargeInvoiceRendering:
         isolated = self._get_isolated_app()
         with isolated.test_request_context("/"):
             html = render_template(
-                "invoices/simple.html", sale=sale, settings=settings, config=isolated.config
+                "invoices/simple.html",
+                sale=sale,
+                settings=settings,
+                config=isolated.config,
             )
         assert "MOCK-500-002" in html
         assert html.count("<tr>") >= 500
@@ -242,6 +270,8 @@ class TestLargeInvoiceRendering:
 
         fake = _FakeSale()
         for i in range(500):
-            fake.lines.append({"product_id": 1, "quantity": D("1"), "line_total": D("10")})
+            fake.lines.append(
+                {"product_id": 1, "quantity": D("1"), "line_total": D("10")}
+            )
         assert len(fake.lines) == 500
         assert sum(x["line_total"] for x in fake.lines) == D("5000")

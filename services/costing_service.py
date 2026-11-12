@@ -34,17 +34,17 @@ Inventory Costing — متوسط التكلفة المتحرك للمخزون (M
 from decimal import Decimal, ROUND_HALF_UP
 
 #: دقة المبالغ — دقة أعمدة ``Numeric(15, 3)`` في المستودع كله.
-MONEY_QUANTUM = Decimal('0.001')
+MONEY_QUANTUM = Decimal("0.001")
 
 
-def _dec(value, default=Decimal('0')):
+def _dec(value, default=Decimal("0")):
     """تحويل أي قيمة حدودية إلى ``Decimal`` (لا تنهار على بيانات قذرة)."""
-    if value is None or value == '':
+    if value is None or value == "":
         return default
     if isinstance(value, Decimal):
         return value
     try:
-        return Decimal(str(value).strip().replace(',', ''))
+        return Decimal(str(value).strip().replace(",", ""))
     except Exception:
         return default
 
@@ -93,7 +93,7 @@ class CostingService:
             return _q3(old_avg)
 
         if old_qty < 0:
-            old_qty = Decimal('0')
+            old_qty = Decimal("0")
 
         total_qty = old_qty + in_qty
         if total_qty <= 0:
@@ -126,16 +126,16 @@ class CostingService:
             Decimal: المتوسط الجديد بعد الحركة.
         """
         if product is None:
-            return Decimal('0.000')
+            return Decimal("0.000")
 
         qty = _dec(qty)
-        old_avg = _dec(getattr(product, 'average_cost', 0))
+        old_avg = _dec(getattr(product, "average_cost", 0))
 
         if qty <= 0:
             return _q3(old_avg)
 
         new_avg = CostingService.moving_average(
-            _dec(getattr(product, 'current_stock', 0)),
+            _dec(getattr(product, "current_stock", 0)),
             old_avg,
             qty,
             _dec(unit_cost_base),
@@ -152,12 +152,12 @@ class CostingService:
         نفسها فلا يتغيّر المتوسط.
         """
         if product is None:
-            return Decimal('0.000')
-        average = _dec(getattr(product, 'average_cost', 0))
+            return Decimal("0.000")
+        average = _dec(getattr(product, "average_cost", 0))
         if average > 0:
             return _q3(average)
-        reference = _dec(getattr(product, 'cost_price', 0))
-        return _q3(reference) if reference > 0 else Decimal('0.000')
+        reference = _dec(getattr(product, "cost_price", 0))
+        return _q3(reference) if reference > 0 else Decimal("0.000")
 
     # =================================================================
     # البيع
@@ -187,7 +187,7 @@ class CostingService:
         """
         from services.stock_service import StockService
 
-        average = _dec(getattr(product, 'average_cost', 0))
+        average = _dec(getattr(product, "average_cost", 0))
         if average > 0:
             return _q3(average)
 
@@ -204,9 +204,9 @@ class CostingService:
     def stock_value(product) -> Decimal:
         """قيمة المخزون الدفترية للمنتج = الكمية × المتوسط المتحرك."""
         if product is None:
-            return Decimal('0.000')
-        quantity = _dec(getattr(product, 'current_stock', 0))
-        average = _dec(getattr(product, 'average_cost', 0))
+            return Decimal("0.000")
+        quantity = _dec(getattr(product, "current_stock", 0))
+        average = _dec(getattr(product, "average_cost", 0))
         return _q3(quantity * average)
 
     @staticmethod
@@ -234,22 +234,22 @@ class CostingService:
         Returns:
             Decimal: تكلفة الوحدة الصافية بالعملة الأساسية.
         """
-        qty = _dec(getattr(line, 'quantity', 0))
+        qty = _dec(getattr(line, "quantity", 0))
         if qty <= 0:
-            return Decimal('0.000')
+            return Decimal("0.000")
 
-        line_total = getattr(line, 'line_total', None)
+        line_total = getattr(line, "line_total", None)
         if line_total is None:
-            unit_cost = _dec(getattr(line, 'unit_cost', 0))
-            discount_percent = _dec(getattr(line, 'discount_percent', 0))
-            multiplier = (Decimal('100') - discount_percent) / Decimal('100')
+            unit_cost = _dec(getattr(line, "unit_cost", 0))
+            discount_percent = _dec(getattr(line, "discount_percent", 0))
+            multiplier = (Decimal("100") - discount_percent) / Decimal("100")
             line_total = qty * unit_cost * multiplier
         line_total = _dec(line_total)
 
-        subtotal = _dec(getattr(purchase, 'subtotal', 0))
-        document_discount = _dec(getattr(purchase, 'discount_amount', 0))
+        subtotal = _dec(getattr(purchase, "subtotal", 0))
+        document_discount = _dec(getattr(purchase, "discount_amount", 0))
 
-        allocated_discount = Decimal('0')
+        allocated_discount = Decimal("0")
         if document_discount > 0 and subtotal > 0:
             allocated_discount = document_discount * line_total / subtotal
 
@@ -257,23 +257,35 @@ class CostingService:
 
         # الضريبة غير القابلة للاسترداد تُحمَّل على تكلفة البضاعة:
         # تُوزَّع بالتناسب مع صافي أسطر 'standard' (غير القياسي لا يحمل ضريبة أصلاً).
-        if not getattr(purchase, 'vat_recoverable', True):
-            tax_amount = _dec(getattr(purchase, 'tax_amount', 0))
-            invoice_treatment = getattr(purchase, 'tax_treatment', 'standard') or 'standard'
-            if tax_amount > 0 and invoice_treatment == 'standard':
-                standard_net = Decimal('0.000')
-                for l in getattr(purchase, 'lines', []):
-                    if (getattr(l, 'tax_treatment', 'standard') or 'standard') == 'standard':
-                        lt = _dec(getattr(l, 'line_total', 0))
-                        alloc = document_discount * lt / subtotal if subtotal > 0 else Decimal('0')
+        if not getattr(purchase, "vat_recoverable", True):
+            tax_amount = _dec(getattr(purchase, "tax_amount", 0))
+            invoice_treatment = (
+                getattr(purchase, "tax_treatment", "standard") or "standard"
+            )
+            if tax_amount > 0 and invoice_treatment == "standard":
+                standard_net = Decimal("0.000")
+                for l in getattr(purchase, "lines", []):
+                    if (
+                        getattr(l, "tax_treatment", "standard") or "standard"
+                    ) == "standard":
+                        lt = _dec(getattr(l, "line_total", 0))
+                        alloc = (
+                            document_discount * lt / subtotal
+                            if subtotal > 0
+                            else Decimal("0")
+                        )
                         standard_net += lt - alloc
-                if standard_net > 0 and (getattr(line, 'tax_treatment', 'standard') or 'standard') == 'standard':
+                if (
+                    standard_net > 0
+                    and (getattr(line, "tax_treatment", "standard") or "standard")
+                    == "standard"
+                ):
                     line_share = net_line_amount / standard_net
                     net_line_amount += tax_amount * line_share
 
-        exchange_rate = _dec(getattr(purchase, 'exchange_rate', 1) or 1)
+        exchange_rate = _dec(getattr(purchase, "exchange_rate", 1) or 1)
         if exchange_rate <= 0:
-            exchange_rate = Decimal('1')
+            exchange_rate = Decimal("1")
 
         return _q3((net_line_amount * exchange_rate) / qty)
 
@@ -297,14 +309,16 @@ class CostingService:
 
         rows = []
         for product in query.order_by(Product.id).all():
-            quantity = _q3(getattr(product, 'current_stock', 0))
-            average = _q3(getattr(product, 'average_cost', 0))
-            rows.append({
-                'product_id': product.id,
-                'sku': product.sku,
-                'name': product.name,
-                'quantity': quantity,
-                'average_cost': average,
-                'value': _q3(quantity * average),
-            })
+            quantity = _q3(getattr(product, "current_stock", 0))
+            average = _q3(getattr(product, "average_cost", 0))
+            rows.append(
+                {
+                    "product_id": product.id,
+                    "sku": product.sku,
+                    "name": product.name,
+                    "quantity": quantity,
+                    "average_cost": average,
+                    "value": _q3(quantity * average),
+                }
+            )
         return rows

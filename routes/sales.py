@@ -1,4 +1,14 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, abort
+from flask import (
+    Blueprint,
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    request,
+    jsonify,
+    current_app,
+    abort,
+)
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Sale, SaleLine, Customer, Product, InvoiceSettings
@@ -9,7 +19,7 @@ from routes.ledger import reverse_or_purge_gl_entries
 
 from utils.helpers import create_audit_log
 
-sales_bp = Blueprint('sales', __name__, url_prefix='/sales')
+sales_bp = Blueprint("sales", __name__, url_prefix="/sales")
 
 
 def _restore_sale_stock(sale):
@@ -24,7 +34,7 @@ def _restore_sale_stock(sale):
     from services.stock_service import StockService
 
     already_reversed = StockMovement.query.filter_by(
-        reference_type='Sale-Reversed',
+        reference_type="Sale-Reversed",
         reference_id=sale.id,
     ).first()
     if already_reversed:
@@ -34,39 +44,42 @@ def _restore_sale_stock(sale):
     return True
 
 
-@sales_bp.route('/')
+@sales_bp.route("/")
 @login_required
-@permission_required('manage_sales')
+@permission_required("manage_sales")
 def index():
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    search = request.args.get('search', '', type=str)
-    status = request.args.get('status', '', type=str)
-    payment_status = request.args.get('payment_status', '', type=str)
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+    search = request.args.get("search", "", type=str)
+    status = request.args.get("status", "", type=str)
+    payment_status = request.args.get("payment_status", "", type=str)
 
     query = Sale.query
 
     # إخفاء المبيعات المؤرشفة
     from models import ArchivedRecord
     from sqlalchemy import select
-    archived_sales = select(ArchivedRecord.record_id).filter(
-        ArchivedRecord.table_name == 'sales'
-    ).scalar_subquery()
+
+    archived_sales = (
+        select(ArchivedRecord.record_id)
+        .filter(ArchivedRecord.table_name == "sales")
+        .scalar_subquery()
+    )
     query = query.filter(~Sale.id.in_(archived_sales))
 
     if search:
-        search_filter = f'%{search}%'
+        search_filter = f"%{search}%"
         query = query.join(Customer).filter(
             db.or_(
                 Sale.sale_number.ilike(search_filter),
-                Customer.name.ilike(search_filter)
+                Customer.name.ilike(search_filter),
             )
         )
 
     if status:
         query = query.filter(Sale.status == status)
     else:
-        query = query.filter(Sale.status == 'confirmed')
+        query = query.filter(Sale.status == "confirmed")
 
     if payment_status:
         query = query.filter(Sale.payment_status == payment_status)
@@ -75,110 +88,120 @@ def index():
         query = query.filter_by(seller_id=current_user.id)
 
     pagination = query.order_by(Sale.sale_date.desc()).paginate(
-        page=page,
-        per_page=per_page,
-        error_out=False
+        page=page, per_page=per_page, error_out=False
     )
 
-    return render_template('sales/index.html',
-                           sales=pagination.items,
-                           pagination=pagination)
+    return render_template(
+        "sales/index.html", sales=pagination.items, pagination=pagination
+    )
 
 
-@sales_bp.route('/create', methods=['GET', 'POST'])
+@sales_bp.route("/create", methods=["GET", "POST"])
 @login_required
-@permission_required('manage_sales')
-@limiter.limit("15 per minute", methods=['POST'])
+@permission_required("manage_sales")
+@limiter.limit("15 per minute", methods=["POST"])
 def create():  # noqa: C901
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
-            customer_id = request.form.get('customer_id', type=int)
+            customer_id = request.form.get("customer_id", type=int)
             customer = get_owned_or_404(Customer, customer_id)
 
             lines_data = []
-            line_count = int(request.form.get('line_count', 0))
+            line_count = int(request.form.get("line_count", 0))
 
             for i in range(line_count):
                 try:
-                    product_id_str = request.form.get(f'lines[{i}][product_id]')
+                    product_id_str = request.form.get(f"lines[{i}][product_id]")
                     product_id = int(product_id_str) if product_id_str else None
 
-                    quantity_str = request.form.get(f'lines[{i}][quantity]')
+                    quantity_str = request.form.get(f"lines[{i}][quantity]")
                     quantity = float(quantity_str) if quantity_str else None
 
-                    discount_str = request.form.get(f'lines[{i}][discount_percent]')
+                    discount_str = request.form.get(f"lines[{i}][discount_percent]")
                     discount_percent = float(discount_str) if discount_str else 0
 
-                    price_str = request.form.get(f'lines[{i}][unit_price]')
+                    price_str = request.form.get(f"lines[{i}][unit_price]")
                     override_price = float(price_str) if price_str else None
 
-                    line_treatment = (request.form.get(f'lines[{i}][tax_treatment]') or '').strip().lower() or None
+                    line_treatment = (
+                        request.form.get(f"lines[{i}][tax_treatment]") or ""
+                    ).strip().lower() or None
 
                     if product_id and quantity and quantity > 0:
                         product = get_owned_or_404(Product, product_id)
                         if product:
-                            lines_data.append({
-                                'product': product,
-                                'quantity': quantity,
-                                'discount_percent': discount_percent,
-                                'unit_price': override_price,
-                                'tax_treatment': line_treatment,
-                            })
+                            lines_data.append(
+                                {
+                                    "product": product,
+                                    "quantity": quantity,
+                                    "discount_percent": discount_percent,
+                                    "unit_price": override_price,
+                                    "tax_treatment": line_treatment,
+                                }
+                            )
                 except (ValueError, TypeError):
                     # Skip invalid lines
                     continue
 
             if not lines_data:
                 from utils.error_messages import ErrorMessages
-                flash(ErrorMessages.sale_no_lines(), 'danger')
-                return redirect(url_for('sales.create'))
+
+                flash(ErrorMessages.sale_no_lines(), "danger")
+                return redirect(url_for("sales.create"))
 
             try:
-                from services.currency_service import CurrencyService as _CurrencyService
+                from services.currency_service import (
+                    CurrencyService as _CurrencyService,
+                )
+
                 _base_currency = _CurrencyService.get_base_currency()
             except Exception:
-                _base_currency = 'ILS'
-            currency_value = request.form.get('currency')
+                _base_currency = "ILS"
+            currency_value = request.form.get("currency")
             currency = currency_value if currency_value else _base_currency
-            user_exchange_rate = request.form.get('exchange_rate', type=float)
+            user_exchange_rate = request.form.get("exchange_rate", type=float)
 
             # Track manual exchange rate changes for audit
-            exchange_rate_manual = request.form.get('exchange_rate_manual') == 'true'
-            exchange_rate_server = request.form.get('exchange_rate_server', type=float)
-            exchange_rate_diff = request.form.get('exchange_rate_difference', type=float)
+            exchange_rate_manual = request.form.get("exchange_rate_manual") == "true"
+            exchange_rate_server = request.form.get("exchange_rate_server", type=float)
+            exchange_rate_diff = request.form.get(
+                "exchange_rate_difference", type=float
+            )
 
-            discount_amount = request.form.get('discount_amount', type=float, default=0)
-            shipping_cost = request.form.get('shipping_cost', type=float, default=0)
-            _raw_tax = request.form.get('tax_rate')
-            tax_rate = float(_raw_tax) if _raw_tax not in (None, '') else None
-            tax_inclusive = request.form.get('tax_inclusive') in ('on', '1', 'true')
-            tax_treatment = (request.form.get('tax_treatment') or 'standard').strip().lower()
-            notes = request.form.get('notes')
+            discount_amount = request.form.get("discount_amount", type=float, default=0)
+            shipping_cost = request.form.get("shipping_cost", type=float, default=0)
+            _raw_tax = request.form.get("tax_rate")
+            tax_rate = float(_raw_tax) if _raw_tax not in (None, "") else None
+            tax_inclusive = request.form.get("tax_inclusive") in ("on", "1", "true")
+            tax_treatment = (
+                (request.form.get("tax_treatment") or "standard").strip().lower()
+            )
+            notes = request.form.get("notes")
 
             # Add exchange rate audit to notes if manually changed
             if exchange_rate_manual and exchange_rate_server and user_exchange_rate:
                 if user_exchange_rate < exchange_rate_server:
                     audit_note = f"\n[تنبيه] سعر صرف يدوي: {user_exchange_rate:.6f} (سعر السيرفر: {exchange_rate_server:.6f}, فرق: {exchange_rate_diff:.2f}%)"
-                    notes = (notes or '') + audit_note
+                    notes = (notes or "") + audit_note
 
-            payment_amount = request.form.get('payment_amount', type=float, default=0)
-            payment_method = request.form.get('payment_method', 'cash')
+            payment_amount = request.form.get("payment_amount", type=float, default=0)
+            payment_method = request.form.get("payment_method", "cash")
 
             payment_data = None
             if payment_amount > 0:
                 payment_data = {
-                    'amount': payment_amount,
-                    'payment_method': payment_method,
-                    'currency': currency,  # Payment currency
-                    'exchange_rate': user_exchange_rate,  # Payment exchange rate
-                    'reference_number': request.form.get('reference_number'),
-                    'cheque_number': request.form.get('cheque_number'),
-                    'cheque_date': request.form.get('cheque_date'),
-                    'bank_name': request.form.get('bank_name'),
+                    "amount": payment_amount,
+                    "payment_method": payment_method,
+                    "currency": currency,  # Payment currency
+                    "exchange_rate": user_exchange_rate,  # Payment exchange rate
+                    "reference_number": request.form.get("reference_number"),
+                    "cheque_number": request.form.get("cheque_number"),
+                    "cheque_date": request.form.get("cheque_date"),
+                    "bank_name": request.form.get("bank_name"),
                 }
 
             # قراءة warehouse_id من النموذج
-            warehouse_id = request.form.get('warehouse_id', type=int)
+            warehouse_id = request.form.get("warehouse_id", type=int)
 
             sale = SaleService.create_sale(
                 customer=customer,
@@ -193,7 +216,7 @@ def create():  # noqa: C901
                 tax_inclusive=tax_inclusive,
                 tax_treatment=tax_treatment,
                 notes=notes,
-                payment_data=payment_data
+                payment_data=payment_data,
             )
 
             # تاريخ الاستحقاق: تاريخ صريح من النموذج، وإلا يُشتق من تاريخ
@@ -201,162 +224,190 @@ def create():  # noqa: C901
             sale.due_date = due_date_service.due_date_for_sale(
                 sale.sale_date,
                 customer=customer,
-                explicit=request.form.get('due_date'),
+                explicit=request.form.get("due_date"),
             )
             db.session.commit()
 
-            create_audit_log('create', 'sales', sale.id)
+            create_audit_log("create", "sales", sale.id)
 
-            flash('✅ تم إنشاء الفاتورة بنجاح!', 'success')
-            return redirect(url_for('sales.view', id=sale.id))
+            flash("✅ تم إنشاء الفاتورة بنجاح!", "success")
+            return redirect(url_for("sales.view", id=sale.id))
 
         except ValueError as e:
             # رسالة الخطأ من SaleService (مثل: insufficient stock)
-            current_app.logger.exception('handler failed')
-            flash(f'⚠️: حدث خطأ غير متوقع\n💡 تحقق من الكميات المتوفرة في المخزون.', 'danger')
+            current_app.logger.exception("handler failed")
+            flash(
+                f"⚠️: حدث خطأ غير متوقع\n💡 تحقق من الكميات المتوفرة في المخزون.",
+                "danger",
+            )
         except Exception as e:
             from utils.error_messages import ErrorMessages
-            current_app.logger.error(f'Sale creation error: {e}')
-            flash(ErrorMessages.database_error(), 'danger')
+
+            current_app.logger.error(f"Sale creation error: {e}")
+            flash(ErrorMessages.database_error(), "danger")
 
     # تحميل المستودعات للقالب
     from models import Warehouse
-    warehouses = Warehouse.query.filter_by(is_active=True).order_by(
-        Warehouse.is_main.desc(),  # الرئيسي أولاً
-        Warehouse.name
-    ).all()
+
+    warehouses = (
+        Warehouse.query.filter_by(is_active=True)
+        .order_by(
+            Warehouse.is_main.desc(),  # الرئيسي أولاً
+            Warehouse.name,
+        )
+        .all()
+    )
 
     # No need to load customers or exchange rates - loaded via AJAX for speed
-    return render_template('sales/create.html', warehouses=warehouses)
+    return render_template("sales/create.html", warehouses=warehouses)
 
 
-@sales_bp.route('/<int:id>')
+@sales_bp.route("/<int:id>")
 @login_required
-@permission_required('manage_sales')
+@permission_required("manage_sales")
 def view(id):
     sale = get_owned_or_404(Sale, id)
 
     if current_user.is_seller() and sale.seller_id != current_user.id:
         from utils.error_messages import ErrorMessages
-        flash(ErrorMessages.permission_denied('عرض هذه الفاتورة'), 'danger')
-        return redirect(url_for('sales.index'))
 
-    return render_template('sales/view.html', sale=sale)
+        flash(ErrorMessages.permission_denied("عرض هذه الفاتورة"), "danger")
+        return redirect(url_for("sales.index"))
+
+    return render_template("sales/view.html", sale=sale)
 
 
-@sales_bp.route('/<int:id>/print')
+@sales_bp.route("/<int:id>/print")
 @login_required
-@permission_required('manage_sales')
+@permission_required("manage_sales")
 def print_invoice(id):
     sale = get_owned_or_404(Sale, id)
 
     if current_user.is_seller() and sale.seller_id != current_user.id:
         from utils.error_messages import ErrorMessages
-        flash(ErrorMessages.permission_denied('طباعة هذه الفاتورة'), 'danger')
-        return redirect(url_for('sales.index'))
+
+        flash(ErrorMessages.permission_denied("طباعة هذه الفاتورة"), "danger")
+        return redirect(url_for("sales.index"))
 
     # Get invoice settings
     from config import Config
+
     settings = InvoiceSettings.get_active()
     # قالب واحد — بيانات كل تينانت: الهوية (اسم/رقم ضريبي/عنوان/شعار/ألوان)
     # تُسقط فوق القالب العام من الشركة المالكة للفاتورة، لا من قيمة أزاد.
     from utils.invoice_header import document_tenant, with_tenant_header
+
     try:
         settings = with_tenant_header(settings, document_tenant(sale))
     except ValueError:
-        abort(409, description='لا يمكن الطباعة: الشركة المالكة للمستند غير محددة')
+        abort(409, description="لا يمكن الطباعة: الشركة المالكة للمستند غير محددة")
 
     # Template selection via URL param (?template=modern) or settings
     import re
-    _ALLOWED_TEMPLATES = ('modern', 'classic', 'gulf', 'minimal', 'simple')
-    template = request.args.get('template') or (settings.active_template if settings and settings.active_template else 'modern')
-    if template not in _ALLOWED_TEMPLATES and not re.fullmatch(r'[A-Za-z0-9_-]+', template or ''):
-        template = 'modern'
+
+    _ALLOWED_TEMPLATES = ("modern", "classic", "gulf", "minimal", "simple")
+    template = request.args.get("template") or (
+        settings.active_template if settings and settings.active_template else "modern"
+    )
+    if template not in _ALLOWED_TEMPLATES and not re.fullmatch(
+        r"[A-Za-z0-9_-]+", template or ""
+    ):
+        template = "modern"
     if template not in _ALLOWED_TEMPLATES:
-        template = 'modern'
+        template = "modern"
 
     template_labels = {
-        'modern': 'مودرن',
-        'classic': 'كلاسيك',
-        'gulf': 'خليجي',
-        'minimal': 'بسيط',
-        'simple': 'مبسط'
+        "modern": "مودرن",
+        "classic": "كلاسيك",
+        "gulf": "خليجي",
+        "minimal": "بسيط",
+        "simple": "مبسط",
     }
-    available_templates = [(k, v) for k, v in template_labels.items() if k in _ALLOWED_TEMPLATES]
+    available_templates = [
+        (k, v) for k, v in template_labels.items() if k in _ALLOWED_TEMPLATES
+    ]
 
     from utils.amount_in_words import amount_in_words
-    amount_words_ar = amount_in_words(sale.total_amount, sale.currency, 'ar')
-    amount_words_en = amount_in_words(sale.total_amount, sale.currency, 'en')
+
+    amount_words_ar = amount_in_words(sale.total_amount, sale.currency, "ar")
+    amount_words_en = amount_in_words(sale.total_amount, sale.currency, "en")
 
     try:
         return render_template(
-            f'invoices/{template}.html',
+            f"invoices/{template}.html",
             sale=sale,
             settings=settings,
             config=Config,
             available_templates=available_templates,
             current_template=template,
-            document_type='invoice',
+            document_type="invoice",
             document_id=sale.id,
             amount_words_ar=amount_words_ar,
             amount_words_en=amount_words_en,
         )
     except Exception:
         return render_template(
-            'invoices/modern.html',
+            "invoices/modern.html",
             sale=sale,
             settings=settings,
             config=Config,
             available_templates=available_templates,
-            current_template='modern',
-            document_type='invoice',
+            current_template="modern",
+            document_type="invoice",
             document_id=sale.id,
             amount_words_ar=amount_words_ar,
             amount_words_en=amount_words_en,
         )
 
 
-@sales_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@sales_bp.route("/<int:id>/edit", methods=["GET", "POST"])
 @login_required
-@permission_required('manage_sales')
+@permission_required("manage_sales")
 def edit(id):
     """تعديل فاتورة - فقط الفواتير غير المدفوعة وغير الملغاة"""
     sale = get_owned_or_404(Sale, id)
 
     # IDOR protection: sellers can only edit their own invoices
     if current_user.is_seller() and sale.seller_id != current_user.id:
-        flash('ليس لديك صلاحية لتعديل هذه الفاتورة', 'danger')
-        return redirect(url_for('sales.index'))
+        flash("ليس لديك صلاحية لتعديل هذه الفاتورة", "danger")
+        return redirect(url_for("sales.index"))
 
     # منع التعديل للفواتير المدفوعة أو الملغاة
-    if sale.payment_status == 'paid':
-        flash('⚠️ لا يمكن تعديل فاتورة مدفوعة بالكامل.\n💡 الفواتير المدفوعة لا يمكن تعديلها محاسبياً.', 'danger')
-        return redirect(url_for('sales.view', id=id))
+    if sale.payment_status == "paid":
+        flash(
+            "⚠️ لا يمكن تعديل فاتورة مدفوعة بالكامل.\n💡 الفواتير المدفوعة لا يمكن تعديلها محاسبياً.",
+            "danger",
+        )
+        return redirect(url_for("sales.view", id=id))
 
-    if sale.status == 'cancelled':
-        flash('⚠️ لا يمكن تعديل فاتورة ملغاة.\n💡 قم بإنشاء فاتورة جديدة بدلاً من ذلك.', 'danger')
-        return redirect(url_for('sales.view', id=id))
+    if sale.status == "cancelled":
+        flash(
+            "⚠️ لا يمكن تعديل فاتورة ملغاة.\n💡 قم بإنشاء فاتورة جديدة بدلاً من ذلك.",
+            "danger",
+        )
+        return redirect(url_for("sales.view", id=id))
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             from decimal import Decimal as _Dec
             from services.sale_service import resolve_account as _resolve_account
             from services.gl_service import GLService as _GLService
+
             old_discount = _Dec(str(sale.discount_amount or 0))
             old_total = _Dec(str(sale.total_amount or 0))
             old_tax = _Dec(str(sale.tax_amount or 0))
             # السماح فقط بتعديل الملاحظات والخصم
-            sale.notes = request.form.get('notes', '')
-            discount_amount = request.form.get('discount_amount', type=float, default=0)
+            sale.notes = request.form.get("notes", "")
+            discount_amount = request.form.get("discount_amount", type=float, default=0)
             sale.discount_amount = discount_amount
 
             # تاريخ الاستحقاق: تاريخ صريح من النموذج، وإلا يُشتق من تاريخ
             # الفاتورة + شروط دفع العميل (services/due_date_service.py).
-            if 'due_date' in request.form:
+            if "due_date" in request.form:
                 sale.due_date = due_date_service.due_date_for_sale(
                     sale.sale_date,
                     customer=sale.customer,
-                    explicit=request.form.get('due_date'),
+                    explicit=request.form.get("due_date"),
                 )
 
             # إعادة حساب الإجماليات
@@ -372,173 +423,228 @@ def edit(id):
             if d_total != 0:
                 _adj = []
                 if d_disc > 0:
-                    _adj.append({'account': _resolve_account('DISCOUNTS_GIVEN'),
-                                 'debit': d_disc,
-                                 'description': f'تسوية خصم {sale.sale_number}'})
+                    _adj.append(
+                        {
+                            "account": _resolve_account("DISCOUNTS_GIVEN"),
+                            "debit": d_disc,
+                            "description": f"تسوية خصم {sale.sale_number}",
+                        }
+                    )
                 elif d_disc < 0:
-                    _adj.append({'account': _resolve_account('DISCOUNTS_GIVEN'),
-                                 'credit': -d_disc,
-                                 'description': f'تسوية خصم {sale.sale_number}'})
+                    _adj.append(
+                        {
+                            "account": _resolve_account("DISCOUNTS_GIVEN"),
+                            "credit": -d_disc,
+                            "description": f"تسوية خصم {sale.sale_number}",
+                        }
+                    )
                 if d_tax > 0:
-                    _adj.append({'account': _resolve_account('VAT_OUTPUT'),
-                                 'credit': d_tax,
-                                 'description': f'تسوية ضريبة {sale.sale_number}'})
+                    _adj.append(
+                        {
+                            "account": _resolve_account("VAT_OUTPUT"),
+                            "credit": d_tax,
+                            "description": f"تسوية ضريبة {sale.sale_number}",
+                        }
+                    )
                 elif d_tax < 0:
-                    _adj.append({'account': _resolve_account('VAT_OUTPUT'),
-                                 'debit': -d_tax,
-                                 'description': f'تسوية ضريبة {sale.sale_number}'})
+                    _adj.append(
+                        {
+                            "account": _resolve_account("VAT_OUTPUT"),
+                            "debit": -d_tax,
+                            "description": f"تسوية ضريبة {sale.sale_number}",
+                        }
+                    )
                 # Inclusive prices already include VAT in the original
                 # revenue. A tax change therefore changes revenue by the
                 # opposite amount as well; otherwise the adjustment does
                 # not match the change in the customer's gross balance.
                 if sale.tax_inclusive and d_tax > 0:
-                    _adj.append({'account': _resolve_account('SALES_REVENUE'),
-                                 'debit': d_tax,
-                                 'description': f'تسوية إيراد شامل الضريبة {sale.sale_number}'})
+                    _adj.append(
+                        {
+                            "account": _resolve_account("SALES_REVENUE"),
+                            "debit": d_tax,
+                            "description": f"تسوية إيراد شامل الضريبة {sale.sale_number}",
+                        }
+                    )
                 elif sale.tax_inclusive and d_tax < 0:
-                    _adj.append({'account': _resolve_account('SALES_REVENUE'),
-                                 'credit': -d_tax,
-                                 'description': f'تسوية إيراد شامل الضريبة {sale.sale_number}'})
+                    _adj.append(
+                        {
+                            "account": _resolve_account("SALES_REVENUE"),
+                            "credit": -d_tax,
+                            "description": f"تسوية إيراد شامل الضريبة {sale.sale_number}",
+                        }
+                    )
                 # AR side plugs the entry so it balances EXACTLY by
                 # construction (absorbs ≤0.005 rounding dust); sanity-bound
                 # against the invoice delta.
                 _signed = sum(
-                    (_Dec(str(ln.get('debit', 0))) - _Dec(str(ln.get('credit', 0))))
-                    for ln in _adj)
+                    (_Dec(str(ln.get("debit", 0))) - _Dec(str(ln.get("credit", 0))))
+                    for ln in _adj
+                )
                 _plug = -_signed
-                if abs(_plug - d_total) > _Dec('0.01'):
-                    raise ValueError('تسوية الخصم غير متسقة محاسبياً.')
-                _ar = _resolve_account('AR_CONTROL')
+                if abs(_plug - d_total) > _Dec("0.01"):
+                    raise ValueError("تسوية الخصم غير متسقة محاسبياً.")
+                _ar = _resolve_account("AR_CONTROL")
                 if sale.customer:
-                    if sale.customer.customer_type == 'partner':
-                        _ar = _resolve_account('PARTNER_CURRENT')
-                    elif sale.customer.customer_type == 'merchant':
+                    if sale.customer.customer_type == "partner":
+                        _ar = _resolve_account("PARTNER_CURRENT")
+                    elif sale.customer.customer_type == "merchant":
                         _ar = _GLService.get_customer_credit_account(sale.customer)
                 if _plug >= 0:
-                    _adj.append({'account': _ar, 'debit': _plug,
-                                 'description': f'تسوية ذمم {sale.sale_number}'})
+                    _adj.append(
+                        {
+                            "account": _ar,
+                            "debit": _plug,
+                            "description": f"تسوية ذمم {sale.sale_number}",
+                        }
+                    )
                 else:
-                    _adj.append({'account': _ar, 'credit': -_plug,
-                                 'description': f'تسوية ذمم {sale.sale_number}'})
+                    _adj.append(
+                        {
+                            "account": _ar,
+                            "credit": -_plug,
+                            "description": f"تسوية ذمم {sale.sale_number}",
+                        }
+                    )
                 _GLService.post_entry(
                     _adj,
-                    description=f'Discount adjustment {sale.sale_number}',
-                    reference_type='Sale', reference_id=sale.id,
-                    currency=sale.currency, exchange_rate=sale.exchange_rate)
+                    description=f"Discount adjustment {sale.sale_number}",
+                    reference_type="Sale",
+                    reference_id=sale.id,
+                    currency=sale.currency,
+                    exchange_rate=sale.exchange_rate,
+                )
 
             db.session.commit()
-            create_audit_log('update', 'sales', id)
+            create_audit_log("update", "sales", id)
 
-            flash('✅ تم تحديث الفاتورة بنجاح!', 'success')
-            return redirect(url_for('sales.view', id=id))
+            flash("✅ تم تحديث الفاتورة بنجاح!", "success")
+            return redirect(url_for("sales.view", id=id))
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f'Sale edit error: {e}')
-            flash('❌ حدث خطأ في تحديث الفاتورة. يرجى المحاولة مرة أخرى.', 'danger')
+            current_app.logger.error(f"Sale edit error: {e}")
+            flash("❌ حدث خطأ في تحديث الفاتورة. يرجى المحاولة مرة أخرى.", "danger")
 
-    return render_template('sales/edit.html', sale=sale)
+    return render_template("sales/edit.html", sale=sale)
 
 
-@sales_bp.route('/<int:id>/cancel', methods=['POST'])
+@sales_bp.route("/<int:id>/cancel", methods=["POST"])
 @login_required
-@permission_required('manage_sales')
+@permission_required("manage_sales")
 def cancel(id):
     if current_user.is_seller():
         from utils.error_messages import ErrorMessages
-        flash(ErrorMessages.permission_denied('إلغاء الفواتير'), 'danger')
-        return redirect(url_for('sales.index'))
+
+        flash(ErrorMessages.permission_denied("إلغاء الفواتير"), "danger")
+        return redirect(url_for("sales.index"))
 
     sale = get_owned_or_404(Sale, id)
 
     try:
         SaleService.cancel_sale(sale)
 
-        create_audit_log('cancel', 'sales', sale.id)
+        create_audit_log("cancel", "sales", sale.id)
 
-        flash('✅ تم إلغاء الفاتورة بنجاح!', 'success')
+        flash("✅ تم إلغاء الفاتورة بنجاح!", "success")
 
     except ValueError as e:
-        current_app.logger.exception('handler failed')
-        flash(f'⚠️ تعذر الإلغاء: حدث خطأ غير متوقع', 'danger')
+        current_app.logger.exception("handler failed")
+        flash(f"⚠️ تعذر الإلغاء: حدث خطأ غير متوقع", "danger")
     except Exception as e:
-        current_app.logger.error(f'Sale cancel error: {e}')
-        flash('❌ حدث خطأ في إلغاء الفاتورة. يرجى المحاولة مرة أخرى.', 'danger')
+        current_app.logger.error(f"Sale cancel error: {e}")
+        flash("❌ حدث خطأ في إلغاء الفاتورة. يرجى المحاولة مرة أخرى.", "danger")
 
-    return redirect(url_for('sales.view', id=id))
+    return redirect(url_for("sales.view", id=id))
 
 
-@sales_bp.route('/api/get-price')
+@sales_bp.route("/api/get-price")
 @login_required
-@permission_required('manage_sales')
+@permission_required("manage_sales")
 def api_get_price():
-    product_id = request.args.get('product_id', type=int)
-    customer_id = request.args.get('customer_id', type=int)
+    product_id = request.args.get("product_id", type=int)
+    customer_id = request.args.get("customer_id", type=int)
 
     if not product_id or not customer_id:
-        return jsonify({'error': 'Missing parameters'}), 400
+        return jsonify({"error": "Missing parameters"}), 400
 
     product = get_owned_or_404(Product, product_id)
     customer = get_owned_or_404(Customer, customer_id)
 
     if not product or not customer:
-        return jsonify({'error': 'Not found'}), 404
+        return jsonify({"error": "Not found"}), 404
 
     price = product.get_price_for_customer(customer.customer_type)
 
-    return jsonify({
-        'price': float(price),
-        'cost_price': float(product.cost_price) if current_user.can_see_costs() else None,
-        'current_stock': float(product.current_stock),
-        'unit': product.unit or 'بلا',
-        'tax_treatment': getattr(product, 'tax_treatment', None) or 'standard',
-    })
+    return jsonify(
+        {
+            "price": float(price),
+            "cost_price": float(product.cost_price)
+            if current_user.can_see_costs()
+            else None,
+            "current_stock": float(product.current_stock),
+            "unit": product.unit or "بلا",
+            "tax_treatment": getattr(product, "tax_treatment", None) or "standard",
+        }
+    )
 
 
-@sales_bp.route('/archived')
+@sales_bp.route("/archived")
 @login_required
-@permission_required('manage_sales')
+@permission_required("manage_sales")
 def archived():
     """عرض المبيعات المؤرشفة"""
     from models import ArchivedRecord
     from datetime import datetime
 
     archived_sales_query = db.session.query(ArchivedRecord).filter(
-        ArchivedRecord.table_name == 'sales'
+        ArchivedRecord.table_name == "sales"
     )
 
     # Bulk-load related sales to avoid N+1
     archived_ids = [a.record_id for a in archived_sales_query.all()]
-    sales_bulk = {s.id: s for s in db.session.query(Sale).filter(Sale.id.in_(archived_ids or [0])).all()}
+    sales_bulk = {
+        s.id: s
+        for s in db.session.query(Sale).filter(Sale.id.in_(archived_ids or [0])).all()
+    }
 
     archived_items = []
     for archived in archived_sales_query.all():
         data = archived.data
         # SECURITY: resolve underlying sale with tenant check; skip cross-tenant archives
         sale = sales_bulk.get(archived.record_id)
-        if sale is not None and not getattr(current_user, 'is_owner', False):
-            actor_tenant = getattr(current_user, 'tenant_id', None)
-            if actor_tenant is not None and getattr(sale, 'tenant_id', None) != actor_tenant:
+        if sale is not None and not getattr(current_user, "is_owner", False):
+            actor_tenant = getattr(current_user, "tenant_id", None)
+            if (
+                actor_tenant is not None
+                and getattr(sale, "tenant_id", None) != actor_tenant
+            ):
                 continue
-        archived_items.append({
-            'id': archived.record_id,
-            'sale_number': data.get('sale_number'),
-            'sale_date': datetime.fromisoformat(data.get('sale_date').replace('Z', '+00:00')) if isinstance(data.get('sale_date'), str) else data.get('sale_date'),  # noqa: E501
-            'customer': sale.customer if sale else None,
-            'total_amount': float(data.get('total_amount', 0)),
-            'currency': data.get('currency'),
-            'payment_status': data.get('payment_status'),
-            'archived_at': archived.archived_at
-        })
+        archived_items.append(
+            {
+                "id": archived.record_id,
+                "sale_number": data.get("sale_number"),
+                "sale_date": datetime.fromisoformat(
+                    data.get("sale_date").replace("Z", "+00:00")
+                )
+                if isinstance(data.get("sale_date"), str)
+                else data.get("sale_date"),  # noqa: E501
+                "customer": sale.customer if sale else None,
+                "total_amount": float(data.get("total_amount", 0)),
+                "currency": data.get("currency"),
+                "payment_status": data.get("payment_status"),
+                "archived_at": archived.archived_at,
+            }
+        )
 
-    archived_items.sort(key=lambda x: x['archived_at'], reverse=True)
+    archived_items.sort(key=lambda x: x["archived_at"], reverse=True)
 
-    return render_template('sales/archived.html', sales=archived_items)
+    return render_template("sales/archived.html", sales=archived_items)
 
 
-@sales_bp.route('/<int:id>/delete', methods=['POST'])
+@sales_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
-@permission_required('manage_sales')
+@permission_required("manage_sales")
 def delete(id):
     """حذف (أرشفة) فاتورة مبيعات"""
     from services.archive_service import ArchiveService
@@ -548,8 +654,8 @@ def delete(id):
 
     # IDOR protection: sellers can only delete their own invoices
     if current_user.is_seller() and sale.seller_id != current_user.id:
-        flash('ليس لديك صلاحية لحذف هذه الفاتورة', 'danger')
-        return redirect(url_for('sales.index'))
+        flash("ليس لديك صلاحية لحذف هذه الفاتورة", "danger")
+        return redirect(url_for("sales.index"))
 
     # التحقق من الارتباطات
     has_links = False
@@ -569,58 +675,70 @@ def delete(id):
             # أرشفة (Soft Delete)
             # F2: عكس القيد المحاسبي إجباري — فشله يُعلن ولا تُؤرشف
             # الفاتورة (الصمت كان يخفي أن دفتر الأستاذ لم يُعكس).
-            if sale.status != 'cancelled':
+            if sale.status != "cancelled":
                 try:
                     reverse_or_purge_gl_entries(
-                        'Sale',
+                        "Sale",
                         sale.id,
-                        description=f'عكس فاتورة مبيعات {sale.sale_number} (أرشفة)',
+                        description=f"عكس فاتورة مبيعات {sale.sale_number} (أرشفة)",
                     )
                 except Exception as e:
                     db.session.rollback()
                     current_app.logger.error(
-                        f'Failed to reverse GL entries for archived sale {sale.id}: {e}')
+                        f"Failed to reverse GL entries for archived sale {sale.id}: {e}"
+                    )
                     flash(
                         f'❌ تعذّر عكس القيود المحاسبية للفاتورة "{sale.sale_number}" '
-                        f'— لم تُؤرشف الفاتورة.\n💡 {e}',
-                        'danger')
-                    return redirect(url_for('sales.view', id=id))
+                        f"— لم تُؤرشف الفاتورة.\n💡 {e}",
+                        "danger",
+                    )
+                    return redirect(url_for("sales.view", id=id))
 
                 # F6: إعادة البضاعة إلى المخزون (نفس مسار الإلغاء) — وإلا
                 # بقيت البضاعة مخصومة والفاتورة اختفت.
                 _restore_sale_stock(sale)
 
             archive_service = ArchiveService()
-            archive_service.archive_record('sales', sale, reason='تم أرشفة الفاتورة لوجود ارتباطات مالية', commit=False)
+            archive_service.archive_record(
+                "sales",
+                sale,
+                reason="تم أرشفة الفاتورة لوجود ارتباطات مالية",
+                commit=False,
+            )
 
             # يمكن أرشفة المدفوعات والشيكات المرتبطة أيضاً إذا لزم الأمر، ولكن سنكتفي بأرشفة الفاتورة حالياً
             # أو يمكن تركها كما هي ولكن الفاتورة ستختفي من القائمة النشطة
 
-            create_audit_log('archive', 'sales', id)
+            create_audit_log("archive", "sales", id)
             db.session.commit()
-            flash(f'✅ تم أرشفة الفاتورة "{sale.sale_number}" (لوجود ارتباطات مالية)', 'warning')
+            flash(
+                f'✅ تم أرشفة الفاتورة "{sale.sale_number}" (لوجود ارتباطات مالية)',
+                "warning",
+            )
         else:
             # حذف نهائي (Hard Delete)
             # 1. القيود المحاسبية: المرحَّلة تُعكس (لا تُحذف أبداً — القيد
             #    المحاسبي أثر دائم) والمسودات فقط تُحذف.
             try:
                 gl_result = reverse_or_purge_gl_entries(
-                    'Sale',
+                    "Sale",
                     sale.id,
-                    description=f'عكس فاتورة مبيعات {sale.sale_number} (حذف نهائي)',
+                    description=f"عكس فاتورة مبيعات {sale.sale_number} (حذف نهائي)",
                 )
             except Exception as e:
                 db.session.rollback()
                 current_app.logger.error(
-                    f'Failed to reverse GL entries for deleted sale {sale.id}: {e}')
+                    f"Failed to reverse GL entries for deleted sale {sale.id}: {e}"
+                )
                 flash(
                     f'❌ تعذّر عكس القيود المحاسبية للفاتورة "{sale.sale_number}" '
-                    f'— لم تُحذف الفاتورة.\n💡 {e}',
-                    'danger')
-                return redirect(url_for('sales.view', id=id))
+                    f"— لم تُحذف الفاتورة.\n💡 {e}",
+                    "danger",
+                )
+                return redirect(url_for("sales.view", id=id))
 
             # 2. F6: إعادة البضاعة إلى المخزون (نفس مسار الإلغاء)
-            if sale.status != 'cancelled':
+            if sale.status != "cancelled":
                 _restore_sale_stock(sale)
 
             # 3. حذف البنود (SaleLines) - يتم تلقائياً عادةً عبر cascade ولكن للأمان
@@ -635,37 +753,40 @@ def delete(id):
             # be mistaken for one that had already been reversed - and
             # archiving it would NOT put the goods back into stock.
             from models import StockMovement
+
             StockMovement.query.filter(
                 StockMovement.reference_type.in_(
-                    ('Sale', 'Sale-Reversed', 'Sale-Restored')),
+                    ("Sale", "Sale-Reversed", "Sale-Restored")
+                ),
                 StockMovement.reference_id == sale.id,
             ).delete(synchronize_session=False)
 
             # 4. حذف الفاتورة
             db.session.delete(sale)
-            create_audit_log('delete', 'sales', id)
+            create_audit_log("delete", "sales", id)
             db.session.commit()
-            if gl_result['reversed']:
+            if gl_result["reversed"]:
                 flash(
                     f'✅ تم حذف الفاتورة "{sale.sale_number}" نهائياً — '
-                    f'وعُكست قيودها المحاسبية ({gl_result["reversed"]} قيد) '
-                    f'بدل حذفها حفاظاً على الأثر المحاسبي.',
-                    'success')
+                    f"وعُكست قيودها المحاسبية ({gl_result['reversed']} قيد) "
+                    f"بدل حذفها حفاظاً على الأثر المحاسبي.",
+                    "success",
+                )
             else:
-                flash(f'✅ تم حذف الفاتورة "{sale.sale_number}" نهائياً', 'success')
+                flash(f'✅ تم حذف الفاتورة "{sale.sale_number}" نهائياً', "success")
 
-        return redirect(url_for('sales.index'))
+        return redirect(url_for("sales.index"))
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f'Sale delete error: {e}')
-        flash('❌ حدث خطأ في حذف الفاتورة.', 'danger')
-        return redirect(url_for('sales.index'))
+        current_app.logger.error(f"Sale delete error: {e}")
+        flash("❌ حدث خطأ في حذف الفاتورة.", "danger")
+        return redirect(url_for("sales.index"))
 
 
-@sales_bp.route('/<int:id>/archive', methods=['POST'])
+@sales_bp.route("/<int:id>/archive", methods=["POST"])
 @login_required
-@permission_required('manage_sales')
+@permission_required("manage_sales")
 def archive(id):
     """أرشفة فاتورة"""
     from services.archive_service import ArchiveService
@@ -675,44 +796,46 @@ def archive(id):
     try:
         # عكس القيد المحاسبي قبل الأرشفة (إذا لم تكن ملغاة)
         # F2: الفشل يُعلن ولا تُؤرشف الفاتورة.
-        if sale.status != 'cancelled':
+        if sale.status != "cancelled":
             try:
                 reverse_or_purge_gl_entries(
-                    'Sale',
+                    "Sale",
                     sale.id,
-                    description=f'عكس فاتورة مبيعات {sale.sale_number} (أرشفة)',
+                    description=f"عكس فاتورة مبيعات {sale.sale_number} (أرشفة)",
                 )
             except Exception as e:
                 db.session.rollback()
                 current_app.logger.error(
-                    f'Failed to reverse GL entries for archived sale {sale.id}: {e}')
+                    f"Failed to reverse GL entries for archived sale {sale.id}: {e}"
+                )
                 flash(
                     f'❌ تعذّر عكس القيود المحاسبية للفاتورة "{sale.sale_number}" '
-                    f'— لم تُؤرشف الفاتورة.\n💡 {e}',
-                    'danger')
-                return redirect(url_for('sales.view', id=id))
+                    f"— لم تُؤرشف الفاتورة.\n💡 {e}",
+                    "danger",
+                )
+                return redirect(url_for("sales.view", id=id))
 
             # F6: إعادة البضاعة إلى المخزون (نفس مسار الإلغاء)
             _restore_sale_stock(sale)
 
         archive_service = ArchiveService()
-        archive_service.archive_record('sales', sale, reason='تم أرشفة فاتورة المبيعات')
-        create_audit_log('archive', 'sales', sale.id)
-        flash(f'✅ تم أرشفة الفاتورة "{sale.sale_number}"', 'warning')
+        archive_service.archive_record("sales", sale, reason="تم أرشفة فاتورة المبيعات")
+        create_audit_log("archive", "sales", sale.id)
+        flash(f'✅ تم أرشفة الفاتورة "{sale.sale_number}"', "warning")
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f'Sale archive error: {e}')
+        current_app.logger.error(f"Sale archive error: {e}")
         flash(
-            f'❌ تعذّر أرشفة الفاتورة "{sale.sale_number}" — '
-            f'لم تُنفَّذ الأرشفة.\n💡 {e}',
-            'danger')
+            f'❌ تعذّر أرشفة الفاتورة "{sale.sale_number}" — لم تُنفَّذ الأرشفة.\n💡 {e}',
+            "danger",
+        )
 
-    return redirect(url_for('sales.index'))
+    return redirect(url_for("sales.index"))
 
 
-@sales_bp.route('/<int:id>/restore', methods=['POST'])
+@sales_bp.route("/<int:id>/restore", methods=["POST"])
 @login_required
-@permission_required('manage_sales')
+@permission_required("manage_sales")
 def restore(id):
     """استعادة فاتورة من الأرشيف"""
     from models import ArchivedRecord
@@ -721,8 +844,7 @@ def restore(id):
     get_owned_or_404(Sale, id, code=404)
 
     archived = ArchivedRecord.query.filter_by(
-        table_name='sales',
-        record_id=id
+        table_name="sales", record_id=id
     ).first_or_404()
 
     # F6 (symmetry): archiving a sale puts its goods back into stock, so
@@ -732,7 +854,7 @@ def restore(id):
     from models import StockMovement
 
     already_reversed = StockMovement.query.filter_by(
-        reference_type='Sale-Reversed',
+        reference_type="Sale-Reversed",
         reference_id=id,
     ).first()
     needs_stock_back = already_reversed is not None
@@ -746,21 +868,23 @@ def restore(id):
             # original sale's movement, and so a second restore does not
             # deduct twice.
             from services.stock_service import StockService
+
             StockService.deduct_stock_for_restored_sale(id)
-        create_audit_log('restore', 'sales', id)
+        create_audit_log("restore", "sales", id)
     except Exception:
         db.session.rollback()
 
-    return redirect(url_for('sales.archived'))
+    return redirect(url_for("sales.archived"))
+
 
 # =====================================
 # API Endpoints - Backend Calculations
 # =====================================
 
 
-@sales_bp.route('/api/calculate-totals', methods=['POST'])
+@sales_bp.route("/api/calculate-totals", methods=["POST"])
 @login_required
-@permission_required('manage_sales')
+@permission_required("manage_sales")
 def api_calculate_sale_totals():
     """API لحساب إجماليات فاتورة المبيعات - Backend Calculation"""
     try:
@@ -768,68 +892,84 @@ def api_calculate_sale_totals():
 
         data = request.get_json(force=True)
         if not data:
-            return jsonify({'success': False, 'error': 'No data provided'}), 400
+            return jsonify({"success": False, "error": "No data provided"}), 400
 
-        lines = data.get('lines', [])
-        discount_amount = Decimal(str(data.get('discount_amount', 0)))
-        shipping_cost = Decimal(str(data.get('shipping_cost', 0)))
-        tax_rate = Decimal(str(data.get('tax_rate', 0)))
-        treatment = data.get('tax_treatment', 'standard')
-        inclusive = data.get('tax_inclusive', False)
-        if treatment not in ('standard', 'zero', 'exempt') or not isinstance(inclusive, bool):
-            return jsonify({'success': False, 'error': 'معاملة ضريبية غير صالحة'}), 400
-        tax_rate, inclusive = SaleService._resolve_tax(tax_rate, tax_inclusive=inclusive)
-        if treatment != 'standard':
-            tax_rate = Decimal('0')
+        lines = data.get("lines", [])
+        discount_amount = Decimal(str(data.get("discount_amount", 0)))
+        shipping_cost = Decimal(str(data.get("shipping_cost", 0)))
+        tax_rate = Decimal(str(data.get("tax_rate", 0)))
+        treatment = data.get("tax_treatment", "standard")
+        inclusive = data.get("tax_inclusive", False)
+        if treatment not in ("standard", "zero", "exempt") or not isinstance(
+            inclusive, bool
+        ):
+            return jsonify({"success": False, "error": "معاملة ضريبية غير صالحة"}), 400
+        tax_rate, inclusive = SaleService._resolve_tax(
+            tax_rate, tax_inclusive=inclusive
+        )
+        if treatment != "standard":
+            tax_rate = Decimal("0")
 
         # حساب المجموع الفرعي
-        subtotal = Decimal('0')
+        subtotal = Decimal("0")
         line_specs = []
         for line in lines:
             try:
-                qty = Decimal(str(line.get('quantity', 0)))
-                price = Decimal(str(line.get('unit_price', 0)))
-                discount_percent = Decimal(str(line.get('discount_percent', 0)))
-                line_treatment = (line.get('tax_treatment') or 'standard').strip().lower()
-                if line_treatment not in ('standard', 'zero', 'exempt'):
-                    line_treatment = 'standard'
+                qty = Decimal(str(line.get("quantity", 0)))
+                price = Decimal(str(line.get("unit_price", 0)))
+                discount_percent = Decimal(str(line.get("discount_percent", 0)))
+                line_treatment = (
+                    (line.get("tax_treatment") or "standard").strip().lower()
+                )
+                if line_treatment not in ("standard", "zero", "exempt"):
+                    line_treatment = "standard"
 
                 if qty > 0 and price > 0:
                     line_subtotal = qty * price
-                    line_discount = line_subtotal * (discount_percent / Decimal('100'))
+                    line_discount = line_subtotal * (discount_percent / Decimal("100"))
                     line_total = (line_subtotal - line_discount).quantize(
-                        Decimal('0.001'), rounding=ROUND_HALF_UP)
+                        Decimal("0.001"), rounding=ROUND_HALF_UP
+                    )
                     subtotal += line_total
-                    line_specs.append({'line_total': line_total,
-                                       'tax_treatment': line_treatment})
+                    line_specs.append(
+                        {"line_total": line_total, "tax_treatment": line_treatment}
+                    )
             except Exception:
                 continue
 
         from services.sale_tax_calculation import sale_tax_totals_mixed
+
         tax_amount, total, _ns, _nz, _ne = sale_tax_totals_mixed(
-            line_specs, discount_amount, shipping_cost, tax_rate, inclusive,
-            invoice_treatment=treatment)
+            line_specs,
+            discount_amount,
+            shipping_cost,
+            tax_rate,
+            inclusive,
+            invoice_treatment=treatment,
+        )
 
         # Count only lines with valid quantity > 0; skip lines where qty parsing fails
         line_count = 0
         for ln in lines:
             try:
-                qty = Decimal(str(ln.get('quantity', 0)))
+                qty = Decimal(str(ln.get("quantity", 0)))
                 if qty > 0:
                     line_count += 1
             except Exception:
                 continue
 
-        return jsonify({
-            'success': True,
-            'subtotal': float(subtotal),
-            'discount': float(discount_amount),
-            'shipping': float(shipping_cost),
-            'tax_rate': float(tax_rate),
-            'tax_amount': float(tax_amount),
-            'total': float(total),
-            'line_count': line_count
-        }), 200
+        return jsonify(
+            {
+                "success": True,
+                "subtotal": float(subtotal),
+                "discount": float(discount_amount),
+                "shipping": float(shipping_cost),
+                "tax_rate": float(tax_rate),
+                "tax_amount": float(tax_amount),
+                "total": float(total),
+                "line_count": line_count,
+            }
+        ), 200
 
     except Exception:
-        return jsonify({'success': False, 'error': 'حدث خطأ غير متوقع'}), 500
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500

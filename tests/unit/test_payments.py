@@ -5,7 +5,6 @@ Tests the payment workflow and financial calculations.
 """
 
 from decimal import Decimal
-import pytest
 
 from models import Customer
 from extensions import db as _db
@@ -16,12 +15,12 @@ class TestReceiptCreation:
 
     def test_create_receipt_requires_auth(self, client):
         """Unauthenticated user cannot create receipts."""
-        response = client.get('/payments/receipts/create', follow_redirects=False)
+        response = client.get("/payments/receipts/create", follow_redirects=False)
         assert response.status_code == 302
 
     def test_create_receipt_page_loads(self, client, login_owner, test_customer):
         """Owner can access receipt creation page."""
-        response = client.get('/payments/receipts/create')
+        response = client.get("/payments/receipts/create")
         # 200 = rendered, 302 = redirect, 500 = template error (pre-existing)
         assert response.status_code in (200, 302, 500)
 
@@ -35,16 +34,16 @@ class TestPaymentStatus:
 
         # Create a payment
         payment = Payment(
-            payment_number='PAY-TEST-001',
-            payment_type='receipt',
-            direction='incoming',
+            payment_number="PAY-TEST-001",
+            payment_type="receipt",
+            direction="incoming",
             sale_id=test_sale.id,
             customer_id=test_sale.customer_id,
-            amount=Decimal('50.000'),
-            currency='AED',
-            exchange_rate=Decimal('1'),
-            amount_base=Decimal('50.000'),
-            payment_method='cash',
+            amount=Decimal("50.000"),
+            currency="AED",
+            exchange_rate=Decimal("1"),
+            amount_base=Decimal("50.000"),
+            payment_method="cash",
             payment_confirmed=True,
             user_id=test_sale.seller_id,
         )
@@ -55,24 +54,24 @@ class TestPaymentStatus:
         test_sale.recalculate_payment_status()
         db.session.commit()
 
-        assert test_sale.payment_status == 'partial'
-        assert test_sale.paid_amount_base == Decimal('50.000')
+        assert test_sale.payment_status == "partial"
+        assert test_sale.paid_amount_base == Decimal("50.000")
 
     def test_full_payment_marks_sale_paid(self, client, db, test_sale):
         """Full payment marks sale as paid."""
         from models import Payment
 
         payment = Payment(
-            payment_number='PAY-TEST-002',
-            payment_type='receipt',
-            direction='incoming',
+            payment_number="PAY-TEST-002",
+            payment_type="receipt",
+            direction="incoming",
             sale_id=test_sale.id,
             customer_id=test_sale.customer_id,
-            amount=Decimal('100.000'),
-            currency='AED',
-            exchange_rate=Decimal('1'),
-            amount_base=Decimal('100.000'),
-            payment_method='cash',
+            amount=Decimal("100.000"),
+            currency="AED",
+            exchange_rate=Decimal("1"),
+            amount_base=Decimal("100.000"),
+            payment_method="cash",
             payment_confirmed=True,
             user_id=test_sale.seller_id,
         )
@@ -82,8 +81,8 @@ class TestPaymentStatus:
         test_sale.recalculate_payment_status()
         db.session.commit()
 
-        assert test_sale.payment_status == 'paid'
-        assert test_sale.balance_due == Decimal('0')
+        assert test_sale.payment_status == "paid"
+        assert test_sale.balance_due == Decimal("0")
 
     def test_pending_cheque_not_counted(self, client, db, test_sale):
         """Pending cheques are not counted in payment status."""
@@ -91,16 +90,16 @@ class TestPaymentStatus:
 
         # Create a pending cheque payment
         payment = Payment(
-            payment_number='PAY-TEST-003',
-            payment_type='receipt',
-            direction='incoming',
+            payment_number="PAY-TEST-003",
+            payment_type="receipt",
+            direction="incoming",
             sale_id=test_sale.id,
             customer_id=test_sale.customer_id,
-            amount=Decimal('100.000'),
-            currency='AED',
-            exchange_rate=Decimal('1'),
-            amount_base=Decimal('100.000'),
-            payment_method='cheque',
+            amount=Decimal("100.000"),
+            currency="AED",
+            exchange_rate=Decimal("1"),
+            amount_base=Decimal("100.000"),
+            payment_method="cheque",
             payment_confirmed=False,  # Pending cheque
             user_id=test_sale.seller_id,
         )
@@ -111,24 +110,24 @@ class TestPaymentStatus:
         db.session.commit()
 
         # Should still be unpaid — pending cheques don't count
-        assert test_sale.payment_status == 'unpaid'
-        assert test_sale.balance_due == Decimal('100.000')
+        assert test_sale.payment_status == "unpaid"
+        assert test_sale.balance_due == Decimal("100.000")
 
     def test_payment_confirm_updates_sale(self, client, db, test_sale):
         """Confirming a payment updates the sale balance."""
         from models import Payment
 
         payment = Payment(
-            payment_number='PAY-TEST-004',
-            payment_type='receipt',
-            direction='incoming',
+            payment_number="PAY-TEST-004",
+            payment_type="receipt",
+            direction="incoming",
             sale_id=test_sale.id,
             customer_id=test_sale.customer_id,
-            amount=Decimal('75.000'),
-            currency='AED',
-            exchange_rate=Decimal('1'),
-            amount_base=Decimal('75.000'),
-            payment_method='cheque',
+            amount=Decimal("75.000"),
+            currency="AED",
+            exchange_rate=Decimal("1"),
+            amount_base=Decimal("75.000"),
+            payment_method="cheque",
             payment_confirmed=False,  # Initially pending
             user_id=test_sale.seller_id,
         )
@@ -138,7 +137,7 @@ class TestPaymentStatus:
         # Before confirmation — unpaid
         test_sale.recalculate_payment_status()
         db.session.commit()
-        assert test_sale.payment_status == 'unpaid'
+        assert test_sale.payment_status == "unpaid"
 
         # Confirm the payment
         payment.confirm_payment()
@@ -147,25 +146,31 @@ class TestPaymentStatus:
         # After confirmation — partial
         test_sale.recalculate_payment_status()
         db.session.commit()
-        assert test_sale.payment_status == 'partial'
-        assert test_sale.paid_amount_base == Decimal('75.000')
+        assert test_sale.payment_status == "partial"
+        assert test_sale.paid_amount_base == Decimal("75.000")
+
 
 class TestVoucherXssHardening:
     """Regression: customer/supplier names must not break out of the JSON
     <script> island in voucher.html (stored XSS)."""
 
     def test_voucher_json_escapes_html(self, client, login_owner, db):
-        payload = '</div><img src=x onerror=alert(1)>'
-        c = Customer(name=payload, name_ar=payload, phone='+971500000001',
-                     customer_type='regular', is_active=True)
+        payload = "</div><img src=x onerror=alert(1)>"
+        c = Customer(
+            name=payload,
+            name_ar=payload,
+            phone="+971500000001",
+            customer_type="regular",
+            is_active=True,
+        )
         _db.session.add(c)
         _db.session.commit()
 
-        resp = client.get('/payments/voucher/create')
+        resp = client.get("/payments/voucher/create")
         assert resp.status_code == 200
         html = resp.data.decode()
         # The raw <img ...> must never appear unescaped inside the JSON island
-        assert '<img src=x onerror=alert(1)>' not in html
+        assert "<img src=x onerror=alert(1)>" not in html
         # tojson escapes '<' as \u003c and '>' as \u003e; ensure the escaped
         # form is present (proof it went through tojson, not |safe)
-        assert '\\u003c' in html or '&lt;' in html
+        assert "\\u003c" in html or "&lt;" in html

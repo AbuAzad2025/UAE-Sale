@@ -1,25 +1,55 @@
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app, abort
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    jsonify,
+    flash,
+    redirect,
+    url_for,
+    current_app,
+    abort,
+)
 from flask_login import login_required, current_user
 from sqlalchemy import func, desc, or_
 from extensions import db
 from models import (
-    User, Role, Permission, Customer, Product, Sale, SaleLine, Purchase, Receipt,
-    AuditLog, ArchivedRecord, CardVault, InvoiceSettings, Tenant, SystemSettings,
-    IntegrationSettings, Expense
+    User,
+    Role,
+    Permission,
+    Customer,
+    Product,
+    Sale,
+    SaleLine,
+    Purchase,
+    AuditLog,
+    ArchivedRecord,
+    CardVault,
+    InvoiceSettings,
+    Tenant,
+    SystemSettings,
+    IntegrationSettings,
+    Expense,
 )
 from models.login_history import LoginHistory
 from models.security_alert import SecurityAlert
 from utils.helpers import create_audit_log, append_audit_record
 from models.api_key import APIKey
 from models.error_log import ErrorLog
-from utils.decorators import owner_required, permission_required, _role_level as _role_level_canon, get_owned_or_404
+from utils.decorators import (
+    owner_required,
+    permission_required,
+    _role_level as _role_level_canon,
+    get_owned_or_404,
+)
 from utils.system_init import _ensure_operational_roles_for_tenant
 
-_FX_REVALUATION_CONFIRM_TOKEN = 'YES_POST_FX_REVALUATION'
+_FX_REVALUATION_CONFIRM_TOKEN = "YES_POST_FX_REVALUATION"
 from utils.db_safety import (
-    validate_table_name, validate_backup_filename, is_protected_table,
+    validate_table_name,
+    validate_backup_filename,
+    is_protected_table,
 )
 from sqlalchemy import text, inspect
 
@@ -38,7 +68,7 @@ import os  # noqa: E402
 import shutil  # noqa: E402,F401
 from datetime import datetime as dt  # noqa: E402
 
-owner_bp = Blueprint('owner', __name__, url_prefix='/owner')
+owner_bp = Blueprint("owner", __name__, url_prefix="/owner")
 
 
 def _role_level(role_or_slug):
@@ -54,6 +84,7 @@ def _role_level(role_or_slug):
         # Build a minimal role-like object
         class _R:
             pass
+
         r = _R()
         r.slug = role_or_slug
         return _role_level_canon(r)
@@ -61,12 +92,12 @@ def _role_level(role_or_slug):
 
 
 def _current_user_level():
-    if getattr(current_user, 'is_owner', False):
+    if getattr(current_user, "is_owner", False):
         return 100
-    return _role_level_canon(getattr(current_user, 'role', None))
+    return _role_level_canon(getattr(current_user, "role", None))
 
 
-@owner_bp.route('/dashboard')
+@owner_bp.route("/dashboard")
 @login_required
 @owner_required
 def dashboard():
@@ -80,87 +111,87 @@ def dashboard():
     # crashed the owner dashboard (500) whenever an unpaid confirmed sale existed.
     cutoff_date = datetime.now(timezone.utc) - timedelta(days=30)
 
-    stats['total_users'] = User.query.filter_by(is_active=True, is_owner=False).count()
-    stats['total_customers'] = Customer.query.filter_by(is_active=True).count()
-    stats['total_products'] = Product.query.filter_by(is_active=True).count()
+    stats["total_users"] = User.query.filter_by(is_active=True, is_owner=False).count()
+    stats["total_customers"] = Customer.query.filter_by(is_active=True).count()
+    stats["total_products"] = Product.query.filter_by(is_active=True).count()
 
-    stats['vip_customers'] = Customer.query.filter_by(
-        customer_classification='vip',
-        is_active=True
+    stats["vip_customers"] = Customer.query.filter_by(
+        customer_classification="vip", is_active=True
     ).count()
 
-    stats['premium_customers'] = Customer.query.filter_by(
-        customer_classification='premium',
-        is_active=True
+    stats["premium_customers"] = Customer.query.filter_by(
+        customer_classification="premium", is_active=True
     ).count()
 
-    today_sales = db.session.query(
-        func.count(Sale.id),
-        func.sum(Sale.amount_base),
-        func.sum(Sale.amount_base - Sale.paid_amount_base)
-    ).filter(
-        func.date(Sale.sale_date) == today,
-        Sale.status == 'confirmed'
-    ).first()
+    today_sales = (
+        db.session.query(
+            func.count(Sale.id),
+            func.sum(Sale.amount_base),
+            func.sum(Sale.amount_base - Sale.paid_amount_base),
+        )
+        .filter(func.date(Sale.sale_date) == today, Sale.status == "confirmed")
+        .first()
+    )
 
-    stats['today_sales_count'] = today_sales[0] or 0
-    stats['today_sales_amount'] = float(today_sales[1] or 0)
-    stats['today_receivables'] = float(today_sales[2] or 0)
+    stats["today_sales_count"] = today_sales[0] or 0
+    stats["today_sales_amount"] = float(today_sales[1] or 0)
+    stats["today_receivables"] = float(today_sales[2] or 0)
 
-    month_sales = db.session.query(
-        func.count(Sale.id),
-        func.sum(Sale.amount_base)
-    ).filter(
-        func.date(Sale.sale_date) >= month_start,
-        Sale.status == 'confirmed'
-    ).first()
+    month_sales = (
+        db.session.query(func.count(Sale.id), func.sum(Sale.amount_base))
+        .filter(func.date(Sale.sale_date) >= month_start, Sale.status == "confirmed")
+        .first()
+    )
 
-    stats['month_sales_count'] = month_sales[0] or 0
-    stats['month_sales_amount'] = float(month_sales[1] or 0)
+    stats["month_sales_count"] = month_sales[0] or 0
+    stats["month_sales_amount"] = float(month_sales[1] or 0)
 
-    year_sales = db.session.query(
-        func.sum(Sale.amount_base)
-    ).filter(
-        func.date(Sale.sale_date) >= year_start,
-        Sale.status == 'confirmed'
-    ).scalar() or Decimal('0')
+    year_sales = db.session.query(func.sum(Sale.amount_base)).filter(
+        func.date(Sale.sale_date) >= year_start, Sale.status == "confirmed"
+    ).scalar() or Decimal("0")
 
-    stats['year_sales_amount'] = float(year_sales)
+    stats["year_sales_amount"] = float(year_sales)
 
-    month_purchases = db.session.query(
-        func.sum(Purchase.amount_base)
-    ).filter(
-        func.date(Purchase.purchase_date) >= month_start,
-        Purchase.status == 'confirmed'
-    ).scalar() or Decimal('0')
+    month_purchases = db.session.query(func.sum(Purchase.amount_base)).filter(
+        func.date(Purchase.purchase_date) >= month_start, Purchase.status == "confirmed"
+    ).scalar() or Decimal("0")
 
-    stats['month_purchases_amount'] = float(month_purchases)
+    stats["month_purchases_amount"] = float(month_purchases)
 
-    total_profit = Decimal('0')
+    total_profit = Decimal("0")
     for sale in Sale.query.filter(
-        func.date(Sale.sale_date) >= month_start,
-        Sale.status == 'confirmed'
+        func.date(Sale.sale_date) >= month_start, Sale.status == "confirmed"
     ).all():
-        total_profit += (sale.get_profit() or Decimal('0'))
+        total_profit += sale.get_profit() or Decimal("0")
 
-    stats['month_profit'] = float(total_profit)
-    stats['profit_margin'] = (float(total_profit) / float(month_sales[1] or 1)) * 100 if month_sales[1] else 0
+    stats["month_profit"] = float(total_profit)
+    stats["profit_margin"] = (
+        (float(total_profit) / float(month_sales[1] or 1)) * 100
+        if month_sales[1]
+        else 0
+    )
 
-    total_inventory_value = Decimal('0')
-    total_inventory_cost = Decimal('0')
+    total_inventory_value = Decimal("0")
+    total_inventory_cost = Decimal("0")
 
     for product in Product.query.filter_by(is_active=True).all():
-        total_inventory_value += (product.current_stock or Decimal('0')) * (product.regular_price or Decimal('0'))
-        total_inventory_cost += (product.current_stock or Decimal('0')) * (product.cost_price or Decimal('0'))
+        total_inventory_value += (product.current_stock or Decimal("0")) * (
+            product.regular_price or Decimal("0")
+        )
+        total_inventory_cost += (product.current_stock or Decimal("0")) * (
+            product.cost_price or Decimal("0")
+        )
 
-    stats['inventory_value'] = float(total_inventory_value)
-    stats['inventory_cost'] = float(total_inventory_cost)
+    stats["inventory_value"] = float(total_inventory_value)
+    stats["inventory_cost"] = float(total_inventory_cost)
 
-    total_receivables = Decimal('0')
+    total_receivables = Decimal("0")
     overdue_count = 0
 
-    for sale in Sale.query.filter(Sale.status == 'confirmed').all():
-        balance = (sale.amount_base or Decimal('0')) - (sale.paid_amount_base or Decimal('0'))
+    for sale in Sale.query.filter(Sale.status == "confirmed").all():
+        balance = (sale.amount_base or Decimal("0")) - (
+            sale.paid_amount_base or Decimal("0")
+        )
         if balance > 0:
             total_receivables += balance
             sale_date = sale.sale_date
@@ -170,71 +201,78 @@ def dashboard():
             if sale_date < cutoff_date:
                 overdue_count += 1
 
-    stats['total_receivables'] = float(total_receivables)
+    stats["total_receivables"] = float(total_receivables)
 
-    stats['overdue_invoices'] = overdue_count
+    stats["overdue_invoices"] = overdue_count
 
-    top_customers = db.session.query(
-        Customer.id,
-        Customer.name,
-        Customer.customer_type,
-        Customer.customer_classification,
-        func.sum(Sale.amount_base).label('total')
-    ).join(
-        Sale, Customer.id == Sale.customer_id
-    ).filter(
-        Sale.status == 'confirmed',
-        func.date(Sale.sale_date) >= month_start
-    ).group_by(
-        Customer.id, Customer.name, Customer.customer_type, Customer.customer_classification
-    ).order_by(
-        desc('total')
-    ).limit(10).all()
+    top_customers = (
+        db.session.query(
+            Customer.id,
+            Customer.name,
+            Customer.customer_type,
+            Customer.customer_classification,
+            func.sum(Sale.amount_base).label("total"),
+        )
+        .join(Sale, Customer.id == Sale.customer_id)
+        .filter(Sale.status == "confirmed", func.date(Sale.sale_date) >= month_start)
+        .group_by(
+            Customer.id,
+            Customer.name,
+            Customer.customer_type,
+            Customer.customer_classification,
+        )
+        .order_by(desc("total"))
+        .limit(10)
+        .all()
+    )
 
-    stats['top_customers'] = top_customers
+    stats["top_customers"] = top_customers
 
     # Top selling products
     try:
-        top_products = db.session.query(
-            Product.id,
-            Product.name,
-            func.sum(SaleLine.quantity).label('quantity'),
-            func.sum(SaleLine.line_total).label('revenue')
-        ).join(
-            SaleLine, Product.id == SaleLine.product_id
-        ).join(
-            Sale, SaleLine.sale_id == Sale.id
-        ).filter(
-            Sale.status == 'confirmed',
-            func.date(Sale.sale_date) >= month_start
-        ).group_by(
-            Product.id, Product.name
-        ).order_by(
-            desc('revenue')
-        ).limit(10).all()
+        top_products = (
+            db.session.query(
+                Product.id,
+                Product.name,
+                func.sum(SaleLine.quantity).label("quantity"),
+                func.sum(SaleLine.line_total).label("revenue"),
+            )
+            .join(SaleLine, Product.id == SaleLine.product_id)
+            .join(Sale, SaleLine.sale_id == Sale.id)
+            .filter(
+                Sale.status == "confirmed", func.date(Sale.sale_date) >= month_start
+            )
+            .group_by(Product.id, Product.name)
+            .order_by(desc("revenue"))
+            .limit(10)
+            .all()
+        )
 
-        stats['top_products'] = top_products
+        stats["top_products"] = top_products
     except Exception as e:
         current_app.logger.error(f"Error getting top products: {e}")
-        stats['top_products'] = []
+        stats["top_products"] = []
 
-    recent_actions = AuditLog.query.order_by(
-        AuditLog.created_at.desc()
-    ).limit(20).all()
+    recent_actions = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(20).all()
 
-    stats['recent_actions'] = recent_actions
+    stats["recent_actions"] = recent_actions
 
-    low_stock = Product.query.filter(
-        Product.is_active.is_(True),
-        Product.current_stock <= Product.min_stock_alert
-    ).order_by(Product.current_stock).limit(10).all()
+    low_stock = (
+        Product.query.filter(
+            Product.is_active.is_(True),
+            Product.current_stock <= Product.min_stock_alert,
+        )
+        .order_by(Product.current_stock)
+        .limit(10)
+        .all()
+    )
 
-    stats['low_stock'] = low_stock
+    stats["low_stock"] = low_stock
 
-    return render_template('owner/dashboard.html', stats=stats)
+    return render_template("owner/dashboard.html", stats=stats)
 
 
-@owner_bp.route('/system-stats')
+@owner_bp.route("/system-stats")
 @login_required
 @owner_required
 def system_stats():
@@ -243,7 +281,9 @@ def system_stats():
     db_stats = {}
 
     try:
-        result = db.session.execute(text("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname='public'"))
+        result = db.session.execute(
+            text("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname='public'")
+        )
         tables = result.fetchall()
 
         allowed = get_allowed_table_names_safe()
@@ -251,26 +291,28 @@ def system_stats():
             table_name = row[0]
             if table_name not in allowed:
                 continue
-            count_result = db.session.execute(text(f"SELECT COUNT(*) FROM {table_name}"))  # nosec B608 - table_name allowlist-validated
+            count_result = db.session.execute(
+                text(f"SELECT COUNT(*) FROM {table_name}")
+            )  # nosec B608 - table_name allowlist-validated
             count = count_result.scalar()
             db_stats[table_name] = count
 
     except Exception as e:
-        current_app.logger.error(f'System stats error: {e}')
-        flash('❌ خطأ في جلب الإحصائيات. يرجى تحديث الصفحة.', 'danger')
+        current_app.logger.error(f"System stats error: {e}")
+        flash("❌ خطأ في جلب الإحصائيات. يرجى تحديث الصفحة.", "danger")
 
-    return render_template('owner/system_stats.html', db_stats=db_stats)
+    return render_template("owner/system_stats.html", db_stats=db_stats)
 
 
-@owner_bp.route('/audit-logs')
+@owner_bp.route("/audit-logs")
 @login_required
 @owner_required
 def audit_logs():
     """سجل التدقيق الشامل - مراقبة كل عمليات النظام"""
-    page = request.args.get('page', 1, type=int)
-    action = request.args.get('action', '', type=str)
-    user_id = request.args.get('user', type=int)
-    per_page = request.args.get('per_page', 50, type=int)
+    page = request.args.get("page", 1, type=int)
+    action = request.args.get("action", "", type=str)
+    user_id = request.args.get("user", type=int)
+    per_page = request.args.get("per_page", 50, type=int)
 
     query = AuditLog.query
 
@@ -284,38 +326,38 @@ def audit_logs():
 
     # الترتيب والتقسيم
     pagination = query.order_by(AuditLog.created_at.desc()).paginate(
-        page=page,
-        per_page=per_page,
-        error_out=False
+        page=page, per_page=per_page, error_out=False
     )
 
     # إحصائيات سريعة
     stats = {
-        'total': AuditLog.query.count(),
-        'today': AuditLog.query.filter(
+        "total": AuditLog.query.count(),
+        "today": AuditLog.query.filter(
             db.func.date(AuditLog.created_at) == db.func.current_date()
         ).count(),
-        'creates': AuditLog.query.filter_by(action='create').count(),
-        'updates': AuditLog.query.filter_by(action='update').count(),
-        'deletes': AuditLog.query.filter_by(action='delete').count(),
+        "creates": AuditLog.query.filter_by(action="create").count(),
+        "updates": AuditLog.query.filter_by(action="update").count(),
+        "deletes": AuditLog.query.filter_by(action="delete").count(),
     }
 
     # قائمة المستخدمين للفلتر
     users = User.query.filter_by(is_active=True).all()
 
-    return render_template('owner/audit_logs.html',
-                           logs=pagination.items,
-                           pagination=pagination,
-                           stats=stats,
-                           users=users)
+    return render_template(
+        "owner/audit_logs.html",
+        logs=pagination.items,
+        pagination=pagination,
+        stats=stats,
+        users=users,
+    )
 
 
-@owner_bp.route('/archived')
+@owner_bp.route("/archived")
 @login_required
 @owner_required
 def archived():
-    page = request.args.get('page', 1, type=int)
-    table_name = request.args.get('table', '', type=str)
+    page = request.args.get("page", 1, type=int)
+    table_name = request.args.get("table", "", type=str)
 
     query = ArchivedRecord.query
 
@@ -323,47 +365,48 @@ def archived():
         query = query.filter_by(table_name=table_name)
 
     pagination = query.order_by(ArchivedRecord.archived_at.desc()).paginate(
-        page=page,
-        per_page=50,
-        error_out=False
+        page=page, per_page=50, error_out=False
     )
 
-    return render_template('owner/archived.html',
-                           records=pagination.items,
-                           pagination=pagination)
+    return render_template(
+        "owner/archived.html", records=pagination.items, pagination=pagination
+    )
 
 
 # Slug of the platform-owner role: its permission set is bypass-based and
 # must never be edited from the role editor.
-_OWNER_ROLE_SLUG = 'owner'
+_OWNER_ROLE_SLUG = "owner"
 
 # Roles whose users legitimately see cost data through can_see_costs();
 # view_costs may only be granted to these (server-side policy).
-_COST_BEARING_ROLE_SLUGS = {'super_admin', 'manager', 'developer'}
+_COST_BEARING_ROLE_SLUGS = {"super_admin", "manager", "developer"}
 
 
-@owner_bp.route('/roles-permissions')
+@owner_bp.route("/roles-permissions")
 @login_required
 @owner_required
 def roles_permissions():
     """صفحة الأدوار والصلاحيات — محرر تفاعلي لصلاحيات الأدوار."""
     # Never expose the Owner role's bypass list as editable data.
-    roles = Role.query.filter(Role.slug != _OWNER_ROLE_SLUG) \
-        .order_by(Role.name.asc()).all()
-    permissions = Permission.query.order_by(Permission.category.asc(),
-                                            Permission.name.asc()).all()
+    roles = (
+        Role.query.filter(Role.slug != _OWNER_ROLE_SLUG).order_by(Role.name.asc()).all()
+    )
+    permissions = Permission.query.order_by(
+        Permission.category.asc(), Permission.name.asc()
+    ).all()
 
     permissions_by_category = {}
     for perm in permissions:
-        permissions_by_category.setdefault(perm.category or 'other', []) \
-            .append(perm)
+        permissions_by_category.setdefault(perm.category or "other", []).append(perm)
 
-    return render_template('owner/roles_permissions.html',
-                           roles=roles,
-                           permissions_by_category=permissions_by_category)
+    return render_template(
+        "owner/roles_permissions.html",
+        roles=roles,
+        permissions_by_category=permissions_by_category,
+    )
 
 
-@owner_bp.route('/roles/<int:role_id>/permissions', methods=['POST'])
+@owner_bp.route("/roles/<int:role_id>/permissions", methods=["POST"])
 @login_required
 @owner_required
 def update_role_permissions(role_id):
@@ -376,68 +419,78 @@ def update_role_permissions(role_id):
     role = Role.query.get_or_404(role_id)
 
     if role.slug == _OWNER_ROLE_SLUG:
-        flash('❌ لا يمكن تعديل صلاحيات دور المالك (Owner).', 'danger')
-        return redirect(url_for('owner.roles_permissions'))
+        flash("❌ لا يمكن تعديل صلاحيات دور المالك (Owner).", "danger")
+        return redirect(url_for("owner.roles_permissions"))
 
     # view_costs drives can_see_costs() — only cost-bearing roles may carry it.
-    submitted = set(request.form.getlist('permissions'))
+    submitted = set(request.form.getlist("permissions"))
     valid_codes = {p.code for p in Permission.query.all()}
 
     if not submitted.issubset(valid_codes):
-        flash('❌ صلاحية غير معروفة في الطلب.', 'danger')
-        return redirect(url_for('owner.roles_permissions'))
+        flash("❌ صلاحية غير معروفة في الطلب.", "danger")
+        return redirect(url_for("owner.roles_permissions"))
 
-    if 'view_costs' in submitted and role.slug not in _COST_BEARING_ROLE_SLUGS:
-        flash('❌ صلاحية عرض التكاليف (view_costs) مقصورة على الأدوار المالية.', 'danger')
-        return redirect(url_for('owner.roles_permissions'))
+    if "view_costs" in submitted and role.slug not in _COST_BEARING_ROLE_SLUGS:
+        flash(
+            "❌ صلاحية عرض التكاليف (view_costs) مقصورة على الأدوار المالية.", "danger"
+        )
+        return redirect(url_for("owner.roles_permissions"))
 
     previous = {p.code for p in role.permissions}
     added = submitted - previous
     removed = previous - submitted
 
     if not added and not removed:
-        flash('ℹ️ لا توجد تغييرات لحفظها.', 'info')
-        return redirect(url_for('owner.roles_permissions'))
+        flash("ℹ️ لا توجد تغييرات لحفظها.", "info")
+        return redirect(url_for("owner.roles_permissions"))
 
-    role.permissions = Permission.query.filter(
-        Permission.code.in_(submitted)).all() if submitted else []
+    role.permissions = (
+        Permission.query.filter(Permission.code.in_(submitted)).all()
+        if submitted
+        else []
+    )
 
-    create_audit_log('update', 'roles', role.id, changes={
-        'role': role.slug,
-        'added_permissions': sorted(added),
-        'removed_permissions': sorted(removed),
-    })
+    create_audit_log(
+        "update",
+        "roles",
+        role.id,
+        changes={
+            "role": role.slug,
+            "added_permissions": sorted(added),
+            "removed_permissions": sorted(removed),
+        },
+    )
 
     db.session.commit()
 
-    flash(f'✅ تم تحديث صلاحيات الدور «{role.name}» بنجاح.', 'success')
-    return redirect(url_for('owner.roles_permissions'))
+    flash(f"✅ تم تحديث صلاحيات الدور «{role.name}» بنجاح.", "success")
+    return redirect(url_for("owner.roles_permissions"))
 
 
-@owner_bp.route('/config')
+@owner_bp.route("/config")
 @login_required
 @owner_required
 def config():
     from flask import current_app
 
     config_data = {
-        'DATABASE_URL': current_app.config.get('SQLALCHEMY_DATABASE_URI', ''),
-        'DEBUG': current_app.config.get('DEBUG', False),
-        'APP_ENV': current_app.config.get('APP_ENV', ''),
-        'DEFAULT_CURRENCY': current_app.config.get('DEFAULT_CURRENCY', ''),
-        'COMPANY_NAME': current_app.config.get('COMPANY_NAME', ''),
-        'APP_VERSION': current_app.config.get('APP_VERSION', ''),
+        "DATABASE_URL": current_app.config.get("SQLALCHEMY_DATABASE_URI", ""),
+        "DEBUG": current_app.config.get("DEBUG", False),
+        "APP_ENV": current_app.config.get("APP_ENV", ""),
+        "DEFAULT_CURRENCY": current_app.config.get("DEFAULT_CURRENCY", ""),
+        "COMPANY_NAME": current_app.config.get("COMPANY_NAME", ""),
+        "APP_VERSION": current_app.config.get("APP_VERSION", ""),
     }
 
-    return render_template('owner/config.html', config=config_data)
+    return render_template("owner/config.html", config=config_data)
 
 
-@owner_bp.route('/cards-vault')
+@owner_bp.route("/cards-vault")
 @login_required
 @owner_required
 def cards_vault():
-    page = request.args.get('page', 1, type=int)
-    customer_id = request.args.get('customer', type=int)
+    page = request.args.get("page", 1, type=int)
+    customer_id = request.args.get("customer", type=int)
 
     query = CardVault.query.filter_by(is_active=True)
 
@@ -445,28 +498,32 @@ def cards_vault():
         query = query.filter_by(customer_id=customer_id)
 
     pagination = query.order_by(CardVault.created_at.desc()).paginate(
-        page=page,
-        per_page=50,
-        error_out=False
+        page=page, per_page=50, error_out=False
     )
 
     total_cards = CardVault.query.filter_by(is_active=True).count()
     total_usage = db.session.query(func.sum(CardVault.usage_count)).scalar() or 0
 
     stats = {
-        'total_cards': total_cards,
-        'total_usage': total_usage,
-        'visa_count': CardVault.query.filter_by(card_type='visa', is_active=True).count(),
-        'mastercard_count': CardVault.query.filter_by(card_type='mastercard', is_active=True).count(),
+        "total_cards": total_cards,
+        "total_usage": total_usage,
+        "visa_count": CardVault.query.filter_by(
+            card_type="visa", is_active=True
+        ).count(),
+        "mastercard_count": CardVault.query.filter_by(
+            card_type="mastercard", is_active=True
+        ).count(),
     }
 
-    return render_template('owner/cards_vault.html',
-                           cards=pagination.items,
-                           pagination=pagination,
-                           stats=stats)
+    return render_template(
+        "owner/cards_vault.html",
+        cards=pagination.items,
+        pagination=pagination,
+        stats=stats,
+    )
 
 
-@owner_bp.route('/cards-vault/<int:id>/view')
+@owner_bp.route("/cards-vault/<int:id>/view")
 @login_required
 @owner_required
 def view_card(id):
@@ -474,10 +531,10 @@ def view_card(id):
 
     card_data = card.to_dict(include_sensitive=True)
 
-    return render_template('owner/view_card.html', card=card, card_data=card_data)
+    return render_template("owner/view_card.html", card=card, card_data=card_data)
 
 
-@owner_bp.route('/database-tools')
+@owner_bp.route("/database-tools")
 @login_required
 @owner_required
 def database_tools():
@@ -493,60 +550,64 @@ def database_tools():
         columns = inspector.get_columns(tbl_name)
         indexes = inspector.get_indexes(tbl_name)
 
-        row_count = db.session.execute(text(f"SELECT COUNT(*) FROM {tbl_name}")).scalar()  # nosec B608 - table allowlist-validated
+        row_count = db.session.execute(
+            text(f"SELECT COUNT(*) FROM {tbl_name}")
+        ).scalar()  # nosec B608 - table allowlist-validated
 
-        tables_info.append({
-            'name': tbl_name,
-            'columns_count': len(columns),
-            'indexes_count': len(indexes),
-            'rows_count': row_count
-        })
+        tables_info.append(
+            {
+                "name": tbl_name,
+                "columns_count": len(columns),
+                "indexes_count": len(indexes),
+                "rows_count": row_count,
+            }
+        )
 
-    return render_template('owner/database_tools.html', tables=tables_info)
+    return render_template("owner/database_tools.html", tables=tables_info)
 
 
-@owner_bp.route('/integrations')
+@owner_bp.route("/integrations")
 @login_required
 @owner_required
 def integrations():
     """عرض إعدادات التكاملات من قاعدة البيانات"""
     # جلب إعدادات كل خدمة من قاعدة البيانات
-    whatsapp = IntegrationSettings.get_service_config('whatsapp')
-    email = IntegrationSettings.get_service_config('email')
-    redis = IntegrationSettings.get_service_config('redis')
-    currency_api = IntegrationSettings.get_service_config('currency_api')
+    whatsapp = IntegrationSettings.get_service_config("whatsapp")
+    email = IntegrationSettings.get_service_config("email")
+    redis = IntegrationSettings.get_service_config("redis")
+    currency_api = IntegrationSettings.get_service_config("currency_api")
 
     integrations_data = {
-        'whatsapp': {
-            'enabled': whatsapp.enabled,
-            'config': whatsapp.get_config(),
-            'last_tested': whatsapp.last_tested_at,
-            'status': whatsapp.last_test_status or 'not_configured'
+        "whatsapp": {
+            "enabled": whatsapp.enabled,
+            "config": whatsapp.get_config(),
+            "last_tested": whatsapp.last_tested_at,
+            "status": whatsapp.last_test_status or "not_configured",
         },
-        'email': {
-            'enabled': email.enabled,
-            'config': email.get_config(),
-            'last_tested': email.last_tested_at,
-            'status': email.last_test_status or 'not_configured'
+        "email": {
+            "enabled": email.enabled,
+            "config": email.get_config(),
+            "last_tested": email.last_tested_at,
+            "status": email.last_test_status or "not_configured",
         },
-        'redis': {
-            'enabled': redis.enabled,
-            'config': redis.get_config(),
-            'last_tested': redis.last_tested_at,
-            'status': redis.last_test_status or 'not_configured'
+        "redis": {
+            "enabled": redis.enabled,
+            "config": redis.get_config(),
+            "last_tested": redis.last_tested_at,
+            "status": redis.last_test_status or "not_configured",
         },
-        'currency_api': {
-            'enabled': currency_api.enabled,
-            'config': currency_api.get_config(),
-            'last_tested': currency_api.last_tested_at,
-            'status': currency_api.last_test_status or 'not_configured'
-        }
+        "currency_api": {
+            "enabled": currency_api.enabled,
+            "config": currency_api.get_config(),
+            "last_tested": currency_api.last_tested_at,
+            "status": currency_api.last_test_status or "not_configured",
+        },
     }
 
-    return render_template('owner/integrations.html', integrations=integrations_data)
+    return render_template("owner/integrations.html", integrations=integrations_data)
 
 
-@owner_bp.route('/integrations/update/<service>', methods=['POST'])
+@owner_bp.route("/integrations/update/<service>", methods=["POST"])
 @login_required
 @owner_required
 def update_integration(service):
@@ -556,43 +617,46 @@ def update_integration(service):
         integration = IntegrationSettings.get_service_config(service)
 
         # تحديث enabled
-        integration.enabled = request.form.get('enabled') == 'true' or request.form.get('enabled') == '1'
+        integration.enabled = (
+            request.form.get("enabled") == "true" or request.form.get("enabled") == "1"
+        )
 
         # بناء config_data حسب نوع الخدمة
         config_data = {}
 
-        if service == 'whatsapp':
+        if service == "whatsapp":
             config_data = {
-                'api_token': request.form.get('api_token', ''),
-                'phone_number': request.form.get('phone_number', ''),
-                'api_url': request.form.get('api_url', ''),
-                'message_template': request.form.get('message_template', '')
+                "api_token": request.form.get("api_token", ""),
+                "phone_number": request.form.get("phone_number", ""),
+                "api_url": request.form.get("api_url", ""),
+                "message_template": request.form.get("message_template", ""),
             }
 
-        elif service == 'email':
+        elif service == "email":
             config_data = {
-                'smtp_host': request.form.get('smtp_host', ''),
-                'smtp_port': request.form.get('smtp_port', '587'),
-                'smtp_user': request.form.get('smtp_user', ''),
-                'smtp_password': request.form.get('smtp_password', ''),
-                'smtp_use_tls': request.form.get('smtp_use_tls') == 'true' or request.form.get('smtp_use_tls') == '1',
-                'from_email': request.form.get('from_email', ''),
-                'from_name': request.form.get('from_name', '')
+                "smtp_host": request.form.get("smtp_host", ""),
+                "smtp_port": request.form.get("smtp_port", "587"),
+                "smtp_user": request.form.get("smtp_user", ""),
+                "smtp_password": request.form.get("smtp_password", ""),
+                "smtp_use_tls": request.form.get("smtp_use_tls") == "true"
+                or request.form.get("smtp_use_tls") == "1",
+                "from_email": request.form.get("from_email", ""),
+                "from_name": request.form.get("from_name", ""),
             }
 
-        elif service == 'redis':
+        elif service == "redis":
             config_data = {
-                'redis_host': request.form.get('redis_host', 'localhost'),
-                'redis_port': request.form.get('redis_port', '6379'),
-                'redis_password': request.form.get('redis_password', ''),
-                'redis_db': request.form.get('redis_db', '0')
+                "redis_host": request.form.get("redis_host", "localhost"),
+                "redis_port": request.form.get("redis_port", "6379"),
+                "redis_password": request.form.get("redis_password", ""),
+                "redis_db": request.form.get("redis_db", "0"),
             }
 
-        elif service == 'currency_api':
+        elif service == "currency_api":
             config_data = {
-                'api_key': request.form.get('api_key', ''),
-                'api_url': request.form.get('api_url', ''),
-                'update_frequency': request.form.get('update_frequency', 'daily')
+                "api_key": request.form.get("api_key", ""),
+                "api_url": request.form.get("api_url", ""),
+                "update_frequency": request.form.get("update_frequency", "daily"),
             }
 
         # حفظ الإعدادات
@@ -602,56 +666,61 @@ def update_integration(service):
 
         db.session.commit()
 
-        flash(f'✅ تم حفظ إعدادات {service} بنجاح!', 'success')
+        flash(f"✅ تم حفظ إعدادات {service} بنجاح!", "success")
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f'Integration save error: {e}')
-        flash('❌ خطأ في حفظ الإعدادات.', 'danger')
+        current_app.logger.error(f"Integration save error: {e}")
+        flash("❌ خطأ في حفظ الإعدادات.", "danger")
         current_app.logger.error(f"Error saving integration {service}: {e}")
 
-    return redirect(url_for('owner.integrations'))
+    return redirect(url_for("owner.integrations"))
 
 
-@owner_bp.route('/backup-now', methods=['POST'])
+@owner_bp.route("/backup-now", methods=["POST"])
 @login_required
-@permission_required('manage_backups')
+@permission_required("manage_backups")
 def backup_now():
     """نسخة احتياطية يدوية فورية"""
     from services.backup_service import BackupService
 
     payload = request.get_json(silent=True) if request.is_json else None
     description = (
-        (payload or {}).get('description')
-        or request.form.get('description')
-        or f'Manual backup by {getattr(current_user, "username", "user")}'
+        (payload or {}).get("description")
+        or request.form.get("description")
+        or f"Manual backup by {getattr(current_user, 'username', 'user')}"
     )
 
     backup = BackupService.create_backup(
-        manual=True,
-        compress=True,
-        description=description
+        manual=True, compress=True, description=description
     )
 
     if request.is_json:
         if backup:
-            return jsonify({
-                'success': True,
-                'filename': backup.get('filename'),
-                'size_mb': backup.get('size_mb'),
-            })
-        return jsonify({'success': False, 'message': 'فشل إنشاء النسخة الاحتياطية'}), 400
+            return jsonify(
+                {
+                    "success": True,
+                    "filename": backup.get("filename"),
+                    "size_mb": backup.get("size_mb"),
+                }
+            )
+        return jsonify(
+            {"success": False, "message": "فشل إنشاء النسخة الاحتياطية"}
+        ), 400
     else:
         if backup:
-            flash(f'✅ تم إنشاء نسخة احتياطية: {backup["filename"]} ({backup["size_mb"]} MB)', 'success')
+            flash(
+                f"✅ تم إنشاء نسخة احتياطية: {backup['filename']} ({backup['size_mb']} MB)",
+                "success",
+            )
         else:
-            flash('❌ فشل إنشاء النسخة الاحتياطية', 'danger')
-        return redirect(url_for('owner.dashboard'))
+            flash("❌ فشل إنشاء النسخة الاحتياطية", "danger")
+        return redirect(url_for("owner.dashboard"))
 
 
-@owner_bp.route('/backups/list')
+@owner_bp.route("/backups/list")
 @login_required
-@permission_required('manage_backups')
+@permission_required("manage_backups")
 def list_backups():
     """قائمة النسخ الاحتياطية"""
     from services.backup_service import BackupService
@@ -660,47 +729,55 @@ def list_backups():
     backups = BackupService.list_backups()
     stats = BackupService.get_backup_stats()
 
-    return render_template('owner/backups_list.html',
-                           backups=backups,
-                           stats=stats,
-                           now=datetime.now())
+    return render_template(
+        "owner/backups_list.html", backups=backups, stats=stats, now=datetime.now()
+    )
 
 
-@owner_bp.route('/backups/verify-latest', methods=['GET', 'POST'])
+@owner_bp.route("/backups/verify-latest", methods=["GET", "POST"])
 @login_required
-@permission_required('manage_backups')
+@permission_required("manage_backups")
 def verify_latest_backup():
     """تحقق محتوى أعمق من أحدث نسخة — يُسجّل في backup_verifications."""
     from models import BackupVerification
     from services.backup_verify import verify_latest_backup as _verify_latest
     import json
 
-    if request.method == 'POST':
+    if request.method == "POST":
         row = _verify_latest(db)
-        if row.status == 'verified':
-            flash(f'✅ تم التحقق: {row.filename} — {row.table_count} جدولًا، {row.data_markers} سجلًا', 'success')
+        if row.status == "verified":
+            flash(
+                f"✅ تم التحقق: {row.filename} — {row.table_count} جدولًا، {row.data_markers} سجلًا",
+                "success",
+            )
         else:
-            flash(f'❌ التحقق فشل: {row.error}', 'danger')
-        return redirect(url_for('owner.verify_latest_backup'))
+            flash(f"❌ التحقق فشل: {row.error}", "danger")
+        return redirect(url_for("owner.verify_latest_backup"))
 
-    rows = BackupVerification.query.order_by(BackupVerification.verified_at.desc()).limit(20).all()
+    rows = (
+        BackupVerification.query.order_by(BackupVerification.verified_at.desc())
+        .limit(20)
+        .all()
+    )
     latest = rows[0] if rows else None
     try:
-        latest_checks = json.loads(latest.checks_json) if latest and latest.checks_json else []
+        latest_checks = (
+            json.loads(latest.checks_json) if latest and latest.checks_json else []
+        )
     except Exception:
         latest_checks = []
 
     return render_template(
-        'owner/backups_verify_latest.html',
+        "owner/backups_verify_latest.html",
         verifications=rows,
         latest=latest,
         latest_checks=latest_checks,
     )
 
 
-@owner_bp.route('/backups/verify/<filename>', methods=['POST'])
+@owner_bp.route("/backups/verify/<filename>", methods=["POST"])
 @login_required
-@permission_required('manage_backups')
+@permission_required("manage_backups")
 def verify_backup(filename):
     """التحقق من سلامة نسخة احتياطية"""
     from services.backup_service import BackupService
@@ -709,18 +786,22 @@ def verify_backup(filename):
     try:
         backup_path = validate_backup_filename(filename, BackupService.BACKUP_DIR)
     except ValueError:
-        return jsonify({'success': False, 'message': 'Invalid backup filename'}), 400
+        return jsonify({"success": False, "message": "Invalid backup filename"}), 400
 
     if not os.path.exists(backup_path):
-        return jsonify({'success': False, 'message': 'Backup not found'}), 404
+        return jsonify({"success": False, "message": "Backup not found"}), 404
 
     is_valid = BackupService.verify_backup(filename)
     if is_valid:
-        return jsonify({'success': True, 'verified': True, 'message': 'Backup verified'})
-    return jsonify({'success': True, 'verified': False, 'message': 'Backup corrupted or invalid'})
+        return jsonify(
+            {"success": True, "verified": True, "message": "Backup verified"}
+        )
+    return jsonify(
+        {"success": True, "verified": False, "message": "Backup corrupted or invalid"}
+    )
 
 
-@owner_bp.route('/backups/restore/<filename>', methods=['POST'])
+@owner_bp.route("/backups/restore/<filename>", methods=["POST"])
 @login_required
 @owner_required
 def restore_backup(filename):
@@ -731,31 +812,32 @@ def restore_backup(filename):
     try:
         validate_backup_filename(filename, BackupService.BACKUP_DIR)
     except ValueError:
-        flash('❌ اسم ملف غير صحيح!', 'danger')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ اسم ملف غير صحيح!", "danger")
+        return redirect(url_for("owner.list_backups"))
 
     # أمان إضافي - التأكد من أن المستخدم هو المالك
     if not current_user.is_owner:
-        flash('❌ غير مصرح - الاستعادة للمالك فقط!', 'danger')
-        return redirect(url_for('main.dashboard'))
+        flash("❌ غير مصرح - الاستعادة للمالك فقط!", "danger")
+        return redirect(url_for("main.dashboard"))
 
     # طلب تأكيد بكلمة المرور
-    password = request.form.get('confirm_password')
+    password = request.form.get("confirm_password")
 
     if not password:
-        flash('❌ يرجى إدخال كلمة المرور للتأكيد', 'warning')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ يرجى إدخال كلمة المرور للتأكيد", "warning")
+        return redirect(url_for("owner.list_backups"))
 
     # التحقق من كلمة المرور
     from werkzeug.security import check_password_hash
+
     if not check_password_hash(current_user.password_hash, password):
-        flash('❌ كلمة المرور غير صحيحة!', 'danger')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ كلمة المرور غير صحيحة!", "danger")
+        return redirect(url_for("owner.list_backups"))
 
     # التحقق من سلامة النسخة
     if not BackupService.verify_backup(filename):
-        flash('❌ النسخة الاحتياطية تالفة أو غير صالحة!', 'danger')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ النسخة الاحتياطية تالفة أو غير صالحة!", "danger")
+        return redirect(url_for("owner.list_backups"))
 
     # F10 (SECURITY): the restore pipes the dump into the LIVE database, so
     # it REWRITES audit_logs with the backup's contents — the audit trail of
@@ -764,50 +846,54 @@ def restore_backup(filename):
     # database: it is written to a file under instance/ BEFORE the restore
     # runs (and into audit_logs afterwards, for the rows the restore kept).
     restore_audit = {
-        'action': 'restore_backup',
-        'backup_filename': filename,
-        'restored_by': getattr(current_user, 'username', None),
-        'restored_at': datetime.now(timezone.utc).isoformat(),
+        "action": "restore_backup",
+        "backup_filename": filename,
+        "restored_by": getattr(current_user, "username", None),
+        "restored_at": datetime.now(timezone.utc).isoformat(),
     }
     try:
         audit_file = append_audit_record(restore_audit)
     except Exception:
-        current_app.logger.exception('handler failed')
+        current_app.logger.exception("handler failed")
         audit_file = None
 
     # الاستعادة
     success = BackupService.restore_backup(filename)
 
     if success:
-        flash('✅ تمت الاستعادة بنجاح! سيتم إعادة تحميل النظام...', 'success')
+        flash("✅ تمت الاستعادة بنجاح! سيتم إعادة تحميل النظام...", "success")
 
         # تسجيل في Audit Log (قاعدة البيانات) — بعد الاستعادة
         try:
             create_audit_log(
-                'restore_backup', 'system', None,
+                "restore_backup",
+                "system",
+                None,
                 dict(restore_audit, audit_file=audit_file),
                 commit=True,
             )
         except Exception:
-            current_app.logger.exception('handler failed')
+            current_app.logger.exception("handler failed")
 
         # إعادة تشغيل التطبيق (optional)
-        return redirect(url_for('owner.list_backups'))
+        return redirect(url_for("owner.list_backups"))
     else:
         # الفشل أيضاً عملية قابلة للتدقيق
         try:
             create_audit_log(
-                'restore_backup_failed', 'system', None,
+                "restore_backup_failed",
+                "system",
+                None,
                 dict(restore_audit, audit_file=audit_file),
                 commit=True,
             )
         except Exception:
-            current_app.logger.exception('handler failed')
-        flash('❌ فشلت الاستعادة!', 'danger')
-        return redirect(url_for('owner.list_backups'))
+            current_app.logger.exception("handler failed")
+        flash("❌ فشلت الاستعادة!", "danger")
+        return redirect(url_for("owner.list_backups"))
 
 
-@owner_bp.route('/backups/custom-restore/<filename>', methods=['POST'])
+@owner_bp.route("/backups/custom-restore/<filename>", methods=["POST"])
 @login_required
 @owner_required
 def custom_restore_backup(filename):
@@ -818,155 +904,162 @@ def custom_restore_backup(filename):
     try:
         validate_backup_filename(filename, BackupService.BACKUP_DIR)
     except ValueError:
-        flash('❌ اسم ملف غير صحيح!', 'danger')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ اسم ملف غير صحيح!", "danger")
+        return redirect(url_for("owner.list_backups"))
 
-    if not str(filename or '').endswith('.dump'):
-        flash('❌ الاستعادة المخصصة تتطلب نسخة بصيغة .dump', 'danger')
-        return redirect(url_for('owner.list_backups'))
+    if not str(filename or "").endswith(".dump"):
+        flash("❌ الاستعادة المخصصة تتطلب نسخة بصيغة .dump", "danger")
+        return redirect(url_for("owner.list_backups"))
 
     # التحقق من الصلاحيات
     if not current_user.is_owner:
-        flash('❌ غير مصرح - الاستعادة للمالك فقط!', 'danger')
-        return redirect(url_for('main.dashboard'))
+        flash("❌ غير مصرح - الاستعادة للمالك فقط!", "danger")
+        return redirect(url_for("main.dashboard"))
 
     # كلمة المرور
-    password = request.form.get('confirm_password')
+    password = request.form.get("confirm_password")
     if not password:
-        flash('❌ يرجى إدخال كلمة المرور للتأكيد', 'warning')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ يرجى إدخال كلمة المرور للتأكيد", "warning")
+        return redirect(url_for("owner.list_backups"))
 
     # التحقق من كلمة المرور
     from werkzeug.security import check_password_hash
+
     if not check_password_hash(current_user.password_hash, password):
-        flash('❌ كلمة المرور غير صحيحة!', 'danger')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ كلمة المرور غير صحيحة!", "danger")
+        return redirect(url_for("owner.list_backups"))
 
     # الحصول على الجداول المحددة
-    selected_tables = request.form.getlist('tables[]')
+    selected_tables = request.form.getlist("tables[]")
 
     if not selected_tables:
-        flash('❌ يرجى اختيار جدول واحد على الأقل!', 'warning')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ يرجى اختيار جدول واحد على الأقل!", "warning")
+        return redirect(url_for("owner.list_backups"))
 
     # التحقق من سلامة النسخة
     if not BackupService.verify_backup(filename):
-        flash('❌ النسخة الاحتياطية تالفة أو غير صالحة!', 'danger')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ النسخة الاحتياطية تالفة أو غير صالحة!", "danger")
+        return redirect(url_for("owner.list_backups"))
 
     # F10: الاستعادة المخصصة تكتب جداول محددة فقط، لكنها مع ذلك عملية
     # تُعيد كتابة بيانات جداول مُدقّقة — يُسجَّل أثرها في ملف دائم
     # داخل instance/ قبل التنفيذ.
     restore_audit = {
-        'action': 'custom_restore_backup',
-        'backup_filename': filename,
-        'tables': list(selected_tables),
-        'restored_by': getattr(current_user, 'username', None),
-        'restored_at': datetime.now(timezone.utc).isoformat(),
+        "action": "custom_restore_backup",
+        "backup_filename": filename,
+        "tables": list(selected_tables),
+        "restored_by": getattr(current_user, "username", None),
+        "restored_at": datetime.now(timezone.utc).isoformat(),
     }
     try:
         audit_file = append_audit_record(restore_audit)
     except Exception:
-        current_app.logger.exception('handler failed')
+        current_app.logger.exception("handler failed")
         audit_file = None
 
     # الاستعادة المخصصة
     success = BackupService.restore_custom_tables(filename, selected_tables)
 
     if success:
-        tables_list = ', '.join(selected_tables)
-        flash(f'✅ تمت استعادة الجداول بنجاح: {tables_list}', 'success')
+        tables_list = ", ".join(selected_tables)
+        flash(f"✅ تمت استعادة الجداول بنجاح: {tables_list}", "success")
         try:
             create_audit_log(
-                'custom_restore_backup', 'system', None,
+                "custom_restore_backup",
+                "system",
+                None,
                 dict(restore_audit, audit_file=audit_file),
                 commit=True,
             )
         except Exception:
-            current_app.logger.exception('handler failed')
-        return redirect(url_for('owner.list_backups'))
+            current_app.logger.exception("handler failed")
+        return redirect(url_for("owner.list_backups"))
     else:
         try:
             create_audit_log(
-                'custom_restore_backup_failed', 'system', None,
+                "custom_restore_backup_failed",
+                "system",
+                None,
                 dict(restore_audit, audit_file=audit_file),
                 commit=True,
             )
         except Exception:
-            current_app.logger.exception('handler failed')
-        flash('❌ فشلت الاستعادة المخصصة!', 'danger')
-        return redirect(url_for('owner.list_backups'))
+            current_app.logger.exception("handler failed")
+        flash("❌ فشلت الاستعادة المخصصة!", "danger")
+        return redirect(url_for("owner.list_backups"))
 
 
-@owner_bp.route('/backups/delete', methods=['POST'])
+@owner_bp.route("/backups/delete", methods=["POST"])
 @login_required
 @owner_required
 def delete_backup():
     """حذف نسخة احتياطية - يدوية فقط"""
     from services.backup_service import BackupService
 
-    filename = request.form.get('filename')
+    filename = request.form.get("filename")
     if not filename:
-        flash('❌ اسم الملف مطلوب!', 'danger')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ اسم الملف مطلوب!", "danger")
+        return redirect(url_for("owner.list_backups"))
 
     # SECURITY: Validate filename to prevent path traversal
     try:
         validate_backup_filename(filename, BackupService.BACKUP_DIR)
     except ValueError:
-        flash('❌ اسم ملف غير صحيح!', 'danger')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ اسم ملف غير صحيح!", "danger")
+        return redirect(url_for("owner.list_backups"))
 
     # التحقق من الصلاحيات
     if not current_user.is_owner:
-        flash('❌ غير مصرح - الحذف للمالك فقط!', 'danger')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ غير مصرح - الحذف للمالك فقط!", "danger")
+        return redirect(url_for("owner.list_backups"))
 
     # التحقق من أن النسخة موجودة
     backups = BackupService.list_backups()
-    backup_exists = any(b['filename'] == filename for b in backups)
+    backup_exists = any(b["filename"] == filename for b in backups)
 
     if not backup_exists:
-        flash('❌ النسخة الاحتياطية غير موجودة!', 'danger')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ النسخة الاحتياطية غير موجودة!", "danger")
+        return redirect(url_for("owner.list_backups"))
 
     # F10: حذف نقطة الاستعادة نفسه عملية قابلة للتدقيق — تُكتب في ملف
     # دائم داخل instance/ قبل الحذف (لأن الحذف قد يمحو سجل التدقيق في
     # القاعدة مع نسخة لاحقة).
     delete_audit = {
-        'action': 'delete_backup',
-        'backup_filename': filename,
-        'deleted_by': getattr(current_user, 'username', None),
-        'deleted_at': datetime.now(timezone.utc).isoformat(),
+        "action": "delete_backup",
+        "backup_filename": filename,
+        "deleted_by": getattr(current_user, "username", None),
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
     }
     try:
         audit_file = append_audit_record(delete_audit)
     except Exception:
-        current_app.logger.exception('handler failed')
+        current_app.logger.exception("handler failed")
         audit_file = None
 
     # حذف النسخة
     success = BackupService.delete_backup(filename)
 
     if success:
-        flash(f'✅ تم حذف النسخة الاحتياطية: {filename}', 'success')
+        flash(f"✅ تم حذف النسخة الاحتياطية: {filename}", "success")
         try:
             create_audit_log(
-                'delete_backup', 'system', None,
+                "delete_backup",
+                "system",
+                None,
                 dict(delete_audit, audit_file=audit_file),
                 commit=True,
             )
         except Exception:
-            current_app.logger.exception('handler failed')
+            current_app.logger.exception("handler failed")
     else:
-        flash('❌ فشل حذف النسخة الاحتياطية!', 'danger')
+        flash("❌ فشل حذف النسخة الاحتياطية!", "danger")
 
-    return redirect(url_for('owner.list_backups'))
+    return redirect(url_for("owner.list_backups"))
 
 
-@owner_bp.route('/backups/download/<filename>')
+@owner_bp.route("/backups/download/<filename>")
 @login_required
-@permission_required('manage_backups')
+@permission_required("manage_backups")
 def download_backup(filename):
     """تحميل نسخة احتياطية"""
     from services.backup_service import BackupService
@@ -977,27 +1070,28 @@ def download_backup(filename):
     try:
         backup_path = validate_backup_filename(filename, BackupService.BACKUP_DIR)
     except ValueError:
-        flash('❌ اسم ملف غير صحيح!', 'danger')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ اسم ملف غير صحيح!", "danger")
+        return redirect(url_for("owner.list_backups"))
 
     if not os.path.exists(backup_path):
-        flash('❌ النسخة الاحتياطية غير موجودة!', 'danger')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ النسخة الاحتياطية غير موجودة!", "danger")
+        return redirect(url_for("owner.list_backups"))
 
     try:
-        mimetype = 'application/gzip' if filename.endswith('.gz') else 'application/octet-stream'
+        mimetype = (
+            "application/gzip"
+            if filename.endswith(".gz")
+            else "application/octet-stream"
+        )
         return send_file(
-            backup_path,
-            as_attachment=True,
-            download_name=filename,
-            mimetype=mimetype
+            backup_path, as_attachment=True, download_name=filename, mimetype=mimetype
         )
     except Exception:
-        flash('❌ فشل التحميل.', 'danger')
-        return redirect(url_for('owner.list_backups'))
+        flash("❌ فشل التحميل.", "danger")
+        return redirect(url_for("owner.list_backups"))
 
 
-@owner_bp.route('/clear-cache', methods=['POST'])
+@owner_bp.route("/clear-cache", methods=["POST"])
 @login_required
 @owner_required
 def clear_cache():
@@ -1005,25 +1099,25 @@ def clear_cache():
 
     try:
         cache.clear()
-        flash('✅ تم مسح الذاكرة المؤقتة بنجاح', 'success')
+        flash("✅ تم مسح الذاكرة المؤقتة بنجاح", "success")
     except Exception as e:
-        current_app.logger.exception('handler failed')
-        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
+        current_app.logger.exception("handler failed")
+        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
 
-    return redirect(url_for('owner.dashboard'))
+    return redirect(url_for("owner.dashboard"))
 
 
-@owner_bp.route('/truncate-table', methods=['POST'])
+@owner_bp.route("/truncate-table", methods=["POST"])
 @login_required
 @owner_required
 def truncate_table():
     """مسح جدول بالكامل"""
-    table_name = request.form.get('table_name')
-    confirm = request.form.get('confirm')
+    table_name = request.form.get("table_name")
+    confirm = request.form.get("confirm")
 
-    if confirm != 'YES_DELETE_ALL':
-        flash('❌ يجب كتابة YES_DELETE_ALL للتأكيد', 'danger')
-        return redirect(url_for('owner.database_tools'))
+    if confirm != "YES_DELETE_ALL":
+        flash("❌ يجب كتابة YES_DELETE_ALL للتأكيد", "danger")
+        return redirect(url_for("owner.database_tools"))
 
     # SECURITY: the protected list used to hold only the identity tables, so
     # the financial and audit tables (audit_logs, gl_journal_entries,
@@ -1032,55 +1126,61 @@ def truncate_table():
     # utils/db_safety.PROTECTED_TABLES is the single denylist every
     # destructive path must honour.
     protected_tables = [
-        'users', 'roles', 'permissions', 'tenants', 'role_permissions',
+        "users",
+        "roles",
+        "permissions",
+        "tenants",
+        "role_permissions",
     ]
     if table_name in protected_tables or is_protected_table(table_name):
-        flash('❌ لا يمكن مسح الجداول المحمية', 'danger')
-        return redirect(url_for('owner.database_tools'))
+        flash("❌ لا يمكن مسح الجداول المحمية", "danger")
+        return redirect(url_for("owner.database_tools"))
 
     # SECURITY: Validate table name against actual database schema
     try:
         validate_table_name(table_name)
     except ValueError as e:
-        flash(f'❌ {e}', 'danger')
-        return redirect(url_for('owner.database_tools'))
+        flash(f"❌ {e}", "danger")
+        return redirect(url_for("owner.database_tools"))
 
     try:
         # The audit row is written and COMMITTED BEFORE the destructive
         # statement: a failure of the DELETE can then never lose the
         # record of the attempt.
         create_audit_log(
-            'truncate_table', 'database', 0,
-            {'table': table_name, 'confirmed': confirm},
+            "truncate_table",
+            "database",
+            0,
+            {"table": table_name, "confirmed": confirm},
             commit=True,
         )
 
         db.session.execute(text(f"DELETE FROM {table_name}"))  # nosec B608 - table_name validated by validate_table_name() allowlist
         db.session.commit()
 
-        flash(f'✅ تم مسح جدول {table_name} بنجاح', 'success')
+        flash(f"✅ تم مسح جدول {table_name} بنجاح", "success")
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('handler failed')
-        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
+        current_app.logger.exception("handler failed")
+        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
 
-    return redirect(url_for('owner.database_tools'))
+    return redirect(url_for("owner.database_tools"))
 
 
-@owner_bp.route('/browse-table/<table_name>')
+@owner_bp.route("/browse-table/<table_name>")
 @login_required
 @owner_required
 def browse_table(table_name):
     """تصفح محتويات جدول"""
-    page = request.args.get('page', 1, type=int)
+    page = request.args.get("page", 1, type=int)
     per_page = 50
 
     # SECURITY: Validate table name against actual database schema
     try:
         validate_table_name(table_name)
     except ValueError as e:
-        flash(f'❌ {e}', 'danger')
-        return redirect(url_for('owner.database_tools'))
+        flash(f"❌ {e}", "danger")
+        return redirect(url_for("owner.database_tools"))
 
     try:
         count_result = db.session.execute(text(f"SELECT COUNT(*) FROM {table_name}"))  # nosec B608 - table_name validated by validate_table_name() allowlist
@@ -1096,21 +1196,23 @@ def browse_table(table_name):
 
         total_pages = (total + per_page - 1) // per_page
 
-        return render_template('owner/browse_table.html',
-                               table_name=table_name,
-                               columns=columns,
-                               rows=rows,
-                               page=page,
-                               total_pages=total_pages,
-                               total=total)
+        return render_template(
+            "owner/browse_table.html",
+            table_name=table_name,
+            columns=columns,
+            rows=rows,
+            page=page,
+            total_pages=total_pages,
+            total=total,
+        )
 
     except Exception as e:
-        current_app.logger.exception('handler failed')
-        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
-        return redirect(url_for('owner.database_tools'))
+        current_app.logger.exception("handler failed")
+        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        return redirect(url_for("owner.database_tools"))
 
 
-@owner_bp.route('/edit-table-data/<table_name>')
+@owner_bp.route("/edit-table-data/<table_name>")
 @login_required
 @owner_required
 def edit_table_data(table_name):
@@ -1119,8 +1221,8 @@ def edit_table_data(table_name):
     try:
         validate_table_name(table_name)
     except ValueError as e:
-        flash(f'❌ {e}', 'danger')
-        return redirect(url_for('owner.database_tools'))
+        flash(f"❌ {e}", "danger")
+        return redirect(url_for("owner.database_tools"))
 
     try:
         # جلب بيانات الجدول
@@ -1128,44 +1230,45 @@ def edit_table_data(table_name):
         rows = result.fetchall()
         columns = result.keys()
 
-        return render_template('owner/edit_table.html',
-                               table_name=table_name,
-                               columns=columns,
-                               rows=rows)
+        return render_template(
+            "owner/edit_table.html", table_name=table_name, columns=columns, rows=rows
+        )
 
     except Exception as e:
-        current_app.logger.exception('handler failed')
-        flash(f'❌ خطأ: حدث خطأ غير متوقع', 'danger')
-        return redirect(url_for('owner.database_tools'))
+        current_app.logger.exception("handler failed")
+        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        return redirect(url_for("owner.database_tools"))
 
 
-@owner_bp.route('/export-database', methods=['POST'])
+@owner_bp.route("/export-database", methods=["POST"])
 @login_required
 @owner_required
 def export_database():
     """تصدير قاعدة البيانات"""
-    export_format = request.form.get('format', 'sql')
+    export_format = request.form.get("format", "sql")
 
     try:
-        backup_dir = 'instance/backups/exports'
+        backup_dir = "instance/backups/exports"
         os.makedirs(backup_dir, exist_ok=True)
 
-        timestamp = dt.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = dt.now().strftime("%Y%m%d_%H%M%S")
 
-        if export_format == 'sql':
-            filename = f'db_export_{timestamp}.sql'
+        if export_format == "sql":
+            filename = f"db_export_{timestamp}.sql"
             filepath = os.path.join(backup_dir, filename)
             from extensions import db
+
             db_url = str(db.engine.url)
             import subprocess
-            pg_dump = os.environ.get('PG_DUMP_PATH', 'pg_dump')
-            cmd = [pg_dump, '--dbname', db_url, '--file', filepath]
+
+            pg_dump = os.environ.get("PG_DUMP_PATH", "pg_dump")
+            cmd = [pg_dump, "--dbname", db_url, "--file", filepath]
             subprocess.run(cmd, check=True)
 
-            flash(f'✅ تم التصدير: {filename}', 'success')
+            flash(f"✅ تم التصدير: {filename}", "success")
 
-        elif export_format == 'json':
-            filename = f'db_export_{timestamp}.json'
+        elif export_format == "json":
+            filename = f"db_export_{timestamp}.json"
             filepath = os.path.join(backup_dir, filename)
 
             export_data = {}
@@ -1173,59 +1276,64 @@ def export_database():
 
             # SECURITY: Use validated table names from inspector (not user input)
             allowed_tables = get_allowed_table_names_safe()
-            for tbl_name in inspector.get_table_names(schema='public'):
+            for tbl_name in inspector.get_table_names(schema="public"):
                 if tbl_name not in allowed_tables:
                     continue
                 result = db.session.execute(text(f"SELECT * FROM {tbl_name}"))  # nosec B608 - source is DB schema catalog + allowlist re-check
                 rows = result.fetchall()
                 columns = result.keys()
 
-                export_data[tbl_name] = [
-                    dict(zip(columns, row)) for row in rows
-                ]
+                export_data[tbl_name] = [dict(zip(columns, row)) for row in rows]
 
-            with open(filepath, 'w', encoding='utf-8') as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(export_data, f, ensure_ascii=False, indent=2, default=str)
 
-            flash(f'✅ تم التصدير: {filename}', 'success')
+            flash(f"✅ تم التصدير: {filename}", "success")
 
         # F14/F15: an export of the whole database is an auditable act.
-        create_audit_log('export', 'database', None, changes={
-            'action': 'export_database',
-            'format': export_format,
-            'filename': filename,
-            'exported_by': getattr(current_user, 'username', None),
-        }, commit=True)
+        create_audit_log(
+            "export",
+            "database",
+            None,
+            changes={
+                "action": "export_database",
+                "format": export_format,
+                "filename": filename,
+                "exported_by": getattr(current_user, "username", None),
+            },
+            commit=True,
+        )
 
     except Exception as e:
-        current_app.logger.error(f'Database export error: {e}')
-        flash('❌ خطأ في تصدير قاعدة البيانات.', 'danger')
+        current_app.logger.error(f"Database export error: {e}")
+        flash("❌ خطأ في تصدير قاعدة البيانات.", "danger")
 
-    return redirect(url_for('owner.database_tools'))
+    return redirect(url_for("owner.database_tools"))
 
 
-@owner_bp.route('/convert-database', methods=['GET', 'POST'])
+@owner_bp.route("/convert-database", methods=["GET", "POST"])
 @login_required
 @owner_required
 def convert_database():
     """تحويل بين أنواع قواعد البيانات"""
-    if request.method == 'POST':
-        target_db = (request.form.get('target_db') or '').strip()
+    if request.method == "POST":
+        target_db = (request.form.get("target_db") or "").strip()
 
         if not target_db:
-            flash('⚠️ يرجى اختيار قاعدة البيانات المستهدفة.', 'warning')
-            return render_template('owner/convert_database.html')
+            flash("⚠️ يرجى اختيار قاعدة البيانات المستهدفة.", "warning")
+            return render_template("owner/convert_database.html")
 
-        if target_db != 'postgresql':
-            flash('❌ هذا النظام يدعم PostgreSQL فقط.', 'danger')
-            return render_template('owner/convert_database.html')
+        if target_db != "postgresql":
+            flash("❌ هذا النظام يدعم PostgreSQL فقط.", "danger")
+            return render_template("owner/convert_database.html")
 
-        flash('🔄 جاري التحويل إلى PostgreSQL...', 'info')
+        flash("🔄 جاري التحويل إلى PostgreSQL...", "info")
 
         try:
-            new_uri = request.form.get('postgresql_uri')
+            new_uri = request.form.get("postgresql_uri")
 
             from sqlalchemy import create_engine
+
             target_engine = create_engine(new_uri)
 
             inspector = inspect(db.engine)
@@ -1239,7 +1347,7 @@ def convert_database():
                 columns = result.keys()
 
                 if rows:
-                    placeholders = ', '.join([f':{col}' for col in columns])
+                    placeholders = ", ".join([f":{col}" for col in columns])
                     insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"  # nosec B608 - table_name allowlist-validated; column names from DB result keys
 
                     with target_engine.connect() as conn:
@@ -1247,34 +1355,34 @@ def convert_database():
                             conn.execute(text(insert_sql), dict(zip(columns, row)))
                         conn.commit()
 
-            flash('✅ تم التحويل إلى PostgreSQL بنجاح!', 'success')
+            flash("✅ تم التحويل إلى PostgreSQL بنجاح!", "success")
 
         except Exception as e:
-            current_app.logger.error(f'Database convert error: {e}')
-        flash('❌ خطأ في تحويل قاعدة البيانات.', 'danger')
+            current_app.logger.error(f"Database convert error: {e}")
+        flash("❌ خطأ في تحويل قاعدة البيانات.", "danger")
 
-    return render_template('owner/convert_database.html')
+    return render_template("owner/convert_database.html")
 
 
-@owner_bp.route('/scheduled-backups', methods=['GET', 'POST'])
+@owner_bp.route("/scheduled-backups", methods=["GET", "POST"])
 @login_required
-@permission_required('manage_backups')
+@permission_required("manage_backups")
 def scheduled_backups():
     """النسخ الاحتياطي المجدول"""
     from services.backup_service import BackupService
 
-    if request.method == 'POST':
+    if request.method == "POST":
         # حفظ إعدادات الجدولة
         settings = {
-            'enabled': request.form.get('enabled') == 'on',
-            'frequency': request.form.get('frequency', 'daily'),
-            'backup_time': request.form.get('backup_time', '02:00'),
-            'keep_count': int(request.form.get('keep_count', 5)),
+            "enabled": request.form.get("enabled") == "on",
+            "frequency": request.form.get("frequency", "daily"),
+            "backup_time": request.form.get("backup_time", "02:00"),
+            "keep_count": int(request.form.get("keep_count", 5)),
         }
         BackupService.save_schedule_settings(settings)
 
-        flash('✅ تم حفظ إعدادات النسخ الاحتياطي', 'success')
-        return redirect(url_for('owner.scheduled_backups'))
+        flash("✅ تم حفظ إعدادات النسخ الاحتياطي", "success")
+        return redirect(url_for("owner.scheduled_backups"))
 
     # قراءة الإعدادات الحالية
     settings = BackupService.get_schedule_settings()
@@ -1283,111 +1391,122 @@ def scheduled_backups():
     backups = BackupService.list_backups(auto_only=True)
     stats = BackupService.get_backup_stats()
 
-    return render_template('owner/scheduled_backups.html',
-                           settings=settings,
-                           backups=backups,
-                           stats=stats)
+    return render_template(
+        "owner/scheduled_backups.html", settings=settings, backups=backups, stats=stats
+    )
 
 
-
-
-@owner_bp.route('/company-info', methods=['GET', 'POST'])
+@owner_bp.route("/company-info", methods=["GET", "POST"])
 @login_required
 @owner_required
 def company_info():
     """معلومات الشركة/الكراج"""
     tenant = Tenant.get_current()
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             # Basic Info
-            tenant.name_ar = request.form.get('name_ar', '').strip()
-            tenant.name_en = request.form.get('name_en', '').strip()
+            tenant.name_ar = request.form.get("name_ar", "").strip()
+            tenant.name_en = request.form.get("name_en", "").strip()
             tenant.name = tenant.name_en or tenant.name_ar
-            tenant.slug = request.form.get('slug', '').strip()
-            tenant.business_type = request.form.get('business_type', 'garage')
-            tenant.industry = request.form.get('industry', 'automotive')
+            tenant.slug = request.form.get("slug", "").strip()
+            tenant.business_type = request.form.get("business_type", "garage")
+            tenant.industry = request.form.get("industry", "automotive")
 
             # Contact Info
-            tenant.address_ar = request.form.get('address_ar', '').strip()
-            tenant.address_en = request.form.get('address_en', '').strip()
-            tenant.city = request.form.get('city', '').strip()
-            tenant.country = request.form.get('country', 'UAE')
-            tenant.phone_1 = request.form.get('phone_1', '').strip()
-            tenant.phone_2 = request.form.get('phone_2', '').strip()
-            tenant.mobile = request.form.get('mobile', '').strip()
-            tenant.email = request.form.get('email', '').strip()
-            tenant.website = request.form.get('website', '').strip()
+            tenant.address_ar = request.form.get("address_ar", "").strip()
+            tenant.address_en = request.form.get("address_en", "").strip()
+            tenant.city = request.form.get("city", "").strip()
+            tenant.country = request.form.get("country", "UAE")
+            tenant.phone_1 = request.form.get("phone_1", "").strip()
+            tenant.phone_2 = request.form.get("phone_2", "").strip()
+            tenant.mobile = request.form.get("mobile", "").strip()
+            tenant.email = request.form.get("email", "").strip()
+            tenant.website = request.form.get("website", "").strip()
 
             # Legal Info
-            tenant.tax_number = request.form.get('tax_number', '').strip()
-            tenant.commercial_register = request.form.get('commercial_register', '').strip()
-            tenant.license_number = request.form.get('license_number', '').strip()
+            tenant.tax_number = request.form.get("tax_number", "").strip()
+            tenant.commercial_register = request.form.get(
+                "commercial_register", ""
+            ).strip()
+            tenant.license_number = request.form.get("license_number", "").strip()
 
             # Branding
-            tenant.brand_color_primary = request.form.get('brand_color_primary', '#007A3D')
-            tenant.brand_color_secondary = request.form.get('brand_color_secondary', '#D4AF37')
+            tenant.brand_color_primary = request.form.get(
+                "brand_color_primary", "#007A3D"
+            )
+            tenant.brand_color_secondary = request.form.get(
+                "brand_color_secondary", "#D4AF37"
+            )
 
             tenant.updated_by = current_user.id
 
             db.session.commit()
 
-            flash('تم حفظ معلومات الشركة بنجاح', 'success')
-            return redirect(url_for('owner.company_info'))
+            flash("تم حفظ معلومات الشركة بنجاح", "success")
+            return redirect(url_for("owner.company_info"))
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
-            flash(f'خطأ في حفظ المعلومات: حدث خطأ غير متوقع', 'error')
+            current_app.logger.exception("handler failed")
+            flash(f"خطأ في حفظ المعلومات: حدث خطأ غير متوقع", "error")
 
-    return render_template('owner/company_info.html', tenant=tenant)
+    return render_template("owner/company_info.html", tenant=tenant)
 
 
-@owner_bp.route('/system-config', methods=['GET', 'POST'])
+@owner_bp.route("/system-config", methods=["GET", "POST"])
 @login_required
 @owner_required
 def system_config():
     """إعدادات النظام الشاملة"""
     settings = SystemSettings.get_current()
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             # Modules
-            settings.enable_sales = request.form.get('enable_sales') == 'on'
-            settings.enable_purchases = request.form.get('enable_purchases') == 'on'
-            settings.enable_inventory = request.form.get('enable_inventory') == 'on'
-            settings.enable_customers = request.form.get('enable_customers') == 'on'
-            settings.enable_expenses = request.form.get('enable_expenses') == 'on'
-            settings.enable_gl = request.form.get('enable_gl') == 'on'
-            settings.enable_reports = request.form.get('enable_reports') == 'on'
-            settings.enable_ai_assistant = request.form.get('enable_ai_assistant') == 'on'
+            settings.enable_sales = request.form.get("enable_sales") == "on"
+            settings.enable_purchases = request.form.get("enable_purchases") == "on"
+            settings.enable_inventory = request.form.get("enable_inventory") == "on"
+            settings.enable_customers = request.form.get("enable_customers") == "on"
+            settings.enable_expenses = request.form.get("enable_expenses") == "on"
+            settings.enable_gl = request.form.get("enable_gl") == "on"
+            settings.enable_reports = request.form.get("enable_reports") == "on"
+            settings.enable_ai_assistant = (
+                request.form.get("enable_ai_assistant") == "on"
+            )
 
             # Features
-            settings.enable_barcode_scanner = request.form.get('enable_barcode_scanner') == 'on'
-            settings.enable_multi_warehouse = request.form.get('enable_multi_warehouse') == 'on'
-            settings.enable_multi_currency = request.form.get('enable_multi_currency') == 'on'
-            settings.enable_discounts = request.form.get('enable_discounts') == 'on'
-            settings.enable_returns = request.form.get('enable_returns') == 'on'
+            settings.enable_barcode_scanner = (
+                request.form.get("enable_barcode_scanner") == "on"
+            )
+            settings.enable_multi_warehouse = (
+                request.form.get("enable_multi_warehouse") == "on"
+            )
+            settings.enable_multi_currency = (
+                request.form.get("enable_multi_currency") == "on"
+            )
+            settings.enable_discounts = request.form.get("enable_discounts") == "on"
+            settings.enable_returns = request.form.get("enable_returns") == "on"
 
             # General
-            settings.default_currency = request.form.get('default_currency', 'ILS')
-            settings.default_language = request.form.get('default_language', 'ar')
-            settings.timezone = request.form.get('timezone', 'Asia/Dubai')
-            settings.items_per_page = int(request.form.get('items_per_page', 25))
+            settings.default_currency = request.form.get("default_currency", "ILS")
+            settings.default_language = request.form.get("default_language", "ar")
+            settings.timezone = request.form.get("timezone", "Asia/Dubai")
+            settings.items_per_page = int(request.form.get("items_per_page", 25))
 
             settings.updated_by = current_user.id
 
             db.session.commit()
 
-            flash('تم حفظ إعدادات النظام بنجاح', 'success')
-            return redirect(url_for('owner.system_config'))
+            flash("تم حفظ إعدادات النظام بنجاح", "success")
+            return redirect(url_for("owner.system_config"))
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
-            flash(f'خطأ في حفظ الإعدادات: حدث خطأ غير متوقع', 'error')
+            current_app.logger.exception("handler failed")
+            flash(f"خطأ في حفظ الإعدادات: حدث خطأ غير متوقع", "error")
 
-    return render_template('owner/system_config.html', settings=settings)
+    return render_template("owner/system_config.html", settings=settings)
 
 
 # ── Tenant management (multi-tenant administration) ──────────────────────
@@ -1403,13 +1522,14 @@ def system_config():
 #   * deactivating/suspending the last active tenant is refused, because
 #     Tenant.get_current() auto-creates a "Default Garage" when none is
 #     active — refusing keeps that bootstrap path from firing by surprise.
-_VALID_TENANT_PLANS = ('basic', 'pro', 'enterprise')
+_VALID_TENANT_PLANS = ("basic", "pro", "enterprise")
 
 
 def _valid_tenant_plans():
     """الاشتراكات الصحيحة من جدول الخطط؛ يرجع للثابتة في حال غياب الجدول."""
     try:
         from models import SubscriptionPlan
+
         rows = SubscriptionPlan.query.filter_by(is_active=True).all()
         if rows:
             return tuple(sorted(p.slug for p in rows))
@@ -1424,12 +1544,12 @@ def _valid_tenant_slug(slug):
     Rules: 2-100 chars, lowercase latin letters/digits/hyphens only, no
     leading/trailing/double hyphens.  Returns the normalized slug or None.
     """
-    s = (slug or '').strip().lower()
+    s = (slug or "").strip().lower()
     if not (2 <= len(s) <= 100):
         return None
-    if s.startswith('-') or s.endswith('-') or '--' in s:
+    if s.startswith("-") or s.endswith("-") or "--" in s:
         return None
-    if not all(ch.isascii() and (ch.isalnum() or ch == '-') for ch in s):
+    if not all(ch.isascii() and (ch.isalnum() or ch == "-") for ch in s):
         return None
     return s
 
@@ -1444,7 +1564,7 @@ def _tenant_to_int(value, default):
 
 def _tenant_to_tax_rate(value, country_code=None):
     """نسبة الضريبة: المُدخلة أولاً، ثم نسبة الدولة."""
-    if value not in (None, ''):
+    if value not in (None, ""):
         try:
             rate = float(value)
             return rate if 0 <= rate <= 100 else 0.0
@@ -1452,6 +1572,7 @@ def _tenant_to_tax_rate(value, country_code=None):
             pass
     try:
         from services.tax_engine import country_rate
+
         r = country_rate(country_code)
         return float(r) if r is not None else 0.0
     except Exception:
@@ -1469,86 +1590,125 @@ def _tenant_to_amount(value, default):
 def _tenant_stats(tenant_id):
     """Explicit per-tenant aggregates (never relies on ambient filtering)."""
     return {
-        'users': User.query.filter_by(tenant_id=tenant_id).count(),
-        'customers': Customer.query.filter_by(tenant_id=tenant_id).count(),
-        'products': Product.query.filter_by(tenant_id=tenant_id).count(),
-        'sales': Sale.query.filter_by(tenant_id=tenant_id).count(),
-        'purchases': Purchase.query.filter_by(tenant_id=tenant_id).count(),
+        "users": User.query.filter_by(tenant_id=tenant_id).count(),
+        "customers": Customer.query.filter_by(tenant_id=tenant_id).count(),
+        "products": Product.query.filter_by(tenant_id=tenant_id).count(),
+        "sales": Sale.query.filter_by(tenant_id=tenant_id).count(),
+        "purchases": Purchase.query.filter_by(tenant_id=tenant_id).count(),
     }
 
 
 def _tenant_form_values(tenant=None):
     """Build template values: tenant attrs on GET, posted values on POST."""
     from utils.constants import CURRENCIES
+
     currencies = list(CURRENCIES)
     if tenant is None:
         base = {
-            'name_ar': '', 'name_en': '', 'slug': '',
-            'business_type': 'garage', 'industry': 'automotive',
-            'city': '', 'country': 'UAE',
-            'phone_1': '', 'phone_2': '', 'mobile': '',
-            'email': '', 'website': '',
-            'tax_number': '', 'commercial_register': '', 'license_number': '',
-            'tax_country': 'AE', 'tax_inclusive': False, 'enable_tax': True, 'default_tax_rate': 5.0,
-            'corp_tax_enabled': False, 'corp_tax_rate': 9.0, 'corp_tax_threshold': 375000.0, 'allowed_currencies': '',
-            'bank_name': '', 'iban': '', 'swift_code': '', 'payment_terms_ar': '', 'footer_text_ar': '', 'active_template': 'modern',
-            'default_currency': 'ILS', 'default_language': 'ar',
-            'timezone': 'Asia/Dubai',
-            'subscription_plan': 'basic', 'is_trial': False,
-            'logo_url': '', 'logo_dark_url': '',
-            'brand_color_primary': '#007A3D', 'brand_color_secondary': '#D4AF37',
-            'max_users': 5, 'max_products': 1000, 'max_customers': 500,
-            'is_active': True, 'is_suspended': False, 'suspension_reason': '',
+            "name_ar": "",
+            "name_en": "",
+            "slug": "",
+            "business_type": "garage",
+            "industry": "automotive",
+            "city": "",
+            "country": "UAE",
+            "phone_1": "",
+            "phone_2": "",
+            "mobile": "",
+            "email": "",
+            "website": "",
+            "tax_number": "",
+            "commercial_register": "",
+            "license_number": "",
+            "tax_country": "AE",
+            "tax_inclusive": False,
+            "enable_tax": True,
+            "default_tax_rate": 5.0,
+            "corp_tax_enabled": False,
+            "corp_tax_rate": 9.0,
+            "corp_tax_threshold": 375000.0,
+            "allowed_currencies": "",
+            "bank_name": "",
+            "iban": "",
+            "swift_code": "",
+            "payment_terms_ar": "",
+            "footer_text_ar": "",
+            "active_template": "modern",
+            "default_currency": "ILS",
+            "default_language": "ar",
+            "timezone": "Asia/Dubai",
+            "subscription_plan": "basic",
+            "is_trial": False,
+            "logo_url": "",
+            "logo_dark_url": "",
+            "brand_color_primary": "#007A3D",
+            "brand_color_secondary": "#D4AF37",
+            "max_users": 5,
+            "max_products": 1000,
+            "max_customers": 500,
+            "is_active": True,
+            "is_suspended": False,
+            "suspension_reason": "",
         }
     else:
         base = {
-            'name_ar': tenant.name_ar or '', 'name_en': tenant.name_en or '',
-            'slug': tenant.slug or '',
-            'business_type': tenant.business_type or 'garage',
-            'industry': tenant.industry or 'automotive',
-            'city': tenant.city or '', 'country': tenant.country or 'UAE',
-            'phone_1': tenant.phone_1 or '', 'phone_2': tenant.phone_2 or '',
-            'mobile': tenant.mobile or '',
-            'email': tenant.email or '', 'website': tenant.website or '',
-            'tax_number': tenant.tax_number or '',
-            'commercial_register': tenant.commercial_register or '',
-            'license_number': tenant.license_number or '',
-            'tax_country': getattr(tenant, 'tax_country', None) or 'AE',
-            'tax_inclusive': bool(getattr(tenant, 'tax_inclusive', False)),
-            'enable_tax': bool(getattr(tenant, 'enable_tax', True)),
-            'default_tax_rate': float(getattr(tenant, 'default_tax_rate', 5) or 0),
-            'corp_tax_enabled': bool(getattr(tenant, 'corp_tax_enabled', False)),
-            'corp_tax_rate': float(getattr(tenant, 'corp_tax_rate', 9) or 0),
-            'corp_tax_threshold': float(getattr(tenant, 'corp_tax_threshold', 375000) or 0),
-            'allowed_currencies': getattr(tenant, 'allowed_currencies', None) or '',
-            'bank_name': getattr(tenant, 'bank_name', None) or '',
-            'iban': getattr(tenant, 'iban', None) or '',
-            'swift_code': getattr(tenant, 'swift_code', None) or '',
-            'payment_terms_ar': getattr(tenant, 'payment_terms_ar', None) or '',
-            'footer_text_ar': getattr(tenant, 'footer_text_ar', None) or '',
-            'active_template': getattr(tenant, 'active_template', None) or 'modern',
-            'default_currency': tenant.default_currency or 'ILS',
-            'default_language': tenant.default_language or 'ar',
-            'timezone': tenant.timezone or 'Asia/Dubai',
-            'subscription_plan': tenant.subscription_plan or 'basic',
-            'logo_url': tenant.logo_url or '',
-            'logo_dark_url': tenant.logo_dark_url or '',
-            'brand_color_primary': tenant.brand_color_primary or '#007A3D',
-            'brand_color_secondary': tenant.brand_color_secondary or '#D4AF37',
-            'is_trial': bool(tenant.is_trial),
-            'max_users': tenant.max_users if tenant.max_users is not None else 5,
-            'max_products': tenant.max_products if tenant.max_products is not None else 1000,
-            'max_customers': tenant.max_customers if tenant.max_customers is not None else 500,
-            'is_active': bool(tenant.is_active),
-            'is_suspended': bool(tenant.is_suspended),
-            'suspension_reason': tenant.suspension_reason or '',
+            "name_ar": tenant.name_ar or "",
+            "name_en": tenant.name_en or "",
+            "slug": tenant.slug or "",
+            "business_type": tenant.business_type or "garage",
+            "industry": tenant.industry or "automotive",
+            "city": tenant.city or "",
+            "country": tenant.country or "UAE",
+            "phone_1": tenant.phone_1 or "",
+            "phone_2": tenant.phone_2 or "",
+            "mobile": tenant.mobile or "",
+            "email": tenant.email or "",
+            "website": tenant.website or "",
+            "tax_number": tenant.tax_number or "",
+            "commercial_register": tenant.commercial_register or "",
+            "license_number": tenant.license_number or "",
+            "tax_country": getattr(tenant, "tax_country", None) or "AE",
+            "tax_inclusive": bool(getattr(tenant, "tax_inclusive", False)),
+            "enable_tax": bool(getattr(tenant, "enable_tax", True)),
+            "default_tax_rate": float(getattr(tenant, "default_tax_rate", 5) or 0),
+            "corp_tax_enabled": bool(getattr(tenant, "corp_tax_enabled", False)),
+            "corp_tax_rate": float(getattr(tenant, "corp_tax_rate", 9) or 0),
+            "corp_tax_threshold": float(
+                getattr(tenant, "corp_tax_threshold", 375000) or 0
+            ),
+            "allowed_currencies": getattr(tenant, "allowed_currencies", None) or "",
+            "bank_name": getattr(tenant, "bank_name", None) or "",
+            "iban": getattr(tenant, "iban", None) or "",
+            "swift_code": getattr(tenant, "swift_code", None) or "",
+            "payment_terms_ar": getattr(tenant, "payment_terms_ar", None) or "",
+            "footer_text_ar": getattr(tenant, "footer_text_ar", None) or "",
+            "active_template": getattr(tenant, "active_template", None) or "modern",
+            "default_currency": tenant.default_currency or "ILS",
+            "default_language": tenant.default_language or "ar",
+            "timezone": tenant.timezone or "Asia/Dubai",
+            "subscription_plan": tenant.subscription_plan or "basic",
+            "logo_url": tenant.logo_url or "",
+            "logo_dark_url": tenant.logo_dark_url or "",
+            "brand_color_primary": tenant.brand_color_primary or "#007A3D",
+            "brand_color_secondary": tenant.brand_color_secondary or "#D4AF37",
+            "is_trial": bool(tenant.is_trial),
+            "max_users": tenant.max_users if tenant.max_users is not None else 5,
+            "max_products": tenant.max_products
+            if tenant.max_products is not None
+            else 1000,
+            "max_customers": tenant.max_customers
+            if tenant.max_customers is not None
+            else 500,
+            "is_active": bool(tenant.is_active),
+            "is_suspended": bool(tenant.is_suspended),
+            "suspension_reason": tenant.suspension_reason or "",
         }
-    if request.method == 'POST':
+    if request.method == "POST":
         posted = request.form.to_dict()
         base.update({k: posted[k] for k in base if k in posted})
-        base['is_trial'] = request.form.get('is_trial') == 'on'
-        base['is_active'] = request.form.get('is_active') == 'on'
-        base['is_suspended'] = request.form.get('is_suspended') == 'on'
+        base["is_trial"] = request.form.get("is_trial") == "on"
+        base["is_active"] = request.form.get("is_active") == "on"
+        base["is_suspended"] = request.form.get("is_suspended") == "on"
     return base, currencies
 
 
@@ -1556,25 +1716,27 @@ def _validate_tenant_form(form, currencies, exclude_id=None):
     """Server-side validation. Returns (cleaned_dict, errors_list)."""
     codes = {code for code, _ in currencies}
     errors = []
-    name_ar = (form.get('name_ar') or '').strip()
-    name_en = (form.get('name_en') or '').strip()
+    name_ar = (form.get("name_ar") or "").strip()
+    name_en = (form.get("name_en") or "").strip()
     if not name_ar:
-        errors.append('اسم المستأجر بالعربية مطلوب.')
+        errors.append("اسم المستأجر بالعربية مطلوب.")
     name = name_en or name_ar
-    slug = _valid_tenant_slug(form.get('slug'))
+    slug = _valid_tenant_slug(form.get("slug"))
     if slug is None:
-        errors.append('المعرف (slug) غير صالح: أحرف لاتينية صغيرة/أرقام/شرطات فقط (2-100).')
-    plan = (form.get('subscription_plan') or 'basic').strip()
+        errors.append(
+            "المعرف (slug) غير صالح: أحرف لاتينية صغيرة/أرقام/شرطات فقط (2-100)."
+        )
+    plan = (form.get("subscription_plan") or "basic").strip()
     if plan not in _valid_tenant_plans():
-        errors.append('الخطة غير صالحة.')
-        plan = 'basic'
-    currency = (form.get('default_currency') or 'ILS').strip().upper()
+        errors.append("الخطة غير صالحة.")
+        plan = "basic"
+    currency = (form.get("default_currency") or "ILS").strip().upper()
     if currency not in codes:
-        errors.append('العملة الافتراضية غير مدعومة.')
-        currency = 'ILS'
-    language = (form.get('default_language') or 'ar').strip()
-    if language not in ('ar', 'en'):
-        language = 'ar'
+        errors.append("العملة الافتراضية غير مدعومة.")
+        currency = "ILS"
+    language = (form.get("default_language") or "ar").strip()
+    if language not in ("ar", "en"):
+        language = "ar"
     if slug is not None:
         q = Tenant.query.filter_by(slug=slug)
         if exclude_id is not None:
@@ -1587,141 +1749,176 @@ def _validate_tenant_form(form, currencies, exclude_id=None):
             q = q.filter(Tenant.id != exclude_id)
         if q.first() is not None:
             errors.append(f'الاسم "{name}" مستخدم بالفعل.')
-    email = (form.get('email') or '').strip()
-    if email and ('@' not in email or '.' not in email):
-        errors.append('البريد الإلكتروني غير صالح.')
+    email = (form.get("email") or "").strip()
+    if email and ("@" not in email or "." not in email):
+        errors.append("البريد الإلكتروني غير صالح.")
     # تحذير إرشادي فقط — صيغة TRN للدولة المختارة (لا يمنع الحفظ)
     from utils.trn import trn_verdict
-    _trn = (form.get('tax_number') or '').strip()
-    _cty = (form.get('tax_country') or 'AE').strip().upper()[:2] or 'AE'
+
+    _trn = (form.get("tax_number") or "").strip()
+    _cty = (form.get("tax_country") or "AE").strip().upper()[:2] or "AE"
     _ok, _msg = trn_verdict(_trn, _cty)
     if not _ok and _msg:
-        flash(f'⚠️ {_msg}', 'warning')
+        flash(f"⚠️ {_msg}", "warning")
     cleaned = {
-        'name': name, 'name_ar': name_ar, 'name_en': name_en or None,
-        'slug': slug,
-        'business_type': (form.get('business_type') or 'garage').strip() or 'garage',
-        'industry': (form.get('industry') or 'automotive').strip() or 'automotive',
-        'city': (form.get('city') or '').strip() or None,
-        'country': (form.get('country') or 'UAE').strip() or 'UAE',
-        'phone_1': (form.get('phone_1') or '').strip() or None,
-        'phone_2': (form.get('phone_2') or '').strip() or None,
-        'mobile': (form.get('mobile') or '').strip() or None,
-        'email': email or None,
-        'website': (form.get('website') or '').strip() or None,
-        'tax_number': (form.get('tax_number') or '').strip() or None,
-        'commercial_register': (form.get('commercial_register') or '').strip() or None,
-        'license_number': (form.get('license_number') or '').strip() or None,
-        'default_currency': currency,
-        'default_language': language,
-        'timezone': (form.get('timezone') or 'Asia/Dubai').strip() or 'Asia/Dubai',
-        'subscription_plan': plan,
-        'is_trial': form.get('is_trial') == 'on',
-        'tax_country': (form.get('tax_country') or 'AE').strip().upper()[:2] or 'AE',
-        'tax_inclusive': form.get('tax_inclusive') == 'on',
-        'enable_tax': form.get('enable_tax') == 'on',
-        'default_tax_rate': _tenant_to_tax_rate(form.get('default_tax_rate'), form.get('tax_country') or 'AE'),
-        'corp_tax_enabled': form.get('corp_tax_enabled') == 'on',
-        'corp_tax_rate': _tenant_to_tax_rate(form.get('corp_tax_rate'), 'UAE') or 9.0,
-        'corp_tax_threshold': _tenant_to_amount(form.get('corp_tax_threshold'), 375000.0),
-        'allowed_currencies': (form.get('allowed_currencies') or '').strip() or None,
-        'bank_name': (form.get('bank_name') or '').strip() or None,
-        'iban': (form.get('iban') or '').strip() or None,
-        'swift_code': (form.get('swift_code') or '').strip() or None,
-        'payment_terms_ar': (form.get('payment_terms_ar') or '').strip() or None,
-        'footer_text_ar': (form.get('footer_text_ar') or '').strip() or None,
-        'active_template': (form.get('active_template') or 'modern').strip() or 'modern',
-        'max_users': _tenant_to_int(form.get('max_users'), 5),
-        'max_products': _tenant_to_int(form.get('max_products'), 1000),
-        'max_customers': _tenant_to_int(form.get('max_customers'), 500),
+        "name": name,
+        "name_ar": name_ar,
+        "name_en": name_en or None,
+        "slug": slug,
+        "business_type": (form.get("business_type") or "garage").strip() or "garage",
+        "industry": (form.get("industry") or "automotive").strip() or "automotive",
+        "city": (form.get("city") or "").strip() or None,
+        "country": (form.get("country") or "UAE").strip() or "UAE",
+        "phone_1": (form.get("phone_1") or "").strip() or None,
+        "phone_2": (form.get("phone_2") or "").strip() or None,
+        "mobile": (form.get("mobile") or "").strip() or None,
+        "email": email or None,
+        "website": (form.get("website") or "").strip() or None,
+        "tax_number": (form.get("tax_number") or "").strip() or None,
+        "commercial_register": (form.get("commercial_register") or "").strip() or None,
+        "license_number": (form.get("license_number") or "").strip() or None,
+        "default_currency": currency,
+        "default_language": language,
+        "timezone": (form.get("timezone") or "Asia/Dubai").strip() or "Asia/Dubai",
+        "subscription_plan": plan,
+        "is_trial": form.get("is_trial") == "on",
+        "tax_country": (form.get("tax_country") or "AE").strip().upper()[:2] or "AE",
+        "tax_inclusive": form.get("tax_inclusive") == "on",
+        "enable_tax": form.get("enable_tax") == "on",
+        "default_tax_rate": _tenant_to_tax_rate(
+            form.get("default_tax_rate"), form.get("tax_country") or "AE"
+        ),
+        "corp_tax_enabled": form.get("corp_tax_enabled") == "on",
+        "corp_tax_rate": _tenant_to_tax_rate(form.get("corp_tax_rate"), "UAE") or 9.0,
+        "corp_tax_threshold": _tenant_to_amount(
+            form.get("corp_tax_threshold"), 375000.0
+        ),
+        "allowed_currencies": (form.get("allowed_currencies") or "").strip() or None,
+        "bank_name": (form.get("bank_name") or "").strip() or None,
+        "iban": (form.get("iban") or "").strip() or None,
+        "swift_code": (form.get("swift_code") or "").strip() or None,
+        "payment_terms_ar": (form.get("payment_terms_ar") or "").strip() or None,
+        "footer_text_ar": (form.get("footer_text_ar") or "").strip() or None,
+        "active_template": (form.get("active_template") or "modern").strip()
+        or "modern",
+        "max_users": _tenant_to_int(form.get("max_users"), 5),
+        "max_products": _tenant_to_int(form.get("max_products"), 1000),
+        "max_customers": _tenant_to_int(form.get("max_customers"), 500),
     }
     return cleaned, errors
 
 
-@owner_bp.route('/tenants')
+@owner_bp.route("/tenants")
 @login_required
 @owner_required
 def tenants_list():
     """قائمة المستأجرين مع بحث وفلترة حالة."""
-    q = (request.args.get('q') or '').strip()
-    status = (request.args.get('status') or 'all').strip()
+    q = (request.args.get("q") or "").strip()
+    status = (request.args.get("status") or "all").strip()
     query = Tenant.query
     if q:
-        like = f'%{q}%'
-        query = query.filter(db.or_(
-            Tenant.name.ilike(like),
-            Tenant.name_ar.ilike(like),
-            Tenant.slug.ilike(like),
-        ))
-    if status == 'active':
+        like = f"%{q}%"
+        query = query.filter(
+            db.or_(
+                Tenant.name.ilike(like),
+                Tenant.name_ar.ilike(like),
+                Tenant.slug.ilike(like),
+            )
+        )
+    if status == "active":
         query = query.filter_by(is_active=True, is_suspended=False)
-    elif status == 'suspended':
+    elif status == "suspended":
         query = query.filter_by(is_suspended=True)
-    elif status == 'inactive':
+    elif status == "inactive":
         query = query.filter_by(is_active=False)
     tenants = query.order_by(Tenant.id.asc()).all()
     rows = []
     for t in tenants:
         stats = _tenant_stats(t.id)
-        rows.append({'tenant': t, 'users': stats['users'], 'sales': stats['sales']})
-    return render_template('owner/tenants_list.html', rows=rows, q=q, status=status)
+        rows.append({"tenant": t, "users": stats["users"], "sales": stats["sales"]})
+    return render_template("owner/tenants_list.html", rows=rows, q=q, status=status)
 
 
-@owner_bp.route('/tenants/new', methods=['GET', 'POST'])
+@owner_bp.route("/tenants/new", methods=["GET", "POST"])
 @login_required
 @owner_required
 def tenant_new():
     """إنشاء مستأجر جديد."""
     form, currencies = _tenant_form_values()
-    if request.method == 'POST':
+    if request.method == "POST":
         cleaned, errors = _validate_tenant_form(request.form, currencies)
         if errors:
             for e in errors:
-                flash(e, 'danger')
-            return render_template('owner/tenant_form.html', form=form,
-                                   currencies=currencies, tenant=None, is_new=True)
+                flash(e, "danger")
+            return render_template(
+                "owner/tenant_form.html",
+                form=form,
+                currencies=currencies,
+                tenant=None,
+                is_new=True,
+            )
         try:
             tenant = Tenant(**cleaned, is_active=True, is_suspended=False)
-            tenant.logo_url = request.form.get('logo_url', '').strip() or None
-            tenant.logo_dark_url = request.form.get('logo_dark_url', '').strip() or None
-            tenant.brand_color_primary = request.form.get('brand_color_primary', '#007A3D')
-            tenant.brand_color_secondary = request.form.get('brand_color_secondary', '#D4AF37')
+            tenant.logo_url = request.form.get("logo_url", "").strip() or None
+            tenant.logo_dark_url = request.form.get("logo_dark_url", "").strip() or None
+            tenant.brand_color_primary = request.form.get(
+                "brand_color_primary", "#007A3D"
+            )
+            tenant.brand_color_secondary = request.form.get(
+                "brand_color_secondary", "#D4AF37"
+            )
             db.session.add(tenant)
-            create_audit_log('create', 'tenants', tenant.id, changes={
-                'action': 'create_tenant',
-                'name': tenant.name,
-                'name_ar': tenant.name_ar,
-                'slug': tenant.slug,
-                'country': tenant.country,
-            }, commit=False)
+            create_audit_log(
+                "create",
+                "tenants",
+                tenant.id,
+                changes={
+                    "action": "create_tenant",
+                    "name": tenant.name,
+                    "name_ar": tenant.name_ar,
+                    "slug": tenant.slug,
+                    "country": tenant.country,
+                },
+                commit=False,
+            )
             db.session.commit()
             # Create operational roles for this tenant
             _ensure_operational_roles_for_tenant(tenant.id)
             db.session.commit()
-            flash(f'تم إنشاء المستأجر "{tenant.name_ar}" بنجاح', 'success')
-            return redirect(url_for('owner.tenant_detail', id=tenant.id))
+            flash(f'تم إنشاء المستأجر "{tenant.name_ar}" بنجاح', "success")
+            return redirect(url_for("owner.tenant_detail", id=tenant.id))
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f'Tenant create error: {e}')
-            flash('حدث خطأ في إنشاء المستأجر. يرجى المحاولة مرة أخرى.', 'danger')
-    return render_template('owner/tenant_form.html', form=form,
-                           currencies=currencies, tenant=None, is_new=True)
+            current_app.logger.error(f"Tenant create error: {e}")
+            flash("حدث خطأ في إنشاء المستأجر. يرجى المحاولة مرة أخرى.", "danger")
+    return render_template(
+        "owner/tenant_form.html",
+        form=form,
+        currencies=currencies,
+        tenant=None,
+        is_new=True,
+    )
 
 
-@owner_bp.route('/tenants/<int:id>')
+@owner_bp.route("/tenants/<int:id>")
 @login_required
 @owner_required
 def tenant_detail(id):
     """بطاقة المستأجر: البيانات + إحصائيات + مستخدموه."""
     tenant = Tenant.query.get_or_404(id)
     stats = _tenant_stats(tenant.id)
-    users = User.query.filter_by(tenant_id=tenant.id).order_by(
-        User.username.asc()).limit(50).all()
-    return render_template('owner/tenant_detail.html', tenant=tenant,
-                           stats=stats, users=users)
+    users = (
+        User.query.filter_by(tenant_id=tenant.id)
+        .order_by(User.username.asc())
+        .limit(50)
+        .all()
+    )
+    return render_template(
+        "owner/tenant_detail.html", tenant=tenant, stats=stats, users=users
+    )
 
 
-@owner_bp.route('/tenants/<int:id>/impersonate')
+@owner_bp.route("/tenants/<int:id>/impersonate")
 @login_required
 @owner_required
 def tenant_impersonate(id):
@@ -1730,120 +1927,165 @@ def tenant_impersonate(id):
     كل إجراء يُسجَّل تدقيقاً، واللافتة الواضحة تبقى حتى الإيقاف.
     """
     from flask import session
+
     tenant = Tenant.query.get_or_404(id)
     if not tenant.is_active:
-        flash('لا يمكن الدخول لشركة غير نشطة.', 'danger')
-        return redirect(url_for('owner.tenants_list'))
-    session['impersonate_tenant_id'] = tenant.id
-    create_audit_log('impersonate_tenant', 'tenants', tenant.id,
-                     changes={'action': 'impersonate_tenant', 'tenant': tenant.name}, commit=True)
-    flash(f'🔍 أنت الآن في سياق دعم: {tenant.name_ar or tenant.name} (كل إجراء مشمول بالتدقيق).', 'info')
-    return redirect(url_for('main.dashboard'))
+        flash("لا يمكن الدخول لشركة غير نشطة.", "danger")
+        return redirect(url_for("owner.tenants_list"))
+    session["impersonate_tenant_id"] = tenant.id
+    create_audit_log(
+        "impersonate_tenant",
+        "tenants",
+        tenant.id,
+        changes={"action": "impersonate_tenant", "tenant": tenant.name},
+        commit=True,
+    )
+    flash(
+        f"🔍 أنت الآن في سياق دعم: {tenant.name_ar or tenant.name} (كل إجراء مشمول بالتدقيق).",
+        "info",
+    )
+    return redirect(url_for("main.dashboard"))
 
 
-@owner_bp.route('/tenants/impersonate/exit')
+@owner_bp.route("/tenants/impersonate/exit")
 @login_required
 @owner_required
 def tenant_impersonate_exit():
     """خروج من سياق الدعم والعودة لعرض المنصة الكامل."""
     from flask import session
-    prev = session.pop('impersonate_tenant_id', None)
+
+    prev = session.pop("impersonate_tenant_id", None)
     if prev is not None:
-        create_audit_log('impersonate_exit', 'tenants', prev,
-                         changes={'action': 'impersonate_exit'}, commit=True)
-        flash('↩️ خرجت من سياق الدعم. عدت لعرض المنصة الكامل.', 'info')
-    return redirect(url_for('owner.dashboard'))
+        create_audit_log(
+            "impersonate_exit",
+            "tenants",
+            prev,
+            changes={"action": "impersonate_exit"},
+            commit=True,
+        )
+        flash("↩️ خرجت من سياق الدعم. عدت لعرض المنصة الكامل.", "info")
+    return redirect(url_for("owner.dashboard"))
 
 
-@owner_bp.route('/tenants/<int:id>/edit', methods=['GET', 'POST'])
+@owner_bp.route("/tenants/<int:id>/edit", methods=["GET", "POST"])
 @login_required
 @owner_required
 def tenant_edit(id):
     """تعديل بيانات المستأجر."""
     tenant = Tenant.query.get_or_404(id)
     form, currencies = _tenant_form_values(tenant)
-    if request.method == 'POST':
-        cleaned, errors = _validate_tenant_form(request.form, currencies,
-                                                exclude_id=tenant.id)
-        wants_active = request.form.get('is_active') == 'on'
+    if request.method == "POST":
+        cleaned, errors = _validate_tenant_form(
+            request.form, currencies, exclude_id=tenant.id
+        )
+        wants_active = request.form.get("is_active") == "on"
         if tenant.is_active and not wants_active:
             others_active = Tenant.query.filter(
-                Tenant.id != tenant.id, Tenant.is_active.is_(True)).count()
+                Tenant.id != tenant.id, Tenant.is_active.is_(True)
+            ).count()
             if others_active == 0:
-                errors.append('لا يمكن إلغاء تفعيل آخر مستأجر نشط.')
+                errors.append("لا يمكن إلغاء تفعيل آخر مستأجر نشط.")
         if errors:
             for e in errors:
-                flash(e, 'danger')
-            return render_template('owner/tenant_form.html', form=form,
-                                   currencies=currencies, tenant=tenant, is_new=False)
+                flash(e, "danger")
+            return render_template(
+                "owner/tenant_form.html",
+                form=form,
+                currencies=currencies,
+                tenant=tenant,
+                is_new=False,
+            )
         try:
             for key, value in cleaned.items():
                 setattr(tenant, key, value)
-            tenant.logo_url = request.form.get('logo_url', '').strip() or None
-            tenant.logo_dark_url = request.form.get('logo_dark_url', '').strip() or None
-            tenant.brand_color_primary = request.form.get('brand_color_primary', '#007A3D')
-            tenant.brand_color_secondary = request.form.get('brand_color_secondary', '#D4AF37')
+            tenant.logo_url = request.form.get("logo_url", "").strip() or None
+            tenant.logo_dark_url = request.form.get("logo_dark_url", "").strip() or None
+            tenant.brand_color_primary = request.form.get(
+                "brand_color_primary", "#007A3D"
+            )
+            tenant.brand_color_secondary = request.form.get(
+                "brand_color_secondary", "#D4AF37"
+            )
             tenant.is_active = wants_active
-            tenant.is_suspended = request.form.get('is_suspended') == 'on'
+            tenant.is_suspended = request.form.get("is_suspended") == "on"
             tenant.suspension_reason = (
-                request.form.get('suspension_reason') or '').strip() or None
+                request.form.get("suspension_reason") or ""
+            ).strip() or None
             tenant.updated_by = current_user.id
-            create_audit_log('update', 'tenants', tenant.id, changes={
-                'action': 'update_tenant',
-                'name': tenant.name,
-                'name_ar': tenant.name_ar,
-                'slug': tenant.slug,
-                'is_active': tenant.is_active,
-                'is_suspended': tenant.is_suspended,
-                'suspension_reason': tenant.suspension_reason,
-            }, commit=False)
+            create_audit_log(
+                "update",
+                "tenants",
+                tenant.id,
+                changes={
+                    "action": "update_tenant",
+                    "name": tenant.name,
+                    "name_ar": tenant.name_ar,
+                    "slug": tenant.slug,
+                    "is_active": tenant.is_active,
+                    "is_suspended": tenant.is_suspended,
+                    "suspension_reason": tenant.suspension_reason,
+                },
+                commit=False,
+            )
             db.session.commit()
-            flash(f'تم حفظ بيانات المستأجر "{tenant.name_ar}" بنجاح', 'success')
-            return redirect(url_for('owner.tenant_detail', id=tenant.id))
+            flash(f'تم حفظ بيانات المستأجر "{tenant.name_ar}" بنجاح', "success")
+            return redirect(url_for("owner.tenant_detail", id=tenant.id))
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f'Tenant edit error: {e}')
-            flash('حدث خطأ في حفظ البيانات. يرجى المحاولة مرة أخرى.', 'danger')
-    return render_template('owner/tenant_form.html', form=form,
-                           currencies=currencies, tenant=tenant, is_new=False)
+            current_app.logger.error(f"Tenant edit error: {e}")
+            flash("حدث خطأ في حفظ البيانات. يرجى المحاولة مرة أخرى.", "danger")
+    return render_template(
+        "owner/tenant_form.html",
+        form=form,
+        currencies=currencies,
+        tenant=tenant,
+        is_new=False,
+    )
 
 
-@owner_bp.route('/tenants/<int:id>/suspend', methods=['POST'])
+@owner_bp.route("/tenants/<int:id>/suspend", methods=["POST"])
 @login_required
 @owner_required
 def tenant_suspend(id):
     """إيقاف مستأجر (تعليق + إلغاء تفعيل) — ممنوع لآخر مستأجر نشط."""
     tenant = Tenant.query.get_or_404(id)
     others_active = Tenant.query.filter(
-        Tenant.id != tenant.id, Tenant.is_active.is_(True)).count()
+        Tenant.id != tenant.id, Tenant.is_active.is_(True)
+    ).count()
     if tenant.is_active and others_active == 0:
-        flash('لا يمكن إيقاف آخر مستأجر نشط.', 'danger')
-        return redirect(url_for('owner.tenant_detail', id=tenant.id))
+        flash("لا يمكن إيقاف آخر مستأجر نشط.", "danger")
+        return redirect(url_for("owner.tenant_detail", id=tenant.id))
     try:
-        reason = (request.form.get('suspension_reason') or '').strip() or None
+        reason = (request.form.get("suspension_reason") or "").strip() or None
         tenant.is_active = False
         tenant.is_suspended = True
         tenant.suspension_reason = reason
         tenant.updated_by = current_user.id
-        create_audit_log('suspend', 'tenants', tenant.id, changes={
-            'action': 'suspend_tenant',
-            'name': tenant.name,
-            'name_ar': tenant.name_ar,
-            'slug': tenant.slug,
-            'suspension_reason': reason,
-            'is_active': False,
-            'is_suspended': True,
-        }, commit=False)
+        create_audit_log(
+            "suspend",
+            "tenants",
+            tenant.id,
+            changes={
+                "action": "suspend_tenant",
+                "name": tenant.name,
+                "name_ar": tenant.name_ar,
+                "slug": tenant.slug,
+                "suspension_reason": reason,
+                "is_active": False,
+                "is_suspended": True,
+            },
+            commit=False,
+        )
         db.session.commit()
-        flash(f'تم إيقاف المستأجر "{tenant.name_ar}"', 'warning')
+        flash(f'تم إيقاف المستأجر "{tenant.name_ar}"', "warning")
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f'Tenant suspend error: {e}')
-        flash('حدث خطأ أثناء الإيقاف.', 'danger')
-    return redirect(url_for('owner.tenant_detail', id=tenant.id))
+        current_app.logger.error(f"Tenant suspend error: {e}")
+        flash("حدث خطأ أثناء الإيقاف.", "danger")
+    return redirect(url_for("owner.tenant_detail", id=tenant.id))
 
 
-@owner_bp.route('/tenants/<int:id>/activate', methods=['POST'])
+@owner_bp.route("/tenants/<int:id>/activate", methods=["POST"])
 @login_required
 @owner_required
 def tenant_activate(id):
@@ -1854,240 +2096,283 @@ def tenant_activate(id):
         tenant.is_suspended = False
         tenant.suspension_reason = None
         tenant.updated_by = current_user.id
-        create_audit_log('activate', 'tenants', tenant.id, changes={
-            'action': 'activate_tenant',
-            'name': tenant.name,
-            'name_ar': tenant.name_ar,
-            'slug': tenant.slug,
-            'is_active': True,
-            'is_suspended': False,
-        }, commit=False)
+        create_audit_log(
+            "activate",
+            "tenants",
+            tenant.id,
+            changes={
+                "action": "activate_tenant",
+                "name": tenant.name,
+                "name_ar": tenant.name_ar,
+                "slug": tenant.slug,
+                "is_active": True,
+                "is_suspended": False,
+            },
+            commit=False,
+        )
         db.session.commit()
-        flash(f'تم تفعيل المستأجر "{tenant.name_ar}"', 'success')
+        flash(f'تم تفعيل المستأجر "{tenant.name_ar}"', "success")
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f'Tenant activate error: {e}')
-        flash('حدث خطأ أثناء التفعيل.', 'danger')
-    return redirect(url_for('owner.tenant_detail', id=tenant.id))
+        current_app.logger.error(f"Tenant activate error: {e}")
+        flash("حدث خطأ أثناء التفعيل.", "danger")
+    return redirect(url_for("owner.tenant_detail", id=tenant.id))
 
 
 # ── System constants management ─────────────────────────────────────────
 # Owner UI over LookupService.  Locked groups (codes drive logic) expose
 # labels for editing only; add/disable are refused server-side.
 
-@owner_bp.route('/constants')
+
+@owner_bp.route("/constants")
 @login_required
 @owner_required
 def constants_index():
     """نظرة عامة على مجموعات الثوابت."""
     from services.lookup_service import groups, group_detail
+
     rows = []
     for key, meta in groups().items():
         try:
             detail = group_detail(key)
         except ValueError:
             detail = []
-        rows.append({
-            'key': key,
-            'title': meta.get('title_ar') or key,
-            'locked': bool(meta.get('locked_codes')),
-            'total': len(detail),
-            'custom': sum(1 for r in detail if r['custom']),
-            'disabled': sum(1 for r in detail if r['disabled']),
-        })
-    rows.sort(key=lambda r: r['title'])
-    return render_template('owner/constants_index.html', rows=rows)
+        rows.append(
+            {
+                "key": key,
+                "title": meta.get("title_ar") or key,
+                "locked": bool(meta.get("locked_codes")),
+                "total": len(detail),
+                "custom": sum(1 for r in detail if r["custom"]),
+                "disabled": sum(1 for r in detail if r["disabled"]),
+            }
+        )
+    rows.sort(key=lambda r: r["title"])
+    return render_template("owner/constants_index.html", rows=rows)
 
 
-@owner_bp.route('/constants/<group>')
+@owner_bp.route("/constants/<group>")
 @login_required
 @owner_required
 def constants_group(group):
     """قيم مجموعة ثوابت واحدة."""
     from services.lookup_service import groups, group_detail
+
     if group not in groups():
         abort(404)
     meta = groups()[group]
-    return render_template('owner/constants_group.html', group=group,
-                           meta=meta, rows=group_detail(group))
+    return render_template(
+        "owner/constants_group.html", group=group, meta=meta, rows=group_detail(group)
+    )
 
 
-@owner_bp.route('/constants/<group>/add', methods=['POST'])
+@owner_bp.route("/constants/<group>/add", methods=["POST"])
 @login_required
 @owner_required
 def constants_add(group):
     from services.lookup_service import add_custom
     from utils.helpers import create_audit_log
+
     try:
-        code = add_custom(group,
-                          request.form.get('code'),
-                          request.form.get('ar'),
-                          request.form.get('en'))
-        create_audit_log('create', 'system_lookups', None,
-                         {'group': group, 'code': code})
-        flash(f'تمت إضافة "{code}" إلى الثوابت بنجاح', 'success')
+        code = add_custom(
+            group,
+            request.form.get("code"),
+            request.form.get("ar"),
+            request.form.get("en"),
+        )
+        create_audit_log(
+            "create", "system_lookups", None, {"group": group, "code": code}
+        )
+        flash(f'تمت إضافة "{code}" إلى الثوابت بنجاح', "success")
     except ValueError as e:
-        current_app.logger.exception('handler failed')
-        flash('حدث خطأ غير متوقع', 'danger')
+        current_app.logger.exception("handler failed")
+        flash("حدث خطأ غير متوقع", "danger")
     except Exception as e:
-        current_app.logger.error(f'Lookup add error: {e}')
-        flash('حدث خطأ أثناء الإضافة.', 'danger')
-    return redirect(url_for('owner.constants_group', group=group))
+        current_app.logger.error(f"Lookup add error: {e}")
+        flash("حدث خطأ أثناء الإضافة.", "danger")
+    return redirect(url_for("owner.constants_group", group=group))
 
 
-@owner_bp.route('/constants/<group>/label', methods=['POST'])
+@owner_bp.route("/constants/<group>/label", methods=["POST"])
 @login_required
 @owner_required
 def constants_label(group):
     from services.lookup_service import set_label
     from utils.helpers import create_audit_log
+
     try:
-        code = (request.form.get('code') or '').strip()
-        set_label(group, code,
-                  request.form.get('ar'), request.form.get('en'))
-        create_audit_log('update', 'system_lookups', None,
-                         {'group': group, 'code': code})
-        flash('تم حفظ التسمية بنجاح', 'success')
+        code = (request.form.get("code") or "").strip()
+        set_label(group, code, request.form.get("ar"), request.form.get("en"))
+        create_audit_log(
+            "update", "system_lookups", None, {"group": group, "code": code}
+        )
+        flash("تم حفظ التسمية بنجاح", "success")
     except ValueError as e:
-        current_app.logger.exception('handler failed')
-        flash('حدث خطأ غير متوقع', 'danger')
+        current_app.logger.exception("handler failed")
+        flash("حدث خطأ غير متوقع", "danger")
     except Exception as e:
-        current_app.logger.error(f'Lookup label error: {e}')
-        flash('حدث خطأ أثناء الحفظ.', 'danger')
-    return redirect(url_for('owner.constants_group', group=group))
+        current_app.logger.error(f"Lookup label error: {e}")
+        flash("حدث خطأ أثناء الحفظ.", "danger")
+    return redirect(url_for("owner.constants_group", group=group))
 
 
-@owner_bp.route('/constants/<group>/visibility', methods=['POST'])
+@owner_bp.route("/constants/<group>/visibility", methods=["POST"])
 @login_required
 @owner_required
 def constants_visibility(group):
     from services.lookup_service import set_disabled
     from utils.helpers import create_audit_log
+
     try:
-        code = (request.form.get('code') or '').strip()
-        disable = request.form.get('disabled') == '1'
+        code = (request.form.get("code") or "").strip()
+        disable = request.form.get("disabled") == "1"
         set_disabled(group, code, disable)
-        create_audit_log('update', 'system_lookups', None,
-                         {'group': group, 'code': code,
-                          'disabled': disable})
-        flash('تم تحديث الحالة بنجاح', 'success')
+        create_audit_log(
+            "update",
+            "system_lookups",
+            None,
+            {"group": group, "code": code, "disabled": disable},
+        )
+        flash("تم تحديث الحالة بنجاح", "success")
     except ValueError as e:
-        current_app.logger.exception('handler failed')
-        flash('حدث خطأ غير متوقع', 'danger')
+        current_app.logger.exception("handler failed")
+        flash("حدث خطأ غير متوقع", "danger")
     except Exception as e:
-        current_app.logger.error(f'Lookup visibility error: {e}')
-        flash('حدث خطأ أثناء التحديث.', 'danger')
-    return redirect(url_for('owner.constants_group', group=group))
+        current_app.logger.error(f"Lookup visibility error: {e}")
+        flash("حدث خطأ أثناء التحديث.", "danger")
+    return redirect(url_for("owner.constants_group", group=group))
 
 
-@owner_bp.route('/invoice-settings', methods=['GET', 'POST'])
+@owner_bp.route("/invoice-settings", methods=["GET", "POST"])
 @login_required
 @owner_required
 def invoice_settings():
     """إعدادات ترويسات الفواتير وسندات القبض"""
     settings = InvoiceSettings.get_active()
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             # Company Info
-            settings.company_name_ar = request.form.get('company_name_ar', '').strip()
-            settings.company_name_en = request.form.get('company_name_en', '').strip()
+            settings.company_name_ar = request.form.get("company_name_ar", "").strip()
+            settings.company_name_en = request.form.get("company_name_en", "").strip()
 
             # Contact Info
-            settings.address_ar = request.form.get('address_ar', '').strip()
-            settings.address_en = request.form.get('address_en', '').strip()
-            settings.phone_1 = request.form.get('phone_1', '').strip()
-            settings.phone_2 = request.form.get('phone_2', '').strip()
-            settings.email = request.form.get('email', '').strip()
-            settings.website = request.form.get('website', '').strip()
+            settings.address_ar = request.form.get("address_ar", "").strip()
+            settings.address_en = request.form.get("address_en", "").strip()
+            settings.phone_1 = request.form.get("phone_1", "").strip()
+            settings.phone_2 = request.form.get("phone_2", "").strip()
+            settings.email = request.form.get("email", "").strip()
+            settings.website = request.form.get("website", "").strip()
 
             # Business Info
-            settings.tax_number = request.form.get('tax_number', '').strip()
-            settings.commercial_register = request.form.get('commercial_register', '').strip()
-            settings.license_number = request.form.get('license_number', '').strip()
+            settings.tax_number = request.form.get("tax_number", "").strip()
+            settings.commercial_register = request.form.get(
+                "commercial_register", ""
+            ).strip()
+            settings.license_number = request.form.get("license_number", "").strip()
 
             # Bank Info
-            settings.bank_name = request.form.get('bank_name', '').strip()
-            settings.bank_account_number = request.form.get('bank_account_number', '').strip()
-            settings.iban = request.form.get('iban', '').strip()
-            settings.swift_code = request.form.get('swift_code', '').strip()
+            settings.bank_name = request.form.get("bank_name", "").strip()
+            settings.bank_account_number = request.form.get(
+                "bank_account_number", ""
+            ).strip()
+            settings.iban = request.form.get("iban", "").strip()
+            settings.swift_code = request.form.get("swift_code", "").strip()
 
             # Design
-            settings.header_color = request.form.get('header_color', '#667eea').strip()
-            settings.accent_color = request.form.get('accent_color', '#764ba2').strip()
-            settings.text_color = request.form.get('text_color', '#333333').strip()
+            settings.header_color = request.form.get("header_color", "#667eea").strip()
+            settings.accent_color = request.form.get("accent_color", "#764ba2").strip()
+            settings.text_color = request.form.get("text_color", "#333333").strip()
 
             # Layout
-            settings.show_logo = request.form.get('show_logo') == 'on'
-            settings.logo_position = request.form.get('logo_position', 'left')
-            settings.logo_size = request.form.get('logo_size', 'medium')
+            settings.show_logo = request.form.get("show_logo") == "on"
+            settings.logo_position = request.form.get("logo_position", "left")
+            settings.logo_size = request.form.get("logo_size", "medium")
 
             # Footer
-            settings.footer_text_ar = request.form.get('footer_text_ar', '').strip()
-            settings.footer_text_en = request.form.get('footer_text_en', '').strip()
-            settings.show_terms = request.form.get('show_terms') == 'on'
+            settings.footer_text_ar = request.form.get("footer_text_ar", "").strip()
+            settings.footer_text_en = request.form.get("footer_text_en", "").strip()
+            settings.show_terms = request.form.get("show_terms") == "on"
 
             # Terms
-            settings.terms_conditions_ar = request.form.get('terms_conditions_ar', '').strip()
-            settings.terms_conditions_en = request.form.get('terms_conditions_en', '').strip()
-            settings.payment_terms_ar = request.form.get('payment_terms_ar', '').strip()
-            settings.payment_terms_en = request.form.get('payment_terms_en', '').strip()
+            settings.terms_conditions_ar = request.form.get(
+                "terms_conditions_ar", ""
+            ).strip()
+            settings.terms_conditions_en = request.form.get(
+                "terms_conditions_en", ""
+            ).strip()
+            settings.payment_terms_ar = request.form.get("payment_terms_ar", "").strip()
+            settings.payment_terms_en = request.form.get("payment_terms_en", "").strip()
 
             # Notes
-            settings.default_invoice_note_ar = request.form.get('default_invoice_note_ar', '').strip()
-            settings.default_invoice_note_en = request.form.get('default_invoice_note_en', '').strip()
-            settings.default_receipt_note_ar = request.form.get('default_receipt_note_ar', '').strip()
-            settings.default_receipt_note_en = request.form.get('default_receipt_note_en', '').strip()
+            settings.default_invoice_note_ar = request.form.get(
+                "default_invoice_note_ar", ""
+            ).strip()
+            settings.default_invoice_note_en = request.form.get(
+                "default_invoice_note_en", ""
+            ).strip()
+            settings.default_receipt_note_ar = request.form.get(
+                "default_receipt_note_ar", ""
+            ).strip()
+            settings.default_receipt_note_en = request.form.get(
+                "default_receipt_note_en", ""
+            ).strip()
 
             # QR & Watermark
-            settings.enable_qr_code = request.form.get('enable_qr_code') == 'on'
-            settings.qr_position = request.form.get('qr_position', 'bottom-right')
-            settings.enable_watermark = request.form.get('enable_watermark') == 'on'
-            settings.watermark_text = request.form.get('watermark_text', '').strip()
+            settings.enable_qr_code = request.form.get("enable_qr_code") == "on"
+            settings.qr_position = request.form.get("qr_position", "bottom-right")
+            settings.enable_watermark = request.form.get("enable_watermark") == "on"
+            settings.watermark_text = request.form.get("watermark_text", "").strip()
 
             # Print
-            settings.paper_size = request.form.get('paper_size', 'A4')
-            settings.orientation = request.form.get('orientation', 'portrait')
-            settings.default_language = request.form.get('default_language', 'ar')
+            settings.paper_size = request.form.get("paper_size", "A4")
+            settings.orientation = request.form.get("orientation", "portrait")
+            settings.default_language = request.form.get("default_language", "ar")
 
             # Additional
-            settings.show_barcode = request.form.get('show_barcode') == 'on'
-            settings.show_page_numbers = request.form.get('show_page_numbers') == 'on'
-            settings.show_due_date = request.form.get('show_due_date') == 'on'
+            settings.show_barcode = request.form.get("show_barcode") == "on"
+            settings.show_page_numbers = request.form.get("show_page_numbers") == "on"
+            settings.show_due_date = request.form.get("show_due_date") == "on"
 
             # Social Media
-            settings.facebook_url = request.form.get('facebook_url', '').strip()
-            settings.instagram_url = request.form.get('instagram_url', '').strip()
-            settings.whatsapp_number = request.form.get('whatsapp_number', '').strip()
+            settings.facebook_url = request.form.get("facebook_url", "").strip()
+            settings.instagram_url = request.form.get("instagram_url", "").strip()
+            settings.whatsapp_number = request.form.get("whatsapp_number", "").strip()
 
             # Template
-            settings.active_template = request.form.get('active_template', 'modern')
+            settings.active_template = request.form.get("active_template", "modern")
 
             # Handle logo upload
-            if 'company_logo' in request.files:
-                logo_file = request.files['company_logo']
+            if "company_logo" in request.files:
+                logo_file = request.files["company_logo"]
                 if logo_file and logo_file.filename:
                     import os
                     from werkzeug.utils import secure_filename
 
                     # Security: allowed image extensions and max size (5MB)
-                    allowed_ext = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
+                    allowed_ext = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
                     ext = os.path.splitext(logo_file.filename)[1].lower()
                     if ext not in allowed_ext:
-                        flash('⚠️ نوع الملف غير مدعوم للشعار. المسموح: PNG, JPG, JPEG, GIF, WEBP.', 'danger')
+                        flash(
+                            "⚠️ نوع الملف غير مدعوم للشعار. المسموح: PNG, JPG, JPEG, GIF, WEBP.",
+                            "danger",
+                        )
                     else:
                         max_size = 5 * 1024 * 1024  # 5MB
                         logo_file.seek(0, os.SEEK_END)
                         file_size = logo_file.tell()
                         logo_file.seek(0)
                         if file_size > max_size:
-                            flash('⚠️ حجم ملف الشعار كبير جداً. الحد الأقصى: 5 ميجابايت.', 'danger')
+                            flash(
+                                "⚠️ حجم ملف الشعار كبير جداً. الحد الأقصى: 5 ميجابايت.",
+                                "danger",
+                            )
                         else:
                             filename = secure_filename(logo_file.filename)
-                            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                             filename = f"logo_{timestamp}_{filename}"
 
-                            upload_folder = os.path.join('static', 'uploads', 'logos')
+                            upload_folder = os.path.join("static", "uploads", "logos")
                             os.makedirs(upload_folder, exist_ok=True)
 
                             filepath = os.path.join(upload_folder, filename)
@@ -2096,17 +2381,17 @@ def invoice_settings():
                             settings.logo_path = f"uploads/logos/{filename}"
 
             # Handle watermark image upload
-            if 'watermark_image' in request.files:
-                watermark_file = request.files['watermark_image']
+            if "watermark_image" in request.files:
+                watermark_file = request.files["watermark_image"]
                 if watermark_file and watermark_file.filename:
                     import os
                     from werkzeug.utils import secure_filename
 
                     filename = secure_filename(watermark_file.filename)
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     filename = f"watermark_{timestamp}_{filename}"
 
-                    upload_folder = os.path.join('static', 'uploads', 'watermarks')
+                    upload_folder = os.path.join("static", "uploads", "watermarks")
                     os.makedirs(upload_folder, exist_ok=True)
 
                     filepath = os.path.join(upload_folder, filename)
@@ -2118,18 +2403,18 @@ def invoice_settings():
 
             db.session.commit()
 
-            flash('تم حفظ إعدادات الترويسات بنجاح', 'success')
-            return redirect(url_for('owner.invoice_settings'))
+            flash("تم حفظ إعدادات الترويسات بنجاح", "success")
+            return redirect(url_for("owner.invoice_settings"))
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.exception('handler failed')
-            flash(f'خطأ في حفظ الإعدادات: حدث خطأ غير متوقع', 'error')
+            current_app.logger.exception("handler failed")
+            flash(f"خطأ في حفظ الإعدادات: حدث خطأ غير متوقع", "error")
 
-    return render_template('owner/invoice_settings.html', settings=settings)
+    return render_template("owner/invoice_settings.html", settings=settings)
 
 
-@owner_bp.route('/preview-invoice/<template>')
+@owner_bp.route("/preview-invoice/<template>")
 @login_required
 @owner_required
 def preview_invoice(template):
@@ -2138,21 +2423,21 @@ def preview_invoice(template):
 
     # Sample data for preview
     class SampleCustomer:
-        name = 'عميل تجريبي'
-        phone = '0501234567'
-        email = 'customer@example.com'
-        address = 'دبي - الإمارات العربية المتحدة'
+        name = "عميل تجريبي"
+        phone = "0501234567"
+        email = "customer@example.com"
+        address = "دبي - الإمارات العربية المتحدة"
 
     class SampleSeller:
-        full_name = 'البائع التجريبي'
-        username = 'seller'
+        full_name = "البائع التجريبي"
+        username = "seller"
 
     class SampleProduct:
-        name = 'منتج تجريبي'
+        name = "منتج تجريبي"
 
     class SampleLine:
         def __init__(self, name, qty, price, discount=0):
-            self.product = type('obj', (object,), {'name': name})()
+            self.product = type("obj", (object,), {"name": name})()
             self.quantity = qty
             self.unit_price = price
             self.discount_percent = discount
@@ -2160,49 +2445,52 @@ def preview_invoice(template):
 
     class SamplePayment:
         def __init__(self):
-            self.payment_number = 'PAY-2025-0001'
+            self.payment_number = "PAY-2025-0001"
             self.payment_date = datetime.now()
-            self.amount_base = Decimal('500.00')
-            self.payment_method = 'cheque'
-            self.cheque_number = '123456'
+            self.amount_base = Decimal("500.00")
+            self.payment_method = "cheque"
+            self.cheque_number = "123456"
             self.cheque_date = datetime.now().date()
-            self.bank_name = 'بنك الإمارات دبي الوطني'
-            self.reference_number = 'REF-001'
+            self.bank_name = "بنك الإمارات دبي الوطني"
+            self.reference_number = "REF-001"
 
     class SampleSale:
-        sale_number = 'S-2025-0001'
+        sale_number = "S-2025-0001"
         sale_date = datetime.now()
         customer = SampleCustomer()
         seller = SampleSeller()
         lines = [
-            SampleLine('زيت محرك سينثتك 5W-30', 5, 120, 10),
-            SampleLine('فلتر هواء أصلي', 2, 85, 5),
-            SampleLine('فلتر زيت', 3, 45, 0),
+            SampleLine("زيت محرك سينثتك 5W-30", 5, 120, 10),
+            SampleLine("فلتر هواء أصلي", 2, 85, 5),
+            SampleLine("فلتر زيت", 3, 45, 0),
         ]
-        subtotal = Decimal('925.00')
-        discount_amount = Decimal('25.00')
-        shipping_cost = Decimal('50.00')
-        tax_rate = Decimal('5.00')
-        tax_amount = Decimal('47.50')
-        total_amount = Decimal('997.50')
-        currency = 'AED'
-        notes = 'فاتورة تجريبية للمعاينة'
+        subtotal = Decimal("925.00")
+        discount_amount = Decimal("25.00")
+        shipping_cost = Decimal("50.00")
+        tax_rate = Decimal("5.00")
+        tax_amount = Decimal("47.50")
+        total_amount = Decimal("997.50")
+        currency = "AED"
+        notes = "فاتورة تجريبية للمعاينة"
         payments = [SamplePayment()]
 
     import re
     from jinja2 import TemplateNotFound
-    if not re.fullmatch(r'[A-Za-z0-9_-]+', template or ''):
+
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", template or ""):
         abort(404)
     try:
-        return render_template(f'invoices/{template}.html',
-                               sale=SampleSale(),
-                               settings=settings,
-                               preview=True)
+        return render_template(
+            f"invoices/{template}.html",
+            sale=SampleSale(),
+            settings=settings,
+            preview=True,
+        )
     except TemplateNotFound:
         abort(404)
 
 
-@owner_bp.route('/preview-receipt/<template>')
+@owner_bp.route("/preview-receipt/<template>")
 @login_required
 @owner_required
 def preview_receipt(template):
@@ -2211,68 +2499,70 @@ def preview_receipt(template):
 
     # Sample data for preview
     class SampleCustomer:
-        name = 'عميل تجريبي'
-        phone = '0501234567'
-        email = 'customer@example.com'
-        address = 'دبي - الإمارات'
+        name = "عميل تجريبي"
+        phone = "0501234567"
+        email = "customer@example.com"
+        address = "دبي - الإمارات"
 
     class SampleUser:
-        full_name = 'المحصل التجريبي'
-        username = 'collector'
+        full_name = "المحصل التجريبي"
+        username = "collector"
 
     class SampleSale:
-        sale_number = 'S-2025-0001'
+        sale_number = "S-2025-0001"
         sale_date = datetime.now()
 
     class SampleAllocation:
         def __init__(self, sale_num, amount):
-            self.sale = type('obj', (object,), {
-                'sale_number': sale_num,
-                'sale_date': datetime.now()
-            })()
+            self.sale = type(
+                "obj", (object,), {"sale_number": sale_num, "sale_date": datetime.now()}
+            )()
             self.amount_allocated = Decimal(str(amount))
 
     class SampleReceipt:
-        receipt_number = 'RCV-2025-0001'
+        receipt_number = "RCV-2025-0001"
         receipt_date = datetime.now()
         customer = SampleCustomer()
         user = SampleUser()
-        amount = Decimal('1500.00')
-        amount_base = Decimal('1500.00')
-        currency = 'AED'
-        payment_method = 'cheque'
-        cheque_number = '789456'
+        amount = Decimal("1500.00")
+        amount_base = Decimal("1500.00")
+        currency = "AED"
+        payment_method = "cheque"
+        cheque_number = "789456"
         cheque_date = datetime.now().date()
-        bank_name = 'بنك الإمارات دبي الوطني'
-        reference_number = 'REF-2025-001'
-        notes = 'تسديد ذمم فواتير سابقة - دفعة من مبيعات شهر أكتوبر 2025'
+        bank_name = "بنك الإمارات دبي الوطني"
+        reference_number = "REF-2025-001"
+        notes = "تسديد ذمم فواتير سابقة - دفعة من مبيعات شهر أكتوبر 2025"
         allocations = [
-            SampleAllocation('S-2025-0001', '800.00'),
-            SampleAllocation('S-2025-0002', '700.00')
+            SampleAllocation("S-2025-0001", "800.00"),
+            SampleAllocation("S-2025-0002", "700.00"),
         ]
 
         def get_source_info(self):
             return {
-                'type': 'فاتورة',
-                'number': 'S-2025-0001',
-                'date': datetime.now().strftime('%Y-%m-%d'),
-                'id': 1
+                "type": "فاتورة",
+                "number": "S-2025-0001",
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "id": 1,
             }
 
     import re
     from jinja2 import TemplateNotFound
-    if not re.fullmatch(r'[A-Za-z0-9_-]+', template or ''):
+
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", template or ""):
         abort(404)
     try:
-        return render_template(f'receipts/{template}.html',
-                               receipt=SampleReceipt(),
-                               settings=settings,
-                               preview=True)
+        return render_template(
+            f"receipts/{template}.html",
+            receipt=SampleReceipt(),
+            settings=settings,
+            preview=True,
+        )
     except TemplateNotFound:
         abort(404)
 
 
-@owner_bp.route('/system-health')
+@owner_bp.route("/system-health")
 @login_required
 @owner_required
 def system_health():  # noqa: C901
@@ -2291,18 +2581,22 @@ def system_health():  # noqa: C901
             memory = psutil.virtual_memory()
             memory_ok = True
         except Exception:
-            memory = type('obj', (object,), {'total': 0, 'used': 0, 'percent': 0})()
+            memory = type("obj", (object,), {"total": 0, "used": 0, "percent": 0})()
             memory_ok = False
 
         try:
-            disk = psutil.disk_usage('.')
+            disk = psutil.disk_usage(".")
             disk_ok = True
         except Exception:
-            disk = type('obj', (object,), {'total': 0, 'used': 0, 'free': 0, 'percent': 0})()
+            disk = type(
+                "obj", (object,), {"total": 0, "used": 0, "free": 0, "percent": 0}
+            )()
             disk_ok = False
 
         try:
-            size_result = db.session.execute(text("SELECT pg_database_size(current_database())"))
+            size_result = db.session.execute(
+                text("SELECT pg_database_size(current_database())")
+            )
             db_size_bytes = size_result.scalar() or 0
             db_size_mb = db_size_bytes / (1024 * 1024)
             db_ok = True
@@ -2311,53 +2605,91 @@ def system_health():  # noqa: C901
             db_ok = False
 
         health_data = {
-            'cpu': {
-                'percent': cpu_percent,
-                'status': ('جيد' if cpu_percent < 70 else 'تحذير' if cpu_percent < 90 else 'خطر') if cpu_ok else 'غير معروف'
+            "cpu": {
+                "percent": cpu_percent,
+                "status": (
+                    "جيد"
+                    if cpu_percent < 70
+                    else "تحذير"
+                    if cpu_percent < 90
+                    else "خطر"
+                )
+                if cpu_ok
+                else "غير معروف",
             },
-            'memory': {
-                'total': memory.total / (1024**3) if memory.total else 0,
-                'used': memory.used / (1024**3) if memory.used else 0,
-                'percent': memory.percent,
-                'status': ('جيد' if memory.percent < 70 else 'تحذير' if memory.percent < 90 else 'خطر') if memory_ok else 'غير معروف'
+            "memory": {
+                "total": memory.total / (1024**3) if memory.total else 0,
+                "used": memory.used / (1024**3) if memory.used else 0,
+                "percent": memory.percent,
+                "status": (
+                    "جيد"
+                    if memory.percent < 70
+                    else "تحذير"
+                    if memory.percent < 90
+                    else "خطر"
+                )
+                if memory_ok
+                else "غير معروف",
             },
-            'disk': {
-                'total': disk.total / (1024**3) if disk.total else 0,
-                'used': disk.used / (1024**3) if disk.used else 0,
-                'free': disk.free / (1024**3) if disk.free else 0,
-                'percent': disk.percent,
-                'status': ('جيد' if disk.percent < 70 else 'تحذير' if disk.percent < 90 else 'خطر') if disk_ok else 'غير معروف'
+            "disk": {
+                "total": disk.total / (1024**3) if disk.total else 0,
+                "used": disk.used / (1024**3) if disk.used else 0,
+                "free": disk.free / (1024**3) if disk.free else 0,
+                "percent": disk.percent,
+                "status": (
+                    "جيد"
+                    if disk.percent < 70
+                    else "تحذير"
+                    if disk.percent < 90
+                    else "خطر"
+                )
+                if disk_ok
+                else "غير معروف",
             },
-            'database': {
-                'size_mb': round(db_size_mb, 2),
-                'status': ('جيد' if db_size_mb < 500 else 'تحذير' if db_size_mb < 1000 else 'خطر') if db_ok else 'غير معروف'
+            "database": {
+                "size_mb": round(db_size_mb, 2),
+                "status": (
+                    "جيد"
+                    if db_size_mb < 500
+                    else "تحذير"
+                    if db_size_mb < 1000
+                    else "خطر"
+                )
+                if db_ok
+                else "غير معروف",
             },
-            'system': {
-                'os': platform.system(),
-                'version': platform.version(),
-                'python': platform.python_version()
-            }
+            "system": {
+                "os": platform.system(),
+                "version": platform.version(),
+                "python": platform.python_version(),
+            },
         }
 
         try:
-            active_users = db.session.query(func.count(User.id)).filter(
-                User.last_seen >= datetime.now(timezone.utc) - timedelta(minutes=30),
-                User.is_active.is_(True)
-            ).scalar() or 0
+            active_users = (
+                db.session.query(func.count(User.id))
+                .filter(
+                    User.last_seen
+                    >= datetime.now(timezone.utc) - timedelta(minutes=30),
+                    User.is_active.is_(True),
+                )
+                .scalar()
+                or 0
+            )
         except Exception:
             active_users = 0
 
-        health_data['active_users'] = active_users
+        health_data["active_users"] = active_users
 
-        return render_template('owner/system_health.html', health=health_data)
+        return render_template("owner/system_health.html", health=health_data)
 
     except Exception as e:
-        current_app.logger.exception('handler failed')
-        flash(f'خطأ في تحميل معلومات النظام: حدث خطأ غير متوقع', 'danger')
-        return redirect(url_for('owner.dashboard'))
+        current_app.logger.exception("handler failed")
+        flash(f"خطأ في تحميل معلومات النظام: حدث خطأ غير متوقع", "danger")
+        return redirect(url_for("owner.dashboard"))
 
 
-@owner_bp.route('/activity-monitor')
+@owner_bp.route("/activity-monitor")
 @login_required
 @owner_required
 def activity_monitor():
@@ -2365,27 +2697,34 @@ def activity_monitor():
 
     active_users = User.query.filter(
         User.last_seen >= datetime.now(timezone.utc) - timedelta(minutes=30),
-        User.is_active.is_(True)
+        User.is_active.is_(True),
     ).all()
 
-    recent_sales = Sale.query.filter(
-        Sale.created_at >= datetime.now(timezone.utc) - timedelta(hours=24)
-    ).order_by(Sale.created_at.desc()).limit(20).all()
+    recent_sales = (
+        Sale.query.filter(
+            Sale.created_at >= datetime.now(timezone.utc) - timedelta(hours=24)
+        )
+        .order_by(Sale.created_at.desc())
+        .limit(20)
+        .all()
+    )
 
     stats = {
-        'active_now': len(active_users),
-        'today_sales': len(recent_sales),
-        'recent_actions': len(recent_audits)
+        "active_now": len(active_users),
+        "today_sales": len(recent_sales),
+        "recent_actions": len(recent_audits),
     }
 
-    return render_template('owner/activity_monitor.html',
-                           recent_audits=recent_audits,
-                           active_users=active_users,
-                           recent_sales=recent_sales,
-                           stats=stats)
+    return render_template(
+        "owner/activity_monitor.html",
+        recent_audits=recent_audits,
+        active_users=active_users,
+        recent_sales=recent_sales,
+        stats=stats,
+    )
 
 
-@owner_bp.route('/error-logs')
+@owner_bp.route("/error-logs")
 @login_required
 @owner_required
 def error_logs():
@@ -2394,57 +2733,63 @@ def error_logs():
     Filters: category (backend/frontend/logic/programming), severity,
     status (open/resolved) and free-text search over message/path/user.
     """
-    page = request.args.get('page', 1, type=int)
-    category = request.args.get('category', 'all')
-    severity = request.args.get('severity', 'all')
-    status = request.args.get('status', 'all')  # all | open | resolved
-    q = (request.args.get('q') or '').strip()
+    page = request.args.get("page", 1, type=int)
+    category = request.args.get("category", "all")
+    severity = request.args.get("severity", "all")
+    status = request.args.get("status", "all")  # all | open | resolved
+    q = (request.args.get("q") or "").strip()
     per_page = 20
 
     query = ErrorLog.query
     if category in ErrorLog.CATEGORIES:
         query = query.filter_by(category=category)
     else:
-        category = 'all'
+        category = "all"
     if severity in ErrorLog.SEVERITIES:
         query = query.filter_by(severity=severity)
     else:
-        severity = 'all'
-    if status == 'open':
+        severity = "all"
+    if status == "open":
         query = query.filter_by(resolved=False)
-    elif status == 'resolved':
+    elif status == "resolved":
         query = query.filter_by(resolved=True)
     else:
-        status = 'all'
+        status = "all"
     if q:
-        like = '%{}%'.format(q)
-        query = query.filter(or_(
-            ErrorLog.message.ilike(like),
-            ErrorLog.path.ilike(like),
-            ErrorLog.username.ilike(like),
-        ))
+        like = "%{}%".format(q)
+        query = query.filter(
+            or_(
+                ErrorLog.message.ilike(like),
+                ErrorLog.path.ilike(like),
+                ErrorLog.username.ilike(like),
+            )
+        )
 
     pagination = query.order_by(ErrorLog.created_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False)
-    counts = dict(db.session.query(
-        ErrorLog.category, func.count(ErrorLog.id)
-    ).group_by(ErrorLog.category).all())
+        page=page, per_page=per_page, error_out=False
+    )
+    counts = dict(
+        db.session.query(ErrorLog.category, func.count(ErrorLog.id))
+        .group_by(ErrorLog.category)
+        .all()
+    )
     stats = {
-        'total': ErrorLog.query.count(),
-        'unresolved': ErrorLog.query.filter_by(resolved=False).count(),
-        'by_category': counts,
+        "total": ErrorLog.query.count(),
+        "unresolved": ErrorLog.query.filter_by(resolved=False).count(),
+        "by_category": counts,
     }
-    return render_template('owner/error_logs.html',
-                           logs=pagination.items,
-                           pagination=pagination,
-                           page=page,
-                           total_pages=pagination.pages,
-                           stats=stats,
-                           filters={'category': category, 'severity': severity,
-                                    'status': status, 'q': q})
+    return render_template(
+        "owner/error_logs.html",
+        logs=pagination.items,
+        pagination=pagination,
+        page=page,
+        total_pages=pagination.pages,
+        stats=stats,
+        filters={"category": category, "severity": severity, "status": status, "q": q},
+    )
 
 
-@owner_bp.route('/error-logs/<int:log_id>/resolve', methods=['POST'])
+@owner_bp.route("/error-logs/<int:log_id>/resolve", methods=["POST"])
 @login_required
 @owner_required
 def error_log_resolve(log_id):
@@ -2458,17 +2803,17 @@ def error_log_resolve(log_id):
         entry.resolved_at = None
         entry.resolved_by_id = None
     db.session.commit()
-    flash('تم تحديث حالة الخطأ', 'success')
-    return redirect(url_for('owner.error_logs'))
+    flash("تم تحديث حالة الخطأ", "success")
+    return redirect(url_for("owner.error_logs"))
 
 
-@owner_bp.route('/login-history')
+@owner_bp.route("/login-history")
 @login_required
 @owner_required
 def login_history():
-    page = request.args.get('page', 1, type=int)
-    user_filter = request.args.get('user_id', type=int)
-    success_filter = request.args.get('success')
+    page = request.args.get("page", 1, type=int)
+    user_filter = request.args.get("user_id", type=int)
+    success_filter = request.args.get("success")
 
     query = LoginHistory.query
 
@@ -2476,7 +2821,7 @@ def login_history():
         query = query.filter_by(user_id=user_filter)
 
     if success_filter is not None:
-        query = query.filter_by(success=success_filter == 'true')
+        query = query.filter_by(success=success_filter == "true")
 
     pagination = query.order_by(LoginHistory.login_time.desc()).paginate(
         page=page, per_page=50, error_out=False
@@ -2485,71 +2830,82 @@ def login_history():
     users = User.query.all()
 
     stats = {
-        'total_logins': LoginHistory.query.filter_by(success=True).count(),
-        'failed_logins': LoginHistory.query.filter_by(success=False).count(),
-        'today_logins': LoginHistory.query.filter(
-            LoginHistory.login_time >= datetime.now(timezone.utc).replace(hour=0, minute=0)
-        ).count()
+        "total_logins": LoginHistory.query.filter_by(success=True).count(),
+        "failed_logins": LoginHistory.query.filter_by(success=False).count(),
+        "today_logins": LoginHistory.query.filter(
+            LoginHistory.login_time
+            >= datetime.now(timezone.utc).replace(hour=0, minute=0)
+        ).count(),
     }
 
-    return render_template('owner/login_history.html',
-                           logins=pagination.items,
-                           pagination=pagination,
-                           users=users,
-                           stats=stats)
+    return render_template(
+        "owner/login_history.html",
+        logins=pagination.items,
+        pagination=pagination,
+        users=users,
+        stats=stats,
+    )
 
 
-@owner_bp.route('/performance-metrics')
+@owner_bp.route("/performance-metrics")
 @login_required
 @owner_required
 def performance_metrics():
-    performance_file = 'logs/performance.log'
+    performance_file = "logs/performance.log"
     slow_queries = []
 
     if os.path.exists(performance_file):
         # errors='replace': see error_logs() above.
-        with open(performance_file, 'r', encoding='utf-8', errors='replace') as f:
+        with open(performance_file, "r", encoding="utf-8", errors="replace") as f:
             for line in f.readlines()[-200:]:
-                if 'SLOW' in line:
+                if "SLOW" in line:
                     slow_queries.append(line.strip())
 
     metrics = {
-        'slow_queries_count': len(slow_queries),
-        'slow_queries': slow_queries[-20:]
+        "slow_queries_count": len(slow_queries),
+        "slow_queries": slow_queries[-20:],
     }
 
-    return render_template('owner/performance_metrics.html', metrics=metrics)
+    return render_template("owner/performance_metrics.html", metrics=metrics)
 
 
-@owner_bp.route('/security-alerts')
+@owner_bp.route("/security-alerts")
 @login_required
 @owner_required
 def security_alerts():
-    page = request.args.get('page', 1, type=int)
-    severity_filter = request.args.get('severity')
+    page = request.args.get("page", 1, type=int)
+    severity_filter = request.args.get("severity")
 
     query = SecurityAlert.query
 
     if severity_filter:
         query = query.filter_by(severity=severity_filter)
 
-    pagination = query.filter_by(is_resolved=False).order_by(
-        SecurityAlert.created_at.desc()
-    ).paginate(page=page, per_page=30, error_out=False)
+    pagination = (
+        query.filter_by(is_resolved=False)
+        .order_by(SecurityAlert.created_at.desc())
+        .paginate(page=page, per_page=30, error_out=False)
+    )
 
     stats = {
-        'unresolved': SecurityAlert.query.filter_by(is_resolved=False).count(),
-        'critical': SecurityAlert.query.filter_by(severity='critical', is_resolved=False).count(),
-        'high': SecurityAlert.query.filter_by(severity='high', is_resolved=False).count()
+        "unresolved": SecurityAlert.query.filter_by(is_resolved=False).count(),
+        "critical": SecurityAlert.query.filter_by(
+            severity="critical", is_resolved=False
+        ).count(),
+        "high": SecurityAlert.query.filter_by(
+            severity="high", is_resolved=False
+        ).count(),
     }
 
-    return render_template('owner/security_alerts.html',
-                           alerts=pagination.items,
-                           pagination=pagination,
-                           stats=stats)
+    return render_template(
+        "owner/security_alerts.html",
+        alerts=pagination.items,
+        pagination=pagination,
+        stats=stats,
+    )
 
 
-@owner_bp.route('/security-alerts/<int:id>/resolve', methods=['POST'])
+@owner_bp.route("/security-alerts/<int:id>/resolve", methods=["POST"])
 @login_required
 @owner_required
 def resolve_alert(id):
@@ -2558,42 +2914,42 @@ def resolve_alert(id):
     alert.resolved_at = datetime.now(timezone.utc)
     alert.resolved_by = current_user.id
     db.session.commit()
-    flash('✅ تم حل التنبيه الأمني', 'success')
-    return redirect(url_for('owner.security_alerts'))
+    flash("✅ تم حل التنبيه الأمني", "success")
+    return redirect(url_for("owner.security_alerts"))
 
 
-@owner_bp.route('/ip-whitelist', methods=['GET', 'POST'])
+@owner_bp.route("/ip-whitelist", methods=["GET", "POST"])
 @login_required
 @owner_required
 def ip_whitelist():
-    if request.method == 'POST':
-        ip_address = (request.form.get('ip_address') or '').strip()
-        description = (request.form.get('description') or '').strip()
+    if request.method == "POST":
+        ip_address = (request.form.get("ip_address") or "").strip()
+        description = (request.form.get("description") or "").strip()
 
         try:
             ipaddress.ip_address(ip_address)
         except ValueError:
-            flash('❌ عنوان IP غير صالح.', 'danger')
-            return redirect(url_for('owner.ip_whitelist'))
+            flash("❌ عنوان IP غير صالح.", "danger")
+            return redirect(url_for("owner.ip_whitelist"))
 
         settings = SystemSettings.get_current()
         whitelist = _get_ip_whitelist(settings)
 
-        if any((entry or {}).get('ip') == ip_address for entry in whitelist):
-            flash('⚠️ عنوان IP موجود مسبقاً في القائمة البيضاء.', 'warning')
-            return redirect(url_for('owner.ip_whitelist'))
+        if any((entry or {}).get("ip") == ip_address for entry in whitelist):
+            flash("⚠️ عنوان IP موجود مسبقاً في القائمة البيضاء.", "warning")
+            return redirect(url_for("owner.ip_whitelist"))
 
-        whitelist.append({'ip': ip_address, 'description': description})
+        whitelist.append({"ip": ip_address, "description": description})
         _save_ip_whitelist(settings, whitelist)
         db.session.commit()
 
-        flash('✅ تم إضافة IP للقائمة البيضاء', 'success')
-        return redirect(url_for('owner.ip_whitelist'))
+        flash("✅ تم إضافة IP للقائمة البيضاء", "success")
+        return redirect(url_for("owner.ip_whitelist"))
 
     settings = SystemSettings.get_current()
     whitelist = _get_ip_whitelist(settings)
 
-    return render_template('owner/ip_whitelist.html', whitelist=whitelist)
+    return render_template("owner/ip_whitelist.html", whitelist=whitelist)
 
 
 def _get_ip_whitelist(settings):
@@ -2613,7 +2969,7 @@ def _save_ip_whitelist(settings, whitelist):
     settings.owner_whitelist_ips = json.dumps(whitelist or [], ensure_ascii=False)
 
 
-@owner_bp.route('/ip-whitelist/<int:index>/delete', methods=['POST'])
+@owner_bp.route("/ip-whitelist/<int:index>/delete", methods=["POST"])
 @login_required
 @owner_required
 def delete_ip_whitelist(index):
@@ -2624,38 +2980,38 @@ def delete_ip_whitelist(index):
         whitelist.pop(index)
         _save_ip_whitelist(settings, whitelist)
         db.session.commit()
-        flash('✅ تم حذف IP من القائمة البيضاء', 'success')
+        flash("✅ تم حذف IP من القائمة البيضاء", "success")
 
-    return redirect(url_for('owner.ip_whitelist'))
+    return redirect(url_for("owner.ip_whitelist"))
 
 
-@owner_bp.route('/api-keys', methods=['GET', 'POST'])
+@owner_bp.route("/api-keys", methods=["GET", "POST"])
 @login_required
 @owner_required
 def api_keys():
-    if request.method == 'POST':
-        name = request.form.get('name')
-        service = request.form.get('service')
+    if request.method == "POST":
+        name = request.form.get("name")
+        service = request.form.get("service")
 
         key = APIKey(
             name=name,
             key=APIKey.generate_key(),
             service=service,
-            created_by=current_user.id
+            created_by=current_user.id,
         )
 
         db.session.add(key)
         db.session.commit()
 
-        flash(f'✅ تم إنشاء API Key: {key.key}', 'success')
-        return redirect(url_for('owner.api_keys'))
+        flash(f"✅ تم إنشاء API Key: {key.key}", "success")
+        return redirect(url_for("owner.api_keys"))
 
     keys = APIKey.query.order_by(APIKey.created_at.desc()).all()
 
-    return render_template('owner/api_keys.html', keys=keys)
+    return render_template("owner/api_keys.html", keys=keys)
 
 
-@owner_bp.route('/api-keys/<int:id>/toggle', methods=['POST'])
+@owner_bp.route("/api-keys/<int:id>/toggle", methods=["POST"])
 @login_required
 @owner_required
 def toggle_api_key(id):
@@ -2663,57 +3019,57 @@ def toggle_api_key(id):
     key.is_active = not key.is_active
     db.session.commit()
 
-    status = 'تفعيل' if key.is_active else 'تعطيل'
-    flash(f'✅ تم {status} API Key', 'success')
-    return redirect(url_for('owner.api_keys'))
+    status = "تفعيل" if key.is_active else "تعطيل"
+    flash(f"✅ تم {status} API Key", "success")
+    return redirect(url_for("owner.api_keys"))
 
 
-@owner_bp.route('/tax-settings', methods=['GET', 'POST'])
+@owner_bp.route("/tax-settings", methods=["GET", "POST"])
 @login_required
 @owner_required
 def tax_settings():
-    if request.method == 'POST':
+    if request.method == "POST":
         settings = SystemSettings.get_current()
 
-        settings.default_tax_rate = request.form.get('default_tax_rate', type=float)
-        settings.vat_enabled = request.form.get('vat_enabled') == 'on'
-        settings.vat_number = request.form.get('vat_number')
-        settings.tax_id_number = request.form.get('tax_id_number')
+        settings.default_tax_rate = request.form.get("default_tax_rate", type=float)
+        settings.vat_enabled = request.form.get("vat_enabled") == "on"
+        settings.vat_number = request.form.get("vat_number")
+        settings.tax_id_number = request.form.get("tax_id_number")
 
         db.session.commit()
-        flash('✅ تم تحديث إعدادات الضرائب', 'success')
-        return redirect(url_for('owner.tax_settings'))
+        flash("✅ تم تحديث إعدادات الضرائب", "success")
+        return redirect(url_for("owner.tax_settings"))
 
     settings = SystemSettings.get_current()
 
-    return render_template('owner/tax_settings.html', settings=settings)
+    return render_template("owner/tax_settings.html", settings=settings)
 
 
-@owner_bp.route('/currency-settings', methods=['GET', 'POST'])
+@owner_bp.route("/currency-settings", methods=["GET", "POST"])
 @login_required
 @owner_required
 def currency_settings():
     from services.currency_service import CurrencyService
 
-    if request.method == 'POST':
+    if request.method == "POST":
         settings = SystemSettings.get_current()
 
-        settings.default_currency = request.form.get('default_currency', 'ILS')
-        settings.auto_update_rates = request.form.get('auto_update_rates') == 'on'
+        settings.default_currency = request.form.get("default_currency", "ILS")
+        settings.auto_update_rates = request.form.get("auto_update_rates") == "on"
 
         db.session.commit()
-        flash('✅ تم تحديث إعدادات العملات', 'success')
-        return redirect(url_for('owner.currency_settings'))
+        flash("✅ تم تحديث إعدادات العملات", "success")
+        return redirect(url_for("owner.currency_settings"))
 
     settings = SystemSettings.get_current()
-    rates = CurrencyService.get_all_rates('AED')
+    rates = CurrencyService.get_all_rates("AED")
 
-    return render_template('owner/currency_settings.html',
-                           settings=settings,
-                           rates=rates)
+    return render_template(
+        "owner/currency_settings.html", settings=settings, rates=rates
+    )
 
 
-@owner_bp.route('/payment-gateways', methods=['GET', 'POST'])
+@owner_bp.route("/payment-gateways", methods=["GET", "POST"])
 @login_required
 @owner_required
 def payment_gateways():
@@ -2722,6 +3078,7 @@ def payment_gateways():
     vault = PaymentVault.query.first()
     if not vault:
         import secrets
+
         vault = PaymentVault()
         # vault_password_hash is NOT NULL: seed an unusable random secret so
         # the row is valid. The vault stays locked (is_locked defaults True)
@@ -2731,135 +3088,139 @@ def payment_gateways():
         db.session.add(vault)
         db.session.commit()
 
-    if request.method == 'POST':
-        vault.stripe_publishable_key = request.form.get('stripe_publishable_key')
-        vault.stripe_secret_key = request.form.get('stripe_secret_key')
-        vault.paypal_client_id = request.form.get('paypal_client_id')
-        vault.paypal_client_secret = request.form.get('paypal_client_secret')
-        vault.nowpayments_api_key = request.form.get('nowpayments_api_key')
+    if request.method == "POST":
+        vault.stripe_publishable_key = request.form.get("stripe_publishable_key")
+        vault.stripe_secret_key = request.form.get("stripe_secret_key")
+        vault.paypal_client_id = request.form.get("paypal_client_id")
+        vault.paypal_client_secret = request.form.get("paypal_client_secret")
+        vault.nowpayments_api_key = request.form.get("nowpayments_api_key")
 
         db.session.commit()
-        flash('✅ تم تحديث إعدادات بوابات الدفع', 'success')
-        return redirect(url_for('owner.payment_gateways'))
+        flash("✅ تم تحديث إعدادات بوابات الدفع", "success")
+        return redirect(url_for("owner.payment_gateways"))
 
-    return render_template('owner/payment_gateways.html', vault=vault)
+    return render_template("owner/payment_gateways.html", vault=vault)
 
 
-@owner_bp.route('/email-settings', methods=['GET', 'POST'])
+@owner_bp.route("/email-settings", methods=["GET", "POST"])
 @login_required
 @owner_required
 def email_settings():
-    if request.method == 'POST':
+    if request.method == "POST":
         settings = SystemSettings.get_current()
 
-        settings.smtp_server = request.form.get('smtp_server')
-        settings.smtp_port = request.form.get('smtp_port', type=int)
-        settings.smtp_username = request.form.get('smtp_username')
-        settings.smtp_password = request.form.get('smtp_password')
-        settings.smtp_use_tls = request.form.get('smtp_use_tls') == 'on'
-        settings.email_from = request.form.get('email_from')
+        settings.smtp_server = request.form.get("smtp_server")
+        settings.smtp_port = request.form.get("smtp_port", type=int)
+        settings.smtp_username = request.form.get("smtp_username")
+        settings.smtp_password = request.form.get("smtp_password")
+        settings.smtp_use_tls = request.form.get("smtp_use_tls") == "on"
+        settings.email_from = request.form.get("email_from")
 
         db.session.commit()
-        flash('✅ تم تحديث إعدادات البريد الإلكتروني', 'success')
-        return redirect(url_for('owner.email_settings'))
+        flash("✅ تم تحديث إعدادات البريد الإلكتروني", "success")
+        return redirect(url_for("owner.email_settings"))
 
     settings = SystemSettings.get_current()
 
-    return render_template('owner/email_settings.html', settings=settings)
+    return render_template("owner/email_settings.html", settings=settings)
 
 
-@owner_bp.route('/sms-settings', methods=['GET', 'POST'])
+@owner_bp.route("/sms-settings", methods=["GET", "POST"])
 @login_required
 @owner_required
 def sms_settings():
-    if request.method == 'POST':
+    if request.method == "POST":
         settings = SystemSettings.get_current()
 
-        sms_provider = (request.form.get('sms_provider') or '').strip()
+        sms_provider = (request.form.get("sms_provider") or "").strip()
         settings.sms_provider = sms_provider or None
-        settings.sms_api_key = request.form.get('sms_api_key')
-        settings.sms_sender_name = request.form.get('sms_sender_name')
-        settings.sms_enabled = request.form.get('sms_enabled') == 'on'
+        settings.sms_api_key = request.form.get("sms_api_key")
+        settings.sms_sender_name = request.form.get("sms_sender_name")
+        settings.sms_enabled = request.form.get("sms_enabled") == "on"
 
         db.session.commit()
-        flash('✅ تم تحديث إعدادات الرسائل النصية', 'success')
-        return redirect(url_for('owner.sms_settings'))
+        flash("✅ تم تحديث إعدادات الرسائل النصية", "success")
+        return redirect(url_for("owner.sms_settings"))
 
     settings = SystemSettings.get_current()
 
-    return render_template('owner/sms_settings.html', settings=settings)
+    return render_template("owner/sms_settings.html", settings=settings)
 
 
-@owner_bp.route('/whatsapp-settings', methods=['GET', 'POST'])
+@owner_bp.route("/whatsapp-settings", methods=["GET", "POST"])
 @login_required
 @owner_required
 def whatsapp_settings():
-    if request.method == 'POST':
+    if request.method == "POST":
         settings = SystemSettings.get_current()
 
-        settings.whatsapp_api_url = request.form.get('whatsapp_api_url')
-        settings.whatsapp_api_key = request.form.get('whatsapp_api_key')
-        settings.whatsapp_phone_number = request.form.get('whatsapp_phone_number')
-        settings.whatsapp_enabled = request.form.get('whatsapp_enabled') == 'on'
+        settings.whatsapp_api_url = request.form.get("whatsapp_api_url")
+        settings.whatsapp_api_key = request.form.get("whatsapp_api_key")
+        settings.whatsapp_phone_number = request.form.get("whatsapp_phone_number")
+        settings.whatsapp_enabled = request.form.get("whatsapp_enabled") == "on"
 
         db.session.commit()
-        flash('✅ تم تحديث إعدادات واتساب', 'success')
-        return redirect(url_for('owner.whatsapp_settings'))
+        flash("✅ تم تحديث إعدادات واتساب", "success")
+        return redirect(url_for("owner.whatsapp_settings"))
 
     settings = SystemSettings.get_current()
 
-    return render_template('owner/whatsapp_settings.html', settings=settings)
+    return render_template("owner/whatsapp_settings.html", settings=settings)
 
 
-@owner_bp.route('/notification-templates', methods=['GET', 'POST'])
+@owner_bp.route("/notification-templates", methods=["GET", "POST"])
 @login_required
 @owner_required
 def notification_templates():
-    if request.method == 'POST':
+    if request.method == "POST":
         settings = SystemSettings.get_current()
 
         templates = {
-            'invoice_email': request.form.get('invoice_email_template'),
-            'payment_sms': request.form.get('payment_sms_template'),
-            'reminder_whatsapp': request.form.get('reminder_whatsapp_template')
+            "invoice_email": request.form.get("invoice_email_template"),
+            "payment_sms": request.form.get("payment_sms_template"),
+            "reminder_whatsapp": request.form.get("reminder_whatsapp_template"),
         }
 
         settings.notification_templates = templates
         db.session.commit()
 
-        flash('✅ تم تحديث قوالب الإشعارات', 'success')
-        return redirect(url_for('owner.notification_templates'))
+        flash("✅ تم تحديث قوالب الإشعارات", "success")
+        return redirect(url_for("owner.notification_templates"))
 
     settings = SystemSettings.get_current()
     templates = settings.notification_templates or {}
 
-    return render_template('owner/notification_templates.html',
-                           templates=templates)
+    return render_template("owner/notification_templates.html", templates=templates)
 
 
-@owner_bp.route('/database-optimize', methods=['POST'])
+@owner_bp.route("/database-optimize", methods=["POST"])
 @login_required
 @owner_required
 def database_optimize():
     try:
         from utils.database_optimizer import DatabaseOptimizer
+
         vacuum_result = DatabaseOptimizer.vacuum_postgres()
         analyze_result = DatabaseOptimizer.analyze_tables()
-        if vacuum_result.get('success') and analyze_result.get('success'):
-            flash('✅ تم تحسين قاعدة البيانات وتحليل الجداول بنجاح', 'success')
+        if vacuum_result.get("success") and analyze_result.get("success"):
+            flash("✅ تم تحسين قاعدة البيانات وتحليل الجداول بنجاح", "success")
         else:
-            msg = vacuum_result.get('error') or analyze_result.get('error') or 'عملية التحسين لم تكتمل'
-            flash(f'⚠️ تحذير: {msg}', 'warning')
+            msg = (
+                vacuum_result.get("error")
+                or analyze_result.get("error")
+                or "عملية التحسين لم تكتمل"
+            )
+            flash(f"⚠️ تحذير: {msg}", "warning")
     except Exception as e:
-        current_app.logger.exception('handler failed')
-        flash(f'❌ خطأ في التحسين: حدث خطأ غير متوقع', 'danger')
+        current_app.logger.exception("handler failed")
+        flash(f"❌ خطأ في التحسين: حدث خطأ غير متوقع", "danger")
 
-    return redirect(url_for('owner.system_health'))
+    return redirect(url_for("owner.system_health"))
 
 
-@owner_bp.route('/verify-backups')
+@owner_bp.route("/verify-backups")
 @login_required
-@permission_required('manage_backups')
+@permission_required("manage_backups")
 def verify_backups():
     try:
         from services.backup_service import BackupService
@@ -2868,102 +3229,119 @@ def verify_backups():
 
         verified = []
         for backup in backups:
-            file_path = backup.get('path') or os.path.join(BackupService.BACKUP_DIR, backup.get('filename', ''))
+            file_path = backup.get("path") or os.path.join(
+                BackupService.BACKUP_DIR, backup.get("filename", "")
+            )
 
             is_valid = os.path.exists(file_path) and os.path.getsize(file_path) > 1000
 
-            verified.append({
-                'filename': backup.get('filename', 'Unknown'),
-                'size': backup.get('size_mb', 0),
-                'created': backup.get('datetime', backup.get('timestamp', 'Unknown')),
-                'valid': is_valid
-            })
+            verified.append(
+                {
+                    "filename": backup.get("filename", "Unknown"),
+                    "size": backup.get("size_mb", 0),
+                    "created": backup.get(
+                        "datetime", backup.get("timestamp", "Unknown")
+                    ),
+                    "valid": is_valid,
+                }
+            )
 
-        return render_template('owner/verify_backups.html', backups=verified)
+        return render_template("owner/verify_backups.html", backups=verified)
 
     except Exception as e:
-        current_app.logger.exception('handler failed')
-        flash(f'خطأ في تحميل النسخ الاحتياطية: حدث خطأ غير متوقع', 'danger')
-        return redirect(url_for('owner.dashboard'))
+        current_app.logger.exception("handler failed")
+        flash(f"خطأ في تحميل النسخ الاحتياطية: حدث خطأ غير متوقع", "danger")
+        return redirect(url_for("owner.dashboard"))
 
 
-@owner_bp.route('/data-cleanup', methods=['GET', 'POST'])
+@owner_bp.route("/data-cleanup", methods=["GET", "POST"])
 @login_required
 @owner_required
 def data_cleanup():
-    if request.method == 'POST':
-        days = request.form.get('days', 90, type=int)
-        cleanup_type = (request.form.get('cleanup_type') or '').strip()
+    if request.method == "POST":
+        days = request.form.get("days", 90, type=int)
+        cleanup_type = (request.form.get("cleanup_type") or "").strip()
 
         if not cleanup_type:
-            flash('⚠️ يرجى اختيار نوع البيانات للحذف.', 'warning')
+            flash("⚠️ يرجى اختيار نوع البيانات للحذف.", "warning")
             stats = {
-                'old_logs': AuditLog.query.filter(
-                    AuditLog.created_at < datetime.now(timezone.utc) - timedelta(days=90)
+                "old_logs": AuditLog.query.filter(
+                    AuditLog.created_at
+                    < datetime.now(timezone.utc) - timedelta(days=90)
                 ).count(),
-                'old_archived': ArchivedRecord.query.filter(
-                    ArchivedRecord.archived_at < datetime.now(timezone.utc) - timedelta(days=180)
-                ).count()
+                "old_archived": ArchivedRecord.query.filter(
+                    ArchivedRecord.archived_at
+                    < datetime.now(timezone.utc) - timedelta(days=180)
+                ).count(),
             }
-            return render_template('owner/data_cleanup.html', stats=stats)
+            return render_template("owner/data_cleanup.html", stats=stats)
 
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         deleted_count = 0
 
-        if cleanup_type == 'logs':
-            deleted_count = AuditLog.query.filter(AuditLog.created_at < cutoff_date).delete()
-        elif cleanup_type == 'archived':
-            deleted_count = ArchivedRecord.query.filter(ArchivedRecord.archived_at < cutoff_date).delete()
+        if cleanup_type == "logs":
+            deleted_count = AuditLog.query.filter(
+                AuditLog.created_at < cutoff_date
+            ).delete()
+        elif cleanup_type == "archived":
+            deleted_count = ArchivedRecord.query.filter(
+                ArchivedRecord.archived_at < cutoff_date
+            ).delete()
         else:
             db.session.rollback()
-            flash(f'❌ نوع التنظيف غير معروف: {cleanup_type}', 'danger')
-            return redirect(url_for('owner.data_cleanup'))
+            flash(f"❌ نوع التنظيف غير معروف: {cleanup_type}", "danger")
+            return redirect(url_for("owner.data_cleanup"))
 
         # F14/F15: حذف سجلات التدقيق القديمة عملية تُوثَّق — وإلا اختفى
         # الأثر دون دليل. السجل الجديد يُكتب بعد الحذف (فلا يُحذف هو
         # الآخر) ويُثبَّت في ملف دائم داخل instance/ لمجرد في حالة حذف
         # سجل التدقيق نفسه.
         cleanup_record = {
-            'action': 'data_cleanup',
-            'cleanup_type': cleanup_type,
-            'days': days,
-            'deleted_count': deleted_count,
-            'cutoff': cutoff_date.isoformat(),
-            'executed_by': getattr(current_user, 'username', None),
+            "action": "data_cleanup",
+            "cleanup_type": cleanup_type,
+            "days": days,
+            "deleted_count": deleted_count,
+            "cutoff": cutoff_date.isoformat(),
+            "executed_by": getattr(current_user, "username", None),
         }
         try:
-            cleanup_record['audit_file'] = append_audit_record(cleanup_record)
+            cleanup_record["audit_file"] = append_audit_record(cleanup_record)
         except Exception:
-            current_app.logger.exception('handler failed')
-        create_audit_log('delete', 'audit_logs' if cleanup_type == 'logs'
-                         else 'archived_records', None,
-                         changes=cleanup_record, commit=True)
+            current_app.logger.exception("handler failed")
+        create_audit_log(
+            "delete",
+            "audit_logs" if cleanup_type == "logs" else "archived_records",
+            None,
+            changes=cleanup_record,
+            commit=True,
+        )
 
         db.session.commit()
 
-        flash(f'✅ تم حذف {deleted_count} سجل قديم', 'success')
-        return redirect(url_for('owner.data_cleanup'))
+        flash(f"✅ تم حذف {deleted_count} سجل قديم", "success")
+        return redirect(url_for("owner.data_cleanup"))
 
     stats = {
-        'old_logs': AuditLog.query.filter(
+        "old_logs": AuditLog.query.filter(
             AuditLog.created_at < datetime.now(timezone.utc) - timedelta(days=90)
         ).count(),
-        'old_archived': ArchivedRecord.query.filter(
-            ArchivedRecord.archived_at < datetime.now(timezone.utc) - timedelta(days=180)
-        ).count()
+        "old_archived": ArchivedRecord.query.filter(
+            ArchivedRecord.archived_at
+            < datetime.now(timezone.utc) - timedelta(days=180)
+        ).count(),
     }
 
-    return render_template('owner/data_cleanup.html', stats=stats)
+    return render_template("owner/data_cleanup.html", stats=stats)
 
 
-@owner_bp.route('/import-export-tools')
+@owner_bp.route("/import-export-tools")
 @login_required
 @owner_required
 def import_export_tools():
-    return render_template('owner/import_export_tools.html')
+    return render_template("owner/import_export_tools.html")
 
 
-@owner_bp.route('/export-excel/<table_name>')
+@owner_bp.route("/export-excel/<table_name>")
 @login_required
 @owner_required
 def export_excel(table_name):
@@ -2972,64 +3350,75 @@ def export_excel(table_name):
         from io import BytesIO
         from flask import send_file
 
-        today_str = datetime.now().strftime('%Y-%m-%d')
+        today_str = datetime.now().strftime("%Y-%m-%d")
 
         model_map = {
-            'customers': Customer,
-            'products': Product,
-            'sales': Sale,
-            'expenses': Expense
+            "customers": Customer,
+            "products": Product,
+            "sales": Sale,
+            "expenses": Expense,
         }
 
         if table_name not in model_map:
-            flash('جدول غير موجود', 'danger')
-            return redirect(url_for('owner.import_export_tools'))
+            flash("جدول غير موجود", "danger")
+            return redirect(url_for("owner.import_export_tools"))
 
         model = model_map[table_name]
         data = model.query.all()
 
         df_data = []
         for item in data:
-            if hasattr(item, 'to_dict'):
+            if hasattr(item, "to_dict"):
                 df_data.append(item.to_dict())
             else:
-                df_data.append({col.name: getattr(item, col.name) for col in item.__table__.columns})
+                df_data.append(
+                    {
+                        col.name: getattr(item, col.name)
+                        for col in item.__table__.columns
+                    }
+                )
 
         if not df_data:
-            flash('لا توجد بيانات للتصدير', 'warning')
-            return redirect(url_for('owner.import_export_tools'))
+            flash("لا توجد بيانات للتصدير", "warning")
+            return redirect(url_for("owner.import_export_tools"))
 
         df = pd.DataFrame(df_data)
 
         output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
             df.to_excel(writer, index=False, sheet_name=table_name)
         output.seek(0)
 
         # F14/F15: an export is an auditable act (models/audit.py defines the
         # 'export' action for exactly this).
-        create_audit_log('export', table_name, None, changes={
-            'action': 'export_excel',
-            'table_name': table_name,
-            'rows': len(df_data),
-            'exported_by': getattr(current_user, 'username', None),
-        }, commit=True)
+        create_audit_log(
+            "export",
+            table_name,
+            None,
+            changes={
+                "action": "export_excel",
+                "table_name": table_name,
+                "rows": len(df_data),
+                "exported_by": getattr(current_user, "username", None),
+            },
+            commit=True,
+        )
 
         return send_file(
             output,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             as_attachment=True,
-            download_name=f'{table_name}_{today_str}.xlsx'
+            download_name=f"{table_name}_{today_str}.xlsx",
         )
     except Exception as e:
-        current_app.logger.exception('handler failed')
-        flash(f'خطأ في التصدير: حدث خطأ غير متوقع', 'danger')
-        return redirect(url_for('owner.import_export_tools'))
+        current_app.logger.exception("handler failed")
+        flash(f"خطأ في التصدير: حدث خطأ غير متوقع", "danger")
+        return redirect(url_for("owner.import_export_tools"))
 
 
-@owner_bp.route('/fx-revaluation/', methods=['GET', 'POST'])
+@owner_bp.route("/fx-revaluation/", methods=["GET", "POST"])
 @login_required
-@permission_required('manage_ledger')
+@permission_required("manage_ledger")
 def fx_revaluation():
     """معاينة وترحيل تسوية فرق العملات الأجنبية (أرباح/خسائر غير محققة)."""
     from models.gl import GLJournalEntry
@@ -3037,12 +3426,12 @@ def fx_revaluation():
     from services.fx_revaluation import FXRevaluationService
     from utils.errors import ValidationError
 
-    as_of_raw = (request.form.get('as_of') or request.args.get('as_of') or '').strip()
+    as_of_raw = (request.form.get("as_of") or request.args.get("as_of") or "").strip()
 
-    if request.method == 'POST':
-        if (request.form.get('confirm') or '').strip() != _FX_REVALUATION_CONFIRM_TOKEN:
-            flash('لم يتم تأكيد الترحيل — لم يُرحَّل أي قيد.', 'danger')
-            return redirect(url_for('owner.fx_revaluation', as_of=as_of_raw or None))
+    if request.method == "POST":
+        if (request.form.get("confirm") or "").strip() != _FX_REVALUATION_CONFIRM_TOKEN:
+            flash("لم يتم تأكيد الترحيل — لم يُرحَّل أي قيد.", "danger")
+            return redirect(url_for("owner.fx_revaluation", as_of=as_of_raw or None))
 
         try:
             result = FXRevaluationService.run_revaluation(
@@ -3052,39 +3441,39 @@ def fx_revaluation():
             )
         except ValidationError as exc:
             db.session.rollback()
-            flash(f'{exc}', 'danger')
-            return redirect(url_for('owner.fx_revaluation', as_of=as_of_raw or None))
+            flash(f"{exc}", "danger")
+            return redirect(url_for("owner.fx_revaluation", as_of=as_of_raw or None))
         except Exception:
             db.session.rollback()
-            current_app.logger.exception('FX revaluation posting failed')
-            flash('حدث خطأ أثناء ترحيل تسوية فرق العملة.', 'danger')
-            return redirect(url_for('owner.fx_revaluation', as_of=as_of_raw or None))
+            current_app.logger.exception("FX revaluation posting failed")
+            flash("حدث خطأ أثناء ترحيل تسوية فرق العملة.", "danger")
+            return redirect(url_for("owner.fx_revaluation", as_of=as_of_raw or None))
 
         db.session.commit()
 
-        if result.get('already_posted'):
-            flash('تسوية هذه الفترة مرحَّلة مسبقاً — لم يُرحَّل قيد ثانٍ.', 'info')
-        elif result.get('posted'):
-            entry_number = ''
+        if result.get("already_posted"):
+            flash("تسوية هذه الفترة مرحَّلة مسبقاً — لم يُرحَّل قيد ثانٍ.", "info")
+        elif result.get("posted"):
+            entry_number = ""
             try:
-                entry = db.session.get(GLJournalEntry, result.get('journal_entry_id'))
-                entry_number = f' — رقم القيد {entry.entry_number}' if entry else ''
+                entry = db.session.get(GLJournalEntry, result.get("journal_entry_id"))
+                entry_number = f" — رقم القيد {entry.entry_number}" if entry else ""
             except Exception:
-                entry_number = ''
-            flash(f'تم ترحيل قيد تسوية فرق العملة{entry_number}.', 'success')
+                entry_number = ""
+            flash(f"تم ترحيل قيد تسوية فرق العملة{entry_number}.", "success")
         else:
-            flash('لا توجد أرصدة أجنبية مفتوحة تحتاج تسوية في هذه الفترة.', 'info')
-        return redirect(url_for('owner.fx_revaluation', as_of=as_of_raw or None))
+            flash("لا توجد أرصدة أجنبية مفتوحة تحتاج تسوية في هذه الفترة.", "info")
+        return redirect(url_for("owner.fx_revaluation", as_of=as_of_raw or None))
 
     try:
         preview = FXRevaluationService.build_revaluation(as_of=as_of_raw or None)
     except Exception:
-        current_app.logger.exception('FX revaluation preview failed')
+        current_app.logger.exception("FX revaluation preview failed")
         preview = None
-        flash('تعذّر بناء معاينة التسوية.', 'danger')
+        flash("تعذّر بناء معاينة التسوية.", "danger")
 
     return render_template(
-        'owner/fx_revaluation.html',
+        "owner/fx_revaluation.html",
         preview=preview,
         base_currency=CurrencyService.get_base_currency(),
         as_of=as_of_raw,
@@ -3092,7 +3481,7 @@ def fx_revaluation():
     )
 
 
-@owner_bp.route('/tax-rulesets', methods=['GET', 'POST'])
+@owner_bp.route("/tax-rulesets", methods=["GET", "POST"])
 @login_required
 @owner_required
 def tax_rulesets():
@@ -3106,78 +3495,127 @@ def tax_rulesets():
     from models import TaxRuleset, Tenant
     from services.compliance import country_compliance_snapshot
 
-    EDITABLE_FIELDS = ('vat_rate', 'vat_label', 'corp_tax_rate', 'corp_tax_threshold',
-                       'einvoice_required', 'einvoice_status', 'vat_enabled_default',
-                       'corp_tax_enabled_default',
-                       'authority_name', 'authority_portal_url',
-                       'authority_notes', 'compliance_notes',
-                       'effective_from', 'effective_until')
+    EDITABLE_FIELDS = (
+        "vat_rate",
+        "vat_label",
+        "corp_tax_rate",
+        "corp_tax_threshold",
+        "einvoice_required",
+        "einvoice_status",
+        "vat_enabled_default",
+        "corp_tax_enabled_default",
+        "authority_name",
+        "authority_portal_url",
+        "authority_notes",
+        "compliance_notes",
+        "effective_from",
+        "effective_until",
+    )
 
     def _parse_date(value):
-        value = (value or '').strip()
+        value = (value or "").strip()
         if not value:
             return None
         from datetime import date
+
         return date.fromisoformat(value)
 
-    if request.method == 'POST':
-        action = request.form.get('action')
-        if action in ('update', 'create'):
-            ruleset_id = int(request.form.get('id')) if request.form.get('id') else None
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action in ("update", "create"):
+            ruleset_id = int(request.form.get("id")) if request.form.get("id") else None
             row = db.session.get(TaxRuleset, ruleset_id) if ruleset_id else TaxRuleset()
             try:
-                row.country_code = (request.form.get('country_code') or '').strip().upper()[:2]
-                row.country_name = (request.form.get('country_name') or '').strip()
-                row.vat_rate = Decimal(str(request.form.get('vat_rate', '0') or '0')).quantize(Decimal('0.01'))
-                row.vat_label = (request.form.get('vat_label') or 'VAT').strip()
-                row.corp_tax_rate = Decimal(str(request.form.get('corp_tax_rate', '0') or '0')).quantize(Decimal('0.01'))
-                row.corp_tax_threshold = Decimal(str(request.form.get('corp_tax_threshold', '0') or '0'))
-                row.vat_enabled_default = request.form.get('vat_enabled_default') == 'on'
-                row.corp_tax_enabled_default = request.form.get('corp_tax_enabled_default') == 'on'
-                row.einvoice_required = request.form.get('einvoice_required') == 'on'
-                row.einvoice_status = (request.form.get('einvoice_status') or 'manual').strip()
-                row.authority_name = (request.form.get('authority_name') or '').strip() or None
-                row.authority_portal_url = (request.form.get('authority_portal_url') or '').strip() or None
-                row.authority_notes = (request.form.get('authority_notes') or '').strip() or None
-                row.compliance_notes = (request.form.get('compliance_notes') or '').strip() or None
-                row.is_active = request.form.get('is_active') == 'on'
-                row.effective_from = _parse_date(request.form.get('effective_from'))
-                row.effective_until = _parse_date(request.form.get('effective_until'))
+                row.country_code = (
+                    (request.form.get("country_code") or "").strip().upper()[:2]
+                )
+                row.country_name = (request.form.get("country_name") or "").strip()
+                row.vat_rate = Decimal(
+                    str(request.form.get("vat_rate", "0") or "0")
+                ).quantize(Decimal("0.01"))
+                row.vat_label = (request.form.get("vat_label") or "VAT").strip()
+                row.corp_tax_rate = Decimal(
+                    str(request.form.get("corp_tax_rate", "0") or "0")
+                ).quantize(Decimal("0.01"))
+                row.corp_tax_threshold = Decimal(
+                    str(request.form.get("corp_tax_threshold", "0") or "0")
+                )
+                row.vat_enabled_default = (
+                    request.form.get("vat_enabled_default") == "on"
+                )
+                row.corp_tax_enabled_default = (
+                    request.form.get("corp_tax_enabled_default") == "on"
+                )
+                row.einvoice_required = request.form.get("einvoice_required") == "on"
+                row.einvoice_status = (
+                    request.form.get("einvoice_status") or "manual"
+                ).strip()
+                row.authority_name = (
+                    request.form.get("authority_name") or ""
+                ).strip() or None
+                row.authority_portal_url = (
+                    request.form.get("authority_portal_url") or ""
+                ).strip() or None
+                row.authority_notes = (
+                    request.form.get("authority_notes") or ""
+                ).strip() or None
+                row.compliance_notes = (
+                    request.form.get("compliance_notes") or ""
+                ).strip() or None
+                row.is_active = request.form.get("is_active") == "on"
+                row.effective_from = _parse_date(request.form.get("effective_from"))
+                row.effective_until = _parse_date(request.form.get("effective_until"))
                 # tenant_id مُثبت من قاعدة البيانات، لا من النموذج:
                 # تحديث سطر موجود يحتفظ بنطاقه الأصلي؛ إنشاء سطر جديد يأخذ النطاق من النموذج فقط.
-                if action == 'update' and row.id is not None:
+                if action == "update" and row.id is not None:
                     existing = TaxRuleset.query.filter_by(id=row.id).first()
                     row.tenant_id = existing.tenant_id if existing else None
                 else:
-                    raw_tenant_id = (request.form.get('tenant_id') or '').strip()
+                    raw_tenant_id = (request.form.get("tenant_id") or "").strip()
                     row.tenant_id = int(raw_tenant_id) if raw_tenant_id else None
                 if not row.country_code or not row.country_name:
-                    raise ValueError('رمز الدولة واسمها مطلوبان')
-                if row.effective_until and row.effective_from and row.effective_until < row.effective_from:
-                    raise ValueError('تاريخ النهاية قبل تاريخ البداية')
+                    raise ValueError("رمز الدولة واسمها مطلوبان")
+                if (
+                    row.effective_until
+                    and row.effective_from
+                    and row.effective_until < row.effective_from
+                ):
+                    raise ValueError("تاريخ النهاية قبل تاريخ البداية")
                 db.session.add(row)
                 db.session.commit()
-                create_audit_log('update_tax_rulesets', 'tax_rulesets', row.id,
-                                 changes={'country_code': row.country_code,
-                                          'vat_rate': str(row.vat_rate)})
-                flash('✅ تم حفظ قاعدة الضريبة', 'success')
-                return redirect(url_for('owner.tax_rulesets'))
+                create_audit_log(
+                    "update_tax_rulesets",
+                    "tax_rulesets",
+                    row.id,
+                    changes={
+                        "country_code": row.country_code,
+                        "vat_rate": str(row.vat_rate),
+                    },
+                )
+                flash("✅ تم حفظ قاعدة الضريبة", "success")
+                return redirect(url_for("owner.tax_rulesets"))
             except Exception as exc:
                 db.session.rollback()
-                flash(f'⛔ {exc}', 'danger')
-        elif action == 'deactivate_tenant_ruleset':
-            ruleset_id = int(request.form.get('id') or 0)
+                flash(f"⛔ {exc}", "danger")
+        elif action == "deactivate_tenant_ruleset":
+            ruleset_id = int(request.form.get("id") or 0)
             row = db.session.get(TaxRuleset, ruleset_id)
             if row and row.tenant_id is not None:
                 row.is_active = False
                 db.session.commit()
-                create_audit_log('deactivate_tax_rulesets', 'tax_rulesets', row.id,
-                                 changes={'country_code': row.country_code,
-                                          'tenant_id': row.tenant_id})
-                flash('✅ أُزيلت النسخة الخاصة بالشركة (أُخفيت، ولم تُحذف)', 'success')
+                create_audit_log(
+                    "deactivate_tax_rulesets",
+                    "tax_rulesets",
+                    row.id,
+                    changes={
+                        "country_code": row.country_code,
+                        "tenant_id": row.tenant_id,
+                    },
+                )
+                flash("✅ أُزيلت النسخة الخاصة بالشركة (أُخفيت، ولم تُحذف)", "success")
             else:
-                flash('⛔ لا يمكن إزالتها (ليست نسخة شركة)', 'danger')
-            return redirect(url_for('owner.tax_rulesets'))
+                flash("⛔ لا يمكن إزالتها (ليست نسخة شركة)", "danger")
+            return redirect(url_for("owner.tax_rulesets"))
 
     # جميع القواعد مرتبة: الخاصة بالشركات أولاً ثم الأسطر العامة
     rulesets = TaxRuleset.query.order_by(
@@ -3188,7 +3626,7 @@ def tax_rulesets():
     tenant_names = {t.id: t.name for t in tenants}
     compliance = country_compliance_snapshot()
     return render_template(
-        'owner/tax_rulesets.html',
+        "owner/tax_rulesets.html",
         rulesets=rulesets,
         tenants=tenants,
         tenant_names=tenant_names,
@@ -3197,7 +3635,7 @@ def tax_rulesets():
     )
 
 
-@owner_bp.route('/compliance-credentials', methods=['GET', 'POST'])
+@owner_bp.route("/compliance-credentials", methods=["GET", "POST"])
 @login_required
 @owner_required
 def compliance_credentials():
@@ -3207,16 +3645,21 @@ def compliance_credentials():
     كل حفظ/تحقق/مسح يُسجَّل في audit_logs.
     """
     from services.compliance_credentials import (
-        AUTHORITY_REGISTRY, authorities_for_country,
-        save_credential, mark_verified, clear_credential,
-        credential_summary, credential_values,
+        AUTHORITY_REGISTRY,
+        authorities_for_country,
+        save_credential,
+        mark_verified,
+        clear_credential,
+        credential_summary,
+        credential_values,
     )
 
     def _redirect_tenant(tid):
-        return redirect(url_for('owner.compliance_credentials', tenant_id=tid))
+        return redirect(url_for("owner.compliance_credentials", tenant_id=tid))
 
-    tenant_id = (request.args.get('tenant_id', type=int)
-                 or request.form.get('tenant_id', type=int))
+    tenant_id = request.args.get("tenant_id", type=int) or request.form.get(
+        "tenant_id", type=int
+    )
     tenants = Tenant.query.filter_by(is_active=True).order_by(Tenant.name).all()
     if tenant_id is None:
         tenant_id = tenants[0].id if tenants else None
@@ -3225,56 +3668,77 @@ def compliance_credentials():
         tenant = tenants[0]
         tenant_id = tenant.id
 
-    if request.method == 'POST':
-        action = (request.form.get('action') or 'save').strip()
-        authority_key = (request.form.get('authority_key') or '').strip()
+    if request.method == "POST":
+        action = (request.form.get("action") or "save").strip()
+        authority_key = (request.form.get("authority_key") or "").strip()
         meta = AUTHORITY_REGISTRY.get(authority_key)
         if meta is None:
-            flash('سلطة غير معروفة', 'danger')
+            flash("سلطة غير معروفة", "danger")
             return _redirect_tenant(tenant_id)
 
-        if action == 'clear':
+        if action == "clear":
             clear_credential(tenant_id, authority_key)
-            create_audit_log('clear_compliance_credential', 'compliance_credentials', None,
-                             changes={'tenant_id': tenant_id, 'authority_key': authority_key})
-            flash('تم مسح الاعتماد المخزَّن — بقيت بقية الحقول كما هي.', 'warning')
+            create_audit_log(
+                "clear_compliance_credential",
+                "compliance_credentials",
+                None,
+                changes={"tenant_id": tenant_id, "authority_key": authority_key},
+            )
+            flash("تم مسح الاعتماد المخزَّن — بقيت بقية الحقول كما هي.", "warning")
             return _redirect_tenant(tenant_id)
-        if action == 'verify':
+        if action == "verify":
             row = mark_verified(tenant_id, authority_key)
-            create_audit_log('verify_compliance_credential', 'compliance_credentials',
-                             row.id if row else None,
-                             changes={'tenant_id': tenant_id, 'authority_key': authority_key})
-            flash('تم وضع علامة «موثوق» — تُستخدم إشارة جاهزة لمراجعة المختص.', 'success')
+            create_audit_log(
+                "verify_compliance_credential",
+                "compliance_credentials",
+                row.id if row else None,
+                changes={"tenant_id": tenant_id, "authority_key": authority_key},
+            )
+            flash(
+                "تم وضع علامة «موثوق» — تُستخدم إشارة جاهزة لمراجعة المختص.", "success"
+            )
             return _redirect_tenant(tenant_id)
 
         # save / rotate — دمج مع ما هو مخزَّن (الحقول السرية الفارغة تبقى كما هي)
         values = {}
-        for field in meta['fields']:
+        for field in meta["fields"]:
             fname, is_secret = field[0], bool(field[2])
-            raw = (request.form.get(fname) or '').strip()
+            raw = (request.form.get(fname) or "").strip()
             if raw:
                 values[fname] = raw
         existing = credential_values(tenant_id, authority_key) or {}
         if values or existing:
             existing.update(values)
-            row = save_credential(tenant_id, authority_key, existing,
-                                  notes=request.form.get('notes'),
-                                  user_id=current_user.id)
-            create_audit_log('save_compliance_credential', 'compliance_credentials',
-                             row.id,
-                             changes={'tenant_id': tenant_id,
-                                      'authority_key': authority_key,
-                                      'fields': sorted(values)})
-            flash(f'✅ تم حفظ اعتماد «{meta["label"]}»', 'success')
+            row = save_credential(
+                tenant_id,
+                authority_key,
+                existing,
+                notes=request.form.get("notes"),
+                user_id=current_user.id,
+            )
+            create_audit_log(
+                "save_compliance_credential",
+                "compliance_credentials",
+                row.id,
+                changes={
+                    "tenant_id": tenant_id,
+                    "authority_key": authority_key,
+                    "fields": sorted(values),
+                },
+            )
+            flash(f"✅ تم حفظ اعتماد «{meta['label']}»", "success")
         else:
-            flash('لا شيء جديد للحفظ — املأ الحقول المطلوبة.', 'warning')
+            flash("لا شيء جديد للحفظ — املأ الحقول المطلوبة.", "warning")
         return _redirect_tenant(tenant_id)
 
-    country_code = (getattr(tenant, 'tax_country', None)
-                    or getattr(tenant, 'country', None) or '').strip().upper()[:2]
+    country_code = (
+        (getattr(tenant, "tax_country", None) or getattr(tenant, "country", None) or "")
+        .strip()
+        .upper()[:2]
+    )
 
     def _field_tuples(meta):
-        for field in meta['fields']:
+        for field in meta["fields"]:
             fname, label, is_secret = field[0], field[1], bool(field[2])
             enum = field[3] if len(field) > 3 else None
             yield fname, label, is_secret, enum
@@ -3282,34 +3746,40 @@ def compliance_credentials():
     rows = []
     for key, meta in authorities_for_country(country_code):
         summary = credential_summary(tenant_id, key)
-        values = credential_values(tenant_id, key) if summary['status'] != 'missing' else {}
+        values = (
+            credential_values(tenant_id, key) if summary["status"] != "missing" else {}
+        )
         fields = []
         for fname, label, is_secret, enum in _field_tuples(meta):
-            fields.append({
-                'name': fname,
-                'label': label,
-                'secret': is_secret,
-                'enum': enum,
-                'value': '' if is_secret else (values.get(fname) or ''),
-            })
-        rows.append({
-            'key': key,
-            'label': meta['label'],
-            'authority_name': meta['authority_name'],
-            'country': meta['country'],
-            'fields': fields,
-            'summary': summary,
-        })
+            fields.append(
+                {
+                    "name": fname,
+                    "label": label,
+                    "secret": is_secret,
+                    "enum": enum,
+                    "value": "" if is_secret else (values.get(fname) or ""),
+                }
+            )
+        rows.append(
+            {
+                "key": key,
+                "label": meta["label"],
+                "authority_name": meta["authority_name"],
+                "country": meta["country"],
+                "fields": fields,
+                "summary": summary,
+            }
+        )
 
     return render_template(
-        'owner/compliance_credentials.html',
+        "owner/compliance_credentials.html",
         tenants=tenants,
         tenant=tenant,
         authorities_rows=rows,
     )
 
 
-@owner_bp.route('/plans', methods=['GET', 'POST'])
+@owner_bp.route("/plans", methods=["GET", "POST"])
 @login_required
 @owner_required
 def plans():
@@ -3318,51 +3788,65 @@ def plans():
     from decimal import InvalidOperation
 
     def _redirect_plans():
-        return redirect(url_for('owner.plans'))
+        return redirect(url_for("owner.plans"))
 
-    if request.method == 'POST':
-        action = (request.form.get('action') or 'create').strip()
-        plan_id = request.form.get('id', type=int)
-        row = db.session.get(SubscriptionPlan, plan_id) if plan_id else SubscriptionPlan()
+    if request.method == "POST":
+        action = (request.form.get("action") or "create").strip()
+        plan_id = request.form.get("id", type=int)
+        row = (
+            db.session.get(SubscriptionPlan, plan_id) if plan_id else SubscriptionPlan()
+        )
         try:
-            row.slug = (request.form.get('slug') or '').strip().lower()
+            row.slug = (request.form.get("slug") or "").strip().lower()
             import re
-            if not row.slug or not re.fullmatch(r'[a-z0-9_-]{2,50}', row.slug):
-                raise ValueError('المعرف (slug) غير صالح: أحرف لاتينية/أرقام/شرطات/underscores فقط')
-            row.name_ar = (request.form.get('name_ar') or '').strip()
-            row.name_en = (request.form.get('name_en') or '').strip() or None
+
+            if not row.slug or not re.fullmatch(r"[a-z0-9_-]{2,50}", row.slug):
+                raise ValueError(
+                    "المعرف (slug) غير صالح: أحرف لاتينية/أرقام/شرطات/underscores فقط"
+                )
+            row.name_ar = (request.form.get("name_ar") or "").strip()
+            row.name_en = (request.form.get("name_en") or "").strip() or None
             if not row.name_ar:
-                raise ValueError('اسم الباقة بالعربية مطلوب')
-            row.price_year = Decimal(str(request.form.get('price_year') or '0')).quantize(Decimal('0.01'))
-            row.price_month = Decimal(str(request.form.get('price_month') or '0')).quantize(Decimal('0.01'))
-            row.currency = (request.form.get('currency') or 'AED').strip().upper()[:3]
-            row.max_users = int(request.form.get('max_users') or 0)
-            row.max_products = int(request.form.get('max_products') or 0)
-            row.max_customers = int(request.form.get('max_customers') or 0)
-            row.is_public = request.form.get('is_public') == 'on'
-            row.is_active = request.form.get('is_active') == 'on'
-            row.sort_order = int(request.form.get('sort_order') or 100)
-            row.features_ar = (request.form.get('features_ar') or '').strip() or None
-            row.features_en = (request.form.get('features_en') or '').strip() or None
+                raise ValueError("اسم الباقة بالعربية مطلوب")
+            row.price_year = Decimal(
+                str(request.form.get("price_year") or "0")
+            ).quantize(Decimal("0.01"))
+            row.price_month = Decimal(
+                str(request.form.get("price_month") or "0")
+            ).quantize(Decimal("0.01"))
+            row.currency = (request.form.get("currency") or "AED").strip().upper()[:3]
+            row.max_users = int(request.form.get("max_users") or 0)
+            row.max_products = int(request.form.get("max_products") or 0)
+            row.max_customers = int(request.form.get("max_customers") or 0)
+            row.is_public = request.form.get("is_public") == "on"
+            row.is_active = request.form.get("is_active") == "on"
+            row.sort_order = int(request.form.get("sort_order") or 100)
+            row.features_ar = (request.form.get("features_ar") or "").strip() or None
+            row.features_en = (request.form.get("features_en") or "").strip() or None
             db.session.add(row)
             db.session.commit()
-            create_audit_log('save_subscription_plan', 'subscription_plans', row.id,
-                             changes={'slug': row.slug, 'price_year': str(row.price_year)})
-            flash('✅ تم حفظ الباقة', 'success')
+            create_audit_log(
+                "save_subscription_plan",
+                "subscription_plans",
+                row.id,
+                changes={"slug": row.slug, "price_year": str(row.price_year)},
+            )
+            flash("✅ تم حفظ الباقة", "success")
         except Exception as exc:
             db.session.rollback()
             if isinstance(exc, InvalidOperation):
-                flash('⛔ قيمتان سعريتان غير صالحتين', 'danger')
+                flash("⛔ قيمتان سعريتان غير صالحتين", "danger")
             else:
-                flash(f'⛔ {exc}', 'danger')
+                flash(f"⛔ {exc}", "danger")
         return _redirect_plans()
 
     rows = SubscriptionPlan.query.order_by(
-        SubscriptionPlan.sort_order.asc(), SubscriptionPlan.id.asc()).all()
-    return render_template('owner/plans.html', plans=rows)
+        SubscriptionPlan.sort_order.asc(), SubscriptionPlan.id.asc()
+    ).all()
+    return render_template("owner/plans.html", plans=rows)
 
 
-@owner_bp.route('/plans/<int:plan_id>/toggle', methods=['POST'])
+@owner_bp.route("/plans/<int:plan_id>/toggle", methods=["POST"])
 @login_required
 @owner_required
 def toggle_plan(plan_id):
@@ -3371,30 +3855,34 @@ def toggle_plan(plan_id):
 
     row = db.session.get(SubscriptionPlan, plan_id)
     if row is None:
-        flash('الباقة غير موجودة', 'danger')
-        return redirect(url_for('owner.plans'))
+        flash("الباقة غير موجودة", "danger")
+        return redirect(url_for("owner.plans"))
     row.is_active = not bool(row.is_active)
     db.session.commit()
-    create_audit_log('toggle_subscription_plan', 'subscription_plans', row.id,
-                     changes={'slug': row.slug, 'is_active': bool(row.is_active)})
-    flash('✅ تم تبديل حالة الباقة', 'success')
-    return redirect(url_for('owner.plans'))
+    create_audit_log(
+        "toggle_subscription_plan",
+        "subscription_plans",
+        row.id,
+        changes={"slug": row.slug, "is_active": bool(row.is_active)},
+    )
+    flash("✅ تم تبديل حالة الباقة", "success")
+    return redirect(url_for("owner.plans"))
 
 
-SUPPORT_STATUSES = ('open', 'in_progress', 'resolved', 'closed')
-INCIDENT_SEVERITIES = ('sev1', 'sev2', 'sev3')
+SUPPORT_STATUSES = ("open", "in_progress", "resolved", "closed")
+INCIDENT_SEVERITIES = ("sev1", "sev2", "sev3")
 
 
-@owner_bp.route('/support-tickets', methods=['GET'])
+@owner_bp.route("/support-tickets", methods=["GET"])
 @login_required
 @owner_required
 def support_inbox():
     """صندوق وارد تذاكر الدعم — المالك يرى ويحل كل التذاكر."""
     from models import SupportTicket
 
-    status = (request.args.get('status') or '').strip()
-    category = (request.args.get('category') or '').strip()
-    priority = (request.args.get('priority') or '').strip()
+    status = (request.args.get("status") or "").strip()
+    category = (request.args.get("category") or "").strip()
+    priority = (request.args.get("priority") or "").strip()
     query = SupportTicket.query
     if status in SUPPORT_STATUSES:
         query = query.filter(SupportTicket.status == status)
@@ -3406,23 +3894,27 @@ def support_inbox():
     tickets = query.order_by(SupportTicket.created_at.desc()).limit(300).all()
     breached = 0
     for t in tickets:
-        if t.sla_status() == 'breached':
+        if t.sla_status() == "breached":
             breached += 1
     stats = {
-        'open': SupportTicket.query.filter_by(status='open').count(),
-        'in_progress': SupportTicket.query.filter_by(status='in_progress').count(),
-        'overdue': breached,
-        'total': SupportTicket.query.count(),
+        "open": SupportTicket.query.filter_by(status="open").count(),
+        "in_progress": SupportTicket.query.filter_by(status="in_progress").count(),
+        "overdue": breached,
+        "total": SupportTicket.query.count(),
     }
-    return render_template('owner/support_inbox.html',
-                           tickets=tickets, stats=stats,
-                           status_filter=status, category_filter=category,
-                           priority_filter=priority,
-                           category_choices=('bug', 'billing', 'howto', 'feature_request', 'other'),
-                           priority_choices=('low', 'normal', 'high', 'urgent'))
+    return render_template(
+        "owner/support_inbox.html",
+        tickets=tickets,
+        stats=stats,
+        status_filter=status,
+        category_filter=category,
+        priority_filter=priority,
+        category_choices=("bug", "billing", "howto", "feature_request", "other"),
+        priority_choices=("low", "normal", "high", "urgent"),
+    )
 
 
-@owner_bp.route('/support-tickets/<int:ticket_id>/status', methods=['POST'])
+@owner_bp.route("/support-tickets/<int:ticket_id>/status", methods=["POST"])
 @login_required
 @owner_required
 def support_ticket_status(ticket_id):
@@ -3432,27 +3924,31 @@ def support_ticket_status(ticket_id):
 
     ticket = db.session.get(SupportTicket, ticket_id)
     if ticket is None:
-        flash('التذكرة غير موجودة', 'danger')
-        return redirect(url_for('owner.support_inbox'))
-    status = (request.form.get('status') or '').strip()
+        flash("التذكرة غير موجودة", "danger")
+        return redirect(url_for("owner.support_inbox"))
+    status = (request.form.get("status") or "").strip()
     if status not in SUPPORT_STATUSES:
-        flash('حالة غير صالحة', 'danger')
-        return redirect(url_for('owner.support_inbox'))
+        flash("حالة غير صالحة", "danger")
+        return redirect(url_for("owner.support_inbox"))
     old_status = ticket.status
     ticket.status = status
-    resolution = (request.form.get('resolution_notes') or '').strip()
+    resolution = (request.form.get("resolution_notes") or "").strip()
     if resolution:
         ticket.resolution_notes = resolution
-    if status in ('resolved', 'closed'):
+    if status in ("resolved", "closed"):
         ticket.resolved_at = datetime.now(timezone.utc)
     db.session.commit()
-    create_audit_log('update_support_ticket', 'support_tickets', ticket.id,
-                     changes={'from': old_status, 'to': status})
-    flash(f'✅ تم تحديث التذكرة #{ticket.id} → {status}', 'success')
-    return redirect(url_for('owner.support_inbox'))
+    create_audit_log(
+        "update_support_ticket",
+        "support_tickets",
+        ticket.id,
+        changes={"from": old_status, "to": status},
+    )
+    flash(f"✅ تم تحديث التذكرة #{ticket.id} → {status}", "success")
+    return redirect(url_for("owner.support_inbox"))
 
 
-@owner_bp.route('/incidents', methods=['GET', 'POST'])
+@owner_bp.route("/incidents", methods=["GET", "POST"])
 @login_required
 @owner_required
 def incidents():
@@ -3460,48 +3956,63 @@ def incidents():
     from models import Incident, SupportTicket, ErrorLog
     from datetime import datetime, timedelta, timezone
 
-    if request.method == 'POST':
-        action = (request.form.get('action') or 'create').strip()
-        if action == 'create':
-            title = (request.form.get('title') or '').strip()
+    if request.method == "POST":
+        action = (request.form.get("action") or "create").strip()
+        if action == "create":
+            title = (request.form.get("title") or "").strip()
             if not title:
-                flash('عنوان الحادث مطلوب', 'danger')
-                return redirect(url_for('owner.incidents'))
-            severity = (request.form.get('severity') or 'sev2').strip()
-            status = (request.form.get('status') or 'open').strip()
+                flash("عنوان الحادث مطلوب", "danger")
+                return redirect(url_for("owner.incidents"))
+            severity = (request.form.get("severity") or "sev2").strip()
+            status = (request.form.get("status") or "open").strip()
             if severity not in INCIDENT_SEVERITIES:
-                severity = 'sev2'
+                severity = "sev2"
             row = Incident(
                 title=title,
                 severity=severity,
-                status=status if status in ('open', 'monitoring', 'resolved') else 'open',
-                impact=(request.form.get('impact') or '').strip() or None,
+                status=status
+                if status in ("open", "monitoring", "resolved")
+                else "open",
+                impact=(request.form.get("impact") or "").strip() or None,
                 created_by_user_id=current_user.id,
             )
             db.session.add(row)
             db.session.commit()
-            create_audit_log('create_incident', 'incidents', row.id,
-                             changes={'title': title, 'severity': severity})
-            flash(f'✅ سُجّل الحادث #{row.id}', 'success')
-        elif action == 'resolve':
-            incident_id = request.form.get('incident_id', type=int)
+            create_audit_log(
+                "create_incident",
+                "incidents",
+                row.id,
+                changes={"title": title, "severity": severity},
+            )
+            flash(f"✅ سُجّل الحادث #{row.id}", "success")
+        elif action == "resolve":
+            incident_id = request.form.get("incident_id", type=int)
             row = db.session.get(Incident, incident_id) if incident_id else None
             if row is None:
-                flash('الحادث غير موجود', 'danger')
+                flash("الحادث غير موجود", "danger")
             else:
-                row.status = 'resolved'
+                row.status = "resolved"
                 row.resolved_at = datetime.now(timezone.utc)
-                row.resolution_notes = (request.form.get('resolution_notes') or '').strip() or None
+                row.resolution_notes = (
+                    request.form.get("resolution_notes") or ""
+                ).strip() or None
                 db.session.commit()
-                create_audit_log('resolve_incident', 'incidents', row.id,
-                                 changes={'title': row.title})
-                flash(f'✅ أُغلق الحادث #{row.id}', 'success')
-        return redirect(url_for('owner.incidents'))
+                create_audit_log(
+                    "resolve_incident",
+                    "incidents",
+                    row.id,
+                    changes={"title": row.title},
+                )
+                flash(f"✅ أُغلق الحادث #{row.id}", "success")
+        return redirect(url_for("owner.incidents"))
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-    incidents_rows = Incident.query.filter(
-        Incident.started_at >= cutoff
-    ).order_by(Incident.started_at.desc()).limit(100).all()
+    incidents_rows = (
+        Incident.query.filter(Incident.started_at >= cutoff)
+        .order_by(Incident.started_at.desc())
+        .limit(100)
+        .all()
+    )
 
     # صحة اليوم — بطاقة سريعة
     errors_24h = 0
@@ -3511,24 +4022,25 @@ def incidents():
         ).count()
     except Exception:
         errors_24h = 0
-    open_tickets = SupportTicket.query.filter_by(status='open').count()
-    open_incidents = Incident.query.filter_by(status='open').count()
+    open_tickets = SupportTicket.query.filter_by(status="open").count()
+    open_incidents = Incident.query.filter_by(status="open").count()
 
     health = {
-        'errors_24h': errors_24h,
-        'open_tickets': open_tickets,
-        'open_incidents': open_incidents,
+        "errors_24h": errors_24h,
+        "open_tickets": open_tickets,
+        "open_incidents": open_incidents,
     }
-    return render_template('owner/incidents.html',
-                           incidents=incidents_rows, health=health)
+    return render_template(
+        "owner/incidents.html", incidents=incidents_rows, health=health
+    )
 
 
-@owner_bp.route('/guide')
+@owner_bp.route("/guide")
 @login_required
 @owner_required
 def owner_guide():
     """دليل المالك — يحتوي على معلومات تقنية حساسة."""
-    return render_template('owner/guide.html')
+    return render_template("owner/guide.html")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -3536,7 +4048,7 @@ def owner_guide():
 # يُدار لكل تينانت عبر "مبدّل الشركة" في لوحة المالك؛ بلا تينانت مختار تُعرض
 # نظرة تجميعية للقراءة فقط.
 # ─────────────────────────────────────────────────────────────────────────────
-@owner_bp.route('/partners', methods=['GET', 'POST'])
+@owner_bp.route("/partners", methods=["GET", "POST"])
 @login_required
 @owner_required
 def partners():
@@ -3551,7 +4063,7 @@ def partners():
     from sqlalchemy import func
 
     def _impersonated_tenant():
-        raw = session.get('impersonate_tenant_id')
+        raw = session.get("impersonate_tenant_id")
         if not raw:
             return None
         try:
@@ -3560,7 +4072,7 @@ def partners():
             return None
 
     def _parse_day(raw, default=None):
-        raw = (raw or '').strip()
+        raw = (raw or "").strip()
         if not raw:
             return default
         try:
@@ -3572,126 +4084,161 @@ def partners():
     today = _date.today()
     default_from = today.replace(day=1)
 
-    period_from = _parse_day(request.values.get('from'), default_from)
-    period_to = _parse_day(request.values.get('to'), today)
+    period_from = _parse_day(request.values.get("from"), default_from)
+    period_to = _parse_day(request.values.get("to"), today)
 
     # ── فرض مبدّل الشركة لأي عملية تعديل ─────────────────────────────────────
-    if request.method == 'POST':
+    if request.method == "POST":
         if imp is None:
-            flash('⛔ اختر شركة من مبدّل الشركات في الأعلى قبل تعديل إعدادات الشركاء.', 'danger')
-            return redirect(url_for('owner.partners'))
+            flash(
+                "⛔ اختر شركة من مبدّل الشركات في الأعلى قبل تعديل إعدادات الشركاء.",
+                "danger",
+            )
+            return redirect(url_for("owner.partners"))
 
-        action = (request.form.get('action') or '').strip()
+        action = (request.form.get("action") or "").strip()
         try:
-            if action == 'set_scope':
-                cid = request.form.get('customer_id', type=int)
+            if action == "set_scope":
+                cid = request.form.get("customer_id", type=int)
                 customer = Customer.query.get(cid) if cid else None
                 if customer is None:
-                    raise ValueError('العميل غير موجود')
-                scope = (request.form.get('scope') or '').strip()
-                if scope not in ('none', 'product', 'company'):
-                    raise ValueError('نوع الشراكة غير صالح')
-                if scope == 'company':
-                    share_raw = (request.form.get('share') or '').strip()
+                    raise ValueError("العميل غير موجود")
+                scope = (request.form.get("scope") or "").strip()
+                if scope not in ("none", "product", "company"):
+                    raise ValueError("نوع الشراكة غير صالح")
+                if scope == "company":
+                    share_raw = (request.form.get("share") or "").strip()
                     share = Decimal(share_raw)
                     if share <= 0 or share > 100:
-                        raise ValueError('النسبة يجب أن تكون بين 0 و 100')
-                    customer.partner_scope = 'company'
+                        raise ValueError("النسبة يجب أن تكون بين 0 و 100")
+                    customer.partner_scope = "company"
                     customer.partner_share = share
-                    customer.customer_type = 'partner'
-                    changes = {'partner_scope': 'company', 'partner_share': str(share)}
-                elif scope == 'product':
-                    customer.partner_scope = 'product'
+                    customer.customer_type = "partner"
+                    changes = {"partner_scope": "company", "partner_share": str(share)}
+                elif scope == "product":
+                    customer.partner_scope = "product"
                     customer.partner_share = None
-                    customer.customer_type = 'partner'
-                    changes = {'partner_scope': 'product', 'partner_share': None}
+                    customer.customer_type = "partner"
+                    changes = {"partner_scope": "product", "partner_share": None}
                 else:
-                    customer.partner_scope = 'none'
+                    customer.partner_scope = "none"
                     customer.partner_share = None
                     # يبقى شريكًا إن كانت له روابط منتج نشطة (دور المنتج لا
                     # يتأثر بحقل scope) — يُعاد إلى regular فقط بلا أي دور.
-                    if customer.customer_type == 'partner':
-                        has_links = (ProductPartner.query
-                                     .filter_by(partner_customer_id=customer.id)
-                                     .count() > 0)
+                    if customer.customer_type == "partner":
+                        has_links = (
+                            ProductPartner.query.filter_by(
+                                partner_customer_id=customer.id
+                            ).count()
+                            > 0
+                        )
                         if not has_links:
-                            customer.customer_type = 'regular'
-                    changes = {'partner_scope': 'none', 'partner_share': None}
+                            customer.customer_type = "regular"
+                    changes = {"partner_scope": "none", "partner_share": None}
                 db.session.commit()
-                create_audit_log('set_partner_scope', 'customers', customer.id,
-                                 changes=changes)
-                flash('✅ تم تحديث إعدادات الشريك', 'success')
+                create_audit_log(
+                    "set_partner_scope", "customers", customer.id, changes=changes
+                )
+                flash("✅ تم تحديث إعدادات الشريك", "success")
 
-            elif action == 'record_draw':
-                pid = request.form.get('partner_id', type=int)
-                amount_raw = (request.form.get('amount') or '').strip()
-                source = (request.form.get('source') or 'cash').strip().lower()
+            elif action == "record_draw":
+                pid = request.form.get("partner_id", type=int)
+                amount_raw = (request.form.get("amount") or "").strip()
+                source = (request.form.get("source") or "cash").strip().lower()
                 partner = Customer.query.get(pid) if pid else None
                 if partner is None or not partner.is_active:
-                    raise ValueError('الشريك غير موجود')
+                    raise ValueError("الشريك غير موجود")
                 amount = Decimal(amount_raw)
                 if amount <= 0:
-                    raise ValueError('مبلغ المسحوبات يجب أن يكون أكبر من صفر')
-                role = AccountRole.CASH if source != 'bank' else AccountRole.BANK
+                    raise ValueError("مبلغ المسحوبات يجب أن يكون أكبر من صفر")
+                role = AccountRole.CASH if source != "bank" else AccountRole.BANK
                 entry = pp.post_partner_draw(
-                    partner.id, amount,
+                    partner.id,
+                    amount,
                     credit_account_role=role,
-                    description=f'مسحوبات الشريك {partner.name}')
+                    description=f"مسحوبات الشريك {partner.name}",
+                )
                 db.session.commit()
-                create_audit_log('record_partner_draw', 'gl_journal_entries', entry.id,
-                                 changes={'partner_id': partner.id, 'amount': str(amount),
-                                          'entry_number': entry.entry_number})
-                flash(f'✅ سُجّلت مسحوبات الشريك — قيد {entry.entry_number}', 'success')
+                create_audit_log(
+                    "record_partner_draw",
+                    "gl_journal_entries",
+                    entry.id,
+                    changes={
+                        "partner_id": partner.id,
+                        "amount": str(amount),
+                        "entry_number": entry.entry_number,
+                    },
+                )
+                flash(f"✅ سُجّلت مسحوبات الشريك — قيد {entry.entry_number}", "success")
 
-            elif action == 'distribute':
-                d_from = _parse_day(request.form.get('from'), period_from)
-                d_to = _parse_day(request.form.get('to'), period_to)
+            elif action == "distribute":
+                d_from = _parse_day(request.form.get("from"), period_from)
+                d_to = _parse_day(request.form.get("to"), period_to)
                 entry = pp.post_partner_distributions(d_from, d_to, tenant_id=imp.id)
                 db.session.commit()
                 if entry is not None:
-                    create_audit_log('post_partner_distribution', 'gl_journal_entries', entry.id,
-                                     changes={'period_from': str(d_from), 'period_to': str(d_to),
-                                              'entry_number': entry.entry_number})
-                    flash(f'✅ تم توزيع النتيجة — قيد {entry.entry_number}', 'success')
+                    create_audit_log(
+                        "post_partner_distribution",
+                        "gl_journal_entries",
+                        entry.id,
+                        changes={
+                            "period_from": str(d_from),
+                            "period_to": str(d_to),
+                            "entry_number": entry.entry_number,
+                        },
+                    )
+                    flash(f"✅ تم توزيع النتيجة — قيد {entry.entry_number}", "success")
                 else:
-                    flash('ℹ️ لا توجد نتيجة موجبة أو نسب موزَّعة في هذه الفترة.', 'info')
+                    flash("ℹ️ لا توجد نتيجة موجبة أو نسب موزَّعة في هذه الفترة.", "info")
             else:
-                flash('⛔ إجراء غير معروف', 'danger')
+                flash("⛔ إجراء غير معروف", "danger")
         except Exception as exc:
             db.session.rollback()
-            flash(f'⛔ {exc}', 'danger')
+            flash(f"⛔ {exc}", "danger")
 
-        qs = f'?from={period_from.isoformat()}&to={period_to.isoformat()}'
-        return redirect(url_for('owner.partners') + qs)
+        qs = f"?from={period_from.isoformat()}&to={period_to.isoformat()}"
+        return redirect(url_for("owner.partners") + qs)
 
     # ── عرض ───────────────────────────────────────────────────────────────────
     ctx = {
-        'impersonated': imp,
-        'period_from': period_from,
-        'period_to': period_to,
-        'today': today,
+        "impersonated": imp,
+        "period_from": period_from,
+        "period_to": period_to,
+        "today": today,
     }
 
     if imp is not None:
         from sqlalchemy import or_
-        linked_subq = db.session.query(ProductPartner.partner_customer_id).distinct().scalar_subquery()
+
+        linked_subq = (
+            db.session.query(ProductPartner.partner_customer_id)
+            .distinct()
+            .scalar_subquery()
+        )
         net = pp.compute_net_income(period_from, period_to)
-        preview_rows = pp.preview_partner_distributions(period_from, period_to,
-                                                        tenant_id=imp.id)
-        company_partners = (Customer.query
-                            .filter(or_(Customer.partner_scope != 'none',
-                                        Customer.id.in_(linked_subq)))
-                            .order_by(Customer.partner_scope.asc(), Customer.name.asc())
-                            .all())
+        preview_rows = pp.preview_partner_distributions(
+            period_from, period_to, tenant_id=imp.id
+        )
+        company_partners = (
+            Customer.query.filter(
+                or_(Customer.partner_scope != "none", Customer.id.in_(linked_subq))
+            )
+            .order_by(Customer.partner_scope.asc(), Customer.name.asc())
+            .all()
+        )
         # عدّاد روابط المنتج لكل شريك + استحقاقه المتراكم في الفترة
         link_counts = {}
         accrual = {}
         ids = [p.id for p in company_partners]
         if ids:
-            for pid, cnt in (db.session.query(ProductPartner.partner_customer_id,
-                                              func.count(ProductPartner.id))
-                             .filter(ProductPartner.partner_customer_id.in_(ids))
-                             .group_by(ProductPartner.partner_customer_id).all()):
+            for pid, cnt in (
+                db.session.query(
+                    ProductPartner.partner_customer_id, func.count(ProductPartner.id)
+                )
+                .filter(ProductPartner.partner_customer_id.in_(ids))
+                .group_by(ProductPartner.partner_customer_id)
+                .all()
+            ):
                 link_counts[pid] = cnt
             # استعلام واحد لحصص المنتجات (N+1 fix)
             accrual = pp._product_shares_bulk(ids, period_from, period_to)
@@ -3700,64 +4247,83 @@ def partners():
         partner_ids = [p.id for p in company_partners]
         balances = {}
         if partner_ids:
-            q = (db.session.query(
-                     GLJournalLine.party_id,
-                     func.coalesce(func.sum(GLJournalLine.credit - GLJournalLine.debit), 0))
-                  .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
-                  .filter(GLAccount.code == '3350',
-                          GLJournalLine.party_id.in_(partner_ids))
-                  .group_by(GLJournalLine.party_id))
+            q = (
+                db.session.query(
+                    GLJournalLine.party_id,
+                    func.coalesce(
+                        func.sum(GLJournalLine.credit - GLJournalLine.debit), 0
+                    ),
+                )
+                .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
+                .filter(
+                    GLAccount.code == "3350", GLJournalLine.party_id.in_(partner_ids)
+                )
+                .group_by(GLJournalLine.party_id)
+            )
             for party_id, bal in q.all():
                 balances[party_id] = Decimal(str(bal or 0))
 
         # شركاء المنتجات (روابط النسب لكل منتج)
-        product_rows = (db.session.query(
-                            Product.name.label('product_name'),
-                            Customer.name.label('partner_name'),
-                            ProductPartner.percentage)
-                        .join(Product, Product.id == ProductPartner.product_id)
-                        .join(Customer, Customer.id == ProductPartner.partner_customer_id)
-                        .order_by(Product.id.asc(), ProductPartner.id.asc())
-                        .all())
+        product_rows = (
+            db.session.query(
+                Product.name.label("product_name"),
+                Customer.name.label("partner_name"),
+                ProductPartner.percentage,
+            )
+            .join(Product, Product.id == ProductPartner.product_id)
+            .join(Customer, Customer.id == ProductPartner.partner_customer_id)
+            .order_by(Product.id.asc(), ProductPartner.id.asc())
+            .all()
+        )
 
-        ctx.update({
-            'net_income': net,
-            'preview_rows': preview_rows,
-            'company_partners': company_partners,
-            'partner_balances': balances,
-            'product_partner_rows': product_rows,
-            'base_currency': CurrencyService.get_base_currency(),
-            'product_link_counts': link_counts,
-            'product_accrual': accrual,
-            'customer_options': (Customer.query
-                                 .filter_by(is_active=True)
-                                 .order_by(Customer.name.asc())
-                                 .limit(300)
-                                 .all()),
-        })
+        ctx.update(
+            {
+                "net_income": net,
+                "preview_rows": preview_rows,
+                "company_partners": company_partners,
+                "partner_balances": balances,
+                "product_partner_rows": product_rows,
+                "base_currency": CurrencyService.get_base_currency(),
+                "product_link_counts": link_counts,
+                "product_accrual": accrual,
+                "customer_options": (
+                    Customer.query.filter_by(is_active=True)
+                    .order_by(Customer.name.asc())
+                    .limit(300)
+                    .all()
+                ),
+            }
+        )
     else:
         # ملخص تجميعي للمنصة — قراءة فقط لكل شركة
         per_tenant = []
         from models.tenant_scope import run_in_tenant_context
+
         tenants = Tenant.query.filter_by(is_active=True).order_by(Tenant.id.asc()).all()
         for t in tenants:
             try:
+
                 def _collect():
                     net = pp.compute_net_income(period_from, period_to)
-                    count = (Customer.query
-                             .filter(Customer.partner_scope != 'none')
-                             .count())
-                    draws = (db.session.query(
-                                 func.coalesce(func.sum(GLJournalLine.debit), 0))
-                             .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
-                             .filter(GLAccount.code.in_(('3300', '3350')))
-                             .scalar())
+                    count = Customer.query.filter(
+                        Customer.partner_scope != "none"
+                    ).count()
+                    draws = (
+                        db.session.query(
+                            func.coalesce(func.sum(GLJournalLine.debit), 0)
+                        )
+                        .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
+                        .filter(GLAccount.code.in_(("3300", "3350")))
+                        .scalar()
+                    )
                     return net, count, Decimal(str(draws or 0))
+
                 net, pcount, draws_total = run_in_tenant_context(t.id, _collect)
             except Exception:
-                net, pcount, draws_total = None, 0, Decimal('0')
-            per_tenant.append({'tenant': t, 'net': net, 'partners': pcount,
-                               'draws': draws_total})
-        ctx['per_tenant'] = per_tenant
+                net, pcount, draws_total = None, 0, Decimal("0")
+            per_tenant.append(
+                {"tenant": t, "net": net, "partners": pcount, "draws": draws_total}
+            )
+        ctx["per_tenant"] = per_tenant
 
-    return render_template('owner/partners.html', **ctx)
+    return render_template("owner/partners.html", **ctx)

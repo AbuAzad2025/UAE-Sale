@@ -62,10 +62,9 @@ def period_for_date(document_date=None):
     # FiscalPeriod gained a tenant_id column in the P0 migration. Until it
     # exists (or when no tenant is in scope, e.g. the platform owner), the
     # period is global.
-    if tenant_id is not None and hasattr(FiscalPeriod, 'tenant_id'):
+    if tenant_id is not None and hasattr(FiscalPeriod, "tenant_id"):
         scoped = query.filter(
-            (FiscalPeriod.tenant_id == tenant_id)
-            | (FiscalPeriod.tenant_id.is_(None))
+            (FiscalPeriod.tenant_id == tenant_id) | (FiscalPeriod.tenant_id.is_(None))
         ).all()
     else:
         scoped = query.all()
@@ -83,10 +82,12 @@ def period_for_date(document_date=None):
         #      closed; otherwise closing a period would have no effect
         #      whenever an overlapping open period also exists;
         #   3. the most recent start_date wins.
-        is_global = getattr(p, 'tenant_id', None) is None
-        return (is_global,
-                not bool(getattr(p, 'is_closed', False)),
-                -(p.start_date.toordinal() if p.start_date else 0))
+        is_global = getattr(p, "tenant_id", None) is None
+        return (
+            is_global,
+            not bool(getattr(p, "is_closed", False)),
+            -(p.start_date.toordinal() if p.start_date else 0),
+        )
 
     return sorted(scoped, key=_sort_key)[0]
 
@@ -100,7 +101,7 @@ def is_open(document_date=None):
     period = period_for_date(document_date)
     if period is None:
         return False
-    return not bool(getattr(period, 'is_closed', False))
+    return not bool(getattr(period, "is_closed", False))
 
 
 def ensure_current_period(year=None):
@@ -120,15 +121,15 @@ def ensure_current_period(year=None):
 
     existing = FiscalPeriod.query.filter(
         FiscalPeriod.year == target_year,
-        FiscalPeriod.period_type == 'annual',
+        FiscalPeriod.period_type == "annual",
     ).first()
     if existing is not None:
         return existing
 
     period = FiscalPeriod(
-        name=f'السنة المالية {target_year}',
+        name=f"السنة المالية {target_year}",
         year=target_year,
-        period_type='annual',
+        period_type="annual",
         start_date=_date(target_year, 1, 1),
         end_date=_date(target_year, 12, 31),
         is_closed=False,
@@ -158,7 +159,7 @@ def ensure_periods_for_years(years):
     return opened
 
 
-def assert_period_open(document_date=None, document_type='document'):
+def assert_period_open(document_date=None, document_type="document"):
     """Raise ValidationError when the period covering *document_date* is closed.
 
     Importing ValidationError lazily keeps this module importable from
@@ -170,13 +171,12 @@ def assert_period_open(document_date=None, document_type='document'):
     period = period_for_date(target)
     if period is None:
         raise ValidationError(
-            f'لا توجد فترة مالية معرَّفة لتاريخ {target}. '
-            'أنشئ الفترة المالية أولاً قبل ترحيل المستندات.'
+            f"لا توجد فترة مالية معرَّفة لتاريخ {target}. "
+            "أنشئ الفترة المالية أولاً قبل ترحيل المستندات."
         )
 
-    if getattr(period, 'is_closed', False):
+    if getattr(period, "is_closed", False):
         raise ValidationError(
-            f'الفترة المالية بتاريخ {target} مغلقة. لا يمكن ترحيل مستند إلى '
-            'فترة مغلقة.'
+            f"الفترة المالية بتاريخ {target} مغلقة. لا يمكن ترحيل مستند إلى فترة مغلقة."
         )
     return period

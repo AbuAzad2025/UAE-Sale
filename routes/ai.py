@@ -2,6 +2,7 @@
 🤖 AI Routes - Super Intelligent Assistant Endpoints
 المساعد الذكي الخارق - Superhuman AI Assistant
 """
+
 import os
 import threading
 import time
@@ -19,12 +20,20 @@ from ai_knowledge.system_integration import system_integrator
 from ai_knowledge.data_analyzer import data_analyzer
 from ai_knowledge.knowledge_expansion import knowledge_expander
 from ai_knowledge.automotive_ecu_knowledge import get_automotive_ecu_knowledge
-from ai_knowledge.external_learning import get_external_learning, LEARNING_SOURCES_CATALOG
-from utils.decorators import permission_required, owner_required, admin_required, get_owned_or_404
+from ai_knowledge.external_learning import (
+    get_external_learning,
+    LEARNING_SOURCES_CATALOG,
+)
+from utils.decorators import (
+    permission_required,
+    owner_required,
+    admin_required,
+    get_owned_or_404,
+)
 from utils.errors import ValidationError
 from datetime import datetime, timezone
 
-ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
+ai_bp = Blueprint("ai", __name__, url_prefix="/ai")
 
 
 @ai_bp.errorhandler(AIServiceError)
@@ -34,67 +43,72 @@ def handle_ai_service_error(error: AIServiceError):
     يحوّل AIServiceError إلى استجابة JSON موحدة مع كود خطأ واضح.
     """
     current_app.logger.error(f"AIServiceError: {error.code} - {error}")
-    return jsonify({
-        'success': False,
-        'error': str(error),
-        'code': error.code,
-        'details': error.details
-    }), 500
+    return jsonify(
+        {
+            "success": False,
+            "error": str(error),
+            "code": error.code,
+            "details": error.details,
+        }
+    ), 500
 
 
 # ======================
 # Security Utilities
 # ======================
 
+
 def _validate_csrf_token():
     """Validate CSRF token for state-changing operations (POST/PUT/DELETE).
-    
+
     For AI routes, we exempt specific endpoints via @csrf.exempt but still
     perform manual validation for sensitive operations.
     """
     # Skip CSRF validation for GET, HEAD, OPTIONS
-    if request.method in ('GET', 'HEAD', 'OPTIONS'):
+    if request.method in ("GET", "HEAD", "OPTIONS"):
         return True
-    
+
     # Check for API key or internal service markers
-    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
-    if api_key and api_key == current_app.config.get('INTERNAL_API_KEY'):
+    api_key = request.headers.get("X-API-Key") or request.args.get("api_key")
+    if api_key and api_key == current_app.config.get("INTERNAL_API_KEY"):
         return True
-    
+
     # For AJAX requests, check custom header.
     # NOTE: the shipped frontend (templates/ai/assistant.html) sends
     # 'X-CSRFToken' (Flask-WTF default); accept both spellings.
-    for header_name in ('X-CSRFToken', 'X-CSRF-Token'):
+    for header_name in ("X-CSRFToken", "X-CSRF-Token"):
         csrf_token = request.headers.get(header_name)
         if csrf_token:
             try:
                 validate_csrf_token(csrf_token)
                 return True
             except Exception as exc:
-                current_app.logger.warning(f'AI CSRF header token invalid ({header_name}): {exc}')
+                current_app.logger.warning(
+                    f"AI CSRF header token invalid ({header_name}): {exc}"
+                )
 
     # Fall back to standard form token
-    csrf_token = request.form.get('csrf_token')
+    csrf_token = request.form.get("csrf_token")
     if csrf_token:
         try:
             validate_csrf_token(csrf_token)
             return True
         except Exception as exc:
-            current_app.logger.warning(f'AI CSRF form token invalid: {exc}')
+            current_app.logger.warning(f"AI CSRF form token invalid: {exc}")
 
     # JSON body token (some clients embed it in the payload)
     try:
         body = request.get_json(silent=True) or {}
-        csrf_token = body.get('csrf_token')
+        csrf_token = body.get("csrf_token")
     except Exception as exc:
-        current_app.logger.warning(f'AI CSRF body parse failed: {exc}')
+        current_app.logger.warning(f"AI CSRF body parse failed: {exc}")
         csrf_token = None
     if csrf_token:
         try:
             validate_csrf_token(csrf_token)
             return True
         except Exception as exc:
-            current_app.logger.warning(f'AI CSRF body token invalid: {exc}')
+            current_app.logger.warning(f"AI CSRF body token invalid: {exc}")
 
     return False
 
@@ -106,30 +120,37 @@ def _validate_origin():
     (non-browser clients, curl, tests). Returns False on explicit mismatch.
     """
     try:
-        host = (request.host or '').split(':')[0].lower()
-        for header_name in ('Origin', 'Referer'):
+        host = (request.host or "").split(":")[0].lower()
+        for header_name in ("Origin", "Referer"):
             value = request.headers.get(header_name)
             if not value:
                 continue
             from urllib.parse import urlparse
-            origin_host = (urlparse(value).hostname or '').lower()
+
+            origin_host = (urlparse(value).hostname or "").lower()
             if origin_host and origin_host != host:
                 return False
         return True
     except Exception as exc:
-        current_app.logger.warning(f'AI origin check failed (rejecting): {exc}')
+        current_app.logger.warning(f"AI origin check failed (rejecting): {exc}")
         return False
 
 
 def _log_security_event(event_type, details=None):
     """Log security events for audit trail"""
     try:
-        user_id = getattr(current_user, 'id', 'anonymous') if current_user else 'anonymous'
-        ip_address = request.remote_addr if request else 'unknown'
-        user_agent = request.headers.get('User-Agent', 'unknown') if request else 'unknown'
+        user_id = (
+            getattr(current_user, "id", "anonymous") if current_user else "anonymous"
+        )
+        ip_address = request.remote_addr if request else "unknown"
+        user_agent = (
+            request.headers.get("User-Agent", "unknown") if request else "unknown"
+        )
 
-        current_app.logger.warning(f'SECURITY EVENT: {event_type} | User: {user_id} | IP: {ip_address} | '
-                                   f'Agent: {user_agent[:100]} | Details: {details or "None"}')
+        current_app.logger.warning(
+            f"SECURITY EVENT: {event_type} | User: {user_id} | IP: {ip_address} | "
+            f"Agent: {user_agent[:100]} | Details: {details or 'None'}"
+        )
     except Exception:
         pass  # Avoid breaking the flow if logging fails
 
@@ -143,19 +164,25 @@ def _require_csrf_for_sensitive_ops():
     3. No token and no verifiable origin (API clients, tests) -> allow.
     """
     sensitive_operations = {
-        'create_product', 'create_sale', 'create_expense', 'create_cheque',
-        'create_purchase', 'record_payment', 'update_customer',
-        'update_supplier', 'delete_',
+        "create_product",
+        "create_sale",
+        "create_expense",
+        "create_cheque",
+        "create_purchase",
+        "record_payment",
+        "update_customer",
+        "update_supplier",
+        "delete_",
     }
 
     # Check if the operation is in the sensitive list
-    operation = getattr(request, 'ai_operation', None)
+    operation = getattr(request, "ai_operation", None)
     if operation and any(op in operation for op in sensitive_operations):
         if _validate_csrf_token():
             return None
         if not _validate_origin():
-            _log_security_event('CSRF_VIOLATION', f'Operation: {operation}')
-            return jsonify({'error': 'CSRF token validation failed'}), 403
+            _log_security_event("CSRF_VIOLATION", f"Operation: {operation}")
+            return jsonify({"error": "CSRF token validation failed"}), 403
     return None
 
 
@@ -166,31 +193,35 @@ def _detect_ai_operation(message):
     stay 'chat_ai' so they are never gated.
     """
     try:
-        msg = (message or '').lower()
-        if ':' not in (message or ''):
-            return 'chat_ai'
+        msg = (message or "").lower()
+        if ":" not in (message or ""):
+            return "chat_ai"
         # Read-only queries are never gated, even with ':' present
         read_only_markers = (
-            'عرض رصيد', 'رصيد العميل', 'رصيد عميل', 'استعلام', 'كشف حساب',
+            "عرض رصيد",
+            "رصيد العميل",
+            "رصيد عميل",
+            "استعلام",
+            "كشف حساب",
         )
         if any(m in msg for m in read_only_markers):
-            return 'chat_ai'
+            return "chat_ai"
         mapping = [
-            (('منتج', 'product'), 'create_product'),
-            (('فاتورة', 'بيع', 'مبيعات'), 'create_sale'),
-            (('مصروف',), 'create_expense'),
-            (('دفعة', 'استلام', 'استلم', 'إعطاء', 'أعطى'), 'record_payment'),
-            (('مورد',), 'create_supplier'),
-            (('مشتريات', 'مشترى'), 'create_purchase'),
-            (('شيك',), 'create_cheque'),
-            (('عميل', 'رصيد'), 'update_customer'),
+            (("منتج", "product"), "create_product"),
+            (("فاتورة", "بيع", "مبيعات"), "create_sale"),
+            (("مصروف",), "create_expense"),
+            (("دفعة", "استلام", "استلم", "إعطاء", "أعطى"), "record_payment"),
+            (("مورد",), "create_supplier"),
+            (("مشتريات", "مشترى"), "create_purchase"),
+            (("شيك",), "create_cheque"),
+            (("عميل", "رصيد"), "update_customer"),
         ]
         for keywords, op in mapping:
             if any(k in msg for k in keywords):
                 return op
     except Exception:
         pass
-    return 'chat_ai'
+    return "chat_ai"
 
 
 class ConversationContextStore(threading.local):
@@ -221,9 +252,9 @@ class ConversationContextStore(threading.local):
 
     def __setitem__(self, user_id, value):
         if isinstance(value, dict):
-            history = value.get('history')
+            history = value.get("history")
             if isinstance(history, list) and len(history) > self.MAX_TURNS:
-                value['history'] = history[-self.MAX_TURNS:]
+                value["history"] = history[-self.MAX_TURNS :]
         self._contexts[user_id] = value
         self._trim_store()
 
@@ -244,29 +275,29 @@ conversation_context = ConversationContextStore()
 # permission_required decorator pattern): inline checks reuse
 # current_user.has_permission → Role.has_permission.
 _AI_ACTION_PERMISSIONS = {
-    'رصيد': 'manage_customers',
-    'عميل': 'manage_customers',
-    'منتج': 'manage_products',
-    'فاتورة': 'manage_sales',
-    'استلام': 'manage_payments',
-    'إعطاء': 'manage_payments',
-    'مصروف': 'manage_expenses',
-    'مورد': 'manage_suppliers',
-    'مشتريات': 'manage_purchases',
-    'شيك': 'manage_payments',
-    'مستخدم': 'manage_users',
+    "رصيد": "manage_customers",
+    "عميل": "manage_customers",
+    "منتج": "manage_products",
+    "فاتورة": "manage_sales",
+    "استلام": "manage_payments",
+    "إعطاء": "manage_payments",
+    "مصروف": "manage_expenses",
+    "مورد": "manage_suppliers",
+    "مشتريات": "manage_purchases",
+    "شيك": "manage_payments",
+    "مستخدم": "manage_users",
 }
 
 _PERMISSION_LABELS_AR = {
-    'manage_sales': 'إدارة المبيعات',
-    'manage_purchases': 'إدارة المشتريات',
-    'manage_payments': 'إدارة المدفوعات',
-    'manage_warehouse': 'إدارة المستودعات',
-    'manage_expenses': 'إدارة المصروفات',
-    'manage_customers': 'إدارة الزبائن',
-    'manage_products': 'إدارة المنتجات',
-    'manage_suppliers': 'إدارة الموردين',
-    'manage_users': 'إدارة المستخدمين',
+    "manage_sales": "إدارة المبيعات",
+    "manage_purchases": "إدارة المشتريات",
+    "manage_payments": "إدارة المدفوعات",
+    "manage_warehouse": "إدارة المستودعات",
+    "manage_expenses": "إدارة المصروفات",
+    "manage_customers": "إدارة الزبائن",
+    "manage_products": "إدارة المنتجات",
+    "manage_suppliers": "إدارة الموردين",
+    "manage_users": "إدارة المستخدمين",
 }
 
 
@@ -279,15 +310,15 @@ def _ai_action_denied(user, permission_code):
     from flask_login import current_user as _current_user
 
     actor = user if user is not None else _current_user
-    if not getattr(actor, 'is_authenticated', False):
-        return '⛔ يجب تسجيل الدخول أولاً لتنفيذ هذا الإجراء عبر المساعد الذكي.'
-    has_perm = getattr(actor, 'has_permission', None)
+    if not getattr(actor, "is_authenticated", False):
+        return "⛔ يجب تسجيل الدخول أولاً لتنفيذ هذا الإجراء عبر المساعد الذكي."
+    has_perm = getattr(actor, "has_permission", None)
     if callable(has_perm) and has_perm(permission_code):
         return None
     label = _PERMISSION_LABELS_AR.get(permission_code, permission_code)
     return (
-        f'⛔ ليس لديك صلاحية لتنفيذ هذا الإجراء عبر المساعد الذكي. '
-        f'هذه العملية تتطلب صلاحية: {label}.'
+        f"⛔ ليس لديك صلاحية لتنفيذ هذا الإجراء عبر المساعد الذكي. "
+        f"هذه العملية تتطلب صلاحية: {label}."
     )
 
 
@@ -301,33 +332,38 @@ def _ai_tenant_denied(user, is_write_operation):
     actor = user
     if not is_write_operation:
         return None
-    if getattr(actor, 'is_owner', False) or getattr(getattr(actor, 'role', None), 'slug', None) == 'developer':
+    if (
+        getattr(actor, "is_owner", False)
+        or getattr(getattr(actor, "role", None), "slug", None) == "developer"
+    ):
         return None
-    is_super = getattr(actor, 'is_super_admin', None)
+    is_super = getattr(actor, "is_super_admin", None)
     if callable(is_super):
         try:
             if is_super():
                 return None
         except Exception:
             pass
-    if not getattr(actor, 'tenant_id', None):
+    if not getattr(actor, "tenant_id", None):
         return (
-            '⛔ حسّابك غير مرتبط بشركة (tenant). لا يمكن تنفيذ عمليات عبر المساعد الذكي. '
-            'تواصل مع مالك المنصة لربط حسابك بشركة أولاً.'
+            "⛔ حسّابك غير مرتبط بشركة (tenant). لا يمكن تنفيذ عمليات عبر المساعد الذكي. "
+            "تواصل مع مالك المنصة لربط حسابك بشركة أولاً."
         )
     return None
 
 
-def _ai_audit(table_name, record_id, changes=None, action='create'):
+def _ai_audit(table_name, record_id, changes=None, action="create"):
     """Phase 3: سجل تدقيق لكل إجراء AI يتجاوز ai_commands (fail-closed في الطلب)."""
     try:
         from utils.helpers import create_audit_log
+
         payload = dict(changes or {})
-        payload.setdefault('via', 'ai_assistant')
+        payload.setdefault("via", "ai_assistant")
         create_audit_log(action, table_name, record_id, changes=payload, commit=True)
     except Exception:
         try:
             from flask import has_app_context, has_request_context
+
             if has_app_context() and has_request_context():
                 raise
         except Exception:
@@ -347,12 +383,14 @@ def _ai_decimal(value, default=None):
     if value is None or (isinstance(value, str) and not value.strip()):
         return default
     try:
-        return Decimal(str(value).replace('درهم', '').replace('د.إ', '').strip())
+        return Decimal(str(value).replace("درهم", "").replace("د.إ", "").strip())
     except (InvalidOperation, ValueError, TypeError):
         return default
 
 
-def _ai_create_sale(user, customer, product, quantity, payment_method='cash', notes=None):
+def _ai_create_sale(
+    user, customer, product, quantity, payment_method="cash", notes=None
+):
     """إنشاء فاتورة من المساعد الذكي عبر مسار المبيعات الرسمي.
 
     Old behaviour (the bug): the handler decremented
@@ -372,7 +410,7 @@ def _ai_create_sale(user, customer, product, quantity, payment_method='cash', no
 
     qty = _ai_decimal(quantity)
     if qty is None or qty <= 0:
-        raise ValidationError('الكمية يجب أن تكون أكبر من صفر')
+        raise ValidationError("الكمية يجب أن تكون أكبر من صفر")
 
     # F2 — لا فاتورة بلا أساس تكلفة (وإلا قُيّد الإيراد بلا تكلفة).
     StockService.require_cost_basis(product, qty)
@@ -381,49 +419,59 @@ def _ai_create_sale(user, customer, product, quantity, payment_method='cash', no
     if unit_price is None or unit_price <= 0:
         raise ValidationError(
             f'⚠️ سعر بيع غير صالح للمنتج "{product.name}".\n'
-            f'💡 اضبط سعر المنتج قبل إنشاء الفاتورة.')
+            f"💡 اضبط سعر المنتج قبل إنشاء الفاتورة."
+        )
 
     payment_data = None
-    if (payment_method or '').strip().lower() == 'cash':
+    if (payment_method or "").strip().lower() == "cash":
         payment_data = {
-            'amount': unit_price * qty,
-            'payment_method': 'cash',
+            "amount": unit_price * qty,
+            "payment_method": "cash",
         }
 
     sale = SaleService.create_sale(
         customer=customer,
         seller=user,
-        lines_data=[{
-            'product': product,
-            'quantity': qty,
-            'unit_price': unit_price,
-        }],
-        notes=notes or 'فاتورة مُنشأة عبر المساعد الذكي',
+        lines_data=[
+            {
+                "product": product,
+                "quantity": qty,
+                "unit_price": unit_price,
+            }
+        ],
+        notes=notes or "فاتورة مُنشأة عبر المساعد الذكي",
         payment_data=payment_data,
     )
 
     from utils.helpers import create_audit_log
+
     # SaleService.create_sale has already committed the sale itself, so the
     # audit row is committed on its own here (commit=True) — otherwise it
     # would stay pending and be rolled back with the request.
-    create_audit_log('create', 'sales', sale.id, changes={
-        'action': 'ai_create_sale',
-        'source': 'ai_assistant',
-        'sale_number': sale.sale_number,
-        'customer_id': customer.id,
-        'customer_name': customer.name,
-        'product_id': product.id,
-        'quantity': str(qty),
-        'unit_price': str(unit_price),
-        'total_amount': str(sale.total_amount),
-        'amount_base': str(sale.amount_base),
-        'payment_method': payment_method,
-    }, commit=True)
+    create_audit_log(
+        "create",
+        "sales",
+        sale.id,
+        changes={
+            "action": "ai_create_sale",
+            "source": "ai_assistant",
+            "sale_number": sale.sale_number,
+            "customer_id": customer.id,
+            "customer_name": customer.name,
+            "product_id": product.id,
+            "quantity": str(qty),
+            "unit_price": str(unit_price),
+            "total_amount": str(sale.total_amount),
+            "amount_base": str(sale.amount_base),
+            "payment_method": payment_method,
+        },
+        commit=True,
+    )
 
     return sale
 
 
-def _ai_record_receipt(user, customer, amount, payment_method='cash', notes=None):
+def _ai_record_receipt(user, customer, amount, payment_method="cash", notes=None):
     """قبض دفعة من عميل عبر المساعد الذكي — عبر PaymentService.
 
     PaymentService.create_receipt ينشئ سند قبض، ويرحّل القيد
@@ -437,25 +485,27 @@ def _ai_record_receipt(user, customer, amount, payment_method='cash', notes=None
 
     value = _ai_decimal(amount)
     if value is None or value <= 0:
-        raise ValueError('المبلغ يجب أن يكون أكبر من صفر')
+        raise ValueError("المبلغ يجب أن يكون أكبر من صفر")
 
     try:
         currency = CurrencyService.get_base_currency()
     except Exception:
-        currency = 'ILS'
+        currency = "ILS"
 
-    receipt = PaymentService.create_receipt({
-        'customer_id': customer.id,
-        'amount': value,
-        'currency': currency,
-        'payment_method': payment_method or 'cash',
-        'notes': notes or 'دفعة مُسجّلة عبر المساعد الذكي',
-        'user_id': getattr(user, 'id', None),
-    })
+    receipt = PaymentService.create_receipt(
+        {
+            "customer_id": customer.id,
+            "amount": value,
+            "currency": currency,
+            "payment_method": payment_method or "cash",
+            "notes": notes or "دفعة مُسجّلة عبر المساعد الذكي",
+            "user_id": getattr(user, "id", None),
+        }
+    )
     return receipt
 
 
-def _ai_record_refund(user, customer, amount, reason=None, payment_method='cash'):
+def _ai_record_refund(user, customer, amount, reason=None, payment_method="cash"):
     """صرف مبلغ للعميل عبر المساعد الذكي (استرداد).
 
     The money services own this. An earlier version built the Payment row and
@@ -469,14 +519,14 @@ def _ai_record_refund(user, customer, amount, reason=None, payment_method='cash'
 
     value = _ai_decimal(amount)
     if value is None or value <= 0:
-        raise ValueError('المبلغ يجب أن يكون أكبر من صفر')
+        raise ValueError("المبلغ يجب أن يكون أكبر من صفر")
 
     return PaymentService.create_refund(
         customer=customer,
         amount=value,
-        reason=reason or 'استرداد عبر المساعد الذكي',
-        payment_method=payment_method or 'cash',
-        user_id=getattr(user, 'id', None),
+        reason=reason or "استرداد عبر المساعد الذكي",
+        payment_method=payment_method or "cash",
+        user_id=getattr(user, "id", None),
     )
 
 
@@ -492,15 +542,16 @@ def _ai_set_customer_balance(user, customer, new_balance, reason=None):
 
     value = _ai_decimal(new_balance)
     if value is None:
-        raise ValueError('الرصيد غير صالح')
+        raise ValueError("الرصيد غير صالح")
 
     PaymentService.adjust_customer_balance(
         customer=customer,
         new_balance=value,
-        reason=reason or 'تصحيح رصيد عبر المساعد الذكي',
-        user_id=getattr(user, 'id', None),
+        reason=reason or "تصحيح رصيد عبر المساعد الذكي",
+        user_id=getattr(user, "id", None),
     )
     return customer
+
 
 # ========== مستمعات ذكية ==========
 
@@ -510,22 +561,22 @@ def smart_listener(message, context):
     msg_lower = message.lower().strip()
 
     # كلمات العودة
-    if any(word in msg_lower for word in ['عودة', 'رجوع', 'إلغاء', 'خروج', 'إيقاف']):
-        return 'back'
+    if any(word in msg_lower for word in ["عودة", "رجوع", "إلغاء", "خروج", "إيقاف"]):
+        return "back"
 
     # كلمات المساعدة
-    if any(word in msg_lower for word in ['مساعدة', 'help', 'ساعدني']):
-        return 'help'
+    if any(word in msg_lower for word in ["مساعدة", "help", "ساعدني"]):
+        return "help"
 
     # كلمات التأكيد
-    if any(word in msg_lower for word in ['نعم', 'yes', 'تأكيد', 'موافق', 'ok']):
-        return 'confirm'
+    if any(word in msg_lower for word in ["نعم", "yes", "تأكيد", "موافق", "ok"]):
+        return "confirm"
 
     # كلمات الإلغاء
-    if any(word in msg_lower for word in ['لا', 'no', 'إلغاء']):
-        return 'cancel'
+    if any(word in msg_lower for word in ["لا", "no", "إلغاء"]):
+        return "cancel"
 
-    return 'continue'
+    return "continue"
 
 
 def train_local_ai(action, data, result):
@@ -534,10 +585,10 @@ def train_local_ai(action, data, result):
         pass
 
         training_data = {
-            'action': action,
-            'input_data': data,
-            'result': result,
-            'timestamp': datetime.now(timezone.utc).isoformat()
+            "action": action,
+            "input_data": data,
+            "result": result,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         # حفظ للتدريب المستقبلي
@@ -545,9 +596,9 @@ def train_local_ai(action, data, result):
         import os
         from ai_knowledge import get_knowledge_path
 
-        training_file = get_knowledge_path('local_training.json')
+        training_file = get_knowledge_path("local_training.json")
         if os.path.exists(training_file):
-            with open(training_file, 'r', encoding='utf-8') as f:
+            with open(training_file, "r", encoding="utf-8") as f:
                 training_history = json.load(f)
         else:
             training_history = []
@@ -558,7 +609,7 @@ def train_local_ai(action, data, result):
         if len(training_history) > 1000:
             training_history = training_history[-1000:]
 
-        with open(training_file, 'w', encoding='utf-8') as f:
+        with open(training_file, "w", encoding="utf-8") as f:
             json.dump(training_history, f, ensure_ascii=False, indent=2)
 
         return True
@@ -571,70 +622,74 @@ def apply_smart_listeners(message, context, action_name):
     """دالة عامة للمستمعات الذكية - تطبق على جميع الوحدات"""
     listener_response = smart_listener(message, context)
 
-    if listener_response == 'back':
-        return 'back', """🔙 **تم العودة للقائمة الرئيسية**
+    if listener_response == "back":
+        return (
+            "back",
+            """🔙 **تم العودة للقائمة الرئيسية**
 
 💡 **يمكنك البدء من جديد:**
 • اكتب "عميل" أو "منتج" أو "فاتورة" أو "مصروف"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: GROQ API + التحليل المحلي""",
+        )
 
-    if listener_response == 'help':
-        _ = context.get('step', 0)
-        return 'help', """💡 **مساعدة - الخطوة {step}:**
+    if listener_response == "help":
+        _ = context.get("step", 0)
+        return (
+            "help",
+            """💡 **مساعدة - الخطوة {step}:**
 
 💡 **نصائح:**
 • اكتب البيانات المطلوبة فقط
 • اكتب "عودة" للعودة للقائمة الرئيسية
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: GROQ API + التحليل المحلي""",
+        )
 
-    return 'continue', None
+    return "continue", None
 
 
 def create_final_options(action_name, item_name, item_id):
     """خيارات نهائية ذكية بعد كل عملية"""
     options = {
-        'عميل': """💡 **ماذا تريد أن تفعل الآن؟**
+        "عميل": """💡 **ماذا تريد أن تفعل الآن؟**
 1️⃣ إضافة عميل آخر
 2️⃣ عرض جميع العملاء
 3️⃣ إنشاء فاتورة لهذا العميل
 4️⃣ العودة للقائمة الرئيسية""",
-
-        'منتج': """💡 **ماذا تريد أن تفعل الآن؟**
+        "منتج": """💡 **ماذا تريد أن تفعل الآن؟**
 1️⃣ إضافة منتج آخر
 2️⃣ عرض جميع المنتجات
 3️⃣ إنشاء فاتورة بهذا المنتج
 4️⃣ العودة للقائمة الرئيسية""",
-
-        'فاتورة': """💡 **ماذا تريد أن تفعل الآن؟**
+        "فاتورة": """💡 **ماذا تريد أن تفعل الآن؟**
 1️⃣ إنشاء فاتورة أخرى
 2️⃣ عرض جميع الفواتير
 3️⃣ استلام دفعة من العميل
 4️⃣ العودة للقائمة الرئيسية""",
-
-        'مصروف': """💡 **ماذا تريد أن تفعل الآن؟**
+        "مصروف": """💡 **ماذا تريد أن تفعل الآن؟**
 1️⃣ إضافة مصروف آخر
 2️⃣ عرض جميع المصروفات
 3️⃣ العودة للقائمة الرئيسية""",
-
-        'استلام': """💡 **ماذا تريد أن تفعل الآن؟**
+        "استلام": """💡 **ماذا تريد أن تفعل الآن؟**
 1️⃣ استلام دفعة أخرى
 2️⃣ عرض جميع الدفعات
 3️⃣ العودة للقائمة الرئيسية""",
-
-        'إعطاء': """💡 **ماذا تريد أن تفعل الآن؟**
+        "إعطاء": """💡 **ماذا تريد أن تفعل الآن؟**
 1️⃣ إعطاء دفعة أخرى
 2️⃣ عرض جميع الدفعات
-3️⃣ العودة للقائمة الرئيسية"""
+3️⃣ العودة للقائمة الرئيسية""",
     }
 
-    return options.get(action_name, """💡 **ماذا تريد أن تفعل الآن؟**
+    return options.get(
+        action_name,
+        """💡 **ماذا تريد أن تفعل الآن؟**
 1️⃣ تكرار العملية
-2️⃣ العودة للقائمة الرئيسية""")
+2️⃣ العودة للقائمة الرئيسية""",
+    )
 
 
-@ai_bp.route('/recommend-price', methods=['POST'])
+@ai_bp.route("/recommend-price", methods=["POST"])
 @csrf.exempt
 @login_required
 def recommend_price():
@@ -643,23 +698,23 @@ def recommend_price():
     csrf_check = _require_csrf_for_sensitive_ops()
     if csrf_check:
         return csrf_check
-    
+
     data = request.get_json()
-    product_id = data.get('product_id')
-    customer_id = data.get('customer_id')
+    product_id = data.get("product_id")
+    customer_id = data.get("customer_id")
 
     if not product_id or not customer_id:
-        return jsonify({'error': 'Product and Customer required'}), 400
+        return jsonify({"error": "Product and Customer required"}), 400
 
     recommendation = AIService.recommend_price(product_id, customer_id)
 
     if not recommendation:
-        return jsonify({'error': 'Not found'}), 404
+        return jsonify({"error": "Not found"}), 404
 
     return jsonify(recommendation)
 
 
-@ai_bp.route('/check-stock', methods=['POST'])
+@ai_bp.route("/check-stock", methods=["POST"])
 @csrf.exempt
 @login_required
 def check_stock():
@@ -668,35 +723,35 @@ def check_stock():
     csrf_check = _require_csrf_for_sensitive_ops()
     if csrf_check:
         return csrf_check
-    
+
     data = request.get_json()
-    product_id = data.get('product_id')
-    quantity = data.get('quantity', 0)
+    product_id = data.get("product_id")
+    quantity = data.get("quantity", 0)
 
     if not product_id:
-        return jsonify({'error': 'Product required'}), 400
+        return jsonify({"error": "Product required"}), 400
 
     alert = AIService.check_stock_alert(product_id, quantity)
 
     if alert:
         return jsonify(alert)
 
-    return jsonify({'type': 'success', 'message': 'المخزون كافٍ'})
+    return jsonify({"type": "success", "message": "المخزون كافٍ"})
 
 
-@ai_bp.route('/analyze-customer/<int:customer_id>', methods=['GET'])
+@ai_bp.route("/analyze-customer/<int:customer_id>", methods=["GET"])
 @login_required
 def analyze_customer(customer_id):
     """API: تحليل سلوك العميل"""
     analysis = AIService.analyze_customer_behavior(customer_id)
 
     if not analysis:
-        return jsonify({'error': 'Customer not found'}), 404
+        return jsonify({"error": "Customer not found"}), 404
 
     return jsonify(analysis)
 
 
-@ai_bp.route('/exchange-rate/<currency>', methods=['GET'])
+@ai_bp.route("/exchange-rate/<currency>", methods=["GET"])
 @login_required
 def exchange_rate(currency):
     """API: اقتراح سعر الصرف"""
@@ -704,7 +759,7 @@ def exchange_rate(currency):
     return jsonify(suggestion)
 
 
-@ai_bp.route('/search-market-price/<int:product_id>', methods=['GET'])
+@ai_bp.route("/search-market-price/<int:product_id>", methods=["GET"])
 @login_required
 def search_market_price(product_id):
     """API: البحث عن سعر القطعة في الأسواق العالمية"""
@@ -712,15 +767,17 @@ def search_market_price(product_id):
 
     product = get_owned_or_404(Product, product_id)
 
-    return jsonify({
-        'success': True,
-        'product': product.name,
-        'message': 'ميزة البحث العالمي قيد التطوير',
-        'suggestions': []
-    })
+    return jsonify(
+        {
+            "success": True,
+            "product": product.name,
+            "message": "ميزة البحث العالمي قيد التطوير",
+            "suggestions": [],
+        }
+    )
 
 
-@ai_bp.route('/find-compatible/<int:product_id>', methods=['GET'])
+@ai_bp.route("/find-compatible/<int:product_id>", methods=["GET"])
 @login_required
 def find_compatible(product_id):
     """API: البحث عن السيارات المتوافقة"""
@@ -728,15 +785,17 @@ def find_compatible(product_id):
 
     product = get_owned_or_404(Product, product_id)
 
-    return jsonify({
-        'success': True,
-        'product': product.name,
-        'message': 'ميزة البحث عن المركبات المتوافقة قيد التطوير',
-        'compatible_vehicles': []
-    })
+    return jsonify(
+        {
+            "success": True,
+            "product": product.name,
+            "message": "ميزة البحث عن المركبات المتوافقة قيد التطوير",
+            "compatible_vehicles": [],
+        }
+    )
 
 
-@ai_bp.route('/chat', methods=['POST'])
+@ai_bp.route("/chat", methods=["POST"])
 @csrf.exempt
 @login_required
 def chat():
@@ -744,9 +803,9 @@ def chat():
     start_time = time.time()
 
     data = request.get_json() or {}
-    message = data.get('message', '').strip()
-    ai_mode = data.get('ai_mode', 'groq')
-    context = data.get('context', {})
+    message = data.get("message", "").strip()
+    ai_mode = data.get("ai_mode", "groq")
+    context = data.get("context", {})
 
     # Security: detect sensitive shortcut operations, then enforce CSRF/Origin
     request.ai_operation = _detect_ai_operation(message)
@@ -754,54 +813,66 @@ def chat():
     if csrf_check:
         return csrf_check
 
-    if 'dialect' not in context:
-        context['dialect'] = 'palestinian'
-    if 'beginners_mode' not in context:
-        context['beginners_mode'] = False
+    if "dialect" not in context:
+        context["dialect"] = "palestinian"
+    if "beginners_mode" not in context:
+        context["beginners_mode"] = False
 
-    context['current_user'] = current_user
-    context['is_owner'] = current_user.is_owner if current_user else False
-    context['force_local'] = (ai_mode == 'local')
+    context["current_user"] = current_user
+    context["is_owner"] = current_user.is_owner if current_user else False
+    context["force_local"] = ai_mode == "local"
 
     if not message:
-        return jsonify({'error': 'Message required'}), 400
+        return jsonify({"error": "Message required"}), 400
 
     action_result = _process_user_action(message, current_user)
     if action_result:
-        return jsonify({
-            'response': action_result,
-            'ai_enabled': True,
-            'action_executed': True
-        })
+        return jsonify(
+            {"response": action_result, "ai_enabled": True, "action_executed": True}
+        )
 
     response = AIService.chat_response(message, context)
-    
+
     # Record AI metrics
     try:
         from utils.monitoring import AIMetricsCollector
+
         duration_ms = (time.time() - start_time) * 1000
         tokens_used = len(message.split()) + len(str(response).split())
         AIMetricsCollector.record_ai_request(
-            endpoint='/chat', ai_mode=ai_mode,
+            endpoint="/chat",
+            ai_mode=ai_mode,
             tokens_used=tokens_used,
-            duration_ms=duration_ms, success=True
+            duration_ms=duration_ms,
+            success=True,
         )
         AIMetricsCollector.record_conversation_turn()
     except Exception:
         pass  # Metrics failure shouldn't break the flow
-    
-    return jsonify({
-        'response': response,
-        'ai_enabled': AIService.is_enabled(),
-        'ai_mode': ai_mode,
-        'user_role': 'owner' if current_user.is_owner else 'user'
-    })
+
+    return jsonify(
+        {
+            "response": response,
+            "ai_enabled": AIService.is_enabled(),
+            "ai_mode": ai_mode,
+            "user_role": "owner" if current_user.is_owner else "user",
+        }
+    )
 
 
 def _process_user_action(message, user):  # noqa: C901
     """معالجة أوامر المستخدم المباشرة - جميع عمليات النظام"""
     try:
-        from models import Customer, Product, Sale, Supplier, Purchase, Payment, Expense, Cheque
+        from models import (
+            Customer,
+            Product,
+            Sale,
+            Supplier,
+            Purchase,
+            Payment,
+            Expense,
+            Cheque,
+        )
         from extensions import db
         import re
 
@@ -815,13 +886,14 @@ def _process_user_action(message, user):  # noqa: C901
         _is_write_intent = False
         try:
             from services.ai_flows import find_flow as _find_flow_for_guard
+
             if _find_flow_for_guard(msg_lower) is not None:
                 _is_write_intent = True
-            elif ':' in message and _detect_ai_operation(message) != 'chat_ai':
+            elif ":" in message and _detect_ai_operation(message) != "chat_ai":
                 _is_write_intent = True
             elif user_id in conversation_context:
                 _ctx = conversation_context[user_id] or {}
-                if _ctx.get('step', 0) >= 1:
+                if _ctx.get("step", 0) >= 1:
                     _is_write_intent = True
         except Exception:
             pass
@@ -834,6 +906,7 @@ def _process_user_action(message, user):  # noqa: C901
         # لأنه يحمل حالة الحوار (last_action/step). أي خطأ → fallback للقديم.
         try:
             from services.ai_handlers import dispatch_for_action as _dispatch_for_action
+
             _new_res = _dispatch_for_action(message, user)
             if _new_res is not None:
                 return _new_res
@@ -844,41 +917,59 @@ def _process_user_action(message, user):  # noqa: C901
         # ===== Phase 2: Unified Flow Registry (table-driven menu dispatch) =====
         # 13 قائمة كانت نسخ-لصق — الآن مرجع واحد (خدمة ai_flows) بنفس النصوص والحالة
         try:
-            from services.ai_flows import find_flow, render_menu, start_context as _flow_ctx
+            from services.ai_flows import (
+                find_flow,
+                render_menu,
+                start_context as _flow_ctx,
+            )
+
             _flow = find_flow(msg_lower)
-            if _flow and ':' not in message:
+            if _flow and ":" not in message:
                 conversation_context[user_id] = dict(_flow_ctx(_flow))
                 return render_menu(_flow)
         except Exception:
             pass  # fallback: تابع لتدفقات ':' المباشرة بالأسفل
 
-
-
         # ========== معالجة خيارات "رصيد" ==========
-        if msg_lower.strip() == '2' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'رصيد':
+        if (
+            msg_lower.strip() == "2"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "رصيد"
+        ):
             # توجيه لخيار "استلام دفعة"
-            conversation_context[user_id] = {'last_action': 'استلام', 'step': 0}
+            conversation_context[user_id] = {"last_action": "استلام", "step": 0}
             return """🤖 تم التحويل لخيار "استلام دفعة من العميل"
 
 اكتب "1" للمتابعة أو "عودة" للرجوع
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if msg_lower.strip() == '3' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'رصيد':
+        if (
+            msg_lower.strip() == "3"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "رصيد"
+        ):
             # توجيه لخيار "إعطاء دفعة"
-            conversation_context[user_id] = {'last_action': 'إعطاء', 'step': 0}
+            conversation_context[user_id] = {"last_action": "إعطاء", "step": 0}
             return """🤖 تم التحويل لخيار "إعطاء دفعة للعميل"
 
 اكتب "1" للمتابعة أو "عودة" للرجوع
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if msg_lower.strip() == '4' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'رصيد':
+        if (
+            msg_lower.strip() == "4"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "رصيد"
+        ):
             from models.customer import Customer  # noqa: F811
+
             customers = Customer.query.filter_by(is_active=True).all()
             del conversation_context[user_id]
             if customers:
-                customers_list = "\n".join([f"• {c.name}: {c.balance} درهم" for c in customers[:10]])
+                customers_list = "\n".join(
+                    [f"• {c.name}: {c.balance} درهم" for c in customers[:10]]
+                )
                 return f"""📊 **أرصدة العملاء:**
 
 {customers_list}
@@ -892,11 +983,15 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if msg_lower.strip() == '1' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'رصيد':
+        if (
+            msg_lower.strip() == "1"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "رصيد"
+        ):
             # تعديل رصيد العميل
-            conversation_context[user_id]['step'] = 1
-            conversation_context[user_id]['option'] = '1'
-            conversation_context[user_id]['data'] = {}
+            conversation_context[user_id]["step"] = 1
+            conversation_context[user_id]["option"] = "1"
+            conversation_context[user_id]["data"] = {}
             return """🤖 ممتاز! اخترت تعديل رصيد العميل. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اسم العميل**
@@ -907,14 +1002,21 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب اسم العميل الآن..."""
 
         # ========== معالجة خطوات تعديل الرصيد ==========
-        if user_id in conversation_context and conversation_context[user_id].get('last_action') == 'رصيد' and conversation_context[user_id].get('option') == '1':  # noqa: E501
-            step = conversation_context[user_id].get('step', 0)
-            data = conversation_context[user_id].get('data', {})
+        if (
+            user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "رصيد"
+            and conversation_context[user_id].get("option") == "1"
+        ):  # noqa: E501
+            step = conversation_context[user_id].get("step", 0)
+            data = conversation_context[user_id].get("data", {})
 
             if step == 1:
                 # البحث عن العميل
                 from models.customer import Customer
-                customer = Customer.query.filter_by(name=message.strip(), is_active=True).first()
+
+                customer = Customer.query.filter_by(
+                    name=message.strip(), is_active=True
+                ).first()
                 if not customer:
                     return """❌ **العميل غير موجود!**
 
@@ -922,11 +1024,11 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم العميل الصحيح..."""
 
-                data['customer_id'] = customer.id
-                data['customer_name'] = customer.name
-                data['current_balance'] = customer.balance
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 2
+                data["customer_id"] = customer.id
+                data["customer_name"] = customer.name
+                data["current_balance"] = customer.balance
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 2
                 return f"""✅ **تم العثور على العميل:** {customer.name}
 💰 **الرصيد الحالي:** {customer.balance} درهم
 
@@ -938,22 +1040,24 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب الرصيد الجديد الآن..."""
 
             elif step == 2:
-                _denial = _ai_action_denied(user, 'manage_customers')
+                _denial = _ai_action_denied(user, "manage_customers")
                 if _denial:
                     del conversation_context[user_id]
                     return _denial
                 try:
-                    new_balance = _ai_decimal(message.strip().replace('درهم', '').strip())
+                    new_balance = _ai_decimal(
+                        message.strip().replace("درهم", "").strip()
+                    )
                     if new_balance is None:
-                        raise ValueError('الرصيد غير صالح')
+                        raise ValueError("الرصيد غير صالح")
 
                     # Phase 3: confirm_required قبل التعديل المدمّر — لا نطبّق مباشرة
-                    data['pending_balance'] = new_balance
-                    conversation_context[user_id]['data'] = data
-                    conversation_context[user_id]['step'] = 3
+                    data["pending_balance"] = new_balance
+                    conversation_context[user_id]["data"] = data
+                    conversation_context[user_id]["step"] = 3
                     return f"""⚠️ **تأكيد مطلوب:**
-- العميل: {data['customer_name']}
-- الرصيد الحالي: {data['current_balance']} درهم
+- العميل: {data["customer_name"]}
+- الرصيد الحالي: {data["current_balance"]} درهم
 - الرصيد الجديد: {new_balance} درهم
 
 💡 اكتب "نعم" للتأكيد أو "لا" للإلغاء
@@ -967,42 +1071,47 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 أعد إدخال الرصيد..."""
 
             elif step == 3:
-                _denial = _ai_action_denied(user, 'manage_customers')
+                _denial = _ai_action_denied(user, "manage_customers")
                 if _denial:
                     del conversation_context[user_id]
                     return _denial
                 listener = smart_listener(message, conversation_context[user_id])
-                if listener == 'cancel':
+                if listener == "cancel":
                     del conversation_context[user_id]
                     return """❌ **تم الإلغاء — لم يتغيّر الرصيد**
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
-                if listener != 'confirm':
+                if listener != "confirm":
                     return """⚠️ **يرجى التأكيد صراحة:**
 اكتب "نعم" للتأكيد أو "لا" للإلغاء
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
                 try:
-                    pending = data.get('pending_balance')
+                    pending = data.get("pending_balance")
                     from models.customer import Customer
-                    customer = get_owned_or_404(Customer, data['customer_id'], code=404)
+
+                    customer = get_owned_or_404(Customer, data["customer_id"], code=404)
                     # Phase 3: لا كتابة مباشرة customer.balance= — عبر خدمة مدقَّقة
                     _ai_set_customer_balance(
                         user=user,
                         customer=customer,
                         new_balance=pending,
-                        reason='تعديل رصيد عبر المساعد الذكي (بعد تأكيد)',
+                        reason="تعديل رصيد عبر المساعد الذكي (بعد تأكيد)",
                     )
 
-                    train_local_ai('update_balance', data, {'success': True, 'new_balance': pending})
+                    train_local_ai(
+                        "update_balance",
+                        data,
+                        {"success": True, "new_balance": pending},
+                    )
 
                     del conversation_context[user_id]
 
                     return f"""✅ **تم تعديل رصيد العميل بنجاح!**
 
 📋 **التفاصيل:**
-- العميل: {data['customer_name']}
-- الرصيد السابق: {data['current_balance']} درهم
+- العميل: {data["customer_name"]}
+- الرصيد السابق: {data["current_balance"]} درهم
 - الرصيد الجديد: {pending} درهم
 
 ⚠️ **مسجَّل في سجل التدقيق (AuditLog)**
@@ -1022,12 +1131,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-
-
-
-
-
-
         # ========== نظام الحوار للموردين ==========
 
         # ========== نظام الحوار للمشتريات ==========
@@ -1041,10 +1144,14 @@ def _process_user_action(message, user):  # noqa: C901
         # ========== نظام الحوار لإدارة المستخدمين ==========
 
         # ========== نظام الحوار التفاعلي للرقم 1 (إضافة عميل جديد) ==========
-        if msg_lower.strip() == '1' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'عميل':
-            conversation_context[user_id]['step'] = 1
-            conversation_context[user_id]['option'] = '1'
-            conversation_context[user_id]['data'] = {}
+        if (
+            msg_lower.strip() == "1"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "عميل"
+        ):
+            conversation_context[user_id]["step"] = 1
+            conversation_context[user_id]["option"] = "1"
+            conversation_context[user_id]["data"] = {}
             return """🤖 ممتاز! اخترت إضافة عميل جديد. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اسم العميل**
@@ -1055,14 +1162,18 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب الاسم الآن..."""
 
         # ========== معالجة الخطوات التالية (إضافة عميل) ==========
-        if user_id in conversation_context and conversation_context[user_id].get('last_action') == 'عميل' and conversation_context[user_id].get('option') == '1':  # noqa: E501
-            step = conversation_context[user_id].get('step', 0)
-            data = conversation_context[user_id].get('data', {})
+        if (
+            user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "عميل"
+            and conversation_context[user_id].get("option") == "1"
+        ):  # noqa: E501
+            step = conversation_context[user_id].get("step", 0)
+            data = conversation_context[user_id].get("data", {})
 
             # التحقق من المستمع الذكي
             listener_response = smart_listener(message, conversation_context[user_id])
 
-            if listener_response == 'back':
+            if listener_response == "back":
                 # العودة للقائمة الرئيسية
                 del conversation_context[user_id]
                 return """🔙 **تم العودة للقائمة الرئيسية**
@@ -1075,7 +1186,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-            if listener_response == 'help':
+            if listener_response == "help":
                 current_step_text = ""
                 if step == 1:
                     current_step_text = "اسم العميل"
@@ -1097,10 +1208,12 @@ def _process_user_action(message, user):  # noqa: C901
 
             if step == 1:
                 # حفظ الاسم والانتقال للخطوة التالية
-                data['name'] = message.strip()
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 2
-                conversation_context[user_id]['history'] = conversation_context[user_id].get('history', []) + [{'step': 1, 'data': message.strip()}]
+                data["name"] = message.strip()
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 2
+                conversation_context[user_id]["history"] = conversation_context[
+                    user_id
+                ].get("history", []) + [{"step": 1, "data": message.strip()}]
                 return """✅ **تم حفظ الاسم:** {name}
 
 📝 **الخطوة 2: رقم الهاتف**
@@ -1110,14 +1223,16 @@ def _process_user_action(message, user):  # noqa: C901
 
 💬 **اكتب "عودة" للرجوع أو "مساعدة" للمساعدة**
 
-🤖 اكتب رقم الهاتف الآن...""".format(name=data['name'])
+🤖 اكتب رقم الهاتف الآن...""".format(name=data["name"])
 
             elif step == 2:
                 # حفظ الهاتف والانتقال للخطوة التالية
-                data['phone'] = message.strip()
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 3
-                conversation_context[user_id]['history'] = conversation_context[user_id].get('history', []) + [{'step': 2, 'data': message.strip()}]
+                data["phone"] = message.strip()
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 3
+                conversation_context[user_id]["history"] = conversation_context[
+                    user_id
+                ].get("history", []) + [{"step": 2, "data": message.strip()}]
                 return """✅ **تم حفظ رقم الهاتف:** {phone}
 
 📝 **الخطوة 3: العنوان**
@@ -1127,13 +1242,13 @@ def _process_user_action(message, user):  # noqa: C901
 
 💬 **اكتب "عودة" للرجوع أو "مساعدة" للمساعدة**
 
-🤖 اكتب العنوان الآن...""".format(phone=data['phone'])
+🤖 اكتب العنوان الآن...""".format(phone=data["phone"])
 
             elif step == 3:
                 # حفظ العنوان وإنشاء العميل
-                data['address'] = message.strip()
+                data["address"] = message.strip()
 
-                _denial = _ai_action_denied(user, 'manage_customers')
+                _denial = _ai_action_denied(user, "manage_customers")
                 if _denial:
                     del conversation_context[user_id]
                     return _denial
@@ -1141,18 +1256,24 @@ def _process_user_action(message, user):  # noqa: C901
                 try:
                     from services import ai_commands as cmd
 
-                    customer = cmd.create_customer(data['name'], data['phone'], data['address'])
+                    customer = cmd.create_customer(
+                        data["name"], data["phone"], data["address"]
+                    )
 
-                    train_local_ai('create_customer', data, {'success': True, 'customer_id': customer.id})
+                    train_local_ai(
+                        "create_customer",
+                        data,
+                        {"success": True, "customer_id": customer.id},
+                    )
 
                     del conversation_context[user_id]
 
                     return f"""✅ **تم إنشاء العميل بنجاح!**
 
 📋 **التفاصيل:**
-- الاسم: {data['name']}
-- الهاتف: {data['phone']}
-- العنوان: {data['address']}
+- الاسم: {data["name"]}
+- الهاتف: {data["phone"]}
+- العنوان: {data["address"]}
 - الرصيد: 0 درهم
 - الرقم: #{customer.id}
 
@@ -1168,11 +1289,15 @@ def _process_user_action(message, user):  # noqa: C901
 
                 except Exception as e:
                     # تدريب الذكاء المحلي من الخطأ
-                    train_local_ai('create_customer', data, {'success': False, 'error': 'حدث خطأ غير متوقع'})
+                    train_local_ai(
+                        "create_customer",
+                        data,
+                        {"success": False, "error": "حدث خطأ غير متوقع"},
+                    )
 
                     # مسح السياق في حالة الخطأ
                     del conversation_context[user_id]
-                    current_app.logger.exception('AI handler failed')
+                    current_app.logger.exception("AI handler failed")
                     return f"""❌ **خطأ في إنشاء العميل:**
 
 حدث خطأ غير متوقع
@@ -1182,10 +1307,14 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== نظام الحوار التفاعلي للرقم 1 (إضافة منتج جديد) ==========
-        if msg_lower.strip() == '1' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'منتج':
-            conversation_context[user_id]['step'] = 1
-            conversation_context[user_id]['option'] = '1'
-            conversation_context[user_id]['data'] = {}
+        if (
+            msg_lower.strip() == "1"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "منتج"
+        ):
+            conversation_context[user_id]["step"] = 1
+            conversation_context[user_id]["option"] = "1"
+            conversation_context[user_id]["data"] = {}
             return """🤖 ممتاز! اخترت إضافة منتج جديد. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اسم المنتج**
@@ -1196,14 +1325,18 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب اسم المنتج الآن..."""
 
         # ========== معالجة الخطوات التالية (إضافة منتج) ==========
-        if user_id in conversation_context and conversation_context[user_id].get('last_action') == 'منتج' and conversation_context[user_id].get('option') == '1':  # noqa: E501
-            step = conversation_context[user_id].get('step', 0)
-            data = conversation_context[user_id].get('data', {})
+        if (
+            user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "منتج"
+            and conversation_context[user_id].get("option") == "1"
+        ):  # noqa: E501
+            step = conversation_context[user_id].get("step", 0)
+            data = conversation_context[user_id].get("data", {})
 
             # التحقق من المستمع الذكي
             listener_response = smart_listener(message, conversation_context[user_id])
 
-            if listener_response == 'back':
+            if listener_response == "back":
                 del conversation_context[user_id]
                 return """🔙 **تم العودة للقائمة الرئيسية**
 
@@ -1214,11 +1347,11 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-            if listener_response == 'help':
+            if listener_response == "help":
                 steps_text = {1: "اسم المنتج", 2: "رقم القطعة", 3: "السعر", 4: "الكمية"}
                 return f"""💡 **مساعدة - الخطوة {step}:**
 
-📝 **المطلوب حالياً:** {steps_text.get(step, 'غير معروف')}
+📝 **المطلوب حالياً:** {steps_text.get(step, "غير معروف")}
 
 💡 **نصائح:**
 • اكتب البيانات المطلوبة فقط
@@ -1228,9 +1361,9 @@ def _process_user_action(message, user):  # noqa: C901
 
             if step == 1:
                 # حفظ الاسم والانتقال للخطوة التالية
-                data['name'] = message.strip()
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 2
+                data["name"] = message.strip()
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 2
                 return """✅ **تم حفظ الاسم:** {name}
 
 📝 **الخطوة 2: رقم القطعة**
@@ -1238,13 +1371,13 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **مثال:** 1R0716
 
-🤖 اكتب رقم القطعة الآن...""".format(name=data['name'])
+🤖 اكتب رقم القطعة الآن...""".format(name=data["name"])
 
             elif step == 2:
                 # حفظ رقم القطعة والانتقال للخطوة التالية
-                data['part_number'] = message.strip()
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 3
+                data["part_number"] = message.strip()
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 3
                 return """✅ **تم حفظ رقم القطعة:** {part_number}
 
 📝 **الخطوة 3: السعر**
@@ -1252,14 +1385,16 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **مثال:** 50
 
-🤖 اكتب السعر الآن...""".format(part_number=data['part_number'])
+🤖 اكتب السعر الآن...""".format(part_number=data["part_number"])
 
             elif step == 3:
                 # حفظ السعر والانتقال للخطوة التالية
                 try:
-                    data['price'] = float(message.strip().replace('درهم', '').replace('د.إ', '').strip())
-                    conversation_context[user_id]['data'] = data
-                    conversation_context[user_id]['step'] = 4
+                    data["price"] = float(
+                        message.strip().replace("درهم", "").replace("د.إ", "").strip()
+                    )
+                    conversation_context[user_id]["data"] = data
+                    conversation_context[user_id]["step"] = 4
                     return """✅ **تم حفظ السعر:** {price} درهم
 
 📝 **الخطوة 4: الكمية**
@@ -1267,7 +1402,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **مثال:** 100
 
-🤖 اكتب الكمية الآن...""".format(price=data['price'])
+🤖 اكتب الكمية الآن...""".format(price=data["price"])
                 except Exception:
                     return """❌ **خطأ في إدخال السعر!**
 
@@ -1277,29 +1412,40 @@ def _process_user_action(message, user):  # noqa: C901
 
             elif step == 4:
                 # حفظ الكمية وإنشاء المنتج
-                _denial = _ai_action_denied(user, 'manage_products')
+                _denial = _ai_action_denied(user, "manage_products")
                 if _denial:
                     del conversation_context[user_id]
                     return _denial
                 try:
-                    data['quantity'] = float(message.strip().replace('قطعة', '').strip())
+                    data["quantity"] = float(
+                        message.strip().replace("قطعة", "").strip()
+                    )
 
                     try:
                         from services import ai_commands as cmd
 
-                        product = cmd.create_product(data['name'], data['part_number'], data['price'], data['quantity'])
+                        product = cmd.create_product(
+                            data["name"],
+                            data["part_number"],
+                            data["price"],
+                            data["quantity"],
+                        )
 
-                        train_local_ai('create_product', data, {'success': True, 'product_id': product.id})
+                        train_local_ai(
+                            "create_product",
+                            data,
+                            {"success": True, "product_id": product.id},
+                        )
 
                         del conversation_context[user_id]
 
                         return f"""✅ **تم إنشاء المنتج بنجاح!**
 
 📋 **التفاصيل:**
-- الاسم: {data['name']}
-- رقم القطعة: {data['part_number']}
-- السعر: {data['price']} درهم
-- الكمية: {data['quantity']} قطعة
+- الاسم: {data["name"]}
+- رقم القطعة: {data["part_number"]}
+- السعر: {data["price"]} درهم
+- الكمية: {data["quantity"]} قطعة
 - الرقم: #{product.id}
 
 💡 **ماذا تريد أن تفعل الآن؟**
@@ -1312,10 +1458,14 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
                     except Exception as e:
-                        train_local_ai('create_product', data, {'success': False, 'error': 'حدث خطأ غير متوقع'})
+                        train_local_ai(
+                            "create_product",
+                            data,
+                            {"success": False, "error": "حدث خطأ غير متوقع"},
+                        )
 
                         del conversation_context[user_id]
-                        current_app.logger.exception('AI handler failed')
+                        current_app.logger.exception("AI handler failed")
                         return f"""❌ **خطأ في إنشاء المنتج:**
 
 حدث خطأ غير متوقع
@@ -1324,11 +1474,15 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
                 except Exception as e:
-                    #Outer exception handler
-                    train_local_ai('create_product', data, {'success': False, 'error': 'حدث خطأ غير متوقع'})
+                    # Outer exception handler
+                    train_local_ai(
+                        "create_product",
+                        data,
+                        {"success": False, "error": "حدث خطأ غير متوقع"},
+                    )
 
                     del conversation_context[user_id]
-                    current_app.logger.exception('AI handler failed')
+                    current_app.logger.exception("AI handler failed")
                     return f"""❌ **خطأ في إنشاء المنتج:**
 
 حدث خطأ غير متوقع
@@ -1338,10 +1492,14 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== نظام الحوار التفاعلي للرقم 1 (إنشاء فاتورة جديدة) ==========
-        if msg_lower.strip() == '1' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'فاتورة':
-            conversation_context[user_id]['step'] = 1
-            conversation_context[user_id]['option'] = '1'
-            conversation_context[user_id]['data'] = {}
+        if (
+            msg_lower.strip() == "1"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "فاتورة"
+        ):
+            conversation_context[user_id]["step"] = 1
+            conversation_context[user_id]["option"] = "1"
+            conversation_context[user_id]["data"] = {}
             return """🤖 ممتاز! اخترت إنشاء فاتورة جديدة. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اسم العميل**
@@ -1352,23 +1510,38 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب اسم العميل الآن..."""
 
         # ========== معالجة الخطوات التالية (إنشاء فاتورة) ==========
-        if user_id in conversation_context and conversation_context[user_id].get('last_action') == 'فاتورة' and conversation_context[user_id].get('option') == '1':  # noqa: E501
-            step = conversation_context[user_id].get('step', 0)
-            data = conversation_context[user_id].get('data', {})
+        if (
+            user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "فاتورة"
+            and conversation_context[user_id].get("option") == "1"
+        ):  # noqa: E501
+            step = conversation_context[user_id].get("step", 0)
+            data = conversation_context[user_id].get("data", {})
 
-            listener_status, listener_msg = apply_smart_listeners(message, conversation_context[user_id], 'فاتورة')
-            if listener_status in ['back', 'help']:
-                if listener_status == 'back':
+            listener_status, listener_msg = apply_smart_listeners(
+                message, conversation_context[user_id], "فاتورة"
+            )
+            if listener_status in ["back", "help"]:
+                if listener_status == "back":
                     del conversation_context[user_id]
                 return listener_msg
 
             if step == 1:
                 # التحقق من طلبات خاصة
-                if any(word in message.lower() for word in ['عرض', 'اعرض', 'show', 'list', 'العملاء']):
+                if any(
+                    word in message.lower()
+                    for word in ["عرض", "اعرض", "show", "list", "العملاء"]
+                ):
                     from models.customer import Customer
+
                     customers = Customer.query.filter_by(is_active=True).limit(10).all()
                     if customers:
-                        customers_list = "\n".join([f"• {c.name} ({c.phone or 'لا يوجد هاتف'})" for c in customers])
+                        customers_list = "\n".join(
+                            [
+                                f"• {c.name} ({c.phone or 'لا يوجد هاتف'})"
+                                for c in customers
+                            ]
+                        )
                         return f"""📋 **قائمة العملاء المتاحين:**
 
 {customers_list}
@@ -1387,7 +1560,10 @@ def _process_user_action(message, user):  # noqa: C901
 
                 # البحث عن العميل
                 from models.customer import Customer
-                customer = Customer.query.filter_by(name=message.strip(), is_active=True).first()
+
+                customer = Customer.query.filter_by(
+                    name=message.strip(), is_active=True
+                ).first()
                 if not customer:
                     return """❌ **العميل غير موجود!**
 
@@ -1398,10 +1574,10 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم العميل الصحيح أو اختر أحد الخيارات..."""
 
-                data['customer_id'] = customer.id
-                data['customer_name'] = customer.name
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 2
+                data["customer_id"] = customer.id
+                data["customer_name"] = customer.name
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 2
                 return """✅ **تم العثور على العميل:** {customer_name}
 
 📝 **الخطوة 2: اسم المنتج**
@@ -1414,11 +1590,20 @@ def _process_user_action(message, user):  # noqa: C901
 
             elif step == 2:
                 # التحقق من طلبات خاصة
-                if any(word in message.lower() for word in ['عرض', 'اعرض', 'show', 'list', 'المنتجات']):
+                if any(
+                    word in message.lower()
+                    for word in ["عرض", "اعرض", "show", "list", "المنتجات"]
+                ):
                     from models.product import Product
+
                     products = Product.query.filter_by(is_active=True).limit(10).all()
                     if products:
-                        products_list = "\n".join([f"• {p.name} - {p.regular_price} درهم (متوفر: {p.current_stock})" for p in products])
+                        products_list = "\n".join(
+                            [
+                                f"• {p.name} - {p.regular_price} درهم (متوفر: {p.current_stock})"
+                                for p in products
+                            ]
+                        )
                         return f"""📋 **قائمة المنتجات المتاحة:**
 
 {products_list}
@@ -1437,7 +1622,10 @@ def _process_user_action(message, user):  # noqa: C901
 
                 # البحث عن المنتج
                 from models.product import Product
-                product = Product.query.filter_by(name=message.strip(), is_active=True).first()
+
+                product = Product.query.filter_by(
+                    name=message.strip(), is_active=True
+                ).first()
                 if not product:
                     return """❌ **المنتج غير موجود!**
 
@@ -1448,11 +1636,11 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم المنتج الصحيح أو اختر أحد الخيارات..."""
 
-                data['product_id'] = product.id
-                data['product_name'] = product.name
-                data['product_price'] = product.regular_price
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 3
+                data["product_id"] = product.id
+                data["product_name"] = product.name
+                data["product_price"] = product.regular_price
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 3
                 return """✅ **تم العثور على المنتج:** {product_name}
 💰 **السعر:** {product_price} درهم
 
@@ -1461,11 +1649,13 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **مثال:** 2
 
-🤖 اكتب الكمية الآن...""".format(product_name=product.name, product_price=product.regular_price)
+🤖 اكتب الكمية الآن...""".format(
+                    product_name=product.name, product_price=product.regular_price
+                )
 
             elif step == 3:
                 # حفظ الكمية وإنشاء الفاتورة
-                _denial = _ai_action_denied(user, 'manage_sales')
+                _denial = _ai_action_denied(user, "manage_sales")
                 if _denial:
                     del conversation_context[user_id]
                     return _denial
@@ -1473,10 +1663,10 @@ def _process_user_action(message, user):  # noqa: C901
                     from models.customer import Customer
                     from models.product import Product
 
-                    data['quantity'] = _ai_decimal(message.strip())
+                    data["quantity"] = _ai_decimal(message.strip())
 
-                    customer = get_owned_or_404(Customer, data['customer_id'], code=404)
-                    product = get_owned_or_404(Product, data['product_id'], code=404)
+                    customer = get_owned_or_404(Customer, data["customer_id"], code=404)
+                    product = get_owned_or_404(Product, data["product_id"], code=404)
 
                     # F2/F4: the canonical sale path — stock movement,
                     # revenue + COGS journal entries, cost snapshot.
@@ -1484,23 +1674,27 @@ def _process_user_action(message, user):  # noqa: C901
                         user=user,
                         customer=customer,
                         product=product,
-                        quantity=data['quantity'],
+                        quantity=data["quantity"],
                     )
                     total_amount = sale.total_amount
 
-                    train_local_ai('create_sale', data, {'success': True, 'sale_id': sale.id})
+                    train_local_ai(
+                        "create_sale", data, {"success": True, "sale_id": sale.id}
+                    )
 
                     del conversation_context[user_id]
 
-                    final_options = create_final_options('فاتورة', data['customer_name'], sale.id)
+                    final_options = create_final_options(
+                        "فاتورة", data["customer_name"], sale.id
+                    )
 
                     return f"""✅ **تم إنشاء الفاتورة بنجاح!**
 
 📋 **التفاصيل:**
-- العميل: {data['customer_name']}
-- المنتج: {data['product_name']}
-- الكمية: {data['quantity']}
-- السعر: {data['product_price']} درهم
+- العميل: {data["customer_name"]}
+- المنتج: {data["product_name"]}
+- الكمية: {data["quantity"]}
+- السعر: {data["product_price"]} درهم
 - المجموع: {total_amount} درهم
 - رقم الفاتورة: #{sale.id}
 
@@ -1513,7 +1707,9 @@ def _process_user_action(message, user):  # noqa: C901
                 except ValidationError as ve:
                     # F2: a zero-cost product must fail loudly, naming it.
                     db.session.rollback()
-                    train_local_ai('create_sale', data, {'success': False, 'error': str(ve)})
+                    train_local_ai(
+                        "create_sale", data, {"success": False, "error": str(ve)}
+                    )
                     del conversation_context[user_id]
                     return f"""❌ **خطأ في إنشاء الفاتورة:**
 
@@ -1522,10 +1718,14 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب "عودة" للعودة"""
 
                 except Exception as e:
-                    train_local_ai('create_sale', data, {'success': False, 'error': 'حدث خطأ غير متوقع'})
+                    train_local_ai(
+                        "create_sale",
+                        data,
+                        {"success": False, "error": "حدث خطأ غير متوقع"},
+                    )
 
                     del conversation_context[user_id]
-                    current_app.logger.exception('AI handler failed')
+                    current_app.logger.exception("AI handler failed")
                     return f"""❌ **خطأ في إنشاء الفاتورة:**
 
 حدث خطأ غير متوقع
@@ -1535,10 +1735,14 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== نظام الحوار التفاعلي للرقم 1 (استلام دفعة) ==========
-        if msg_lower.strip() == '1' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'استلام':
-            conversation_context[user_id]['step'] = 1
-            conversation_context[user_id]['option'] = '1'
-            conversation_context[user_id]['data'] = {}
+        if (
+            msg_lower.strip() == "1"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "استلام"
+        ):
+            conversation_context[user_id]["step"] = 1
+            conversation_context[user_id]["option"] = "1"
+            conversation_context[user_id]["data"] = {}
             return """🤖 ممتاز! اخترت استلام دفعة من عميل. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اسم العميل**
@@ -1549,20 +1753,29 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب اسم العميل الآن..."""
 
         # ========== معالجة الخطوات التالية (استلام دفعة) ==========
-        if user_id in conversation_context and conversation_context[user_id].get('last_action') == 'استلام' and conversation_context[user_id].get('option') == '1':  # noqa: E501
-            step = conversation_context[user_id].get('step', 0)
-            data = conversation_context[user_id].get('data', {})
+        if (
+            user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "استلام"
+            and conversation_context[user_id].get("option") == "1"
+        ):  # noqa: E501
+            step = conversation_context[user_id].get("step", 0)
+            data = conversation_context[user_id].get("data", {})
 
-            listener_status, listener_msg = apply_smart_listeners(message, conversation_context[user_id], 'استلام')
-            if listener_status in ['back', 'help']:
-                if listener_status == 'back':
+            listener_status, listener_msg = apply_smart_listeners(
+                message, conversation_context[user_id], "استلام"
+            )
+            if listener_status in ["back", "help"]:
+                if listener_status == "back":
                     del conversation_context[user_id]
                 return listener_msg
 
             if step == 1:
                 # البحث عن العميل
                 from models.customer import Customer
-                customer = Customer.query.filter_by(name=message.strip(), is_active=True).first()
+
+                customer = Customer.query.filter_by(
+                    name=message.strip(), is_active=True
+                ).first()
                 if not customer:
                     return """❌ **العميل غير موجود!**
 
@@ -1570,11 +1783,11 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم العميل الصحيح أو اكتب "عميل" لإضافة عميل جديد..."""
 
-                data['customer_id'] = customer.id
-                data['customer_name'] = customer.name
-                data['current_balance'] = customer.balance
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 2
+                data["customer_id"] = customer.id
+                data["customer_name"] = customer.name
+                data["current_balance"] = customer.balance
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 2
                 return """✅ **تم العثور على العميل:** {customer_name}
 💰 **الرصيد الحالي:** {current_balance} درهم
 
@@ -1583,14 +1796,18 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **مثال:** 200
 
-🤖 اكتب مبلغ الدفعة الآن...""".format(customer_name=customer.name, current_balance=customer.balance)
+🤖 اكتب مبلغ الدفعة الآن...""".format(
+                    customer_name=customer.name, current_balance=customer.balance
+                )
 
             elif step == 2:
                 # حفظ المبلغ والانتقال للخطوة التالية
                 try:
-                    data['amount'] = float(message.strip().replace('درهم', '').replace('د.إ', '').strip())
-                    conversation_context[user_id]['data'] = data
-                    conversation_context[user_id]['step'] = 3
+                    data["amount"] = float(
+                        message.strip().replace("درهم", "").replace("د.إ", "").strip()
+                    )
+                    conversation_context[user_id]["data"] = data
+                    conversation_context[user_id]["step"] = 3
                     return """✅ **تم حفظ المبلغ:** {amount} درهم
 
 📝 **الخطوة 3: طريقة الدفع**
@@ -1598,7 +1815,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **مثال:** نقد، بطاقة، شيك
 
-🤖 اكتب طريقة الدفع الآن...""".format(amount=data['amount'])
+🤖 اكتب طريقة الدفع الآن...""".format(amount=data["amount"])
                 except Exception:
                     return """❌ **خطأ في إدخال المبلغ!**
 
@@ -1608,9 +1825,9 @@ def _process_user_action(message, user):  # noqa: C901
 
             elif step == 3:
                 # حفظ طريقة الدفع وتسجيل الدفعة
-                data['payment_method'] = message.strip()
+                data["payment_method"] = message.strip()
 
-                _denial = _ai_action_denied(user, 'manage_payments')
+                _denial = _ai_action_denied(user, "manage_payments")
                 if _denial:
                     del conversation_context[user_id]
                     return _denial
@@ -1618,30 +1835,36 @@ def _process_user_action(message, user):  # noqa: C901
                 try:
                     from models.customer import Customer
 
-                    customer = get_owned_or_404(Customer, data['customer_id'], code=404)
+                    customer = get_owned_or_404(Customer, data["customer_id"], code=404)
 
                     # F4: PaymentService writes the receipt, the GL entry,
                     # the customer balance and the audit row.
                     receipt = _ai_record_receipt(
                         user=user,
                         customer=customer,
-                        amount=data['amount'],
-                        payment_method=data['payment_method'],
-                        notes='استلام دفعة عبر المساعد الذكي',
+                        amount=data["amount"],
+                        payment_method=data["payment_method"],
+                        notes="استلام دفعة عبر المساعد الذكي",
                     )
 
-                    train_local_ai('receive_payment', data, {'success': True, 'payment_id': receipt.id})
+                    train_local_ai(
+                        "receive_payment",
+                        data,
+                        {"success": True, "payment_id": receipt.id},
+                    )
 
                     del conversation_context[user_id]
 
-                    final_options = create_final_options('استلام', data['customer_name'], receipt.id)
+                    final_options = create_final_options(
+                        "استلام", data["customer_name"], receipt.id
+                    )
 
                     return f"""✅ **تم استلام الدفعة بنجاح!**
 
 📋 **التفاصيل:**
-- العميل: {data['customer_name']}
-- المبلغ المستلم: {data['amount']} درهم
-- طريقة الدفع: {data['payment_method']}
+- العميل: {data["customer_name"]}
+- المبلغ المستلم: {data["amount"]} درهم
+- طريقة الدفع: {data["payment_method"]}
 - الرصيد الجديد: {customer.balance} درهم
 - رقم الدفعة: #{receipt.id}
 
@@ -1652,10 +1875,14 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
                 except Exception as e:
-                    train_local_ai('receive_payment', data, {'success': False, 'error': 'حدث خطأ غير متوقع'})
+                    train_local_ai(
+                        "receive_payment",
+                        data,
+                        {"success": False, "error": "حدث خطأ غير متوقع"},
+                    )
 
                     del conversation_context[user_id]
-                    current_app.logger.exception('AI handler failed')
+                    current_app.logger.exception("AI handler failed")
                     return f"""❌ **خطأ في تسجيل الدفعة:**
 
 حدث خطأ غير متوقع
@@ -1665,10 +1892,14 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== نظام الحوار التفاعلي للرقم 1 (إعطاء دفعة) ==========
-        if msg_lower.strip() == '1' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'إعطاء':
-            conversation_context[user_id]['step'] = 1
-            conversation_context[user_id]['option'] = '1'
-            conversation_context[user_id]['data'] = {}
+        if (
+            msg_lower.strip() == "1"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "إعطاء"
+        ):
+            conversation_context[user_id]["step"] = 1
+            conversation_context[user_id]["option"] = "1"
+            conversation_context[user_id]["data"] = {}
             return """🤖 ممتاز! اخترت إعطاء دفعة للعميل. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اسم العميل**
@@ -1679,20 +1910,29 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب اسم العميل الآن..."""
 
         # ========== معالجة الخطوات التالية (إعطاء دفعة) ==========
-        if user_id in conversation_context and conversation_context[user_id].get('last_action') == 'إعطاء' and conversation_context[user_id].get('option') == '1':  # noqa: E501
-            step = conversation_context[user_id].get('step', 0)
-            data = conversation_context[user_id].get('data', {})
+        if (
+            user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "إعطاء"
+            and conversation_context[user_id].get("option") == "1"
+        ):  # noqa: E501
+            step = conversation_context[user_id].get("step", 0)
+            data = conversation_context[user_id].get("data", {})
 
-            listener_status, listener_msg = apply_smart_listeners(message, conversation_context[user_id], 'إعطاء')
-            if listener_status in ['back', 'help']:
-                if listener_status == 'back':
+            listener_status, listener_msg = apply_smart_listeners(
+                message, conversation_context[user_id], "إعطاء"
+            )
+            if listener_status in ["back", "help"]:
+                if listener_status == "back":
                     del conversation_context[user_id]
                 return listener_msg
 
             if step == 1:
                 # البحث عن العميل
                 from models.customer import Customer
-                customer = Customer.query.filter_by(name=message.strip(), is_active=True).first()
+
+                customer = Customer.query.filter_by(
+                    name=message.strip(), is_active=True
+                ).first()
                 if not customer:
                     return """❌ **العميل غير موجود!**
 
@@ -1700,11 +1940,11 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم العميل الصحيح أو اكتب "عميل" لإضافة عميل جديد..."""
 
-                data['customer_id'] = customer.id
-                data['customer_name'] = customer.name
-                data['current_balance'] = customer.balance
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 2
+                data["customer_id"] = customer.id
+                data["customer_name"] = customer.name
+                data["current_balance"] = customer.balance
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 2
                 return """✅ **تم العثور على العميل:** {customer_name}
 💰 **الرصيد الحالي:** {current_balance} درهم
 
@@ -1713,14 +1953,18 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **مثال:** 100
 
-🤖 اكتب مبلغ الدفعة الآن...""".format(customer_name=customer.name, current_balance=customer.balance)
+🤖 اكتب مبلغ الدفعة الآن...""".format(
+                    customer_name=customer.name, current_balance=customer.balance
+                )
 
             elif step == 2:
                 # حفظ المبلغ والانتقال للخطوة التالية
                 try:
-                    data['amount'] = float(message.strip().replace('درهم', '').replace('د.إ', '').strip())
-                    conversation_context[user_id]['data'] = data
-                    conversation_context[user_id]['step'] = 3
+                    data["amount"] = float(
+                        message.strip().replace("درهم", "").replace("د.إ", "").strip()
+                    )
+                    conversation_context[user_id]["data"] = data
+                    conversation_context[user_id]["step"] = 3
                     return """✅ **تم حفظ المبلغ:** {amount} درهم
 
 📝 **الخطوة 3: السبب**
@@ -1728,7 +1972,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **مثال:** استرداد، خصم، مكافأة
 
-🤖 اكتب السبب الآن...""".format(amount=data['amount'])
+🤖 اكتب السبب الآن...""".format(amount=data["amount"])
                 except Exception:
                     return """❌ **خطأ في إدخال المبلغ!**
 
@@ -1738,9 +1982,9 @@ def _process_user_action(message, user):  # noqa: C901
 
             elif step == 3:
                 # حفظ السبب وتسجيل الدفعة
-                data['reason'] = message.strip()
+                data["reason"] = message.strip()
 
-                _denial = _ai_action_denied(user, 'manage_payments')
+                _denial = _ai_action_denied(user, "manage_payments")
                 if _denial:
                     del conversation_context[user_id]
                     return _denial
@@ -1748,7 +1992,7 @@ def _process_user_action(message, user):  # noqa: C901
                 try:
                     from models.customer import Customer
 
-                    customer = get_owned_or_404(Customer, data['customer_id'], code=404)
+                    customer = get_owned_or_404(Customer, data["customer_id"], code=404)
 
                     # F4: Payment row + GL entry + audit row (interim refund
                     # path — services/payment_service.py still owes a
@@ -1756,22 +2000,28 @@ def _process_user_action(message, user):  # noqa: C901
                     payment = _ai_record_refund(
                         user=user,
                         customer=customer,
-                        amount=data['amount'],
-                        reason=data['reason'],
+                        amount=data["amount"],
+                        reason=data["reason"],
                     )
 
-                    train_local_ai('give_payment', data, {'success': True, 'payment_id': payment.id})
+                    train_local_ai(
+                        "give_payment",
+                        data,
+                        {"success": True, "payment_id": payment.id},
+                    )
 
                     del conversation_context[user_id]
 
-                    final_options = create_final_options('إعطاء', data['customer_name'], payment.id)
+                    final_options = create_final_options(
+                        "إعطاء", data["customer_name"], payment.id
+                    )
 
                     return f"""✅ **تم إعطاء الدفعة بنجاح!**
 
 📋 **التفاصيل:**
-- العميل: {data['customer_name']}
-- المبلغ المعطى: {data['amount']} درهم
-- السبب: {data['reason']}
+- العميل: {data["customer_name"]}
+- المبلغ المعطى: {data["amount"]} درهم
+- السبب: {data["reason"]}
 - الرصيد الجديد: {customer.balance} درهم
 - رقم الدفعة: #{payment.id}
 
@@ -1782,10 +2032,14 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
                 except Exception as e:
-                    train_local_ai('give_payment', data, {'success': False, 'error': 'حدث خطأ غير متوقع'})
+                    train_local_ai(
+                        "give_payment",
+                        data,
+                        {"success": False, "error": "حدث خطأ غير متوقع"},
+                    )
 
                     del conversation_context[user_id]
-                    current_app.logger.exception('AI handler failed')
+                    current_app.logger.exception("AI handler failed")
                     return f"""❌ **خطأ في تسجيل الدفعة:**
 
 حدث خطأ غير متوقع
@@ -1795,10 +2049,14 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== نظام الحوار التفاعلي للرقم 1 (إضافة مصروف) ==========
-        if msg_lower.strip() == '1' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'مصروف':
-            conversation_context[user_id]['step'] = 1
-            conversation_context[user_id]['option'] = '1'
-            conversation_context[user_id]['data'] = {}
+        if (
+            msg_lower.strip() == "1"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "مصروف"
+        ):
+            conversation_context[user_id]["step"] = 1
+            conversation_context[user_id]["option"] = "1"
+            conversation_context[user_id]["data"] = {}
             return """🤖 ممتاز! اخترت إضافة مصروف جديد. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: وصف المصروف**
@@ -1809,21 +2067,27 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب وصف المصروف الآن..."""
 
         # ========== معالجة الخطوات التالية (إضافة مصروف) ==========
-        if user_id in conversation_context and conversation_context[user_id].get('last_action') == 'مصروف' and conversation_context[user_id].get('option') == '1':  # noqa: E501
-            step = conversation_context[user_id].get('step', 0)
-            data = conversation_context[user_id].get('data', {})
+        if (
+            user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "مصروف"
+            and conversation_context[user_id].get("option") == "1"
+        ):  # noqa: E501
+            step = conversation_context[user_id].get("step", 0)
+            data = conversation_context[user_id].get("data", {})
 
-            listener_status, listener_msg = apply_smart_listeners(message, conversation_context[user_id], 'مصروف')
-            if listener_status in ['back', 'help']:
-                if listener_status == 'back':
+            listener_status, listener_msg = apply_smart_listeners(
+                message, conversation_context[user_id], "مصروف"
+            )
+            if listener_status in ["back", "help"]:
+                if listener_status == "back":
                     del conversation_context[user_id]
                 return listener_msg
 
             if step == 1:
                 # حفظ الوصف والانتقال للخطوة التالية
-                data['description'] = message.strip()
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 2
+                data["description"] = message.strip()
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 2
                 return """✅ **تم حفظ الوصف:** {description}
 
 📝 **الخطوة 2: المبلغ**
@@ -1831,14 +2095,16 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **مثال:** 200
 
-🤖 اكتب المبلغ الآن...""".format(description=data['description'])
+🤖 اكتب المبلغ الآن...""".format(description=data["description"])
 
             elif step == 2:
                 # حفظ المبلغ والانتقال للخطوة التالية
                 try:
-                    data['amount'] = float(message.strip().replace('درهم', '').replace('د.إ', '').strip())
-                    conversation_context[user_id]['data'] = data
-                    conversation_context[user_id]['step'] = 3
+                    data["amount"] = float(
+                        message.strip().replace("درهم", "").replace("د.إ", "").strip()
+                    )
+                    conversation_context[user_id]["data"] = data
+                    conversation_context[user_id]["step"] = 3
                     return """✅ **تم حفظ المبلغ:** {amount} درهم
 
 📝 **الخطوة 3: الفئة**
@@ -1846,7 +2112,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **مثال:** مرافق، صيانة، أدوات
 
-🤖 اكتب الفئة الآن...""".format(amount=data['amount'])
+🤖 اكتب الفئة الآن...""".format(amount=data["amount"])
                 except Exception:
                     return """❌ **خطأ في إدخال المبلغ!**
 
@@ -1856,9 +2122,9 @@ def _process_user_action(message, user):  # noqa: C901
 
             elif step == 3:
                 # حفظ الفئة وإنشاء المصروف
-                data['category'] = message.strip()
+                data["category"] = message.strip()
 
-                _denial = _ai_action_denied(user, 'manage_expenses')
+                _denial = _ai_action_denied(user, "manage_expenses")
                 if _denial:
                     del conversation_context[user_id]
                     return _denial
@@ -1866,21 +2132,29 @@ def _process_user_action(message, user):  # noqa: C901
                 try:
                     from services import ai_commands as cmd
 
-                    expense = cmd.create_expense(data['description'], data['amount'], user.id)
+                    expense = cmd.create_expense(
+                        data["description"], data["amount"], user.id
+                    )
 
-                    train_local_ai('create_expense', data, {'success': True, 'expense_id': expense.id})
+                    train_local_ai(
+                        "create_expense",
+                        data,
+                        {"success": True, "expense_id": expense.id},
+                    )
 
                     del conversation_context[user_id]
 
-                    final_options = create_final_options('مصروف', data['description'], expense.id)
+                    final_options = create_final_options(
+                        "مصروف", data["description"], expense.id
+                    )
 
                     return f"""✅ **تم إنشاء المصروف بنجاح!**
 
 📋 **التفاصيل:**
-- الوصف: {data['description']}
-- المبلغ: {data['amount']} درهم
-- الفئة: {data['category']}
-- التاريخ: {expense.expense_date.strftime('%Y-%m-%d')}
+- الوصف: {data["description"]}
+- المبلغ: {data["amount"]} درهم
+- الفئة: {data["category"]}
+- التاريخ: {expense.expense_date.strftime("%Y-%m-%d")}
 - الرقم: #{expense.id}
 
 {final_options}
@@ -1890,10 +2164,14 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
                 except Exception as e:
-                    train_local_ai('create_expense', data, {'success': False, 'error': 'حدث خطأ غير متوقع'})
+                    train_local_ai(
+                        "create_expense",
+                        data,
+                        {"success": False, "error": "حدث خطأ غير متوقع"},
+                    )
 
                     del conversation_context[user_id]
-                    current_app.logger.exception('AI handler failed')
+                    current_app.logger.exception("AI handler failed")
                     return f"""❌ **خطأ في إنشاء المصروف:**
 
 حدث خطأ غير متوقع
@@ -1903,10 +2181,14 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== نظام الحوار التفاعلي للرقم 1 (إضافة مورد جديد) ==========
-        if msg_lower.strip() == '1' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'مورد':
-            conversation_context[user_id]['step'] = 1
-            conversation_context[user_id]['option'] = '1'
-            conversation_context[user_id]['data'] = {}
+        if (
+            msg_lower.strip() == "1"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "مورد"
+        ):
+            conversation_context[user_id]["step"] = 1
+            conversation_context[user_id]["option"] = "1"
+            conversation_context[user_id]["data"] = {}
             return """🤖 ممتاز! اخترت إضافة مورد جديد. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اسم المورد**
@@ -1919,20 +2201,26 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب اسم المورد الآن..."""
 
         # ========== معالجة الخطوات التالية (إضافة مورد) ==========
-        if user_id in conversation_context and conversation_context[user_id].get('last_action') == 'مورد' and conversation_context[user_id].get('option') == '1':  # noqa: E501
-            step = conversation_context[user_id].get('step', 0)
-            data = conversation_context[user_id].get('data', {})
+        if (
+            user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "مورد"
+            and conversation_context[user_id].get("option") == "1"
+        ):  # noqa: E501
+            step = conversation_context[user_id].get("step", 0)
+            data = conversation_context[user_id].get("data", {})
 
-            listener_status, listener_msg = apply_smart_listeners(message, conversation_context[user_id], 'مورد')
-            if listener_status in ['back', 'help']:
-                if listener_status == 'back':
+            listener_status, listener_msg = apply_smart_listeners(
+                message, conversation_context[user_id], "مورد"
+            )
+            if listener_status in ["back", "help"]:
+                if listener_status == "back":
                     del conversation_context[user_id]
                 return listener_msg
 
             if step == 1:
-                data['name'] = message.strip()
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 2
+                data["name"] = message.strip()
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 2
                 return """✅ **تم حفظ الاسم:** {name}
 
 📝 **الخطوة 2: رقم الهاتف**
@@ -1942,12 +2230,12 @@ def _process_user_action(message, user):  # noqa: C901
 
 💬 **اكتب "عودة" للرجوع أو "مساعدة" للمساعدة**
 
-🤖 اكتب رقم الهاتف الآن...""".format(name=data['name'])
+🤖 اكتب رقم الهاتف الآن...""".format(name=data["name"])
 
             elif step == 2:
-                data['phone'] = message.strip()
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 3
+                data["phone"] = message.strip()
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 3
                 return """✅ **تم حفظ رقم الهاتف:** {phone}
 
 📝 **الخطوة 3: العنوان**
@@ -1957,12 +2245,12 @@ def _process_user_action(message, user):  # noqa: C901
 
 💬 **اكتب "عودة" للرجوع أو "مساعدة" للمساعدة**
 
-🤖 اكتب العنوان الآن...""".format(phone=data['phone'])
+🤖 اكتب العنوان الآن...""".format(phone=data["phone"])
 
             elif step == 3:
-                data['address'] = message.strip()
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 4
+                data["address"] = message.strip()
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 4
                 return """✅ **تم حفظ العنوان:** {address}
 
 📝 **الخطوة 4: الرصيد الابتدائي (المبلغ المستحق للمورد)**
@@ -1972,14 +2260,14 @@ def _process_user_action(message, user):  # noqa: C901
 
 💬 **اكتب "عودة" للرجوع أو "مساعدة" للمساعدة**
 
-🤖 اكتب الرصيد الآن...""".format(address=data['address'])
+🤖 اكتب الرصيد الآن...""".format(address=data["address"])
 
             elif step == 4:
                 try:
-                    initial_balance = float(message.strip().replace('درهم', '').strip())
-                    data['initial_balance'] = initial_balance
-                    conversation_context[user_id]['data'] = data
-                    conversation_context[user_id]['step'] = 5
+                    initial_balance = float(message.strip().replace("درهم", "").strip())
+                    data["initial_balance"] = initial_balance
+                    conversation_context[user_id]["data"] = data
+                    conversation_context[user_id]["step"] = 5
                     return """✅ **تم حفظ الرصيد الابتدائي:** {balance} درهم
 
 📝 **الخطوة 5: الرقم الضريبي (اختياري)**
@@ -1998,10 +2286,14 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 أعد إدخال الرصيد..."""
 
             elif step == 5:
-                tax_number = message.strip() if message.strip().lower() not in ['تخطي', 'skip'] else None
-                data['tax_number'] = tax_number
+                tax_number = (
+                    message.strip()
+                    if message.strip().lower() not in ["تخطي", "skip"]
+                    else None
+                )
+                data["tax_number"] = tax_number
 
-                _denial = _ai_action_denied(user, 'manage_suppliers')
+                _denial = _ai_action_denied(user, "manage_suppliers")
                 if _denial:
                     del conversation_context[user_id]
                     return _denial
@@ -2010,15 +2302,29 @@ def _process_user_action(message, user):  # noqa: C901
 
                     from services import ai_commands as cmd
 
-                    supplier = cmd.create_supplier(data['name'], data['phone'], data['address'], data.get('tax_number'), data.get('initial_balance'))
+                    supplier = cmd.create_supplier(
+                        data["name"],
+                        data["phone"],
+                        data["address"],
+                        data.get("tax_number"),
+                        data.get("initial_balance"),
+                    )
 
-                    train_local_ai('create_supplier', data, {'success': True, 'supplier_id': supplier.id})
+                    train_local_ai(
+                        "create_supplier",
+                        data,
+                        {"success": True, "supplier_id": supplier.id},
+                    )
 
                     del conversation_context[user_id]
                 except Exception as e:
-                    train_local_ai('create_supplier', data, {'success': False, 'error': 'حدث خطأ غير متوقع'})
+                    train_local_ai(
+                        "create_supplier",
+                        data,
+                        {"success": False, "error": "حدث خطأ غير متوقع"},
+                    )
                     del conversation_context[user_id]
-                    current_app.logger.exception('AI handler failed')
+                    current_app.logger.exception("AI handler failed")
                     return f"""❌ **خطأ في إنشاء المورد:** حدث خطأ غير متوقع
 
 💡 **حاول مرة أخرى:** اكتب "مورد" ثم "1"
@@ -2026,10 +2332,14 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== نظام الحوار التفاعلي للرقم 1 (إضافة مشتريات جديدة) ==========
-        if msg_lower.strip() == '1' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'مشتريات':
-            conversation_context[user_id]['step'] = 1
-            conversation_context[user_id]['option'] = '1'
-            conversation_context[user_id]['data'] = {}
+        if (
+            msg_lower.strip() == "1"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "مشتريات"
+        ):
+            conversation_context[user_id]["step"] = 1
+            conversation_context[user_id]["option"] = "1"
+            conversation_context[user_id]["data"] = {}
             return """🤖 ممتاز! اخترت إضافة مشتريات جديدة. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اسم المورد**
@@ -2040,19 +2350,28 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب اسم المورد الآن..."""
 
         # ========== معالجة الخطوات التالية (إضافة مشتريات) ==========
-        if user_id in conversation_context and conversation_context[user_id].get('last_action') == 'مشتريات' and conversation_context[user_id].get('option') == '1':  # noqa: E501
-            step = conversation_context[user_id].get('step', 0)
-            data = conversation_context[user_id].get('data', {})
+        if (
+            user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "مشتريات"
+            and conversation_context[user_id].get("option") == "1"
+        ):  # noqa: E501
+            step = conversation_context[user_id].get("step", 0)
+            data = conversation_context[user_id].get("data", {})
 
-            listener_status, listener_msg = apply_smart_listeners(message, conversation_context[user_id], 'مشتريات')
-            if listener_status in ['back', 'help']:
-                if listener_status == 'back':
+            listener_status, listener_msg = apply_smart_listeners(
+                message, conversation_context[user_id], "مشتريات"
+            )
+            if listener_status in ["back", "help"]:
+                if listener_status == "back":
                     del conversation_context[user_id]
                 return listener_msg
 
             if step == 1:
                 from models.supplier import Supplier
-                supplier = Supplier.query.filter_by(name=message.strip(), is_active=True).first()
+
+                supplier = Supplier.query.filter_by(
+                    name=message.strip(), is_active=True
+                ).first()
                 if not supplier:
                     return """❌ **المورد غير موجود!**
 
@@ -2060,10 +2379,10 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم المورد الصحيح أو اكتب "مورد" لإضافة مورد جديد..."""
 
-                data['supplier_id'] = supplier.id
-                data['supplier_name'] = supplier.name
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 2
+                data["supplier_id"] = supplier.id
+                data["supplier_name"] = supplier.name
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 2
                 return """✅ **تم العثور على المورد:** {supplier_name}
 
 📝 **الخطوة 2: اسم المنتج**
@@ -2075,7 +2394,10 @@ def _process_user_action(message, user):  # noqa: C901
 
             elif step == 2:
                 from models.product import Product
-                product = Product.query.filter_by(name=message.strip(), is_active=True).first()
+
+                product = Product.query.filter_by(
+                    name=message.strip(), is_active=True
+                ).first()
                 if not product:
                     return """❌ **المنتج غير موجود!**
 
@@ -2083,10 +2405,10 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم المنتج الصحيح أو اكتب "منتج" لإضافة منتج جديد..."""
 
-                data['product_id'] = product.id
-                data['product_name'] = product.name
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 3
+                data["product_id"] = product.id
+                data["product_name"] = product.name
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 3
                 return """✅ **تم العثور على المنتج:** {product_name}
 
 📝 **الخطوة 3: الكمية**
@@ -2098,9 +2420,9 @@ def _process_user_action(message, user):  # noqa: C901
 
             elif step == 3:
                 try:
-                    data['quantity'] = float(message.strip())
-                    conversation_context[user_id]['data'] = data
-                    conversation_context[user_id]['step'] = 4
+                    data["quantity"] = float(message.strip())
+                    conversation_context[user_id]["data"] = data
+                    conversation_context[user_id]["step"] = 4
                     return """✅ **تم حفظ الكمية:** {quantity}
 
 📝 **الخطوة 4: سعر الشراء**
@@ -2108,7 +2430,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **مثال:** 40
 
-🤖 اكتب السعر الآن...""".format(quantity=data['quantity'])
+🤖 اكتب السعر الآن...""".format(quantity=data["quantity"])
                 except Exception:
                     return """❌ **خطأ في إدخال الكمية!**
 
@@ -2117,28 +2439,41 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 أعد إدخال الكمية..."""
 
             elif step == 4:
-                _denial = _ai_action_denied(user, 'manage_purchases')
+                _denial = _ai_action_denied(user, "manage_purchases")
                 if _denial:
                     del conversation_context[user_id]
                     return _denial
                 try:
-                    data['unit_price'] = float(message.strip().replace('درهم', '').strip())
-                    total_amount = data['unit_price'] * data['quantity']
+                    data["unit_price"] = float(
+                        message.strip().replace("درهم", "").strip()
+                    )
+                    total_amount = data["unit_price"] * data["quantity"]
 
                     from services import ai_commands as cmd
-                    purchase = cmd.create_purchase(data['supplier_id'], data['product_id'], data['quantity'], data['unit_price'], user.id)
 
-                    train_local_ai('create_purchase', data, {'success': True, 'purchase_id': purchase.id})
+                    purchase = cmd.create_purchase(
+                        data["supplier_id"],
+                        data["product_id"],
+                        data["quantity"],
+                        data["unit_price"],
+                        user.id,
+                    )
+
+                    train_local_ai(
+                        "create_purchase",
+                        data,
+                        {"success": True, "purchase_id": purchase.id},
+                    )
 
                     del conversation_context[user_id]
 
                     return f"""✅ **تم إنشاء المشتريات بنجاح!**
 
 📋 **التفاصيل:**
-- المورد: {data['supplier_name']}
-- المنتج: {data['product_name']}
-- الكمية: {data['quantity']}
-- سعر الشراء: {data['unit_price']} درهم
+- المورد: {data["supplier_name"]}
+- المنتج: {data["product_name"]}
+- الكمية: {data["quantity"]}
+- سعر الشراء: {data["unit_price"]} درهم
 - المجموع: {total_amount} درهم
 - رقم المشتريات: #{purchase.id}
 
@@ -2152,9 +2487,13 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
                 except Exception as e:
-                    train_local_ai('create_purchase', data, {'success': False, 'error': 'حدث خطأ غير متوقع'})
+                    train_local_ai(
+                        "create_purchase",
+                        data,
+                        {"success": False, "error": "حدث خطأ غير متوقع"},
+                    )
                     del conversation_context[user_id]
-                    current_app.logger.exception('AI handler failed')
+                    current_app.logger.exception("AI handler failed")
                     return f"""❌ **خطأ في إنشاء المشتريات:** حدث خطأ غير متوقع
 
 💡 **حاول مرة أخرى:** اكتب "مشتريات" ثم "1"
@@ -2162,10 +2501,14 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== نظام الحوار التفاعلي للرقم 1 (إضافة شيك جديد) ==========
-        if msg_lower.strip() == '1' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'شيك':
-            conversation_context[user_id]['step'] = 1
-            conversation_context[user_id]['option'] = '1'
-            conversation_context[user_id]['data'] = {}
+        if (
+            msg_lower.strip() == "1"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "شيك"
+        ):
+            conversation_context[user_id]["step"] = 1
+            conversation_context[user_id]["option"] = "1"
+            conversation_context[user_id]["data"] = {}
             return """🤖 ممتاز! اخترت إضافة شيك جديد. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: نوع الشيك**
@@ -2176,28 +2519,36 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب نوع الشيك الآن..."""
 
         # ========== معالجة الخطوات التالية (إضافة شيك) ==========
-        if user_id in conversation_context and conversation_context[user_id].get('last_action') == 'شيك' and conversation_context[user_id].get('option') == '1':
-            step = conversation_context[user_id].get('step', 0)
-            data = conversation_context[user_id].get('data', {})
+        if (
+            user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "شيك"
+            and conversation_context[user_id].get("option") == "1"
+        ):
+            step = conversation_context[user_id].get("step", 0)
+            data = conversation_context[user_id].get("data", {})
 
-            listener_status, listener_msg = apply_smart_listeners(message, conversation_context[user_id], 'شيك')
-            if listener_status in ['back', 'help']:
-                if listener_status == 'back':
+            listener_status, listener_msg = apply_smart_listeners(
+                message, conversation_context[user_id], "شيك"
+            )
+            if listener_status in ["back", "help"]:
+                if listener_status == "back":
                     del conversation_context[user_id]
                 return listener_msg
 
             if step == 1:
                 cheque_type = message.strip()
-                if cheque_type not in ['وارد', 'صادر', 'incoming', 'outgoing']:
+                if cheque_type not in ["وارد", "صادر", "incoming", "outgoing"]:
                     return """❌ **نوع الشيك غير صحيح!**
 
 💡 **اكتب "وارد" أو "صادر"**
 
 🤖 أعد إدخال نوع الشيك..."""
 
-                data['cheque_type'] = 'incoming' if 'وارد' in cheque_type else 'outgoing'
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 2
+                data["cheque_type"] = (
+                    "incoming" if "وارد" in cheque_type else "outgoing"
+                )
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 2
                 return """✅ **تم حفظ نوع الشيك:** {type}
 
 📝 **الخطوة 2: رقم الشيك**
@@ -2208,9 +2559,9 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب رقم الشيك الآن...""".format(type=cheque_type)
 
             elif step == 2:
-                data['cheque_number'] = message.strip()
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 3
+                data["cheque_number"] = message.strip()
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 3
                 return """✅ **تم حفظ رقم الشيك:** {number}
 
 📝 **الخطوة 3: المبلغ**
@@ -2218,13 +2569,13 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **مثال:** 5000
 
-🤖 اكتب المبلغ الآن...""".format(number=data['cheque_number'])
+🤖 اكتب المبلغ الآن...""".format(number=data["cheque_number"])
 
             elif step == 3:
                 try:
-                    data['amount'] = float(message.strip().replace('درهم', '').strip())
-                    conversation_context[user_id]['data'] = data
-                    conversation_context[user_id]['step'] = 4
+                    data["amount"] = float(message.strip().replace("درهم", "").strip())
+                    conversation_context[user_id]["data"] = data
+                    conversation_context[user_id]["step"] = 4
                     return """✅ **تم حفظ المبلغ:** {amount} درهم
 
 📝 **الخطوة 4: تاريخ الاستحقاق**
@@ -2232,7 +2583,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **مثال:** 2025-12-31
 
-🤖 اكتب التاريخ الآن...""".format(amount=data['amount'])
+🤖 اكتب التاريخ الآن...""".format(amount=data["amount"])
                 except Exception:
                     return """❌ **خطأ في إدخال المبلغ!**
 
@@ -2241,7 +2592,7 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 أعد إدخال المبلغ..."""
 
             elif step == 4:
-                _denial = _ai_action_denied(user, 'manage_payments')
+                _denial = _ai_action_denied(user, "manage_payments")
                 if _denial:
                     del conversation_context[user_id]
                     return _denial
@@ -2249,21 +2600,29 @@ def _process_user_action(message, user):  # noqa: C901
                     from datetime import datetime as dt
                     from services import ai_commands as cmd
 
-                    due_date = dt.strptime(message.strip(), '%Y-%m-%d').date()
+                    due_date = dt.strptime(message.strip(), "%Y-%m-%d").date()
 
-                    cheque = cmd.create_cheque(data['cheque_number'], data['amount'], due_date, data['cheque_type'], user.id)
+                    cheque = cmd.create_cheque(
+                        data["cheque_number"],
+                        data["amount"],
+                        due_date,
+                        data["cheque_type"],
+                        user.id,
+                    )
 
-                    train_local_ai('create_cheque', data, {'success': True, 'cheque_id': cheque.id})
+                    train_local_ai(
+                        "create_cheque", data, {"success": True, "cheque_id": cheque.id}
+                    )
 
                     del conversation_context[user_id]
 
                     return f"""✅ **تم إنشاء الشيك بنجاح!**
 
 📋 **التفاصيل:**
-- رقم الشيك: {data['cheque_number']}
-- المبلغ: {data['amount']} درهم
-- النوع: {data['cheque_type']}
-- تاريخ الاستحقاق: {due_date.strftime('%Y-%m-%d')}
+- رقم الشيك: {data["cheque_number"]}
+- المبلغ: {data["amount"]} درهم
+- النوع: {data["cheque_type"]}
+- تاريخ الاستحقاق: {due_date.strftime("%Y-%m-%d")}
 - الرقم: #{cheque.id}
 
 💡 **ماذا تريد أن تفعل الآن؟**
@@ -2276,9 +2635,13 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
                 except Exception as e:
-                    train_local_ai('create_cheque', data, {'success': False, 'error': 'حدث خطأ غير متوقع'})
+                    train_local_ai(
+                        "create_cheque",
+                        data,
+                        {"success": False, "error": "حدث خطأ غير متوقع"},
+                    )
                     del conversation_context[user_id]
-                    current_app.logger.exception('AI handler failed')
+                    current_app.logger.exception("AI handler failed")
                     return f"""❌ **خطأ في إنشاء الشيك:** حدث خطأ غير متوقع
 
 💡 **حاول مرة أخرى:** اكتب "شيك" ثم "1"
@@ -2286,14 +2649,29 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== نظام الحوار التفاعلي للرقم 1 (عرض دفتر الأستاذ) ==========
-        if msg_lower.strip() == '1' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'دفتر':
+        if (
+            msg_lower.strip() == "1"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "دفتر"
+        ):
             from models.gl import GL
-            gl_entries = GL.query.filter_by(is_active=True).order_by(GL.entry_date.desc()).limit(20).all()
+
+            gl_entries = (
+                GL.query.filter_by(is_active=True)
+                .order_by(GL.entry_date.desc())
+                .limit(20)
+                .all()
+            )
 
             del conversation_context[user_id]
 
             if gl_entries:
-                gl_list = "\n".join([f"• #{g.id} - {g.description} - {g.debit_amount} درهم - {g.entry_date.strftime('%Y-%m-%d')}" for g in gl_entries])
+                gl_list = "\n".join(
+                    [
+                        f"• #{g.id} - {g.description} - {g.debit_amount} درهم - {g.entry_date.strftime('%Y-%m-%d')}"
+                        for g in gl_entries
+                    ]
+                )
                 return f"""✅ **دفتر الأستاذ (آخر 20 قيد):**
 
 {gl_list}
@@ -2313,14 +2691,21 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== نظام الحوار التفاعلي للرقم 1 (عرض المستودعات) ==========
-        if msg_lower.strip() == '1' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'مستودع':
+        if (
+            msg_lower.strip() == "1"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "مستودع"
+        ):
             from models.warehouse import Warehouse
+
             warehouses = Warehouse.query.filter_by(is_active=True).all()
 
             del conversation_context[user_id]
 
             if warehouses:
-                wh_list = "\n".join([f"• {w.name} - {w.location or 'لا يوجد موقع'}" for w in warehouses])
+                wh_list = "\n".join(
+                    [f"• {w.name} - {w.location or 'لا يوجد موقع'}" for w in warehouses]
+                )
                 return f"""✅ **جميع المستودعات ({len(warehouses)} مستودع):**
 
 {wh_list}
@@ -2339,10 +2724,14 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== نظام الحوار التفاعلي للرقم 1 (إضافة مستخدم جديد) ==========
-        if msg_lower.strip() == '1' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'مستخدم':
-            conversation_context[user_id]['step'] = 1
-            conversation_context[user_id]['option'] = '1'
-            conversation_context[user_id]['data'] = {}
+        if (
+            msg_lower.strip() == "1"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "مستخدم"
+        ):
+            conversation_context[user_id]["step"] = 1
+            conversation_context[user_id]["option"] = "1"
+            conversation_context[user_id]["data"] = {}
             return """🤖 ممتاز! اخترت إضافة مستخدم جديد. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اسم المستخدم (Username)**
@@ -2353,20 +2742,26 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب اسم المستخدم الآن..."""
 
         # ========== معالجة الخطوات التالية (إضافة مستخدم) ==========
-        if user_id in conversation_context and conversation_context[user_id].get('last_action') == 'مستخدم' and conversation_context[user_id].get('option') == '1':  # noqa: E501
-            step = conversation_context[user_id].get('step', 0)
-            data = conversation_context[user_id].get('data', {})
+        if (
+            user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "مستخدم"
+            and conversation_context[user_id].get("option") == "1"
+        ):  # noqa: E501
+            step = conversation_context[user_id].get("step", 0)
+            data = conversation_context[user_id].get("data", {})
 
-            listener_status, listener_msg = apply_smart_listeners(message, conversation_context[user_id], 'مستخدم')
-            if listener_status in ['back', 'help']:
-                if listener_status == 'back':
+            listener_status, listener_msg = apply_smart_listeners(
+                message, conversation_context[user_id], "مستخدم"
+            )
+            if listener_status in ["back", "help"]:
+                if listener_status == "back":
                     del conversation_context[user_id]
                 return listener_msg
 
             if step == 1:
-                data['username'] = message.strip()
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 2
+                data["username"] = message.strip()
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 2
                 return """✅ **تم حفظ اسم المستخدم:** {username}
 
 📝 **الخطوة 2: كلمة المرور**
@@ -2374,12 +2769,12 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **مثال:** Pass@123
 
-🤖 اكتب كلمة المرور الآن...""".format(username=data['username'])
+🤖 اكتب كلمة المرور الآن...""".format(username=data["username"])
 
             elif step == 2:
-                data['password'] = message.strip()
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 3
+                data["password"] = message.strip()
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 3
                 return """✅ **تم حفظ كلمة المرور**
 
 📝 **الخطوة 3: الدور (Role)**
@@ -2391,7 +2786,15 @@ def _process_user_action(message, user):  # noqa: C901
 
             elif step == 3:
                 role = message.strip().lower()
-                allowed_roles = ['seller', 'manager', 'accountant', 'cashier', 'hr', 'inventory', 'viewer']
+                allowed_roles = [
+                    "seller",
+                    "manager",
+                    "accountant",
+                    "cashier",
+                    "hr",
+                    "inventory",
+                    "viewer",
+                ]
                 if role not in allowed_roles:
                     return """❌ **الدور غير صحيح!**
 
@@ -2406,9 +2809,9 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 أعد إدخال الدور..."""
 
-                data['role'] = role
-                conversation_context[user_id]['data'] = data
-                conversation_context[user_id]['step'] = 4
+                data["role"] = role
+                conversation_context[user_id]["data"] = data
+                conversation_context[user_id]["step"] = 4
                 return """✅ **تم حفظ الدور:** {role}
 
 📝 **الخطوة 4: البريد الإلكتروني (اختياري)**
@@ -2419,10 +2822,10 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب البريد الإلكتروني الآن...""".format(role=role)
 
             elif step == 4:
-                email = message.strip() if message.strip().lower() != 'تخطي' else None
-                data['email'] = email
+                email = message.strip() if message.strip().lower() != "تخطي" else None
+                data["email"] = email
 
-                _denial = _ai_action_denied(user, 'manage_users')
+                _denial = _ai_action_denied(user, "manage_users")
                 if _denial:
                     del conversation_context[user_id]
                     return _denial
@@ -2432,30 +2835,32 @@ def _process_user_action(message, user):  # noqa: C901
                     from models import Role
                     from utils.decorators import _enforce_target_role_not_higher
 
-                    role_obj = Role.query.filter_by(slug=data['role']).first()
+                    role_obj = Role.query.filter_by(slug=data["role"]).first()
                     _enforce_target_role_not_higher(role_obj)
 
                     new_user = User(
-                        username=data['username'],
-                        email=data['email'] or f"{data['username']}@system.local",
+                        username=data["username"],
+                        email=data["email"] or f"{data['username']}@system.local",
                         role_id=role_obj.id,
                         is_owner=False,
-                        is_active=True
+                        is_active=True,
                     )
-                    new_user.set_password(data['password'])
+                    new_user.set_password(data["password"])
                     db.session.add(new_user)
                     db.session.commit()
 
-                    train_local_ai('create_user', data, {'success': True, 'user_id': new_user.id})
+                    train_local_ai(
+                        "create_user", data, {"success": True, "user_id": new_user.id}
+                    )
 
                     del conversation_context[user_id]
 
                     return f"""✅ **تم إنشاء المستخدم بنجاح!**
 
 📋 **التفاصيل:**
-- اسم المستخدم: {data['username']}
-- الدور: {data['role']}
-- البريد الإلكتروني: {data['email'] or 'لا يوجد'}
+- اسم المستخدم: {data["username"]}
+- الدور: {data["role"]}
+- البريد الإلكتروني: {data["email"] or "لا يوجد"}
 - الرقم: #{new_user.id}
 
 💡 **ماذا تريد أن تفعل الآن؟**
@@ -2468,9 +2873,13 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
                 except Exception as e:
-                    train_local_ai('create_user', data, {'success': False, 'error': 'حدث خطأ غير متوقع'})
+                    train_local_ai(
+                        "create_user",
+                        data,
+                        {"success": False, "error": "حدث خطأ غير متوقع"},
+                    )
                     del conversation_context[user_id]
-                    current_app.logger.exception('AI handler failed')
+                    current_app.logger.exception("AI handler failed")
                     return f"""❌ **خطأ في إنشاء المستخدم:** حدث خطأ غير متوقع
 
 💡 **حاول مرة أخرى:** اكتب "مستخدم" ثم "1"
@@ -2478,12 +2887,26 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== نظام الحوار التفاعلي للرقم 2 (عرض جميع العناصر) ==========
-        if msg_lower.strip() == '2' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'عميل':
+        if (
+            msg_lower.strip() == "2"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "عميل"
+        ):
             from models.customer import Customer
+
             customers = Customer.query.filter_by(is_active=True).all()
             if customers:
-                customers_list = "\n".join([f"• {c.name} - {c.phone or 'لا يوجد هاتف'}" for c in customers[:10]])
-                more_text = f"\n\n... و {len(customers) - 10} عميل آخر" if len(customers) > 10 else ""
+                customers_list = "\n".join(
+                    [
+                        f"• {c.name} - {c.phone or 'لا يوجد هاتف'}"
+                        for c in customers[:10]
+                    ]
+                )
+                more_text = (
+                    f"\n\n... و {len(customers) - 10} عميل آخر"
+                    if len(customers) > 10
+                    else ""
+                )
                 return f"""✅ **جميع العملاء ({len(customers)} عميل):**
 
 {customers_list}{more_text}
@@ -2498,12 +2921,26 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if msg_lower.strip() == '2' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'منتج':
+        if (
+            msg_lower.strip() == "2"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "منتج"
+        ):
             from models.product import Product
+
             products = Product.query.filter_by(is_active=True).all()
             if products:
-                products_list = "\n".join([f"• {p.name} - {p.part_number} - {p.current_stock} {p.unit}" for p in products[:10]])
-                more_text = f"\n\n... و {len(products) - 10} منتج آخر" if len(products) > 10 else ""
+                products_list = "\n".join(
+                    [
+                        f"• {p.name} - {p.part_number} - {p.current_stock} {p.unit}"
+                        for p in products[:10]
+                    ]
+                )
+                more_text = (
+                    f"\n\n... و {len(products) - 10} منتج آخر"
+                    if len(products) > 10
+                    else ""
+                )
                 return f"""✅ **جميع المنتجات ({len(products)} منتج):**
 
 {products_list}{more_text}
@@ -2518,12 +2955,26 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if msg_lower.strip() == '2' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'فاتورة':
+        if (
+            msg_lower.strip() == "2"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "فاتورة"
+        ):
             from models.sale import Sale
+
             sales = Sale.query.filter_by(is_active=True).all()
             if sales:
-                sales_list = "\n".join([f"• #{s.id} - {s.customer.name if s.customer else 'غير محدد'} - {s.total_amount} درهم" for s in sales[:10]])
-                more_text = f"\n\n... و {len(sales) - 10} فاتورة أخرى" if len(sales) > 10 else ""
+                sales_list = "\n".join(
+                    [
+                        f"• #{s.id} - {s.customer.name if s.customer else 'غير محدد'} - {s.total_amount} درهم"
+                        for s in sales[:10]
+                    ]
+                )
+                more_text = (
+                    f"\n\n... و {len(sales) - 10} فاتورة أخرى"
+                    if len(sales) > 10
+                    else ""
+                )
                 return f"""✅ **جميع الفواتير ({len(sales)} فاتورة):**
 
 {sales_list}{more_text}
@@ -2538,12 +2989,26 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if msg_lower.strip() == '2' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'مصروف':
+        if (
+            msg_lower.strip() == "2"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "مصروف"
+        ):
             from models.expense import Expense
+
             expenses = Expense.query.filter_by(is_active=True).all()
             if expenses:
-                expenses_list = "\n".join([f"• {e.description} - {e.amount} درهم - {e.category}" for e in expenses[:10]])
-                more_text = f"\n\n... و {len(expenses) - 10} مصروف آخر" if len(expenses) > 10 else ""
+                expenses_list = "\n".join(
+                    [
+                        f"• {e.description} - {e.amount} درهم - {e.category}"
+                        for e in expenses[:10]
+                    ]
+                )
+                more_text = (
+                    f"\n\n... و {len(expenses) - 10} مصروف آخر"
+                    if len(expenses) > 10
+                    else ""
+                )
                 return f"""✅ **جميع المصروفات ({len(expenses)} مصروف):**
 
 {expenses_list}{more_text}
@@ -2558,13 +3023,27 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if msg_lower.strip() == '2' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'مورد':
+        if (
+            msg_lower.strip() == "2"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "مورد"
+        ):
             from models.supplier import Supplier
+
             suppliers = Supplier.query.filter_by(is_active=True).all()
             del conversation_context[user_id]
             if suppliers:
-                suppliers_list = "\n".join([f"• {s.name} - {s.phone or 'لا يوجد هاتف'}" for s in suppliers[:10]])
-                more_text = f"\n\n... و {len(suppliers) - 10} مورد آخر" if len(suppliers) > 10 else ""
+                suppliers_list = "\n".join(
+                    [
+                        f"• {s.name} - {s.phone or 'لا يوجد هاتف'}"
+                        for s in suppliers[:10]
+                    ]
+                )
+                more_text = (
+                    f"\n\n... و {len(suppliers) - 10} مورد آخر"
+                    if len(suppliers) > 10
+                    else ""
+                )
                 return f"""✅ **جميع الموردين ({len(suppliers)} مورد):**
 
 {suppliers_list}{more_text}
@@ -2575,13 +3054,27 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if msg_lower.strip() == '2' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'مشتريات':
+        if (
+            msg_lower.strip() == "2"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "مشتريات"
+        ):
             from models.purchase import Purchase
+
             purchases = Purchase.query.filter_by(is_active=True).all()
             del conversation_context[user_id]
             if purchases:
-                purchases_list = "\n".join([f"• #{p.id} - {p.supplier.name if p.supplier else 'غير محدد'} - {p.total_amount} درهم" for p in purchases[:10]])
-                more_text = f"\n\n... و {len(purchases) - 10} مشتريات أخرى" if len(purchases) > 10 else ""
+                purchases_list = "\n".join(
+                    [
+                        f"• #{p.id} - {p.supplier.name if p.supplier else 'غير محدد'} - {p.total_amount} درهم"
+                        for p in purchases[:10]
+                    ]
+                )
+                more_text = (
+                    f"\n\n... و {len(purchases) - 10} مشتريات أخرى"
+                    if len(purchases) > 10
+                    else ""
+                )
                 return f"""✅ **جميع المشتريات ({len(purchases)} مشتريات):**
 
 {purchases_list}{more_text}
@@ -2592,13 +3085,27 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if msg_lower.strip() == '2' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'شيك':
+        if (
+            msg_lower.strip() == "2"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "شيك"
+        ):
             from models.cheque import Cheque
+
             cheques = Cheque.query.filter_by(is_active=True).all()
             del conversation_context[user_id]
             if cheques:
-                cheques_list = "\n".join([f"• #{c.id} - {c.cheque_number} - {c.amount} درهم - {c.status}" for c in cheques[:10]])
-                more_text = f"\n\n... و {len(cheques) - 10} شيك آخر" if len(cheques) > 10 else ""
+                cheques_list = "\n".join(
+                    [
+                        f"• #{c.id} - {c.cheque_number} - {c.amount} درهم - {c.status}"
+                        for c in cheques[:10]
+                    ]
+                )
+                more_text = (
+                    f"\n\n... و {len(cheques) - 10} شيك آخر"
+                    if len(cheques) > 10
+                    else ""
+                )
                 return f"""✅ **جميع الشيكات ({len(cheques)} شيك):**
 
 {cheques_list}{more_text}
@@ -2609,13 +3116,22 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if msg_lower.strip() == '2' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'مستخدم':
+        if (
+            msg_lower.strip() == "2"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "مستخدم"
+        ):
             from models.user import User
+
             users = User.query.filter_by(is_active=True).all()
             del conversation_context[user_id]
             if users:
-                users_list = "\n".join([f"• {u.username} - {u.role}" for u in users[:10]])
-                more_text = f"\n\n... و {len(users) - 10} مستخدم آخر" if len(users) > 10 else ""
+                users_list = "\n".join(
+                    [f"• {u.username} - {u.role}" for u in users[:10]]
+                )
+                more_text = (
+                    f"\n\n... و {len(users) - 10} مستخدم آخر" if len(users) > 10 else ""
+                )
                 return f"""✅ **جميع المستخدمين ({len(users)} مستخدم):**
 
 {users_list}{more_text}
@@ -2626,12 +3142,27 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if msg_lower.strip() == '2' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'دفتر':
+        if (
+            msg_lower.strip() == "2"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "دفتر"
+        ):
             from models.gl import GL
-            gl_entries = GL.query.filter_by(is_active=True).order_by(GL.entry_date.desc()).limit(20).all()
+
+            gl_entries = (
+                GL.query.filter_by(is_active=True)
+                .order_by(GL.entry_date.desc())
+                .limit(20)
+                .all()
+            )
             del conversation_context[user_id]
             if gl_entries:
-                gl_list = "\n".join([f"• #{g.id} - {g.description} - {g.debit_amount} درهم - {g.entry_date.strftime('%Y-%m-%d')}" for g in gl_entries])
+                gl_list = "\n".join(
+                    [
+                        f"• #{g.id} - {g.description} - {g.debit_amount} درهم - {g.entry_date.strftime('%Y-%m-%d')}"
+                        for g in gl_entries
+                    ]
+                )
                 return f"""✅ **القيود المحاسبية (آخر 20 قيد):**
 
 {gl_list}
@@ -2642,13 +3173,24 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if msg_lower.strip() == '2' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'مستودع':
+        if (
+            msg_lower.strip() == "2"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "مستودع"
+        ):
             from models.product import Product
+
             products = Product.query.filter_by(is_active=True).all()
             del conversation_context[user_id]
             if products:
-                stock_list = "\n".join([f"• {p.name} - {p.current_stock} {p.unit}" for p in products[:15]])
-                more_text = f"\n\n... و {len(products) - 15} منتج آخر" if len(products) > 15 else ""
+                stock_list = "\n".join(
+                    [f"• {p.name} - {p.current_stock} {p.unit}" for p in products[:15]]
+                )
+                more_text = (
+                    f"\n\n... و {len(products) - 15} منتج آخر"
+                    if len(products) > 15
+                    else ""
+                )
                 return f"""✅ **المخزون الكامل ({len(products)} منتج):**
 
 {stock_list}{more_text}
@@ -2660,9 +3202,13 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== نظام الحوار التفاعلي للرقم 3 (البحث عن العناصر) ==========
-        if msg_lower.strip() == '3' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'عميل':
-            conversation_context[user_id]['step'] = 1
-            conversation_context[user_id]['option'] = '3'
+        if (
+            msg_lower.strip() == "3"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "عميل"
+        ):
+            conversation_context[user_id]["step"] = 1
+            conversation_context[user_id]["option"] = "3"
             return """🤖 ممتاز! اخترت البحث عن عميل. سأرشدك خطوة بخطوة:
 
 📝 **اكتب اسم العميل أو رقم هاتفه**
@@ -2675,9 +3221,13 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم العميل أو رقم هاتفه الآن..."""
 
-        if msg_lower.strip() == '3' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'منتج':
-            conversation_context[user_id]['step'] = 1
-            conversation_context[user_id]['option'] = '3'
+        if (
+            msg_lower.strip() == "3"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "منتج"
+        ):
+            conversation_context[user_id]["step"] = 1
+            conversation_context[user_id]["option"] = "3"
             return """🤖 ممتاز! اخترت البحث عن منتج. سأرشدك خطوة بخطوة:
 
 📝 **اكتب اسم المنتج أو رقم القطعة**
@@ -2690,7 +3240,9 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم المنتج أو رقم القطعة الآن..."""
 
-        if msg_lower.strip() == '3' and any(word in msg_lower for word in ['فاتورة', 'بيع', 'مبيعات', 'إنشاء فاتورة']):
+        if msg_lower.strip() == "3" and any(
+            word in msg_lower for word in ["فاتورة", "بيع", "مبيعات", "إنشاء فاتورة"]
+        ):
             return """🤖 ممتاز! اخترت البحث عن فاتورة. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اكتب رقم الفاتورة أو اسم العميل**
@@ -2703,7 +3255,9 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم الفاتورة أو اسم العميل الآن..."""
 
-        if msg_lower.strip() == '3' and any(word in msg_lower for word in ['مصروف', 'إضافة مصروف', 'إنشاء مصروف']):
+        if msg_lower.strip() == "3" and any(
+            word in msg_lower for word in ["مصروف", "إضافة مصروف", "إنشاء مصروف"]
+        ):
             return """🤖 ممتاز! اخترت البحث عن مصروف. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اكتب وصف المصروف أو فئته**
@@ -2716,7 +3270,10 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب وصف المصروف أو فئته الآن..."""
 
-        if msg_lower.strip() == '3' and any(word in msg_lower for word in ['مورد', 'مورد جديد', 'إضافة مورد', 'إنشاء مورد']):
+        if msg_lower.strip() == "3" and any(
+            word in msg_lower
+            for word in ["مورد", "مورد جديد", "إضافة مورد", "إنشاء مورد"]
+        ):
             return """🤖 ممتاز! اخترت البحث عن مورد. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اكتب اسم المورد أو رقم هاتفه**
@@ -2729,7 +3286,10 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم المورد أو رقم هاتفه الآن..."""
 
-        if msg_lower.strip() == '3' and any(word in msg_lower for word in ['مشتريات', 'شراء', 'إضافة مشتريات', 'إنشاء مشتريات']):
+        if msg_lower.strip() == "3" and any(
+            word in msg_lower
+            for word in ["مشتريات", "شراء", "إضافة مشتريات", "إنشاء مشتريات"]
+        ):
             return """🤖 ممتاز! اخترت البحث عن مشتريات. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اكتب رقم المشتريات أو اسم المورد**
@@ -2742,7 +3302,9 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم المشتريات أو اسم المورد الآن..."""
 
-        if msg_lower.strip() == '3' and any(word in msg_lower for word in ['شيك', 'شيكات', 'إضافة شيك', 'إنشاء شيك']):
+        if msg_lower.strip() == "3" and any(
+            word in msg_lower for word in ["شيك", "شيكات", "إضافة شيك", "إنشاء شيك"]
+        ):
             return """🤖 ممتاز! اخترت البحث عن شيك. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اكتب رقم الشيك أو المبلغ**
@@ -2755,7 +3317,9 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم الشيك أو المبلغ الآن..."""
 
-        if msg_lower.strip() == '3' and any(word in msg_lower for word in ['دفتر', 'دفتر الأستاذ', 'دفتر استاذ', 'قيد']):
+        if msg_lower.strip() == "3" and any(
+            word in msg_lower for word in ["دفتر", "دفتر الأستاذ", "دفتر استاذ", "قيد"]
+        ):
             return """🤖 ممتاز! اخترت البحث عن قيد. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اكتب وصف القيد أو رقمه**
@@ -2768,7 +3332,10 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب وصف القيد أو رقمه الآن..."""
 
-        if msg_lower.strip() == '3' and any(word in msg_lower for word in ['مستودع', 'مستودعات', 'مخزون', 'إدارة مستودعات']):
+        if msg_lower.strip() == "3" and any(
+            word in msg_lower
+            for word in ["مستودع", "مستودعات", "مخزون", "إدارة مستودعات"]
+        ):
             return """🤖 ممتاز! اخترت البحث عن مستودع. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اكتب اسم المستودع أو موقعه**
@@ -2781,7 +3348,10 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم المستودع أو موقعه الآن..."""
 
-        if msg_lower.strip() == '3' and any(word in msg_lower for word in ['مستخدم', 'مستخدمين', 'إضافة مستخدم', 'إنشاء مستخدم']):
+        if msg_lower.strip() == "3" and any(
+            word in msg_lower
+            for word in ["مستخدم", "مستخدمين", "إضافة مستخدم", "إنشاء مستخدم"]
+        ):
             return """🤖 ممتاز! اخترت البحث عن مستخدم. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اكتب اسم المستخدم أو إيميله**
@@ -2795,7 +3365,10 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب اسم المستخدم أو إيميله الآن..."""
 
         # ========== نظام الحوار التفاعلي للرقم 4 (إدارة المخزون) ==========
-        if msg_lower.strip() == '4' and any(word in msg_lower for word in ['مستودع', 'مستودعات', 'مخزون', 'إدارة مستودعات']):
+        if msg_lower.strip() == "4" and any(
+            word in msg_lower
+            for word in ["مستودع", "مستودعات", "مخزون", "إدارة مستودعات"]
+        ):
             return """🤖 ممتاز! اخترت إدارة المخزون. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اكتب اسم المستودع**
@@ -2809,7 +3382,10 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب اسم المستودع الآن..."""
 
         # ========== نظام الحوار التفاعلي للرقم 4 (تعديل صلاحيات المستخدمين) ==========
-        if msg_lower.strip() == '4' and any(word in msg_lower for word in ['مستخدم', 'مستخدمين', 'إضافة مستخدم', 'إنشاء مستخدم']):
+        if msg_lower.strip() == "4" and any(
+            word in msg_lower
+            for word in ["مستخدم", "مستخدمين", "إضافة مستخدم", "إنشاء مستخدم"]
+        ):
             return """🤖 ممتاز! اخترت تعديل صلاحيات مستخدم. سأرشدك خطوة بخطوة:
 
 📝 **الخطوة 1: اكتب اسم المستخدم**
@@ -2823,7 +3399,11 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب اسم المستخدم الآن..."""
 
         # ========== نظام الحوار التفاعلي للرقم 4 (رفع منتجات من Excel) ==========
-        if msg_lower.strip() == '4' and user_id in conversation_context and conversation_context[user_id].get('last_action') == 'منتج':
+        if (
+            msg_lower.strip() == "4"
+            and user_id in conversation_context
+            and conversation_context[user_id].get("last_action") == "منتج"
+        ):
             del conversation_context[user_id]
             return """🤖 ممتاز! اخترت رفع منتجات من Excel.
 
@@ -2839,22 +3419,23 @@ http://localhost:5000/ai/assistant
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if 'عميل' in msg_lower and ':' in message:
-            _denial = _ai_action_denied(user, 'manage_customers')
+        if "عميل" in msg_lower and ":" in message:
+            _denial = _ai_action_denied(user, "manage_customers")
             if _denial:
                 return _denial
-            match = re.search(r':(.*)', message)
+            match = re.search(r":(.*)", message)
             if match:
                 data_str = match.group(1).strip()
-                parts = re.split(r'[،,.]', data_str)
+                parts = re.split(r"[،,.]", data_str)
                 parts = [p.strip() for p in parts if p.strip()]
 
                 if len(parts) >= 2:
                     name = parts[0]
                     phone = parts[1]
-                    address = parts[2] if len(parts) > 2 else ''
+                    address = parts[2] if len(parts) > 2 else ""
 
                     from services import ai_commands as _cmd_customer
+
                     customer = _cmd_customer.create_customer(name, phone, address)
 
                     return f"""✅ تم إنشاء العميل بنجاح!
@@ -2862,32 +3443,38 @@ http://localhost:5000/ai/assistant
 📋 التفاصيل:
 - الاسم: {name}
 - الهاتف: {phone}
-- العنوان: {address or 'غير محدد'}
+- العنوان: {address or "غير محدد"}
 - الرقم: #{customer.id}
 
 💡 يمكنك الآن إنشاء فاتورة لهذا العميل!
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if 'منتج' in msg_lower and ':' in message:
-            _denial = _ai_action_denied(user, 'manage_products')
+        if "منتج" in msg_lower and ":" in message:
+            _denial = _ai_action_denied(user, "manage_products")
             if _denial:
                 return _denial
-            match = re.search(r':(.*)', message)
+            match = re.search(r":(.*)", message)
             if match:
                 data_str = match.group(1).strip()
-                parts = re.split(r'[،,.]', data_str)
+                parts = re.split(r"[،,.]", data_str)
                 parts = [p.strip() for p in parts if p.strip()]
 
                 if len(parts) >= 3:
                     name = parts[0]
                     part_number = parts[1]
-                    price_str = parts[2].replace('درهم', '').replace('د.إ', '').strip()
-                    quantity = int(parts[3].replace('قطعة', '').replace('قطعه', '').strip()) if len(parts) > 3 else 0
+                    price_str = parts[2].replace("درهم", "").replace("د.إ", "").strip()
+                    quantity = (
+                        int(parts[3].replace("قطعة", "").replace("قطعه", "").strip())
+                        if len(parts) > 3
+                        else 0
+                    )
 
                     from services import ai_commands as cmd
 
-                    product = cmd.create_product(name, part_number, float(price_str), quantity)
+                    product = cmd.create_product(
+                        name, part_number, float(price_str), quantity
+                    )
 
                     return f"""✅ تم إنشاء المنتج بنجاح!
 
@@ -2902,28 +3489,28 @@ http://localhost:5000/ai/assistant
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if 'مورد' in msg_lower and ':' in message:
-            _denial = _ai_action_denied(user, 'manage_suppliers')
+        if "مورد" in msg_lower and ":" in message:
+            _denial = _ai_action_denied(user, "manage_suppliers")
             if _denial:
                 return _denial
-            match = re.search(r':(.*)', message)
+            match = re.search(r":(.*)", message)
             if match:
                 data_str = match.group(1).strip()
-                parts = re.split(r'[،,.]', data_str)
+                parts = re.split(r"[،,.]", data_str)
                 parts = [p.strip() for p in parts if p.strip()]
 
                 if len(parts) >= 2:
                     name = parts[0]
                     phone = parts[1]
-                    email = parts[2] if len(parts) > 2 else ''
-                    address = parts[3] if len(parts) > 3 else ''
+                    email = parts[2] if len(parts) > 2 else ""
+                    address = parts[3] if len(parts) > 3 else ""
 
                     supplier = Supplier(
                         name=name,
                         phone=phone,
                         email=email,
                         address=address,
-                        is_active=True
+                        is_active=True,
                     )
                     db.session.add(supplier)
                     db.session.commit()
@@ -2933,35 +3520,42 @@ http://localhost:5000/ai/assistant
 📋 التفاصيل:
 - الاسم: {name}
 - الهاتف: {phone}
-- البريد: {email or 'غير محدد'}
-- العنوان: {address or 'غير محدد'}
+- البريد: {email or "غير محدد"}
+- العنوان: {address or "غير محدد"}
 - الرقم: #{supplier.id}
 
 💡 يمكنك الآن شراء من هذا المورد!
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if any(word in msg_lower for word in ['فاتورة', 'بيع', 'مبيعات']) and ':' in message:
-            _denial = _ai_action_denied(user, 'manage_sales')
+        if (
+            any(word in msg_lower for word in ["فاتورة", "بيع", "مبيعات"])
+            and ":" in message
+        ):
+            _denial = _ai_action_denied(user, "manage_sales")
             if _denial:
                 return _denial
-            match = re.search(r':(.*)', message)
+            match = re.search(r":(.*)", message)
             if match:
                 data_str = match.group(1).strip()
-                parts = re.split(r'[،,.]', data_str)
+                parts = re.split(r"[،,.]", data_str)
                 parts = [p.strip() for p in parts if p.strip()]
 
                 if len(parts) >= 3:
                     customer_name = parts[0]
                     product_name = parts[1]
                     quantity = int(parts[2]) if parts[2].isdigit() else 1
-                    payment_method = parts[3] if len(parts) > 3 else 'cash'
+                    payment_method = parts[3] if len(parts) > 3 else "cash"
 
-                    customer = Customer.query.filter_by(name=customer_name, is_active=True).first()
+                    customer = Customer.query.filter_by(
+                        name=customer_name, is_active=True
+                    ).first()
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود. أنشئه أولاً!"
 
-                    product = Product.query.filter_by(name=product_name, is_active=True).first()
+                    product = Product.query.filter_by(
+                        name=product_name, is_active=True
+                    ).first()
                     if not product:
                         return f"❌ المنتج '{product_name}' غير موجود. أنشئه أولاً!"
 
@@ -2996,22 +3590,25 @@ http://localhost:5000/ai/assistant
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if 'مصروف' in msg_lower and ':' in message:
-            _denial = _ai_action_denied(user, 'manage_expenses')
+        if "مصروف" in msg_lower and ":" in message:
+            _denial = _ai_action_denied(user, "manage_expenses")
             if _denial:
                 return _denial
-            match = re.search(r':(.*)', message)
+            match = re.search(r":(.*)", message)
             if match:
                 data_str = match.group(1).strip()
-                parts = re.split(r'[،,.]', data_str)
+                parts = re.split(r"[،,.]", data_str)
                 parts = [p.strip() for p in parts if p.strip()]
 
                 if len(parts) >= 2:
                     description = parts[0]
-                    amount = float(parts[1].replace('درهم', '').replace('د.إ', '').strip())
-                    category = parts[2] if len(parts) > 2 else 'عام'
+                    amount = float(
+                        parts[1].replace("درهم", "").replace("د.إ", "").strip()
+                    )
+                    category = parts[2] if len(parts) > 2 else "عام"
 
                     from services import ai_commands as cmd
+
                     expense = cmd.create_expense(description, amount, user.id)
 
                     return f"""✅ تم إضافة المصروف بنجاح!
@@ -3020,19 +3617,19 @@ http://localhost:5000/ai/assistant
 - الوصف: {description}
 - المبلغ: {amount} درهم
 - الفئة: {category}
-- التاريخ: {expense.expense_date.strftime('%Y-%m-%d %H:%M')}
+- التاريخ: {expense.expense_date.strftime("%Y-%m-%d %H:%M")}
 - الرقم: #{expense.id}
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        if 'دفعة' in msg_lower and ':' in message:
-            _denial = _ai_action_denied(user, 'manage_payments')
+        if "دفعة" in msg_lower and ":" in message:
+            _denial = _ai_action_denied(user, "manage_payments")
             if _denial:
                 return _denial
-            match = re.search(r':(.*)', message)
+            match = re.search(r":(.*)", message)
             if match:
                 data_str = match.group(1).strip()
-                parts = re.split(r'[،,.]', data_str)
+                parts = re.split(r"[،,.]", data_str)
                 parts = [p.strip() for p in parts if p.strip()]
 
                 if len(parts) >= 3:
@@ -3040,7 +3637,9 @@ http://localhost:5000/ai/assistant
                     amount = _ai_decimal(parts[1])
                     payment_method = parts[2]
 
-                    customer = Customer.query.filter_by(name=customer_name, is_active=True).first()
+                    customer = Customer.query.filter_by(
+                        name=customer_name, is_active=True
+                    ).first()
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
@@ -3052,7 +3651,7 @@ http://localhost:5000/ai/assistant
                         customer=customer,
                         amount=amount,
                         payment_method=payment_method,
-                        notes='دفعة مُسجّلة عبر المساعد الذكي',
+                        notes="دفعة مُسجّلة عبر المساعد الذكي",
                     )
 
                     return f"""✅ تم تسجيل الدفعة بنجاح!
@@ -3067,35 +3666,42 @@ http://localhost:5000/ai/assistant
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== تعديل رصيد العميل ==========
-        if any(word in msg_lower for word in ['رصيد', 'تعديل رصيد', 'تغيير رصيد']) and ':' in message:
-            _denial = _ai_action_denied(user, 'manage_customers')
+        if (
+            any(word in msg_lower for word in ["رصيد", "تعديل رصيد", "تغيير رصيد"])
+            and ":" in message
+        ):
+            _denial = _ai_action_denied(user, "manage_customers")
             if _denial:
                 return _denial
-            match = re.search(r':(.*)', message)
+            match = re.search(r":(.*)", message)
             if match:
                 data_str = match.group(1).strip()
-                parts = re.split(r'[،,.]', data_str)
+                parts = re.split(r"[،,.]", data_str)
                 parts = [p.strip() for p in parts if p.strip()]
 
                 if len(parts) >= 2:
                     customer_name = parts[0]
                     new_balance = _ai_decimal(parts[1])
 
-                    customer = Customer.query.filter_by(name=customer_name, is_active=True).first()
+                    customer = Customer.query.filter_by(
+                        name=customer_name, is_active=True
+                    ).first()
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
                     # Phase 3: الاختصار السريع المدمّر يتطلب تأكيداً مثل التدفق متعدد الخطوات
-                    if not message.strip().endswith(('نعم', 'نعم تأكيد', 'تأكيد')) and not msg_lower.strip().endswith('نعم'):
+                    if not message.strip().endswith(
+                        ("نعم", "نعم تأكيد", "تأكيد")
+                    ) and not msg_lower.strip().endswith("نعم"):
                         conversation_context[user_id] = {
-                            'last_action': 'رصيد',
-                            'step': 3,
-                            'option': '1',
-                            'data': {
-                                'customer_id': customer.id,
-                                'customer_name': customer.name,
-                                'current_balance': customer.balance,
-                                'pending_balance': new_balance,
+                            "last_action": "رصيد",
+                            "step": 3,
+                            "option": "1",
+                            "data": {
+                                "customer_id": customer.id,
+                                "customer_name": customer.name,
+                                "current_balance": customer.balance,
+                                "pending_balance": new_balance,
                             },
                         }
                         return f"""⚠️ **تأكيد مطلوب (اختصار سريع):**
@@ -3113,7 +3719,7 @@ http://localhost:5000/ai/assistant
                         user=user,
                         customer=customer,
                         new_balance=new_balance,
-                        reason='تعديل رصيد عبر المساعد الذكي',
+                        reason="تعديل رصيد عبر المساعد الذكي",
                     )
 
                     return f"""✅ تم تعديل رصيد العميل بنجاح!
@@ -3127,14 +3733,17 @@ http://localhost:5000/ai/assistant
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== استلام دفعة من العميل ==========
-        if any(word in msg_lower for word in ['استلام', 'استلم', 'دفعة من']) and ':' in message:
-            _denial = _ai_action_denied(user, 'manage_payments')
+        if (
+            any(word in msg_lower for word in ["استلام", "استلم", "دفعة من"])
+            and ":" in message
+        ):
+            _denial = _ai_action_denied(user, "manage_payments")
             if _denial:
                 return _denial
-            match = re.search(r':(.*)', message)
+            match = re.search(r":(.*)", message)
             if match:
                 data_str = match.group(1).strip()
-                parts = re.split(r'[،,.]', data_str)
+                parts = re.split(r"[،,.]", data_str)
                 parts = [p.strip() for p in parts if p.strip()]
 
                 if len(parts) >= 3:
@@ -3142,7 +3751,9 @@ http://localhost:5000/ai/assistant
                     amount = _ai_decimal(parts[1])
                     payment_method = parts[2]
 
-                    customer = Customer.query.filter_by(name=customer_name, is_active=True).first()
+                    customer = Customer.query.filter_by(
+                        name=customer_name, is_active=True
+                    ).first()
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
@@ -3152,7 +3763,7 @@ http://localhost:5000/ai/assistant
                         customer=customer,
                         amount=amount,
                         payment_method=payment_method,
-                        notes='استلام دفعة عبر المساعد الذكي',
+                        notes="استلام دفعة عبر المساعد الذكي",
                     )
 
                     return f"""✅ تم استلام الدفعة بنجاح!
@@ -3169,18 +3780,27 @@ http://localhost:5000/ai/assistant
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== عرض رصيد العميل ==========
-        if any(word in msg_lower for word in ['عرض رصيد', 'رصيد العميل', 'رصيد عميل']) and ':' in message:
-            match = re.search(r':(.*)', message)
+        if (
+            any(word in msg_lower for word in ["عرض رصيد", "رصيد العميل", "رصيد عميل"])
+            and ":" in message
+        ):
+            match = re.search(r":(.*)", message)
             if match:
                 customer_name = match.group(1).strip()
 
-                customer = Customer.query.filter_by(name=customer_name, is_active=True).first()
+                customer = Customer.query.filter_by(
+                    name=customer_name, is_active=True
+                ).first()
                 if not customer:
                     return f"❌ العميل '{customer_name}' غير موجود!"
 
                 # جلب آخر 5 دفعات
-                recent_payments = Payment.query.filter_by(customer_id=customer.id)\
-                    .order_by(Payment.payment_date.desc()).limit(5).all()
+                recent_payments = (
+                    Payment.query.filter_by(customer_id=customer.id)
+                    .order_by(Payment.payment_date.desc())
+                    .limit(5)
+                    .all()
+                )
 
                 payments_info = ""
                 if recent_payments:
@@ -3193,20 +3813,23 @@ http://localhost:5000/ai/assistant
 📋 **التفاصيل:**
 - العميل: {customer.name}
 - الرصيد الحالي: {customer.balance} درهم
-- الهاتف: {customer.phone or 'غير محدد'}
-- العنوان: {customer.address or 'غير محدد'}{payments_info}
+- الهاتف: {customer.phone or "غير محدد"}
+- العنوان: {customer.address or "غير محدد"}{payments_info}
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
         # ========== إعطاء دفعة للعميل ==========
-        if any(word in msg_lower for word in ['إعطاء', 'أعطى', 'دفعة لل', 'دفعة ل']) and ':' in message:
-            _denial = _ai_action_denied(user, 'manage_payments')
+        if (
+            any(word in msg_lower for word in ["إعطاء", "أعطى", "دفعة لل", "دفعة ل"])
+            and ":" in message
+        ):
+            _denial = _ai_action_denied(user, "manage_payments")
             if _denial:
                 return _denial
-            match = re.search(r':(.*)', message)
+            match = re.search(r":(.*)", message)
             if match:
                 data_str = match.group(1).strip()
-                parts = re.split(r'[،,.]', data_str)
+                parts = re.split(r"[،,.]", data_str)
                 parts = [p.strip() for p in parts if p.strip()]
 
                 if len(parts) >= 3:
@@ -3214,7 +3837,9 @@ http://localhost:5000/ai/assistant
                     amount = _ai_decimal(parts[1])
                     reason = parts[2]
 
-                    customer = Customer.query.filter_by(name=customer_name, is_active=True).first()
+                    customer = Customer.query.filter_by(
+                        name=customer_name, is_active=True
+                    ).first()
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
@@ -3244,11 +3869,11 @@ http://localhost:5000/ai/assistant
         return None
 
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
+        current_app.logger.exception("AI handler failed")
         return f"❌ خطأ في التنفيذ: حدث خطأ غير متوقع"
 
 
-@ai_bp.route('/guide', methods=['GET'])
+@ai_bp.route("/guide", methods=["GET"])
 @login_required
 def guide_api():
     """Guide API — نطاق آمن: العام للجميع، دليل المالك للمالك فقط.
@@ -3257,29 +3882,35 @@ def guide_api():
     لا يسرب بيانات حساسة ولا معلومات تينانت أخرى.
     """
     from ai_knowledge.guide_loader import get_guide_loader
-    is_owner = bool(getattr(current_user, 'is_owner', False))
-    q = (request.args.get('q') or '').strip()
-    scope = (request.args.get('scope') or '').strip().lower()
+
+    is_owner = bool(getattr(current_user, "is_owner", False))
+    q = (request.args.get("q") or "").strip()
+    scope = (request.args.get("scope") or "").strip().lower()
     loader = get_guide_loader()
-    if scope == 'owner' and not is_owner:
-        return jsonify({'error': '🔒 دليل المالك متاح للمالك فقط', 'code': 403}), 403
-    if scope == 'owner':
+    if scope == "owner" and not is_owner:
+        return jsonify({"error": "🔒 دليل المالك متاح للمالك فقط", "code": 403}), 403
+    if scope == "owner":
         sections = loader.owner_sections()
-    elif scope == 'public':
+    elif scope == "public":
         sections = loader.public_sections()
     else:
         sections = loader.visible_sections(is_owner)
     if q:
         hits = loader.search(q, is_owner, top_k=5)
-        return jsonify({'success': True, 'query': q, 'is_owner': is_owner, 'hits': hits})
+        return jsonify(
+            {"success": True, "query": q, "is_owner": is_owner, "hits": hits}
+        )
     # list titles only (no full owner content if not owner)
-    return jsonify({
-        'success': True, 'is_owner': is_owner,
-        'sections': [{'title': s.title, 'level': s.level} for s in sections]
-    })
+    return jsonify(
+        {
+            "success": True,
+            "is_owner": is_owner,
+            "sections": [{"title": s.title, "level": s.level} for s in sections],
+        }
+    )
 
 
-@ai_bp.route('/assistant', methods=['GET'])
+@ai_bp.route("/assistant", methods=["GET"])
 @login_required
 def assistant_page():
     """صفحة المساعد الذكي — لكل مستخدم مسجل (Phase 4).
@@ -3291,126 +3922,139 @@ def assistant_page():
     """
     try:
         from models import Warehouse
+
         warehouses = Warehouse.query.all()
-        return render_template('ai/assistant.html',
-                               ai_enabled=AIService.is_enabled(),
-                               warehouses=warehouses,
-                               current_user=current_user)
+        return render_template(
+            "ai/assistant.html",
+            ai_enabled=AIService.is_enabled(),
+            warehouses=warehouses,
+            current_user=current_user,
+        )
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return f'Error: حدث خطأ غير متوقع', 500
+        current_app.logger.exception("AI handler failed")
+        return f"Error: حدث خطأ غير متوقع", 500
 
 
-@ai_bp.route('/config', methods=['GET', 'POST'])
+@ai_bp.route("/config", methods=["GET", "POST"])
 @login_required
 @owner_required
 def config():  # noqa: C901
     """إعدادات AI - تحديث المفاتيح يومياً"""
-    if request.method == 'POST':
-        api_key = request.form.get('api_key', '').strip()
-        provider = request.form.get('provider', 'groq')
+    if request.method == "POST":
+        api_key = request.form.get("api_key", "").strip()
+        provider = request.form.get("provider", "groq")
 
         if not api_key:
-            return jsonify({'success': False, 'message': 'المفتاح مطلوب'})
+            return jsonify({"success": False, "message": "المفتاح مطلوب"})
 
         try:
             from pathlib import Path
-            base_env_path = Path(__file__).resolve().parent.parent / '.env'
+
+            base_env_path = Path(__file__).resolve().parent.parent / ".env"
 
             env_file = base_env_path
 
             if env_file.exists():
-                with open(env_file, 'r', encoding='utf-8') as f:
+                with open(env_file, "r", encoding="utf-8") as f:
                     lines = f.readlines()
             else:
                 lines = []
 
-            if provider == 'groq':
-                key_name = 'GROQ_API_KEY'
-            elif provider == 'gemini':
-                key_name = 'GEMINI_API_KEY'
+            if provider == "groq":
+                key_name = "GROQ_API_KEY"
+            elif provider == "gemini":
+                key_name = "GEMINI_API_KEY"
             else:
-                key_name = 'OPENAI_API_KEY'
+                key_name = "OPENAI_API_KEY"
 
             key_found = False
 
             for i, line in enumerate(lines):
-                if line.startswith(key_name + '='):
-                    lines[i] = f'{key_name}={api_key}\n'
+                if line.startswith(key_name + "="):
+                    lines[i] = f"{key_name}={api_key}\n"
                     key_found = True
                     break
 
             if not key_found:
-                lines.append(f'{key_name}={api_key}\n')
+                lines.append(f"{key_name}={api_key}\n")
 
-            with open(env_file, 'w', encoding='utf-8') as f:
+            with open(env_file, "w", encoding="utf-8") as f:
                 f.writelines(lines)
 
             os.environ[key_name] = api_key
 
             from flask import current_app
-            current_app.logger.info(f"✅ {key_name} updated successfully by user {current_user.username}")
 
-            return jsonify({
-                'success': True,
-                'message': f'تم حفظ مفتاح {provider.upper()} بنجاح! ✅',
-                'provider': provider,
-                'expires_in': '24 ساعة' if provider == 'groq' else 'حسب اشتراكك'
-            })
+            current_app.logger.info(
+                f"✅ {key_name} updated successfully by user {current_user.username}"
+            )
+
+            return jsonify(
+                {
+                    "success": True,
+                    "message": f"تم حفظ مفتاح {provider.upper()} بنجاح! ✅",
+                    "provider": provider,
+                    "expires_in": "24 ساعة" if provider == "groq" else "حسب اشتراكك",
+                }
+            )
 
         except Exception as e:
             from flask import current_app
+
             current_app.logger.error(f"Failed to save API key: {e}")
-            return jsonify({'success': False,
-                            'message': 'خطأ في حفظ المفتاح'}), 500
+            return jsonify({"success": False, "message": "خطأ في حفظ المفتاح"}), 500
 
-    current_groq = os.environ.get('GROQ_API_KEY', '')
-    current_openai = os.environ.get('OPENAI_API_KEY', '')
-    current_gemini = os.environ.get('GEMINI_API_KEY', '')
+    current_groq = os.environ.get("GROQ_API_KEY", "")
+    current_openai = os.environ.get("OPENAI_API_KEY", "")
+    current_gemini = os.environ.get("GEMINI_API_KEY", "")
 
-    return render_template('ai/config.html',
-                           ai_enabled=AIService.is_enabled(),
-                           groq_key_exists=bool(current_groq),
-                           openai_key_exists=bool(current_openai or current_gemini),
-                           groq_key_preview=current_groq[:20] + '...' if current_groq else '',
-                           openai_key_preview=(current_openai or current_gemini)[:20] + '...' if (current_openai or current_gemini) else '')
+    return render_template(
+        "ai/config.html",
+        ai_enabled=AIService.is_enabled(),
+        groq_key_exists=bool(current_groq),
+        openai_key_exists=bool(current_openai or current_gemini),
+        groq_key_preview=current_groq[:20] + "..." if current_groq else "",
+        openai_key_preview=(current_openai or current_gemini)[:20] + "..."
+        if (current_openai or current_gemini)
+        else "",
+    )
 
 
-@ai_bp.route('/upload-excel', methods=['POST'])
+@ai_bp.route("/upload-excel", methods=["POST"])
 @login_required
-@permission_required('manage_products')
+@permission_required("manage_products")
 def upload_excel():
     """رفع ومعالجة ملف Excel للمنتجات - المعالج الذكي الخارق"""
     try:
-        if 'file' not in request.files:
-            return jsonify({'success': False, 'error': 'لم يتم رفع ملف'}), 400
+        if "file" not in request.files:
+            return jsonify({"success": False, "error": "لم يتم رفع ملف"}), 400
 
-        file = request.files['file']
-        warehouse_id = request.form.get('warehouse_id', type=int)
+        file = request.files["file"]
+        warehouse_id = request.form.get("warehouse_id", type=int)
         if not warehouse_id:
             from models import Warehouse
+
             warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
             if not warehouse:
                 warehouse = Warehouse.query.filter_by(is_active=True).first()
             if warehouse:
                 warehouse_id = warehouse.id
 
-        if file.filename == '':
-            return jsonify({'success': False, 'error': 'لم يتم اختيار ملف'}), 400
+        if file.filename == "":
+            return jsonify({"success": False, "error": "لم يتم اختيار ملف"}), 400
 
-        if not file.filename.endswith(('.xlsx', '.xls')):
-            return jsonify({'success': False, 'error': 'الملف يجب أن يكون Excel'}), 400
+        if not file.filename.endswith((".xlsx", ".xls")):
+            return jsonify({"success": False, "error": "الملف يجب أن يكون Excel"}), 400
 
         result = _process_excel_intelligently(file, warehouse_id, current_user)
 
         return jsonify(result)
 
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'خطأ في معالجة الملف: حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify(
+            {"success": False, "error": "خطأ في معالجة الملف: حدث خطأ غير متوقع"}
+        ), 500
 
 
 def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
@@ -3419,14 +4063,14 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
         from models import Product, Warehouse
         from services.stock_service import StockService
 
-        df = pd.read_excel(file, engine='openpyxl')
+        df = pd.read_excel(file, engine="openpyxl")
 
         column_mapping = _intelligent_column_detector(df)
 
         if not column_mapping:
             return {
-                'success': False,
-                'error': 'لم أستطع فهم هيكل الملف. تأكد من وجود أعمدة: الاسم، رقم القطعة، السعر'
+                "success": False,
+                "error": "لم أستطع فهم هيكل الملف. تأكد من وجود أعمدة: الاسم، رقم القطعة، السعر",
             }
 
         if not warehouse_id:
@@ -3434,15 +4078,19 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
             if not warehouse:
                 warehouse = Warehouse.query.filter_by(is_active=True).first()
             if not warehouse:
-                warehouse = Warehouse(name='Main Warehouse', name_ar='المستودع الرئيسي',
-                                     is_active=True, is_main=True)
+                warehouse = Warehouse(
+                    name="Main Warehouse",
+                    name_ar="المستودع الرئيسي",
+                    is_active=True,
+                    is_main=True,
+                )
                 db.session.add(warehouse)
                 db.session.flush()
             warehouse_id = warehouse.id
         else:
             warehouse = get_owned_or_404(Warehouse, warehouse_id, code=404)
             if not warehouse.is_active:
-                return {'success': False, 'error': f'المستودع #{warehouse_id} غير نشط'}
+                return {"success": False, "error": f"المستودع #{warehouse_id} غير نشط"}
 
         products_created = 0
         products_updated = 0
@@ -3458,7 +4106,7 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
                 return default
             if isinstance(val, str):
                 val = val.strip()
-                if val == '' or val.lower() == 'nan':
+                if val == "" or val.lower() == "nan":
                     return default
             return val
 
@@ -3480,56 +4128,67 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
 
         for index, row in df.iterrows():
             try:
-                name = str(_cell('name', '') or '').strip()
-                part_number_raw = _cell('part_number', None)
-                part_number = str(part_number_raw).strip() if part_number_raw is not None else ''
-                if not name or name.lower() == 'nan' or name.lower() == 'none':
+                name = str(_cell("name", "") or "").strip()
+                part_number_raw = _cell("part_number", None)
+                part_number = (
+                    str(part_number_raw).strip() if part_number_raw is not None else ""
+                )
+                if not name or name.lower() == "nan" or name.lower() == "none":
                     continue
                 # Skip note/header-like rows (no valid part number and name looks like a note)
-                if not part_number or part_number.lower() in ('nan', 'none', ''):
+                if not part_number or part_number.lower() in ("nan", "none", ""):
                     # Allow products without part_number only if name doesn't look like a note
-                    if name[:2].rstrip('.').isdigit() or 'ملاحظ' in name or 'note' in name.lower():
+                    if (
+                        name[:2].rstrip(".").isdigit()
+                        or "ملاحظ" in name
+                        or "note" in name.lower()
+                    ):
                         continue
                     part_number = None
 
-                price = _flt(_cell('price'), 0.0)
-                cost_price = _flt(_cell('cost_price'), None)
+                price = _flt(_cell("price"), 0.0)
+                cost_price = _flt(_cell("cost_price"), None)
                 if cost_price is None:
                     cost_price = 0.0
-                quantity = _int(_cell('quantity'), 0)
-                min_stock_alert = _flt(_cell('min_stock_alert'), 0.0)
-                name_ar = _cell('name_ar')
-                barcode = _cell('barcode')
-                unit = _cell('unit')
-                location = _cell('location')
-                description = _cell('description')
-                tax_treatment = _cell('tax_treatment')
+                quantity = _int(_cell("quantity"), 0)
+                min_stock_alert = _flt(_cell("min_stock_alert"), 0.0)
+                name_ar = _cell("name_ar")
+                barcode = _cell("barcode")
+                unit = _cell("unit")
+                location = _cell("location")
+                description = _cell("description")
+                tax_treatment = _cell("tax_treatment")
                 if tax_treatment is not None:
                     tax_treatment = str(tax_treatment).strip().lower()
-                    if tax_treatment not in ('standard', 'zero', 'exempt'):
-                        tax_treatment = 'standard'
+                    if tax_treatment not in ("standard", "zero", "exempt"):
+                        tax_treatment = "standard"
                 else:
-                    tax_treatment = 'standard'
-                merchant_price = _flt(_cell('merchant_price'), None)
-                partner_price = _flt(_cell('partner_price'), None)
+                    tax_treatment = "standard"
+                merchant_price = _flt(_cell("merchant_price"), None)
+                partner_price = _flt(_cell("partner_price"), None)
 
-                category_name = _cell('category')
+                category_name = _cell("category")
                 category_id = None
                 if category_name:
                     category_name = str(category_name).strip()
                     from models import ProductCategory
+
                     cat = ProductCategory.query.filter(
                         db.func.lower(ProductCategory.name) == category_name.lower()
                     ).first()
                     if cat is None:
-                        cat = ProductCategory(name=category_name, name_ar=category_name, is_active=True)
+                        cat = ProductCategory(
+                            name=category_name, name_ar=category_name, is_active=True
+                        )
                         db.session.add(cat)
                         db.session.flush()
                     category_id = cat.id
 
                 existing_product = None
                 if part_number:
-                    existing_product = Product.query.filter_by(part_number=part_number).first()
+                    existing_product = Product.query.filter_by(
+                        part_number=part_number
+                    ).first()
                 if existing_product is None and barcode:
                     existing_product = Product.query.filter_by(barcode=barcode).first()
 
@@ -3588,32 +4247,43 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
                         StockService.create_movement(
                             product_id=product.id,
                             quantity=quantity,
-                            movement_type='adjustment',
-                            reference_type='Excel Import',
+                            movement_type="adjustment",
+                            reference_type="Excel Import",
                             reference_id=product.id,
-                            notes=f'استيراد Excel — {name}',
+                            notes=f"استيراد Excel — {name}",
                             warehouse_id=warehouse_id,
-                            unit_cost_base=cost_price if cost_price and cost_price > 0 else None,
+                            unit_cost_base=cost_price
+                            if cost_price and cost_price > 0
+                            else None,
                         )
                     except Exception as _mv_err:
                         current_app.logger.warning(
-                            f'Excel import stock movement failed for {name}: {_mv_err}')
+                            f"Excel import stock movement failed for {name}: {_mv_err}"
+                        )
                         product.current_stock = (product.current_stock or 0) + quantity
 
                 if not product.cost_price:
                     no_cost_warning = True
 
             except Exception as e:
-                errors.append(f'السطر {index + 2}: حدث خطأ غير متوقع')
+                errors.append(f"السطر {index + 2}: حدث خطأ غير متوقع")
 
         db.session.commit()
 
-        _ai_audit('products', None, {'method': 'excel_import', 'created': products_created, 'updated': products_updated})
+        _ai_audit(
+            "products",
+            None,
+            {
+                "method": "excel_import",
+                "created": products_created,
+                "updated": products_updated,
+            },
+        )
         _train_ai_from_excel(df, products_created, products_updated, user.id)
 
-        error_details = '\n'.join(errors) if errors else ''
+        error_details = "\n".join(errors) if errors else ""
 
-        message = f'''✅ تمت المعالجة بنجاح!
+        message = f"""✅ تمت المعالجة بنجاح!
 
 📊 النتائج:
 - تم إنشاء: {products_created} منتج جديد
@@ -3622,33 +4292,30 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
 - الأخطاء: {len(errors)}
 
 🤖 تم تدريب AI على البيانات الجديدة!
-🧠 المصدر: GROQ + المحلي - معالج ذكي خارق'''
+🧠 المصدر: GROQ + المحلي - معالج ذكي خارق"""
 
         if no_cost_warning:
-            message += '''
+            message += """
 
-⚠️ بعض المنتجات بدون تكلفة مسجّلة — لا يمكن بيعها قبل ضبط التكلفة (عدّل المنتج وأضف سعر التكلفة).'''
+⚠️ بعض المنتجات بدون تكلفة مسجّلة — لا يمكن بيعها قبل ضبط التكلفة (عدّل المنتج وأضف سعر التكلفة)."""
 
         if errors and len(errors) > 0:
-            message += f'\n\n⚠️ تفاصيل الأخطاء:\n{error_details}'
+            message += f"\n\n⚠️ تفاصيل الأخطاء:\n{error_details}"
 
         return {
-            'success': True,
-            'message': message,
-            'details': {
-                'created': products_created,
-                'updated': products_updated,
-                'errors': errors,
-                'warehouse': warehouse.name
-            }
+            "success": True,
+            "message": message,
+            "details": {
+                "created": products_created,
+                "updated": products_updated,
+                "errors": errors,
+                "warehouse": warehouse.name,
+            },
         }
 
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return {
-            'success': False,
-            'error': 'خطأ في المعالجة: حدث خطأ غير متوقع'
-        }
+        current_app.logger.exception("AI handler failed")
+        return {"success": False, "error": "خطأ في المعالجة: حدث خطأ غير متوقع"}
 
 
 def _intelligent_column_detector(df):
@@ -3656,69 +4323,89 @@ def _intelligent_column_detector(df):
     column_mapping = {}
 
     # More specific keywords first to avoid collisions (e.g. cost vs price)
-    name_ar_keywords = ['اسم_ar', 'name_ar', 'arabic', 'عربي', 'اسم عربي']
-    name_keywords = ['اسم', 'name', 'product', 'منتج', 'item', 'description', 'وصف']
-    part_keywords = ['رقم', 'part', 'code', 'كود', 'sku', 'reference', 'مرجع']
-    barcode_keywords = ['باركود', 'barcode', 'bar_code']
-    price_keywords = ['سعر', 'price', 'value', 'قيمة', 'amount', 'مبلغ']
-    cost_keywords = ['تكلفة', 'cost', 'cost_price']
-    merchant_price_keywords = ['تاجر', 'merchant', 'merchant_price', 'سعر تاجر', 'سعر التاجر']
-    partner_price_keywords = ['شريك', 'partner', 'partner_price', 'سعر شريك', 'سعر الشريك']
-    quantity_keywords = ['كمية', 'qty', 'quantity', 'stock', 'مخزون', 'عدد', 'count']
-    min_stock_keywords = ['حد أدنى', 'min_stock', 'alert', 'تنبيه', 'أدنى', 'minimum', 'min_']
-    unit_keywords = ['وحدة', 'unit']
-    category_keywords = ['تصنيف', 'category', 'فئة', 'class']
-    tax_keywords = ['ضريبة', 'tax', 'treatment', 'معاملة']
-    location_keywords = ['موقع', 'location', 'مكان', 'مستودع']
-    description_keywords = ['وصف', 'description', 'notes', 'ملاحظات', 'note']
+    name_ar_keywords = ["اسم_ar", "name_ar", "arabic", "عربي", "اسم عربي"]
+    name_keywords = ["اسم", "name", "product", "منتج", "item", "description", "وصف"]
+    part_keywords = ["رقم", "part", "code", "كود", "sku", "reference", "مرجع"]
+    barcode_keywords = ["باركود", "barcode", "bar_code"]
+    price_keywords = ["سعر", "price", "value", "قيمة", "amount", "مبلغ"]
+    cost_keywords = ["تكلفة", "cost", "cost_price"]
+    merchant_price_keywords = [
+        "تاجر",
+        "merchant",
+        "merchant_price",
+        "سعر تاجر",
+        "سعر التاجر",
+    ]
+    partner_price_keywords = [
+        "شريك",
+        "partner",
+        "partner_price",
+        "سعر شريك",
+        "سعر الشريك",
+    ]
+    quantity_keywords = ["كمية", "qty", "quantity", "stock", "مخزون", "عدد", "count"]
+    min_stock_keywords = [
+        "حد أدنى",
+        "min_stock",
+        "alert",
+        "تنبيه",
+        "أدنى",
+        "minimum",
+        "min_",
+    ]
+    unit_keywords = ["وحدة", "unit"]
+    category_keywords = ["تصنيف", "category", "فئة", "class"]
+    tax_keywords = ["ضريبة", "tax", "treatment", "معاملة"]
+    location_keywords = ["موقع", "location", "مكان", "مستودع"]
+    description_keywords = ["وصف", "description", "notes", "ملاحظات", "note"]
 
     columns_lower = [str(col).lower().strip() for col in df.columns]
 
     for idx, col in enumerate(columns_lower):
         # Specific first
         if any(k in col for k in name_ar_keywords):
-            column_mapping['name_ar'] = df.columns[idx]
+            column_mapping["name_ar"] = df.columns[idx]
         elif any(k in col for k in barcode_keywords):
-            column_mapping['barcode'] = df.columns[idx]
+            column_mapping["barcode"] = df.columns[idx]
         elif any(k in col for k in cost_keywords):
-            column_mapping['cost_price'] = df.columns[idx]
+            column_mapping["cost_price"] = df.columns[idx]
         elif any(k in col for k in merchant_price_keywords):
-            column_mapping['merchant_price'] = df.columns[idx]
+            column_mapping["merchant_price"] = df.columns[idx]
         elif any(k in col for k in partner_price_keywords):
-            column_mapping['partner_price'] = df.columns[idx]
+            column_mapping["partner_price"] = df.columns[idx]
         elif any(k in col for k in tax_keywords):
-            column_mapping['tax_treatment'] = df.columns[idx]
+            column_mapping["tax_treatment"] = df.columns[idx]
         elif any(k in col for k in location_keywords):
-            column_mapping['location'] = df.columns[idx]
+            column_mapping["location"] = df.columns[idx]
         elif any(k in col for k in unit_keywords):
-            column_mapping['unit'] = df.columns[idx]
+            column_mapping["unit"] = df.columns[idx]
         elif any(k in col for k in min_stock_keywords):
-            column_mapping['min_stock_alert'] = df.columns[idx]
+            column_mapping["min_stock_alert"] = df.columns[idx]
         elif any(k in col for k in category_keywords):
-            column_mapping['category'] = df.columns[idx]
+            column_mapping["category"] = df.columns[idx]
         elif any(k in col for k in description_keywords):
-            column_mapping['description'] = df.columns[idx]
+            column_mapping["description"] = df.columns[idx]
         elif any(k in col for k in name_keywords):
-            column_mapping['name'] = df.columns[idx]
+            column_mapping["name"] = df.columns[idx]
         elif any(k in col for k in part_keywords):
-            column_mapping['part_number'] = df.columns[idx]
+            column_mapping["part_number"] = df.columns[idx]
         elif any(k in col for k in price_keywords):
-            column_mapping['price'] = df.columns[idx]
+            column_mapping["price"] = df.columns[idx]
         elif any(k in col for k in quantity_keywords):
-            column_mapping['quantity'] = df.columns[idx]
+            column_mapping["quantity"] = df.columns[idx]
 
     # Fallbacks for required columns
-    if 'name' not in column_mapping and len(df.columns) > 0:
-        column_mapping['name'] = df.columns[0]
-    if 'part_number' not in column_mapping and len(df.columns) > 1:
-        column_mapping['part_number'] = df.columns[1]
-    if 'price' not in column_mapping and len(df.columns) > 2:
-        column_mapping['price'] = df.columns[2]
-    if 'quantity' not in column_mapping and len(df.columns) > 3:
-        column_mapping['quantity'] = df.columns[3]
+    if "name" not in column_mapping and len(df.columns) > 0:
+        column_mapping["name"] = df.columns[0]
+    if "part_number" not in column_mapping and len(df.columns) > 1:
+        column_mapping["part_number"] = df.columns[1]
+    if "price" not in column_mapping and len(df.columns) > 2:
+        column_mapping["price"] = df.columns[2]
+    if "quantity" not in column_mapping and len(df.columns) > 3:
+        column_mapping["quantity"] = df.columns[3]
 
     # Need at least name + part_number + price
-    required = {'name', 'part_number', 'price'}
+    required = {"name", "part_number", "price"}
     if not required.issubset(column_mapping.keys()):
         return None
     return column_mapping
@@ -3728,14 +4415,14 @@ def _train_ai_from_excel(df, created, updated, user_id):
     """تدريب AI من بيانات Excel"""
     try:
         _ = {
-            'source': 'excel_upload',
-            'timestamp': datetime.now().isoformat(),
-            'user_id': user_id,
-            'products_created': created,
-            'products_updated': updated,
-            'total_rows': len(df),
-            'columns': list(df.columns),
-            'sample_data': df.head(5).to_dict()
+            "source": "excel_upload",
+            "timestamp": datetime.now().isoformat(),
+            "user_id": user_id,
+            "products_created": created,
+            "products_updated": updated,
+            "total_rows": len(df),
+            "columns": list(df.columns),
+            "sample_data": df.head(5).to_dict(),
         }
 
         # learning_system.learn_from_user_data(learning_data)  # تعطيل مؤقت
@@ -3744,16 +4431,16 @@ def _train_ai_from_excel(df, created, updated, user_id):
         current_app.logger.warning(f"AI training from Excel failed: {e}")
 
 
-@ai_bp.route('/predict-sales', methods=['GET'])
+@ai_bp.route("/predict-sales", methods=["GET"])
 @login_required
 def predict_sales():
     """🔮 API: توقع المبيعات"""
-    days = request.args.get('days', 7, type=int)
+    days = request.args.get("days", 7, type=int)
     prediction = AIService.predict_sales_trend(days)
     return jsonify(prediction)
 
 
-@ai_bp.route('/analyze-margins', methods=['GET'])
+@ai_bp.route("/analyze-margins", methods=["GET"])
 @login_required
 def analyze_margins():
     """💰 API: تحليل هوامش الربح"""
@@ -3767,7 +4454,7 @@ def analyze_margins():
     return jsonify(analysis)
 
 
-@ai_bp.route('/detect-patterns', methods=['GET'])
+@ai_bp.route("/detect-patterns", methods=["GET"])
 @login_required
 def detect_patterns():
     """🔍 API: كشف الأنماط"""
@@ -3775,7 +4462,7 @@ def detect_patterns():
     return jsonify(patterns)
 
 
-@ai_bp.route('/inventory-health', methods=['GET'])
+@ai_bp.route("/inventory-health", methods=["GET"])
 @login_required
 def inventory_health():
     """📦 API: صحة المخزون"""
@@ -3783,9 +4470,9 @@ def inventory_health():
     return jsonify(health)
 
 
-@ai_bp.route('/deep-analysis', methods=['GET'])
+@ai_bp.route("/deep-analysis", methods=["GET"])
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def deep_analysis():
     """📊 API: تحليل عميق شامل"""
     # SECURITY: deep_business_analysis embeds the profit-margin section,
@@ -3796,17 +4483,17 @@ def deep_analysis():
     return jsonify(analysis)
 
 
-@ai_bp.route('/cash-flow-prediction', methods=['GET'])
+@ai_bp.route("/cash-flow-prediction", methods=["GET"])
 @login_required
-@permission_required('view_ledger')
+@permission_required("view_ledger")
 def cash_flow_prediction():
     """💵 API: توقع التدفق النقدي"""
-    days = request.args.get('days', 30, type=int)
+    days = request.args.get("days", 30, type=int)
     prediction = AIService.predict_cash_flow(days)
     return jsonify(prediction)
 
 
-@ai_bp.route('/smart-price', methods=['POST'])
+@ai_bp.route("/smart-price", methods=["POST"])
 @login_required
 def smart_price():
     """💎 API: محرك التسعير الذكي الخارق"""
@@ -3820,33 +4507,33 @@ def smart_price():
     # an uncaught 500 instead of the validation below. Matches the
     # `request.get_json() or {}` idiom already used elsewhere in this file.
     data = request.get_json(silent=True) or {}
-    product_id = data.get('product_id')
-    customer_id = data.get('customer_id')
-    quantity = data.get('quantity', 1)
+    product_id = data.get("product_id")
+    customer_id = data.get("customer_id")
+    quantity = data.get("quantity", 1)
 
     if not product_id or not customer_id:
-        return jsonify({'error': 'Product and Customer required'}), 400
+        return jsonify({"error": "Product and Customer required"}), 400
 
     pricing = AIService.smart_pricing_engine(product_id, customer_id, quantity)
 
     if not pricing:
-        return jsonify({'error': 'Not found'}), 404
+        return jsonify({"error": "Not found"}), 404
 
     return jsonify(pricing)
 
 
-@ai_bp.route('/churn-prediction', methods=['GET'])
+@ai_bp.route("/churn-prediction", methods=["GET"])
 @login_required
-@permission_required('manage_customers')
+@permission_required("manage_customers")
 def churn_prediction():
     """⚠️ API: توقع فقدان العملاء"""
     prediction = AIService.predict_customer_churn()
     return jsonify(prediction)
 
 
-@ai_bp.route('/optimize-inventory', methods=['GET'])
+@ai_bp.route("/optimize-inventory", methods=["GET"])
 @login_required
-@permission_required('manage_warehouse')
+@permission_required("manage_warehouse")
 def optimize_inventory():
     """📦 API: تحسين مستويات المخزون"""
     # SECURITY: the recommendation carries estimated_cost = qty *
@@ -3857,7 +4544,7 @@ def optimize_inventory():
     return jsonify(optimization)
 
 
-@ai_bp.route('/business-insights', methods=['GET'])
+@ai_bp.route("/business-insights", methods=["GET"])
 @login_required
 def business_insights():
     """💡 API: رؤى الأعمال التلقائية"""
@@ -3865,191 +4552,142 @@ def business_insights():
 
     formatted_insights = []
     for insight in insights:
-        formatted_insights.append({
-            'icon': '⚠️' if insight['type'] == 'warning' else 'ℹ️',
-            'title': insight['title'],
-            'insight': insight['message'],
-            'action': insight['action']
-        })
+        formatted_insights.append(
+            {
+                "icon": "⚠️" if insight["type"] == "warning" else "ℹ️",
+                "title": insight["title"],
+                "insight": insight["message"],
+                "action": insight["action"],
+            }
+        )
 
-    return jsonify({
-        'success': True,
-        'insights': formatted_insights
-    })
+    return jsonify({"success": True, "insights": formatted_insights})
 
 
-@ai_bp.route('/contextual-help/<page>', methods=['GET'])
+@ai_bp.route("/contextual-help/<page>", methods=["GET"])
 @login_required
 def contextual_help(page):
     """❓ API: مساعدة سياقية"""
-    user_role = current_user.role.name if current_user.role else 'user'
+    user_role = current_user.role.name if current_user.role else "user"
     help_content = AIService.contextual_help(page, user_role)
     return jsonify(help_content)
 
 
-@ai_bp.route('/learning/status')
+@ai_bp.route("/learning/status")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def learning_status():
     """حالة التعلم الذاتي"""
     try:
         insights = learning_system.get_learning_insights()
-        return jsonify({
-            'success': True,
-            'learning_insights': insights
-        })
+        return jsonify({"success": True, "learning_insights": insights})
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/learning/evolve', methods=['POST'])
+@ai_bp.route("/learning/evolve", methods=["POST"])
 @login_required
 @admin_required
 def evolve_knowledge():
     """تطوير المعرفة تلقائياً"""
     try:
         evolution = learning_system.evolve_knowledge()
-        return jsonify({
-            'success': True,
-            'evolution': evolution
-        })
+        return jsonify({"success": True, "evolution": evolution})
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/improvement/status')
+@ai_bp.route("/improvement/status")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def improvement_status():
     """حالة التحسين الذاتي"""
     try:
         status = self_improvement.get_improvement_status()
-        return jsonify({
-            'success': True,
-            'improvement_status': status
-        })
+        return jsonify({"success": True, "improvement_status": status})
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/improvement/auto-improve', methods=['POST'])
+@ai_bp.route("/improvement/auto-improve", methods=["POST"])
 @login_required
 @admin_required
 def auto_improve():
     """التحسين التلقائي"""
     try:
         improvements = self_improvement.auto_improve()
-        return jsonify({
-            'success': True,
-            'improvements': improvements
-        })
+        return jsonify({"success": True, "improvements": improvements})
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/improvement/progress')
+@ai_bp.route("/improvement/progress")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def improvement_progress():
     """تتبع تقدم التحسين"""
     try:
         progress = self_improvement.track_progress()
-        return jsonify({
-            'success': True,
-            'progress': progress
-        })
+        return jsonify({"success": True, "progress": progress})
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/improvement/set-goal', methods=['POST'])
+@ai_bp.route("/improvement/set-goal", methods=["POST"])
 @login_required
 @admin_required
 def set_improvement_goal():
     """تعيين هدف تحسين"""
     try:
         data = request.get_json(silent=True) or {}
-        area = data.get('area')
-        target_score = data.get('target_score')
-        timeframe = data.get('timeframe', '30_days')
+        area = data.get("area")
+        target_score = data.get("target_score")
+        timeframe = data.get("timeframe", "30_days")
 
         if not area or not target_score:
-            return jsonify({
-                'success': False,
-                'error': 'المجال والهدف مطلوبان'
-            }), 400
+            return jsonify({"success": False, "error": "المجال والهدف مطلوبان"}), 400
 
         result = self_improvement.set_improvement_goal(area, target_score, timeframe)
         return jsonify(result)
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/global/insights')
+@ai_bp.route("/global/insights")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def global_insights():
     """رؤى عالمية"""
     try:
         insights = global_connector.get_global_insights()
-        return jsonify({
-            'success': True,
-            'global_insights': insights
-        })
+        return jsonify({"success": True, "global_insights": insights})
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/global/expertise-update')
+@ai_bp.route("/global/expertise-update")
 @login_required
 @admin_required
 def update_global_expertise():
     """تحديث الخبرة العالمية"""
     try:
         updates = expertise_updater.update_expertise()
-        return jsonify({
-            'success': True,
-            'expertise_updates': updates
-        })
+        return jsonify({"success": True, "expertise_updates": updates})
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/performance/analysis')
+@ai_bp.route("/performance/analysis")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def performance_analysis():
     """تحليل الأداء الشامل"""
     try:
@@ -4061,72 +4699,62 @@ def performance_analysis():
 
         global_insights_data = global_connector.get_global_insights()
 
-        return jsonify({
-            'success': True,
-            'performance_analysis': {
-                'performance': performance,
-                'learning': learning_insights,
-                'evolution': evolution,
-                'global': global_insights_data
+        return jsonify(
+            {
+                "success": True,
+                "performance_analysis": {
+                    "performance": performance,
+                    "learning": learning_insights,
+                    "evolution": evolution,
+                    "global": global_insights_data,
+                },
             }
-        })
+        )
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/system/customer-balance/<customer_name>')
+@ai_bp.route("/system/customer-balance/<customer_name>")
 @login_required
-@permission_required('manage_customers')
+@permission_required("manage_customers")
 def get_customer_balance(customer_name):
     """جلب رصيد العميل بدقة"""
     try:
         result = system_integrator.get_customer_balance(customer_name)
         return jsonify(result)
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/system/customer-debt/<int:customer_id>')
+@ai_bp.route("/system/customer-debt/<int:customer_id>")
 @login_required
-@permission_required('manage_customers')
+@permission_required("manage_customers")
 def analyze_customer_debt(customer_id):
     """تحليل ديون العميل بالتفصيل"""
     try:
         result = data_analyzer.analyze_customer_debt(customer_id)
         return jsonify(result)
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/system/product-stock/<product_name>')
+@ai_bp.route("/system/product-stock/<product_name>")
 @login_required
-@permission_required('manage_products')
+@permission_required("manage_products")
 def get_product_stock(product_name):
     """جلب مخزون المنتج بدقة"""
     try:
         result = system_integrator.get_product_stock(product_name)
         return jsonify(result)
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/system/summary')
+@ai_bp.route("/system/summary")
 @login_required
 def get_system_summary():
     """ملخص النظام الشامل"""
@@ -4134,20 +4762,19 @@ def get_system_summary():
         result = system_integrator.get_system_summary()
         financial_result = system_integrator.get_financial_summary()
 
-        return jsonify({
-            'success': True,
-            'summary': result.get('summary', {}),
-            'financial': financial_result.get('financial', {})
-        })
+        return jsonify(
+            {
+                "success": True,
+                "summary": result.get("summary", {}),
+                "financial": financial_result.get("financial", {}),
+            }
+        )
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/system/search/<search_term>')
+@ai_bp.route("/system/search/<search_term>")
 @login_required
 def search_system_data(search_term):
     """البحث في بيانات النظام"""
@@ -4155,16 +4782,13 @@ def search_system_data(search_term):
         result = system_integrator.search_data(search_term)
         return jsonify(result)
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/system/add-customer', methods=['POST'])
+@ai_bp.route("/system/add-customer", methods=["POST"])
 @login_required
-@permission_required('manage_customers')
+@permission_required("manage_customers")
 def add_customer():
     """إضافة عميل جديد"""
     try:
@@ -4172,143 +4796,113 @@ def add_customer():
         result = system_integrator.add_customer(data)
         return jsonify(result)
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/data/analyze-sales')
+@ai_bp.route("/data/analyze-sales")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def analyze_sales_performance():
     """تحليل أداء المبيعات"""
     try:
-        period_days = request.args.get('period', 30, type=int)
+        period_days = request.args.get("period", 30, type=int)
         result = data_analyzer.analyze_sales_performance(period_days)
         return jsonify(result)
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/data/analyze-products')
+@ai_bp.route("/data/analyze-products")
 @login_required
-@permission_required('view_products')
+@permission_required("view_products")
 def analyze_product_performance():
     """تحليل أداء المنتجات"""
     try:
-        product_id = request.args.get('product_id', type=int)
+        product_id = request.args.get("product_id", type=int)
         result = data_analyzer.analyze_product_performance(product_id)
         return jsonify(result)
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/data/financial-ratios')
+@ai_bp.route("/data/financial-ratios")
 @login_required
-@permission_required('view_reports')
+@permission_required("view_reports")
 def get_financial_ratios():
     """النسب المالية"""
     try:
         result = data_analyzer.get_financial_ratios()
         return jsonify(result)
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/knowledge/add-website', methods=['POST'])
+@ai_bp.route("/knowledge/add-website", methods=["POST"])
 @login_required
 @admin_required
 def add_knowledge_website():
     """إضافة موقع ويب للمعرفة"""
     try:
         data = request.get_json()
-        url = data.get('url')
-        category = data.get('category', 'general')
-        description = data.get('description', '')
+        url = data.get("url")
+        category = data.get("category", "general")
+        description = data.get("description", "")
 
         if not url:
-            return jsonify({
-                'success': False,
-                'error': 'الرابط مطلوب'
-            }), 400
+            return jsonify({"success": False, "error": "الرابط مطلوب"}), 400
 
         result = knowledge_expander.add_website(url, category, description)
         return jsonify(result)
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/knowledge/add-document', methods=['POST'])
+@ai_bp.route("/knowledge/add-document", methods=["POST"])
 @login_required
 @admin_required
 def add_knowledge_document():
     """إضافة مستند للمعرفة"""
     try:
         data = request.get_json()
-        content = data.get('content')
-        title = data.get('title')
-        category = data.get('category', 'general')
-        description = data.get('description', '')
+        content = data.get("content")
+        title = data.get("title")
+        category = data.get("category", "general")
+        description = data.get("description", "")
 
         if not content or not title:
-            return jsonify({
-                'success': False,
-                'error': 'المحتوى والعنوان مطلوبان'
-            }), 400
+            return jsonify({"success": False, "error": "المحتوى والعنوان مطلوبان"}), 400
 
         result = knowledge_expander.add_document(content, title, category, description)
         return jsonify(result)
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/knowledge/search')
+@ai_bp.route("/knowledge/search")
 @login_required
 def search_knowledge():
     """البحث في المعرفة الموسعة"""
     try:
-        query = request.args.get('q', '')
-        category = request.args.get('category')
+        query = request.args.get("q", "")
+        category = request.args.get("category")
 
         if not query:
-            return jsonify({
-                'success': False,
-                'error': 'كلمة البحث مطلوبة'
-            }), 400
+            return jsonify({"success": False, "error": "كلمة البحث مطلوبة"}), 400
 
         result = knowledge_expander.search_knowledge(query, category)
         return jsonify(result)
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/knowledge/summary')
+@ai_bp.route("/knowledge/summary")
 @login_required
 def get_knowledge_summary():
     """📚 API: ملخص المعرفة الموسعة"""
@@ -4316,32 +4910,23 @@ def get_knowledge_summary():
         result = knowledge_expander.get_knowledge_summary()
         return jsonify(result)
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        }), 500
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-@ai_bp.route('/neural-status', methods=['GET'])
+@ai_bp.route("/neural-status", methods=["GET"])
 @login_required
 def neural_status():
     """🧠 API: حالة الشبكات العصبية"""
     try:
         status = AIService.get_neural_status()
-        return jsonify({
-            'success': True,
-            'status': status
-        })
+        return jsonify({"success": True, "status": status})
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        })
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"})
 
 
-@ai_bp.route('/automotive-ecu/<code>', methods=['GET'])
+@ai_bp.route("/automotive-ecu/<code>", methods=["GET"])
 @login_required
 def automotive_ecu_code(code):
     """🚗 API: تشخيص كود OBD-II"""
@@ -4349,19 +4934,13 @@ def automotive_ecu_code(code):
         ecu_expert = get_automotive_ecu_knowledge()
         diagnosis = ecu_expert.diagnose_code(code.upper())
 
-        return jsonify({
-            'success': True,
-            'diagnosis': diagnosis
-        })
+        return jsonify({"success": True, "diagnosis": diagnosis})
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        })
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"})
 
 
-@ai_bp.route('/automotive-sensor/<sensor>', methods=['GET'])
+@ai_bp.route("/automotive-sensor/<sensor>", methods=["GET"])
 @login_required
 def automotive_sensor(sensor):
     """🔧 API: معلومات حساس محدد"""
@@ -4369,19 +4948,13 @@ def automotive_sensor(sensor):
         ecu_expert = get_automotive_ecu_knowledge()
         info = ecu_expert.get_sensor_info(sensor)
 
-        return jsonify({
-            'success': True,
-            'sensor_info': info
-        })
+        return jsonify({"success": True, "sensor_info": info})
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        })
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"})
 
 
-@ai_bp.route('/external-sources', methods=['GET'])
+@ai_bp.route("/external-sources", methods=["GET"])
 @login_required
 def external_sources():
     """📚 API: قائمة مصادر التعلم الخارجية"""
@@ -4390,132 +4963,102 @@ def external_sources():
         sources = learning.get_knowledge_sources_list()
         stats = learning.get_statistics()
 
-        return jsonify({
-            'success': True,
-            'sources': sources,
-            'statistics': stats,
-            'catalog': LEARNING_SOURCES_CATALOG
-        })
+        return jsonify(
+            {
+                "success": True,
+                "sources": sources,
+                "statistics": stats,
+                "catalog": LEARNING_SOURCES_CATALOG,
+            }
+        )
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        })
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"})
 
 
-@ai_bp.route('/ask-genius', methods=['POST'])
+@ai_bp.route("/ask-genius", methods=["POST"])
 @csrf.exempt
 @login_required
 def ask_genius():
     """🌟 API: اسأل العبقري - الواجهة الموحدة"""
     # Security: Track operation type for CSRF audit
-    request.ai_operation = 'ask_genius'
-    
+    request.ai_operation = "ask_genius"
+
     # Security: Validate CSRF for this state-changing operation
     csrf_check = _require_csrf_for_sensitive_ops()
     if csrf_check:
         return csrf_check
-    
+
     try:
         data = request.get_json()
-        question = data.get('question', '')
-        context = data.get('context', {})
+        question = data.get("question", "")
+        context = data.get("context", {})
 
         if not question:
-            return jsonify({
-                'success': False,
-                'error': 'السؤال مطلوب'
-            }), 400
+            return jsonify({"success": False, "error": "السؤال مطلوب"}), 400
 
         result = AIService.ask_genius(
-            question=question,
-            context=context,
-            user_id=current_user.id
+            question=question, context=context, user_id=current_user.id
         )
 
-        return jsonify({
-            'success': True,
-            'result': result
-        })
+        return jsonify({"success": True, "result": result})
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        })
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"})
 
 
-@ai_bp.route('/quick-calc', methods=['POST'])
+@ai_bp.route("/quick-calc", methods=["POST"])
 @csrf.exempt
 @login_required
 def quick_calc():
     """⚡ API: حسابات سريعة"""
     # Security: Track operation type for CSRF audit
-    request.ai_operation = 'quick_calc'
-    
+    request.ai_operation = "quick_calc"
+
     # Security: Validate CSRF for this state-changing operation
     csrf_check = _require_csrf_for_sensitive_ops()
     if csrf_check:
         return csrf_check
-    
+
     try:
         data = request.get_json()
-        formula = data.get('formula', '')
-        params = data.get('params', {})
+        formula = data.get("formula", "")
+        params = data.get("params", {})
 
         if not formula:
-            return jsonify({
-                'success': False,
-                'error': 'الصيغة مطلوبة'
-            }), 400
+            return jsonify({"success": False, "error": "الصيغة مطلوبة"}), 400
 
         result = AIService.quick_calculate(formula, **params)
 
-        return jsonify({
-            'success': result.get('success', False),
-            'result': result
-        })
+        return jsonify({"success": result.get("success", False), "result": result})
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        })
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"})
 
 
-@ai_bp.route('/transformers-understand', methods=['POST'])
+@ai_bp.route("/transformers-understand", methods=["POST"])
 @csrf.exempt
 @login_required
 def transformers_understand():
     """🤖 API: فهم بالـ Transformers"""
     # Security: Track operation type for CSRF audit
-    request.ai_operation = 'transformers_understand'
-    
+    request.ai_operation = "transformers_understand"
+
     # Security: Validate CSRF for this state-changing operation
     csrf_check = _require_csrf_for_sensitive_ops()
     if csrf_check:
         return csrf_check
-    
+
     try:
         data = request.get_json()
-        text = data.get('text', '')
+        text = data.get("text", "")
 
         if not text:
-            return jsonify({
-                'success': False,
-                'error': 'النص مطلوب'
-            }), 400
+            return jsonify({"success": False, "error": "النص مطلوب"}), 400
 
         understanding = AIService.understand_with_transformers(text)
 
-        return jsonify({
-            'success': True,
-            'understanding': understanding
-        })
+        return jsonify({"success": True, "understanding": understanding})
     except Exception as e:
-        current_app.logger.exception('AI handler failed')
-        return jsonify({
-            'success': False,
-            'error': 'حدث خطأ غير متوقع'
-        })
+        current_app.logger.exception("AI handler failed")
+        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"})

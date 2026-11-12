@@ -89,18 +89,18 @@ def _scoped_list_query(model):
     """
     query = model.query
     try:
-        if not getattr(current_user, 'is_authenticated', False):
+        if not getattr(current_user, "is_authenticated", False):
             return query
-        if getattr(current_user, 'is_owner', False):
+        if getattr(current_user, "is_owner", False):
             return query
-        _is_super_admin = getattr(current_user, 'is_super_admin', None)
+        _is_super_admin = getattr(current_user, "is_super_admin", None)
         if callable(_is_super_admin):
             try:
                 if _is_super_admin():
                     return query
             except Exception:
                 pass
-        actor_tenant = getattr(current_user, 'tenant_id', None)
+        actor_tenant = getattr(current_user, "tenant_id", None)
         if actor_tenant is None:
             return query
         return query.filter(model.tenant_id == actor_tenant)
@@ -116,7 +116,7 @@ def _convert_sale_to_type(sale):
         total_amount=float(sale.total_amount) if sale.total_amount else 0,
         amount_base=float(sale.amount_base) if sale.amount_base else 0,
         status=sale.status,
-        created_at=sale.created_at
+        created_at=sale.created_at,
     )
 
 
@@ -127,7 +127,7 @@ def _convert_customer_to_type(customer):
         phone=customer.phone,
         email=customer.email,
         address=customer.address,
-        balance=float(customer.balance) if customer.balance else 0
+        balance=float(customer.balance) if customer.balance else 0,
     )
 
 
@@ -135,17 +135,20 @@ def _convert_product_to_type(product):
     # SECURITY: cost_price is financial data — mask it for roles without
     # cost visibility (seller/inventory pass the manage_products field
     # check but must never read cost via GraphQL).
-    show_cost = bool(getattr(current_user, 'is_authenticated', False)) \
+    show_cost = (
+        bool(getattr(current_user, "is_authenticated", False))
         and current_user.can_see_costs()
+    )
     return ProductType(
         id=product.id,
         name=product.name,
         part_number=product.part_number,
         regular_price=float(product.regular_price) if product.regular_price else 0,
         cost_price=(float(product.cost_price) if product.cost_price else 0)
-                   if show_cost else None,
+        if show_cost
+        else None,
         current_stock=product.current_stock,
-        is_active=product.is_active
+        is_active=product.is_active,
     )
 
 
@@ -162,12 +165,12 @@ class CreateSale(graphene.Mutation):
         from decimal import Decimal
 
         sale = Sale(
-            sale_number=generate_number('INV', Sale, 'sale_number'),
+            sale_number=generate_number("INV", Sale, "sale_number"),
             customer_id=customer_id,
             seller_id=1,
             total_amount=Decimal(str(total_amount)),
             amount_base=Decimal(str(total_amount)),
-            status='confirmed'
+            status="confirmed",
         )
         db.session.add(sale)
         db.session.commit()
@@ -180,7 +183,7 @@ class CreateSale(graphene.Mutation):
             total_amount=float(sale.total_amount),
             amount_base=float(sale.amount_base),
             status=sale.status,
-            created_at=sale.created_at
+            created_at=sale.created_at,
         )
 
         return CreateSale(sale=sale_type, success=True)

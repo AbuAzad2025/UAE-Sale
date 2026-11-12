@@ -1,4 +1,4 @@
-﻿from datetime import date, datetime, time as dt_time, timezone
+from datetime import date, datetime, time as dt_time, timezone
 from decimal import Decimal
 from flask import has_request_context, request
 from flask_login import current_user
@@ -26,35 +26,44 @@ def jsonify_changes(value):
 
 def generate_device_fingerprint() -> str:
     components = [
-        request.headers.get('User-Agent', ''),
-        request.headers.get('Accept-Language', ''),
-        request.headers.get('Accept-Encoding', ''),
-        str(request.headers.get('Sec-Ch-Ua-Platform', ''))
+        request.headers.get("User-Agent", ""),
+        request.headers.get("Accept-Language", ""),
+        request.headers.get("Accept-Encoding", ""),
+        str(request.headers.get("Sec-Ch-Ua-Platform", "")),
     ]
 
-    fingerprint_string = '|'.join(components)
+    fingerprint_string = "|".join(components)
     return hashlib.sha256(fingerprint_string.encode()).hexdigest()[:16]
 
 
-def log_sensitive_action(action: str, table_name: str = None, record_id: int = None,
-                         changes: dict = None, severity: str = 'medium'):
+def log_sensitive_action(
+    action: str,
+    table_name: str = None,
+    record_id: int = None,
+    changes: dict = None,
+    severity: str = "medium",
+):
     from models import AuditLog
 
     try:
         audit_entry = AuditLog(
-            user_id=current_user.id if (getattr(current_user, 'is_authenticated', False)) else None,
+            user_id=current_user.id
+            if (getattr(current_user, "is_authenticated", False))
+            else None,
             action=action,
             table_name=table_name,
             record_id=record_id,
             changes=jsonify_changes(changes),
             ip_address=request.remote_addr if has_request_context() else None,
-            user_agent=request.headers.get('User-Agent') if has_request_context() else None
+            user_agent=request.headers.get("User-Agent")
+            if has_request_context()
+            else None,
         )
 
         db.session.add(audit_entry)
         db.session.commit()
 
-        if severity == 'high':
+        if severity == "high":
             notify_admin_of_sensitive_action(action, audit_entry)
 
     except Exception:
@@ -79,13 +88,19 @@ def track_login_attempt(username: str, success: bool, ip_address: str):
 
             if user.login_attempts >= 5:
                 from datetime import timedelta
+
                 user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=15)
 
         db.session.commit()
 
 
-def get_security_events(user_id: int = None, days: int = 30, actions: list = None,
-                        table_name: str = None, limit: int = 100):
+def get_security_events(
+    user_id: int = None,
+    days: int = 30,
+    actions: list = None,
+    table_name: str = None,
+    limit: int = 100,
+):
     from models import AuditLog
     from datetime import timedelta
 
@@ -99,9 +114,11 @@ def get_security_events(user_id: int = None, days: int = 30, actions: list = Non
     if table_name:
         query = query.filter(AuditLog.table_name == table_name)
 
-    watched_actions = actions if actions is not None else ['login', 'logout', 'delete', 'update']
-    query = query.filter(
-        AuditLog.action.in_(watched_actions)
-    ).order_by(AuditLog.created_at.desc())
+    watched_actions = (
+        actions if actions is not None else ["login", "logout", "delete", "update"]
+    )
+    query = query.filter(AuditLog.action.in_(watched_actions)).order_by(
+        AuditLog.created_at.desc()
+    )
 
     return query.limit(limit or 100).all()

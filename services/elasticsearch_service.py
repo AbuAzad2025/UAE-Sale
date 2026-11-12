@@ -3,31 +3,28 @@ from typing import Dict
 
 
 class ElasticsearchService:
-
     @staticmethod
     def is_enabled() -> bool:
-        return bool(os.environ.get('ELASTICSEARCH_URL'))
+        return bool(os.environ.get("ELASTICSEARCH_URL"))
 
     @staticmethod
     def index_sale(sale_data: Dict) -> Dict:
         if not ElasticsearchService.is_enabled():
-            return {'success': False, 'error': 'Elasticsearch not configured'}
+            return {"success": False, "error": "Elasticsearch not configured"}
 
         try:
             from elasticsearch import Elasticsearch
 
-            es = Elasticsearch([os.environ.get('ELASTICSEARCH_URL', 'http://localhost:9200')])
-
-            result = es.index(
-                index='sales',
-                id=sale_data['id'],
-                document=sale_data
+            es = Elasticsearch(
+                [os.environ.get("ELASTICSEARCH_URL", "http://localhost:9200")]
             )
 
-            return {'success': True, 'id': result['_id']}
+            result = es.index(index="sales", id=sale_data["id"], document=sale_data)
+
+            return {"success": True, "id": result["_id"]}
 
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return {"success": False, "error": str(e)}
 
     @staticmethod
     def search_sales(query: str, filters: Dict = None, limit: int = 50) -> Dict:
@@ -37,34 +34,34 @@ class ElasticsearchService:
         try:
             from elasticsearch import Elasticsearch
 
-            es = Elasticsearch([os.environ.get('ELASTICSEARCH_URL')])
+            es = Elasticsearch([os.environ.get("ELASTICSEARCH_URL")])
 
             body = {
-                'query': {
-                    'multi_match': {
-                        'query': query,
-                        'fields': ['sale_number', 'customer_name', 'notes']
+                "query": {
+                    "multi_match": {
+                        "query": query,
+                        "fields": ["sale_number", "customer_name", "notes"],
                     }
                 },
-                'size': limit
+                "size": limit,
             }
 
             if filters:
-                body['query'] = {
-                    'bool': {
-                        'must': body['query'],
-                        'filter': [{'term': {k: v}} for k, v in filters.items()]
+                body["query"] = {
+                    "bool": {
+                        "must": body["query"],
+                        "filter": [{"term": {k: v}} for k, v in filters.items()],
                     }
                 }
 
-            result = es.search(index='sales', body=body)
+            result = es.search(index="sales", body=body)
 
-            hits = [hit['_source'] for hit in result['hits']['hits']]
+            hits = [hit["_source"] for hit in result["hits"]["hits"]]
 
             return {
-                'success': True,
-                'results': hits,
-                'total': result['hits']['total']['value']
+                "success": True,
+                "results": hits,
+                "total": result["hits"]["total"]["value"],
             }
 
         except Exception:
@@ -73,12 +70,7 @@ class ElasticsearchService:
     @staticmethod
     def _escape_like(value: str) -> str:
         """Escape LIKE wildcards so user input matches literally."""
-        return (
-            str(value)
-            .replace('\\', '\\\\')
-            .replace('%', '\\%')
-            .replace('_', '\\_')
-        )
+        return str(value).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
     @staticmethod
     def _fallback_search(query: str, filters: Dict = None, limit: int = 50) -> Dict:
@@ -91,11 +83,11 @@ class ElasticsearchService:
             search_query = Sale.query
 
             if query:
-                pattern = f'%{ElasticsearchService._escape_like(query)}%'
+                pattern = f"%{ElasticsearchService._escape_like(query)}%"
                 search_query = search_query.filter(
                     or_(
-                        Sale.sale_number.ilike(pattern, escape='\\'),
-                        Sale.notes.ilike(pattern, escape='\\')
+                        Sale.sale_number.ilike(pattern, escape="\\"),
+                        Sale.notes.ilike(pattern, escape="\\"),
                     )
                 )
 
@@ -106,17 +98,17 @@ class ElasticsearchService:
             results = search_query.limit(limit).all()
 
             return {
-                'success': True,
-                'results': [sale.to_dict() for sale in results],
-                'total': len(results),
-                'fallback': True
+                "success": True,
+                "results": [sale.to_dict() for sale in results],
+                "total": len(results),
+                "fallback": True,
             }
         except Exception as exc:
-            logging.getLogger(__name__).exception('Fallback search failed: %s', exc)
+            logging.getLogger(__name__).exception("Fallback search failed: %s", exc)
             return {
-                'success': False,
-                'results': [],
-                'total': 0,
-                'fallback': True,
-                'error': str(exc),
+                "success": False,
+                "results": [],
+                "total": 0,
+                "fallback": True,
+                "error": str(exc),
             }

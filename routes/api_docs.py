@@ -1,10 +1,11 @@
 """
 API Documentation using OpenAPI/Swagger
 """
+
 from flask import Blueprint, jsonify, render_template_string, current_app
 import copy
 
-api_docs_bp = Blueprint('api_docs', __name__, url_prefix='/api-docs')
+api_docs_bp = Blueprint("api_docs", __name__, url_prefix="/api-docs")
 
 # OpenAPI 3.0 Specification
 OPENAPI_SPEC = {
@@ -16,22 +17,13 @@ OPENAPI_SPEC = {
         "contact": {
             "name": "Azad Smart Systems",
             "email": "rafideen.ahmadghannam@gmail.com",
-            "url": "https://azadsystems.com"
+            "url": "https://azadsystems.com",
         },
-        "license": {
-            "name": "Proprietary",
-            "url": "https://azadsystems.com/license"
-        }
+        "license": {"name": "Proprietary", "url": "https://azadsystems.com/license"},
     },
     "servers": [
-        {
-            "url": "http://localhost:5000/api",
-            "description": "Development server"
-        },
-        {
-            "url": "https://api.yourdomain.com/api",
-            "description": "Production server"
-        }
+        {"url": "http://localhost:5000/api", "description": "Development server"},
+        {"url": "https://api.yourdomain.com/api", "description": "Production server"},
     ],
     "tags": [
         {"name": "Auth", "description": "Authentication endpoints"},
@@ -42,7 +34,7 @@ OPENAPI_SPEC = {
         {"name": "Purchases", "description": "Purchase operations"},
         {"name": "Payments", "description": "Payment processing"},
         {"name": "Reports", "description": "Reporting and analytics"},
-        {"name": "Search", "description": "Universal search"}
+        {"name": "Search", "description": "Universal search"},
     ],
     "paths": {
         "/search": {
@@ -57,17 +49,17 @@ OPENAPI_SPEC = {
                         "required": True,
                         "schema": {
                             "type": "string",
-                            "enum": ["customers", "suppliers", "products"]
+                            "enum": ["customers", "suppliers", "products"],
                         },
-                        "description": "Type of entity to search"
+                        "description": "Type of entity to search",
                     },
                     {
                         "name": "q",
                         "in": "query",
                         "required": True,
                         "schema": {"type": "string"},
-                        "description": "Search query"
-                    }
+                        "description": "Search query",
+                    },
                 ],
                 "responses": {
                     "200": {
@@ -84,16 +76,16 @@ OPENAPI_SPEC = {
                                                 "properties": {
                                                     "id": {"type": "integer"},
                                                     "text": {"type": "string"},
-                                                    "info": {"type": "string"}
-                                                }
-                                            }
+                                                    "info": {"type": "string"},
+                                                },
+                                            },
                                         }
-                                    }
+                                    },
                                 }
                             }
-                        }
+                        },
                     }
-                }
+                },
             }
         },
         "/customer-balance/{id}": {
@@ -106,7 +98,7 @@ OPENAPI_SPEC = {
                         "in": "path",
                         "required": True,
                         "schema": {"type": "integer"},
-                        "description": "Customer ID"
+                        "description": "Customer ID",
                     }
                 ],
                 "responses": {
@@ -120,26 +112,20 @@ OPENAPI_SPEC = {
                                         "customer_id": {"type": "integer"},
                                         "name": {"type": "string"},
                                         "balance": {"type": "number"},
-                                        "currency": {"type": "string"}
-                                    }
+                                        "currency": {"type": "string"},
+                                    },
                                 }
                             }
-                        }
+                        },
                     },
-                    "404": {
-                        "description": "Customer not found"
-                    }
-                }
+                    "404": {"description": "Customer not found"},
+                },
             }
-        }
+        },
     },
     "components": {
         "securitySchemes": {
-            "sessionAuth": {
-                "type": "apiKey",
-                "in": "cookie",
-                "name": "session"
-            }
+            "sessionAuth": {"type": "apiKey", "in": "cookie", "name": "session"}
         },
         "schemas": {
             "Customer": {
@@ -150,13 +136,13 @@ OPENAPI_SPEC = {
                     "name_ar": {"type": "string"},
                     "customer_type": {
                         "type": "string",
-                        "enum": ["regular", "merchant", "partner"]
+                        "enum": ["regular", "merchant", "partner"],
                     },
                     "phone": {"type": "string"},
                     "email": {"type": "string", "format": "email"},
                     "balance": {"type": "number"},
-                    "is_active": {"type": "boolean"}
-                }
+                    "is_active": {"type": "boolean"},
+                },
             },
             "Product": {
                 "type": "object",
@@ -170,8 +156,8 @@ OPENAPI_SPEC = {
                     "partner_price": {"type": "number"},
                     "cost_price": {"type": "number"},
                     "quantity_in_stock": {"type": "integer"},
-                    "is_active": {"type": "boolean"}
-                }
+                    "is_active": {"type": "boolean"},
+                },
             },
             "Sale": {
                 "type": "object",
@@ -185,37 +171,41 @@ OPENAPI_SPEC = {
                     "remaining_balance": {"type": "number"},
                     "payment_status": {
                         "type": "string",
-                        "enum": ["paid", "partial", "credit"]
+                        "enum": ["paid", "partial", "credit"],
                     },
-                    "currency": {"type": "string"}
-                }
+                    "currency": {"type": "string"},
+                },
             },
             "Error": {
                 "type": "object",
                 "properties": {
                     "error": {"type": "string"},
-                    "message": {"type": "string"}
-                }
-            }
-        }
+                    "message": {"type": "string"},
+                },
+            },
+        },
     },
-    "security": [
-        {"sessionAuth": []}
-    ]
+    "security": [{"sessionAuth": []}],
 }
 
 
-@api_docs_bp.route('/openapi.json')
+@api_docs_bp.route("/openapi.json")
 def openapi_spec():
     """Return OpenAPI specification as JSON"""
     spec = copy.deepcopy(OPENAPI_SPEC)
-    spec["info"]["contact"]["name"] = current_app.config.get("COMPANY_NAME", spec["info"]["contact"].get("name"))
-    spec["info"]["contact"]["email"] = current_app.config.get("COMPANY_EMAIL", spec["info"]["contact"].get("email"))
-    spec["info"]["contact"]["url"] = current_app.config.get("COMPANY_WEBSITE", spec["info"]["contact"].get("url"))
+    spec["info"]["contact"]["name"] = current_app.config.get(
+        "COMPANY_NAME", spec["info"]["contact"].get("name")
+    )
+    spec["info"]["contact"]["email"] = current_app.config.get(
+        "COMPANY_EMAIL", spec["info"]["contact"].get("email")
+    )
+    spec["info"]["contact"]["url"] = current_app.config.get(
+        "COMPANY_WEBSITE", spec["info"]["contact"].get("url")
+    )
     return jsonify(spec)
 
 
-@api_docs_bp.route('/')
+@api_docs_bp.route("/")
 def swagger_ui():
     """Swagger UI for API documentation"""
     html = """
@@ -262,7 +252,7 @@ def swagger_ui():
     return render_template_string(html)
 
 
-@api_docs_bp.route('/redoc')
+@api_docs_bp.route("/redoc")
 def redoc():
     """ReDoc alternative documentation"""
     html = """

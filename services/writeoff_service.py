@@ -25,6 +25,7 @@ then recomputes the balance through the single writer
 up in every surface that reads the balance (the customer card, the balance
 checker, the AR aging) instead of being wiped by the next recomputation.
 """
+
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -44,13 +45,13 @@ from utils.errors import ValidationError
 from utils.helpers import create_audit_log
 
 # تقريب المبالغ (3 منازل عشرية) — نفس أعمدة Money في قاعدة البيانات
-MONEY_Q = Decimal('0.001')
+MONEY_Q = Decimal("0.001")
 
 # سبب افتراضي عندما لا يُذكر سبب (العمود NOT NULL في قاعدة البيانات)
-DEFAULT_REASON = 'مديونية مشطوبة'
+DEFAULT_REASON = "مديونية مشطوبة"
 
 
-def _dec(value, default='0'):
+def _dec(value, default="0"):
     """تحويل أي قيمة حدّية إلى Decimal (لا float في المال)."""
     if value is None:
         return Decimal(default)
@@ -66,14 +67,14 @@ def _user_id(user):
     """معرّف المنفّذ: كائن مستخدم أو معرّف رقمي أو المستخدم الحالي."""
     if user is None:
         try:
-            if getattr(current_user, 'is_authenticated', False):
+            if getattr(current_user, "is_authenticated", False):
                 return current_user.id
         except Exception:
             return None
         return None
     if isinstance(user, int):
         return user
-    return getattr(user, 'id', None)
+    return getattr(user, "id", None)
 
 
 def _apply_balance_delta(customer, delta_base):
@@ -89,7 +90,7 @@ def _apply_balance_delta(customer, delta_base):
     from models.customer import recompute_customer_balance
 
     delta = _dec(delta_base)
-    if delta == Decimal('0'):
+    if delta == Decimal("0"):
         return _dec(customer.balance)
 
     db.session.flush()
@@ -97,15 +98,21 @@ def _apply_balance_delta(customer, delta_base):
 
 
 class WriteOffService:
-
     # ------------------------------------------------------------------
     # creation
     # ------------------------------------------------------------------
 
     @staticmethod
-    def create_writeoff(customer, amount, currency=None, reason=None, sale=None,
-                        exchange_rate=None,
-                        notes=None, user=None) -> WriteOff:
+    def create_writeoff(
+        customer,
+        amount,
+        currency=None,
+        reason=None,
+        sale=None,
+        exchange_rate=None,
+        notes=None,
+        user=None,
+    ) -> WriteOff:
         """يشطب ديوناً لا يمكن تحصيلها ويرحّل القيد المحاسبي المرافق.
 
         Args:
@@ -127,42 +134,47 @@ class WriteOffService:
                 المالية مغلقة، أو الحسابات المطلوبة غير موجودة.
         """
         if customer is None:
-            raise ValidationError('العميل غير موجود')
+            raise ValidationError("العميل غير موجود")
 
         amount_dec = _dec(amount)
-        if amount_dec <= Decimal('0'):
-            raise ValidationError('مبلغ المشطوبة يجب أن يكون أكبر من صفر')
+        if amount_dec <= Decimal("0"):
+            raise ValidationError("مبلغ المشطوبة يجب أن يكون أكبر من صفر")
 
         base_currency = CurrencyService.get_base_currency()
-        currency = (currency or base_currency or 'ILS').upper()
+        currency = (currency or base_currency or "ILS").upper()
         # Never fetch a live rate implicitly in a posting path: the books
         # must be reproducible. Foreign write-offs require an explicit rate;
         # base-currency write-offs always use rate 1.
         if currency != base_currency:
-            if exchange_rate in (None, ''):
+            if exchange_rate in (None, ""):
                 raise ValidationError(
-                    'العملة مختلفة عن عملة الأساس؛ أدخل سعر الصرف الصريح للمشطوبة')
+                    "العملة مختلفة عن عملة الأساس؛ أدخل سعر الصرف الصريح للمشطوبة"
+                )
             try:
                 rate = _dec(exchange_rate)
             except Exception:
-                raise ValidationError('سعر الصرف غير صالح')
-            if rate <= Decimal('0'):
-                raise ValidationError('سعر الصرف يجب أن يكون أكبر من صفر')
+                raise ValidationError("سعر الصرف غير صالح")
+            if rate <= Decimal("0"):
+                raise ValidationError("سعر الصرف يجب أن يكون أكبر من صفر")
         else:
-            rate = Decimal('1')
+            rate = Decimal("1")
         amount_base = (amount_dec * rate).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
-        if amount_base <= Decimal('0'):
-            raise ValidationError('قيمة المشطوبة بالعملة الأساسية يجب أن تكون أكبر من صفر')
+        if amount_base <= Decimal("0"):
+            raise ValidationError(
+                "قيمة المشطوبة بالعملة الأساسية يجب أن تكون أكبر من صفر"
+            )
 
         # عزل المستأجر: لا تُشطب ديون عميل من مستأجر آخر.
-        assert_same_tenant(customer, message='لا يمكن تنفيذ العملية لعميل من مستأجر آخر')
+        assert_same_tenant(
+            customer, message="لا يمكن تنفيذ العملية لعميل من مستأجر آخر"
+        )
 
         sale_id = None
         if sale is not None:
-            sale_id = getattr(sale, 'id', sale)
-            sale_owner = getattr(sale, 'customer_id', None)
+            sale_id = getattr(sale, "id", sale)
+            sale_owner = getattr(sale, "customer_id", None)
             if sale_owner is not None and sale_owner != customer.id:
-                raise ValidationError('الفاتورة المحددة لا تخصّ هذا العميل')
+                raise ValidationError("الفاتورة المحددة لا تخصّ هذا العميل")
 
         # الرصيد المستحق — من الاشتقاق الوحيد (models.customer).
         from models.customer import derive_customer_balance
@@ -170,8 +182,8 @@ class WriteOffService:
         outstanding = derive_customer_balance(customer.id)
         if amount_base > outstanding:
             raise ValidationError(
-                f'مبلغ المشطوبة ({amount_base}) يتجاوز رصيد العميل المستحق '
-                f'({outstanding})'
+                f"مبلغ المشطوبة ({amount_base}) يتجاوز رصيد العميل المستحق "
+                f"({outstanding})"
             )
 
         posting_date = datetime.now(timezone.utc)
@@ -180,11 +192,13 @@ class WriteOffService:
         GLService.ensure_core_accounts()
         tenant_id = get_current_tenant_id()
         expense_account = AccountResolver.get_account(
-            AccountRole.BAD_DEBT_EXPENSE, tenant_id=tenant_id)
+            AccountRole.BAD_DEBT_EXPENSE, tenant_id=tenant_id
+        )
         ar_account = AccountResolver.get_account(
-            AccountRole.AR_CONTROL, tenant_id=tenant_id)
+            AccountRole.AR_CONTROL, tenant_id=tenant_id
+        )
         if expense_account is None or ar_account is None:
-            raise ValidationError('حسابات المشطوبة غير موجودة في دليل الحسابات')
+            raise ValidationError("حسابات المشطوبة غير موجودة في دليل الحسابات")
 
         actor_id = _user_id(user)
         write_off = WriteOff(
@@ -193,11 +207,11 @@ class WriteOffService:
             amount=amount_dec,
             currency=currency,
             amount_base=amount_base,
-            reason=(str(reason).strip() if reason else '') or DEFAULT_REASON,
+            reason=(str(reason).strip() if reason else "") or DEFAULT_REASON,
             status=WriteOff.STATUS_POSTED,
             notes=notes,
             created_by=actor_id,
-            tenant_id=getattr(customer, 'tenant_id', None),
+            tenant_id=getattr(customer, "tenant_id", None),
             created_at=posting_date,
             posted_at=posting_date,
         )
@@ -209,19 +223,23 @@ class WriteOffService:
             entry = GLService.post_entry(
                 lines=[
                     {
-                        'account': expense_account.code,
-                        'debit': amount_dec,
-                        'description': f'مديونية مشطوبة - {customer.name}',
+                        "account": expense_account.code,
+                        "debit": amount_dec,
+                        "description": f"مديونية مشطوبة - {customer.name}",
                     },
                     {
-                        'account': ar_account.code,
-                        'credit': amount_dec,
-                        'description': f'إقفال ذمم مدينة - {customer.name}',
-                        **({'party_id': customer.id} if getattr(customer, 'customer_type', None) == 'partner' else {}),
+                        "account": ar_account.code,
+                        "credit": amount_dec,
+                        "description": f"إقفال ذمم مدينة - {customer.name}",
+                        **(
+                            {"party_id": customer.id}
+                            if getattr(customer, "customer_type", None) == "partner"
+                            else {}
+                        ),
                     },
                 ],
-                description=f'مديونية مشطوبة - {customer.name}',
-                reference_type='WriteOff',
+                description=f"مديونية مشطوبة - {customer.name}",
+                reference_type="WriteOff",
                 reference_id=write_off.id,
                 currency=currency,
                 exchange_rate=rate,
@@ -233,25 +251,34 @@ class WriteOffService:
             # الرصيد ينقص بالمبلغ المشطوب — عبر الاشتقاق والكاتب الوحيد.
             _apply_balance_delta(customer, -amount_base)
 
-            create_audit_log('create', 'write_offs', write_off.id, changes={
-                'action': 'writeoff_create',
-                'customer_id': customer.id,
-                'customer_name': customer.name,
-                'sale_id': write_off.sale_id,
-                'amount': str(amount_dec),
-                'amount_base': str(amount_base),
-                'currency': currency,
-                'exchange_rate': str(rate),
-                'reason': write_off.reason,
-                'gl_entry': getattr(entry, 'entry_number', None),
-                'gl_entry_id': entry.id,
-                'user_id': actor_id,
-            }, commit=False)
+            create_audit_log(
+                "create",
+                "write_offs",
+                write_off.id,
+                changes={
+                    "action": "writeoff_create",
+                    "customer_id": customer.id,
+                    "customer_name": customer.name,
+                    "sale_id": write_off.sale_id,
+                    "amount": str(amount_dec),
+                    "amount_base": str(amount_base),
+                    "currency": currency,
+                    "exchange_rate": str(rate),
+                    "reason": write_off.reason,
+                    "gl_entry": getattr(entry, "entry_number", None),
+                    "gl_entry_id": entry.id,
+                    "user_id": actor_id,
+                },
+                commit=False,
+            )
 
             db.session.commit()
             current_app.logger.info(
-                'Write-off created: customer=%s amount=%s %s (entry %s)',
-                customer.id, amount_dec, currency, getattr(entry, 'entry_number', None),
+                "Write-off created: customer=%s amount=%s %s (entry %s)",
+                customer.id,
+                amount_dec,
+                currency,
+                getattr(entry, "entry_number", None),
             )
             return write_off
         except Exception:
@@ -278,32 +305,32 @@ class WriteOffService:
             ValidationError: المشطوبة ملغاة مسبقاً، أو القيد مفقود/معكوس.
         """
         if write_off is None:
-            raise ValidationError('سجل المشطوبة غير موجود')
+            raise ValidationError("سجل المشطوبة غير موجود")
 
         if write_off.status == WriteOff.STATUS_VOID:
-            raise ValidationError('المشطوبة ملغاة مسبقاً ولا يمكن إلغاؤها مرة أخرى')
+            raise ValidationError("المشطوبة ملغاة مسبقاً ولا يمكن إلغاؤها مرة أخرى")
 
         if not write_off.gl_entry_id:
-            raise ValidationError('لا يوجد قيد محاسبي مرتبط بالمشطوبة')
+            raise ValidationError("لا يوجد قيد محاسبي مرتبط بالمشطوبة")
 
         entry = GLJournalEntry.query.filter_by(id=write_off.gl_entry_id).first()
         if entry is None:
-            raise ValidationError('القيد المحاسبي المرتبط بالمشطوبة غير موجود')
-        if getattr(entry, 'is_reversed', False):
-            raise ValidationError('القيد المحاسبي المرتبط بالمشطوبة معكوس مسبقاً')
+            raise ValidationError("القيد المحاسبي المرتبط بالمشطوبة غير موجود")
+        if getattr(entry, "is_reversed", False):
+            raise ValidationError("القيد المحاسبي المرتبط بالمشطوبة معكوس مسبقاً")
 
         void_date = datetime.now(timezone.utc)
         assert_period_open(void_date)
 
         customer = write_off.customer
         if customer is None:
-            raise ValidationError('عميل المشطوبة غير موجود')
+            raise ValidationError("عميل المشطوبة غير موجود")
 
         actor_id = _user_id(user)
         try:
             reversal = GLService.reverse_entry(
                 entry,
-                description=f'عكس مشطوبة مديونية - {customer.name}',
+                description=f"عكس مشطوبة مديونية - {customer.name}",
                 entry_date=void_date,
                 created_by=actor_id,
             )
@@ -314,23 +341,31 @@ class WriteOffService:
             # الرصيد يعود كما كان قبل المشطوبة.
             _apply_balance_delta(customer, _dec(write_off.amount_base))
 
-            create_audit_log('void', 'write_offs', write_off.id, changes={
-                'action': 'writeoff_void',
-                'customer_id': customer.id,
-                'customer_name': customer.name,
-                'amount': str(write_off.amount),
-                'amount_base': str(write_off.amount_base),
-                'currency': write_off.currency,
-                'reason': reason,
-                'gl_entry': getattr(entry, 'entry_number', None),
-                'reversal_entry': getattr(reversal, 'entry_number', None),
-                'user_id': actor_id,
-            }, commit=False)
+            create_audit_log(
+                "void",
+                "write_offs",
+                write_off.id,
+                changes={
+                    "action": "writeoff_void",
+                    "customer_id": customer.id,
+                    "customer_name": customer.name,
+                    "amount": str(write_off.amount),
+                    "amount_base": str(write_off.amount_base),
+                    "currency": write_off.currency,
+                    "reason": reason,
+                    "gl_entry": getattr(entry, "entry_number", None),
+                    "reversal_entry": getattr(reversal, "entry_number", None),
+                    "user_id": actor_id,
+                },
+                commit=False,
+            )
 
             db.session.commit()
             current_app.logger.info(
-                'Write-off voided: id=%s customer=%s (reversal %s)',
-                write_off.id, customer.id, getattr(reversal, 'entry_number', None),
+                "Write-off voided: id=%s customer=%s (reversal %s)",
+                write_off.id,
+                customer.id,
+                getattr(reversal, "entry_number", None),
             )
             return write_off
         except Exception:
@@ -355,11 +390,15 @@ class WriteOffService:
         """
         query = WriteOff.query
         if customer is not None:
-            customer_id = getattr(customer, 'id', customer)
+            customer_id = getattr(customer, "id", customer)
             query = query.filter(WriteOff.customer_id == customer_id)
         if status:
             query = query.filter(WriteOff.status == status)
-        return query.order_by(WriteOff.created_at.desc(), WriteOff.id.desc()).limit(limit).all()
+        return (
+            query.order_by(WriteOff.created_at.desc(), WriteOff.id.desc())
+            .limit(limit)
+            .all()
+        )
 
     @staticmethod
     def get_writeoff(write_off_id) -> WriteOff | None:

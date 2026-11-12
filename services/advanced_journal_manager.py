@@ -5,7 +5,7 @@ from models.gl import GLAccount, GLJournalEntry, GLJournalLine
 from models.journal_entry_audit import JournalEntryAudit
 from utils.decorators import get_owned_or_404
 
-_THREE_DP = Decimal('0.001')
+_THREE_DP = Decimal("0.001")
 
 
 def _quantize_3(value):
@@ -17,34 +17,40 @@ class AdvancedJournalEntryManager:
     """مدير القيود المحاسبية المتقدم"""
 
     @staticmethod
-    def create_entry_with_validation(description, lines, entry_date=None, notes=None, created_by=None, **kwargs):
+    def create_entry_with_validation(
+        description, lines, entry_date=None, notes=None, created_by=None, **kwargs
+    ):
         """إنشاء قيد مع التحقق المتقدم"""
         from services.gl_service import GLService
 
         # التحقق من التوازن (Decimal إلزامي — ممنوع الحساب العشري float)
         total_debit = sum(
-            (Decimal(str(line.get('debit', 0) or 0)) for line in lines), Decimal('0')
+            (Decimal(str(line.get("debit", 0) or 0)) for line in lines), Decimal("0")
         )
         total_credit = sum(
-            (Decimal(str(line.get('credit', 0) or 0)) for line in lines), Decimal('0')
+            (Decimal(str(line.get("credit", 0) or 0)) for line in lines), Decimal("0")
         )
 
-        if abs(total_debit - total_credit) > Decimal('0.01'):
-            raise ValueError(f"القيد غير متوازن: المدين {total_debit} ≠ الدائن {total_credit}")
+        if abs(total_debit - total_credit) > Decimal("0.01"):
+            raise ValueError(
+                f"القيد غير متوازن: المدين {total_debit} ≠ الدائن {total_credit}"
+            )
 
         # التحقق من الحسابات الرئيسية
         for line in lines:
-            account_code = line.get('account_code')
+            account_code = line.get("account_code")
             if account_code:
                 account = GLAccount.query.filter_by(code=account_code).first()
                 if account and account.is_header:
-                    raise ValueError(f"لا يمكن القيد على الحساب الرئيسي: {account.full_name}")
+                    raise ValueError(
+                        f"لا يمكن القيد على الحساب الرئيسي: {account.full_name}"
+                    )
 
         # F9: نوع القيد يُمرَّر إلى طبقة الخدمة عند الإنشاء — لا يُعدَّل
         # القيد بعد ترحيله (القيد المرحّل غير قابل للتعديل عبر ORM).
-        entry_type = kwargs.pop('entry_type', None)
+        entry_type = kwargs.pop("entry_type", None)
         if entry_type:
-            kwargs['entry_type'] = entry_type
+            kwargs["entry_type"] = entry_type
 
         # إنشاء القيد
         entry = GLService.create_manual_entry(
@@ -53,7 +59,7 @@ class AdvancedJournalEntryManager:
             entry_date=entry_date,
             notes=notes,
             created_by=created_by,
-            **kwargs
+            **kwargs,
         )
 
         # سجل التدقيق (F3) يكتبه GLService.create_manual_entry — وهو مسار
@@ -67,7 +73,9 @@ class AdvancedJournalEntryManager:
         entry = get_owned_or_404(GLJournalEntry, entry_id)
 
         if entry.is_posted:
-            raise ValueError("posted entries immutable; post reversal - لا يمكن تعديل قيد مرحل")
+            raise ValueError(
+                "posted entries immutable; post reversal - لا يمكن تعديل قيد مرحل"
+            )
 
         if entry.is_reversed:
             raise ValueError("لا يمكن تعديل قيد معكوس")
@@ -76,84 +84,110 @@ class AdvancedJournalEntryManager:
         old_values = entry.to_dict()
 
         # F6: سعر الصرف الخاص بالقيد — amount_base يُحسب في العملة الأساسية
-        rate = Decimal(str(entry.exchange_rate or 1)) or Decimal('1')
+        rate = Decimal(str(entry.exchange_rate or 1)) or Decimal("1")
 
         # تطبيق التحديثات
         for field, value in updates.items():
-            if field == 'lines':
+            if field == "lines":
                 continue
             if hasattr(entry, field):
                 setattr(entry, field, value)
 
         # التحقق من التوازن إذا تم تحديث السطور
-        if 'lines' in updates:
-            total_debit = sum((Decimal(str(line.get('debit', 0) or 0)) for line in updates['lines']), Decimal('0'))
-            total_credit = sum((Decimal(str(line.get('credit', 0) or 0)) for line in updates['lines']), Decimal('0'))
+        if "lines" in updates:
+            total_debit = sum(
+                (Decimal(str(line.get("debit", 0) or 0)) for line in updates["lines"]),
+                Decimal("0"),
+            )
+            total_credit = sum(
+                (Decimal(str(line.get("credit", 0) or 0)) for line in updates["lines"]),
+                Decimal("0"),
+            )
 
-            if abs(total_debit - total_credit) > Decimal('0.01'):
-                raise ValueError(f"القيد غير متوازن بعد التحديث: المدين {total_debit} ≠ الدائن {total_credit}")
+            if abs(total_debit - total_credit) > Decimal("0.01"):
+                raise ValueError(
+                    f"القيد غير متوازن بعد التحديث: المدين {total_debit} ≠ الدائن {total_credit}"
+                )
 
             # VALIDATE ALL LINES FIRST (before mutating): كل حساب يجب أن
             # يوجد قبل حذف السطور القديمة — لو فشل التحقق، لا يتأثر أي شيء.
             resolved_lines = []
             seen_accounts = {}
-            for line_data in updates['lines']:
-                account_code = line_data.get('account_code') or line_data.get('account')
-                account = GLAccount.query.filter_by(code=account_code).first() if account_code else None
+            for line_data in updates["lines"]:
+                account_code = line_data.get("account_code") or line_data.get("account")
+                account = (
+                    GLAccount.query.filter_by(code=account_code).first()
+                    if account_code
+                    else None
+                )
                 if not account:
-                    raise ValueError(f'الحساب {account_code} غير موجود')
+                    raise ValueError(f"الحساب {account_code} غير موجود")
                 if account.is_header:
-                    raise ValueError(f"لا يمكن القيد على الحساب الرئيسي: {account.full_name}")
+                    raise ValueError(
+                        f"لا يمكن القيد على الحساب الرئيسي: {account.full_name}"
+                    )
                 if account.id in seen_accounts:
                     account = seen_accounts[account.id]
                 else:
                     seen_accounts[account.id] = account
-                debit = _quantize_3(line_data.get('debit', 0) or 0)
-                credit = _quantize_3(line_data.get('credit', 0) or 0)
+                debit = _quantize_3(line_data.get("debit", 0) or 0)
+                credit = _quantize_3(line_data.get("credit", 0) or 0)
                 if debit < 0 or credit < 0:
-                    raise ValueError('المبالغ يجب أن تكون موجبة')
+                    raise ValueError("المبالغ يجب أن تكون موجبة")
                 if debit > 0 and credit > 0:
-                    raise ValueError('السطر لا يحمل مديناً ودائناً في آن واحد')
+                    raise ValueError("السطر لا يحمل مديناً ودائناً في آن واحد")
                 # F8: اتجاه الحركة مقابل طبيعة الحساب
                 account.check_posting_direction(debit, credit)
-                resolved_lines.append({
-                    'account': account,
-                    'description': line_data.get('description', ''),
-                    'debit': debit,
-                    'credit': credit,
-                    # F6: يُضرب في سعر صرف القيد — كان debit - credit فقط،
-                    # فكان amount_base بالعملة الأساسية أصغر من الصحيح.
-                    'amount_base': _quantize_3((debit - credit) * rate),
-                })
+                resolved_lines.append(
+                    {
+                        "account": account,
+                        "description": line_data.get("description", ""),
+                        "debit": debit,
+                        "credit": credit,
+                        # F6: يُضرب في سعر صرف القيد — كان debit - credit فقط،
+                        # فكان amount_base بالعملة الأساسية أصغر من الصحيح.
+                        "amount_base": _quantize_3((debit - credit) * rate),
+                    }
+                )
 
             # All validations passed — now atomically replace lines.
             GLJournalLine.query.filter_by(entry_id=entry_id).delete()
             for resolved in resolved_lines:
-                db.session.add(GLJournalLine(
-                    entry_id=entry.id,
-                    account_id=resolved['account'].id,
-                    description=resolved['description'],
-                    debit=resolved['debit'],
-                    credit=resolved['credit'],
-                    amount_base=resolved['amount_base'],
-                ))
+                db.session.add(
+                    GLJournalLine(
+                        entry_id=entry.id,
+                        account_id=resolved["account"].id,
+                        description=resolved["description"],
+                        debit=resolved["debit"],
+                        credit=resolved["credit"],
+                        amount_base=resolved["amount_base"],
+                    )
+                )
             # F5: الإجماليات من نفس القيم المُكمّاة التي كُتبت في السطور
-            entry.total_debit = sum((r['debit'] for r in resolved_lines), Decimal('0'))
-            entry.total_credit = sum((r['credit'] for r in resolved_lines), Decimal('0'))
+            entry.total_debit = sum((r["debit"] for r in resolved_lines), Decimal("0"))
+            entry.total_credit = sum(
+                (r["credit"] for r in resolved_lines), Decimal("0")
+            )
 
         entry.updated_at = datetime.now(timezone.utc)
 
         # تسجيل التدقيق
         AdvancedJournalEntryManager._log_audit(
-            entry_id, 'update', old_values, entry.to_dict(),
-            reason or "تحديث القيد", updated_by
+            entry_id,
+            "update",
+            old_values,
+            entry.to_dict(),
+            reason or "تحديث القيد",
+            updated_by,
         )
 
         db.session.commit()
         return entry
 
     @staticmethod
-    def reverse_entry_advanced(entry_id, reversed_by, reason, create_reversal_entry=True):
+    def reverse_entry_advanced(
+        entry_id, reversed_by, reason, create_reversal_entry=True
+    ):
         """عكس قيد محاسبي متقدم"""
         entry = get_owned_or_404(GLJournalEntry, entry_id)
 
@@ -171,12 +205,14 @@ class AdvancedJournalEntryManager:
         if create_reversal_entry:
             reversal_lines = []
             for line in entry.lines:
-                reversal_lines.append({
-                    'account_code': line.account.code,
-                    'debit': line.credit,  # عكس الاتجاه
-                    'credit': line.debit,  # عكس الاتجاه
-                    'description': f"عكس: {line.description or ''}"
-                })
+                reversal_lines.append(
+                    {
+                        "account_code": line.account.code,
+                        "debit": line.credit,  # عكس الاتجاه
+                        "credit": line.debit,  # عكس الاتجاه
+                        "description": f"عكس: {line.description or ''}",
+                    }
+                )
 
             reversal_entry = AdvancedJournalEntryManager.create_entry_with_validation(
                 description=f"عكس القيد {entry.entry_number}",
@@ -184,7 +220,7 @@ class AdvancedJournalEntryManager:
                 entry_date=datetime.now().date(),
                 notes=f"سبب العكس: {reason}",
                 created_by=reversed_by,
-                entry_type='reversing',
+                entry_type="reversing",
                 # F9: الربط بالمرجع يُحدَّد عند الإنشاء — تعديل القيد المرحّل
                 # بعد إنشائه ممنوع (حاجز ORM في models/gl.py).
                 reference_type=entry.reference_type,
@@ -198,8 +234,12 @@ class AdvancedJournalEntryManager:
 
         # تسجيل التدقيق
         AdvancedJournalEntryManager._log_audit(
-            entry_id, 'reverse', old_values, entry.to_dict(),
-            f"عكس القيد - السبب: {reason}", reversed_by
+            entry_id,
+            "reverse",
+            old_values,
+            entry.to_dict(),
+            f"عكس القيد - السبب: {reason}",
+            reversed_by,
         )
 
         db.session.commit()
@@ -211,7 +251,9 @@ class AdvancedJournalEntryManager:
         entry = get_owned_or_404(GLJournalEntry, entry_id)
 
         if entry.is_posted:
-            raise ValueError("posted entries immutable; post reversal - لا يمكن حذف قيد مرحل - استخدم العكس بدلاً من ذلك")
+            raise ValueError(
+                "posted entries immutable; post reversal - لا يمكن حذف قيد مرحل - استخدم العكس بدلاً من ذلك"
+            )
 
         if entry.is_reversed:
             raise ValueError("لا يمكن حذف قيد معكوس")
@@ -226,8 +268,12 @@ class AdvancedJournalEntryManager:
         # تسجيل التدقيق أولاً (يشير للقيد وهو ما زال موجوداً؛
         # CASCADE يحافظ على السجل بعد الحذف)
         AdvancedJournalEntryManager._log_audit(
-            entry_id, 'delete', old_values, None,
-            f"حذف القيد - السبب: {reason}", deleted_by
+            entry_id,
+            "delete",
+            old_values,
+            None,
+            f"حذف القيد - السبب: {reason}",
+            deleted_by,
         )
 
         # حذف السطور ثم القيد
@@ -246,11 +292,13 @@ class AdvancedJournalEntryManager:
             raise ValueError("القيد مرحل مسبقاً")
 
         # التحقق من التوازن مرة أخرى
-        total_debit = sum((line.debit for line in entry.lines), Decimal('0'))
-        total_credit = sum((line.credit for line in entry.lines), Decimal('0'))
+        total_debit = sum((line.debit for line in entry.lines), Decimal("0"))
+        total_credit = sum((line.credit for line in entry.lines), Decimal("0"))
 
-        if abs(total_debit - total_credit) > Decimal('0.01'):
-            raise ValueError(f"القيد غير متوازن: المدين {total_debit} ≠ الدائن {total_credit}")
+        if abs(total_debit - total_credit) > Decimal("0.01"):
+            raise ValueError(
+                f"القيد غير متوازن: المدين {total_debit} ≠ الدائن {total_credit}"
+            )
 
         # الموافقة
         entry.is_posted = True
@@ -258,9 +306,12 @@ class AdvancedJournalEntryManager:
 
         # تسجيل التدقيق
         AdvancedJournalEntryManager._log_audit(
-            entry_id, 'approve', entry.to_dict(), entry.to_dict(),
+            entry_id,
+            "approve",
+            entry.to_dict(),
+            entry.to_dict(),
             f"الموافقة على القيد - ملاحظات: {approval_notes or 'لا توجد'}",
-            approved_by
+            approved_by,
         )
 
         db.session.commit()
@@ -269,8 +320,11 @@ class AdvancedJournalEntryManager:
     @staticmethod
     def get_entry_history(entry_id):
         """الحصول على تاريخ القيد"""
-        return JournalEntryAudit.query.filter_by(journal_entry_id=entry_id)\
-            .order_by(JournalEntryAudit.performed_at.desc()).all()
+        return (
+            JournalEntryAudit.query.filter_by(journal_entry_id=entry_id)
+            .order_by(JournalEntryAudit.performed_at.desc())
+            .all()
+        )
 
     @staticmethod
     def _log_audit(entry_id, action, old_values, new_values, reason, user_id):
@@ -282,9 +336,10 @@ class AdvancedJournalEntryManager:
             new_values=str(new_values) if new_values else None,
             reason=reason,
             performed_by=user_id,
-            performed_at=datetime.now(timezone.utc)
+            performed_at=datetime.now(timezone.utc),
         )
         db.session.add(audit)
+
 
 # إضافة دالة مساعدة لـ GLJournalEntry
 
@@ -295,37 +350,39 @@ def add_helper_methods():
     def to_dict(self):
         """تحويل القيد إلى قاموس"""
         return {
-            'id': self.id,
-            'entry_number': self.entry_number,
-            'entry_date': self.entry_date.isoformat() if self.entry_date else None,
-            'description': self.description,
-            'entry_type': self.entry_type,
-            'total_debit': float(self.total_debit),
-            'total_credit': float(self.total_credit),
-            'is_posted': self.is_posted,
-            'is_reversed': self.is_reversed,
-            'notes': self.notes,
-            'lines': [
+            "id": self.id,
+            "entry_number": self.entry_number,
+            "entry_date": self.entry_date.isoformat() if self.entry_date else None,
+            "description": self.description,
+            "entry_type": self.entry_type,
+            "total_debit": float(self.total_debit),
+            "total_credit": float(self.total_credit),
+            "is_posted": self.is_posted,
+            "is_reversed": self.is_reversed,
+            "notes": self.notes,
+            "lines": [
                 {
-                    'account_code': line.account.code,
-                    'account_name': line.account.full_name,
-                    'debit': float(line.debit),
-                    'credit': float(line.credit),
-                    'description': line.description
+                    "account_code": line.account.code,
+                    "account_name": line.account.full_name,
+                    "debit": float(line.debit),
+                    "credit": float(line.credit),
+                    "description": line.description,
                 }
                 for line in self.lines
-            ]
+            ],
         }
 
     def get_balance_status(self):
         """الحصول على حالة التوازن"""
-        difference = abs(Decimal(str(self.total_debit)) - Decimal(str(self.total_credit)))
-        if difference < Decimal('0.01'):
-            return 'balanced'
-        elif difference < Decimal('10'):
-            return 'minor_imbalance'
+        difference = abs(
+            Decimal(str(self.total_debit)) - Decimal(str(self.total_credit))
+        )
+        if difference < Decimal("0.01"):
+            return "balanced"
+        elif difference < Decimal("10"):
+            return "minor_imbalance"
         else:
-            return 'major_imbalance'
+            return "major_imbalance"
 
     def can_be_modified(self):
         """فحص إمكانية التعديل"""
@@ -337,7 +394,9 @@ def add_helper_methods():
 
     def can_be_deleted(self):
         """فحص إمكانية الحذف"""
-        return not self.is_posted and not self.is_reversed and not self.reversed_entry_id
+        return (
+            not self.is_posted and not self.is_reversed and not self.reversed_entry_id
+        )
 
     # إضافة الدوال للكلاس
     GLJournalEntry.to_dict = to_dict

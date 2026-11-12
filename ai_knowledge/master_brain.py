@@ -46,10 +46,10 @@ class MasterBrain:
 
         # الذاكرة الموحدة
         self.unified_memory = {
-            'conversations': [],
-            'facts': [],
-            'procedures': [],
-            'user_preferences': {}
+            "conversations": [],
+            "facts": [],
+            "procedures": [],
+            "user_preferences": {},
         }
 
         # النماذج العصبية (كاش)
@@ -67,218 +67,219 @@ class MasterBrain:
 
         # استيراد المعرفة الإضافية
         try:
-            from ai_knowledge.automotive_ecu_knowledge import get_automotive_ecu_knowledge
+            from ai_knowledge.automotive_ecu_knowledge import (
+                get_automotive_ecu_knowledge,
+            )
+
             automotive_kb = get_automotive_ecu_knowledge().knowledge_base
         except Exception:
             automotive_kb = {}
 
         try:
             from ai_knowledge.external_learning import get_external_learning
+
             external_sources = get_external_learning().learning_sources
         except Exception:
             external_sources = {}
 
         return {
             # ========== المحاسبة ==========
-            'accounting': {
-                'principles': {
-                    'accrual': 'مبدأ الاستحقاق - تسجيل الإيرادات والمصروفات عند حدوثها',
-                    'matching': 'مبدأ المقابلة - مقابلة الإيرادات بالمصروفات في نفس الفترة',
-                    'consistency': 'مبدأ الثبات - استخدام نفس الطرق المحاسبية',
-                    'conservatism': 'مبدأ الحيطة والحذر - عدم المبالغة في الأصول والإيرادات',
-                    'materiality': 'مبدأ الأهمية النسبية',
-                    'going_concern': 'مبدأ الاستمرارية',
-                    'double_entry': 'القيد المزدوج - لكل مدين دائن'
+            "accounting": {
+                "principles": {
+                    "accrual": "مبدأ الاستحقاق - تسجيل الإيرادات والمصروفات عند حدوثها",
+                    "matching": "مبدأ المقابلة - مقابلة الإيرادات بالمصروفات في نفس الفترة",
+                    "consistency": "مبدأ الثبات - استخدام نفس الطرق المحاسبية",
+                    "conservatism": "مبدأ الحيطة والحذر - عدم المبالغة في الأصول والإيرادات",
+                    "materiality": "مبدأ الأهمية النسبية",
+                    "going_concern": "مبدأ الاستمرارية",
+                    "double_entry": "القيد المزدوج - لكل مدين دائن",
                 },
-                'formulas': {
-                    'gross_profit': 'الربح الإجمالي = المبيعات - تكلفة البضاعة المباعة',
-                    'net_profit': 'صافي الربح = الإيرادات - جميع المصروفات',
-                    'current_ratio': 'نسبة السيولة الجارية = الأصول المتداولة / الخصوم المتداولة',
-                    'quick_ratio': 'نسبة السيولة السريعة = (الأصول المتداولة - المخزون) / الخصوم المتداولة',
-                    'debt_ratio': 'نسبة المديونية = إجمالي الديون / إجمالي الأصول',
-                    'roe': 'العائد على حقوق الملكية = صافي الربح / حقوق الملكية',
-                    'roa': 'العائد على الأصول = صافي الربح / إجمالي الأصول',
-                    'gross_margin': 'هامش الربح الإجمالي = (الربح الإجمالي / المبيعات) × 100',
-                    'net_margin': 'هامش الربح الصافي = (صافي الربح / المبيعات) × 100'
+                "formulas": {
+                    "gross_profit": "الربح الإجمالي = المبيعات - تكلفة البضاعة المباعة",
+                    "net_profit": "صافي الربح = الإيرادات - جميع المصروفات",
+                    "current_ratio": "نسبة السيولة الجارية = الأصول المتداولة / الخصوم المتداولة",
+                    "quick_ratio": "نسبة السيولة السريعة = (الأصول المتداولة - المخزون) / الخصوم المتداولة",
+                    "debt_ratio": "نسبة المديونية = إجمالي الديون / إجمالي الأصول",
+                    "roe": "العائد على حقوق الملكية = صافي الربح / حقوق الملكية",
+                    "roa": "العائد على الأصول = صافي الربح / إجمالي الأصول",
+                    "gross_margin": "هامش الربح الإجمالي = (الربح الإجمالي / المبيعات) × 100",
+                    "net_margin": "هامش الربح الصافي = (صافي الربح / المبيعات) × 100",
                 },
-                'accounts_structure': {
-                    'assets': 'الأصول - حسابات ذات طبيعة مدينة',
-                    'liabilities': 'الخصوم - حسابات ذات طبيعة دائنة',
-                    'equity': 'حقوق الملكية - حسابات ذات طبيعة دائنة',
-                    'revenue': 'الإيرادات - حسابات ذات طبيعة دائنة',
-                    'expenses': 'المصروفات - حسابات ذات طبيعة مدينة'
+                "accounts_structure": {
+                    "assets": "الأصول - حسابات ذات طبيعة مدينة",
+                    "liabilities": "الخصوم - حسابات ذات طبيعة دائنة",
+                    "equity": "حقوق الملكية - حسابات ذات طبيعة دائنة",
+                    "revenue": "الإيرادات - حسابات ذات طبيعة دائنة",
+                    "expenses": "المصروفات - حسابات ذات طبيعة مدينة",
                 },
-                'entries': {
-                    'sale': {
-                        'cash_sale': [
-                            'من ح/ النقدية',
-                            'إلى ح/ المبيعات',
-                            'إلى ح/ ضريبة القيمة المضافة (إن وجدت)'
+                "entries": {
+                    "sale": {
+                        "cash_sale": [
+                            "من ح/ النقدية",
+                            "إلى ح/ المبيعات",
+                            "إلى ح/ ضريبة القيمة المضافة (إن وجدت)",
                         ],
-                        'credit_sale': [
-                            'من ح/ العملاء',
-                            'إلى ح/ المبيعات',
-                            'إلى ح/ ضريبة القيمة المضافة'
-                        ]
+                        "credit_sale": [
+                            "من ح/ العملاء",
+                            "إلى ح/ المبيعات",
+                            "إلى ح/ ضريبة القيمة المضافة",
+                        ],
                     },
-                    'purchase': {
-                        'cash_purchase': [
-                            'من ح/ المشتريات',
-                            'من ح/ ضريبة القيمة المضافة',
-                            'إلى ح/ النقدية'
+                    "purchase": {
+                        "cash_purchase": [
+                            "من ح/ المشتريات",
+                            "من ح/ ضريبة القيمة المضافة",
+                            "إلى ح/ النقدية",
                         ],
-                        'credit_purchase': [
-                            'من ح/ المشتريات',
-                            'من ح/ ضريبة القيمة المضافة',
-                            'إلى ح/ الموردين'
-                        ]
-                    }
-                }
+                        "credit_purchase": [
+                            "من ح/ المشتريات",
+                            "من ح/ ضريبة القيمة المضافة",
+                            "إلى ح/ الموردين",
+                        ],
+                    },
+                },
             },
-
             # ========== الضرائب ==========
-            'taxes': {
-                'uae_vat': {
-                    'rate': 5,
-                    'description': 'ضريبة القيمة المضافة في الإمارات 5%',
-                    'registration_threshold': 375000,
-                    'voluntary_threshold': 187500,
-                    'zero_rated': ['صادرات', 'نقل دولي', 'بعض الأدوية', 'معادن استثمارية'],
-                    'exempt': ['تأجير سكني', 'خدمات مالية معينة', 'نقل محلي للركاب'],
-                    'calculation': 'الضريبة = المبلغ × 5%',
-                    'filing_period': 'ربع سنوي أو شهري حسب حجم الأعمال'
+            "taxes": {
+                "uae_vat": {
+                    "rate": 5,
+                    "description": "ضريبة القيمة المضافة في الإمارات 5%",
+                    "registration_threshold": 375000,
+                    "voluntary_threshold": 187500,
+                    "zero_rated": [
+                        "صادرات",
+                        "نقل دولي",
+                        "بعض الأدوية",
+                        "معادن استثمارية",
+                    ],
+                    "exempt": ["تأجير سكني", "خدمات مالية معينة", "نقل محلي للركاب"],
+                    "calculation": "الضريبة = المبلغ × 5%",
+                    "filing_period": "ربع سنوي أو شهري حسب حجم الأعمال",
                 },
-                'corporate_tax': {
-                    'rate': 9,
-                    'description': 'ضريبة الشركات في الإمارات 9%',
-                    'threshold': 375000,
-                    'effective_date': '2023-06-01',
-                    'exemptions': 'الأرباح أقل من 375,000 درهم'
+                "corporate_tax": {
+                    "rate": 9,
+                    "description": "ضريبة الشركات في الإمارات 9%",
+                    "threshold": 375000,
+                    "effective_date": "2023-06-01",
+                    "exemptions": "الأرباح أقل من 375,000 درهم",
                 },
-                'customs': {
-                    'standard_rate': 5,
-                    'gcc_goods': 0,
-                    'description': 'الرسوم الجمركية 5% (معظم السلع)',
-                    'gcc_exemption': 'معفاة للسلع من دول الخليج'
-                }
+                "customs": {
+                    "standard_rate": 5,
+                    "gcc_goods": 0,
+                    "description": "الرسوم الجمركية 5% (معظم السلع)",
+                    "gcc_exemption": "معفاة للسلع من دول الخليج",
+                },
             },
-
             # ========== الإدارة ==========
-            'management': {
-                'theories': {
-                    'swot': 'تحليل SWOT - القوة، الضعف، الفرص، التهديدات',
-                    'smart_goals': 'أهداف SMART - محددة، قابلة للقياس، قابلة للتحقيق، واقعية، محددة بوقت',
-                    'kpi': 'مؤشرات الأداء الرئيسية',
-                    'lean': 'الإدارة الرشيقة - تقليل الهدر',
-                    'six_sigma': '6 سيجما - تحسين الجودة'
+            "management": {
+                "theories": {
+                    "swot": "تحليل SWOT - القوة، الضعف، الفرص، التهديدات",
+                    "smart_goals": "أهداف SMART - محددة، قابلة للقياس، قابلة للتحقيق، واقعية، محددة بوقت",
+                    "kpi": "مؤشرات الأداء الرئيسية",
+                    "lean": "الإدارة الرشيقة - تقليل الهدر",
+                    "six_sigma": "6 سيجما - تحسين الجودة",
                 },
-                'inventory_methods': {
-                    'fifo': 'FIFO - First In First Out - الوارد أولاً يصرف أولاً',
-                    'lifo': 'LIFO - Last In First Out - الوارد أخيراً يصرف أولاً',
-                    'weighted_average': 'المتوسط المرجح',
-                    'eoq': 'EOQ - الكمية الاقتصادية للطلب = √((2 × الطلب السنوي × تكلفة الطلب) / تكلفة الاحتفاظ)',
-                    'reorder_point': 'نقطة إعادة الطلب = (الطلب اليومي × مدة التوريد) + مخزون الأمان',
-                    'safety_stock': 'مخزون الأمان = (الطلب الأقصى × مدة التوريد الأقصى) - (الطلب المتوسط × مدة التوريد المتوسطة)',
-                    'abc_analysis': 'تحليل ABC - تصنيف المخزون حسب القيمة'
+                "inventory_methods": {
+                    "fifo": "FIFO - First In First Out - الوارد أولاً يصرف أولاً",
+                    "lifo": "LIFO - Last In First Out - الوارد أخيراً يصرف أولاً",
+                    "weighted_average": "المتوسط المرجح",
+                    "eoq": "EOQ - الكمية الاقتصادية للطلب = √((2 × الطلب السنوي × تكلفة الطلب) / تكلفة الاحتفاظ)",
+                    "reorder_point": "نقطة إعادة الطلب = (الطلب اليومي × مدة التوريد) + مخزون الأمان",
+                    "safety_stock": "مخزون الأمان = (الطلب الأقصى × مدة التوريد الأقصى) - (الطلب المتوسط × مدة التوريد المتوسطة)",
+                    "abc_analysis": "تحليل ABC - تصنيف المخزون حسب القيمة",
                 },
-                'financial_management': {
-                    'working_capital': 'رأس المال العامل = الأصول المتداولة - الخصوم المتداولة',
-                    'break_even': 'نقطة التعادل = التكاليف الثابتة / (سعر البيع - التكلفة المتغيرة للوحدة)',
-                    'margin_of_safety': 'هامش الأمان = المبيعات الفعلية - مبيعات نقطة التعادل',
-                    'operating_leverage': 'الرافعة التشغيلية = هامش المساهمة / صافي الربح'
-                }
+                "financial_management": {
+                    "working_capital": "رأس المال العامل = الأصول المتداولة - الخصوم المتداولة",
+                    "break_even": "نقطة التعادل = التكاليف الثابتة / (سعر البيع - التكلفة المتغيرة للوحدة)",
+                    "margin_of_safety": "هامش الأمان = المبيعات الفعلية - مبيعات نقطة التعادل",
+                    "operating_leverage": "الرافعة التشغيلية = هامش المساهمة / صافي الربح",
+                },
             },
-
             # ========== الهندسة والصيانة ==========
-            'engineering': {
-                'automotive': {
-                    'engine': {
-                        'systems': ['وقود', 'إشعال', 'تبريد', 'تزييت', 'عادم'],
-                        'common_issues': {
-                            'overheating': 'ارتفاع الحرارة - فحص الرادياتر، المضخة، الثرموستات',
-                            'no_start': 'لا يعمل - فحص البطارية، الوقود، الشمعات',
-                            'rough_idle': 'خشونة - فحص الشمعات، الفلتر، الحقن',
-                            'oil_consumption': 'استهلاك زيت - فحص الجوانات، المكابس'
-                        }
+            "engineering": {
+                "automotive": {
+                    "engine": {
+                        "systems": ["وقود", "إشعال", "تبريد", "تزييت", "عادم"],
+                        "common_issues": {
+                            "overheating": "ارتفاع الحرارة - فحص الرادياتر، المضخة، الثرموستات",
+                            "no_start": "لا يعمل - فحص البطارية، الوقود، الشمعات",
+                            "rough_idle": "خشونة - فحص الشمعات، الفلتر، الحقن",
+                            "oil_consumption": "استهلاك زيت - فحص الجوانات، المكابس",
+                        },
                     },
-                    'transmission': {
-                        'types': ['يدوي', 'أوتوماتيك', 'CVT', 'DCT'],
-                        'maintenance': 'تغيير الزيت كل 60,000 كم للأوتوماتيك'
+                    "transmission": {
+                        "types": ["يدوي", "أوتوماتيك", "CVT", "DCT"],
+                        "maintenance": "تغيير الزيت كل 60,000 كم للأوتوماتيك",
                     },
-                    'brakes': {
-                        'components': ['فحمات', 'أقراص', 'كليبرات', 'سائل فرامل'],
-                        'inspection': 'فحص كل 10,000 كم'
+                    "brakes": {
+                        "components": ["فحمات", "أقراص", "كليبرات", "سائل فرامل"],
+                        "inspection": "فحص كل 10,000 كم",
                     },
-                    'fluids': {
-                        'engine_oil': 'زيت المحرك - تغيير كل 5,000-10,000 كم',
-                        'brake_fluid': 'سائل الفرامل - تغيير كل سنتين',
-                        'coolant': 'سائل التبريد - تغيير كل 2-3 سنوات',
-                        'transmission_oil': 'زيت القير - تغيير كل 60,000 كم'
+                    "fluids": {
+                        "engine_oil": "زيت المحرك - تغيير كل 5,000-10,000 كم",
+                        "brake_fluid": "سائل الفرامل - تغيير كل سنتين",
+                        "coolant": "سائل التبريد - تغيير كل 2-3 سنوات",
+                        "transmission_oil": "زيت القير - تغيير كل 60,000 كم",
+                    },
+                },
+                "heavy_equipment": {
+                    "maintenance_schedule": {
+                        "daily": "فحص السوائل، الإطارات، الأضواء",
+                        "weekly": "فحص الفلاتر، البطارية، الأحزمة",
+                        "monthly": "تشحيم، فحص شامل",
+                        "quarterly": "تغيير الزيت والفلاتر",
                     }
                 },
-                'heavy_equipment': {
-                    'maintenance_schedule': {
-                        'daily': 'فحص السوائل، الإطارات، الأضواء',
-                        'weekly': 'فحص الفلاتر، البطارية، الأحزمة',
-                        'monthly': 'تشحيم، فحص شامل',
-                        'quarterly': 'تغيير الزيت والفلاتر'
-                    }
-                }
             },
-
             # ========== القانون التجاري ==========
-            'commercial_law': {
-                'uae': {
-                    'commercial_license': 'رخصة تجارية - متطلبات: موافقة الجهات، دفع الرسوم',
-                    'contracts': 'العقود التجارية - يجب أن تكون مكتوبة للقيم الكبيرة',
-                    'commercial_register': 'السجل التجاري - إلزامي لجميع الشركات',
-                    'payment_terms': {
-                        'net_30': 'الدفع خلال 30 يوم',
-                        'net_60': 'الدفع خلال 60 يوم',
-                        '2_10_net_30': 'خصم 2% إذا دفع خلال 10 أيام، وإلا كامل المبلغ خلال 30 يوم'
-                    }
+            "commercial_law": {
+                "uae": {
+                    "commercial_license": "رخصة تجارية - متطلبات: موافقة الجهات، دفع الرسوم",
+                    "contracts": "العقود التجارية - يجب أن تكون مكتوبة للقيم الكبيرة",
+                    "commercial_register": "السجل التجاري - إلزامي لجميع الشركات",
+                    "payment_terms": {
+                        "net_30": "الدفع خلال 30 يوم",
+                        "net_60": "الدفع خلال 60 يوم",
+                        "2_10_net_30": "خصم 2% إذا دفع خلال 10 أيام، وإلا كامل المبلغ خلال 30 يوم",
+                    },
                 }
             },
-
             # ========== البرمجة ==========
-            'programming': {
-                'sql': {
-                    'select': 'SELECT columns FROM table WHERE conditions',
-                    'join': 'JOIN - ربط الجداول',
-                    'group_by': 'GROUP BY - تجميع البيانات',
-                    'having': 'HAVING - شروط على المجموعات',
-                    'optimization': 'استخدام INDEX للسرعة'
+            "programming": {
+                "sql": {
+                    "select": "SELECT columns FROM table WHERE conditions",
+                    "join": "JOIN - ربط الجداول",
+                    "group_by": "GROUP BY - تجميع البيانات",
+                    "having": "HAVING - شروط على المجموعات",
+                    "optimization": "استخدام INDEX للسرعة",
                 },
-                'python': {
-                    'best_practices': [
-                        'استخدم list comprehension',
-                        'تجنب loops غير الضرورية',
-                        'استخدم generators للبيانات الكبيرة',
-                        'استخدم f-strings للنصوص',
-                        'استخدم type hints',
-                        'اكتب docstrings'
+                "python": {
+                    "best_practices": [
+                        "استخدم list comprehension",
+                        "تجنب loops غير الضرورية",
+                        "استخدم generators للبيانات الكبيرة",
+                        "استخدم f-strings للنصوص",
+                        "استخدم type hints",
+                        "اكتب docstrings",
                     ]
-                }
-            },
-
-            # ========== السكرتارية ==========
-            'secretarial': {
-                'communication': {
-                    'email_structure': 'الموضوع - التحية - الموضوع - الخاتمة - التوقيع',
-                    'professional_tone': 'رسمي واحترافي ومختصر',
-                    'follow_up': 'المتابعة بعد 3 أيام عمل'
                 },
-                'scheduling': {
-                    'priority_matrix': 'مصفوفة أيزنهاور - عاجل/مهم، مهم/غير عاجل، عاجل/غير مهم، غير مهم/غير عاجل',
-                    'time_blocking': 'تقسيم اليوم لكتل زمنية'
-                }
             },
-
+            # ========== السكرتارية ==========
+            "secretarial": {
+                "communication": {
+                    "email_structure": "الموضوع - التحية - الموضوع - الخاتمة - التوقيع",
+                    "professional_tone": "رسمي واحترافي ومختصر",
+                    "follow_up": "المتابعة بعد 3 أيام عمل",
+                },
+                "scheduling": {
+                    "priority_matrix": "مصفوفة أيزنهاور - عاجل/مهم، مهم/غير عاجل، عاجل/غير مهم، غير مهم/غير عاجل",
+                    "time_blocking": "تقسيم اليوم لكتل زمنية",
+                },
+            },
             # ========== كمبيوترات السيارات (من automotive_ecu_knowledge) ==========
-            'automotive_ecu': automotive_kb,
-
+            "automotive_ecu": automotive_kb,
             # ========== مصادر التعلم الخارجية (30+ مصدر ضخم) ==========
-            'external_sources': external_sources
+            "external_sources": external_sources,
         }
 
     # ========================================================================
@@ -322,7 +323,9 @@ class MasterBrain:
             knowledge = self._retrieve_knowledge(domain, question)
 
             # 3. التفكير المنطقي
-            reasoning_result = self._think_logically(question, intent, knowledge, context)
+            reasoning_result = self._think_logically(
+                question, intent, knowledge, context
+            )
 
             # 4. استخدام النماذج العصبية (إذا لزم الأمر)
             neural_result = self._use_neural_if_needed(intent, context)
@@ -334,7 +337,7 @@ class MasterBrain:
 
             # 6. التذكر
             if user_id:
-                self._remember(user_id, question, answer['text'])
+                self._remember(user_id, question, answer["text"])
 
             # 7. حساب الوقت
             response_time = (datetime.now() - start_time).total_seconds()
@@ -343,27 +346,29 @@ class MasterBrain:
             suggestions = self._generate_smart_suggestions(intent, domain)
 
             result = {
-                'answer': answer['text'],
-                'confidence': answer['confidence'],
-                'reasoning': reasoning_result.get('steps', []),
-                'sources': answer.get('sources', []),
-                'suggestions': suggestions,
-                'domain': domain,
-                'intent': intent,
-                'response_time_ms': round(response_time * 1000, 2),
-                'genius_mode': True
+                "answer": answer["text"],
+                "confidence": answer["confidence"],
+                "reasoning": reasoning_result.get("steps", []),
+                "sources": answer.get("sources", []),
+                "suggestions": suggestions,
+                "domain": domain,
+                "intent": intent,
+                "response_time_ms": round(response_time * 1000, 2),
+                "genius_mode": True,
             }
 
-            logger.info(f"🧠 Master Brain answered in {response_time * 1000:.0f}ms - Confidence: {answer['confidence']:.0%}")
+            logger.info(
+                f"🧠 Master Brain answered in {response_time * 1000:.0f}ms - Confidence: {answer['confidence']:.0%}"
+            )
 
             return result
 
         except Exception as e:
             logger.error(f"Master Brain error: {e}")
             return {
-                'answer': 'عذراً، دعني أفكر مرة أخرى... يمكنك إعادة صياغة السؤال؟',
-                'confidence': 0.3,
-                'error': str(e)
+                "answer": "عذراً، دعني أفكر مرة أخرى... يمكنك إعادة صياغة السؤال؟",
+                "confidence": 0.3,
+                "error": str(e),
             }
 
     def _analyze_question(self, question: str) -> Tuple[str, str, dict]:  # noqa: C901
@@ -371,42 +376,47 @@ class MasterBrain:
         q_lower = question.lower()
 
         # تحديد المجال
-        if any(kw in q_lower for kw in ['قيد', 'محاسبة', 'مدين', 'دائن', 'ميزانية', 'ربح', 'خسارة']):
-            domain = 'accounting'
-        elif any(kw in q_lower for kw in ['ضريبة', 'vat', 'القيمة المضافة', 'جمارك']):
-            domain = 'taxes'
-        elif any(kw in q_lower for kw in ['مخزون', 'طلب', 'eoq', 'reorder', 'safety stock']):
-            domain = 'management'
-        elif any(kw in q_lower for kw in ['محرك', 'صيانة', 'زيت', 'فرامل', 'إصلاح']):
-            domain = 'engineering'
-        elif any(kw in q_lower for kw in ['سعر', 'price', 'تسعير', 'pricing']):
-            domain = 'pricing'
-        elif any(kw in q_lower for kw in ['توقع', 'predict', 'forecast', 'متوقع']):
-            domain = 'prediction'
-        elif any(kw in q_lower for kw in ['عميل', 'customer', 'زبون']):
-            domain = 'customer'
-        elif any(kw in q_lower for kw in ['كود', 'code', 'برمجة', 'sql', 'python']):
-            domain = 'programming'
+        if any(
+            kw in q_lower
+            for kw in ["قيد", "محاسبة", "مدين", "دائن", "ميزانية", "ربح", "خسارة"]
+        ):
+            domain = "accounting"
+        elif any(kw in q_lower for kw in ["ضريبة", "vat", "القيمة المضافة", "جمارك"]):
+            domain = "taxes"
+        elif any(
+            kw in q_lower for kw in ["مخزون", "طلب", "eoq", "reorder", "safety stock"]
+        ):
+            domain = "management"
+        elif any(kw in q_lower for kw in ["محرك", "صيانة", "زيت", "فرامل", "إصلاح"]):
+            domain = "engineering"
+        elif any(kw in q_lower for kw in ["سعر", "price", "تسعير", "pricing"]):
+            domain = "pricing"
+        elif any(kw in q_lower for kw in ["توقع", "predict", "forecast", "متوقع"]):
+            domain = "prediction"
+        elif any(kw in q_lower for kw in ["عميل", "customer", "زبون"]):
+            domain = "customer"
+        elif any(kw in q_lower for kw in ["كود", "code", "برمجة", "sql", "python"]):
+            domain = "programming"
         else:
-            domain = 'general'
+            domain = "general"
 
         # تحديد النية
-        if '؟' in question or 'كيف' in q_lower or 'ما' in q_lower or 'متى' in q_lower:
-            intent = 'question'
-        elif 'احسب' in q_lower or 'calculate' in q_lower:
-            intent = 'calculation'
-        elif 'توقع' in q_lower or 'predict' in q_lower:
-            intent = 'prediction'
-        elif 'راجع' in q_lower or 'فحص' in q_lower or 'check' in q_lower:
-            intent = 'review'
+        if "؟" in question or "كيف" in q_lower or "ما" in q_lower or "متى" in q_lower:
+            intent = "question"
+        elif "احسب" in q_lower or "calculate" in q_lower:
+            intent = "calculation"
+        elif "توقع" in q_lower or "predict" in q_lower:
+            intent = "prediction"
+        elif "راجع" in q_lower or "فحص" in q_lower or "check" in q_lower:
+            intent = "review"
         else:
-            intent = 'general'
+            intent = "general"
 
         # استخراج الكيانات
         entities = {}
-        numbers = re.findall(r'\d+\.?\d*', question)
+        numbers = re.findall(r"\d+\.?\d*", question)
         if numbers:
-            entities['numbers'] = [float(n) for n in numbers]
+            entities["numbers"] = [float(n) for n in numbers]
 
         return intent, domain, entities
 
@@ -416,60 +426,63 @@ class MasterBrain:
             return self.knowledge_base[domain]
         return {}
 
-    def _think_logically(self, question: str, intent: str, knowledge: dict, context: dict) -> dict:
+    def _think_logically(
+        self, question: str, intent: str, knowledge: dict, context: dict
+    ) -> dict:
         """التفكير المنطقي العميق"""
         steps = []
 
         # خطوة 1: فهم المطلوب
-        steps.append({
-            'step': 1,
-            'thought': f'فهمت السؤال: {question[:50]}...',
-            'action': 'understanding'
-        })
+        steps.append(
+            {
+                "step": 1,
+                "thought": f"فهمت السؤال: {question[:50]}...",
+                "action": "understanding",
+            }
+        )
 
         # خطوة 2: تحليل المعطيات
         available_data = list(context.keys()) if context else []
-        steps.append({
-            'step': 2,
-            'thought': f'البيانات المتاحة: {", ".join(available_data) if available_data else "لا يوجد"}',
-            'action': 'data_analysis'
-        })
+        steps.append(
+            {
+                "step": 2,
+                "thought": f"البيانات المتاحة: {', '.join(available_data) if available_data else 'لا يوجد'}",
+                "action": "data_analysis",
+            }
+        )
 
         # خطوة 3: استخدام المعرفة
         if knowledge:
-            steps.append({
-                'step': 3,
-                'thought': 'استخدام المعرفة المتخصصة في المجال',
-                'action': 'applying_knowledge'
-            })
+            steps.append(
+                {
+                    "step": 3,
+                    "thought": "استخدام المعرفة المتخصصة في المجال",
+                    "action": "applying_knowledge",
+                }
+            )
 
         # خطوة 4: الاستنتاج
-        steps.append({
-            'step': 4,
-            'thought': 'الوصول للحل الأمثل',
-            'action': 'conclusion'
-        })
+        steps.append(
+            {"step": 4, "thought": "الوصول للحل الأمثل", "action": "conclusion"}
+        )
 
-        return {
-            'steps': steps,
-            'confidence': 0.9
-        }
+        return {"steps": steps, "confidence": 0.9}
 
     def _use_neural_if_needed(self, intent: str, context: dict) -> Optional[dict]:
         """استخدام النماذج العصبية عند الحاجة"""
         # استيراد كسول (lazy import) للسرعة
-        if intent in ['prediction', 'pricing', 'classification']:
+        if intent in ["prediction", "pricing", "classification"]:
             try:
                 from services.ai_service import AIService
 
-                if intent == 'pricing' and context.get('product_id'):
+                if intent == "pricing" and context.get("product_id"):
                     return AIService.predict_price_with_neural(
-                        context['product_id'],
-                        context.get('customer_id'),
-                        context.get('quantity', 1)
+                        context["product_id"],
+                        context.get("customer_id"),
+                        context.get("quantity", 1),
                     )
 
-                elif intent == 'prediction':
+                elif intent == "prediction":
                     return AIService.forecast_sales_neural(days_ahead=7)
 
             except Exception as e:
@@ -478,8 +491,14 @@ class MasterBrain:
 
         return None
 
-    def _synthesize_answer(self, question: str, reasoning: dict, neural: dict,  # noqa: C901
-                           knowledge: dict, intent: str) -> dict:
+    def _synthesize_answer(
+        self,
+        question: str,
+        reasoning: dict,
+        neural: dict,  # noqa: C901
+        knowledge: dict,
+        intent: str,
+    ) -> dict:
         """دمج كل المصادر في إجابة واحدة متكاملة"""
 
         answer_parts = []
@@ -489,64 +508,79 @@ class MasterBrain:
         # إجابة من قاعدة المعرفة
         if knowledge:
             # محاسبة
-            if 'principles' in knowledge:
-                if 'استحقاق' in question.lower() or 'accrual' in question.lower():
+            if "principles" in knowledge:
+                if "استحقاق" in question.lower() or "accrual" in question.lower():
                     answer_parts.append(f"📚 {knowledge['principles']['accrual']}")
-                    sources.append('قاعدة المعرفة المحاسبية')
+                    sources.append("قاعدة المعرفة المحاسبية")
                     confidence = 0.98
 
-                elif 'قيد مزدوج' in question.lower() or 'double entry' in question.lower():
+                elif (
+                    "قيد مزدوج" in question.lower()
+                    or "double entry" in question.lower()
+                ):
                     answer_parts.append(f"📚 {knowledge['principles']['double_entry']}")
-                    sources.append('المبادئ المحاسبية')
+                    sources.append("المبادئ المحاسبية")
                     confidence = 1.0
 
             # الضرائب
-            if 'vat' in knowledge or 'uae_vat' in knowledge:
-                if 'ضريبة' in question.lower() or 'vat' in question.lower():
-                    vat_info = knowledge.get('uae_vat', {})
-                    answer_parts.append(f"💰 ضريبة القيمة المضافة في الإمارات: {vat_info.get('rate', 5)}%")
-                    answer_parts.append(f"حد التسجيل: {vat_info.get('registration_threshold', 375000):,} درهم")
-                    sources.append('قوانين الضرائب الإماراتية')
+            if "vat" in knowledge or "uae_vat" in knowledge:
+                if "ضريبة" in question.lower() or "vat" in question.lower():
+                    vat_info = knowledge.get("uae_vat", {})
+                    answer_parts.append(
+                        f"💰 ضريبة القيمة المضافة في الإمارات: {vat_info.get('rate', 5)}%"
+                    )
+                    answer_parts.append(
+                        f"حد التسجيل: {vat_info.get('registration_threshold', 375000):,} درهم"
+                    )
+                    sources.append("قوانين الضرائب الإماراتية")
                     confidence = 1.0
 
             # كمبيوترات السيارات
-            if 'sensors' in knowledge:
-                for sensor_code, sensor_data in knowledge.get('sensors', {}).items():
+            if "sensors" in knowledge:
+                for sensor_code, sensor_data in knowledge.get("sensors", {}).items():
                     if sensor_code.lower() in question.lower():
-                        answer_parts.append(f"🚗 {sensor_data.get('name_ar', sensor_code)}")
-                        answer_parts.append(f"الوظيفة: {sensor_data.get('function', '')}")
-                        if 'testing' in sensor_data:
+                        answer_parts.append(
+                            f"🚗 {sensor_data.get('name_ar', sensor_code)}"
+                        )
+                        answer_parts.append(
+                            f"الوظيفة: {sensor_data.get('function', '')}"
+                        )
+                        if "testing" in sensor_data:
                             answer_parts.append(f"الفحص: {sensor_data['testing']}")
-                        sources.append('خبير كمبيوترات السيارات - ECU')
+                        sources.append("خبير كمبيوترات السيارات - ECU")
                         confidence = 0.95
 
             # الصيغ
-            if 'formulas' in knowledge:
-                for formula_name, formula in knowledge['formulas'].items():
-                    if any(kw in question.lower() for kw in formula_name.split('_')):
+            if "formulas" in knowledge:
+                for formula_name, formula in knowledge["formulas"].items():
+                    if any(kw in question.lower() for kw in formula_name.split("_")):
                         answer_parts.append(f"📐 {formula}")
-                        sources.append('الصيغ المحاسبية')
+                        sources.append("الصيغ المحاسبية")
                         confidence = 0.95
 
         # إجابة من النماذج العصبية
         if neural:
-            if 'predicted_price' in neural:
-                answer_parts.append(f"🧠 السعر المقترح (بالشبكات العصبية): {neural['predicted_price']:.2f} AED")
+            if "predicted_price" in neural:
+                answer_parts.append(
+                    f"🧠 السعر المقترح (بالشبكات العصبية): {neural['predicted_price']:.2f} AED"
+                )
                 answer_parts.append(f"الهامش: {neural.get('margin_percent', 0):.1f}%")
                 answer_parts.append(f"الثقة: {neural.get('confidence', 0):.0%}")
-                sources.append('الشبكة العصبية للتسعير')
-                confidence = neural.get('confidence', 0.9)
+                sources.append("الشبكة العصبية للتسعير")
+                confidence = neural.get("confidence", 0.9)
 
-            elif 'forecast' in neural:
+            elif "forecast" in neural:
                 answer_parts.append("📈 توقع المبيعات (بالشبكات العصبية):")
-                for day in neural.get('forecast', [])[:3]:
-                    answer_parts.append(f"- {day.get('day_name', '')}: {day.get('amount', 0):,.0f} AED")
-                sources.append('الشبكة العصبية للتوقعات')
+                for day in neural.get("forecast", [])[:3]:
+                    answer_parts.append(
+                        f"- {day.get('day_name', '')}: {day.get('amount', 0):,.0f} AED"
+                    )
+                sources.append("الشبكة العصبية للتوقعات")
                 confidence = 0.94
 
         # إجابة عامة ذكية
         if not answer_parts:
-            if intent == 'question':
+            if intent == "question":
                 answer_parts.append("دعني أفكر في سؤالك بعمق...")
                 answer_parts.append("للحصول على إجابة دقيقة، يمكنك:")
                 answer_parts.append("1. تقديم معلومات إضافية")
@@ -563,59 +597,61 @@ class MasterBrain:
                 confidence = 0.7
 
         return {
-            'text': '\n'.join(answer_parts),
-            'confidence': confidence,
-            'sources': sources
+            "text": "\n".join(answer_parts),
+            "confidence": confidence,
+            "sources": sources,
         }
 
     def _remember(self, user_id: int, question: str, answer: str):
         """حفظ في الذاكرة الموحدة"""
-        self.unified_memory['conversations'].append({
-            'timestamp': datetime.now().isoformat(),
-            'user_id': user_id,
-            'question': question,
-            'answer': answer
-        })
+        self.unified_memory["conversations"].append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "user_id": user_id,
+                "question": question,
+                "answer": answer,
+            }
+        )
 
         # الاحتفاظ بآخر 100 فقط للسرعة
-        if len(self.unified_memory['conversations']) > 100:
-            self.unified_memory['conversations'] = self.unified_memory['conversations'][-100:]
+        if len(self.unified_memory["conversations"]) > 100:
+            self.unified_memory["conversations"] = self.unified_memory["conversations"][
+                -100:
+            ]
 
     def _generate_smart_suggestions(self, intent: str, domain: str) -> List[str]:
         """توليد اقتراحات ذكية"""
         suggestions = {
-            'accounting': [
-                'احسب نسبة السيولة الجارية',
-                'اشرح مبدأ الاستحقاق',
-                'كيف أراجع قيد محاسبي؟'
+            "accounting": [
+                "احسب نسبة السيولة الجارية",
+                "اشرح مبدأ الاستحقاق",
+                "كيف أراجع قيد محاسبي؟",
             ],
-            'taxes': [
-                'احسب ضريبة القيمة المضافة',
-                'ما حد التسجيل في VAT؟',
-                'اشرح الرسوم الجمركية'
+            "taxes": [
+                "احسب ضريبة القيمة المضافة",
+                "ما حد التسجيل في VAT؟",
+                "اشرح الرسوم الجمركية",
             ],
-            'management': [
-                'احسب نقطة إعادة الطلب',
-                'ما هي الكمية الاقتصادية EOQ؟',
-                'كيف أحلل المخزون بطريقة ABC؟'
+            "management": [
+                "احسب نقطة إعادة الطلب",
+                "ما هي الكمية الاقتصادية EOQ؟",
+                "كيف أحلل المخزون بطريقة ABC؟",
             ],
-            'engineering': [
-                'كيف أشخص مشكلة المحرك؟',
-                'متى أغير زيت المحرك؟',
-                'ما أسباب ارتفاع الحرارة؟'
+            "engineering": [
+                "كيف أشخص مشكلة المحرك؟",
+                "متى أغير زيت المحرك؟",
+                "ما أسباب ارتفاع الحرارة؟",
             ],
-            'pricing': [
-                'احسب السعر المثالي',
-                'ما هامش الربح المناسب؟',
-                'كيف أنافس في السوق؟'
-            ]
+            "pricing": [
+                "احسب السعر المثالي",
+                "ما هامش الربح المناسب؟",
+                "كيف أنافس في السوق؟",
+            ],
         }
 
-        return suggestions.get(domain, [
-            'اسأل عن المحاسبة',
-            'اسأل عن الضرائب',
-            'اسأل عن المخزون'
-        ])
+        return suggestions.get(
+            domain, ["اسأل عن المحاسبة", "اسأل عن الضرائب", "اسأل عن المخزون"]
+        )
 
     # ========================================================================
     # دوال متقدمة سريعة
@@ -624,29 +660,43 @@ class MasterBrain:
     def quick_calc(self, formula_name: str, **params) -> dict:
         """حسابات سريعة للصيغ الشائعة"""
         formulas = {
-            'gross_margin': lambda sales, cogs: ((sales - cogs) / sales * 100) if sales > 0 else 0,
-            'net_margin': lambda revenue, expenses: ((revenue - expenses) / revenue * 100) if revenue > 0 else 0,
-            'current_ratio': lambda current_assets, current_liabilities: current_assets / current_liabilities if current_liabilities > 0 else 0,
-            'eoq': lambda annual_demand, order_cost, holding_cost: (2 * annual_demand * order_cost / holding_cost) ** 0.5 if holding_cost > 0 else 0,
-            'break_even': lambda fixed_costs, price, variable_cost: fixed_costs / (price - variable_cost) if (price - variable_cost) > 0 else 0,
-            'vat': lambda amount: amount * 0.05,
-            'price_with_vat': lambda amount: amount * 1.05,
-            'price_without_vat': lambda amount_with_vat: amount_with_vat / 1.05
+            "gross_margin": lambda sales, cogs: (
+                ((sales - cogs) / sales * 100) if sales > 0 else 0
+            ),
+            "net_margin": lambda revenue, expenses: (
+                ((revenue - expenses) / revenue * 100) if revenue > 0 else 0
+            ),
+            "current_ratio": lambda current_assets, current_liabilities: (
+                current_assets / current_liabilities if current_liabilities > 0 else 0
+            ),
+            "eoq": lambda annual_demand, order_cost, holding_cost: (
+                (2 * annual_demand * order_cost / holding_cost) ** 0.5
+                if holding_cost > 0
+                else 0
+            ),
+            "break_even": lambda fixed_costs, price, variable_cost: (
+                fixed_costs / (price - variable_cost)
+                if (price - variable_cost) > 0
+                else 0
+            ),
+            "vat": lambda amount: amount * 0.05,
+            "price_with_vat": lambda amount: amount * 1.05,
+            "price_without_vat": lambda amount_with_vat: amount_with_vat / 1.05,
         }
 
         if formula_name in formulas:
             try:
                 result = formulas[formula_name](**params)
                 return {
-                    'result': round(result, 2),
-                    'formula': formula_name,
-                    'params': params,
-                    'success': True
+                    "result": round(result, 2),
+                    "formula": formula_name,
+                    "params": params,
+                    "success": True,
                 }
             except Exception as e:
-                return {'error': str(e), 'success': False}
+                return {"error": str(e), "success": False}
 
-        return {'error': f'Unknown formula: {formula_name}', 'success': False}
+        return {"error": f"Unknown formula: {formula_name}", "success": False}
 
     def explain(self, concept: str) -> str:
         """شرح مفهوم بسرعة"""
@@ -658,7 +708,10 @@ class MasterBrain:
                         for sub_key, sub_value in value.items():
                             if concept.lower() in sub_key.lower():
                                 return f"📚 {sub_value}"
-                            if isinstance(sub_value, str) and concept.lower() in sub_value.lower():
+                            if (
+                                isinstance(sub_value, str)
+                                and concept.lower() in sub_value.lower()
+                            ):
                                 return f"📚 {sub_value}"
 
         return f"🤔 لم أجد شرح مباشر لـ '{concept}'. يمكنك السؤال بشكل أكثر تحديداً؟"
@@ -668,14 +721,14 @@ class MasterBrain:
         is_balanced = abs(debit - credit) < 0.01
 
         return {
-            'is_balanced': is_balanced,
-            'debit': debit,
-            'credit': credit,
-            'difference': abs(debit - credit),
-            'status': '✅ متوازن' if is_balanced else '❌ غير متوازن',
-            'confidence': 1.0 if is_balanced else 0.0,
-            'principle': 'القيد المزدوج - المدين = الدائن',
-            'recommendation': 'يمكن اعتماده' if is_balanced else 'راجع الأرقام'
+            "is_balanced": is_balanced,
+            "debit": debit,
+            "credit": credit,
+            "difference": abs(debit - credit),
+            "status": "✅ متوازن" if is_balanced else "❌ غير متوازن",
+            "confidence": 1.0 if is_balanced else 0.0,
+            "principle": "القيد المزدوج - المدين = الدائن",
+            "recommendation": "يمكن اعتماده" if is_balanced else "راجع الأرقام",
         }
 
 
@@ -697,6 +750,7 @@ def get_master_brain():
 # ============================================================================
 # API بسيط وسريع
 # ============================================================================
+
 
 def ask_azad(question: str, context: dict = None, user_id: int = None) -> dict:
     """

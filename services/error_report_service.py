@@ -37,7 +37,7 @@ MAX_PATH_LEN = 500
 MAX_UA_LEN = 500
 MAX_USERNAME_LEN = 150
 
-FALLBACK_FILE = os.path.join('logs', 'error_report_fallback.log')
+FALLBACK_FILE = os.path.join("logs", "error_report_fallback.log")
 
 
 def classify_http_status(status_code):
@@ -61,48 +61,56 @@ def _actor_snapshot(user=None):
         person = user
         if person is None:
             if not has_request_context():
-                return None, 'system', None
+                return None, "system", None
             person = current_user
-        if person is None or not getattr(person, 'is_authenticated', False):
-            return None, 'anonymous', None
-        role = getattr(person, 'role', None)
-        role_slug = getattr(role, 'slug', None)
-        if not role_slug and getattr(person, 'is_owner', False):
-            role_slug = 'owner'
-        return (getattr(person, 'id', None),
-                (getattr(person, 'username', None) or 'unknown')[:MAX_USERNAME_LEN],
-                role_slug)
+        if person is None or not getattr(person, "is_authenticated", False):
+            return None, "anonymous", None
+        role = getattr(person, "role", None)
+        role_slug = getattr(role, "slug", None)
+        if not role_slug and getattr(person, "is_owner", False):
+            role_slug = "owner"
+        return (
+            getattr(person, "id", None),
+            (getattr(person, "username", None) or "unknown")[:MAX_USERNAME_LEN],
+            role_slug,
+        )
     except Exception:
-        return None, 'unknown', None
+        return None, "unknown", None
 
 
 def _request_snapshot(path=None, method=None):
     """Where it happened: method/path/endpoint/ip/agent/request_id."""
-    snapshot = {'method': method, 'path': path, 'endpoint': None,
-                'ip_address': None, 'user_agent': None, 'request_id': None}
+    snapshot = {
+        "method": method,
+        "path": path,
+        "endpoint": None,
+        "ip_address": None,
+        "user_agent": None,
+        "request_id": None,
+    }
     try:
         if has_request_context():
-            if snapshot['method'] is None:
-                snapshot['method'] = request.method
-            if snapshot['path'] is None:
-                snapshot['path'] = request.path
+            if snapshot["method"] is None:
+                snapshot["method"] = request.method
+            if snapshot["path"] is None:
+                snapshot["path"] = request.path
             try:
-                snapshot['endpoint'] = request.endpoint
+                snapshot["endpoint"] = request.endpoint
             except Exception:
                 pass
-            snapshot['ip_address'] = request.remote_addr
-            ua = request.headers.get('User-Agent', '')
-            snapshot['user_agent'] = ua[:MAX_UA_LEN] if ua else None
+            snapshot["ip_address"] = request.remote_addr
+            ua = request.headers.get("User-Agent", "")
+            snapshot["user_agent"] = ua[:MAX_UA_LEN] if ua else None
             try:
-                snapshot['request_id'] = g.get('request_id')
+                snapshot["request_id"] = g.get("request_id")
             except Exception:
                 pass
     except Exception:
         pass
-    if not snapshot['request_id']:
-        snapshot['request_id'] = uuid.uuid4().hex
-    if snapshot['path']:
-        snapshot['path'] = snapshot['path'][:MAX_PATH_LEN]
+    if not snapshot["request_id"]:
+        snapshot["request_id"] = uuid.uuid4().hex
+    if snapshot["path"]:
+        snapshot["path"] = snapshot["path"][:MAX_PATH_LEN]
     return snapshot
 
 
@@ -111,21 +119,30 @@ def _clean(text, limit):
         return None
     cleaned = sanitize_log_message(str(text))
     if len(cleaned) > limit:
-        cleaned = cleaned[:limit] + '…[truncated]'
+        cleaned = cleaned[:limit] + "…[truncated]"
     return cleaned
 
 
 def _fallback_to_file(payload):
     try:
-        os.makedirs(os.path.dirname(FALLBACK_FILE) or '.', exist_ok=True)
-        with open(FALLBACK_FILE, 'a', encoding='utf-8', errors='replace') as f:
-            f.write(payload + '\n')
+        os.makedirs(os.path.dirname(FALLBACK_FILE) or ".", exist_ok=True)
+        with open(FALLBACK_FILE, "a", encoding="utf-8", errors="replace") as f:
+            f.write(payload + "\n")
     except Exception:
         pass
 
 
-def report_error(category, message, *, severity='error', traceback_text=None,
-                 source='manual', user=None, path=None, method=None):
+def report_error(
+    category,
+    message,
+    *,
+    severity="error",
+    traceback_text=None,
+    source="manual",
+    user=None,
+    path=None,
+    method=None,
+):
     """Persist one structured error record. Returns ErrorLog or None.
 
     Raises ValueError for unknown category/severity (programmer error).
@@ -133,11 +150,11 @@ def report_error(category, message, *, severity='error', traceback_text=None,
     falls back to a local file and returns None.
     """
     if category not in CATEGORIES:
-        raise ValueError('Unknown error category: %r' % (category,))
+        raise ValueError("Unknown error category: %r" % (category,))
     if severity not in ErrorLog.SEVERITIES:
-        raise ValueError('Unknown error severity: %r' % (severity,))
+        raise ValueError("Unknown error severity: %r" % (severity,))
 
-    clean_message = _clean(message, MAX_MESSAGE_LEN) or '(empty error message)'
+    clean_message = _clean(message, MAX_MESSAGE_LEN) or "(empty error message)"
     clean_trace = _clean(traceback_text, MAX_TRACE_LEN)
     user_id, username, role = _actor_snapshot(user)
     snap = _request_snapshot(path=path, method=method)
@@ -145,22 +162,22 @@ def report_error(category, message, *, severity='error', traceback_text=None,
     entry = ErrorLog(
         category=category,
         severity=severity,
-        source=(source or 'manual')[:50],
+        source=(source or "manual")[:50],
         user_id=user_id,
         username=username,
         user_role=role,
-        method=snap['method'],
-        path=snap['path'],
-        endpoint=snap['endpoint'],
+        method=snap["method"],
+        path=snap["path"],
+        endpoint=snap["endpoint"],
         message=clean_message,
         traceback_text=clean_trace,
-        request_id=snap['request_id'],
-        ip_address=snap['ip_address'],
-        user_agent=snap['user_agent'],
+        request_id=snap["request_id"],
+        ip_address=snap["ip_address"],
+        user_agent=snap["user_agent"],
     )
     try:
         if not has_app_context():
-            raise RuntimeError('no app context for error persistence')
+            raise RuntimeError("no app context for error persistence")
         db.session.add(entry)
         db.session.commit()
         return entry
@@ -170,30 +187,35 @@ def report_error(category, message, *, severity='error', traceback_text=None,
         except Exception:
             pass
         try:
-            logger.warning('error-log persist failed (%s); using file fallback',
-                           type(exc).__name__)
+            logger.warning(
+                "error-log persist failed (%s); using file fallback", type(exc).__name__
+            )
         except Exception:
             pass
-        _fallback_to_file('[%s/%s] %s | %s | %s' % (
-            category, severity, username, snap['path'], clean_message))
+        _fallback_to_file(
+            "[%s/%s] %s | %s | %s"
+            % (category, severity, username, snap["path"], clean_message)
+        )
         return None
 
 
 def report_logic_error(message, **kwargs):
     """Business-rule violation (logic layer). Severity defaults to warning."""
-    kwargs.setdefault('severity', ErrorLog.SEVERITY_WARNING)
+    kwargs.setdefault("severity", ErrorLog.SEVERITY_WARNING)
     return report_error(CATEGORY_LOGIC, message, **kwargs)
 
 
-def report_exception(exc=None, *, source='flask-500', **kwargs):
+def report_exception(exc=None, *, source="flask-500", **kwargs):
     """Uncaught exception (programming layer). Severity critical."""
     if exc is None:
         tb_text = traceback.format_exc()
-        message = tb_text.strip().splitlines()[-1] if tb_text.strip() else 'Unknown error'
+        message = (
+            tb_text.strip().splitlines()[-1] if tb_text.strip() else "Unknown error"
+        )
     else:
-        tb_text = ''.join(traceback.format_exception(
-            type(exc), exc, exc.__traceback__))
-        message = '%s: %s' % (type(exc).__name__, exc)
-    kwargs.setdefault('severity', ErrorLog.SEVERITY_CRITICAL)
-    return report_error(CATEGORY_PROGRAMMING, message,
-                        traceback_text=tb_text, source=source, **kwargs)
+        tb_text = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+        message = "%s: %s" % (type(exc).__name__, exc)
+    kwargs.setdefault("severity", ErrorLog.SEVERITY_CRITICAL)
+    return report_error(
+        CATEGORY_PROGRAMMING, message, traceback_text=tb_text, source=source, **kwargs
+    )

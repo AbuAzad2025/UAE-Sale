@@ -19,23 +19,25 @@ def _cache_scope_token():
     try:
         from flask_login import current_user
 
-        if not getattr(current_user, 'is_authenticated', False):
-            return 'anon'
-        if getattr(current_user, 'is_owner', False):
+        if not getattr(current_user, "is_authenticated", False):
+            return "anon"
+        if getattr(current_user, "is_owner", False):
             # Owner bypasses tenant filter and sees all costs.
-            return 'owner'
-        role_slug = getattr(getattr(current_user, 'role', None), 'slug', None) or 'norole'
-        tenant = getattr(current_user, 'tenant_id', None) or '0'
+            return "owner"
+        role_slug = (
+            getattr(getattr(current_user, "role", None), "slug", None) or "norole"
+        )
+        tenant = getattr(current_user, "tenant_id", None) or "0"
         # Cost visibility is permission-driven; include the effective bit so a
         # same-slug role with divergent view_costs grants never shares a body.
         try:
-            costs = 'c1' if current_user.can_see_costs() else 'c0'
+            costs = "c1" if current_user.can_see_costs() else "c0"
         except Exception:
-            costs = 'cx'
-        return f'{role_slug}:{costs}:t{tenant}'
+            costs = "cx"
+        return f"{role_slug}:{costs}:t{tenant}"
     except Exception:
         # Fail closed: never share a cached body across unknown scopes.
-        return 'unknown'
+        return "unknown"
 
 
 def cached_query(timeout=300, key_prefix=None):
@@ -56,7 +58,8 @@ def cached_query(timeout=300, key_prefix=None):
                 # test environments, or a corrupted/evicted entry).
                 try:
                     current_app.logger.warning(
-                        f"Cache get failed for key {cache_key}: {str(e)}")
+                        f"Cache get failed for key {cache_key}: {str(e)}"
+                    )
                 except Exception:
                     pass
                 result = None
@@ -68,9 +71,13 @@ def cached_query(timeout=300, key_prefix=None):
                 cache.set(cache_key, result, timeout=timeout)
             except Exception as e:
                 # If caching fails (e.g. UnboundLocalError in cachelib), log it but don't crash
-                current_app.logger.warning(f"Cache set failed for key {cache_key}: {str(e)}")
+                current_app.logger.warning(
+                    f"Cache set failed for key {cache_key}: {str(e)}"
+                )
             return result
+
         return decorated_function
+
     return decorator
 
 
@@ -86,21 +93,29 @@ def invalidate_cache(key_pattern):
     delete for anything left.
     """
     try:
-        pattern = str(key_pattern or '')
+        pattern = str(key_pattern or "")
 
         def _matches(key):
             if isinstance(key, (bytes, bytearray)):
-                key = key.decode('utf-8', 'ignore')
+                key = key.decode("utf-8", "ignore")
             else:
                 key = str(key)
-            return key == pattern or key.startswith(pattern) or fnmatch.fnmatch(key, pattern)
+            return (
+                key == pattern
+                or key.startswith(pattern)
+                or fnmatch.fnmatch(key, pattern)
+            )
 
         # 1) cachelib in-memory store (SimpleCache._cache dict)
         try:
-            store = getattr(getattr(cache, 'cache', None), '_cache', None)
+            store = getattr(getattr(cache, "cache", None), "_cache", None)
             if isinstance(store, dict):
                 for raw_key in [k for k in list(store.keys()) if _matches(k)]:
-                    name = raw_key.decode('utf-8', 'ignore') if isinstance(raw_key, (bytes, bytearray)) else str(raw_key)
+                    name = (
+                        raw_key.decode("utf-8", "ignore")
+                        if isinstance(raw_key, (bytes, bytearray))
+                        else str(raw_key)
+                    )
                     try:
                         cache.delete(name)
                     except Exception:
@@ -113,11 +128,15 @@ def invalidate_cache(key_pattern):
 
         # 2) Redis-backed caches via SCAN (never KEYS — production-safe)
         try:
-            client = getattr(getattr(cache, 'cache', None), '_client', None)
-            if client is not None and hasattr(client, 'scan_iter'):
+            client = getattr(getattr(cache, "cache", None), "_client", None)
+            if client is not None and hasattr(client, "scan_iter"):
                 try:
-                    for raw_key in client.scan_iter(match=f'*{pattern}*', count=200):
-                        name = raw_key.decode('utf-8', 'ignore') if isinstance(raw_key, (bytes, bytearray)) else str(raw_key)
+                    for raw_key in client.scan_iter(match=f"*{pattern}*", count=200):
+                        name = (
+                            raw_key.decode("utf-8", "ignore")
+                            if isinstance(raw_key, (bytes, bytearray))
+                            else str(raw_key)
+                        )
                         try:
                             cache.delete(name)
                         except Exception:

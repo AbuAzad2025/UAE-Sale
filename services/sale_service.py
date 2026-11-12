@@ -14,15 +14,15 @@ from utils.errors import ValidationError
 # Fallback account codes (must mirror GLService.ensure_core_accounts defaults).
 # Used only when Agent1's services.account_resolution resolver is unavailable.
 FALLBACK_ACCOUNTS = {
-    'AR_CONTROL': '1130',
-    'PARTNER_CURRENT': '3350',
-    'MERCHANTS_PAYABLE': '2115',
-    'SALES_REVENUE': '4100',
-    'SHIPPING_REVENUE': '4300',
-    'DISCOUNTS_GIVEN': '5200',
-    'TAX_PAYABLE': '2130',
-    'VAT_INPUT': '1141',
-    'VAT_OUTPUT': '2131',
+    "AR_CONTROL": "1130",
+    "PARTNER_CURRENT": "3350",
+    "MERCHANTS_PAYABLE": "2115",
+    "SALES_REVENUE": "4100",
+    "SHIPPING_REVENUE": "4300",
+    "DISCOUNTS_GIVEN": "5200",
+    "TAX_PAYABLE": "2130",
+    "VAT_INPUT": "1141",
+    "VAT_OUTPUT": "2131",
     # 5000 is a HEADER in the canonical tree (gl_service.py:156, is_header,
     # depth 0); 5100 is the posting leaf under it. Booking cost of sales on
     # the header left every subtotal and every trial-balance roll-up reading
@@ -30,8 +30,8 @@ FALLBACK_ACCOUNTS = {
     # resolves COGS to 5100, so this literal was only reachable when that
     # import failed - and it silently produced a wrong ledger rather than an
     # error.
-    'COGS': '5100',
-    'INVENTORY': '1140',
+    "COGS": "5100",
+    "INVENTORY": "1140",
 }
 
 
@@ -43,6 +43,7 @@ def resolve_account(role_name):
     """
     try:
         from services.account_resolution import AccountRole, AccountResolver
+
         role = getattr(AccountRole, role_name, None)
         if role is not None:
             code = AccountResolver.resolve(role)
@@ -72,12 +73,14 @@ def _warehouse_stock_is_authoritative(product):
 
     from models import StockMovement
 
-    movements_total = db.session.query(
-        func.coalesce(func.sum(StockMovement.quantity), 0)
-    ).filter(StockMovement.product_id == product.id).scalar()
+    movements_total = (
+        db.session.query(func.coalesce(func.sum(StockMovement.quantity), 0))
+        .filter(StockMovement.product_id == product.id)
+        .scalar()
+    )
     movements_total = Decimal(str(movements_total or 0))
     current_stock = Decimal(str(product.current_stock or 0))
-    return abs(movements_total - current_stock) <= Decimal('0.001')
+    return abs(movements_total - current_stock) <= Decimal("0.001")
 
 
 def merchant_receivable_codes():
@@ -92,7 +95,7 @@ def merchant_receivable_codes():
     control-vs-subledger proof stays intact for all customer types.
     """
     codes = []
-    for role_name in ('MERCHANTS_PAYABLE', 'PARTNER_CURRENT'):
+    for role_name in ("MERCHANTS_PAYABLE", "PARTNER_CURRENT"):
         code = resolve_account(role_name)
         if code and code not in codes:
             codes.append(str(code))
@@ -100,7 +103,6 @@ def merchant_receivable_codes():
 
 
 class SaleService:
-
     @staticmethod
     def _resolve_tax_rate(tax_rate, customer=None):
         """حفظ التوافق: يعيد (rate, inclusive) عبر TaxEngine."""
@@ -112,27 +114,44 @@ class SaleService:
     def _resolve_tax(tax_rate, customer=None, tax_inclusive=None):
         """(rate, inclusive) من التينانت عبر TaxEngine."""
         from models.tenant_scope import get_current_tenant_id, TENANT_LESS_SCOPE
+
         tid = get_current_tenant_id()
         if tid == TENANT_LESS_SCOPE:
             tid = None
         if tid is None and customer is not None:
-            tid = getattr(customer, 'tenant_id', None)
+            tid = getattr(customer, "tenant_id", None)
         tenant = None
         if tid is not None:
             from models import Tenant
+
             tenant = db.session.get(Tenant, tid)
             if tenant is None:
-                raise ValidationError('تعذر العثور على إعدادات الشركة الضريبية')
+                raise ValidationError("تعذر العثور على إعدادات الشركة الضريبية")
         from services.tax_engine import resolve as _resolve
+
         exp_rate = None
         if tax_rate is not None:
-            exp_rate = __import__('decimal').Decimal(str(tax_rate))
-        return _resolve(tenant, explicit_rate=exp_rate,
-                        explicit_inclusive=tax_inclusive)
+            exp_rate = __import__("decimal").Decimal(str(tax_rate))
+        return _resolve(
+            tenant, explicit_rate=exp_rate, explicit_inclusive=tax_inclusive
+        )
 
     @staticmethod
-    def create_sale(customer, seller, lines_data, warehouse_id=None, currency=None, user_exchange_rate=None,
-                    discount_amount=0, shipping_cost=0, tax_rate=None, tax_inclusive=None, tax_treatment=None, notes=None, payment_data=None):
+    def create_sale(
+        customer,
+        seller,
+        lines_data,
+        warehouse_id=None,
+        currency=None,
+        user_exchange_rate=None,
+        discount_amount=0,
+        shipping_cost=0,
+        tax_rate=None,
+        tax_inclusive=None,
+        tax_treatment=None,
+        notes=None,
+        payment_data=None,
+    ):
         """
         Create a new sale with proper validations and decimal precision
         All financial calculations use Decimal for accuracy
@@ -140,20 +159,25 @@ class SaleService:
         """
         # Input validations
         if not customer or not customer.is_active:
-            raise ValidationError('⚠️ العميل غير صالح أو غير نشط.\n💡 اختر عميل نشط من القائمة أو قم بتفعيله.')
+            raise ValidationError(
+                "⚠️ العميل غير صالح أو غير نشط.\n💡 اختر عميل نشط من القائمة أو قم بتفعيله."
+            )
 
         if not seller or not seller.is_active:
-            raise ValidationError('البائع غير صالح أو غير نشط')
+            raise ValidationError("البائع غير صالح أو غير نشط")
 
         if not lines_data or len(lines_data) == 0:
-            raise ValidationError('⚠️ يجب إضافة منتج واحد على الأقل للفاتورة.\n💡 اضغط زر "➕ إضافة صف" واختر منتجاً.')
+            raise ValidationError(
+                '⚠️ يجب إضافة منتج واحد على الأقل للفاتورة.\n💡 اضغط زر "➕ إضافة صف" واختر منتجاً.'
+            )
 
         # --- Fiscal Period Check ---
         from services.erp_modules_service import FiscalPeriodService
+
         if not FiscalPeriodService.is_period_open(date.today()):
             raise ValidationError(
-                '⚠️ الفترة المالية الحالية مغلقة.\n'
-                '💡 لا يمكن إنشاء فواتير في فترة مالية مقفلة.'
+                "⚠️ الفترة المالية الحالية مغلقة.\n"
+                "💡 لا يمكن إنشاء فواتير في فترة مالية مقفلة."
             )
 
         # Dynamic base currency resolution
@@ -161,34 +185,44 @@ class SaleService:
             try:
                 currency = CurrencyService.get_base_currency()
             except Exception:
-                currency = 'ILS'
+                currency = "ILS"
 
         # Validate discount and tax
-        discount_decimal = Decimal(str(discount_amount)) if discount_amount else Decimal('0')
-        shipping_decimal = Decimal(str(shipping_cost)) if shipping_cost else Decimal('0')
-        _resolved_rate, _resolved_inclusive = SaleService._resolve_tax(tax_rate, customer=customer, tax_inclusive=tax_inclusive)
+        discount_decimal = (
+            Decimal(str(discount_amount)) if discount_amount else Decimal("0")
+        )
+        shipping_decimal = (
+            Decimal(str(shipping_cost)) if shipping_cost else Decimal("0")
+        )
+        _resolved_rate, _resolved_inclusive = SaleService._resolve_tax(
+            tax_rate, customer=customer, tax_inclusive=tax_inclusive
+        )
         tax_rate_decimal = _resolved_rate
-        _treatment = (tax_treatment or 'standard').strip().lower()
-        if _treatment not in ('standard', 'zero', 'exempt'):
-            raise ValidationError('المعاملة الضريبية غير صالحة')
-        if _treatment in ('zero', 'exempt'):
-            tax_rate_decimal = Decimal('0')
+        _treatment = (tax_treatment or "standard").strip().lower()
+        if _treatment not in ("standard", "zero", "exempt"):
+            raise ValidationError("المعاملة الضريبية غير صالحة")
+        if _treatment in ("zero", "exempt"):
+            tax_rate_decimal = Decimal("0")
 
-        if discount_decimal < Decimal('0'):
-            raise ValidationError('قيمة الخصم لا يمكن أن تكون سالبة')
+        if discount_decimal < Decimal("0"):
+            raise ValidationError("قيمة الخصم لا يمكن أن تكون سالبة")
 
-        if shipping_decimal < Decimal('0'):
-            raise ValidationError('تكلفة الشحن لا يمكن أن تكون سالبة')
+        if shipping_decimal < Decimal("0"):
+            raise ValidationError("تكلفة الشحن لا يمكن أن تكون سالبة")
 
-        if tax_rate_decimal < Decimal('0') or tax_rate_decimal > Decimal('100'):
-            raise ValidationError('نسبة الضريبة يجب أن تكون بين 0 و 100')
+        if tax_rate_decimal < Decimal("0") or tax_rate_decimal > Decimal("100"):
+            raise ValidationError("نسبة الضريبة يجب أن تكون بين 0 و 100")
 
         from models import Warehouse
+
         # 🔒 Concurrency: lock the customer row (balance/total_purchases are
         # derived from sales; concurrent sales must serialize on the customer).
         from utils.decorators import get_owned_or_raise
         from models import Customer
-        customer = get_owned_or_raise(Customer, customer.id, for_update=True) or customer
+
+        customer = (
+            get_owned_or_raise(Customer, customer.id, for_update=True) or customer
+        )
         if not warehouse_id:
             # البحث عن المستودع الرئيسي أولاً
             warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
@@ -199,41 +233,59 @@ class SaleService:
                 warehouse_id = warehouse.id
         else:
             # التحقق من صحة المستودع المحدد
-            warehouse = get_owned_or_raise(Warehouse, warehouse_id, missing_message='المستودع غير موجود')
+            warehouse = get_owned_or_raise(
+                Warehouse, warehouse_id, missing_message="المستودع غير موجود"
+            )
             if not warehouse:
-                raise ValidationError('⚠️ المستودع المحدد غير موجود.\n💡 اختر مستودع موجود من القائمة.')
+                raise ValidationError(
+                    "⚠️ المستودع المحدد غير موجود.\n💡 اختر مستودع موجود من القائمة."
+                )
             if not warehouse.is_active:
-                raise ValidationError('⚠️ المستودع المحدد غير نشط.\n💡 اختر مستودع نشط من القائمة.')
+                raise ValidationError(
+                    "⚠️ المستودع المحدد غير نشط.\n💡 اختر مستودع نشط من القائمة."
+                )
 
         try:
-            sale_number = generate_number('S', Sale, 'sale_number')
+            sale_number = generate_number("S", Sale, "sale_number")
 
             exchange_rate = CurrencyService.get_exchange_rate(
                 currency,
                 CurrencyService.get_base_currency(),
-                user_rate=user_exchange_rate
+                user_rate=user_exchange_rate,
             )
 
             # Validate exchange rate
-            if exchange_rate <= Decimal('0'):
-                raise ValidationError('سعر الصرف غير صالح')
+            if exchange_rate <= Decimal("0"):
+                raise ValidationError("سعر الصرف غير صالح")
 
             # --- Credit Limit Check ---
-            credit_limit = Decimal(str(customer.credit_limit)) if customer.credit_limit else Decimal('0')
-            if credit_limit > Decimal('0'):
-                current_balance = Decimal(str(customer.get_balance())) if customer.get_balance() else Decimal('0')
+            credit_limit = (
+                Decimal(str(customer.credit_limit))
+                if customer.credit_limit
+                else Decimal("0")
+            )
+            if credit_limit > Decimal("0"):
+                current_balance = (
+                    Decimal(str(customer.get_balance()))
+                    if customer.get_balance()
+                    else Decimal("0")
+                )
                 # We can't know total_amount yet, so estimate from lines
                 estimated_total = sum(
-                    (Decimal(str(ld.get('quantity', 0))) * Decimal(str(ld.get('unit_price', 0)))
-                     for ld in lines_data if ld.get('quantity') and ld.get('unit_price')),
-                    Decimal('0')
+                    (
+                        Decimal(str(ld.get("quantity", 0)))
+                        * Decimal(str(ld.get("unit_price", 0)))
+                        for ld in lines_data
+                        if ld.get("quantity") and ld.get("unit_price")
+                    ),
+                    Decimal("0"),
                 )
                 projected_balance = current_balance + estimated_total
                 if projected_balance > credit_limit:
                     raise ValidationError(
                         f'⚠️ تجاوز حد الائتمان للعميل "{customer.name}"\n'
-                        f'💡 الحد: {credit_limit:,.2f} د.إ | الرصيد الحالي: {current_balance:,.2f} د.إ | '
-                        f'المتوقع بعد هذه الفاتورة: {projected_balance:,.2f} د.إ'
+                        f"💡 الحد: {credit_limit:,.2f} د.إ | الرصيد الحالي: {current_balance:,.2f} د.إ | "
+                        f"المتوقع بعد هذه الفاتورة: {projected_balance:,.2f} د.إ"
                     )
 
             sale = Sale(
@@ -248,23 +300,25 @@ class SaleService:
                 tax_rate=tax_rate_decimal,
                 tax_inclusive=_resolved_inclusive,
                 tax_treatment=_treatment,
-                total_amount=Decimal('0'),  # Temporary - will be calculated
-                amount_base=Decimal('0'),    # Temporary - will be calculated
-                notes=notes
+                total_amount=Decimal("0"),  # Temporary - will be calculated
+                amount_base=Decimal("0"),  # Temporary - will be calculated
+                notes=notes,
             )
 
             db.session.add(sale)
             db.session.flush()
 
-            subtotal = Decimal('0')
+            subtotal = Decimal("0")
 
             for line_data in lines_data:
-                product = line_data['product']
-                quantity = Decimal(str(line_data['quantity']))
+                product = line_data["product"]
+                quantity = Decimal(str(line_data["quantity"]))
 
                 # Validate quantity
-                if quantity <= Decimal('0'):
-                    raise ValidationError(f'⚠️ المنتج "{product.name}": الكمية يجب أن تكون أكبر من صفر.\n💡 أدخل كمية صحيحة مثل: 1, 2, 5, 10')
+                if quantity <= Decimal("0"):
+                    raise ValidationError(
+                        f'⚠️ المنتج "{product.name}": الكمية يجب أن تكون أكبر من صفر.\n💡 أدخل كمية صحيحة مثل: 1, 2, 5, 10'
+                    )
 
                 # F1: لا فاتورة بلا تكلفة — منتج بلا cost_price لا ينتج
                 # قيد تكلفة (COGS) ولا تسوية للمخزون، فرحّل فاتورة إيراد
@@ -284,37 +338,54 @@ class SaleService:
                 # card balance (see _warehouse_stock_is_authoritative);
                 # otherwise the card's global balance is the only truth.
                 available, msg = StockService.check_availability(
-                    product.id, quantity, warehouse_id=warehouse_id)
-                if (not available and warehouse_id
-                        and not _warehouse_stock_is_authoritative(product)):
+                    product.id, quantity, warehouse_id=warehouse_id
+                )
+                if (
+                    not available
+                    and warehouse_id
+                    and not _warehouse_stock_is_authoritative(product)
+                ):
                     available, msg = StockService.check_availability(
-                        product.id, quantity)
+                        product.id, quantity
+                    )
                 if not available:
-                    raise ValidationError(f'{product.name}: {msg}')
+                    raise ValidationError(f"{product.name}: {msg}")
 
                 # Get unit price
-                if line_data.get('unit_price'):
-                    unit_price = Decimal(str(line_data['unit_price']))
+                if line_data.get("unit_price"):
+                    unit_price = Decimal(str(line_data["unit_price"]))
                 else:
                     unit_price = product.get_price_for_customer(customer.customer_type)
 
                 # Validate unit price
-                if unit_price <= Decimal('0'):
-                    raise ValidationError(f'⚠️ المنتج "{product.name}": السعر يجب أن يكون أكبر من صفر.\n💡 أدخل سعر صحيح بالدرهم.')
+                if unit_price <= Decimal("0"):
+                    raise ValidationError(
+                        f'⚠️ المنتج "{product.name}": السعر يجب أن يكون أكبر من صفر.\n💡 أدخل سعر صحيح بالدرهم.'
+                    )
 
-                discount_percent = Decimal(str(line_data.get('discount_percent', 0)))
+                discount_percent = Decimal(str(line_data.get("discount_percent", 0)))
 
                 # Validate line discount
-                if discount_percent < Decimal('0') or discount_percent > Decimal('100'):
-                    raise ValidationError(f'{product.name}: نسبة الخصم يجب أن تكون بين 0 و 100')
+                if discount_percent < Decimal("0") or discount_percent > Decimal("100"):
+                    raise ValidationError(
+                        f"{product.name}: نسبة الخصم يجب أن تكون بين 0 و 100"
+                    )
 
                 # Snapshot the line tax treatment: explicit per-line value,
                 # otherwise the product's saved default.
-                _line_treatment = (line_data.get('tax_treatment')
-                                   or getattr(product, 'tax_treatment', None)
-                                   or 'standard').strip().lower()
-                if _line_treatment not in ('standard', 'zero', 'exempt'):
-                    raise ValidationError(f'{product.name}: معاملة ضريبية للسطر غير صالحة')
+                _line_treatment = (
+                    (
+                        line_data.get("tax_treatment")
+                        or getattr(product, "tax_treatment", None)
+                        or "standard"
+                    )
+                    .strip()
+                    .lower()
+                )
+                if _line_treatment not in ("standard", "zero", "exempt"):
+                    raise ValidationError(
+                        f"{product.name}: معاملة ضريبية للسطر غير صالحة"
+                    )
 
                 line = SaleLine(
                     sale_id=sale.id,
@@ -339,23 +410,27 @@ class SaleService:
 
             # Handle payment if provided
             if payment_data:
-                paid_amount = Decimal(str(payment_data.get('amount', 0)))
+                paid_amount = Decimal(str(payment_data.get("amount", 0)))
                 try:
                     _base_pay = CurrencyService.get_base_currency()
                 except Exception:
-                    _base_pay = 'ILS'
-                payment_currency = payment_data.get('currency') or _base_pay
-                payment_exchange_rate = payment_data.get('exchange_rate', 1.0)
+                    _base_pay = "ILS"
+                payment_currency = payment_data.get("currency") or _base_pay
+                payment_exchange_rate = payment_data.get("exchange_rate", 1.0)
 
                 # Convert payment to AED
-                payment_exchange_decimal = Decimal(str(payment_exchange_rate)) if payment_exchange_rate else Decimal('1')
+                payment_exchange_decimal = (
+                    Decimal(str(payment_exchange_rate))
+                    if payment_exchange_rate
+                    else Decimal("1")
+                )
                 paid_amount_base = (paid_amount * payment_exchange_decimal).quantize(
-                    Decimal('0.001'), rounding=ROUND_HALF_UP
+                    Decimal("0.001"), rounding=ROUND_HALF_UP
                 )
 
                 # Validate payment amount (in AED)
-                if paid_amount_base < Decimal('0'):
-                    raise ValidationError('مبلغ الدفع لا يمكن أن يكون سالب')
+                if paid_amount_base < Decimal("0"):
+                    raise ValidationError("مبلغ الدفع لا يمكن أن يكون سالب")
 
                 # Store payment in AED
                 sale.paid_amount = paid_amount  # في عملة الفاتورة
@@ -368,13 +443,15 @@ class SaleService:
                 # واحد — بدل زيادة يدوية تكسر التوازن.
                 if paid_amount_base > sale.amount_base:
                     overpayment = paid_amount_base - sale.amount_base
-                    payment_note = f"\n[دفع زائد] مبلغ {overpayment} AED سُجّل كرصيد للزبون"
-                    sale.notes = (sale.notes or '') + payment_note
+                    payment_note = (
+                        f"\n[دفع زائد] مبلغ {overpayment} AED سُجّل كرصيد للزبون"
+                    )
+                    sale.notes = (sale.notes or "") + payment_note
 
                 # Add payment currency info to notes if not AED
                 if payment_currency != CurrencyService.get_base_currency():
                     payment_note = f"\n[دفعة] {paid_amount} {payment_currency} = {paid_amount_base} AED (سعر: {payment_exchange_rate})"
-                    sale.notes = (sale.notes or '') + payment_note
+                    sale.notes = (sale.notes or "") + payment_note
 
             sale.calculate_totals()
 
@@ -382,31 +459,33 @@ class SaleService:
             # overpayment on the invoice, so balance_due is clamped at 0
             # (never negative — ck_sale_balance_non_negative) and the excess
             # shows up as a customer credit in the derived balance.
-            if sale.balance_due is not None and Decimal(str(sale.balance_due)) < Decimal('0'):
-                sale.balance_due = Decimal('0')
-                sale.payment_status = 'paid'
+            if sale.balance_due is not None and Decimal(
+                str(sale.balance_due)
+            ) < Decimal("0"):
+                sale.balance_due = Decimal("0")
+                sale.payment_status = "paid"
 
             db.session.flush()
 
             # تمرير warehouse_id لحركات المخزون
             StockService.process_sale_lines(sale, warehouse_id)
 
-            if payment_data and payment_data.get('amount', 0) > 0:
+            if payment_data and payment_data.get("amount", 0) > 0:
                 try:
                     _base_pay2 = CurrencyService.get_base_currency()
                 except Exception:
-                    _base_pay2 = 'ILS'
+                    _base_pay2 = "ILS"
                 _ = SaleService.create_payment_for_sale(
                     sale=sale,
-                    amount=payment_data['amount'],
-                    payment_method=payment_data['payment_method'],
-                    currency=payment_data.get('currency') or _base_pay2,
-                    exchange_rate=payment_data.get('exchange_rate', 1.0),
-                    reference_number=payment_data.get('reference_number'),
-                    cheque_number=payment_data.get('cheque_number'),
-                    cheque_date=payment_data.get('cheque_date'),
-                    bank_name=payment_data.get('bank_name'),
-                    notes=payment_data.get('notes')
+                    amount=payment_data["amount"],
+                    payment_method=payment_data["payment_method"],
+                    currency=payment_data.get("currency") or _base_pay2,
+                    exchange_rate=payment_data.get("exchange_rate", 1.0),
+                    reference_number=payment_data.get("reference_number"),
+                    cheque_number=payment_data.get("cheque_number"),
+                    cheque_date=payment_data.get("cheque_date"),
+                    bank_name=payment_data.get("bank_name"),
+                    notes=payment_data.get("notes"),
                 )
 
             customer.total_purchases += sale.amount_base
@@ -414,6 +493,7 @@ class SaleService:
 
             # F1: رصيد العميل يُشتق من مصدره الواحد (لا زيادة تدريجية)
             from models.customer import recompute_customer_balance
+
             recompute_customer_balance(customer.id)
 
             # Post to General Ledger with proper decimal precision
@@ -426,124 +506,148 @@ class SaleService:
             # F1: كل سطر يحمل الآن تكلفة موثّقة > 0 (cost_for_sale)،
             # فمجموع التكلفة على أي فاتورة ذات أسطر أكبر من صفر.
             cogs_total_base = sum(
-                (Decimal(str(line.cost_price)) * Decimal(str(line.quantity))
-                    for line in sale.lines),
-                Decimal('0')
+                (
+                    Decimal(str(line.cost_price)) * Decimal(str(line.quantity))
+                    for line in sale.lines
+                ),
+                Decimal("0"),
             )
             cogs_total_base = cogs_total_base.quantize(
-                Decimal('0.001'), rounding=ROUND_HALF_UP
+                Decimal("0.001"), rounding=ROUND_HALF_UP
             )
 
             # Determine AR Account based on Customer Type (resolved dynamically)
             # F37: merchant receivables are true receivables — align with the
             # GLService resolver (FIX 2: merchant -> AR control 1130), not the
             # liability 2115. Partner mapping stays on PARTNERS_CURRENT.
-            ar_account = resolve_account('AR_CONTROL')
-            if customer.customer_type == 'partner':
-                ar_account = resolve_account('PARTNER_CURRENT')
-            elif customer.customer_type == 'merchant':
+            ar_account = resolve_account("AR_CONTROL")
+            if customer.customer_type == "partner":
+                ar_account = resolve_account("PARTNER_CURRENT")
+            elif customer.customer_type == "merchant":
                 try:
                     ar_account = GLService.get_customer_credit_account(customer)
                 except Exception:
-                    ar_account = resolve_account('AR_CONTROL')
+                    ar_account = resolve_account("AR_CONTROL")
 
             # Prepare GL lines with proper decimal precision
             # AR and Revenue should be in Transaction Currency (Foreign)
             # GLService.post_entry will handle conversion to base currency
 
-            _partner_id = customer.id if getattr(customer, 'customer_type', None) == 'partner' else None
+            _partner_id = (
+                customer.id
+                if getattr(customer, "customer_type", None) == "partner"
+                else None
+            )
             lines = [
                 {
-                    'account': ar_account,
-                    'debit': sale.total_amount,  # Use Foreign Amount
-                    'description': f'فاتورة {sale.sale_number}',
-                    **({'party_id': _partner_id} if _partner_id else {}),
+                    "account": ar_account,
+                    "debit": sale.total_amount,  # Use Foreign Amount
+                    "description": f"فاتورة {sale.sale_number}",
+                    **({"party_id": _partner_id} if _partner_id else {}),
                 },
                 {
-                    'account': resolve_account('SALES_REVENUE'),
-                    'credit': sale.subtotal - sale.tax_amount if getattr(sale, 'tax_inclusive', False) else sale.subtotal,
-                    'description': 'إيرادات المبيعات',
-                    **({'party_id': _partner_id} if _partner_id else {}),
+                    "account": resolve_account("SALES_REVENUE"),
+                    "credit": sale.subtotal - sale.tax_amount
+                    if getattr(sale, "tax_inclusive", False)
+                    else sale.subtotal,
+                    "description": "إيرادات المبيعات",
+                    **({"party_id": _partner_id} if _partner_id else {}),
                 },
             ]
 
-            if sale.shipping_cost > Decimal('0'):
-                lines.append({
-                    'account': resolve_account('SHIPPING_REVENUE'),
-                    'credit': sale.shipping_cost,  # Use Foreign Amount
-                    'description': 'إيرادات الشحن'
-                })
+            if sale.shipping_cost > Decimal("0"):
+                lines.append(
+                    {
+                        "account": resolve_account("SHIPPING_REVENUE"),
+                        "credit": sale.shipping_cost,  # Use Foreign Amount
+                        "description": "إيرادات الشحن",
+                    }
+                )
 
-            if sale.discount_amount > Decimal('0'):
-                lines.append({
-                    'account': resolve_account('DISCOUNTS_GIVEN'),
-                    'debit': sale.discount_amount,  # Use Foreign Amount
-                    'description': 'خصومات ممنوحة'
-                })
+            if sale.discount_amount > Decimal("0"):
+                lines.append(
+                    {
+                        "account": resolve_account("DISCOUNTS_GIVEN"),
+                        "debit": sale.discount_amount,  # Use Foreign Amount
+                        "description": "خصومات ممنوحة",
+                    }
+                )
 
-            if sale.tax_amount > Decimal('0'):
-                lines.append({
-                    'account': resolve_account('VAT_OUTPUT'),
-                    'credit': sale.tax_amount,  # Use Foreign Amount
-                    'description': 'ضرائب مستحقة (مخرجات)'
-                })
+            if sale.tax_amount > Decimal("0"):
+                lines.append(
+                    {
+                        "account": resolve_account("VAT_OUTPUT"),
+                        "credit": sale.tax_amount,  # Use Foreign Amount
+                        "description": "ضرائب مستحقة (مخرجات)",
+                    }
+                )
 
             # Post Sales Revenue Entry (in Transaction Currency)
             GLService.post_entry(
                 lines,
-                description=f'Sale {sale.sale_number}',
-                reference_type='Sale',
+                description=f"Sale {sale.sale_number}",
+                reference_type="Sale",
                 reference_id=sale.id,
                 currency=sale.currency,
-                exchange_rate=sale.exchange_rate
+                exchange_rate=sale.exchange_rate,
             )
 
             # COGS Entry (Always in Base Currency — cost is base-denominated)
             # F1: الفاتورة ذات الأسطر لها دائماً تكلفة > 0 (require_cost_basis)،
             # فالقيد 아래 لا يُسقط ولا يُبدَّل. الشرط باقٍ كشبكة أمان.
-            if cogs_total_base > Decimal('0'):
+            if cogs_total_base > Decimal("0"):
                 cogs_lines = [
                     {
-                        'account': resolve_account('COGS'),
-                        'debit': cogs_total_base,
-                        'description': 'تكلفة البضاعة المباعة'
+                        "account": resolve_account("COGS"),
+                        "debit": cogs_total_base,
+                        "description": "تكلفة البضاعة المباعة",
                     },
                     {
-                        'account': resolve_account('INVENTORY'),
-                        'credit': cogs_total_base,
-                        'description': 'خصم من المخزون'
-                    }
+                        "account": resolve_account("INVENTORY"),
+                        "credit": cogs_total_base,
+                        "description": "خصم من المخزون",
+                    },
                 ]
 
                 GLService.post_entry(
                     cogs_lines,
-                    description=f'COGS - Sale {sale.sale_number}',
-                    reference_type='Sale',
+                    description=f"COGS - Sale {sale.sale_number}",
+                    reference_type="Sale",
                     reference_id=sale.id,
                     currency=CurrencyService.get_base_currency(),
-                    exchange_rate=1.0
+                    exchange_rate=1.0,
                 )
 
             # توزيع أرباح شركاء المنتج فورًا — داخل نفس المعاملة؛ الفشل يُجهض
             # الفاتورة كاملة (لا يُسمح بفاتورة بلا قيد حصص الشركاء).
             from services.partner_profit import post_partner_shares_for_sale
+
             post_partner_shares_for_sale(sale)
 
             db.session.commit()
 
-            current_app.logger.info(f'Sale created: {sale.sale_number}')
+            current_app.logger.info(f"Sale created: {sale.sale_number}")
 
             return sale
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f'Sale creation failed: {e}')
+            current_app.logger.error(f"Sale creation failed: {e}")
             raise
 
     @staticmethod
-    def create_payment_for_sale(sale, amount, payment_method, currency=None, exchange_rate=1.0,
-                                reference_number=None, cheque_number=None, cheque_date=None,
-                                bank_name=None, notes=None):
+    def create_payment_for_sale(
+        sale,
+        amount,
+        payment_method,
+        currency=None,
+        exchange_rate=1.0,
+        reference_number=None,
+        cheque_number=None,
+        cheque_date=None,
+        bank_name=None,
+        notes=None,
+    ):
         """
         Create a payment for a sale with proper validations
         Uses Decimal for accurate financial calculations
@@ -555,45 +659,51 @@ class SaleService:
             try:
                 currency = CurrencyService.get_base_currency()
             except Exception:
-                currency = 'ILS'
+                currency = "ILS"
 
         # Validate payment amount
         amount_decimal = Decimal(str(amount))
-        if amount_decimal <= Decimal('0'):
-            raise ValidationError('مبلغ الدفع يجب أن يكون أكبر من صفر')
+        if amount_decimal <= Decimal("0"):
+            raise ValidationError("مبلغ الدفع يجب أن يكون أكبر من صفر")
 
         # Validate payment method
-        valid_methods = ['cash', 'card', 'bank_transfer', 'cheque', 'e_wallet']
+        valid_methods = ["cash", "card", "bank_transfer", "cheque", "e_wallet"]
         if payment_method not in valid_methods:
-            raise ValidationError(f'طريقة الدفع غير صالحة: {payment_method}')
+            raise ValidationError(f"طريقة الدفع غير صالحة: {payment_method}")
 
         # Validate cheque details if payment method is cheque
-        if payment_method == 'cheque':
+        if payment_method == "cheque":
             if not cheque_number:
-                raise ValidationError('⚠️ رقم الشيك مطلوب عند الدفع بشيك.\n💡 أدخل رقم الشيك وتاريخ الاستحقاق واسم البنك.')
+                raise ValidationError(
+                    "⚠️ رقم الشيك مطلوب عند الدفع بشيك.\n💡 أدخل رقم الشيك وتاريخ الاستحقاق واسم البنك."
+                )
             if not cheque_date:
-                raise ValidationError('⚠️ تاريخ الاستحقاق مطلوب للشيك.\n💡 حدد تاريخ صرف الشيك من البنك.')
+                raise ValidationError(
+                    "⚠️ تاريخ الاستحقاق مطلوب للشيك.\n💡 حدد تاريخ صرف الشيك من البنك."
+                )
             if not bank_name:
-                raise ValidationError('⚠️ اسم البنك مطلوب للشيك.\n💡 أدخل اسم البنك المسحوب عليه الشيك.')
+                raise ValidationError(
+                    "⚠️ اسم البنك مطلوب للشيك.\n💡 أدخل اسم البنك المسحوب عليه الشيك."
+                )
 
             # Convert cheque_date to date object if it's a string
             if isinstance(cheque_date, str):
                 try:
-                    cheque_date = datetime.strptime(cheque_date, '%Y-%m-%d').date()
+                    cheque_date = datetime.strptime(cheque_date, "%Y-%m-%d").date()
                 except ValueError:
-                    raise ValidationError('تاريخ الشيك غير صالح')
+                    raise ValidationError("تاريخ الشيك غير صالح")
 
-        payment_number = generate_number('PAY', Payment, 'payment_number')
+        payment_number = generate_number("PAY", Payment, "payment_number")
 
         # Calculate AED amount with proper rounding using PROVIDED exchange rate
         exchange_rate_decimal = Decimal(str(exchange_rate))
         amount_base = (amount_decimal * exchange_rate_decimal).quantize(
-            Decimal('0.001'), rounding=ROUND_HALF_UP
+            Decimal("0.001"), rounding=ROUND_HALF_UP
         )
 
         payment = Payment(
             payment_number=payment_number,
-            payment_type='sale',
+            payment_type="sale",
             sale_id=sale.id,
             customer_id=sale.customer_id,
             amount=amount_decimal,
@@ -609,19 +719,20 @@ class SaleService:
             user_id=sale.seller_id,
             # F8: شيك تحت التحصيل ليس مؤكَّداً — لا يُسوّي الفاتورة قبل
             # صرفه (models/sale.py:136-141).
-            payment_confirmed=(payment_method != 'cheque'),
+            payment_confirmed=(payment_method != "cheque"),
         )
 
         db.session.add(payment)
         db.session.flush()
 
         # إنشاء سجل الشيك إذا كانت طريقة الدفع شيك
-        if payment_method == 'cheque' and cheque_number:
+        if payment_method == "cheque" and cheque_number:
             from models import Cheque
+
             cheque = Cheque(
                 cheque_number=cheque_number,
                 cheque_bank_number=cheque_number,  # نفس رقم الشيك
-                cheque_type='incoming',
+                cheque_type="incoming",
                 customer_id=sale.customer_id,
                 amount=amount_decimal,
                 currency=currency,
@@ -630,8 +741,8 @@ class SaleService:
                 issue_date=sale.sale_date.date(),  # تاريخ الإصدار = تاريخ الفاتورة
                 due_date=cheque_date,  # تاريخ الاستحقاق
                 bank_name=bank_name,
-                status='pending',
-                notes=notes
+                status="pending",
+                notes=notes,
             )
             db.session.add(cheque)
             db.session.flush()
@@ -650,30 +761,34 @@ class SaleService:
 
             # Determine Credit Account (AR)
             credit_account = GLService.get_customer_credit_account(sale.customer)
-            _partner_id = sale.customer.id if getattr(sale.customer, 'customer_type', None) == 'partner' else None
+            _partner_id = (
+                sale.customer.id
+                if getattr(sale.customer, "customer_type", None) == "partner"
+                else None
+            )
 
             lines = [
                 {
-                    'account': debit_account,
-                    'debit': amount_decimal,
-                    'description': f'Payment for Sale {sale.sale_number} ({payment_method})',
-                    **({'party_id': _partner_id} if _partner_id else {}),
+                    "account": debit_account,
+                    "debit": amount_decimal,
+                    "description": f"Payment for Sale {sale.sale_number} ({payment_method})",
+                    **({"party_id": _partner_id} if _partner_id else {}),
                 },
                 {
-                    'account': credit_account,  # Accounts Receivable
-                    'credit': amount_decimal,
-                    'description': f'Payment Received {payment.payment_number}',
-                    **({'party_id': _partner_id} if _partner_id else {}),
-                }
+                    "account": credit_account,  # Accounts Receivable
+                    "credit": amount_decimal,
+                    "description": f"Payment Received {payment.payment_number}",
+                    **({"party_id": _partner_id} if _partner_id else {}),
+                },
             ]
 
             GLService.post_entry(
                 lines,
-                description=f'Payment {payment.payment_number}',
-                reference_type='Payment',
+                description=f"Payment {payment.payment_number}",
+                reference_type="Payment",
                 reference_id=payment.id,
                 currency=currency,
-                exchange_rate=exchange_rate_decimal
+                exchange_rate=exchange_rate_decimal,
             )
         except Exception as e:
             # LEAK-GUARD (fail-closed): a payment row + customer-balance
@@ -688,14 +803,17 @@ class SaleService:
         # Sale.recalculate_payment_status.
         from models import Customer as _Cust
         from models.customer import recompute_customer_balance
-        _cust = get_owned_or_raise(_Cust, sale.customer_id, missing_message='العميل غير موجود')
+
+        _cust = get_owned_or_raise(
+            _Cust, sale.customer_id, missing_message="العميل غير موجود"
+        )
         if _cust:
             recompute_customer_balance(_cust.id)
 
         return payment
 
     @staticmethod
-    def reverse_sale_gl_entries(sale, reason='Cancelled'):
+    def reverse_sale_gl_entries(sale, reason="Cancelled"):
         """Reverse (never delete) every posted GL entry referencing this sale.
 
         Follows the cheque-cancel convention: the reversal keeps the original
@@ -706,7 +824,7 @@ class SaleService:
         from models import GLJournalEntry
 
         entries = GLJournalEntry.query.filter_by(
-            reference_type='Sale',
+            reference_type="Sale",
             reference_id=sale.id,
             is_posted=True,
             is_reversed=False,
@@ -715,15 +833,15 @@ class SaleService:
         reversals = []
         for entry in entries:
             reversal = entry.reverse_entry(
-                description=f'Reverse Sale {sale.sale_number} ({reason})'
+                description=f"Reverse Sale {sale.sale_number} ({reason})"
             )
             reversals.append(reversal)
         return reversals
 
     @staticmethod
     def cancel_sale(sale):
-        if sale.status == 'cancelled':
-            raise ValidationError('الفاتورة ملغاة بالفعل')
+        if sale.status == "cancelled":
+            raise ValidationError("الفاتورة ملغاة بالفعل")
 
         # LEAK-GUARD: cancelling a paid/partially-paid invoice orphans the
         # cash postings — Payment/Receipt entries are never reversed here —
@@ -731,20 +849,22 @@ class SaleService:
         # drawer while the goods return to stock.  Refund through the return
         # flow first, then cancel the (now unpaid) invoice.
         from models import Receipt
+
         paid_base = Decimal(str(sale.paid_amount_base or 0))
         has_payments = (
-            paid_base > Decimal('0')
-            or (sale.payment_status or '') in ('paid', 'partial')
+            paid_base > Decimal("0")
+            or (sale.payment_status or "") in ("paid", "partial")
             or Payment.query.filter_by(sale_id=sale.id).count() > 0
-            or Receipt.query.filter_by(
-                source_type='sale', source_id=sale.id).count() > 0
+            or Receipt.query.filter_by(source_type="sale", source_id=sale.id).count()
+            > 0
         )
         if has_payments:
             raise ValidationError(
-                'لا يمكن إلغاء فاتورة مدفوعة (كلياً أو جزئياً).\n'
-                'استرد المبلغ عبر المرتجع/سند الصرف أولاً ثم ألغِ الفاتورة.')
+                "لا يمكن إلغاء فاتورة مدفوعة (كلياً أو جزئياً).\n"
+                "استرد المبلغ عبر المرتجع/سند الصرف أولاً ثم ألغِ الفاتورة."
+            )
 
-        sale.status = 'cancelled'
+        sale.status = "cancelled"
 
         customer = sale.customer
         if customer:
@@ -755,6 +875,7 @@ class SaleService:
             # F1: لا زيادة يدوية — الرصيد يُشتق (الفاتورة الملغاة تُستبعد
             # من الاشتقاق فينقص الرصيد تلقائياً).
             from models.customer import recompute_customer_balance
+
             recompute_customer_balance(customer.id)
             customer.update_classification()
 
@@ -765,11 +886,11 @@ class SaleService:
         # FIX: GLService.reverse_entry never existed; the old call raised
         # AttributeError that was swallowed here, so cancellations silently
         # posted no reversal at all.
-        SaleService.reverse_sale_gl_entries(sale, reason='Cancelled')
+        SaleService.reverse_sale_gl_entries(sale, reason="Cancelled")
 
         db.session.commit()
 
-        current_app.logger.info(f'Sale cancelled: {sale.sale_number}')
+        current_app.logger.info(f"Sale cancelled: {sale.sale_number}")
 
     @staticmethod
     def update_payment_status(sale):
@@ -785,45 +906,47 @@ class SaleService:
         try:
             _base = CurrencyService.get_base_currency()
         except Exception:
-            _base = 'ILS'
+            _base = "ILS"
         try:
             _rate = Decimal(str(sale.exchange_rate or 1))
         except Exception:
-            _rate = Decimal('1')
-        _is_fx = (getattr(sale, 'currency', None) or _base) != _base or _rate != Decimal('1')
+            _rate = Decimal("1")
+        _is_fx = (
+            getattr(sale, "currency", None) or _base
+        ) != _base or _rate != Decimal("1")
 
         if _is_fx:
             paid = Decimal(str(sale.paid_amount_base or 0))
             total = Decimal(str(sale.amount_base))
 
-            balance = (total - paid).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
+            balance = (total - paid).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
 
-            if balance <= Decimal('0'):
-                sale.payment_status = 'paid'
-                sale.balance_due = Decimal('0')
-            elif paid > Decimal('0'):
-                sale.payment_status = 'partial'
+            if balance <= Decimal("0"):
+                sale.payment_status = "paid"
+                sale.balance_due = Decimal("0")
+            elif paid > Decimal("0"):
+                sale.payment_status = "partial"
                 sale.balance_due = balance
             else:
-                sale.payment_status = 'unpaid'
+                sale.payment_status = "unpaid"
                 sale.balance_due = total
 
             db.session.commit()
             return
 
-        paid = Decimal(str(sale.paid_amount)) if sale.paid_amount else Decimal('0')
+        paid = Decimal(str(sale.paid_amount)) if sale.paid_amount else Decimal("0")
         total = Decimal(str(sale.total_amount))
 
-        balance = (total - paid).quantize(Decimal('0.001'), rounding=ROUND_HALF_UP)
+        balance = (total - paid).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
 
-        if balance <= Decimal('0'):
-            sale.payment_status = 'paid'
-            sale.balance_due = Decimal('0')
-        elif paid > Decimal('0'):
-            sale.payment_status = 'partial'
+        if balance <= Decimal("0"):
+            sale.payment_status = "paid"
+            sale.balance_due = Decimal("0")
+        elif paid > Decimal("0"):
+            sale.payment_status = "partial"
             sale.balance_due = balance
         else:
-            sale.payment_status = 'unpaid'
+            sale.payment_status = "unpaid"
             sale.balance_due = total
 
         db.session.commit()

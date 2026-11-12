@@ -2,6 +2,7 @@
 Backup Service - Professional Automated Backup System
 خدمة النسخ الاحتياطي الاحترافي مع التشفير والأمان العالي
 """
+
 import os
 import shutil
 import gzip
@@ -31,7 +32,7 @@ def _validated_backup_path(backup_dir: str, filename) -> Optional[str]:
     try:
         return validate_backup_filename(filename, backup_dir)
     except (ValueError, TypeError):
-        logger.warning('Rejected unsafe backup filename: %r', filename)
+        logger.warning("Rejected unsafe backup filename: %r", filename)
         return None
 
 
@@ -39,33 +40,33 @@ class BackupService:
     """خدمة النسخ الاحتياطي الاحترافية"""
 
     _BASEDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-    BACKUP_DIR = os.path.join(_BASEDIR, 'instance', 'backups')
+    BACKUP_DIR = os.path.join(_BASEDIR, "instance", "backups")
     MAX_BACKUPS = 5  # آخر 5 نسخ فقط
-    BACKUP_PREFIX = 'auto_backup_'
-    MANUAL_PREFIX = 'manual_backup_'
+    BACKUP_PREFIX = "auto_backup_"
+    MANUAL_PREFIX = "manual_backup_"
 
     # Interval (in hours) between automatic backups per configured frequency
     FREQUENCY_INTERVAL_HOURS = {
-        'hourly': 1,
-        'daily': 24,
-        'weekly': 24 * 7,
-        'monthly': 24 * 30,
+        "hourly": 1,
+        "daily": 24,
+        "weekly": 24 * 7,
+        "monthly": 24 * 30,
     }
 
     @classmethod
     def _schedule_settings_path(cls) -> str:
-        return os.path.join(cls._BASEDIR, 'instance', 'backup_settings.json')
+        return os.path.join(cls._BASEDIR, "instance", "backup_settings.json")
 
     @classmethod
     def _schedule_state_path(cls) -> str:
-        return os.path.join(cls._BASEDIR, 'instance', 'backup_state.json')
+        return os.path.join(cls._BASEDIR, "instance", "backup_state.json")
 
     @classmethod
     def _load_json_file(cls, file_path: str) -> Optional[Dict]:
         try:
             if not os.path.exists(file_path):
                 return None
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
             return None
@@ -74,7 +75,7 @@ class BackupService:
     def _write_json_file(cls, file_path: str, data: Dict) -> bool:
         try:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             return True
         except Exception:
@@ -84,19 +85,19 @@ class BackupService:
     def get_schedule_settings(cls) -> Dict:
         settings = cls._load_json_file(cls._schedule_settings_path()) or {}
         return {
-            'enabled': bool(settings.get('enabled', True)),
-            'frequency': str(settings.get('frequency', 'daily')),
-            'backup_time': str(settings.get('backup_time', '02:00')),
-            'keep_count': int(settings.get('keep_count', cls.MAX_BACKUPS)),
+            "enabled": bool(settings.get("enabled", True)),
+            "frequency": str(settings.get("frequency", "daily")),
+            "backup_time": str(settings.get("backup_time", "02:00")),
+            "keep_count": int(settings.get("keep_count", cls.MAX_BACKUPS)),
         }
 
     @classmethod
     def save_schedule_settings(cls, settings: Dict) -> bool:
         normalized = {
-            'enabled': bool(settings.get('enabled', True)),
-            'frequency': str(settings.get('frequency', 'daily')),
-            'backup_time': str(settings.get('backup_time', '02:00')),
-            'keep_count': int(settings.get('keep_count', cls.MAX_BACKUPS)),
+            "enabled": bool(settings.get("enabled", True)),
+            "frequency": str(settings.get("frequency", "daily")),
+            "backup_time": str(settings.get("backup_time", "02:00")),
+            "keep_count": int(settings.get("keep_count", cls.MAX_BACKUPS)),
         }
         return cls._write_json_file(cls._schedule_settings_path(), normalized)
 
@@ -117,12 +118,12 @@ class BackupService:
     def _resolve_interval_hours(cls, settings: Dict, state: Dict) -> int:
         """Interval between auto backups: explicit state override, else per frequency."""
         try:
-            override = int(state.get('interval_hours', 0))
+            override = int(state.get("interval_hours", 0))
             if override > 0:
                 return override
         except (TypeError, ValueError):
             pass
-        frequency = str(settings.get('frequency', 'daily')).strip().lower()
+        frequency = str(settings.get("frequency", "daily")).strip().lower()
         return cls.FREQUENCY_INTERVAL_HOURS.get(frequency, 24)
 
     @classmethod
@@ -136,38 +137,42 @@ class BackupService:
         """
         try:
             settings = cls.get_schedule_settings()
-            if not settings.get('enabled', True):
-                logger.info('Automatic backup disabled by schedule settings')
+            if not settings.get("enabled", True):
+                logger.info("Automatic backup disabled by schedule settings")
                 return None
 
             state = cls._load_json_file(cls._schedule_state_path()) or {}
             interval_hours = cls._resolve_interval_hours(settings, state)
             now = datetime.now()
-            last_run = cls._parse_state_datetime(state.get('last_auto_backup'))
+            last_run = cls._parse_state_datetime(state.get("last_auto_backup"))
 
             if last_run is not None:
                 elapsed_hours = (now - last_run).total_seconds() / 3600.0
                 if elapsed_hours < interval_hours:
                     logger.debug(
-                        'Auto-backup not due (elapsed %.2fh < interval %dh)',
-                        elapsed_hours, interval_hours,
+                        "Auto-backup not due (elapsed %.2fh < interval %dh)",
+                        elapsed_hours,
+                        interval_hours,
                     )
                     return None
 
-            backup = cls.create_backup(manual=False, description='Scheduled automatic backup')
+            backup = cls.create_backup(
+                manual=False, description="Scheduled automatic backup"
+            )
 
             if not backup:
-                logger.error('Automatic backup failed — last_run not advanced')
+                logger.error("Automatic backup failed — last_run not advanced")
                 return None
 
             updated_state = dict(state)
-            updated_state['last_auto_backup'] = now.isoformat()
-            updated_state['last_backup_filename'] = backup.get('filename')
+            updated_state["last_auto_backup"] = now.isoformat()
+            updated_state["last_backup_filename"] = backup.get("filename")
             cls._write_json_file(cls._schedule_state_path(), updated_state)
 
             logger.info(
-                'Automatic backup completed: %s (interval %dh)',
-                backup.get('filename'), interval_hours,
+                "Automatic backup completed: %s (interval %dh)",
+                backup.get("filename"),
+                interval_hours,
             )
             return backup
 
@@ -179,24 +184,24 @@ class BackupService:
     def get_backup_stats(cls) -> Dict:
         try:
             backups = cls.list_backups()
-            total_size_bytes = sum(int(b.get('size', 0) or 0) for b in backups)
-            manual_count = sum(1 for b in backups if bool(b.get('manual')))
+            total_size_bytes = sum(int(b.get("size", 0) or 0) for b in backups)
+            manual_count = sum(1 for b in backups if bool(b.get("manual")))
             auto_count = max(0, len(backups) - manual_count)
             latest = backups[0] if backups else None
             return {
-                'total_count': len(backups),
-                'manual_count': manual_count,
-                'auto_count': auto_count,
-                'total_size_mb': round(total_size_bytes / (1024 * 1024), 2),
-                'latest_backup': latest
+                "total_count": len(backups),
+                "manual_count": manual_count,
+                "auto_count": auto_count,
+                "total_size_mb": round(total_size_bytes / (1024 * 1024), 2),
+                "latest_backup": latest,
             }
         except Exception:
             return {
-                'total_count': 0,
-                'manual_count': 0,
-                'auto_count': 0,
-                'total_size_mb': 0,
-                'latest_backup': None
+                "total_count": 0,
+                "manual_count": 0,
+                "auto_count": 0,
+                "total_size_mb": 0,
+                "latest_backup": None,
             }
 
     @classmethod
@@ -209,7 +214,7 @@ class BackupService:
             url = db.engine.url
 
             # Verify it's PostgreSQL
-            if 'postgresql' not in url.drivername and 'postgres' not in url.drivername:
+            if "postgresql" not in url.drivername and "postgres" not in url.drivername:
                 return None
 
             host = url.host
@@ -222,15 +227,15 @@ class BackupService:
                 return None
 
             normalized_host = str(host)
-            if normalized_host.lower() in ('localhost', '::1'):
-                normalized_host = '127.0.0.1'
+            if normalized_host.lower() in ("localhost", "::1"):
+                normalized_host = "127.0.0.1"
 
             return {
-                'host': normalized_host,
-                'port': str(port),
-                'username': str(username),
-                'password': str(password) if password else "",
-                'dbname': str(dbname),
+                "host": normalized_host,
+                "port": str(port),
+                "username": str(username),
+                "password": str(password) if password else "",
+                "dbname": str(dbname),
             }
         except Exception as e:
             logger.error(f"Error parsing DB params: {e}")
@@ -247,8 +252,13 @@ class BackupService:
             return False
 
     @classmethod
-    def create_backup(cls, manual: bool = False, compress: bool = True,  # noqa: C901
-                      encrypt: bool = False, description: str = "") -> Optional[Dict]:
+    def create_backup(
+        cls,
+        manual: bool = False,
+        compress: bool = True,  # noqa: C901
+        encrypt: bool = False,
+        description: str = "",
+    ) -> Optional[Dict]:
         """
         إنشاء نسخة احتياطية
         """
@@ -257,10 +267,12 @@ class BackupService:
 
             params = cls._parse_postgres_params()
             if not params:
-                logger.error("Only PostgreSQL backups are supported or failed to parse DB URL")
+                logger.error(
+                    "Only PostgreSQL backups are supported or failed to parse DB URL"
+                )
                 return None
 
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             prefix = cls.MANUAL_PREFIX if manual else cls.BACKUP_PREFIX
 
             # Prefer Custom Format (-Fc) which is compressed by default and more flexible
@@ -279,39 +291,46 @@ class BackupService:
             backup_name = f"{prefix}{timestamp}.sql.gz"
             backup_path = os.path.join(cls.BACKUP_DIR, backup_name)
 
-            pg_dump_env = os.environ.get('PG_DUMP_PATH', '').strip()
-            pg_dump = pg_dump_env if pg_dump_env else shutil.which('pg_dump') or 'pg_dump'
+            pg_dump_env = os.environ.get("PG_DUMP_PATH", "").strip()
+            pg_dump = (
+                pg_dump_env if pg_dump_env else shutil.which("pg_dump") or "pg_dump"
+            )
             cmd = [
                 pg_dump,
-                '--host', params['host'],
-                '--port', params['port'],
-                '--username', params['username'],
-                '--no-owner',
-                '--no-privileges',
-                '--clean',
-                '--if-exists',
-                params['dbname'],
+                "--host",
+                params["host"],
+                "--port",
+                params["port"],
+                "--username",
+                params["username"],
+                "--no-owner",
+                "--no-privileges",
+                "--clean",
+                "--if-exists",
+                params["dbname"],
             ]
             # Set environment variables for authentication
             # Update os.environ directly to ensure subprocess inherits everything correctly on Windows
-            os.environ['PGPASSWORD'] = params['password']
-            os.environ['PGHOST'] = params['host']
-            os.environ['PGPORT'] = str(params['port'])
-            os.environ['PGUSER'] = params['username']
-            os.environ['PGDATABASE'] = params['dbname']
+            os.environ["PGPASSWORD"] = params["password"]
+            os.environ["PGHOST"] = params["host"]
+            os.environ["PGPORT"] = str(params["port"])
+            os.environ["PGUSER"] = params["username"]
+            os.environ["PGDATABASE"] = params["dbname"]
 
             # Execute pg_dump writing to a TEMP plaintext SQL file (avoids Unicode path issues for pg_dump)
             temp_dir = tempfile.gettempdir()
-            temp_sql_path = os.path.join(temp_dir, f"backup_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.sql")
+            temp_sql_path = os.path.join(
+                temp_dir, f"backup_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.sql"
+            )
             try:
                 process = subprocess.run(
-                    cmd + ['-f', temp_sql_path],
+                    cmd + ["-f", temp_sql_path],
                     capture_output=True,
-                    text=True
+                    text=True,
                     # env=env  <-- Removed to let it inherit modified os.environ
                 )
                 if process.returncode != 0:
-                    err_text = (process.stderr or '').strip()
+                    err_text = (process.stderr or "").strip()
                     logger.error(f"pg_dump failed: {err_text}")
                     try:
                         if os.path.exists(temp_sql_path):
@@ -320,10 +339,15 @@ class BackupService:
                         pass
                     return None
                 # Compress to final destination
-                with open(temp_sql_path, 'rb') as f_in, gzip.open(backup_path, 'wb') as f_out:
+                with (
+                    open(temp_sql_path, "rb") as f_in,
+                    gzip.open(backup_path, "wb") as f_out,
+                ):
                     shutil.copyfileobj(f_in, f_out)
             except FileNotFoundError:
-                logger.warning("pg_dump not found. Set PG_DUMP_PATH to pg_dump.exe path.")
+                logger.warning(
+                    "pg_dump not found. Set PG_DUMP_PATH to pg_dump.exe path."
+                )
                 return None
             except Exception as e:
                 logger.error(f"Error executing pg_dump: {e}")
@@ -350,22 +374,22 @@ class BackupService:
             checksum = cls._calculate_checksum(backup_path)
 
             metadata = {
-                'filename': backup_name,
-                'path': backup_path,
-                'timestamp': timestamp,
-                'datetime': datetime.now().isoformat(),
-                'size': file_size,
-                'size_mb': round(file_size / (1024 * 1024), 2),
-                'compressed': True,
-                'encrypted': False,
-                'manual': manual,
-                'description': description,
-                'checksum': checksum,
-                'type': 'postgresql_sql_gz'
+                "filename": backup_name,
+                "path": backup_path,
+                "timestamp": timestamp,
+                "datetime": datetime.now().isoformat(),
+                "size": file_size,
+                "size_mb": round(file_size / (1024 * 1024), 2),
+                "compressed": True,
+                "encrypted": False,
+                "manual": manual,
+                "description": description,
+                "checksum": checksum,
+                "type": "postgresql_sql_gz",
             }
 
-            metadata_path = backup_path + '.meta.json'
-            with open(metadata_path, 'w', encoding='utf-8') as f:
+            metadata_path = backup_path + ".meta.json"
+            with open(metadata_path, "w", encoding="utf-8") as f:
                 json.dump(metadata, f, indent=2, ensure_ascii=False)
 
             logger.info(f"Backup created successfully: {backup_name}")
@@ -397,25 +421,27 @@ class BackupService:
             keep_count = cls.MAX_BACKUPS
             try:
                 settings = cls.get_schedule_settings()
-                keep_count = int(settings.get('keep_count', keep_count))
+                keep_count = int(settings.get("keep_count", keep_count))
             except Exception:
                 pass
 
             backups = cls.list_backups(auto_only=True)
 
             if len(backups) > keep_count:
-                backups_sorted = sorted(backups, key=lambda x: x['timestamp'])
-                to_delete = backups_sorted[:len(backups) - keep_count]
+                backups_sorted = sorted(backups, key=lambda x: x["timestamp"])
+                to_delete = backups_sorted[: len(backups) - keep_count]
 
                 for backup in to_delete:
-                    cls.delete_backup(backup['filename'])
+                    cls.delete_backup(backup["filename"])
 
                 logger.info(f"Cleanup complete. Kept last {keep_count} backups")
         except Exception as e:
             logger.error(f"Cleanup failed: {e}")
 
     @classmethod
-    def list_backups(cls, auto_only: bool = False, manual_only: bool = False) -> List[Dict]:  # noqa: C901
+    def list_backups(
+        cls, auto_only: bool = False, manual_only: bool = False
+    ) -> List[Dict]:  # noqa: C901
         try:
             cls.initialize()
 
@@ -424,8 +450,8 @@ class BackupService:
 
             # Find all .sql.gz and .dump files
             candidates = []
-            candidates.extend(list(backup_dir.glob('*.sql.gz')))
-            candidates.extend(list(backup_dir.glob('*.dump')))
+            candidates.extend(list(backup_dir.glob("*.sql.gz")))
+            candidates.extend(list(backup_dir.glob("*.dump")))
 
             processed_names = set()
 
@@ -435,12 +461,12 @@ class BackupService:
 
                 processed_names.add(backup_file.name)
 
-                meta_path = str(backup_file) + '.meta.json'
+                meta_path = str(backup_file) + ".meta.json"
                 metadata = {}
 
                 if os.path.exists(meta_path):
                     try:
-                        with open(meta_path, 'r', encoding='utf-8') as f:
+                        with open(meta_path, "r", encoding="utf-8") as f:
                             metadata = json.load(f)
                     except Exception:
                         pass
@@ -452,22 +478,30 @@ class BackupService:
 
                     # Extract timestamp roughly
                     # manual_backup_20250101_120000.sql.gz
-                    ts_str = name.replace(cls.MANUAL_PREFIX, '').replace(cls.BACKUP_PREFIX, '').split('.')[0]
+                    ts_str = (
+                        name.replace(cls.MANUAL_PREFIX, "")
+                        .replace(cls.BACKUP_PREFIX, "")
+                        .split(".")[0]
+                    )
 
                     metadata = {
-                        'filename': backup_file.name,
-                        'path': str(backup_file),
-                        'size': os.path.getsize(backup_file),
-                        'size_mb': round(os.path.getsize(backup_file) / (1024 * 1024), 2),
-                        'timestamp': ts_str,
-                        'datetime': datetime.fromtimestamp(os.path.getmtime(backup_file)).isoformat(),
-                        'manual': is_manual,
-                        'compressed': name.endswith('.gz'),
+                        "filename": backup_file.name,
+                        "path": str(backup_file),
+                        "size": os.path.getsize(backup_file),
+                        "size_mb": round(
+                            os.path.getsize(backup_file) / (1024 * 1024), 2
+                        ),
+                        "timestamp": ts_str,
+                        "datetime": datetime.fromtimestamp(
+                            os.path.getmtime(backup_file)
+                        ).isoformat(),
+                        "manual": is_manual,
+                        "compressed": name.endswith(".gz"),
                     }
 
-                if auto_only and metadata.get('manual', False):
+                if auto_only and metadata.get("manual", False):
                     continue
-                if manual_only and not metadata.get('manual', False):
+                if manual_only and not metadata.get("manual", False):
                     continue
 
                 backups.append(metadata)
@@ -494,24 +528,26 @@ class BackupService:
 
             # 2. Check gzip integrity if compressed — stream the WHOLE file,
             # not just the first 1024 bytes, so truncated/corrupt tails fail.
-            if filename.endswith('.gz'):
+            if filename.endswith(".gz"):
                 try:
-                    with gzip.open(backup_path, 'rb') as f:
-                        for _chunk in iter(lambda: f.read(65536), b''):
+                    with gzip.open(backup_path, "rb") as f:
+                        for _chunk in iter(lambda: f.read(65536), b""):
                             pass
                 except Exception:
                     return False
 
             # 3. Check metadata checksum if available — fail closed: a
             # corrupt/unparseable meta file or a checksum mismatch fails.
-            meta_path = backup_path + '.meta.json'
+            meta_path = backup_path + ".meta.json"
             if os.path.exists(meta_path):
                 try:
-                    with open(meta_path, 'r', encoding='utf-8') as f:
+                    with open(meta_path, "r", encoding="utf-8") as f:
                         meta = json.load(f)
                 except Exception:
                     return False
-                stored_checksum = meta.get('checksum') if isinstance(meta, dict) else None
+                stored_checksum = (
+                    meta.get("checksum") if isinstance(meta, dict) else None
+                )
                 if stored_checksum:
                     current_checksum = cls._calculate_checksum(backup_path)
                     if not current_checksum or current_checksum != stored_checksum:
@@ -542,10 +578,12 @@ class BackupService:
                 return False
 
             # Auto-backup current state before restore
-            cls.create_backup(manual=True, description=f"Pre-restore before {backup_filename}")
+            cls.create_backup(
+                manual=True, description=f"Pre-restore before {backup_filename}"
+            )
 
-            psql = os.environ.get('PSQL_PATH', 'psql')
-            pg_restore = os.environ.get('PG_RESTORE_PATH', 'pg_restore')
+            psql = os.environ.get("PSQL_PATH", "psql")
+            pg_restore = os.environ.get("PG_RESTORE_PATH", "pg_restore")
 
             env = os.environ.copy()
             dsn = f"postgresql://{params['username']}:{params['password']}@{params['host']}:{params['port']}/{params['dbname']}"
@@ -554,7 +592,7 @@ class BackupService:
             # 1. If .sql.gz -> gunzip -> psql
             # 2. If .dump -> pg_restore
 
-            if backup_filename.endswith('.dump'):
+            if backup_filename.endswith(".dump"):
                 # Custom format
                 # pg_restore can read from stdin if we pipe it, avoiding path issues?
                 # pg_restore supports reading from file.
@@ -565,21 +603,27 @@ class BackupService:
 
                 # Safe bet: Copy to temp dir (usually safe path) and restore from there.
                 temp_dir = tempfile.gettempdir()
-                temp_path = os.path.join(temp_dir, f"restore_{datetime.now().strftime('%f')}.dump")
+                temp_path = os.path.join(
+                    temp_dir, f"restore_{datetime.now().strftime('%f')}.dump"
+                )
                 shutil.copy2(backup_path, temp_path)
 
                 try:
                     cmd = [
                         pg_restore,
-                        '--host', params['host'],
-                        '--port', params['port'],
-                        '--username', params['username'],
-                        '--dbname', params['dbname'],
-                        '--clean',
-                        '--if-exists',
-                        '--no-owner',
-                        '--no-privileges',
-                        temp_path
+                        "--host",
+                        params["host"],
+                        "--port",
+                        params["port"],
+                        "--username",
+                        params["username"],
+                        "--dbname",
+                        params["dbname"],
+                        "--clean",
+                        "--if-exists",
+                        "--no-owner",
+                        "--no-privileges",
+                        temp_path,
                     ]
 
                     proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
@@ -595,17 +639,13 @@ class BackupService:
                 # SQL format (potentially gzipped)
                 # We can stream this to psql via stdin, completely avoiding path issues for psql.
 
-                cmd = [
-                    psql,
-                    '--dbname', dsn,
-                    '--set', 'ON_ERROR_STOP=on'
-                ]
+                cmd = [psql, "--dbname", dsn, "--set", "ON_ERROR_STOP=on"]
 
                 # Open source file
-                if backup_filename.endswith('.gz'):
-                    f_in = gzip.open(backup_path, 'rb')
+                if backup_filename.endswith(".gz"):
+                    f_in = gzip.open(backup_path, "rb")
                 else:
-                    f_in = open(backup_path, 'rb')
+                    f_in = open(backup_path, "rb")
 
                 try:
                     proc = subprocess.Popen(
@@ -613,12 +653,14 @@ class BackupService:
                         stdin=f_in,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
-                        env=env
+                        env=env,
                     )
                     _, stderr = proc.communicate()
 
                     if proc.returncode != 0:
-                        logger.error(f"psql restore failed: {stderr.decode('utf-8', errors='replace')}")
+                        logger.error(
+                            f"psql restore failed: {stderr.decode('utf-8', errors='replace')}"
+                        )
                         return False
 
                 finally:
@@ -638,7 +680,7 @@ class BackupService:
             if not backup_path:
                 logger.error(f"Rejected unsafe backup filename: {backup_filename!r}")
                 return False
-            meta_path = backup_path + '.meta.json'
+            meta_path = backup_path + ".meta.json"
 
             # Log paths for debugging
             logger.info(f"Attempting to delete backup: {backup_path}")

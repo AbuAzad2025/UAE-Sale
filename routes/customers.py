@@ -1,6 +1,16 @@
 from functools import wraps
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, abort
+from flask import (
+    Blueprint,
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    request,
+    jsonify,
+    current_app,
+    abort,
+)
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Customer, Sale, SaleLine
@@ -11,7 +21,7 @@ from services.payment_service import PaymentService
 from decimal import Decimal
 from datetime import datetime
 
-customers_bp = Blueprint('customers', __name__, url_prefix='/customers')
+customers_bp = Blueprint("customers", __name__, url_prefix="/customers")
 
 
 def _parse_opening_balance(source):
@@ -34,54 +44,56 @@ def _parse_opening_balance(source):
 
     from services.currency_service import CurrencyService
 
-    raw_amount = (source.get('opening_balance') or source.get('initial_balance') or '').strip()
-    raw_currency = (source.get('opening_balance_currency') or '').strip().upper()
-    raw_rate = (source.get('opening_balance_rate') or '').strip()
-    raw_date = (source.get('opening_balance_date') or '').strip()
+    raw_amount = (
+        source.get("opening_balance") or source.get("initial_balance") or ""
+    ).strip()
+    raw_currency = (source.get("opening_balance_currency") or "").strip().upper()
+    raw_rate = (source.get("opening_balance_rate") or "").strip()
+    raw_date = (source.get("opening_balance_date") or "").strip()
 
     if not raw_amount and not raw_currency and not raw_rate and not raw_date:
         return None
 
-    amount = Decimal('0')
+    amount = Decimal("0")
     if raw_amount:
         try:
             amount = Decimal(raw_amount)
         except (InvalidOperation, ValueError):
-            raise ValueError('الرصيد الافتتاحي يجب أن يكون رقماً صحيحاً.')
+            raise ValueError("الرصيد الافتتاحي يجب أن يكون رقماً صحيحاً.")
 
     if raw_currency:
         if len(raw_currency) != 3 or not raw_currency.isalpha():
             raise ValueError(
-                'عملة الرصيد الافتتاحي يجب أن تكون رمزاً من ثلاثة أحرف (مثل AED).')
+                "عملة الرصيد الافتتاحي يجب أن تكون رمزاً من ثلاثة أحرف (مثل AED)."
+            )
         currency = raw_currency
     else:
         try:
             currency = CurrencyService.get_base_currency()
         except Exception:
-            currency = 'ILS'
+            currency = "ILS"
 
-    rate = Decimal('1')
+    rate = Decimal("1")
     if raw_rate:
         try:
             rate = Decimal(raw_rate)
         except (InvalidOperation, ValueError):
-            raise ValueError('سعر صرف الرصيد الافتتاحي يجب أن يكون رقماً صحيحاً.')
+            raise ValueError("سعر صرف الرصيد الافتتاحي يجب أن يكون رقماً صحيحاً.")
         if rate <= 0:
-            raise ValueError('سعر صرف الرصيد الافتتاحي يجب أن يكون أكبر من صفر.')
+            raise ValueError("سعر صرف الرصيد الافتتاحي يجب أن يكون أكبر من صفر.")
 
     opening_date = None
     if raw_date:
         try:
-            opening_date = _datetime.strptime(raw_date, '%Y-%m-%d').date()
+            opening_date = _datetime.strptime(raw_date, "%Y-%m-%d").date()
         except ValueError:
-            raise ValueError(
-                'تاريخ الرصيد الافتتاحي يجب أن يكون بالصيغة YYYY-MM-DD.')
+            raise ValueError("تاريخ الرصيد الافتتاحي يجب أن يكون بالصيغة YYYY-MM-DD.")
 
     return {
-        'amount': amount,
-        'currency': currency,
-        'rate': rate,
-        'date': opening_date,
+        "amount": amount,
+        "currency": currency,
+        "rate": rate,
+        "date": opening_date,
     }
 
 
@@ -90,35 +102,40 @@ def sales_or_customers_required(f):
     customers screens, so either manage_sales OR manage_customers grants access.
     Mirrors utils.decorators.permission_required semantics (302 anon / 403 denied).
     """
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
-            flash('الرجاء تسجيل الدخول أولاً', 'warning')
-            return redirect(url_for('auth.login'))
-        if not (current_user.has_permission('manage_sales') or current_user.has_permission('manage_customers')):
+            flash("الرجاء تسجيل الدخول أولاً", "warning")
+            return redirect(url_for("auth.login"))
+        if not (
+            current_user.has_permission("manage_sales")
+            or current_user.has_permission("manage_customers")
+        ):
             abort(403)
         return f(*args, **kwargs)
+
     return decorated_function
 
 
-@customers_bp.route('/')
+@customers_bp.route("/")
 @login_required
-@permission_required('manage_customers')
+@permission_required("manage_customers")
 def index():
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    search = request.args.get('search', '', type=str)
-    customer_type = request.args.get('type', '', type=str)
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+    search = request.args.get("search", "", type=str)
+    customer_type = request.args.get("type", "", type=str)
 
     query = Customer.query
 
     if search:
-        search_filter = f'%{search}%'
+        search_filter = f"%{search}%"
         query = query.filter(
             db.or_(
                 Customer.name.ilike(search_filter),
                 Customer.phone.ilike(search_filter),
-                Customer.email.ilike(search_filter)
+                Customer.email.ilike(search_filter),
             )
         )
 
@@ -128,33 +145,36 @@ def index():
     query = query.filter_by(is_active=True)
 
     pagination = query.order_by(Customer.name).paginate(
-        page=page,
-        per_page=per_page,
-        error_out=False
+        page=page, per_page=per_page, error_out=False
     )
 
-    return render_template('customers/index.html',
-                           customers=pagination.items,
-                           pagination=pagination)
+    return render_template(
+        "customers/index.html", customers=pagination.items, pagination=pagination
+    )
 
 
-@customers_bp.route('/create', methods=['GET', 'POST'])
+@customers_bp.route("/create", methods=["GET", "POST"])
 @login_required
-@permission_required('manage_customers')
-@limiter.limit("10 per minute", methods=['POST'])
+@permission_required("manage_customers")
+@limiter.limit("10 per minute", methods=["POST"])
 def create():
     from forms.customer import CustomerForm
+
     form = CustomerForm()
     # Live lookup lists (single source of truth); the class-level WTForms
     # choices remain as offline fallback.
     try:
         from services.lookup_service import get_lookup
+
         form.customer_type.choices = [
-            (c, m.get('ar', c)) for c, m in get_lookup('customer_types')]
+            (c, m.get("ar", c)) for c, m in get_lookup("customer_types")
+        ]
         form.preferred_currency.choices = [
-            (c, m.get('ar', c)) for c, m in get_lookup('currencies')]
+            (c, m.get("ar", c)) for c, m in get_lookup("currencies")
+        ]
         form.is_active.choices = [
-            (c, m.get('ar', c)) for c, m in get_lookup('active_flags')]
+            (c, m.get("ar", c)) for c, m in get_lookup("active_flags")
+        ]
     except Exception:
         pass
 
@@ -162,15 +182,16 @@ def create():
         try:
             # تحذير إرشادي فقط — لا يُمنع الحفظ (صيغة TRN لكل دولة)
             from utils.trn import trn_verdict, current_tenant_country_code
+
             _ok, _msg = trn_verdict(form.tax_number.data, current_tenant_country_code())
             if not _ok and _msg:
-                flash(f'⚠️ {_msg}', 'warning')
+                flash(f"⚠️ {_msg}", "warning")
 
             # F4: الرصيد الافتتاحي — عميل مُرحَّل عليه رصيد سابق.
             opening = _parse_opening_balance(request.form)
 
             # شروط الدفع (أيام)
-            payment_terms_days = int(request.form.get('payment_terms_days', 0) or 0)
+            payment_terms_days = int(request.form.get("payment_terms_days", 0) or 0)
 
             customer = Customer(
                 name=form.name.data,
@@ -182,14 +203,14 @@ def create():
                 tax_number=form.tax_number.data,
                 preferred_currency=form.preferred_currency.data,
                 payment_terms_days=payment_terms_days,
-                notes=form.notes.data
+                notes=form.notes.data,
             )
 
             if opening:
-                customer.opening_balance = opening['amount']
-                customer.opening_balance_currency = opening['currency']
-                customer.opening_balance_rate = opening['rate']
-                customer.opening_balance_date = opening['date']
+                customer.opening_balance = opening["amount"]
+                customer.opening_balance_currency = opening["currency"]
+                customer.opening_balance_rate = opening["rate"]
+                customer.opening_balance_date = opening["date"]
 
             db.session.add(customer)
             db.session.commit()
@@ -197,130 +218,154 @@ def create():
             # F4: الرصيد الافتتاحي جزء من اشتقاق رصيد العميل — يُعاد
             # احتساب العمود المخزَّن من المصدر الواحد (models/customer.py).
             from models.customer import recompute_customer_balance
+
             recompute_customer_balance(customer.id)
             db.session.commit()
 
-            create_audit_log('create', 'customers', customer.id)
+            create_audit_log("create", "customers", customer.id)
 
-            flash('✅ تم إضافة الزبون بنجاح!', 'success')
-            return redirect(url_for('customers.index'))
+            flash("✅ تم إضافة الزبون بنجاح!", "success")
+            return redirect(url_for("customers.index"))
 
         except ValueError as e:
             db.session.rollback()
-            flash(f'❌ {e}', 'danger')
+            flash(f"❌ {e}", "danger")
         except Exception as e:
             db.session.rollback()
             from utils.error_messages import ErrorMessages
-            flash(ErrorMessages.database_error(str(e)), 'danger')
 
-    return render_template('customers/create.html', form=form)
+            flash(ErrorMessages.database_error(str(e)), "danger")
+
+    return render_template("customers/create.html", form=form)
 
 
-@customers_bp.route('/<int:id>')
+@customers_bp.route("/<int:id>")
 @login_required
-@permission_required('manage_customers')
+@permission_required("manage_customers")
 def view(id):
     customer = get_owned_or_404(Customer, id)
 
-    sales = Sale.query.filter_by(customer_id=id).order_by(Sale.sale_date.desc()).limit(20).all()
+    sales = (
+        Sale.query.filter_by(customer_id=id)
+        .order_by(Sale.sale_date.desc())
+        .limit(20)
+        .all()
+    )
 
     balance = PaymentService.get_customer_balance_aed(customer)
 
     unpaid_sales = PaymentService.get_unpaid_sales(customer)
 
-    return render_template('customers/view.html',
-                           customer=customer,
-                           sales=sales,
-                           balance=balance,
-                           unpaid_sales=unpaid_sales)
+    return render_template(
+        "customers/view.html",
+        customer=customer,
+        sales=sales,
+        balance=balance,
+        unpaid_sales=unpaid_sales,
+    )
 
 
-@customers_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@customers_bp.route("/<int:id>/edit", methods=["GET", "POST"])
 @login_required
-@permission_required('manage_customers')
+@permission_required("manage_customers")
 def edit(id):
     customer = get_owned_or_404(Customer, id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             # F54: validate like create() (WTForms: name required,
             # customer_type in choices, currency optional but in choices).
-            name = (request.form.get('name') or '').strip()
-            customer_type = (request.form.get('customer_type') or '').strip()
-            preferred_currency = (request.form.get('preferred_currency') or '').strip()
-            payment_terms_days = int(request.form.get('payment_terms_days', 0) or 0)
+            name = (request.form.get("name") or "").strip()
+            customer_type = (request.form.get("customer_type") or "").strip()
+            preferred_currency = (request.form.get("preferred_currency") or "").strip()
+            payment_terms_days = int(request.form.get("payment_terms_days", 0) or 0)
 
             try:
                 from services.lookup_service import get_lookup
-                _allowed_types = {c for c, _m in get_lookup('customer_types')}
-                _allowed_currencies = {c for c, _m in get_lookup('currencies')}
+
+                _allowed_types = {c for c, _m in get_lookup("customer_types")}
+                _allowed_currencies = {c for c, _m in get_lookup("currencies")}
             except Exception:
                 from utils.constants import CUSTOMER_TYPES, CURRENCIES
+
                 _allowed_types = {c for c, _m in CUSTOMER_TYPES}
                 _allowed_currencies = {c for c, _m in CURRENCIES}
 
             if not name:
-                flash('❌ اسم الزبون مطلوب.\n💡 أدخل اسم الزبون وحاول مرة أخرى.', 'danger')
-                return render_template('customers/edit.html', customer=customer)
+                flash(
+                    "❌ اسم الزبون مطلوب.\n💡 أدخل اسم الزبون وحاول مرة أخرى.", "danger"
+                )
+                return render_template("customers/edit.html", customer=customer)
             if customer_type not in _allowed_types:
-                flash('❌ نوع الزبون غير صالح.\n💡 اختر النوع من القائمة وحاول مرة أخرى.', 'danger')
-                return render_template('customers/edit.html', customer=customer)
+                flash(
+                    "❌ نوع الزبون غير صالح.\n💡 اختر النوع من القائمة وحاول مرة أخرى.",
+                    "danger",
+                )
+                return render_template("customers/edit.html", customer=customer)
             if preferred_currency and preferred_currency not in _allowed_currencies:
-                flash('❌ العملة المفضلة غير صالحة.\n💡 اختر العملة من القائمة وحاول مرة أخرى.', 'danger')
-                return render_template('customers/edit.html', customer=customer)
+                flash(
+                    "❌ العملة المفضلة غير صالحة.\n💡 اختر العملة من القائمة وحاول مرة أخرى.",
+                    "danger",
+                )
+                return render_template("customers/edit.html", customer=customer)
 
             # تحذير إرشادي فقط — لا يُمنع الحفظ (صيغة TRN لكل دولة)
             from utils.trn import trn_verdict, current_tenant_country_code
-            _ok, _msg = trn_verdict(request.form.get('tax_number'), current_tenant_country_code())
+
+            _ok, _msg = trn_verdict(
+                request.form.get("tax_number"), current_tenant_country_code()
+            )
             if not _ok and _msg:
-                flash(f'⚠️ {_msg}', 'warning')
+                flash(f"⚠️ {_msg}", "warning")
 
             customer.name = name
-            customer.name_ar = request.form.get('name_ar')
+            customer.name_ar = request.form.get("name_ar")
             customer.customer_type = customer_type
-            customer.phone = request.form.get('phone')
-            customer.email = request.form.get('email')
-            customer.address = request.form.get('address')
-            customer.tax_number = request.form.get('tax_number')
+            customer.phone = request.form.get("phone")
+            customer.email = request.form.get("email")
+            customer.address = request.form.get("address")
+            customer.tax_number = request.form.get("tax_number")
             customer.preferred_currency = preferred_currency or None
             customer.payment_terms_days = payment_terms_days
-            customer.notes = request.form.get('notes')
+            customer.notes = request.form.get("notes")
 
             # F4: تعديل الرصيد الافتتاحي (مبلغ + عملة + سعر صرف + تاريخ)
             opening = _parse_opening_balance(request.form)
             if opening:
-                customer.opening_balance = opening['amount']
-                customer.opening_balance_currency = opening['currency']
-                customer.opening_balance_rate = opening['rate']
-                customer.opening_balance_date = opening['date']
+                customer.opening_balance = opening["amount"]
+                customer.opening_balance_currency = opening["currency"]
+                customer.opening_balance_rate = opening["rate"]
+                customer.opening_balance_date = opening["date"]
 
             db.session.commit()
 
             # F4: إعادة احتساب رصيد العميل من المصدر الواحد بعد أي تغيير
             # في الرصيد الافتتاحي.
             from models.customer import recompute_customer_balance
+
             recompute_customer_balance(customer.id)
             db.session.commit()
 
-            create_audit_log('update', 'customers', customer.id)
+            create_audit_log("update", "customers", customer.id)
 
-            flash('✅ تم تحديث بيانات الزبون بنجاح!', 'success')
-            return redirect(url_for('customers.view', id=customer.id))
+            flash("✅ تم تحديث بيانات الزبون بنجاح!", "success")
+            return redirect(url_for("customers.view", id=customer.id))
 
         except ValueError as e:
             db.session.rollback()
-            flash(f'❌ {e}', 'danger')
+            flash(f"❌ {e}", "danger")
         except Exception as e:
             db.session.rollback()
             from utils.error_messages import ErrorMessages
-            flash(ErrorMessages.database_error(str(e)), 'danger')
 
-    return render_template('customers/edit.html', customer=customer)
+            flash(ErrorMessages.database_error(str(e)), "danger")
+
+    return render_template("customers/edit.html", customer=customer)
 
 
-@customers_bp.route('/<int:id>/delete', methods=['POST'])
+@customers_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
-@permission_required('manage_customers')
+@permission_required("manage_customers")
 def delete(id):
     customer = get_owned_or_404(Customer, id)
 
@@ -328,19 +373,23 @@ def delete(id):
         # Check for related records preventing deletion
         sales_count = Sale.query.filter_by(customer_id=id).count()
         from models import Payment, Receipt
+
         payments_count = Payment.query.filter_by(customer_id=id).count()
         receipts_count = Receipt.query.filter_by(customer_id=id).count()
 
         if sales_count > 0 or payments_count > 0 or receipts_count > 0:
             customer.is_active = False
             db.session.commit()
-            flash(f'⚠️ تم إلغاء تفعيل العميل "{customer.name}" بدلاً من حذفه لوجود ({sales_count} فاتورة، {payments_count} دفعة، {receipts_count} سند قبض) مرتبطة به.', 'warning')  # noqa: E501
+            flash(
+                f'⚠️ تم إلغاء تفعيل العميل "{customer.name}" بدلاً من حذفه لوجود ({sales_count} فاتورة، {payments_count} دفعة، {receipts_count} سند قبض) مرتبطة به.',
+                "warning",
+            )  # noqa: E501
         else:
             db.session.delete(customer)
             db.session.commit()
-            flash(f'✅ تم حذف العميل "{customer.name}" نهائياً!', 'success')
+            flash(f'✅ تم حذف العميل "{customer.name}" نهائياً!', "success")
 
-        create_audit_log('delete', 'customers', id)
+        create_audit_log("delete", "customers", id)
 
     except Exception as e:
         db.session.rollback()
@@ -352,38 +401,45 @@ def delete(id):
                 customer.is_active = False
                 db.session.add(customer)
                 db.session.commit()
-                flash(f'⚠️ تعذر الحذف النهائي للعميل "{customer.name}" بسبب ارتباطات في قاعدة البيانات. تم إلغاء تفعيله بدلاً من ذلك.', 'warning')
+                flash(
+                    f'⚠️ تعذر الحذف النهائي للعميل "{customer.name}" بسبب ارتباطات في قاعدة البيانات. تم إلغاء تفعيله بدلاً من ذلك.',
+                    "warning",
+                )
         except Exception:
-            current_app.logger.exception('handler failed')
-            flash(f'❌ حدث خطأ أثناء حذف العميل: حدث خطأ غير متوقع', 'danger')
+            current_app.logger.exception("handler failed")
+            flash(f"❌ حدث خطأ أثناء حذف العميل: حدث خطأ غير متوقع", "danger")
             current_app.logger.error(f"Error deleting customer {id}: {e}")
 
-    return redirect(url_for('customers.index'))
+    return redirect(url_for("customers.index"))
 
 
-@customers_bp.route('/<int:id>/statement')
+@customers_bp.route("/<int:id>/statement")
 @login_required
-@permission_required('manage_customers')
+@permission_required("manage_customers")
 def statement(id):
     customer = get_owned_or_404(Customer, id)
 
-    date_from = request.args.get('date_from', type=str)
-    date_to = request.args.get('date_to', type=str)
-    transaction_type = request.args.get('transaction_type', 'all')
+    date_from = request.args.get("date_from", type=str)
+    date_to = request.args.get("date_to", type=str)
+    transaction_type = request.args.get("transaction_type", "all")
 
     from sqlalchemy import func
     from models import Payment
 
-    sales_query = Sale.query.filter_by(customer_id=id, status='confirmed')
+    sales_query = Sale.query.filter_by(customer_id=id, status="confirmed")
     payments_query = Payment.query.filter_by(customer_id=id)
 
     if date_from:
         sales_query = sales_query.filter(func.date(Sale.sale_date) >= date_from)
-        payments_query = payments_query.filter(func.date(Payment.payment_date) >= date_from)
+        payments_query = payments_query.filter(
+            func.date(Payment.payment_date) >= date_from
+        )
 
     if date_to:
         sales_query = sales_query.filter(func.date(Sale.sale_date) <= date_to)
-        payments_query = payments_query.filter(func.date(Payment.payment_date) <= date_to)
+        payments_query = payments_query.filter(
+            func.date(Payment.payment_date) <= date_to
+        )
 
     sales = sales_query.order_by(Sale.sale_date).all()
     payments = payments_query.order_by(Payment.payment_date).all()
@@ -391,9 +447,12 @@ def statement(id):
     # Bulk load related lines and payments to avoid N+1
     sales_ids = [s.id for s in sales]
     from sqlalchemy.orm import joinedload
-    sales_with_relations = Sale.query.options(
-        joinedload(Sale.lines).joinedload(SaleLine.product)
-    ).filter(Sale.id.in_(sales_ids or [0])).all()
+
+    sales_with_relations = (
+        Sale.query.options(joinedload(Sale.lines).joinedload(SaleLine.product))
+        .filter(Sale.id.in_(sales_ids or [0]))
+        .all()
+    )
     sales_dict = {s.id: s for s in sales_with_relations}
 
     transactions = []
@@ -405,21 +464,33 @@ def statement(id):
             quantity = Decimal(str(line.quantity or 0))
             unit_price = Decimal(str(line.unit_price or 0))
             discount_percent = Decimal(str(line.discount_percent or 0))
-            gross_amount = (quantity * unit_price)
-            discount_value = (gross_amount * discount_percent / Decimal('100')) if discount_percent else Decimal('0')
-            sale_lines_data.append({
-                'index': idx,
-                'product_name': line.product.get_display_name('ar') if line.product else 'بند غير معرف',
-                'product_sku': line.product.sku if line.product and line.product.sku else None,
-                'unit': line.product.unit if line.product and hasattr(line.product, 'unit') else None,
-                'quantity': float(quantity),
-                'unit_price': float(unit_price),
-                'discount_percent': float(discount_percent),
-                'discount_value': float(discount_value),
-                'gross_amount': float(gross_amount),
-                'line_total': float(line.line_total or 0),
-                'notes': line.notes or ''
-            })
+            gross_amount = quantity * unit_price
+            discount_value = (
+                (gross_amount * discount_percent / Decimal("100"))
+                if discount_percent
+                else Decimal("0")
+            )
+            sale_lines_data.append(
+                {
+                    "index": idx,
+                    "product_name": line.product.get_display_name("ar")
+                    if line.product
+                    else "بند غير معرف",
+                    "product_sku": line.product.sku
+                    if line.product and line.product.sku
+                    else None,
+                    "unit": line.product.unit
+                    if line.product and hasattr(line.product, "unit")
+                    else None,
+                    "quantity": float(quantity),
+                    "unit_price": float(unit_price),
+                    "discount_percent": float(discount_percent),
+                    "discount_value": float(discount_value),
+                    "gross_amount": float(gross_amount),
+                    "line_total": float(line.line_total or 0),
+                    "notes": line.notes or "",
+                }
+            )
 
         sale_payments = sale.payments.order_by(Payment.payment_date.asc()).all()
         sale_payments_data = []
@@ -429,176 +500,223 @@ def statement(id):
             if last_payment_date is None or payment.payment_date > last_payment_date:
                 last_payment_date = payment.payment_date
 
-            cheque = payment.cheque if hasattr(payment, 'cheque') else None
-            sale_payments_data.append({
-                'id': payment.id,
-                'payment_number': payment.payment_number,
-                'payment_date': payment.payment_date,
-                'amount_base': float(payment.amount_base or 0),
-                'amount_original': float(payment.amount or 0),
-                'currency': payment.currency or 'AED',
-                'exchange_rate': float(payment.exchange_rate or 1),
-                'reference_number': payment.reference_number or '-',
-                'payment_method': payment.payment_method,
-                'payment_method_display': payment.get_method_display('ar') if hasattr(payment, 'get_method_display') else payment.payment_method,
-                'status_ar': payment.status_ar if hasattr(payment, 'status_ar') else ('مؤكدة ✅' if payment.payment_confirmed else 'معلقة ⏳'),
-                'payment_confirmed': payment.payment_confirmed,
-                'user': payment.user.get_display_name('ar') if payment.user and hasattr(payment.user, 'get_display_name') else (payment.user.full_name if payment.user else None),  # noqa: E501
-                'notes': payment.notes or '',
-                'direction': payment.direction,
-                'cheque_number': cheque.cheque_number if cheque else payment.cheque_number,
-                'cheque_bank': cheque.bank_name if cheque else payment.bank_name,
-                'cheque_due_date': cheque.due_date if cheque else None
-            })
+            cheque = payment.cheque if hasattr(payment, "cheque") else None
+            sale_payments_data.append(
+                {
+                    "id": payment.id,
+                    "payment_number": payment.payment_number,
+                    "payment_date": payment.payment_date,
+                    "amount_base": float(payment.amount_base or 0),
+                    "amount_original": float(payment.amount or 0),
+                    "currency": payment.currency or "AED",
+                    "exchange_rate": float(payment.exchange_rate or 1),
+                    "reference_number": payment.reference_number or "-",
+                    "payment_method": payment.payment_method,
+                    "payment_method_display": payment.get_method_display("ar")
+                    if hasattr(payment, "get_method_display")
+                    else payment.payment_method,
+                    "status_ar": payment.status_ar
+                    if hasattr(payment, "status_ar")
+                    else ("مؤكدة ✅" if payment.payment_confirmed else "معلقة ⏳"),
+                    "payment_confirmed": payment.payment_confirmed,
+                    "user": payment.user.get_display_name("ar")
+                    if payment.user and hasattr(payment.user, "get_display_name")
+                    else (payment.user.full_name if payment.user else None),  # noqa: E501
+                    "notes": payment.notes or "",
+                    "direction": payment.direction,
+                    "cheque_number": cheque.cheque_number
+                    if cheque
+                    else payment.cheque_number,
+                    "cheque_bank": cheque.bank_name if cheque else payment.bank_name,
+                    "cheque_due_date": cheque.due_date if cheque else None,
+                }
+            )
 
         sale_data = {
-            'id': sale.id,
-            'number': sale.sale_number,
-            'date': sale.sale_date,
-            'status': sale.payment_status,
-            'subtotal': float(sale.subtotal or 0),
-            'discount_amount': float(sale.discount_amount or 0),
-            'shipping_cost': float(sale.shipping_cost or 0),
-            'tax_rate': float(sale.tax_rate or 0),
-            'tax_amount': float(sale.tax_amount or 0),
-            'total_amount': float(sale.total_amount or sale.amount_base or 0),
-            'amount_base': float(sale.amount_base or 0),
-            'paid_amount': float(sale.paid_amount_base or 0),
-            'balance_due': float(sale.balance_due or 0),
-            'currency': sale.currency or 'AED',
-            'exchange_rate': float(sale.exchange_rate or 1),
-            'seller': sale.seller.get_display_name('ar') if sale.seller and hasattr(sale.seller, 'get_display_name') else (sale.seller.full_name if sale.seller else None),  # noqa: E501
-            'notes': sale.notes or '',
-            'lines': sale_lines_data,
-            'payments': sale_payments_data,
-            'last_payment_date': last_payment_date
+            "id": sale.id,
+            "number": sale.sale_number,
+            "date": sale.sale_date,
+            "status": sale.payment_status,
+            "subtotal": float(sale.subtotal or 0),
+            "discount_amount": float(sale.discount_amount or 0),
+            "shipping_cost": float(sale.shipping_cost or 0),
+            "tax_rate": float(sale.tax_rate or 0),
+            "tax_amount": float(sale.tax_amount or 0),
+            "total_amount": float(sale.total_amount or sale.amount_base or 0),
+            "amount_base": float(sale.amount_base or 0),
+            "paid_amount": float(sale.paid_amount_base or 0),
+            "balance_due": float(sale.balance_due or 0),
+            "currency": sale.currency or "AED",
+            "exchange_rate": float(sale.exchange_rate or 1),
+            "seller": sale.seller.get_display_name("ar")
+            if sale.seller and hasattr(sale.seller, "get_display_name")
+            else (sale.seller.full_name if sale.seller else None),  # noqa: E501
+            "notes": sale.notes or "",
+            "lines": sale_lines_data,
+            "payments": sale_payments_data,
+            "last_payment_date": last_payment_date,
         }
 
-        transactions.append({
-            'date': sale.sale_date,
-            'type': 'sale',
-            'reference': sale.sale_number,
-            'debit': float(sale.amount_base or 0),
-            'credit': 0,
-            'balance': 0,
-            'description': 'فاتورة بيع',
-            'currency': sale.currency or 'AED',
-            'exchange_rate': float(sale.exchange_rate or 1),
-            'paid_amount': float(sale.paid_amount_base or 0),
-            'balance_due': float(sale.balance_due or 0),
-            'status': sale.payment_status,
-            'sale': sale_data
-        })
+        transactions.append(
+            {
+                "date": sale.sale_date,
+                "type": "sale",
+                "reference": sale.sale_number,
+                "debit": float(sale.amount_base or 0),
+                "credit": 0,
+                "balance": 0,
+                "description": "فاتورة بيع",
+                "currency": sale.currency or "AED",
+                "exchange_rate": float(sale.exchange_rate or 1),
+                "paid_amount": float(sale.paid_amount_base or 0),
+                "balance_due": float(sale.balance_due or 0),
+                "status": sale.payment_status,
+                "sale": sale_data,
+            }
+        )
 
     for payment in payments:
-        credit_amount = float(payment.amount_base or 0) if payment.direction == 'incoming' else 0.0
-        debit_amount = float(payment.amount_base or 0) if payment.direction != 'incoming' else 0.0
+        credit_amount = (
+            float(payment.amount_base or 0) if payment.direction == "incoming" else 0.0
+        )
+        debit_amount = (
+            float(payment.amount_base or 0) if payment.direction != "incoming" else 0.0
+        )
 
-        cheque = payment.cheque if hasattr(payment, 'cheque') else None
+        cheque = payment.cheque if hasattr(payment, "cheque") else None
 
-        transactions.append({
-            'date': payment.payment_date,
-            'type': 'payment',
-            'reference': payment.reference_number or payment.payment_number or f'دفع #{payment.id}',
-            'debit': debit_amount,
-            'credit': credit_amount,
-            'balance': 0,
-            'description': f'دفعة - {payment.get_method_display("ar") if hasattr(payment, "get_method_display") else payment.payment_method}',
-            'currency': payment.currency or 'AED',
-            'exchange_rate': float(payment.exchange_rate or 1),
-            'paid_amount': credit_amount,
-            'balance_due': 0,
-            'status': payment.status_ar if hasattr(payment, 'status_ar') else ('مؤكدة ✅' if payment.payment_confirmed else 'معلقة ⏳'),
-            'payment': {
-                'id': payment.id,
-                'payment_number': payment.payment_number,
-                'payment_date': payment.payment_date,
-                'amount_base': float(payment.amount_base or 0),
-                'amount_original': float(payment.amount or 0),
-                'currency': payment.currency or 'AED',
-                'exchange_rate': float(payment.exchange_rate or 1),
-                'payment_method': payment.payment_method,
-                'payment_method_display': payment.get_method_display('ar') if hasattr(payment, 'get_method_display') else payment.payment_method,
-                'reference_number': payment.reference_number or '-',
-                'direction': payment.direction,
-                'payment_confirmed': payment.payment_confirmed,
-                'status_ar': payment.status_ar if hasattr(payment, 'status_ar') else ('مؤكدة ✅' if payment.payment_confirmed else 'معلقة ⏳'),
-                'user': payment.user.get_display_name('ar') if payment.user and hasattr(payment.user, 'get_display_name') else (payment.user.full_name if payment.user else None),  # noqa: E501
-                'notes': payment.notes or '',
-                'cheque_number': cheque.cheque_number if cheque else payment.cheque_number,
-                'cheque_bank': cheque.bank_name if cheque else payment.bank_name,
-                'cheque_due_date': cheque.due_date if cheque else payment.cheque_date,
-                'cheque_clearance_date': cheque.clearance_date if cheque else None
+        transactions.append(
+            {
+                "date": payment.payment_date,
+                "type": "payment",
+                "reference": payment.reference_number
+                or payment.payment_number
+                or f"دفع #{payment.id}",
+                "debit": debit_amount,
+                "credit": credit_amount,
+                "balance": 0,
+                "description": f"دفعة - {payment.get_method_display('ar') if hasattr(payment, 'get_method_display') else payment.payment_method}",
+                "currency": payment.currency or "AED",
+                "exchange_rate": float(payment.exchange_rate or 1),
+                "paid_amount": credit_amount,
+                "balance_due": 0,
+                "status": payment.status_ar
+                if hasattr(payment, "status_ar")
+                else ("مؤكدة ✅" if payment.payment_confirmed else "معلقة ⏳"),
+                "payment": {
+                    "id": payment.id,
+                    "payment_number": payment.payment_number,
+                    "payment_date": payment.payment_date,
+                    "amount_base": float(payment.amount_base or 0),
+                    "amount_original": float(payment.amount or 0),
+                    "currency": payment.currency or "AED",
+                    "exchange_rate": float(payment.exchange_rate or 1),
+                    "payment_method": payment.payment_method,
+                    "payment_method_display": payment.get_method_display("ar")
+                    if hasattr(payment, "get_method_display")
+                    else payment.payment_method,
+                    "reference_number": payment.reference_number or "-",
+                    "direction": payment.direction,
+                    "payment_confirmed": payment.payment_confirmed,
+                    "status_ar": payment.status_ar
+                    if hasattr(payment, "status_ar")
+                    else ("مؤكدة ✅" if payment.payment_confirmed else "معلقة ⏳"),
+                    "user": payment.user.get_display_name("ar")
+                    if payment.user and hasattr(payment.user, "get_display_name")
+                    else (payment.user.full_name if payment.user else None),  # noqa: E501
+                    "notes": payment.notes or "",
+                    "cheque_number": cheque.cheque_number
+                    if cheque
+                    else payment.cheque_number,
+                    "cheque_bank": cheque.bank_name if cheque else payment.bank_name,
+                    "cheque_due_date": cheque.due_date
+                    if cheque
+                    else payment.cheque_date,
+                    "cheque_clearance_date": cheque.clearance_date if cheque else None,
+                },
             }
-        })
+        )
 
     def _transaction_date_key(trans):
-        trans_date = trans['date']
+        trans_date = trans["date"]
         if trans_date is None:
             return datetime.min
         return trans_date.replace(tzinfo=None) if trans_date.tzinfo else trans_date
 
     transactions.sort(key=_transaction_date_key)
 
-    if transaction_type in {'sale', 'payment'}:
-        transactions = [trans for trans in transactions if trans['type'] == transaction_type]
+    if transaction_type in {"sale", "payment"}:
+        transactions = [
+            trans for trans in transactions if trans["type"] == transaction_type
+        ]
 
     running_balance = 0
     for trans in transactions:
-        running_balance += trans['debit'] - trans['credit']
-        trans['balance'] = running_balance
+        running_balance += trans["debit"] - trans["credit"]
+        trans["balance"] = running_balance
 
     return render_template(
-        'customers/statement.html',
+        "customers/statement.html",
         customer=customer,
         transactions=transactions,
         final_balance=running_balance,
         filters={
-            'date_from': date_from or '',
-            'date_to': date_to or '',
-            'transaction_type': transaction_type
-        }
+            "date_from": date_from or "",
+            "date_to": date_to or "",
+            "transaction_type": transaction_type,
+        },
     )
 
 
-@customers_bp.route('/api/search')
+@customers_bp.route("/api/search")
 @login_required
 @sales_or_customers_required
 def api_search():
-    query = request.args.get('q', '')
-    _ = request.args.get('page', 1, type=int)
+    query = request.args.get("q", "")
+    _ = request.args.get("page", 1, type=int)
     per_page = 20
 
     # السماح بالبحث حتى بدون query (لعرض كل العملاء)
     if query and len(query) >= 1:
-        customers = Customer.query.filter(
-            Customer.is_active.is_(True),
-            db.or_(
-                Customer.name.ilike(f'%{query}%'),
-                Customer.phone.ilike(f'%{query}%'),
-                Customer.email.ilike(f'%{query}%')
+        customers = (
+            Customer.query.filter(
+                Customer.is_active.is_(True),
+                db.or_(
+                    Customer.name.ilike(f"%{query}%"),
+                    Customer.phone.ilike(f"%{query}%"),
+                    Customer.email.ilike(f"%{query}%"),
+                ),
             )
-        ).order_by(Customer.name).limit(per_page).all()
+            .order_by(Customer.name)
+            .limit(per_page)
+            .all()
+        )
     else:
         # عرض كل العملاء (مرتبين أبجدياً)
-        customers = Customer.query.filter_by(
-            is_active=True
-        ).order_by(Customer.name).limit(per_page).all()
+        customers = (
+            Customer.query.filter_by(is_active=True)
+            .order_by(Customer.name)
+            .limit(per_page)
+            .all()
+        )
 
-    results = [{
-        'id': c.id,
-        'name': c.name,
-        'phone': c.phone or '',
-        'text': f"{c.name} - {c.phone}" if c.phone else c.name,
-        'customer_type': c.customer_type,
-        'customer_classification': c.customer_classification,
-        'balance': float(c.get_balance())
-    } for c in customers]
+    results = [
+        {
+            "id": c.id,
+            "name": c.name,
+            "phone": c.phone or "",
+            "text": f"{c.name} - {c.phone}" if c.phone else c.name,
+            "customer_type": c.customer_type,
+            "customer_classification": c.customer_classification,
+            "balance": float(c.get_balance()),
+        }
+        for c in customers
+    ]
 
     return jsonify(results)
 
 
-@customers_bp.route('/<int:id>/balance')
+@customers_bp.route("/<int:id>/balance")
 @login_required
 @sales_or_customers_required
 def customer_balance(id):
@@ -606,48 +724,58 @@ def customer_balance(id):
     customer = get_owned_or_404(Customer, id)
 
     # Get unpaid sales
-    unpaid_sales = Sale.query.filter(
-        Sale.customer_id == id,
-        Sale.balance_due > 0,
-        Sale.is_active.is_(True)
-    ).order_by(Sale.sale_date.desc()).all()
+    unpaid_sales = (
+        Sale.query.filter(
+            Sale.customer_id == id, Sale.balance_due > 0, Sale.is_active.is_(True)
+        )
+        .order_by(Sale.sale_date.desc())
+        .all()
+    )
 
-    return jsonify({
-        'balance': float(customer.get_balance()),
-        'unpaid_sales': [{
-            'id': s.id,
-            'sale_number': s.sale_number,
-            'total_amount': float(s.total_amount),
-            'paid_amount': float(s.paid_amount),
-            'balance_due': float(s.balance_due),
-            'payment_status': s.payment_status,
-            'sale_date': s.sale_date.strftime('%Y-%m-%d')
-        } for s in unpaid_sales]
-    })
+    return jsonify(
+        {
+            "balance": float(customer.get_balance()),
+            "unpaid_sales": [
+                {
+                    "id": s.id,
+                    "sale_number": s.sale_number,
+                    "total_amount": float(s.total_amount),
+                    "paid_amount": float(s.paid_amount),
+                    "balance_due": float(s.balance_due),
+                    "payment_status": s.payment_status,
+                    "sale_date": s.sale_date.strftime("%Y-%m-%d"),
+                }
+                for s in unpaid_sales
+            ],
+        }
+    )
 
 
-@customers_bp.route('/<int:id>/sales')
+@customers_bp.route("/<int:id>/sales")
 @login_required
-@permission_required('manage_customers')
+@permission_required("manage_customers")
 def customer_sales(id):
     _ = get_owned_or_404(Customer, id)
 
-    sales = Sale.query.filter_by(
-        customer_id=id,
-        status='confirmed'
-    ).order_by(Sale.sale_date.desc()).all()
+    sales = (
+        Sale.query.filter_by(customer_id=id, status="confirmed")
+        .order_by(Sale.sale_date.desc())
+        .all()
+    )
 
     sales_data = []
     for sale in sales:
         balance = sale.amount_base - sale.paid_amount_base
         if balance > 0:
-            sales_data.append({
-                'id': sale.id,
-                'invoice_number': sale.sale_number or f'#{sale.id}',
-                'sale_date': sale.sale_date.strftime('%Y-%m-%d'),
-                'amount_base': float(sale.amount_base),
-                'paid_amount_base': float(sale.paid_amount_base),
-                'balance': float(balance)
-            })
+            sales_data.append(
+                {
+                    "id": sale.id,
+                    "invoice_number": sale.sale_number or f"#{sale.id}",
+                    "sale_date": sale.sale_date.strftime("%Y-%m-%d"),
+                    "amount_base": float(sale.amount_base),
+                    "paid_amount_base": float(sale.paid_amount_base),
+                    "balance": float(balance),
+                }
+            )
 
-    return jsonify({'sales': sales_data})
+    return jsonify({"sales": sales_data})

@@ -1,11 +1,26 @@
 """Flows registry tests — 13 flow موحد بلا تكرار"""
+
 from services.ai_flows import FLOWS, FLOWS_BY_KEY, find_flow, render_menu, start_context
 
 
 def test_registry_has_13_flows():
     assert len(FLOWS) == 13
     keys = {f.key for f in FLOWS}
-    assert keys == {"balance", "customer", "product", "sale", "receive", "give", "expense", "supplier", "purchase", "cheque", "ledger", "warehouse", "user"}
+    assert keys == {
+        "balance",
+        "customer",
+        "product",
+        "sale",
+        "receive",
+        "give",
+        "expense",
+        "supplier",
+        "purchase",
+        "cheque",
+        "ledger",
+        "warehouse",
+        "user",
+    }
 
 
 def test_all_flows_have_permission_and_last_action():
@@ -83,7 +98,11 @@ def test_balance_flow_has_confirmation_step():
     text = Path("routes/ai.py").read_text(encoding="utf-8")
     assert "pending_balance" in text
     assert "تأكيد مطلوب" in text
-    assert "listener != 'confirm'" in text or 'listener != "confirm"' in text or "listener != 'confirm'" in text
+    assert (
+        "listener != 'confirm'" in text
+        or 'listener != "confirm"' in text
+        or "listener != 'confirm'" in text
+    )
 
 
 def test_ai_commands_stamp_tenant_and_audit():
@@ -106,7 +125,7 @@ def test_assistant_open_to_all_config_owner_only():
 
     def decorators_above(def_name, window=6):
         idx = next(i for i, l in enumerate(lines) if f"def {def_name}(" in l)
-        return "\n".join(lines[max(0, idx - window):idx])
+        return "\n".join(lines[max(0, idx - window) : idx])
 
     assert "@owner_required" in decorators_above("config")
     assert "@owner_required" not in decorators_above("assistant_page")

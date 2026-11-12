@@ -41,12 +41,12 @@ def set_current_tenant_id(tenant_id):
 
 def get_current_tenant_id():
     """Get the current tenant ID. Returns None if not set (no filtering)."""
-    return getattr(_thread_local, 'tenant_id', None)
+    return getattr(_thread_local, "tenant_id", None)
 
 
 def clear_current_tenant_id():
     """Clear the current tenant ID (e.g., at end of request)."""
-    if hasattr(_thread_local, 'tenant_id'):
+    if hasattr(_thread_local, "tenant_id"):
         del _thread_local.tenant_id
 
 
@@ -64,8 +64,9 @@ def run_in_tenant_context(tenant_id, func, *args, **kwargs):
     """
     if tenant_id is None:
         raise RuntimeError(
-            'Background work requires an explicit tenant_id; refusing to run '
-            'without tenant context because queries would be unfiltered.')
+            "Background work requires an explicit tenant_id; refusing to run "
+            "without tenant context because queries would be unfiltered."
+        )
     set_current_tenant_id(tenant_id)
     try:
         return func(*args, **kwargs)
@@ -100,11 +101,13 @@ def register_tenant_scoped(model_class):
 # register_tenant_scoped() call in their own module. Leaving one out means
 # every row of that table is readable by every tenant, so this list is the
 # difference between isolation and a leak.
-_BUILTIN_SCOPED_TABLES = frozenset({
-    # users was previously unregistered: User has a tenant_id column but no
-    # module-level registration, so user records were never isolated.
-    'users',
-})
+_BUILTIN_SCOPED_TABLES = frozenset(
+    {
+        # users was previously unregistered: User has a tenant_id column but no
+        # module-level registration, so user records were never isolated.
+        "users",
+    }
+)
 
 
 def install_builtin_tenant_scoping():
@@ -129,13 +132,16 @@ def _is_actor_owner():
     except Exception:
         return False
     try:
-        if not getattr(current_user, 'is_authenticated', False):
+        if not getattr(current_user, "is_authenticated", False):
             return False
-        if getattr(current_user, 'is_owner', False):
+        if getattr(current_user, "is_owner", False):
             return True
-        if getattr(current_user, 'is_super_admin', None) and current_user.is_super_admin():
+        if (
+            getattr(current_user, "is_super_admin", None)
+            and current_user.is_super_admin()
+        ):
             return True
-        if getattr(getattr(current_user, 'role', None), 'slug', None) == 'developer':
+        if getattr(getattr(current_user, "role", None), "slug", None) == "developer":
             return True
     except Exception:
         return False
@@ -154,7 +160,7 @@ class TenantScopedMixin:
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         defines_tenant_column = any(
-            'tenant_id' in vars(ancestor) for ancestor in cls.__mro__
+            "tenant_id" in vars(ancestor) for ancestor in cls.__mro__
         )
         if not defines_tenant_column:
             raise RuntimeError(
@@ -179,15 +185,16 @@ def _warn_unfiltered_access_in_strict_mode(query):
     with no resolved tenant (unfiltered access). Never alters behaviour."""
     try:
         from flask import current_app, has_app_context
-        if not has_app_context() or not current_app.config.get('TENANT_STRICT'):
+
+        if not has_app_context() or not current_app.config.get("TENANT_STRICT"):
             return
         col_descs = query.column_descriptions
         if not col_descs:
             return
-        entity = col_descs[0].get('entity')
-        tablename = getattr(entity, '__tablename__', None)
+        entity = col_descs[0].get("entity")
+        tablename = getattr(entity, "__tablename__", None)
         if tablename and tablename in _tenant_scoped_tables:
-            logger.warning('TENANT_STRICT: unfiltered access to %s', tablename)
+            logger.warning("TENANT_STRICT: unfiltered access to %s", tablename)
     except Exception:
         pass
 
@@ -216,31 +223,35 @@ def _before_flush_tenant_guard(session, flush_context, instances):
         # Owner can do anything; still auto-stamp NULL rows so the column
         # is never accidentally left empty for the platform record.
         for obj in session.new:
-            tablename = getattr(type(obj), '__tablename__', None)
+            tablename = getattr(type(obj), "__tablename__", None)
             if tablename not in _tenant_scoped_tables:
                 continue
             try:
-                if getattr(obj, 'tenant_id', None) is None and stamp_tenant is not None:
+                if getattr(obj, "tenant_id", None) is None and stamp_tenant is not None:
                     obj.tenant_id = stamp_tenant
             except Exception:
                 continue
         return
 
     for obj in session.new:
-        tablename = getattr(type(obj), '__tablename__', None)
+        tablename = getattr(type(obj), "__tablename__", None)
         if tablename not in _tenant_scoped_tables:
             continue
         try:
-            current_val = getattr(obj, 'tenant_id', None)
+            current_val = getattr(obj, "tenant_id", None)
         except Exception:
             continue
-        if current_val in (None, '') and stamp_tenant is not None:
+        if current_val in (None, "") and stamp_tenant is not None:
             # Auto-scope new rows to the current tenant.
             try:
                 obj.tenant_id = stamp_tenant
             except Exception:
                 pass
-        elif current_val is not None and stamp_tenant is not None and current_val != stamp_tenant:
+        elif (
+            current_val is not None
+            and stamp_tenant is not None
+            and current_val != stamp_tenant
+        ):
             # Cross-tenant insert from a non-owner actor.
             raise RuntimeError(
                 f"Cross-tenant insert blocked: {type(obj).__name__}.tenant_id="
@@ -248,7 +259,7 @@ def _before_flush_tenant_guard(session, flush_context, instances):
             )
 
     for obj in session.dirty:
-        tablename = getattr(type(obj), '__tablename__', None)
+        tablename = getattr(type(obj), "__tablename__", None)
         if tablename not in _tenant_scoped_tables:
             continue
         try:
@@ -284,7 +295,7 @@ def install_tenant_filter_events():  # noqa: C901
     """
     from sqlalchemy.orm import Query
 
-    @event.listens_for(Query, 'before_compile', retval=True)
+    @event.listens_for(Query, "before_compile", retval=True)
     def _auto_tenant_filter(query):
         """Automatically add tenant_id filter to tenant-scoped queries.
 
@@ -322,7 +333,7 @@ def install_tenant_filter_events():  # noqa: C901
         _apply_loader_criteria(query.session, tenant_id)
         query = _apply_query_loader_criteria(query, tenant_id)
 
-        if getattr(query, '_tenant_filter_applied', False):
+        if getattr(query, "_tenant_filter_applied", False):
             return query
 
         # Collect EVERY tenant-scoped entity in the query.
@@ -336,10 +347,10 @@ def install_tenant_filter_events():  # noqa: C901
         scoped_entities = []
         seen = set()
         for desc in col_descs:
-            entity = desc.get('entity')
+            entity = desc.get("entity")
             if entity is None:
                 continue
-            tablename = getattr(entity, '__tablename__', None)
+            tablename = getattr(entity, "__tablename__", None)
             if tablename in _tenant_scoped_tables and entity not in seen:
                 seen.add(entity)
                 scoped_entities.append(entity)
@@ -358,9 +369,11 @@ def install_tenant_filter_events():  # noqa: C901
         # added.
         query._tenant_filter_applied = True
         return query
-    if not getattr(install_tenant_filter_events, '_before_flush_registered', False):
+
+    if not getattr(install_tenant_filter_events, "_before_flush_registered", False):
         from sqlalchemy.orm import Session
-        event.listen(Session, 'before_flush', _before_flush_tenant_guard)
+
+        event.listen(Session, "before_flush", _before_flush_tenant_guard)
         install_tenant_filter_events._before_flush_registered = True
 
 
@@ -438,10 +451,10 @@ def _apply_query_loader_criteria(query, tenant_id):
     present = []
     try:
         for desc in query.column_descriptions:
-            entity = desc.get('entity')
+            entity = desc.get("entity")
             if entity is None:
                 continue
-            if getattr(entity, '__tablename__', None) in _tenant_scoped_tables:
+            if getattr(entity, "__tablename__", None) in _tenant_scoped_tables:
                 if entity not in present:
                     present.append(entity)
     except Exception:  # noqa: BLE001
@@ -454,8 +467,7 @@ def _apply_query_loader_criteria(query, tenant_id):
             # Drop a restriction this module added earlier for the same
             # entity, then append the current one. A criterion is identified
             # by the column it constrains, so the replacement is exact.
-            kept = [c for c in existing
-                    if not _constrains_tenant_column(c, entity)]
+            kept = [c for c in existing if not _constrains_tenant_column(c, entity)]
             query._where_criteria = tuple(kept) + (criterion,)
         except Exception:  # noqa: BLE001 - never break a query
             continue
@@ -470,19 +482,19 @@ def _constrains_tenant_column(criterion, entity):
     be lost when the expression is cloned.
     """
     try:
-        group = getattr(criterion, 'self_group', None)
-        clauses = getattr(group, 'clauses', None)
+        group = getattr(criterion, "self_group", None)
+        clauses = getattr(group, "clauses", None)
         if clauses is None:
             clauses = [criterion]
         for crit in clauses:
-            left = getattr(crit, 'left', None)
-            prop = getattr(left, 'property', None)
+            left = getattr(crit, "left", None)
+            prop = getattr(left, "property", None)
             if prop is None:
                 continue
-            if getattr(prop, 'key', None) != 'tenant_id':
+            if getattr(prop, "key", None) != "tenant_id":
                 continue
-            parent = getattr(left, 'parent', None)
-            if parent is entity or getattr(parent, 'class_', None) is entity:
+            parent = getattr(left, "parent", None)
+            if parent is entity or getattr(parent, "class_", None) is entity:
                 return True
     except Exception:  # noqa: BLE001
         return False
@@ -533,13 +545,15 @@ def _scoped_model_classes():
         # sa_inspect() here raises NoInspectionAvailable - which is why this
         # must use the attribute directly.
         for m in db.Model.registry.mappers:
-            table = getattr(m, 'local_table', None)
+            table = getattr(m, "local_table", None)
             if table is not None and table.name in _tenant_scoped_tables:
                 out.append(m.class_)
     except Exception as exc:  # noqa: BLE001
         # Loud: an empty list means isolation is silently absent, so record it
         # rather than returning an empty list as if nothing were wrong.
         logger.error(
-            'Tenant loader criteria could not resolve scoped models: %s: %s',
-            type(exc).__name__, exc)
+            "Tenant loader criteria could not resolve scoped models: %s: %s",
+            type(exc).__name__,
+            exc,
+        )
     return out

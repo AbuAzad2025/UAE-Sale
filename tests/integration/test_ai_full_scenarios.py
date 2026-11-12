@@ -7,42 +7,57 @@ Covers the 5 improvement tracks:
 4. End-to-end chat shortcut scenarios (product/customer/expense/payment)
 5. GROQ cache hit/miss behaviour
 """
-import pytest
 
-from extensions import db as _db
 from services import ai_commands as cmd
-from services.ai_cache import clear as cache_clear, get as cache_get, set_value as cache_set, stats as cache_stats
+from services.ai_cache import (
+    clear as cache_clear,
+    get as cache_get,
+    set_value as cache_set,
+    stats as cache_stats,
+)
 from utils.monitoring import AIMetricsCollector, init_sentry
 
 
 def _login(client, username="owner", password=None):
     password = password or "Owner123!"
-    client.post("/auth/login", data={"username": username, "password": password},
-                follow_redirects=True)
+    client.post(
+        "/auth/login",
+        data={"username": username, "password": password},
+        follow_redirects=True,
+    )
 
 
 class TestChatShortcuts:
     def test_chat_product_shortcut(self, client, login_owner):
-        resp = client.post("/ai/chat", json={
-            "message": "منتج: فلتر زيت، FZ-100، 45، 10",
-            "ai_mode": "local",
-        })
+        resp = client.post(
+            "/ai/chat",
+            json={
+                "message": "منتج: فلتر زيت، FZ-100، 45، 10",
+                "ai_mode": "local",
+            },
+        )
         assert resp.status_code == 200
         data = resp.get_json()
         assert "response" in data
 
     def test_chat_customer_shortcut(self, client, login_owner):
-        resp = client.post("/ai/chat", json={
-            "message": "عميل: ورشة النور، 0501234567",
-            "ai_mode": "local",
-        })
+        resp = client.post(
+            "/ai/chat",
+            json={
+                "message": "عميل: ورشة النور، 0501234567",
+                "ai_mode": "local",
+            },
+        )
         assert resp.status_code == 200
 
     def test_chat_expense_shortcut(self, client, login_owner):
-        resp = client.post("/ai/chat", json={
-            "message": "مصروف: وقود، 200",
-            "ai_mode": "local",
-        })
+        resp = client.post(
+            "/ai/chat",
+            json={
+                "message": "مصروف: وقود، 200",
+                "ai_mode": "local",
+            },
+        )
         assert resp.status_code == 200
 
     def test_chat_requires_message(self, client, login_owner):
@@ -63,7 +78,9 @@ class TestServiceLayerEndToEnd:
         assert c.id is not None
         sale = cmd.create_sale(c.id, p.id, 2, seller_id=owner_user.id)
         assert sale.id is not None
-        pay = cmd.record_payment(c.id, 50.0, "cash", "incoming", owner_user.id, "customer_payment")
+        pay = cmd.record_payment(
+            c.id, 50.0, "cash", "incoming", owner_user.id, "customer_payment"
+        )
         assert pay.id is not None
 
     def test_expense_and_supplier_flow(self, db, owner_user):
@@ -76,15 +93,19 @@ class TestServiceLayerEndToEnd:
 class TestSecurityAudit:
     def test_non_sensitive_op_passes(self, app):
         from routes.ai import _require_csrf_for_sensitive_ops
+
         with app.test_request_context("/ai/chat", method="POST"):
             from flask import request as req
+
             req.ai_operation = "chat_ai"
             assert _require_csrf_for_sensitive_ops() is None
 
     def test_sensitive_op_without_token_blocked(self, app):
         from routes.ai import _require_csrf_for_sensitive_ops
+
         with app.test_request_context("/ai/chat", method="POST", data={}):
             from flask import request as req
+
             req.ai_operation = "create_product"
             result = _require_csrf_for_sensitive_ops()
             # No valid token supplied -> 403 tuple or None if fallback allows
@@ -92,6 +113,7 @@ class TestSecurityAudit:
 
     def test_detect_ai_operation_mapping(self):
         from routes.ai import _detect_ai_operation
+
         assert _detect_ai_operation("منتج: فلتر، FZ-1، 45، 10") == "create_product"
         assert _detect_ai_operation("فاتورة: أحمد، فلتر، 2") == "create_sale"
         assert _detect_ai_operation("مصروف: وقود، 200") == "create_expense"
@@ -101,24 +123,30 @@ class TestSecurityAudit:
 
     def test_origin_mismatch_blocked_for_sensitive_op(self, app):
         from routes.ai import _require_csrf_for_sensitive_ops
+
         with app.test_request_context(
-            "/ai/chat", method="POST",
+            "/ai/chat",
+            method="POST",
             headers={"Origin": "https://evil.example.com"},
             base_url="http://localhost",
         ):
             from flask import request as req
+
             req.ai_operation = "create_sale"
             result = _require_csrf_for_sensitive_ops()
             assert result is not None and result[1] == 403
 
     def test_same_origin_allowed_without_token(self, app):
         from routes.ai import _require_csrf_for_sensitive_ops
+
         with app.test_request_context(
-            "/ai/chat", method="POST",
+            "/ai/chat",
+            method="POST",
             headers={"Origin": "http://localhost"},
             base_url="http://localhost",
         ):
             from flask import request as req
+
             req.ai_operation = "create_product"
             assert _require_csrf_for_sensitive_ops() is None
 
@@ -141,6 +169,7 @@ class TestSentryIntegration:
 
     def test_error_logger_graceful(self, app, db):
         from utils.monitoring import SentryErrorLogger
+
         with app.test_request_context("/ai/chat"):
             try:
                 raise ValueError("sentry-test")
@@ -150,7 +179,9 @@ class TestSentryIntegration:
 
 class TestMetricsDashboard:
     def test_collector_record_and_get(self):
-        AIMetricsCollector.record_ai_request("/chat", "local", tokens_used=10, duration_ms=5, success=True)
+        AIMetricsCollector.record_ai_request(
+            "/chat", "local", tokens_used=10, duration_ms=5, success=True
+        )
         m = AIMetricsCollector.get_metrics()
         assert m["total_requests"] >= 1
         assert "success_rate_percent" in m
@@ -184,6 +215,7 @@ class TestGroqCache:
 
     def test_cache_disabled_in_testing_env(self, monkeypatch):
         from services import ai_cache
+
         assert ai_cache.enabled() is False  # APP_ENV=testing in test runs
         monkeypatch.setenv("APP_ENV", "production")
         monkeypatch.delenv("AI_CACHE_ENABLED", raising=False)

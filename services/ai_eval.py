@@ -7,6 +7,7 @@
   python -m services.ai_eval            # طباعة التقرير
   python -m services.ai_eval --json    # JSON للـ CI
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,8 +23,18 @@ _CASES = [
     ("فاتورة جديدة لعميل", "sale", "create_sale", ["customer_name", "product_name"]),
     ("بيع فلتر", "sale", "create_sale", ["customer_name", "product_name"]),
     ("بيع فلتر لعميل أحمد", "sale", "create_sale", ["product_name"]),
-    ("كم رصيد العميل", "balance", "set_customer_balance", ["customer_name", "new_balance"]),
-    ("رصيد العميل أحمد", "balance", "set_customer_balance", ["customer_name", "new_balance"]),
+    (
+        "كم رصيد العميل",
+        "balance",
+        "set_customer_balance",
+        ["customer_name", "new_balance"],
+    ),
+    (
+        "رصيد العميل أحمد",
+        "balance",
+        "set_customer_balance",
+        ["customer_name", "new_balance"],
+    ),
     ("رصيد العميل أحمد ألف درهم", "balance", "set_customer_balance", []),
     ("استلام دفعة من عميل", "receive", "record_payment", ["customer_name", "amount"]),
     ("استلام 500 درهم من عميل أحمد", "receive", "record_payment", ["customer_name"]),
@@ -43,13 +54,19 @@ _CASES = [
     ("ابغى عميل جديد", "customer", "create_customer", []),
     ("زبون جديد: محمد علي", "customer", "create_customer", []),
     ("مبيعات اليوم", "sale", "create_sale", ["customer_name", "product_name"]),
-    ("رصيد الزبون", "balance", "set_customer_balance", ["customer_name", "new_balance"]),
+    (
+        "رصيد الزبون",
+        "balance",
+        "set_customer_balance",
+        ["customer_name", "new_balance"],
+    ),
     ("أضف 5000 درهم لرصيد العميل أحمد", "balance", "set_customer_balance", []),
 ]
 
 
 def run_eval() -> dict:
     from services.ai_planner import plan
+
     total = len(_CASES)
     hits = 0
     tool_hits = 0
@@ -60,9 +77,17 @@ def run_eval() -> dict:
         ok_tool = p.tool == exp_tool
         hits += int(ok_intent)
         tool_hits += int(ok_tool)
-        rows.append({"q": q, "exp": exp_intent, "got": p.intent,
-                     "exp_tool": exp_tool, "got_tool": p.tool,
-                     "ok": ok_intent, "tool_ok": ok_tool})
+        rows.append(
+            {
+                "q": q,
+                "exp": exp_intent,
+                "got": p.intent,
+                "exp_tool": exp_tool,
+                "got_tool": p.tool,
+                "ok": ok_intent,
+                "tool_ok": ok_tool,
+            }
+        )
     return {
         "total": total,
         "intent_accuracy": hits / total if total else 0,
@@ -79,10 +104,14 @@ def main() -> int:
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     else:
-        print(f"📊 Eval: intent {report['intent_accuracy']:.2%} | tool {report['tool_accuracy']:.2%} ({report['total']} سؤال)")
+        print(
+            f"📊 Eval: intent {report['intent_accuracy']:.2%} | tool {report['tool_accuracy']:.2%} ({report['total']} سؤال)"
+        )
         for r in report["rows"]:
             mark = "✅" if r["ok"] and r["tool_ok"] else "⚠️"
-            print(f"{mark} {r['q']!r}: exp={r['exp']}/{r['exp_tool']} got={r['got']}/{r['got_tool']}")
+            print(
+                f"{mark} {r['q']!r}: exp={r['exp']}/{r['exp_tool']} got={r['got']}/{r['got_tool']}"
+            )
     return 0
 
 

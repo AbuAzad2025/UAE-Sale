@@ -4,33 +4,40 @@ from models.tenant_scope import TenantScopedMixin
 
 
 class ArchivedRecord(TenantScopedMixin, db.Model):
-    __tablename__ = 'archived_records'
+    __tablename__ = "archived_records"
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id'), nullable=True, index=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
 
     table_name = db.Column(db.String(50), nullable=False, index=True)
     record_id = db.Column(db.Integer, nullable=False)
 
     data = db.Column(db.JSON, nullable=False)
 
-    archived_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
-    archived_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    archived_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
+    archived_by = db.Column(db.Integer, db.ForeignKey("users.id"))
 
     reason = db.Column(db.String(255))
 
     can_restore = db.Column(db.Boolean, default=True)
 
-    user = db.relationship('User', foreign_keys=[archived_by])
+    user = db.relationship("User", foreign_keys=[archived_by])
 
     def __repr__(self):
-        return f'<ArchivedRecord {self.table_name} #{self.record_id}>'
+        return f"<ArchivedRecord {self.table_name} #{self.record_id}>"
 
     def to_dict(self):
         return {
-            'id': self.id,
-            'table_name': self.table_name,
-            'record_id': self.record_id,
-            'archived_at': self.archived_at.isoformat(),
-            'can_restore': self.can_restore,
+            "id": self.id,
+            "table_name": self.table_name,
+            "record_id": self.record_id,
+            "archived_at": self.archived_at.isoformat(),
+            "can_restore": self.can_restore,
         }

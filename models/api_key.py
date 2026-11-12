@@ -4,7 +4,7 @@ import secrets
 
 
 class APIKey(db.Model):
-    __tablename__ = 'api_keys'
+    __tablename__ = "api_keys"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -15,13 +15,13 @@ class APIKey(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_used = db.Column(db.DateTime)
     usage_count = db.Column(db.Integer, default=0)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
 
-    creator = db.relationship('User', backref='api_keys_created')
+    creator = db.relationship("User", backref="api_keys_created")
 
     @staticmethod
     def generate_key():
         return secrets.token_urlsafe(32)
 
     def __repr__(self):
-        return f'<APIKey {self.service} - {self.name}>'
+        return f"<APIKey {self.service} - {self.name}>"

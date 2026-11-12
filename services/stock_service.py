@@ -9,9 +9,16 @@ from utils.errors import ValidationError
 
 
 class StockService:
-
     @staticmethod
-    def add_stock(product_id, quantity, reference_type=None, reference_id=None, notes=None, warehouse_id=None, unit_cost_base=None):
+    def add_stock(
+        product_id,
+        quantity,
+        reference_type=None,
+        reference_id=None,
+        notes=None,
+        warehouse_id=None,
+        unit_cost_base=None,
+    ):
         """حركة داخلية (وارد).
 
         Args:
@@ -22,7 +29,7 @@ class StockService:
         return StockService.create_movement(
             product_id=product_id,
             quantity=abs(Decimal(str(quantity))),
-            movement_type='purchase',
+            movement_type="purchase",
             reference_type=reference_type,
             reference_id=reference_id,
             notes=notes,
@@ -31,15 +38,22 @@ class StockService:
         )
 
     @staticmethod
-    def remove_stock(product_id, quantity, reference_type=None, reference_id=None, notes=None, warehouse_id=None):
+    def remove_stock(
+        product_id,
+        quantity,
+        reference_type=None,
+        reference_id=None,
+        notes=None,
+        warehouse_id=None,
+    ):
         return StockService.create_movement(
             product_id=product_id,
             quantity=-abs(Decimal(str(quantity))),
-            movement_type='sale',
+            movement_type="sale",
             reference_type=reference_type,
             reference_id=reference_id,
             notes=notes,
-            warehouse_id=warehouse_id
+            warehouse_id=warehouse_id,
         )
 
     @staticmethod
@@ -69,29 +83,52 @@ class StockService:
 
         if delta < 0:
             lines = [
-                {'account': '5150', 'debit': value, 'credit': 0,
-                 'description': f'Inventory Adjustment (Loss) - {product.name}'},
-                {'account': '1140', 'debit': 0, 'credit': value,
-                 'description': f'Stock Decrease - {product.name}'},
+                {
+                    "account": "5150",
+                    "debit": value,
+                    "credit": 0,
+                    "description": f"Inventory Adjustment (Loss) - {product.name}",
+                },
+                {
+                    "account": "1140",
+                    "debit": 0,
+                    "credit": value,
+                    "description": f"Stock Decrease - {product.name}",
+                },
             ]
         else:
             lines = [
-                {'account': '1140', 'debit': value, 'credit': 0,
-                 'description': f'Stock Increase - {product.name}'},
-                {'account': '5150', 'debit': 0, 'credit': value,
-                 'description': f'Inventory Adjustment (Gain) - {product.name}'},
+                {
+                    "account": "1140",
+                    "debit": value,
+                    "credit": 0,
+                    "description": f"Stock Increase - {product.name}",
+                },
+                {
+                    "account": "5150",
+                    "debit": 0,
+                    "credit": value,
+                    "description": f"Inventory Adjustment (Gain) - {product.name}",
+                },
             ]
 
         return GLService.post_entry(
             lines=lines,
-            description=f'Stock Adjustment - {product.name}',
-            reference_type='stock_adjustment',
+            description=f"Stock Adjustment - {product.name}",
+            reference_type="stock_adjustment",
             reference_id=movement.id if movement else None,
         )
 
     @staticmethod
-    def adjust_stock(product_id, quantity, notes=None, warehouse_id=None, post_gl=True,
-                     reference_type=None, reference_id=None):
+    def adjust_stock(
+        product_id,
+        quantity,
+        notes=None,
+        warehouse_id=None,
+        post_gl=True,
+        reference_type=None,
+        reference_id=None,
+    ):
         """Adjust stock with an optional GL posting (contract C1).
 
         Args:
@@ -111,11 +148,11 @@ class StockService:
         movement = StockService.create_movement(
             product_id=product_id,
             quantity=Decimal(str(quantity)),
-            movement_type='adjustment',
+            movement_type="adjustment",
             reference_type=reference_type,
             reference_id=reference_id,
             notes=notes,
-            warehouse_id=warehouse_id
+            warehouse_id=warehouse_id,
         )
 
         if not post_gl:
@@ -123,7 +160,9 @@ class StockService:
 
         # GL Integration for Adjustment
         try:
-            product = get_owned_or_raise(Product, product_id, missing_message='المنتج غير موجود')
+            product = get_owned_or_raise(
+                Product, product_id, missing_message="المنتج غير موجود"
+            )
             entry = StockService.post_adjustment_gl(
                 product=product,
                 delta=Decimal(str(quantity)),
@@ -133,21 +172,33 @@ class StockService:
                 # لا يوجد قيد لأن تكلفة المنتج صفر/فارغة — التحرك بلا قيمة
                 # محاسبية. يُسجَّل تحذير صريح بدل تمرير العملية صامتة.
                 current_app.logger.warning(
-                    'Stock adjustment of %s for product #%s produced no GL '
-                    'entry: the product has no cost price.',
-                    quantity, product_id)
+                    "Stock adjustment of %s for product #%s produced no GL "
+                    "entry: the product has no cost price.",
+                    quantity,
+                    product_id,
+                )
         except Exception as e:
             # fail-closed: لا يبقى المخزون متحركاً بلا قيد في الأستاذ.
             db.session.rollback()
             current_app.logger.error(
-                f'Failed to post GL entry for stock adjustment '
-                f'(product #{product_id}): {e}')
+                f"Failed to post GL entry for stock adjustment "
+                f"(product #{product_id}): {e}"
+            )
             raise
 
         return movement
 
     @staticmethod
-    def create_movement(product_id, quantity, movement_type, reference_type=None, reference_id=None, notes=None, warehouse_id=None, unit_cost_base=None):  # noqa: C901
+    def create_movement(
+        product_id,
+        quantity,
+        movement_type,
+        reference_type=None,
+        reference_id=None,
+        notes=None,
+        warehouse_id=None,
+        unit_cost_base=None,
+    ):  # noqa: C901
         """حركة مخزون واحدة — الحركة هي نقطة الالتقاء الوحيدة للكلفة.
 
         كل حركة داخلية (شراء، تسوية يدوية، مرتجع) تُحدِّث **متوسط
@@ -165,24 +216,35 @@ class StockService:
         **قبل** الحركة، فتُستدعى هنا **قبل** تعديل ``current_stock``
         بالضبط — عقد واحد مضمون في موضع واحد.
         """
-        product = get_owned_or_raise(Product, product_id,
-                                     missing_message=f'⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.',
-                                     for_update=True)
+        product = get_owned_or_raise(
+            Product,
+            product_id,
+            missing_message=f"⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.",
+            for_update=True,
+        )
         # 🔒 Concurrency hardening: lock the product row before mutating
         # stock/cost so two concurrent sales cannot both read the same
         # available_stock and oversell or corrupt the moving average.
         if product is not None:
-            product = db.session.get(Product, product.id, with_for_update=True) or product
+            product = (
+                db.session.get(Product, product.id, with_for_update=True) or product
+            )
 
         if not product:
-            raise ValueError(f'⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.')
+            raise ValueError(
+                f"⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة."
+            )
 
         # تحديد المستودع
         if warehouse_id:
             # استخدام المستودع المحدد
-            warehouse = Warehouse.query.filter_by(id=warehouse_id, is_active=True).first()
+            warehouse = Warehouse.query.filter_by(
+                id=warehouse_id, is_active=True
+            ).first()
             if not warehouse:
-                raise ValueError(f'⚠️ المستودع المحدد غير موجود أو غير نشط (ID: {warehouse_id}).')
+                raise ValueError(
+                    f"⚠️ المستودع المحدد غير موجود أو غير نشط (ID: {warehouse_id})."
+                )
         else:
             # البحث عن المستودع الرئيسي أولاً، ثم أول مستودع نشط
             warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
@@ -191,12 +253,21 @@ class StockService:
 
             # إذا لم يوجد أي مستودع، إنشاء واحد افتراضي
             if not warehouse:
-                warehouse = Warehouse(name='Main Warehouse', name_ar='المستودع الرئيسي', is_active=True, is_main=True)
+                warehouse = Warehouse(
+                    name="Main Warehouse",
+                    name_ar="المستودع الرئيسي",
+                    is_active=True,
+                    is_main=True,
+                )
                 db.session.add(warehouse)
                 db.session.flush()
 
         try:
-            user_id = current_user.id if getattr(current_user, 'is_authenticated', False) else None
+            user_id = (
+                current_user.id
+                if getattr(current_user, "is_authenticated", False)
+                else None
+            )
         except Exception:
             user_id = None
 
@@ -207,7 +278,9 @@ class StockService:
         # التحقق من المخزون الناتج قبل أي تعديل — الرسالة تعرض المتوفر الفعلي
         # (كانت تعرض الرصيد بعد التعديل فتُربك المستخدم برقم سالب خاطئ)
         if resulting_stock < 0:
-            raise ValueError(f'❌ المخزون غير كافٍ للمنتج "{product.name}"!\n📦 المتوفر: {available_stock} | المطلوب: {abs(quantity_decimal)}\n💡 قلل الكمية أو اطلب مخزون جديد من المورد.')  # noqa: E501
+            raise ValueError(
+                f'❌ المخزون غير كافٍ للمنتج "{product.name}"!\n📦 المتوفر: {available_stock} | المطلوب: {abs(quantity_decimal)}\n💡 قلل الكمية أو اطلب مخزون جديد من المورد.'
+            )  # noqa: E501
 
         movement = StockMovement(
             product_id=product_id,
@@ -217,7 +290,7 @@ class StockService:
             reference_type=reference_type,
             reference_id=reference_id,
             user_id=user_id,
-            notes=notes
+            notes=notes,
         )
 
         db.session.add(movement)
@@ -233,8 +306,7 @@ class StockService:
                 in_cost = unit_cost_base
                 if in_cost is None:
                     in_cost = CostingService.current_unit_cost(product)
-                CostingService.apply_inbound(
-                    product, quantity_decimal, in_cost)
+                CostingService.apply_inbound(product, quantity_decimal, in_cost)
             product.current_stock = resulting_stock
             db.session.flush()
             nested.commit()
@@ -246,11 +318,11 @@ class StockService:
                 db.session.expunge(movement)
             except Exception:
                 pass
-            current_app.logger.error(f'Stock movement failed: {flush_error}')
+            current_app.logger.error(f"Stock movement failed: {flush_error}")
             raise
 
         current_app.logger.info(
-            f'Stock movement: {movement_type} {quantity} of product #{product_id}'
+            f"Stock movement: {movement_type} {quantity} of product #{product_id}"
         )
 
         return movement
@@ -259,17 +331,17 @@ class StockService:
     def process_sale_lines(sale, warehouse_id=None):
         """معالجة بيوع مع خصم من مستودع محدد"""
         # استخدام warehouse_id من sale إذا لم يُمرر
-        if not warehouse_id and hasattr(sale, 'warehouse_id'):
+        if not warehouse_id and hasattr(sale, "warehouse_id"):
             warehouse_id = sale.warehouse_id
 
         for line in sale.lines:
             StockService.remove_stock(
                 product_id=line.product_id,
                 quantity=line.quantity,
-                reference_type='Sale',
+                reference_type="Sale",
                 reference_id=sale.id,
-                notes=f'بيع: {sale.sale_number}',
-                warehouse_id=warehouse_id  # ← تمرير المستودع
+                notes=f"بيع: {sale.sale_number}",
+                warehouse_id=warehouse_id,  # ← تمرير المستودع
             )
 
     @staticmethod
@@ -284,7 +356,7 @@ class StockService:
 
         ``cost_price`` يبقى **سعر آخر شراء** (مرجع، لا أساس تقييم).
         """
-        if not warehouse_id and hasattr(purchase, 'warehouse_id'):
+        if not warehouse_id and hasattr(purchase, "warehouse_id"):
             warehouse_id = purchase.warehouse_id
 
         for line in purchase.lines:
@@ -294,14 +366,16 @@ class StockService:
             StockService.add_stock(
                 product_id=line.product_id,
                 quantity=line.quantity,
-                reference_type='Purchase',
+                reference_type="Purchase",
                 reference_id=purchase.id,
-                notes=f'شراء: {purchase.purchase_number}',
+                notes=f"شراء: {purchase.purchase_number}",
                 warehouse_id=warehouse_id,
                 unit_cost_base=net_unit_cost,
             )
 
-            product = get_owned_or_raise(Product, line.product_id, missing_message='المنتج غير موجود')
+            product = get_owned_or_raise(
+                Product, line.product_id, missing_message="المنتج غير موجود"
+            )
             if product:
                 # Update cost price in base currency (AED) — مرجع آخر
                 # شراء، لا أساس التقييم (الأساس = average_cost).
@@ -321,15 +395,15 @@ class StockService:
         حالته قبل البيع.
         """
         # استخدام نفس المستودع الذي تم البيع منه
-        warehouse_id = getattr(sale, 'warehouse_id', None)
+        warehouse_id = getattr(sale, "warehouse_id", None)
 
         for line in sale.lines:
             StockService.add_stock(
                 product_id=line.product_id,
                 quantity=line.quantity,
-                reference_type='Sale-Reversed',
+                reference_type="Sale-Reversed",
                 reference_id=sale.id,
-                notes=f'إلغاء بيع: {sale.sale_number}',
+                notes=f"إلغاء بيع: {sale.sale_number}",
                 warehouse_id=warehouse_id,  # ← نفس المستودع
                 unit_cost_base=line.cost_price,
             )
@@ -351,7 +425,7 @@ class StockService:
         from models import Sale, StockMovement
 
         already = StockMovement.query.filter_by(
-            reference_type='Sale-Restored',
+            reference_type="Sale-Restored",
             reference_id=sale_id,
         ).first()
         if already:
@@ -361,14 +435,14 @@ class StockService:
         if sale is None:
             return False
 
-        warehouse_id = getattr(sale, 'warehouse_id', None)
+        warehouse_id = getattr(sale, "warehouse_id", None)
         for line in sale.lines:
             StockService.remove_stock(
                 product_id=line.product_id,
                 quantity=line.quantity,
-                reference_type='Sale-Restored',
+                reference_type="Sale-Restored",
                 reference_id=sale_id,
-                notes=f'استعادة بيع: {sale.sale_number}',
+                notes=f"استعادة بيع: {sale.sale_number}",
                 warehouse_id=warehouse_id,
             )
         return True
@@ -387,12 +461,14 @@ class StockService:
         """
         from sqlalchemy import func
 
-        total = db.session.query(
-            func.coalesce(func.sum(StockMovement.quantity), 0)
-        ).filter(
-            StockMovement.product_id == product_id,
-            StockMovement.warehouse_id == warehouse_id,
-        ).scalar()
+        total = (
+            db.session.query(func.coalesce(func.sum(StockMovement.quantity), 0))
+            .filter(
+                StockMovement.product_id == product_id,
+                StockMovement.warehouse_id == warehouse_id,
+            )
+            .scalar()
+        )
         return Decimal(str(total or 0))
 
     @staticmethod
@@ -400,9 +476,11 @@ class StockService:
         """إجمالي رصيد المنتج من الحركات = مجموع بسيط لكل حركاته."""
         from sqlalchemy import func
 
-        total = db.session.query(
-            func.coalesce(func.sum(StockMovement.quantity), 0)
-        ).filter(StockMovement.product_id == product_id).scalar()
+        total = (
+            db.session.query(func.coalesce(func.sum(StockMovement.quantity), 0))
+            .filter(StockMovement.product_id == product_id)
+            .scalar()
+        )
         return Decimal(str(total or 0))
 
     @staticmethod
@@ -415,28 +493,32 @@ class StockService:
         ``current_stock``.  Otherwise a seller could ship stock that sits
         in another warehouse.
         """
-        product = get_owned_or_raise(Product, product_id, missing_message='المنتج غير موجود')
+        product = get_owned_or_raise(
+            Product, product_id, missing_message="المنتج غير موجود"
+        )
 
         if not product:
-            return False, 'المنتج غير موجود'
+            return False, "المنتج غير موجود"
 
         if not product.is_active:
-            return False, 'المنتج غير نشط'
+            return False, "المنتج غير نشط"
 
         requested = Decimal(str(quantity))
 
         if warehouse_id:
-            available_qty = StockService.get_warehouse_quantity(product_id, warehouse_id)
+            available_qty = StockService.get_warehouse_quantity(
+                product_id, warehouse_id
+            )
             if available_qty < requested:
                 return False, (
-                    f'المخزون غير كافٍ في هذا المستودع '
-                    f'(المتوفر: {available_qty})')
-            return True, 'متوفر'
+                    f"المخزون غير كافٍ في هذا المستودع (المتوفر: {available_qty})"
+                )
+            return True, "متوفر"
 
         if Decimal(str(product.current_stock or 0)) < requested:
-            return False, f'المخزون غير كافٍ (المتوفر: {product.current_stock})'
+            return False, f"المخزون غير كافٍ (المتوفر: {product.current_stock})"
 
-        return True, 'متوفر'
+        return True, "متوفر"
 
     @staticmethod
     def get_cost_basis(product):
@@ -451,7 +533,7 @@ class StockService:
         """
         if product is None:
             return None
-        for attribute in ('average_cost', 'cost_price'):
+        for attribute in ("average_cost", "cost_price"):
             raw = getattr(product, attribute, None)
             if raw is None:
                 continue
@@ -472,19 +554,20 @@ class StockService:
         """
         cost = StockService.get_cost_basis(product)
         if cost is None:
-            name = getattr(product, 'name', None) or 'غير معروف'
-            sku = getattr(product, 'sku', None)
-            suffix = f' (SKU: {sku})' if sku else ''
+            name = getattr(product, "name", None) or "غير معروف"
+            sku = getattr(product, "sku", None)
+            suffix = f" (SKU: {sku})" if sku else ""
             raise ValidationError(
                 f'⚠️ المنتج "{name}"{suffix} بلا تكلفة مسجّلة '
-                f'(average_cost = 0 ولا cost_price). '
-                f'لا يمكن بيعه لأن قيد الإيراد لن يقابله قيد تكلفة البضاعة '
-                f'ولا تسوية للمخزون.\n'
-                f'💡 اضبط تكلفة المنتج في بطاقة المنتج ثم أعد المحاولة.')
+                f"(average_cost = 0 ولا cost_price). "
+                f"لا يمكن بيعه لأن قيد الإيراد لن يقابله قيد تكلفة البضاعة "
+                f"ولا تسوية للمخزون.\n"
+                f"💡 اضبط تكلفة المنتج في بطاقة المنتج ثم أعد المحاولة."
+            )
         if quantity is not None:
             try:
                 if Decimal(str(quantity)) <= 0:
-                    raise ValidationError('الكمية يجب أن تكون أكبر من صفر')
+                    raise ValidationError("الكمية يجب أن تكون أكبر من صفر")
             except ValidationError:
                 raise
             except Exception:
@@ -494,10 +577,12 @@ class StockService:
     @staticmethod
     def get_low_stock_products(limit=None):
         from sqlalchemy import func
+
         # Handle NULL values safely using coalesce
         query = Product.query.filter(
             Product.is_active.is_(True),
-            func.coalesce(Product.current_stock, 0) <= func.coalesce(Product.min_stock_alert, 0)
+            func.coalesce(Product.current_stock, 0)
+            <= func.coalesce(Product.min_stock_alert, 0),
         ).order_by(Product.current_stock.asc())
 
         if limit:
@@ -508,7 +593,7 @@ class StockService:
     @staticmethod
     def get_out_of_stock_products():
         from sqlalchemy import func
+
         return Product.query.filter(
-            Product.is_active.is_(True),
-            func.coalesce(Product.current_stock, 0) <= 0
+            Product.is_active.is_(True), func.coalesce(Product.current_stock, 0) <= 0
         ).all()

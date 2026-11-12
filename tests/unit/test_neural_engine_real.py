@@ -1,6 +1,6 @@
 """Real backend coverage for ai_knowledge/neural_engine.py (explicit branch measurement,
 no fake 100% branch claim). Tests initialization, basic predictions, and model helpers."""
-import pytest
+
 from ai_knowledge.neural_engine import AzadNeuralEngine
 
 

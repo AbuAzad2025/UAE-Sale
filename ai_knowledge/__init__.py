@@ -2,6 +2,7 @@
 🤖 AI Knowledge Base - قاعدة معرفة أزاد
 المساعد الذكي الخبير في المحاسبة والمعدات الثقيلة
 """
+
 import os
 from flask import current_app
 
@@ -13,11 +14,12 @@ def _get_instance_knowledge_dir():
     """مسار مجلد المعرفة القابل للكتابة داخل instance/ (لـPythonAnywhere)."""
     try:
         # داخل سياق التطبيق — نستخدم instance_path
-        return os.path.join(current_app.instance_path, 'knowledge')
+        return os.path.join(current_app.instance_path, "knowledge")
     except RuntimeError:
         # خارج سياق التطبيق (اختبارات، سكريبتات) — نسقط على مجلد مؤقت
         import tempfile
-        return os.path.join(tempfile.gettempdir(), 'azad_knowledge')
+
+        return os.path.join(tempfile.gettempdir(), "azad_knowledge")
 
 
 def get_knowledge_path(filename):
@@ -28,7 +30,7 @@ def get_knowledge_path(filename):
     - expanded_knowledge/، knowledge_sources.json → instance/knowledge/ (قابل للكتابة)
     - models/، patterns.pkl، memory/ → ai_knowledge/ (للقراءة فقط)
     """
-    writable_prefixes = ('expanded_knowledge/', 'knowledge_sources.json')
+    writable_prefixes = ("expanded_knowledge/", "knowledge_sources.json")
     if filename.startswith(writable_prefixes):
         base = _get_instance_knowledge_dir()
     else:

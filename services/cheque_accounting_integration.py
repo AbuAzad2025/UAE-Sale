@@ -190,7 +190,7 @@ class ChequeAccountingIntegration:
             cheque.gl_journal_entry_id = entry.id
             cheque.updated_at = datetime.now(timezone.utc)
 
-            db.session.commit()
+            db.session.flush()
 
             return entry
 
@@ -253,7 +253,7 @@ class ChequeAccountingIntegration:
             cheque.gl_journal_entry_id = entry.id
             cheque.updated_at = datetime.now(timezone.utc)
 
-            db.session.commit()
+            db.session.flush()
 
             return entry
 
@@ -423,7 +423,7 @@ class ChequeAccountingIntegration:
             cheque.gl_clearing_entry_id = entry.id
             cheque.updated_at = datetime.now(timezone.utc)
 
-            db.session.commit()
+            db.session.flush()
 
             return entry
 
@@ -546,7 +546,7 @@ class ChequeAccountingIntegration:
                         supplier.total_purchases_aed or Decimal("0")
                     ) - amount_base
 
-            db.session.commit()
+            db.session.flush()
 
             return entry
 

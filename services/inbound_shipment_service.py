@@ -76,7 +76,7 @@ class InboundShipmentService:
             db.session.add(line)
         db.session.flush()
         sh.calculate_totals()
-        db.session.commit()
+        db.session.flush()
         return sh
 
     @staticmethod
@@ -92,7 +92,7 @@ class InboundShipmentService:
         for line in sh.lines:
             if line.quantity_received == 0:
                 line.quantity_received = line.quantity_expected
-        db.session.commit()
+        db.session.flush()
         return sh
 
     @staticmethod
@@ -124,7 +124,7 @@ class InboundShipmentService:
                 line.quantity_accepted = line.quantity_received
         sh.status = "inspected"
         sh.inspected_at = datetime.now(timezone.utc)
-        db.session.commit()
+        db.session.flush()
         return sh
 
     @staticmethod
@@ -166,7 +166,7 @@ class InboundShipmentService:
                     po.status = "partially_received"
         sh.status = "put_away"
         sh.put_away_at = datetime.now(timezone.utc)
-        db.session.commit()
+        db.session.flush()
         return sh
 
     @staticmethod
@@ -178,7 +178,7 @@ class InboundShipmentService:
             raise ValueError(f"لا يمكن الإغلاق من حالة {sh.status}")
         sh.status = "closed"
         sh.closed_at = datetime.now(timezone.utc)
-        db.session.commit()
+        db.session.flush()
         return sh
 
     @staticmethod
@@ -191,5 +191,5 @@ class InboundShipmentService:
         if sh.status == "put_away":
             raise ValueError("لا يمكن إلغاء شحنة تم إدخالها — استخدم إرجاع مخزني")
         sh.status = "cancelled"
-        db.session.commit()
+        db.session.flush()
         return sh

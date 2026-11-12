@@ -120,7 +120,7 @@ def create_customer(name, phone=None, address=None):
         **_stamp_tenant(None),
     )
     db.session.add(customer)
-    db.session.commit()
+    db.session.flush()
     _ai_audit("customers", customer.id, {"name": name})
     return customer
 
@@ -163,7 +163,7 @@ def create_product(
             unit_cost_base=cost_price if cost_price else None,
         )
 
-    db.session.commit()
+    db.session.flush()
     _ai_audit("products", product.id, {"name": name, "cost_price": str(cost_price)})
     return product
 
@@ -258,7 +258,7 @@ def record_payment(customer_id, amount, method, direction, user_id, payment_type
         payment_confirmed=True,
     )
     db.session.add(payment)
-    db.session.commit()
+    db.session.flush()
     _ai_audit(
         "payments", payment.id, {"customer_id": customer_id, "amount": str(amount)}
     )
@@ -293,7 +293,7 @@ def create_expense(description, amount, user_id):
         user_id=user_id,
     )
     db.session.add(expense)
-    db.session.commit()
+    db.session.flush()
     _ai_audit(
         "expenses", expense.id, {"description": description, "amount": str(amount)}
     )
@@ -314,7 +314,7 @@ def create_supplier(name, phone=None, email=None, address=None, tax_number=None)
         **_stamp_tenant(None),
     )
     db.session.add(supplier)
-    db.session.commit()
+    db.session.flush()
     _ai_audit("suppliers", supplier.id, {"name": name})
     return supplier
 
@@ -369,7 +369,7 @@ def create_purchase(supplier_id, product_id, quantity, unit_cost, user_id):
         unit_cost_base=unit_cost,
     )
 
-    db.session.commit()
+    db.session.flush()
     _ai_audit(
         "purchases", purchase.id, {"supplier_id": supplier_id, "product_id": product_id}
     )
@@ -394,7 +394,7 @@ def create_cheque(cheque_number, amount, due_date, cheque_type, user_id):
         is_active=True,
     )
     db.session.add(cheque)
-    db.session.commit()
+    db.session.flush()
     _ai_audit("cheques", cheque.id, {"number": cheque_number, "amount": str(amount)})
     return cheque
 
@@ -418,6 +418,6 @@ def create_user(username, password, role_slug, email=None, full_name=None):
     )
     user.set_password(password)
     db.session.add(user)
-    db.session.commit()
+    db.session.flush()
     _ai_audit("users", user.id, {"username": username})
     return user

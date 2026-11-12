@@ -17,6 +17,7 @@ from models.inbound_shipment import InboundShipment
 from services.inbound_shipment_service import InboundShipmentService
 from utils.decorators import permission_required
 from utils.helpers import create_audit_log
+from utils.transaction import atomic_transaction
 from models.tenant_scope import get_current_tenant_id
 
 inbound_bp = Blueprint("inbound_shipments", __name__, url_prefix="/inbound-shipments")
@@ -75,19 +76,20 @@ def create_inbound():
             from datetime import datetime
 
             exp = datetime.strptime(exp_str, "%Y-%m-%d").date() if exp_str else None
-            s = InboundShipmentService.create_shipment(
-                warehouse_id=request.form.get("warehouse_id", type=int),
-                supplier_id=request.form.get("supplier_id", type=int),
-                purchase_order_id=request.form.get("purchase_order_id", type=int),
-                carrier=request.form.get("carrier"),
-                tracking_number=request.form.get("tracking_number"),
-                expected_at=exp,
-                tenant_id=_tenant_id(),
-                created_by_id=current_user.id,
-                lines_data=lines_data,
-                notes=request.form.get("notes"),
-            )
-            create_audit_log("create", "inbound_shipments", s.id)
+            with atomic_transaction():
+                s = InboundShipmentService.create_shipment(
+                    warehouse_id=request.form.get("warehouse_id", type=int),
+                    supplier_id=request.form.get("supplier_id", type=int),
+                    purchase_order_id=request.form.get("purchase_order_id", type=int),
+                    carrier=request.form.get("carrier"),
+                    tracking_number=request.form.get("tracking_number"),
+                    expected_at=exp,
+                    tenant_id=_tenant_id(),
+                    created_by_id=current_user.id,
+                    lines_data=lines_data,
+                    notes=request.form.get("notes"),
+                )
+                create_audit_log("create", "inbound_shipments", s.id)
             flash(f"✅ تم إنشاء شحنة واردة {s.shipment_number}", "success")
             return redirect(url_for("inbound_shipments.view_inbound", id=s.id))
         except Exception as e:
@@ -115,7 +117,8 @@ def create_inbound():
 @permission_required("manage_warehouse")
 def arrive_inbound(id):
     try:
-        InboundShipmentService.arrive(id, current_user.id)
+        with atomic_transaction():
+            InboundShipmentService.arrive(id, current_user.id)
         flash("✅ تم تأكيد وصول الشحنة", "success")
     except ValueError as e:
         current_app.logger.exception("handler failed")
@@ -129,7 +132,8 @@ def arrive_inbound(id):
 def inspect_inbound(id):
     try:
         # Accept all by default; detailed quantities can be posted as line_id/quantity_accepted
-        InboundShipmentService.inspect_shipment(id)
+        with atomic_transaction():
+            InboundShipmentService.inspect_shipment(id)
         flash("✅ تم الفحص", "success")
     except ValueError as e:
         current_app.logger.exception("handler failed")
@@ -142,7 +146,8 @@ def inspect_inbound(id):
 @permission_required("manage_warehouse")
 def put_away_inbound(id):
     try:
-        InboundShipmentService.put_away(id, current_user.id)
+        with atomic_transaction():
+            InboundShipmentService.put_away(id, current_user.id)
         flash("✅ تم إدخال البضاعة للمستودعات", "success")
     except ValueError as e:
         current_app.logger.exception("handler failed")
@@ -155,7 +160,8 @@ def put_away_inbound(id):
 @permission_required("manage_warehouse")
 def close_inbound(id):
     try:
-        InboundShipmentService.close(id, current_user.id)
+        with atomic_transaction():
+            InboundShipmentService.close(id, current_user.id)
         flash("✅ تم إغلاق الشحنة", "success")
     except ValueError as e:
         current_app.logger.exception("handler failed")
@@ -168,7 +174,8 @@ def close_inbound(id):
 @permission_required("manage_warehouse")
 def cancel_inbound(id):
     try:
-        InboundShipmentService.cancel(id, current_user.id)
+        with atomic_transaction():
+            InboundShipmentService.cancel(id, current_user.id)
         flash("✅ تم إلغاء الشحنة", "success")
     except ValueError as e:
         current_app.logger.exception("handler failed")

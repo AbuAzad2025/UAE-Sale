@@ -86,7 +86,7 @@ class ShipmentService:
 
         db.session.flush()
         shipment.calculate_totals()
-        db.session.commit()
+        db.session.flush()
         return shipment
 
     @staticmethod
@@ -99,7 +99,7 @@ class ShipmentService:
         # Optional: stock check could be added here (conservative: allow draft without deduct)
         shipment.status = "in_transit"
         shipment.shipped_at = datetime.now(timezone.utc)
-        db.session.commit()
+        db.session.flush()
         return shipment
 
     @staticmethod
@@ -111,7 +111,7 @@ class ShipmentService:
             raise ValueError(f"لا يمكن تأكيد الوصول من حالة {shipment.status}")
         shipment.status = "arrived"
         shipment.arrived_at = datetime.now(timezone.utc)
-        db.session.commit()
+        db.session.flush()
         return shipment
 
     @staticmethod
@@ -122,7 +122,7 @@ class ShipmentService:
         if shipment.status != "arrived":
             raise ValueError(f"لا يمكن بدء البيع من حالة {shipment.status}")
         shipment.status = "selling"
-        db.session.commit()
+        db.session.flush()
         return shipment
 
     @staticmethod
@@ -134,7 +134,7 @@ class ShipmentService:
             raise ValueError(f"لا يمكن الإغلاق من حالة {shipment.status}")
         shipment.status = "closed"
         shipment.closed_at = datetime.now(timezone.utc)
-        db.session.commit()
+        db.session.flush()
         return shipment
 
     @staticmethod
@@ -147,7 +147,7 @@ class ShipmentService:
         if shipment.status == "cancelled":
             raise ValueError("الإرسالية ملغاة بالفعل")
         shipment.status = "cancelled"
-        db.session.commit()
+        db.session.flush()
         return shipment
 
     @staticmethod

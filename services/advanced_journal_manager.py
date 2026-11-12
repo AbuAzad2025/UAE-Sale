@@ -181,7 +181,7 @@ class AdvancedJournalEntryManager:
             updated_by,
         )
 
-        db.session.commit()
+        db.session.flush()
         return entry
 
     @staticmethod
@@ -242,7 +242,7 @@ class AdvancedJournalEntryManager:
             reversed_by,
         )
 
-        db.session.commit()
+        db.session.flush()
         return reversal_entry
 
     @staticmethod
@@ -280,7 +280,7 @@ class AdvancedJournalEntryManager:
         GLJournalLine.query.filter_by(entry_id=entry_id).delete()
         db.session.delete(entry)
 
-        db.session.commit()
+        db.session.flush()
         return True
 
     @staticmethod
@@ -314,7 +314,7 @@ class AdvancedJournalEntryManager:
             approved_by,
         )
 
-        db.session.commit()
+        db.session.flush()
         return entry
 
     @staticmethod

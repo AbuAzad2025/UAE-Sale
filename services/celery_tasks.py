@@ -359,7 +359,7 @@ def _revalue_fx_for_current_period():
             "period_key": result.get("period_key"),
         }
 
-    db.session.commit()
+    db.session.flush()
     return {
         "posted": True,
         "period_key": result.get("period_key"),

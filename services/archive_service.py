@@ -59,7 +59,7 @@ class ArchiveService:
             db.session.add(archived)
 
             if commit:
-                db.session.commit()
+                db.session.flush()
                 current_app.logger.info(f"Archived: {table_name} #{record.id}")
             else:
                 db.session.flush()
@@ -78,7 +78,7 @@ class ArchiveService:
     @staticmethod
     def soft_delete(record):
         record.is_active = False
-        db.session.commit()
+        db.session.flush()
 
     @staticmethod
     def hard_delete(table_name, record, archive_first=True):
@@ -87,7 +87,7 @@ class ArchiveService:
                 ArchiveService.archive_record(table_name, record, reason="Hard Delete")
 
             db.session.delete(record)
-            db.session.commit()
+            db.session.flush()
 
             current_app.logger.warning(f"Hard deleted: {table_name} #{record.id}")
 
@@ -108,7 +108,7 @@ class ArchiveService:
 
             if existing:
                 existing.is_active = True
-                db.session.commit()
+                db.session.flush()
                 current_app.logger.info(
                     f"Restored: {archived_record.table_name} #{archived_record.record_id}"
                 )
@@ -145,7 +145,7 @@ class ArchiveService:
             db.session.delete(archive)
             count += 1
 
-        db.session.commit()
+        db.session.flush()
 
         current_app.logger.info(f"Cleaned up {count} old archives")
 

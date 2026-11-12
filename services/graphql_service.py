@@ -173,7 +173,7 @@ class CreateSale(graphene.Mutation):
             status="confirmed",
         )
         db.session.add(sale)
-        db.session.commit()
+        db.session.flush()
 
         # Convert to SaleType
         sale_type = SaleType(

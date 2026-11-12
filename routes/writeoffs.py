@@ -26,6 +26,7 @@ from services.currency_service import CurrencyService
 from services.writeoff_service import WriteOffService
 from utils.decorators import get_owned_or_404, permission_required
 from utils.errors import ValidationError
+from utils.transaction import atomic_transaction
 
 writeoffs_bp = Blueprint("writeoffs", __name__, url_prefix="/writeoffs")
 
@@ -112,15 +113,16 @@ def create():
     sale = get_owned_or_404(Sale, sale_id) if sale_id else None
 
     try:
-        write_off = WriteOffService.create_writeoff(
-            customer=customer,
-            amount=amount,
-            currency=currency,
-            exchange_rate=exchange_rate,
-            reason=reason,
-            sale=sale,
-            notes=notes,
-        )
+        with atomic_transaction():
+            write_off = WriteOffService.create_writeoff(
+                customer=customer,
+                amount=amount,
+                currency=currency,
+                exchange_rate=exchange_rate,
+                reason=reason,
+                sale=sale,
+                notes=notes,
+            )
     except ValidationError as e:
         flash(str(e), "danger")
         return redirect(url_for("writeoffs.new"))
@@ -161,7 +163,8 @@ def void(write_off_id):
         abort(404)
 
     try:
-        WriteOffService.void_writeoff(write_off, reason=request.form.get("reason"))
+        with atomic_transaction():
+            WriteOffService.void_writeoff(write_off, reason=request.form.get("reason"))
     except ValidationError as e:
         flash(str(e), "danger")
         return redirect(url_for("writeoffs.detail", write_off_id=write_off_id))

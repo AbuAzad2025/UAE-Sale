@@ -223,7 +223,7 @@ def add_custom(group, code, ar, en=None):
     settings.set_custom_setting(OVERRIDES_KEY, data)
     from extensions import db
 
-    db.session.commit()
+    db.session.flush()
     return code
 
 
@@ -257,7 +257,7 @@ def set_label(group, code, ar, en=None):
     settings.set_custom_setting(OVERRIDES_KEY, data)
     from extensions import db
 
-    db.session.commit()
+    db.session.flush()
 
 
 def set_disabled(group, code, disabled):
@@ -288,4 +288,4 @@ def set_disabled(group, code, disabled):
     settings.set_custom_setting(OVERRIDES_KEY, data)
     from extensions import db
 
-    db.session.commit()
+    db.session.flush()

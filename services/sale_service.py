@@ -624,7 +624,7 @@ class SaleService:
 
             post_partner_shares_for_sale(sale)
 
-            db.session.commit()
+            db.session.flush()
 
             current_app.logger.info(f"Sale created: {sale.sale_number}")
 
@@ -888,7 +888,7 @@ class SaleService:
         # posted no reversal at all.
         SaleService.reverse_sale_gl_entries(sale, reason="Cancelled")
 
-        db.session.commit()
+        db.session.flush()
 
         current_app.logger.info(f"Sale cancelled: {sale.sale_number}")
 
@@ -931,7 +931,7 @@ class SaleService:
                 sale.payment_status = "unpaid"
                 sale.balance_due = total
 
-            db.session.commit()
+            db.session.flush()
             return
 
         paid = Decimal(str(sale.paid_amount)) if sale.paid_amount else Decimal("0")
@@ -949,4 +949,4 @@ class SaleService:
             sale.payment_status = "unpaid"
             sale.balance_due = total
 
-        db.session.commit()
+        db.session.flush()

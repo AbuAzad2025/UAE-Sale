@@ -203,7 +203,7 @@ def inline_edit(entity_type, entity_id):
 
     old_value = getattr(obj, field, None)
     setattr(obj, field, coerced)
-    db.session.commit()
+    db.session.flush()
 
     return jsonify(
         {

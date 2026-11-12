@@ -146,7 +146,7 @@ class QuotationService:
             db.session.add(line)
 
         q.calculate_totals()
-        db.session.commit()
+        db.session.flush()
         return q
 
     @staticmethod
@@ -216,7 +216,7 @@ class QuotationService:
         q.status = "converted"
         q.converted_sale_id = sale.id
         q.converted_at = datetime.now(timezone.utc)
-        db.session.commit()
+        db.session.flush()
         return sale
 
     @staticmethod
@@ -228,7 +228,7 @@ class QuotationService:
         if q.status not in ("draft", "sent"):
             raise ValueError("لا يمكن إرسال عرض بحالة: " + q.status_ar)
         q.status = "sent"
-        db.session.commit()
+        db.session.flush()
         return q
 
     @staticmethod
@@ -244,7 +244,7 @@ class QuotationService:
         if q.status not in ("sent", "draft"):
             raise ValueError("لا يمكن قبول عرض بحالة: " + q.status_ar)
         q.status = "accepted"
-        db.session.commit()
+        db.session.flush()
         return q
 
     @staticmethod
@@ -255,7 +255,7 @@ class QuotationService:
         if q.status == "converted":
             raise ValueError("عرض أسعار مُحَوَّل بالفعل — لا يمكن رفضه")
         q.status = "rejected"
-        db.session.commit()
+        db.session.flush()
         return q
 
     @staticmethod
@@ -305,7 +305,7 @@ class QuotationService:
             new_line.calculate_line_total()
             db.session.add(new_line)
         new_q.calculate_totals()
-        db.session.commit()
+        db.session.flush()
         return new_q
 
     @staticmethod
@@ -318,7 +318,7 @@ class QuotationService:
         if notes:
             new_q.version_notes = notes
         new_q.status = "draft"
-        db.session.commit()
+        db.session.flush()
         return new_q
 
     @staticmethod
@@ -347,7 +347,7 @@ class QuotationService:
             mail.send(msg)
             q.email_sent_at = datetime.now(timezone.utc)
             q.email_sent_to = to_email
-            db.session.commit()
+            db.session.flush()
             return True
         except Exception as e:
             logger.error("Failed to send quotation email: %s", e)
@@ -397,7 +397,7 @@ class PurchaseOrderService:
             db.session.add(line)
 
         po.calculate_totals()
-        db.session.commit()
+        db.session.flush()
         return po
 
     @staticmethod
@@ -408,7 +408,7 @@ class PurchaseOrderService:
         po.status = "approved"
         po.approved_by_id = approver_id
         po.approved_at = datetime.now(timezone.utc)
-        db.session.commit()
+        db.session.flush()
         return po
 
     @staticmethod
@@ -488,7 +488,7 @@ class PurchaseOrderService:
             exchange_rate=purchase.exchange_rate,
         )
 
-        db.session.commit()
+        db.session.flush()
         return purchase
 
 
@@ -544,14 +544,14 @@ class FiscalPeriodService:
         if hasattr(FiscalPeriod, "tenant_id"):
             fp.tenant_id = tenant_id
         db.session.add(fp)
-        db.session.commit()
+        db.session.flush()
         return fp
 
     @staticmethod
     def close_period(period_id, user_id):
         fp = db.get_or_404(FiscalPeriod, period_id)
         fp.close(user_id)
-        db.session.commit()
+        db.session.flush()
         return fp
 
     @staticmethod
@@ -665,7 +665,7 @@ class StockTransferService:
             )
             db.session.add(line)
 
-        db.session.commit()
+        db.session.flush()
         return transfer
 
     @staticmethod
@@ -694,7 +694,7 @@ class StockTransferService:
         transfer.status = "received"
         transfer.received_by_id = user_id
         transfer.received_at = datetime.now(timezone.utc)
-        db.session.commit()
+        db.session.flush()
         return transfer
 
 
@@ -769,7 +769,7 @@ class StockTakeService:
                 )
                 db.session.add(item)
 
-        db.session.commit()
+        db.session.flush()
         return st
 
     @staticmethod
@@ -779,7 +779,7 @@ class StockTakeService:
         st.completed_at = datetime.now(timezone.utc)
         for item in st.items:
             item.calculate_variance()
-        db.session.commit()
+        db.session.flush()
         return st
 
     @staticmethod
@@ -802,7 +802,7 @@ class StockTakeService:
 
         st.status = "approved"
         st.approved_by_id = approver_id
-        db.session.commit()
+        db.session.flush()
         return st
 
 
@@ -856,7 +856,7 @@ class DunningService:
             db.session.add(letter)
             letters.append(letter)
 
-        db.session.commit()
+        db.session.flush()
         return letters
 
     @staticmethod
@@ -952,7 +952,7 @@ class RecurringExpenseService:
             re.next_due_date = re.get_next_due()
             created.append(expense)
 
-        db.session.commit()
+        db.session.flush()
         return created
 
 
@@ -980,5 +980,5 @@ class EInvoiceService:
         einv.generate_xml()
         einv.generate_json()
         db.session.add(einv)
-        db.session.commit()
+        db.session.flush()
         return einv

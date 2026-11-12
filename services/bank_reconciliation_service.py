@@ -64,7 +64,7 @@ class BankReconciliationService:
         # حساب المطابقة
         reconciliation.calculate_reconciliation()
 
-        db.session.commit()
+        db.session.flush()
         return reconciliation
 
     @staticmethod
@@ -134,7 +134,7 @@ class BankReconciliationService:
         reconciliation.bank_charges += abs(Decimal(str(amount)))
         reconciliation.calculate_reconciliation()
 
-        db.session.commit()
+        db.session.flush()
         return item
 
     @staticmethod
@@ -161,7 +161,7 @@ class BankReconciliationService:
         reconciliation.bank_interest += abs(Decimal(str(amount)))
         reconciliation.calculate_reconciliation()
 
-        db.session.commit()
+        db.session.flush()
         return item
 
     @staticmethod
@@ -234,7 +234,7 @@ class BankReconciliationService:
         # تحديث الحالة
         reconciliation.status = "completed"
 
-        db.session.commit()
+        db.session.flush()
         return reconciliation
 
     @staticmethod

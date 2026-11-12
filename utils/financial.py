@@ -7,6 +7,7 @@ discounts, or quantities.
 `parse_decimal()` rejects malformed input with `ValueError` instead of
 silently coercing to 0.0.
 """
+
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from utils.errors import ValidationError
 

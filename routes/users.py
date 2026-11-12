@@ -21,6 +21,7 @@ from utils.decorators import (
 )
 from utils.errors import ValidationError
 from utils.helpers import create_audit_log
+from utils.transaction import atomic_transaction
 
 users_bp = Blueprint("users", __name__, url_prefix="/users")
 
@@ -133,20 +134,21 @@ def create():
                 # created outside the platform-owner path.
                 tenant_id = getattr(current_user, "tenant_id", None)
                 is_owner = False
-            user = UserService.provision_user(
-                username=request.form.get("username"),
-                email=request.form.get("email"),
-                password=request.form.get("password"),
-                role_id=request.form.get("role_id", type=int),
-                full_name=request.form.get("full_name"),
-                full_name_ar=request.form.get("full_name_ar"),
-                phone=request.form.get("phone"),
-                tenant_id=tenant_id,
-                is_owner=is_owner,
-                is_active=request.form.get("is_active", "1") == "1",
-                actor=current_user,
-            )
-            create_audit_log("create", "users", user.id)
+            with atomic_transaction():
+                user = UserService.provision_user(
+                    username=request.form.get("username"),
+                    email=request.form.get("email"),
+                    password=request.form.get("password"),
+                    role_id=request.form.get("role_id", type=int),
+                    full_name=request.form.get("full_name"),
+                    full_name_ar=request.form.get("full_name_ar"),
+                    phone=request.form.get("phone"),
+                    tenant_id=tenant_id,
+                    is_owner=is_owner,
+                    is_active=request.form.get("is_active", "1") == "1",
+                    actor=current_user,
+                )
+                create_audit_log("create", "users", user.id)
             flash("✅ تم إضافة المستخدم بنجاح!", "success")
             if fixed_tenant:
                 return redirect(url_for("owner.tenant_detail", id=fixed_tenant.id))
@@ -264,18 +266,19 @@ def edit(id):
                 owner_arg = request.form.get("is_owner") == "on"
             else:
                 owner_arg = _UNCHANGED
-            UserService.update_user(
-                user,
-                email=request.form.get("email"),
-                full_name=request.form.get("full_name"),
-                full_name_ar=request.form.get("full_name_ar"),
-                phone=request.form.get("phone"),
-                role_id=role_arg,
-                is_owner=owner_arg,
-                new_password=request.form.get("new_password") or None,
-                actor=current_user,
-            )
-            create_audit_log("update", "users", user.id)
+            with atomic_transaction():
+                UserService.update_user(
+                    user,
+                    email=request.form.get("email"),
+                    full_name=request.form.get("full_name"),
+                    full_name_ar=request.form.get("full_name_ar"),
+                    phone=request.form.get("phone"),
+                    role_id=role_arg,
+                    is_owner=owner_arg,
+                    new_password=request.form.get("new_password") or None,
+                    actor=current_user,
+                )
+                create_audit_log("update", "users", user.id)
             flash("✅ تم تحديث بيانات المستخدم بنجاح!", "success")
             return redirect(url_for("users.view", id=user.id))
         except ValidationError as e:
@@ -307,7 +310,8 @@ def toggle_active(id):
         # Owner accounts are immune here (same as the legacy rule).
         abort(404)
 
-    updated = UserService.set_active(user, not user.is_active, current_user)
+    with atomic_transaction():
+        updated = UserService.set_active(user, not user.is_active, current_user)
 
     status_msg = "تفعيل" if updated.is_active else "إلغاء تفعيل"
     flash(f'✅ تم {status_msg} المستخدم "{user.username}" بنجاح!', "success")
@@ -331,7 +335,8 @@ def delete(id):
         abort(404)
 
     try:
-        outcome = UserService.delete_user(user, current_user)
+        with atomic_transaction():
+            outcome = UserService.delete_user(user, current_user)
     except ValidationError as e:
         flash(f"⚠️ {e}", "danger")
         return redirect(url_for("users.index"))
@@ -367,12 +372,13 @@ def change_password():
     """Self-service password change — any authenticated user can change their own password."""
     if request.method == "POST":
         try:
-            UserService.change_own_password(
-                current_user,
-                request.form.get("current_password", ""),
-                request.form.get("new_password", ""),
-                request.form.get("confirm_password", ""),
-            )
+            with atomic_transaction():
+                UserService.change_own_password(
+                    current_user,
+                    request.form.get("current_password", ""),
+                    request.form.get("new_password", ""),
+                    request.form.get("confirm_password", ""),
+                )
         except ValidationError as e:
             flash(f"❌ {e}", "danger")
             return render_template("users/change_password.html")

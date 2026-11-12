@@ -272,7 +272,7 @@ class WriteOffService:
                 commit=False,
             )
 
-            db.session.commit()
+            db.session.flush()
             current_app.logger.info(
                 "Write-off created: customer=%s amount=%s %s (entry %s)",
                 customer.id,
@@ -360,7 +360,7 @@ class WriteOffService:
                 commit=False,
             )
 
-            db.session.commit()
+            db.session.flush()
             current_app.logger.info(
                 "Write-off voided: id=%s customer=%s (reversal %s)",
                 write_off.id,

@@ -198,7 +198,7 @@ class WebhookService:
             purchase.payment_status = "failed"
             logger.warning(f"❌ Purchase {purchase.id} failed")
 
-        db.session.commit()
+        db.session.flush()
 
         return {"success": True, "message": f"Purchase updated to {payment_status}"}
 
@@ -233,7 +233,7 @@ class WebhookService:
             donation.status = "failed"
             logger.warning(f"❌ Donation {donation.id} failed")
 
-        db.session.commit()
+        db.session.flush()
 
         return {"success": True, "message": f"Donation updated to {payment_status}"}
 

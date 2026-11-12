@@ -434,7 +434,7 @@ class ReturnService:
                 commit=False,
             )
 
-            db.session.commit()
+            db.session.flush()
             return product_return
 
         except Exception as e:

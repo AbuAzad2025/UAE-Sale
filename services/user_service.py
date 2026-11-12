@@ -198,7 +198,7 @@ class UserService:
         user.set_password(password)
         db.session.add(user)
         db.session.flush()
-        db.session.commit()
+        db.session.flush()
         return user
 
     # ------------------------------------------------------------------
@@ -258,7 +258,7 @@ class UserService:
                 user.updated_by = actor.id
             except Exception:
                 pass
-        db.session.commit()
+        db.session.flush()
         return user
 
     # ------------------------------------------------------------------
@@ -270,7 +270,7 @@ class UserService:
         if user.is_owner:
             raise ValidationError("لا يمكن تعطيل حساب مالك من هنا.")
         user.is_active = bool(active)
-        db.session.commit()
+        db.session.flush()
         return user
 
     @staticmethod
@@ -288,10 +288,10 @@ class UserService:
         has_sales = Sale.query.filter_by(seller_id=user.id).count() > 0
         if has_sales:
             user.is_active = False
-            db.session.commit()
+            db.session.flush()
             return "deactivated"
         db.session.delete(user)
-        db.session.commit()
+        db.session.flush()
         return "deleted"
 
     # ------------------------------------------------------------------
@@ -309,7 +309,7 @@ class UserService:
         _check_password(new_password)
         user.set_password(new_password)
         user.must_change_password = False
-        db.session.commit()
+        db.session.flush()
         return user
 
     # ------------------------------------------------------------------

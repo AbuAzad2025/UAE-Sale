@@ -179,7 +179,7 @@ def report_error(
         if not has_app_context():
             raise RuntimeError("no app context for error persistence")
         db.session.add(entry)
-        db.session.commit()
+        db.session.flush()
         return entry
     except Exception as exc:
         try:

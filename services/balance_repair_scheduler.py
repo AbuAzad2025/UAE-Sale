@@ -45,7 +45,7 @@ class BalanceRepairScheduler:
             current = SystemSettings()
             db.session.add(current)
         current.set_custom_setting(BalanceRepairScheduler.SETTINGS_KEY, settings)
-        db.session.commit()
+        db.session.flush()
 
     @staticmethod
     def run_scheduled_repair(auto_repair=True):

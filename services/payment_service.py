@@ -647,14 +647,14 @@ class PaymentService:
             if receipt.sale_id is None and stored_allocations:
                 receipt.sale_id = int(stored_allocations[0]["sale_id"])
 
-            db.session.commit()
+            db.session.flush()
 
             # F1: رصيد العميل يُشتق من مصدره الواحد (المستمع يعيد الاحتساب
             # بعد تحديث الفاتورة) — لا زيادة تدريجية هنا.
             from models.customer import recompute_customer_balance
 
             recompute_customer_balance(customer.id)
-            db.session.commit()
+            db.session.flush()
 
             current_app.logger.info(f"Receipt created: {receipt.receipt_number}")
 
@@ -857,7 +857,7 @@ class PaymentService:
             commit=False,
         )
 
-        db.session.commit()
+        db.session.flush()
         current_app.logger.info(
             f"Refund created: {payment.payment_number} "
             f"({amount_decimal} {currency}) for customer {customer.id}"
@@ -933,7 +933,7 @@ class PaymentService:
             commit=False,
         )
 
-        db.session.commit()
+        db.session.flush()
         current_app.logger.info(
             f"Customer {customer.id} balance adjusted: {old_derived} → "
             f"{new_value} (difference {difference})"
@@ -1021,12 +1021,12 @@ class PaymentService:
             # F9: حفظ التخصيصات
             receipt.set_allocations(stored)
 
-            db.session.commit()
+            db.session.flush()
 
             from models.customer import recompute_customer_balance
 
             recompute_customer_balance(customer.id)
-            db.session.commit()
+            db.session.flush()
 
             current_app.logger.info(
                 f"Receipt {receipt.receipt_number} allocated to sales"

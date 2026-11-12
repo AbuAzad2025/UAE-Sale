@@ -39,7 +39,7 @@ class HRService:
             budget_amount=Decimal(str(budget)),
         )
         db.session.add(dept)
-        db.session.commit()
+        db.session.flush()
         return dept
 
     # ---- Employee ----
@@ -110,7 +110,7 @@ class HRService:
         emp.personal_leave_balance = emp.personal_leave_days
 
         db.session.add(emp)
-        db.session.commit()
+        db.session.flush()
         return emp
 
     @staticmethod
@@ -165,7 +165,7 @@ class HRService:
                     value = Decimal(str(value))
                 setattr(emp, field, value)
 
-        db.session.commit()
+        db.session.flush()
         return emp
 
     # ---- Leave ----
@@ -213,28 +213,28 @@ class HRService:
             reason=reason,
         )
         db.session.add(leave)
-        db.session.commit()
+        db.session.flush()
         return leave
 
     @staticmethod
     def approve_leave(leave_id, approver_id):
         leave = db.get_or_404(LeaveRequest, leave_id)
         leave.approve(approver_id)
-        db.session.commit()
+        db.session.flush()
         return leave
 
     @staticmethod
     def reject_leave(leave_id, approver_id, reason=""):
         leave = db.get_or_404(LeaveRequest, leave_id)
         leave.reject(approver_id, reason)
-        db.session.commit()
+        db.session.flush()
         return leave
 
     @staticmethod
     def cancel_leave(leave_id):
         leave = db.get_or_404(LeaveRequest, leave_id)
         leave.cancel()
-        db.session.commit()
+        db.session.flush()
         return leave
 
     @staticmethod
@@ -354,7 +354,7 @@ class HRService:
         )
         payslip.calculate_totals()
         db.session.add(payslip)
-        db.session.commit()
+        db.session.flush()
         return payslip
 
     @staticmethod
@@ -442,7 +442,7 @@ class HRService:
                     is_paid=paid,
                 )
                 db.session.add(lt)
-        db.session.commit()
+        db.session.flush()
 
     # ---- Dashboard Stats ----
 

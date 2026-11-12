@@ -60,7 +60,7 @@ class AutoApprovalService:
                 approved_count += 1
                 approved_amount += float(donation.amount_usd or 0)
 
-            db.session.commit()
+            db.session.flush()
 
             if approved_count > 0:
                 logger.info(
@@ -135,7 +135,7 @@ class AutoApprovalService:
                 approved_count += 1
                 approved_amount += float(purchase.amount_paid or 0)
 
-            db.session.commit()
+            db.session.flush()
 
             if approved_count > 0:
                 logger.info(

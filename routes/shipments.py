@@ -21,6 +21,8 @@ from extensions import db
 from models.shipment import Shipment
 from services.shipment_service import ShipmentService
 from utils.decorators import permission_required
+from utils.transaction import atomic_transaction
+from utils.transaction import atomic_transaction
 from utils.helpers import create_audit_log
 from models.tenant_scope import get_current_tenant_id
 
@@ -90,20 +92,21 @@ def create_shipment():
             if not lines_data:
                 flash("⚠️ يجب إضافة منتج واحد على الأقل", "danger")
                 return redirect(url_for("shipments.create_shipment"))
-            s = ShipmentService.create_shipment(
-                from_warehouse_id=request.form.get("from_warehouse_id", type=int),
-                destination_name=request.form.get("destination_name"),
-                destination_warehouse_id=request.form.get(
-                    "destination_warehouse_id", type=int
-                ),
-                destination_type=request.form.get("destination_type", "site"),
-                tenant_id=_tenant_id(),
-                created_by_id=current_user.id,
-                assigned_to_id=request.form.get("assigned_to_id", type=int),
-                lines_data=lines_data,
-                notes=request.form.get("notes"),
-            )
-            create_audit_log("create", "shipments", s.id)
+            with atomic_transaction():
+                s = ShipmentService.create_shipment(
+                    from_warehouse_id=request.form.get("from_warehouse_id", type=int),
+                    destination_name=request.form.get("destination_name"),
+                    destination_warehouse_id=request.form.get(
+                        "destination_warehouse_id", type=int
+                    ),
+                    destination_type=request.form.get("destination_type", "site"),
+                    tenant_id=_tenant_id(),
+                    created_by_id=current_user.id,
+                    assigned_to_id=request.form.get("assigned_to_id", type=int),
+                    lines_data=lines_data,
+                    notes=request.form.get("notes"),
+                )
+                create_audit_log("create", "shipments", s.id)
             flash(f"✅ تم إنشاء الإرسالية {s.shipment_number}", "success")
             return redirect(url_for("shipments.view_shipment", id=s.id))
         except Exception as e:
@@ -126,7 +129,8 @@ def create_shipment():
 @permission_required("manage_warehouse")
 def send_shipment(id):
     try:
-        ShipmentService.send_shipment(id, current_user.id)
+        with atomic_transaction():
+            ShipmentService.send_shipment(id, current_user.id)
         flash("✅ تم إرسال الإرسالية", "success")
     except ValueError as e:
         current_app.logger.exception("handler failed")
@@ -139,7 +143,8 @@ def send_shipment(id):
 @permission_required("manage_warehouse")
 def arrive_shipment(id):
     try:
-        ShipmentService.arrive_shipment(id, current_user.id)
+        with atomic_transaction():
+            ShipmentService.arrive_shipment(id, current_user.id)
         flash("✅ تم تأكيد وصول الإرسالية", "success")
     except ValueError as e:
         current_app.logger.exception("handler failed")
@@ -152,7 +157,8 @@ def arrive_shipment(id):
 @permission_required("manage_warehouse")
 def start_selling(id):
     try:
-        ShipmentService.start_selling(id, current_user.id)
+        with atomic_transaction():
+            ShipmentService.start_selling(id, current_user.id)
         flash("✅ بدأ البيع الميداني", "success")
     except ValueError as e:
         current_app.logger.exception("handler failed")
@@ -165,7 +171,8 @@ def start_selling(id):
 @permission_required("manage_warehouse")
 def close_shipment(id):
     try:
-        ShipmentService.close_shipment(id, current_user.id)
+        with atomic_transaction():
+            ShipmentService.close_shipment(id, current_user.id)
         flash("✅ تم إغلاق الإرسالية", "success")
     except ValueError as e:
         current_app.logger.exception("handler failed")
@@ -178,7 +185,8 @@ def close_shipment(id):
 @permission_required("manage_warehouse")
 def cancel_shipment(id):
     try:
-        ShipmentService.cancel_shipment(id, current_user.id)
+        with atomic_transaction():
+            ShipmentService.cancel_shipment(id, current_user.id)
         flash("✅ تم إلغاء الإرسالية", "success")
     except ValueError as e:
         current_app.logger.exception("handler failed")

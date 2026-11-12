@@ -135,7 +135,7 @@ def ensure_current_period(year=None):
         is_closed=False,
     )
     db.session.add(period)
-    db.session.commit()
+    db.session.flush()
     return period
 
 

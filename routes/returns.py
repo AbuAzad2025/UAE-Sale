@@ -3,7 +3,9 @@ from flask_login import login_required, current_user
 from services.return_service import ReturnService
 from models import ProductReturn, Sale
 from extensions import db
-from utils.decorators import permission_required, get_owned_or_404
+from utils.decorators import permission_required
+from utils.decorators import get_owned_or_404
+from utils.transaction import atomic_transaction
 
 
 returns_bp = Blueprint("returns", __name__, url_prefix="/returns")
@@ -43,12 +45,13 @@ def api_create_return():
                 {"success": False, "message": "Missing sale_id or lines"}
             ), 400
 
-        result = ReturnService.create_return(
-            sale_id=sale_id,
-            return_lines_data=lines,
-            user_id=current_user.id,
-            notes=notes,
-        )
+        with atomic_transaction():
+            result = ReturnService.create_return(
+                sale_id=sale_id,
+                return_lines_data=lines,
+                user_id=current_user.id,
+                notes=notes,
+            )
 
         return jsonify(
             {

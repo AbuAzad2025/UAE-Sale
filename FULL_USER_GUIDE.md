@@ -57,7 +57,7 @@
 12. التقارير (Reports)
 13. الموارد البشرية (HR)
 14. المشاريع والشركاء (ERP Modules)
-15. الذكاء الاصطناعي (AI Assistant)
+15. الذكاء الاصطناعي (Assistant)
 16. الإشعارات والمراقبة (Notifications & Monitoring)
 17. التقديمات والإرجاعات (Returns & Approvals)
 18. الشحنات والإرساليات (Shipments)
@@ -677,7 +677,7 @@ quantity **سالب** = خروج (sale/issue)
 
 ---
 
-## 15. 🤖 الذكاء الاصطناعي (AI Assistant)
+## 15. 🤖 الذكاء الاصطناعي (Assistant)
 
 ### 15.1 `/ai/` — لوحة AI
 

@@ -63,7 +63,7 @@ def {function_name}():
         """
         try:
             # NOTE: Generated SQL is returned as an informational string only;
-            # it is NEVER executed by this module. It powers an AI assistant
+            # it is NEVER executed by this module.
             # snippet generator. Inputs are still sanitized for defense-in-depth.
             def _esc(value):
                 return value.replace("'", "''") if isinstance(value, str) else value

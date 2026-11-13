@@ -85,7 +85,7 @@
 - `average_cost` يُحدّث عبر `CostingService.apply_inbound` (إذا initial_stock > 0)
 - GL: لا قيد GL عند إنشاء منتج (create_movement لا يُرحّل GL؛ GL فقط في adjust_stock مع post_gl=True)
 
-### 1.2 عبر AI Assistant (Chat)
+### 1.2 عبر Assistant (Chat)
 
 - **Endpoint:** `services/ai_executor.py::execute_tool('create_product', ...)`
 - **Permission:** `manage_products` (via ToolDef)

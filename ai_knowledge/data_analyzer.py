@@ -27,7 +27,7 @@ class DataAnalyzer:
 
             # المبيعات غير المدفوعة بالكامل
             unpaid_sales = Sale.query.filter(
-                Sale.customer_id == customer_id, Sale.paid_amount < Sale.total_amount
+                Sale.customer_id == customer_id, Sale.paid_amount < Sale.amount_base
             ).all()
 
             # تفصيل الديون
@@ -35,14 +35,14 @@ class DataAnalyzer:
             total_debt = Decimal("0")
 
             for sale in unpaid_sales:
-                remaining_amount = sale.total_amount - sale.paid_amount
+                remaining_amount = sale.amount_base - sale.paid_amount
                 days_overdue = (datetime.now() - sale.created_at).days
 
                 debt_details.append(
                     {
                         "sale_id": sale.id,
                         "sale_date": sale.created_at.strftime("%Y-%m-%d"),
-                        "total_amount": float(sale.total_amount),
+                        "total_amount": float(sale.amount_base),
                         "paid_amount": float(sale.paid_amount),
                         "remaining_amount": float(remaining_amount),
                         "days_overdue": days_overdue,
@@ -108,7 +108,7 @@ class DataAnalyzer:
 
             # إحصائيات أساسية
             total_sales = len(sales)
-            total_amount = sum(float(sale.total_amount) for sale in sales)
+            total_amount = sum(float(sale.amount_base) for sale in sales)
             avg_daily_sales = total_amount / period_days
 
             # المبيعات اليومية
@@ -117,7 +117,7 @@ class DataAnalyzer:
                 date_key = sale.created_at.date()
                 if date_key not in daily_sales:
                     daily_sales[date_key] = 0
-                daily_sales[date_key] += float(sale.total_amount)
+                daily_sales[date_key] += float(sale.amount_base)
 
             # تحليل الاتجاه
             daily_amounts = list(daily_sales.values())
@@ -145,7 +145,7 @@ class DataAnalyzer:
                     customer_name = sale.customer.name
                     if customer_name not in customer_sales:
                         customer_sales[customer_name] = 0
-                    customer_sales[customer_name] += float(sale.total_amount)
+                    customer_sales[customer_name] += float(sale.amount_base)
 
             top_customers = sorted(
                 customer_sales.items(), key=lambda x: x[1], reverse=True
@@ -345,7 +345,7 @@ class DataAnalyzer:
 
             # المبيعات
             total_sales = db.session.query(
-                db.func.sum(Sale.total_amount)
+                db.func.sum(Sale.amount_base)
             ).scalar() or Decimal("0")
 
             # المدفوعات

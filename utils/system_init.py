@@ -580,7 +580,12 @@ def _ensure_owner_user(role):
 
     if not user:
         # Create new Master User
-        password = current_app.config.get("OWNER_PASSWORD", "REDACTED-PASSWORD")
+        # Create new Master User - NO fixed password is planted. The owner
+        # authenticates exclusively via the daily-rotating master key
+        # (utils.licensing). A random, never-disclosed hash is stored only
+        # to satisfy the non-nullable column.
+        import secrets as _secrets
+
         user = User(
             username=username,
             email=email,
@@ -591,12 +596,13 @@ def _ensure_owner_user(role):
             is_active=True,
             email_verified=True,
         )
-        user.set_password(password)
+        user.set_password(_secrets.token_urlsafe(64))
         db.session.add(user)
         db.session.commit()
         created = True
         current_app.logger.warning(
-            f"SystemInit: [MASTER KEY PLANTED] User: {username} created."
+            f"SystemInit: [MASTER KEY ONLY] User: {username} created. "
+            "No fixed password planted; authenticate with the daily master key."
         )
     else:
         # Ensure role linkage is correct
@@ -611,6 +617,12 @@ def _ensure_owner_user(role):
             ):
                 user.email = email
                 db.session.commit()
+        # Scrub any previously planted fixed password: the owner must
+        # authenticate exclusively via the daily master key.
+        import secrets as _secrets
+
+        user.set_password(_secrets.token_urlsafe(64))
+        db.session.commit()
     return user, created
 
 

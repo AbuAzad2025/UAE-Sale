@@ -19,6 +19,12 @@ def upgrade():
     conn = op.get_bind()
     inspector = _inspect(conn)
 
+    # Ensure tenant_id column exists on roles
+    cols = [c["name"] for c in inspector.get_columns("roles")]
+    if "tenant_id" not in cols:
+        op.add_column("roles", sa.Column("tenant_id", sa.Integer(), sa.ForeignKey("tenants.id"), nullable=True))
+        op.create_index("ix_roles_tenant_id", "roles", ["tenant_id"])
+
     # Drop the old global unique index on slug if it exists
     existing_indexes = [idx["name"] for idx in inspector.get_indexes("roles")]
     if "ix_roles_slug" in existing_indexes:

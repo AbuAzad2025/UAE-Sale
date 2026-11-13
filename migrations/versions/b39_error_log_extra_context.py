@@ -21,6 +21,12 @@ def upgrade():
     conn = op.get_bind()
     inspector = _inspect(conn)
     cols = [c["name"] for c in inspector.get_columns("error_logs")]
+    if "tenant_id" not in cols:
+        op.add_column(
+            "error_logs",
+            sa.Column("tenant_id", sa.Integer(), sa.ForeignKey("tenants.id"), nullable=True),
+        )
+        op.create_index("ix_error_logs_tenant_id", "error_logs", ["tenant_id"])
     if "extra_context" not in cols:
         op.add_column(
             "error_logs", sa.Column("extra_context", sa.Text(), nullable=True)

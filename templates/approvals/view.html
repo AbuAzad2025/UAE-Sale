@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="row">
-  <!-- Request Details -->
+  
   <div class="col-md-8">
     <div class="card">
       <div class="card-header">
@@ -70,7 +70,7 @@
       </div>
     </div>
 
-    <!-- Approval Levels -->
+    
     <div class="card mt-3">
       <div class="card-header">
         <h4 class="card-title mb-0">
@@ -124,7 +124,7 @@
     </div>
   </div>
 
-  <!-- Actions Panel -->
+  
   <div class="col-md-4">
     {% if req.status == 'pending' %}
     <div class="card border-warning">
@@ -134,7 +134,7 @@
         </h4>
       </div>
       <div class="card-body">
-        <!-- Approve -->
+        
         <form method="POST" action="{{ url_for('approvals.approve', request_id=req.id) }}" class="mb-3">
           <div class="form-group">
             <textarea name="notes" class="form-control form-control-sm" placeholder="ملاحظات (اختياري)" rows="2"></textarea>
@@ -144,7 +144,7 @@
           </button>
         </form>
 
-        <!-- Reject -->
+        
         <form method="POST" action="{{ url_for('approvals.reject', request_id=req.id) }}" class="mb-3">
           <div class="form-group">
             <textarea name="notes" class="form-control form-control-sm" placeholder="سبب الرفض (مطلوب)" rows="2" required></textarea>
@@ -156,7 +156,7 @@
 
         <hr>
 
-        <!-- Cancel -->
+        
         <form method="POST" action="{{ url_for('approvals.cancel', request_id=req.id) }}">
           <button type="submit" class="btn btn-outline-secondary btn-block btn-sm">
             <i class="fas fa-ban mr-1"></i>إلغاء الطلب
@@ -176,7 +176,7 @@
     </div>
     {% endif %}
 
-    <!-- Link to entity -->
+    
     <div class="card mt-3">
       <div class="card-body">
         <h6>العمليات المرتبطة:</h6>

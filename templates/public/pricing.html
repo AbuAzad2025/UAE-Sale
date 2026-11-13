@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/lang_pills.css') }}"></head>
 <body>
 
-    <!-- Language Switcher -->
+    
     <div class="lang-switcher on-light">
         <a href="{{ url_for('language.set_language', lang='ar') }}" class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}"><i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>العربية</a>
         <a href="{{ url_for('language.set_language', lang='en') }}" class="lang-pill {% if session.get('language') == 'en' %}active{% endif %}"><i class="fas fa-check {% if session.get('language') != 'en' %}invisible{% endif %}"></i>English</a>
@@ -62,7 +62,7 @@
         </div>
     </div>
 
-    <!-- Comparison Table -->
+    
     <div class="comparison">
         <h2>مقارنة تفصيلية بين الباقات</h2>
         <div class="comparison-table">
@@ -117,7 +117,7 @@
         </div>
     </div>
 
-    <!-- CTA Section -->
+    
     <section class="cta-section">
         <h2>جاهز للبدء؟</h2>
         <p>ابدأ تجربتك المجانية لمدة 14 يوم - بدون بطاقة ائتمان</p>

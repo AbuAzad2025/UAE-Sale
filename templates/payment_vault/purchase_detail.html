@@ -24,7 +24,7 @@
     <section class="content">
         <div class="container-fluid">
             <div class="row">
-                <!-- معلومات الشراء -->
+                
                 <div class="col-md-8">
                     <div class="card">
                         <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
@@ -154,7 +154,7 @@
                     </div>
                 </div>
                 
-                <!-- الحالة والإجراءات -->
+                
                 <div class="col-md-4">
                     <div class="card">
                         <div class="card-header bg-info text-white">
@@ -212,7 +212,7 @@
                             
                             <hr>
                             
-                            <!-- Actions -->
+                            
                             <div class="d-grid gap-2">
                                 {% if purchase.payment_status == 'pending' and purchase.activation_status != 'activated' %}
                                 <form method="POST" action="{{ url_for('payment_vault.activate_purchase', id=purchase.id) }}" onsubmit="return confirm('هل تريد تفعيل هذه الباقة؟')">
@@ -240,7 +240,7 @@
                         </div>
                     </div>
                     
-                    <!-- ميزات الباقة -->
+                    
                     {% if purchase.package and purchase.package.features %}
                     <div class="card mt-3">
                         <div class="card-header bg-gradient-primary text-white">

@@ -11,7 +11,6 @@
 <div class="alert alert-secondary" role="alert">هذا الأمر منتهٍ. يمكن الأرشفة بعد التأكد من اكتمال القيود.</div>
 {% endif %}
 
-<!-- أزرار الإجراءات الرئيسية -->
 <div class="row mb-3">
   <div class="col-12">
     <div class="btn-group" role="group">
@@ -88,7 +87,7 @@
       <div class="card-header"><h5 class="mb-0">الإجراءات</h5></div>
       <div class="card-body">
 
-        <!-- تغيير الحالة -->
+        
         {% if transitions and current_user.has_permission('maintenance_work') %}
         <form method="POST" action="{{ url_for('maintenance.change_order_status', id=order.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -103,7 +102,7 @@
 
         {% if order.status not in ('closed', 'cancelled') %}
         <hr>
-        <!-- إشعار العميل -->
+        
         <form method="POST" action="{{ url_for('maintenance.notify_customer', id=order.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <select name="channel" class="form-select form-select-sm">
@@ -116,7 +115,7 @@
         </form>
 
         <hr>
-        <!-- إجراءات الكفالة -->
+        
         <form method="POST" action="{{ url_for('maintenance.warranty', id=order.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <select name="action" class="form-select form-select-sm">
@@ -129,7 +128,7 @@
         </form>
 
         <hr>
-        <!-- فحص الجودة ووقت الإصلاح -->
+        
         <form method="POST" action="{{ url_for('maintenance.quality_check_order', id=order.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="form-check">
@@ -150,7 +149,7 @@
 
         {% if order.status == 'closed' %}
         <hr>
-        <!-- فترة الضمان بعد الصيانة -->
+        
         <form method="POST" action="{{ url_for('maintenance.set_warranty_period', id=order.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="number" name="warranty_days" value="30" min="0" class="form-control form-control-sm" placeholder="أيام الضمان">
@@ -170,7 +169,6 @@
   </div>
 </div>
 
-<!-- الفاتورة والقبوض -->
 <div class="row mt-4">
   <div class="col-lg-6">
     <div class="card">
@@ -278,7 +276,6 @@
 </div>
 {% endif %}
 
-<!-- سجل حالات الأمر -->
 <div class="row mt-4">
   <div class="col-12">
     <div class="card">
@@ -308,7 +305,6 @@
   </div>
 </div>
 
-<!-- بنود القطع والخدمات -->
 <div class="row mt-4">
   <div class="col-md-6">
     <div class="card">
@@ -375,7 +371,6 @@
   </div>
 </div>
 
-<!-- نموذج الخصم على مستوى الأمر -->
 {% if order.status not in ('closed', 'cancelled') and not order.invoice and current_user.has_permission('maintenance_discount') %}
 <div class="row mt-4">
   <div class="col-12">
@@ -413,7 +408,6 @@
 </div>
 {% endif %}
 
-<!-- تقييم العميل -->
 {% if order.status == 'closed' and order.customer_rating is none %}
 <div class="row mt-4">
   <div class="col-12">
@@ -463,7 +457,6 @@
 </div>
 {% endif %}
 
-<!-- Add Item Modal -->
 {% if order.status not in ('closed', 'cancelled') and not order.invoice %}
 <div class="modal fade" id="addItemModal" tabindex="-1">
   <div class="modal-dialog">
@@ -520,7 +513,6 @@
 </div>
 {% endif %}
 
-<!-- Add Service Modal -->
 {% if order.status not in ('closed', 'cancelled') and not order.invoice %}
 <div class="modal fade" id="addServiceModal" tabindex="-1">
   <div class="modal-dialog">
@@ -571,7 +563,6 @@
 </div>
 {% endif %}
 
-<!-- Return modals -->
 {% if order.status not in ('closed', 'cancelled') and not order.invoice %}
 {% for it in order.items %}
 <div class="modal fade" id="returnModal{{ it.id }}" tabindex="-1">

@@ -39,7 +39,7 @@
 
 {% block content %}
 <div class="row">
-  <!-- Statistics Cards -->
+  
   <div class="col-lg-3 col-6">
     <div class="small-box bg-info">
       <div class="inner">
@@ -90,7 +90,7 @@
 </div>
 
 <div class="row">
-  <!-- معلومات المورد -->
+  
   <div class="col-md-6">
     <div class="card card-primary">
       <div class="card-header">
@@ -147,7 +147,7 @@
     </div>
   </div>
   
-  <!-- معلومات قانونية ومالية -->
+  
   <div class="col-md-6">
     <div class="card card-success">
       <div class="card-header">
@@ -180,7 +180,7 @@
             <td class="text-success"><strong>{{ '{:,.2f}'.format(supplier.total_purchases_aed or 0) }}</strong> {{ base_currency }}</td>
           </tr>
           <tr>
-            {# F6: الرصيد الافتتاحي منفصل عن إجمالي المشتريات — لا يختلطان #}
+            
             <th><i class="fas fa-scale-balanced text-muted mr-2"></i>الرصيد الافتتاحي:</th>
             <td>
               <strong>{{ '{:,.2f}'.format(supplier.get_opening_balance_base()) }}</strong> {{ base_currency }}
@@ -212,7 +212,6 @@
   </div>
 </div>
 
-<!-- Tags and Notes -->
 {% if supplier.tags or supplier.notes %}
 <div class="row">
   <div class="col-md-12">
@@ -242,7 +241,6 @@
 </div>
 {% endif %}
 
-<!-- آخر المشتريات -->
 <div class="row">
   <div class="col-md-12">
     <div class="card">

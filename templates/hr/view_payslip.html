@@ -31,7 +31,7 @@
         </div>
 
         <div class="row">
-          <!-- Earnings -->
+          
           <div class="col-md-6">
             <div class="card card-success card-outline">
               <div class="card-header"><h6 class="mb-0 text-success"><i class="fas fa-plus-circle mr-2"></i>المستحقات</h6></div>
@@ -56,7 +56,7 @@
             </div>
           </div>
 
-          <!-- Deductions -->
+          
           <div class="col-md-6">
             <div class="card card-danger card-outline">
               <div class="card-header"><h6 class="mb-0 text-danger"><i class="fas fa-minus-circle mr-2"></i>الخصومات</h6></div>
@@ -78,7 +78,7 @@
           </div>
         </div>
 
-        <!-- Actions -->
+        
         <div class="mt-4">
           {% if payslip.status == 'draft' %}
           <form method="POST" action="{{ url_for('hr.approve_payslip', id=payslip.id) }}" style="display:inline">

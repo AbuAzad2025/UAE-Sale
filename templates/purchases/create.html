@@ -177,7 +177,7 @@
     <input type="hidden" name="line_count" id="line_count" value="0">
     
     <div class="card-body">
-      <!-- ================== معلومات المورد ================== -->
+      
       <div class="row">
         <div class="col-md-12">
           <h5 class="text-primary mb-3">
@@ -256,7 +256,7 @@
         </div>
       </div>
       
-      <!-- ================== العملة والضريبة ================== -->
+      
       <div class="row mt-3">
         <div class="col-md-12">
           <h5 class="text-primary mb-3">
@@ -323,7 +323,7 @@
         </div>
       </div>
       
-      <!-- ================== تاريخ الاستحقاق ================== -->
+      
       <div class="row mt-3">
         <div class="col-md-4">
           <div class="form-group">
@@ -337,7 +337,7 @@
         </div>
       </div>
 
-      <!-- ================== المنتجات ================== -->
+      
       <div class="row mt-4">
         <div class="col-md-12">
           <h5 class="text-primary mb-3">
@@ -352,7 +352,7 @@
         <i class="fas fa-plus-circle"></i> إضافة منتج
       </button>
       
-      <!-- ================== الملخص المالي ================== -->
+      
       <div class="row mt-4">
         <div class="col-md-8">
           <div class="form-group">
@@ -386,7 +386,7 @@
       </div>
     </div>
     
-    <!-- ================== الأزرار ================== -->
+    
     <div class="card-footer">
       <button type="submit" class="btn btn-primary btn-lg">
         <i class="fas fa-save mr-2"></i> حفظ فاتورة الشراء
@@ -420,7 +420,7 @@ function addLine() {
     <div class="product-line mb-3 p-3" id="line_${lineIndex}" 
          style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px;">
       <div class="row align-items-end">
-        <!-- المنتج -->
+        
         <div class="col-md-3">
           <label class="small" for="line_${lineIndex}_product_id"><i class="fas fa-box"></i> المنتج</label>
           <select name="lines[${lineIndex}][product_id]" 
@@ -431,7 +431,7 @@ function addLine() {
           </select>
         </div>
         
-        <!-- الكمية -->
+        
         <div class="col-md-2">
           <label class="small" for="line_${lineIndex}_quantity"><i class="fas fa-sort-numeric-up"></i> الكمية</label>
           <input type="number" name="lines[${lineIndex}][quantity]" 
@@ -440,7 +440,7 @@ function addLine() {
                  placeholder="{{ t('Quantity') }}" value="1" step="0.01" min="0.01" required>
         </div>
         
-        <!-- التكلفة -->
+        
         <div class="col-md-2">
           <label class="small" for="line_${lineIndex}_unit_cost"><i class="fas fa-dollar-sign"></i> التكلفة</label>
           <input type="number" name="lines[${lineIndex}][unit_cost]" 
@@ -449,7 +449,7 @@ function addLine() {
                  placeholder="0.00" step="0.01" min="0" required>
         </div>
         
-        <!-- الخصم -->
+        
         <div class="col-md-1">
           <label class="small" for="line_${lineIndex}_discount"><i class="fas fa-percentage"></i> خصم%</label>
           <input type="number" name="lines[${lineIndex}][discount_percent]" 
@@ -458,7 +458,7 @@ function addLine() {
                  placeholder="0" value="0" step="0.01" min="0" max="100">
         </div>
         
-        <!-- per-line tax treatment -->
+        
         <div class="col-md-2">
           <label class="small" for="line_${lineIndex}_tax_treatment">المعاملة الضريبية</label>
           <select name="lines[${lineIndex}][tax_treatment]"
@@ -471,14 +471,14 @@ function addLine() {
           </select>
         </div>
 
-        <!-- الإجمالي -->
+        
         <div class="col-md-1">
           <label class="small" for="line_total_${lineIndex}"><i class="fas fa-equals"></i> المجموع</label>
           <input type="text" class="form-control line-total bg-light" 
                  id="line_total_${lineIndex}" data-line="${lineIndex}" value="0.00" readonly>
         </div>
         
-        <!-- حذف -->
+        
         <div class="col-md-1">
           <button type="button" class="btn btn-danger btn-block" 
                   onclick="removeLine(${lineIndex})" title="{{ t('Delete') }}">

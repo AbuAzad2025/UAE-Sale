@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>شركة أزاد للأنظمة الذكية - نظام متكامل لإدارة المبيعات والمستودعات والمحاسبة</title>
     
-    <!-- SEO Meta Tags المحسنة -->
+    
     <meta name="description" content="شركة أزاد للأنظمة الذكية - نظام إدارة مبيعات ومشتريات ومخزون متكامل مع ذكاء اصطناعي. برنامج محاسبة احترافي للشركات: فواتير إلكترونية، إدارة مخزون، كشوفات حسابات، تقارير مالية شاملة.">
     <meta name="keywords" content="نظام إدارة مستودعات، برنامج محاسبة، فواتير إلكترونية، إدارة المخزون، برنامج مبيعات، نظام نقاط البيع POS، قطع غيار سيارات، ذكاء اصطناعي محاسبة، ERP، كشف حساب، برنامج حسابات، سندات قبض، إدارة شيكات، تقارير مالية، نظام محاسبي، cloud accounting، المحاسبة السحابية">
     <meta name="author" content="شركة أزاد للأنظمة الذكية">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
     <meta name="language" content="Arabic">
     
-    <!-- Open Graph / Facebook -->
+    
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ request.url }}">
     <meta property="og:title" content="شركة أزاد للأنظمة الذكية - نظام متكامل لإدارة المبيعات والمستودعات">
@@ -21,20 +21,20 @@
     <meta property="og:locale" content="ar">
     <meta property="og:site_name" content="شركة أزاد للأنظمة الذكية">
     
-    <!-- Twitter -->
+    
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="شركة أزاد للأنظمة الذكية - نظام إدارة متكامل">
     <meta name="twitter:description" content="نظام متكامل لإدارة المبيعات والمخزون والحسابات مع ذكاء اصطناعي. فواتير، مخزون، حسابات، تقارير.">
     <meta name="twitter:image" content="{{ url_for('static', filename='img/azad_logo.png', _external=True) }}">
     
-    <!-- Canonical -->
+    
     <link rel="canonical" href="{{ request.url }}">
     
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
     
-    <!-- Schema.org JSON-LD للتحسين المتقدم -->
+    
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -63,7 +63,7 @@
     }
     </script>
     
-    <!-- FAQPage Schema -->
+    
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -141,10 +141,8 @@
 </head>
 <body>
 
-    <!-- Language Switcher (Floating) -->
-    <!-- NOTE: plain pill links instead of a Bootstrap dropdown: this page
-         ships no Bootstrap CSS, so .dropdown-menu rendered as an unstyled
-         stacked block. Pills need no JS and always sit side by side. -->
+    
+    
     <div class="lang-switcher">
         <a href="{{ url_for('language.set_language', lang='ar') }}"
            class="lang-pill {% if session.get('language', 'ar') == 'ar' %}active{% endif %}">
@@ -158,7 +156,7 @@
         </a>
     </div>
 
-    <!-- Hero Section -->
+    
     <section class="hero">
         <div class="hero-pattern"></div>
         <div class="hero-content">
@@ -200,7 +198,7 @@
         </div>
     </section>
 
-    <!-- Features Section -->
+    
     <section class="features">
         <h2>لماذا تختار نظام أزاد لإدارة أعمالك؟</h2>
         <p class="features-subtitle">
@@ -240,7 +238,7 @@
         </div>
     </section>
 
-    <!-- Pricing Preview -->
+    
     <section class="pricing-preview">
         <h2>باقات مرنة لجميع الأعمال</h2>
         <p>اختر الباقة المناسبة لك - حلول احترافية بأسعار تنافسية</p>
@@ -289,7 +287,7 @@
         </div>
     </section>
 
-    <!-- Contact Section -->
+    
     <section class="contact">
         <h2>تواصل معنا</h2>
         <p style="color: rgba(255,255,255,0.9); font-size: 1rem; margin-bottom: 8px;">فريقنا جاهز لمساعدتك</p>
@@ -328,7 +326,7 @@
         </div>
     </section>
 
-    <!-- من نحن Section -->
+    
     <section style="padding: 80px 20px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
         <div style="max-width: 1000px; margin: 0 auto;">
             <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 30px; color: var(--gulf-blue);">
@@ -349,7 +347,7 @@
         </div>
     </section>
 
-    <!-- من يستفيد من نظامنا -->
+    
     <section style="padding: 80px 20px; background: white;">
         <div style="max-width: 1000px; margin: 0 auto;">
                 <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 20px; color: var(--gulf-blue);">
@@ -404,7 +402,7 @@
         </div>
     </section>
 
-    <!-- FAQ Section - الأسئلة الشائعة -->
+    
     <section class="faq-section" style="padding: 80px 20px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white;">
         <div style="max-width: 900px; margin: 0 auto;">
             <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 20px; background: var(--gradient-gulf); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
@@ -415,7 +413,7 @@
             </p>
             
             <div class="faq-container">
-                <!-- السؤال 1 -->
+                
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
@@ -426,7 +424,7 @@
                     </p>
                 </div>
                 
-                <!-- السؤال 2 -->
+                
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
@@ -437,7 +435,7 @@
                     </p>
                 </div>
                 
-                <!-- السؤال 3 -->
+                
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
@@ -448,7 +446,7 @@
                     </p>
                 </div>
                 
-                <!-- السؤال 4 -->
+                
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
@@ -459,7 +457,7 @@
                     </p>
                 </div>
                 
-                <!-- السؤال 5 -->
+                
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
@@ -470,7 +468,7 @@
                     </p>
                 </div>
                 
-                <!-- السؤال 6 -->
+                
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
@@ -481,7 +479,7 @@
                     </p>
                 </div>
                 
-                <!-- السؤال 7 -->
+                
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
@@ -492,7 +490,7 @@
                     </p>
                 </div>
                 
-                <!-- السؤال 8 -->
+                
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
@@ -513,7 +511,7 @@
         </div>
     </section>
 
-    <!-- Footer -->
+    
     <footer>
         <div style="margin-bottom: 15px;">
             <img src="{{ url_for('static', filename='img/azad_logo_white_on_dark.png') }}" alt="شركة أزاد للأنظمة الذكية - نظام إدارة متكامل" style="max-height: 50px;">
@@ -577,7 +575,7 @@
         });
     </script>
 
-    <!-- Bootstrap JS for dropdown -->
+    
     <script src="{{ url_for('static', filename='adminlte/plugins/jquery/jquery.min.js') }}"></script>
     <script src="{{ url_for('static', filename='adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 
